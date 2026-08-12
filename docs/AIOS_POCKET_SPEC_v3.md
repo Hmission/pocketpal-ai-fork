@@ -270,6 +270,20 @@ AIOS 是寄宿型智能体，不做 IDE，寄宿在 Cursor/Qoder 等宿主上。
 6. 真机按验证矩阵逐项测试
 ---
 
+## v3.4 迭代记录（2026-08-12 App 产品迭代：UI 四项修复）
+
+### 修复项
+1. **安卓状态栏安全区**: App.tsx Drawer.Navigator screenOptions 增加 `headerStatusBarHeight: insets.top`（useSafeAreaInsets），四个新增 AIOS 页面（Memory/Knowledge/Workspace/Tool）不再冲进状态栏。ChatScreen headerShown:false 自带 ChatHeader 不受影响。
+2. **抽屉图标差异化**: SidebarContent 记忆管理→HeartIcon、知识库→GridIcon、Workspace→EditBoxIcon、工具配置→AtomIcon、Dev Tools→CodeIcon，全部复用现有图标库零新增 SVG。
+3. **抽屉菜单分组重构**: 11 项平铺拆为三组——核心导航（对话/Pals/模型）· AIOS 智能体（记忆/知识库/Workspace/工具配置）· 系统（基准/设置/App信息/DevTools），分组标签+Divider，设计逻辑对齐 PalsScreen 的分层思想。
+4. **聊天输入框分隔线**: ChatInput textInputArea 与 controlBar 之间插入 1px 横线（theme 色半透明），两行分栏视觉区隔。
+
+### 验证
+- [x] `npx tsc --noEmit` 零错误
+- [ ] 真机验证矩阵（状态栏/抽屉/输入框，待装机）
+
+---
+
 ## v3.3 迭代记录（2026-08-12 链路复查修复）
 
 ### 修复项

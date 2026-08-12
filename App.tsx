@@ -7,7 +7,7 @@ import {NavigationContainer} from '@react-navigation/native';
 import {Provider as PaperProvider} from 'react-native-paper';
 import {BottomSheetModalProvider} from '@gorhom/bottom-sheet';
 import {createDrawerNavigator} from '@react-navigation/drawer';
-import {SafeAreaProvider} from 'react-native-safe-area-context';
+import {SafeAreaProvider, useSafeAreaInsets} from 'react-native-safe-area-context';
 import {KeyboardProvider} from 'react-native-keyboard-controller';
 import {
   gestureHandlerRootHOC,
@@ -90,6 +90,10 @@ const App = observer(() => {
   const theme = useTheme();
   const styles = createStyles(theme);
   const currentL10n = l10n[uiStore.language];
+  // Status bar inset for Android edge-to-edge: the drawer header must
+  // reserve the status-bar height explicitly or content collides with it.
+  // ChatScreen is headerShown:false and handles its own insets in ChatHeader.
+  const insets = useSafeAreaInsets();
 
   // Initialize locale with the current language
   React.useEffect(() => {
@@ -125,6 +129,7 @@ const App = observer(() => {
                         <Drawer.Navigator
                           screenOptions={{
                             headerLeft: () => <HeaderLeft />,
+                            headerStatusBarHeight: insets.top,
                             drawerStyle: {
                               width:
                                 screenWidth > 400 ? 320 : screenWidth * 0.8,

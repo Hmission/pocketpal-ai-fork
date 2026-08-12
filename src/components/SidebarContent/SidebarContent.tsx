@@ -13,7 +13,12 @@ import {Menu, RenameModal, Checkbox} from '..';
 import {
   BenchmarkIcon,
   ChatIcon,
+  EditBoxIcon,
   EditIcon,
+  GridIcon,
+  HeartIcon,
+  AtomIcon,
+  CodeIcon,
   ModelIcon,
   PalIcon,
   SettingsIcon,
@@ -488,6 +493,7 @@ export const SidebarContent: React.FC<DrawerContentComponentProps> = observer(
     const ListHeaderComponent = React.useMemo(
       () => (
         <View>
+          {/* 核心导航：高频日常使用 */}
           <Drawer.Section showDivider={false}>
             <Drawer.Item
               label={l10n.components.sidebarContent.menuItems.chat}
@@ -510,6 +516,46 @@ export const SidebarContent: React.FC<DrawerContentComponentProps> = observer(
               style={styles.menuDrawerItem}
               testID="drawer-item-models"
             />
+          </Drawer.Section>
+
+          {/* AIOS 智能体：记忆/知识/工具类中频入口 */}
+          <Drawer.Section showDivider={false}>
+            <Drawer.Item
+              label="记忆管理"
+              icon={() => (
+                <HeartIcon width={24} height={24} stroke={theme.colors.primary} />
+              )}
+              onPress={() => props.navigation.navigate(ROUTES.MEMORY)}
+              style={styles.menuDrawerItem}
+            />
+            <Drawer.Item
+              label="知识库"
+              icon={() => (
+                <GridIcon width={24} height={24} stroke={theme.colors.primary} />
+              )}
+              onPress={() => props.navigation.navigate(ROUTES.KNOWLEDGE)}
+              style={styles.menuDrawerItem}
+            />
+            <Drawer.Item
+              label="Workspace"
+              icon={() => (
+                <EditBoxIcon width={24} height={24} stroke={theme.colors.primary} />
+              )}
+              onPress={() => props.navigation.navigate(ROUTES.WORKSPACE)}
+              style={styles.menuDrawerItem}
+            />
+            <Drawer.Item
+              label="工具配置"
+              icon={() => (
+                <AtomIcon width={24} height={24} stroke={theme.colors.primary} />
+              )}
+              onPress={() => props.navigation.navigate(ROUTES.TOOL)}
+              style={styles.menuDrawerItem}
+            />
+          </Drawer.Section>
+
+          {/* 系统：低频设置与信息 */}
+          <Drawer.Section showDivider={false}>
             <Drawer.Item
               label={l10n.components.sidebarContent.menuItems.benchmark}
               icon={() => <BenchmarkIcon stroke={theme.colors.primary} />}
@@ -542,44 +588,12 @@ export const SidebarContent: React.FC<DrawerContentComponentProps> = observer(
               onPress={() => props.navigation.navigate(ROUTES.APP_INFO)}
               style={styles.menuDrawerItem}
             />
-            <Drawer.Item
-              label='记忆管理'
-              icon={() => (
-                <SettingsIcon width={24} height={24} stroke={theme.colors.primary} />
-              )}
-              onPress={() => props.navigation.navigate(ROUTES.MEMORY)}
-              style={styles.menuDrawerItem}
-            />
-            <Drawer.Item
-              label='知识库'
-              icon={() => (
-                <SettingsIcon width={24} height={24} stroke={theme.colors.primary} />
-              )}
-              onPress={() => props.navigation.navigate(ROUTES.KNOWLEDGE)}
-              style={styles.menuDrawerItem}
-            />
-            <Drawer.Item
-              label='Workspace'
-              icon={() => (
-                <SettingsIcon width={24} height={24} stroke={theme.colors.primary} />
-              )}
-              onPress={() => props.navigation.navigate(ROUTES.WORKSPACE)}
-              style={styles.menuDrawerItem}
-            />
-            <Drawer.Item
-              label='工具配置'
-              icon={() => (
-                <SettingsIcon width={24} height={24} stroke={theme.colors.primary} />
-              )}
-              onPress={() => props.navigation.navigate(ROUTES.TOOL)}
-              style={styles.menuDrawerItem}
-            />
             {/* Only show Dev Tools in debug mode */}
             {isDebugMode && (
               <Drawer.Item
                 label="Dev Tools"
                 icon={() => (
-                  <SettingsIcon
+                  <CodeIcon
                     width={24}
                     height={24}
                     stroke={theme.colors.primary}

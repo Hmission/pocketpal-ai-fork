@@ -487,6 +487,9 @@ export const ChatInput = observer(
             />
           </View>
 
+          {/* Divider between input area and control bar */}
+          <View style={styles.inputDivider} />
+
           {/* Control Bar (Bottom Row) */}
           <View style={styles.controlBar}>
             {/* Left Controls */}

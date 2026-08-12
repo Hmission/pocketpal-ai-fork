@@ -1,5 +1,6 @@
 # 口袋 AIOS：纯离线集成规划 v2
-> **进度(2026-08-12, v3.3)**:
+> **进度(2026-08-12, v3.4)**:
+> - v3.4 App 产品迭代：UI 四项修复（安卓状态栏安全区 / 抽屉图标差异化 / 抽屉菜单分组 / 输入框分隔线）✅ 代码完成待真机
 > - v3 七层架构实施: 层1-7 全部完成 ✅ (Workspace/生成即落盘+动态窗口/分级记忆+混合检索/grammar抽取/工具体系/前端管理入口全功能/调度模式)
 > - v3.3 链路复查修复: USER.md+MEMORY.md 读入 contextAssembler(大王画像进上下文) ✅ | searchEngine 启动索引扫 memory/ 摘要目录 ✅ | conversationCache key 统一 conversation:/memory: 前缀 ✅
 > - 新增文件: paths.ts(Workspace) / conversationLog.ts(lastWriteTime+搜索索引更新) / contextAssembler.ts(脏环境回退+召回跟踪+USER/MEMORY读入) / compaction.ts(compactAndFlush摘要落盘) / searchEngine.ts(FTS5+JS+memory/索引) / MemorySearchEngine / NoteSaveEngine / DeviceControlEngine(Phase2) / MemoryScreen(编辑+存储空间) / KnowledgeScreen(三Tab) / WorkspaceScreen(导入/导出) / ToolScreen(调用历史) / SessionStatusBar(四指标) / SessionStatusBar/index.ts(barrel)

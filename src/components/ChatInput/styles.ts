@@ -92,6 +92,11 @@ export const createStyles = ({
       paddingTop: 20,
       paddingBottom: 8,
     },
+    inputDivider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: theme.colors.outlineVariant,
+      marginHorizontal: 24,
+    },
     controlBar: {
       flexDirection: 'row',
       alignItems: 'center',

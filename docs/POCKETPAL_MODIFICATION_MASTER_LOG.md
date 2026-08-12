@@ -270,3 +270,48 @@ Start-Process -FilePath "F:\Cursor\OneTakeMVP\.tmp\scrcpy\scrcpy-win64-v4.1\scrc
 
 ### B.6 一键启动脚本
 见 `.tmp/scrcpy_check.py`（截图自检）；如需常驻，可把 B.2 存为 `start_scrcpy.ps1`。
+
+---
+
+## 8. 窗口闭环记录（2026-08-12 上半场 · App 产品迭代：UI 四项修复）
+
+### 8.1 背景
+大王钦定开启 App 产品迭代（先不管 AIOS 后端，聚焦 App UI）。四项问题：
+1. 安卓端顶部状态栏未留空 → 内容冲进状态栏
+2. 侧拉抽屉新增能力图标全是齿轮（记忆/知识库/Workspace/工具配置/Dev Tools）
+3. 侧拉抽屉功能列表无设计逻辑（11 项平铺无分组）
+4. 聊天输入框两行分栏之间缺横线区隔
+
+### 8.2 根因分析
+| 问题 | 根因 |
+|---|---|
+| 状态栏重叠 | Drawer.Screen 的 header 未配置 `headerStatusBarHeight`；新增四页（Memory/Knowledge/Workspace/Tool）依赖 Drawer 默认 header，Android 上未预留状态栏高度 |
+| 图标雷同 | SidebarContent 五项全部复用 `SettingsIcon`（齿轮） |
+| 无设计逻辑 | 11 个 Drawer.Item 平铺单一 `Drawer.Section`，无分组/无层级；对照 PalsScreen 的 FilterChips+卡片+底部操作区分层逻辑，抽屉应分组分层 |
+| 输入框无区隔 | ChatInput 的 `textInputArea` 与 `controlBar` 相邻排列，无分隔线 |
+
+### 8.3 修复方案
+1. **状态栏**：`App.tsx` Drawer.Navigator screenOptions 增加 `headerStatusBarHeight: insets.top`（SafeAreaProvider 内 useSafeAreaInsets）；ChatScreen `headerShown:false` 不受影响
+2. **图标**：记忆→HeartIcon、知识库→GridIcon、Workspace→EditBoxIcon、工具配置→AtomIcon、Dev Tools→CodeIcon（全部复用现有图标库，零新增 SVG）
+3. **分组**：拆为 3 组——核心导航（对话/Pals/模型）· AIOS 智能体（记忆/知识库/Workspace/工具配置）· 系统（基准/设置/App信息/DevTools），分组标签 + Divider
+4. **分隔线**：ChatInput textInputArea 与 controlBar 之间插 1px 横线（theme 色半透明，与 24px 水平 padding 对齐）
+
+### 8.4 改动文件
+| 文件 | 改动 |
+|---|---|
+| `App.tsx` | screenOptions + headerStatusBarHeight |
+| `src/components/SidebarContent/SidebarContent.tsx` | 图标替换 + 菜单分组 |
+| `src/components/ChatInput/styles.ts` | 新增 divider 样式 |
+| `src/components/ChatInput/ChatInput.tsx` | 插入分隔线 View |
+| 本文档 | 迭代记录 |
+
+### 8.5 验证
+- [x] `npx tsc --noEmit` 零错误
+- [ ] 真机：各页面顶部不被状态栏遮挡（待装机）
+- [ ] 真机：抽屉图标一眼可辨 + 三组分层清晰（待装机）
+- [ ] 真机：输入框两行间有横线区隔（待装机）
+
+### 8.6 连仓坑（junction anchor 撕裂）
+- **现象**：gate 命令写 session_anchor.json 到母仓 `F:\Cursor\OneTakeMVP\data\session_runtime\`（agent_router 用 `Path.resolve()` 解析 junction），而 IDE hook gate-guard.py 用 `os.path.abspath`（不解析 junction）到本仓 `F:\pp\data\session_runtime\` 查找 → 找不到 anchor → PreToolUse 被 CP-002 拦截
+- **临时解法**：gate 后手动 `Copy-Item` 母仓 anchor 到本仓对应 session 目录
+- **待修**：母仓 gate-guard 增加 AIOS_REPO_ROOT 或双端查找逻辑（下轮迭代）

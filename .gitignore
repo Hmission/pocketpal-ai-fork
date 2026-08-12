@@ -113,6 +113,9 @@ workflows/
 *.gguf.tmp
 # AIOS runtime data (lives on device /sdcard, not in repo)
 aios_runtime/
+# AIOS router session runtime (gate/route artifacts, regenerated every run)
+data/
+logs/
 # 连仓 junction（指向母仓，不入子仓 git）
 .qoder/hooks/
 scripts/agent/
