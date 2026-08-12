@@ -1,5 +1,5 @@
 import React from 'react';
-import {Platform, View} from 'react-native';
+import {Platform, View, TouchableOpacity, Text} from 'react-native';
 import {observer} from 'mobx-react';
 
 import {createStyles} from './styles';
@@ -11,11 +11,12 @@ import {
 } from 'react-native-safe-area-context';
 import {getDefaultHeaderHeight} from '@react-navigation/elements';
 import {useTheme} from '../../hooks';
-import {chatSessionStore} from '../../store';
+import {chatSessionStore, modelStore} from '../../store';
 import {HeaderLeft} from '../HeaderLeft';
 import {SessionStatusBar} from '../SessionStatusBar';
 
-export const ChatHeader: React.FC = observer(() => {
+export const ChatHeader: React.FC<{onModelPickerPress?: () => void}> = observer(
+  ({onModelPickerPress}) => {
   const theme = useTheme();
 
   const insets = useSafeAreaInsets();
@@ -36,6 +37,13 @@ export const ChatHeader: React.FC = observer(() => {
     ? styles.headerWithDivider
     : styles.headerWithoutDivider;
 
+  const activeModel = modelStore.activeModel;
+  const modelShort = activeModel?.name
+    ? activeModel.name.length > 10
+      ? `${activeModel.name.slice(0, 10)}…`
+      : activeModel.name
+    : '选模型';
+
   return (
     <View style={styles.wrapper}>
       <View testID="header-view" style={[styles.container, headerStyle]}>
@@ -43,7 +51,24 @@ export const ChatHeader: React.FC = observer(() => {
           <HeaderLeft />
           <ChatHeaderTitle />
         </View>
-        <HeaderRight />
+        <View style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
+          {/* 模型切换下拉入口：直接出选择器，不跳转模型页 */}
+          {onModelPickerPress && (
+            <TouchableOpacity
+              onPress={onModelPickerPress}
+              style={{
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+                borderRadius: 12,
+                backgroundColor: theme.colors.surfaceVariant,
+              }}>
+              <Text style={{fontSize: 11, color: theme.colors.onSurface}}>
+                {modelShort} ⌄
+              </Text>
+            </TouchableOpacity>
+          )}
+          <HeaderRight />
+        </View>
       </View>
       <SessionStatusBar />
     </View>

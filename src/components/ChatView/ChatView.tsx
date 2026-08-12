@@ -1130,7 +1130,7 @@ export const ChatView = observer(
           onLayout={onLayout}>
           {/* Header */}
           <View style={styles.headerWrapper}>
-            <ChatHeader />
+            <ChatHeader onModelPickerPress={() => setIsPickerVisible(true)} />
             {headerAccessory}
           </View>
 

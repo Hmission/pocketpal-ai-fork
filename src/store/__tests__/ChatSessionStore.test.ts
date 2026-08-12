@@ -75,7 +75,10 @@ describe('chatSessionStore', () => {
       expect(chatSessionStore.sessions.length).toBe(1);
       expect(chatSessionStore.sessions[0].title).toBe('Session 1');
       expect(chatSessionStore.sessions[0].messages).toEqual([]);
-      expect(chatSessionStore.sessions[0].messagesLoaded).toBe(false);
+      // 启动恢复上次会话（产品需求）：唯一 session 被恢复为 active，
+      // 其消息懒加载触发 → messagesLoaded=true
+      expect(chatSessionStore.activeSessionId).toBe('1');
+      expect(chatSessionStore.sessions[0].messagesLoaded).toBe(true);
       expect(chatSessionRepository.getAllSessions).toHaveBeenCalled();
       expect(
         chatSessionRepository.getSessionMetadataWithSettings,
