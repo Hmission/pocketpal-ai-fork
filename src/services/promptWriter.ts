@@ -12,6 +12,7 @@
 import {initLlama, LlamaContext} from 'llama.rn';
 import * as RNFS from '@dr.pogodin/react-native-fs';
 import {engineStatus} from '../store/engineStatus';
+import {prompterGuard} from '../utils/engineGuard';
 
 const SD_MODELS_DIR = '/sdcard/Documents/AIOS/models';
 
@@ -115,23 +116,26 @@ class PromptWriter {
     }
     try {
       let out = '';
-      await this.ctx.completion(
-        {
-          messages: [
-            {role: 'system', content: SYSTEM_PROMPT},
-            {role: 'user', content: chinese},
-          ],
-          n_predict: 220,
-          temperature: 0.7,
-          enable_thinking: false,
-          stop: STOP_TOKENS,
-        } as any,
-        (data: {token?: string; content?: string}) => {
-          const piece = data?.token ?? data?.content ?? '';
-          if (typeof piece === 'string') {
-            out += piece;
-          }
-        },
+      // guard：管家 context 串行化+冷却窗+重试
+      await prompterGuard.run(() =>
+        this.ctx!.completion(
+          {
+            messages: [
+              {role: 'system', content: SYSTEM_PROMPT},
+              {role: 'user', content: chinese},
+            ],
+            n_predict: 220,
+            temperature: 0.7,
+            enable_thinking: false,
+            stop: STOP_TOKENS,
+          } as any,
+          (data: {token?: string; content?: string}) => {
+            const piece = data?.token ?? data?.content ?? '';
+            if (typeof piece === 'string') {
+              out += piece;
+            }
+          },
+        ),
       );
       // 清理可能的 think 残留与首尾空白
       const cleaned = out
@@ -168,23 +172,25 @@ class PromptWriter {
     const t0 = Date.now();
     try {
       let out = '';
-      await this.ctx!.completion(
-        {
-          messages: [
-            {role: 'system', content: CHITCHAT_SYSTEM_PROMPT},
-            {role: 'user', content: text},
-          ],
-          n_predict: 512,
-          temperature: 0.7,
-          enable_thinking: false,
-          stop: STOP_TOKENS,
-        } as any,
-        (data: {token?: string; content?: string}) => {
-          const piece = data?.token ?? data?.content ?? '';
-          if (typeof piece === 'string') {
-            out += piece;
-          }
-        },
+      await prompterGuard.run(() =>
+        this.ctx!.completion(
+          {
+            messages: [
+              {role: 'system', content: CHITCHAT_SYSTEM_PROMPT},
+              {role: 'user', content: text},
+            ],
+            n_predict: 512,
+            temperature: 0.7,
+            enable_thinking: false,
+            stop: STOP_TOKENS,
+          } as any,
+          (data: {token?: string; content?: string}) => {
+            const piece = data?.token ?? data?.content ?? '';
+            if (typeof piece === 'string') {
+              out += piece;
+            }
+          },
+        ),
       );
       engineStatus.setPhase('prompter', 'ready');
       const cleaned = out.replace(/[\s\S]*?<\/think>/g, '').trim();

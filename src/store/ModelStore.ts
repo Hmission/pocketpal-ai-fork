@@ -7,6 +7,7 @@ import {makePersistable} from 'mobx-persist-store';
 import * as RNFS from '@dr.pogodin/react-native-fs';
 import {AIOS_MODELS_DIR} from '../utils/paths';
 import {engineMutex} from './engineMutex';
+import {chatEngineGuard} from '../utils/engineGuard';
 import {MMProjRegex} from '../utils/multimodalPatterns';
 
 import {computed, makeAutoObservable, runInAction, toJS} from 'mobx';
@@ -3509,13 +3510,16 @@ class ModelStore {
       );
 
       // Create the completion promise and register it for safe context release
-      const completionPromise = this.context.completion(
-        cleanCompletionParams,
-        data => {
-          if (data.token) {
-            params.onToken?.(data.token);
-          }
-        },
+      // （guard：串行化+冷却窗+重试，防冷却期 HostFunction 异常）
+      const completionPromise = chatEngineGuard.run(() =>
+        this.context!.completion(
+          cleanCompletionParams,
+          data => {
+            if (data.token) {
+              params.onToken?.(data.token);
+            }
+          },
+        ),
       );
 
       // Register the promise so releaseContext can wait for it

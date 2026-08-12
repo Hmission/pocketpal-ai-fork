@@ -3,6 +3,7 @@ import {View, Text, StyleSheet, TouchableOpacity} from 'react-native';
 import {observer} from 'mobx-react';
 import {modelStore, chatSessionStore} from '../../store';
 import {engineStatus} from '../../store/engineStatus';
+import {promptWriter} from '../../services/promptWriter';
 import {getLastWriteTime} from '../../services/aiosMemory/conversationLog';
 import {getLastRecallInfo} from '../../services/aiosMemory/contextAssembler';
 import {getLastSentiment} from '../../services/aiosMemory/rituals';
@@ -36,7 +37,9 @@ export const SessionStatusBar = observer(() => {
       : modelStore.isContextLoading
         ? '加载中'
         : '已加载'
-    : '未加载';
+    : promptWriter.isLoaded
+      ? '常驻'
+      : '未加载';
 
   // Estimate memory usage from model size (approx: model_size * 1.3 for runtime overhead)
   const memEstimate = activeModel?.size
@@ -60,12 +63,15 @@ export const SessionStatusBar = observer(() => {
 
   return (
     <View style={styles.container}>
-      {/* Context usage */}
+      {/* Context usage + 剩余上下文 */}
       <View style={styles.section}>
         <View style={[styles.dot, {backgroundColor: contextColor}]} />
         <Text style={styles.label}>ctx</Text>
         <Text style={[styles.value, {color: contextColor}]}>
           {contextPct}%
+          {nCtx
+            ? ` · 余${Math.max(0, Math.round((nCtx - usedTokens) / 100) / 10)}k`
+            : ''}
         </Text>
       </View>
 
@@ -90,7 +96,11 @@ export const SessionStatusBar = observer(() => {
       <Text style={styles.separator}>|</Text>
       <View style={[styles.section, {flex: 1}]}>
         <Text style={styles.label} numberOfLines={1}>
-          {activeModel ? activeModel.name?.slice(0, 14) : '无模型'}
+          {activeModel
+            ? activeModel.name?.slice(0, 14)
+            : promptWriter.isLoaded
+              ? '管家八哥'
+              : '无模型'}
         </Text>
         <Text style={[styles.value, {fontSize: 9}]}>
           {modelStatus}{memEstimate > 0 ? ` ${memEstimate}MB` : ''}
