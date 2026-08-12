@@ -1,16 +1,16 @@
 /**
- * ImageGenScreen — 生图页（P5.4 三行布局）
+ * ImageGenScreen — 生图页（P5.4 三行布局 v2）
  *
  * 布局（用户视角，单列三区）：
- *  ① 结果区（置顶主角）：最新图 + 操作条[存相册/分享/同参数/删除] + 参数水印，点图全屏
- *  ② 历史区（紧凑横条）：横向滑动缩略图，[管理]多选删除，点图查看
+ *  顶部：模型状态胶囊 → 点按展开锚定下拉面板（选模型 + 加载/卸载确认）
+ *  ① 结果区（置顶主角）：最新图 + 操作条 + 参数水印；生成中进度 overlay 叠在结果区上
+ *  ② 历史区（紧凑横条）：横向滑动 + [管理]多选删除
  *  ③ 创作区（底部 composer）：提示词 + 折叠高级参数 + 全宽出图按钮
- * 模型选择收进顶部状态胶囊，点开弹底部面板切换/加载/卸载。
+ * 键盘：外层 KeyboardAwareScrollView，聚焦输入框自动滚入可见区。
  */
 import * as React from 'react';
 import {
   View,
-  ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
@@ -20,6 +20,7 @@ import {
   ActivityIndicator,
   Modal,
 } from 'react-native';
+import {KeyboardAwareScrollView} from 'react-native-keyboard-controller';
 import {observer} from 'mobx-react-lite';
 import {runInAction} from 'mobx';
 import Share from 'react-native-share';
@@ -53,9 +54,8 @@ export const ImageGenScreen: React.FC = observer(() => {
   const [currentImage, setCurrentImage] = React.useState<string | null>(null);
   const [scanning, setScanning] = React.useState(false);
   const [now, setNow] = React.useState(Date.now());
-  // P5.4 交互态
   const [showAdvanced, setShowAdvanced] = React.useState(false);
-  const [showModelSheet, setShowModelSheet] = React.useState(false);
+  const [showModelDrop, setShowModelDrop] = React.useState(false);
   const [fullscreen, setFullscreen] = React.useState(false);
   const [manageMode, setManageMode] = React.useState(false);
   const [toDelete, setToDelete] = React.useState<string[]>([]);
@@ -196,38 +196,131 @@ export const ImageGenScreen: React.FC = observer(() => {
       ? '已就绪'
       : '未加载';
 
+  // 生成进度 overlay（叠在结果区上）
+  const genOverlay = imageGenStore.generating ? (
+    <View style={s.genOverlay}>
+      <View style={s.progressTrack}>
+        <View
+          style={[
+            s.progressBarFill,
+            {width: `${Math.max(imageGenStore.progress, 2)}%`},
+          ]}
+        />
+      </View>
+      <Text style={s.overlayText}>
+        {imageGenStore.progressText
+          ? `采样 ${imageGenStore.progressText}` +
+            (imageGenStore.stepTime > 0
+              ? `（${imageGenStore.stepTime.toFixed(1)}s/步）`
+              : '')
+          : '加载权重/准备中…'}
+        {' · '}
+        {Math.max(0, Math.round((now - imageGenStore.genStartedAt) / 1000))}s
+      </Text>
+      {imageGenStore.stage ? (
+        <Text style={s.overlayStage} numberOfLines={2}>
+          ▸ {imageGenStore.stage}
+        </Text>
+      ) : null}
+    </View>
+  ) : null;
+
   return (
     <View style={s.container}>
-      <ScrollView contentContainerStyle={s.content}>
-        {/* 模型状态胶囊 */}
-        <TouchableOpacity
-          style={s.modelChip}
-          onPress={() => setShowModelSheet(true)}>
-          <Text style={s.modelChipText} numberOfLines={1}>
-            {selectedEntry
-              ? `${
-                  FAMILY_BADGE[selectedEntry.manifest.family]
-                    ? `[${FAMILY_BADGE[selectedEntry.manifest.family]}] `
-                    : ''
-                }${selectedEntry.manifest.label}`
-              : '选择模型'}
-          </Text>
-          <Text style={s.modelChipStatus}>
-            {modelStatus} ▾
-          </Text>
-        </TouchableOpacity>
+      <KeyboardAwareScrollView contentContainerStyle={s.content}>
+        {/* 模型状态胶囊 + 锚定下拉 */}
+        <View>
+          <TouchableOpacity
+            style={s.modelChip}
+            onPress={() => setShowModelDrop(v => !v)}>
+            <Text style={s.modelChipText} numberOfLines={1}>
+              {selectedEntry
+                ? `${
+                    FAMILY_BADGE[selectedEntry.manifest.family]
+                      ? `[${FAMILY_BADGE[selectedEntry.manifest.family]}] `
+                      : ''
+                  }${selectedEntry.manifest.label}`
+                : '选择模型'}
+            </Text>
+            <Text style={s.modelChipStatus}>{modelStatus} {showModelDrop ? '▴' : '▾'}</Text>
+          </TouchableOpacity>
 
-        {/* ① 结果区（主角，置顶） */}
-        <View style={s.card}>
-          {currentImage ? (
-            <>
-              <TouchableOpacity onPress={() => setFullscreen(true)}>
-                <Image
-                  source={{uri: currentImage}}
-                  style={s.preview}
-                  resizeMode="contain"
-                />
+          {showModelDrop && (
+            <View style={s.dropPanel}>
+              {scanning ? (
+                <ActivityIndicator size="small" />
+              ) : available.length === 0 ? (
+                <Text style={s.hint}>
+                  未找到生图模型，请将 SDXL Turbo / SD3.5 / Z-Image-Turbo 套件（GGUF）放入{' '}
+                  {AIOS_MODELS_DIR}
+                </Text>
+              ) : (
+                available.map(item => (
+                  <TouchableOpacity
+                    key={item.manifest.id}
+                    style={[
+                      s.modelRow,
+                      selectedId === item.manifest.id && s.modelRowSelected,
+                    ]}
+                    onPress={() => setSelectedId(item.manifest.id)}>
+                    <Text style={s.modelName} numberOfLines={1}>
+                      {FAMILY_BADGE[item.manifest.family]
+                        ? `[${FAMILY_BADGE[item.manifest.family]}] `
+                        : ''}
+                      {item.manifest.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))
+              )}
+              <TouchableOpacity
+                style={[s.button, imageGenStore.modelLoaded && s.buttonSecondary]}
+                disabled={!selectedId || imageGenStore.generating || imageGenStore.loading}
+                onPress={imageGenStore.modelLoaded ? imageGenStore.unloadModel : handleLoad}>
+                {imageGenStore.loading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={s.buttonText}>
+                    {imageGenStore.modelLoaded ? '卸载模型' : '加载模型'}
+                  </Text>
+                )}
               </TouchableOpacity>
+              {imageGenStore.loading && (
+                <View style={s.statusPanel}>
+                  <Text style={s.progressText}>
+                    正在加载模型…{' · 已耗时 '}
+                    {Math.max(0, Math.round((now - imageGenStore.loadingStartedAt) / 1000))}
+                    {'s'}
+                  </Text>
+                  {imageGenStore.stage ? (
+                    <Text style={s.stageText} numberOfLines={2}>
+                      ▸ {imageGenStore.stage}
+                    </Text>
+                  ) : null}
+                </View>
+              )}
+              {imageGenStore.modelLoaded && !imageGenStore.loading && (
+                <Text style={s.readyText}>✓ 模型已就绪，可以出图</Text>
+              )}
+            </View>
+          )}
+        </View>
+
+        {/* ① 结果区（主角，置顶；生成中进度 overlay 叠上） */}
+        <View style={s.card}>
+          <View style={s.resultWrap}>
+            {currentImage ? (
+              <TouchableOpacity onPress={() => setFullscreen(true)}>
+                <Image source={{uri: currentImage}} style={s.preview} resizeMode="contain" />
+              </TouchableOpacity>
+            ) : (
+              <View style={s.emptyResult}>
+                <Text style={s.hint}>生成结果将显示在这里</Text>
+              </View>
+            )}
+            {genOverlay}
+          </View>
+          {currentImage && (
+            <>
               <View style={s.actionRow}>
                 <TouchableOpacity
                   style={s.actionBtn}
@@ -254,10 +347,6 @@ export const ImageGenScreen: React.FC = observer(() => {
                 </Text>
               ) : null}
             </>
-          ) : (
-            <View style={s.emptyResult}>
-              <Text style={s.hint}>生成结果将显示在这里</Text>
-            </View>
           )}
         </View>
 
@@ -266,10 +355,11 @@ export const ImageGenScreen: React.FC = observer(() => {
           <View style={s.card}>
             <View style={s.historyHeader}>
               <Text style={s.cardTitle}>历史 ({imageGenStore.history.length})</Text>
-              <TouchableOpacity onPress={() => {
-                setManageMode(m => !m);
-                setToDelete([]);
-              }}>
+              <TouchableOpacity
+                onPress={() => {
+                  setManageMode(m => !m);
+                  setToDelete([]);
+                }}>
                 <Text style={s.manageText}>{manageMode ? '完成' : '管理'}</Text>
               </TouchableOpacity>
             </View>
@@ -359,10 +449,7 @@ export const ImageGenScreen: React.FC = observer(() => {
             </>
           )}
           <TouchableOpacity
-            style={[
-              s.button,
-              !imageGenStore.modelLoaded && s.buttonDisabled,
-            ]}
+            style={[s.button, !imageGenStore.modelLoaded && s.buttonDisabled]}
             disabled={!imageGenStore.modelLoaded || imageGenStore.generating}
             onPress={handleGenerate}>
             {imageGenStore.generating ? (
@@ -373,109 +460,9 @@ export const ImageGenScreen: React.FC = observer(() => {
               <Text style={s.buttonTextDisabled}>请先加载模型</Text>
             )}
           </TouchableOpacity>
-          {/* 生成进度 */}
-          {imageGenStore.generating && (
-            <View style={s.statusPanel}>
-              <View style={s.progressTrack}>
-                <View
-                  style={[
-                    s.progressBarFill,
-                    {width: `${Math.max(imageGenStore.progress, 2)}%`},
-                  ]}
-                />
-              </View>
-              <Text style={s.progressText}>
-                {imageGenStore.progressText
-                  ? `采样 ${imageGenStore.progressText}` +
-                    (imageGenStore.stepTime > 0
-                      ? `（${imageGenStore.stepTime.toFixed(1)}s/步）`
-                      : '')
-                  : '加载权重/准备中…'}
-                {' · 总耗时 '}
-                {Math.max(0, Math.round((now - imageGenStore.genStartedAt) / 1000))}
-                {'s'}
-              </Text>
-              {imageGenStore.stage ? (
-                <Text style={s.stageText} numberOfLines={2}>
-                  ▸ {imageGenStore.stage}
-                </Text>
-              ) : null}
-            </View>
-          )}
           {imageGenStore.error && <Text style={s.error}>{imageGenStore.error}</Text>}
         </View>
-      </ScrollView>
-
-      {/* 模型选择面板 */}
-      <Modal visible={showModelSheet} transparent animationType="slide">
-        <View style={s.sheetBackdrop}>
-          <View style={s.sheet}>
-            <View style={s.sheetHeader}>
-              <Text style={s.cardTitle}>生图模型</Text>
-              <TouchableOpacity onPress={() => setShowModelSheet(false)}>
-                <Text style={s.manageText}>关闭</Text>
-              </TouchableOpacity>
-            </View>
-            {scanning ? (
-              <ActivityIndicator size="small" />
-            ) : available.length === 0 ? (
-              <Text style={s.hint}>
-                未找到生图模型，请将 SDXL Turbo / SD3.5 / Z-Image-Turbo 套件（GGUF）放入{' '}
-                {AIOS_MODELS_DIR}
-              </Text>
-            ) : (
-              <FlatList
-                data={available}
-                keyExtractor={item => item.manifest.id}
-                renderItem={({item}) => (
-                  <TouchableOpacity
-                    style={[
-                      s.modelRow,
-                      selectedId === item.manifest.id && s.modelRowSelected,
-                    ]}
-                    onPress={() => setSelectedId(item.manifest.id)}>
-                    <Text style={s.modelName} numberOfLines={1}>
-                      {FAMILY_BADGE[item.manifest.family]
-                        ? `[${FAMILY_BADGE[item.manifest.family]}] `
-                        : ''}
-                      {item.manifest.label}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              />
-            )}
-            <TouchableOpacity
-              style={[s.button, imageGenStore.modelLoaded && s.buttonSecondary]}
-              disabled={!selectedId || imageGenStore.generating || imageGenStore.loading}
-              onPress={imageGenStore.modelLoaded ? imageGenStore.unloadModel : handleLoad}>
-              {imageGenStore.loading ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={s.buttonText}>
-                  {imageGenStore.modelLoaded ? '卸载模型' : '加载模型'}
-                </Text>
-              )}
-            </TouchableOpacity>
-            {imageGenStore.loading && (
-              <View style={s.statusPanel}>
-                <Text style={s.progressText}>
-                  正在加载模型…{' · 已耗时 '}
-                  {Math.max(0, Math.round((now - imageGenStore.loadingStartedAt) / 1000))}
-                  {'s'}
-                </Text>
-                {imageGenStore.stage ? (
-                  <Text style={s.stageText} numberOfLines={2}>
-                    ▸ {imageGenStore.stage}
-                  </Text>
-                ) : null}
-              </View>
-            )}
-            {imageGenStore.modelLoaded && !imageGenStore.loading && (
-              <Text style={s.readyText}>✓ 模型已就绪，可以出图</Text>
-            )}
-          </View>
-        </View>
-      </Modal>
+      </KeyboardAwareScrollView>
 
       {/* 全屏查看 */}
       <Modal visible={fullscreen} transparent animationType="fade">
@@ -520,13 +507,30 @@ const createStyles = (theme: any) =>
       paddingVertical: 10,
       gap: 8,
     },
-    modelChipText: {
-      flex: 1,
-      fontSize: 13,
-      fontWeight: '600',
-      color: theme.colors.onSurface,
-    },
+    modelChipText: {flex: 1, fontSize: 13, fontWeight: '600', color: theme.colors.onSurface},
     modelChipStatus: {fontSize: 12, color: theme.colors.primary},
+    dropPanel: {
+      marginTop: 6,
+      backgroundColor: theme.colors.surface,
+      borderRadius: 12,
+      padding: 12,
+      gap: 8,
+      // 锚定下拉：盖在后续内容之上
+      elevation: 8,
+      shadowColor: '#000',
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      shadowOffset: {width: 0, height: 4},
+    },
+    modelRow: {
+      paddingVertical: 10,
+      paddingHorizontal: 10,
+      borderRadius: 8,
+      backgroundColor: theme.colors.surfaceVariant,
+    },
+    modelRowSelected: {borderWidth: 1, borderColor: theme.colors.primary},
+    modelName: {fontSize: 13, color: theme.colors.onSurface},
+    resultWrap: {position: 'relative'},
     preview: {width: '100%', aspectRatio: 1, borderRadius: 8},
     emptyResult: {
       width: '100%',
@@ -536,6 +540,19 @@ const createStyles = (theme: any) =>
       alignItems: 'center',
       justifyContent: 'center',
     },
+    genOverlay: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0,0,0,0.55)',
+      borderBottomLeftRadius: 8,
+      borderBottomRightRadius: 8,
+      padding: 10,
+      gap: 4,
+    },
+    overlayText: {fontSize: 11, color: '#fff'},
+    overlayStage: {fontSize: 10, color: '#fff'},
     actionRow: {flexDirection: 'row', gap: 8},
     actionBtn: {
       flex: 1,
@@ -547,11 +564,7 @@ const createStyles = (theme: any) =>
     actionText: {fontSize: 12, color: theme.colors.onSurface},
     actionDanger: {color: theme.colors.error},
     watermark: {fontSize: 10, color: theme.colors.onSurfaceVariant},
-    historyHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    },
+    historyHeader: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
     manageText: {fontSize: 12, color: theme.colors.primary},
     historyItem: {marginRight: 8, position: 'relative'},
     historyThumb: {width: 72, height: 72, borderRadius: 8},
@@ -617,48 +630,15 @@ const createStyles = (theme: any) =>
     progressTrack: {
       height: 8,
       borderRadius: 4,
-      backgroundColor: theme.colors.surfaceVariant,
+      backgroundColor: 'rgba(255,255,255,0.3)',
       overflow: 'hidden',
     },
     progressBarFill: {height: 8, backgroundColor: theme.colors.primary, borderRadius: 4},
     progressText: {fontSize: 11, color: theme.colors.onSurfaceVariant, marginTop: 2},
     stageText: {fontSize: 10, color: theme.colors.primary},
     readyText: {fontSize: 12, color: theme.colors.primary, marginTop: 4},
-    modelRow: {
-      paddingVertical: 10,
-      paddingHorizontal: 10,
-      borderRadius: 8,
-      backgroundColor: theme.colors.surfaceVariant,
-      marginBottom: 8,
-    },
-    modelRowSelected: {borderWidth: 1, borderColor: theme.colors.primary},
-    modelName: {fontSize: 13, color: theme.colors.onSurface},
-    sheetBackdrop: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      justifyContent: 'flex-end',
-    },
-    sheet: {
-      backgroundColor: theme.colors.surface,
-      borderTopLeftRadius: 16,
-      borderTopRightRadius: 16,
-      padding: 16,
-      maxHeight: '70%',
-      gap: 10,
-    },
-    sheetHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    },
     fullscreenBackdrop: {flex: 1, backgroundColor: '#000'},
     fullscreenTouch: {flex: 1, alignItems: 'center', justifyContent: 'center'},
     fullscreenImage: {width: '100%', height: '100%'},
-    fullscreenHint: {
-      position: 'absolute',
-      bottom: 24,
-      alignSelf: 'center',
-      color: '#fff',
-      fontSize: 12,
-    },
+    fullscreenHint: {position: 'absolute', bottom: 24, alignSelf: 'center', color: '#fff', fontSize: 12},
   });

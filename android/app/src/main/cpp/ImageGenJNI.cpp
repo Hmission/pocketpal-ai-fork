@@ -267,9 +267,11 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
   params.n_threads = hw ? std::min(hw, 6u) : 4;
   params.wtype = SD_TYPE_Q4_K;
   params.enable_mmap = true;
-  // P2 后端选择：arm64 设备优先 Adreno OpenCL，加载失败自动降级 CPU（硬件可用性降级）
+  // P2 后端选择：真机取证发现 Adreno OpenCL 在 generate_image 采样阶段 hang
+  // （日志停 generate_image begin 不返回，非崩溃），故默认 CPU 保证可用；
+  // OpenCL 待 hang 根因定位后再启用（new_sd_ctx 失败仍会降级 CPU）。
 #if defined(__aarch64__)
-  params.backend = "OpenCL";
+  params.backend = "CPU";  // TODO(opencl-hang): 定位 Adreno hang 后改回 "OpenCL"
 #else
   params.backend = "CPU";
 #endif
