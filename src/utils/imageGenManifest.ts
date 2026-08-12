@@ -8,7 +8,7 @@
  */
 import * as RNFS from '@dr.pogodin/react-native-fs';
 
-export type ModelFamily = 'zimage' | 'sd3' | 'classic';
+export type ModelFamily = 'zimage' | 'sd3' | 'classic' | 'dreamlite';
 
 export interface ImageGenManifest {
   id: string;
@@ -76,6 +76,20 @@ export const BUILTIN_MANIFESTS: ImageGenManifest[] = [
     },
     defaults: {steps: 8, cfg: 1, size: 512},
     note: '无审查，中文优化',
+  },
+  {
+    // P6 DreamLite：统一生图+编辑。UNet 0.39B(MNN)+TinyVAE+TE(Qwen-VL 4bit GGUF)
+    // 引擎待构建（需 ONNX→MNN 导出机），manifest 先行声明，文件就位即自动识别
+    id: 'dreamlite-mobile',
+    label: 'DreamLite Mobile (4步)',
+    family: 'dreamlite',
+    main: 'dreamlite_unet.mnn',
+    companions: {
+      vae: 'dreamlite_vae.mnn',
+      llm: 'dreamlite_te.gguf',
+    },
+    defaults: {steps: 4, cfg: 1, size: 1024},
+    note: '统一生图+编辑，端侧秒级',
   },
 ];
 

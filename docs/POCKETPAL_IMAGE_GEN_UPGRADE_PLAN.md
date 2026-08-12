@@ -187,4 +187,22 @@
 | P6-2 | SD3.5 默认 20→10 步提速（治 375s） | ✅ |
 | P6-3 | 下载 SDXL-Lightning 4-step + SDXL-base Q4，建快+好 SDXL 选项 | ⏳ |
 | P6-4 | 引 MNN 引擎 + SANA 端侧（新引擎，全都要） | ⏳ |
-| P6-5 | SnapGen/DreamLite 权重核实后接入 | ⏳ |
+| P6-5 | DreamLite 接入（manifest 声明+RN 架构先行） | ⏳ 见 6.3 |
+
+### 6.3 DreamLite 接入专项（Phase 0 已完成）
+
+**Phase 0 结论（2026-08-13）**：
+- 权重已公开：`carlofkl/DreamLite-mobile`/`-base`（HF，无需申请）。
+- 组件体积：unet=780MB(0.39B)✅ / vae=4.9MB(TinyVAE)✅ / **text_encoder=4.25GB(Qwen-VL 级 VLM)⚠️**。
+  “0.39B” 只算 UNet；TE 是多 GB 视觉语言模型，为端侧最大负担。
+- diffusers 已合并 DreamLite pipeline（PR #13815，2026-07）。
+
+**架构决策**：
+- UNet+TinyVAE → ONNX→MNN（原生 C++ 扩散管线，OpenCL/Vulkan）。
+- TE → 量化 4-bit GGUF 复用现有 llama.rn（已能跑 Qwen）提取 hidden states 作条件。
+- manifest 已声明 family 'dreamlite'（main=dreamlite_unet.mnn, companions vae/te），文件就位即自动识别。
+
+**阻断项（需外部条件）**：
+- ONNX→MNN 导出需 torch+diffusers 机器（本机无），unet 780MB 下载走 mirror 慢需续传。
+- MNN Android 编译 + 真机验证待导出件就绪。
+- TE 4-bit GGUF 与 llama.rn hidden-states 提取需验证。

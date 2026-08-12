@@ -38,6 +38,7 @@ const FAMILY_BADGE: Record<ImageGenManifest['family'], string> = {
   zimage: 'Z-Image',
   sd3: 'SD3.5',
   classic: '',
+  dreamlite: 'DreamLite',
 };
 
 export const ImageGenScreen: React.FC = observer(() => {
@@ -604,6 +605,7 @@ const createStyles = (theme: any) =>
     actionDelete: {backgroundColor: '#c62828'},
     badgeSd3: {color: '#8e24aa', fontWeight: '700'},
     badgeZ: {color: '#00838f', fontWeight: '700'},
+    badgeDream: {color: '#d81b60', fontWeight: '700'},
     dropOverlay: {
       ...StyleSheet.absoluteFillObject,
       zIndex: 50,
