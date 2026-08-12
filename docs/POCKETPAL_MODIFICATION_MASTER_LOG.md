@@ -273,6 +273,37 @@ Start-Process -FilePath "F:\Cursor\OneTakeMVP\.tmp\scrcpy\scrcpy-win64-v4.1\scrc
 
 ---
 
+## 9. 窗口闭环记录（2026-08-12 中场 · App UI 四项：状态栏/输入框/换标）
+
+### 9.1 安卓状态栏彻底修复（大王实测反馈驱动）
+**双渲染根因**：`ChatScreen.tsx` L260 与 `ChatHeader.tsx`（经 ChatView）各渲染一个 `SessionStatusBar` → 重复状态条侵入系统状态栏区域。
+**顶部留空根因**：同一双渲染导致 ChatView 整体下移 54px，header 背景从 Y=54 开始，顶部留白。
+**修复**：
+- 删除 `ChatScreen.tsx` 顶层 `<SessionStatusBar />`（ChatHeader 内保留唯一实例）
+- 验证：header-view [0,54]→[0,0] 顶到屏幕顶 ✅；menu-button Y=134 > 状态栏 104 ✅；ctx-bar 仅 1 个 ✅；状态栏区域（0-104）仅系统元素 ✅
+
+### 9.2 输入框上下栏重量平衡
+- `textInputArea`: paddingTop 20→24, paddingBottom 8→12（输入区更充实）
+- `controlBar`: paddingVertical 10→6, minHeight 36→30（工具栏更紧凑）
+- editMode paddingTop 硬编码 48→52 同步
+- 验证：分隔线 Y=2221 (outlineVariant) ✅，controlBar 压缩 ~10px ✅
+
+### 9.3 换标（MIT 协议合规）
+- PocketPal LICENSE 为 **MIT**（© 2024 Asghar Ghorbani）——修改/换标合规，仅需保留版权声明
+- 新标源：`src/assets/LOGO{256,512,1024}.png`（大王提供）
+- Android：5 density × (ic_launcher + ic_launcher_round) 全部替换（LOGO512 LANCZOS 缩放，round 版圆形裁剪）
+- iOS：AppIcon.appiconset 11 个尺寸全部替换
+- App 内空态图：pocketpal-dark-v2.png / pocketpal-dark.png / pocketpal-light.png 内容替换为 LOGO512
+- 生成脚本：`.tmp/gen_icons.py`
+
+### 9.4 验证
+- [x] tsc 零错误 | Gradle BUILD SUCCESSFUL (3m17s) | 装机 Success
+- [x] 真机：状态栏区域干净（无 App 内容侵入）| 输入框比例平衡 | 分隔线在 Y=2221
+- [x] 截图存档：`.tmp/verify_v2_chat.png` / `.tmp/verify_home.png`
+- [ ] 大王目视：桌面图标新 LOGO 显示效果（黑色主色）
+
+---
+
 ## 8. 窗口闭环记录（2026-08-12 上半场 · App 产品迭代：UI 四项修复）
 
 ### 8.1 背景

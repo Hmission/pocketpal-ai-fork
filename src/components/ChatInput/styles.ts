@@ -89,8 +89,8 @@ export const createStyles = ({
     textInputArea: {
       flex: 1,
       paddingHorizontal: 24,
-      paddingTop: 20,
-      paddingBottom: 8,
+      paddingTop: 24,
+      paddingBottom: 12,
     },
     inputDivider: {
       height: StyleSheet.hairlineWidth,
@@ -102,8 +102,8 @@ export const createStyles = ({
       alignItems: 'center',
       justifyContent: 'space-between',
       paddingHorizontal: 24,
-      paddingVertical: 10,
-      minHeight: 36,
+      paddingVertical: 6,
+      minHeight: 30,
     },
     leftControls: {
       flexDirection: 'row',

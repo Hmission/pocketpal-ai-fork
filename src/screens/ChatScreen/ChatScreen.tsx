@@ -1,5 +1,4 @@
 import React, {useRef, ReactNode, useState} from 'react';
-import {SessionStatusBar} from '../../components/SessionStatusBar/SessionStatusBar';
 
 import {observer} from 'mobx-react';
 import {runInAction} from 'mobx';
@@ -255,9 +254,11 @@ export const ChatScreen: React.FC = observer(() => {
   }
 
   // Otherwise, show the regular chat view
+  // NOTE: SessionStatusBar is rendered inside ChatHeader (once). Adding
+  // another instance here caused it to render twice — a duplicate status
+  // strip overlapping the system status bar area on Android.
   return (
     <>
-      <SessionStatusBar />
       <ChatView
         renderBubble={renderBubble}
         messages={chatSessionStore.currentSessionMessages}

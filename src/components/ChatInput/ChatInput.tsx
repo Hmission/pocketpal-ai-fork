@@ -442,10 +442,10 @@ export const ChatInput = observer(
                 paddingTop: isEditMode
                   ? selectedImages.length > 0
                     ? 8 // Reduced padding when images present in edit mode
-                    : 48 // Edit bar height (28px) + normal padding (20px)
+                    : 52 // Edit bar height (28px) + normal padding (24px)
                   : selectedImages.length > 0
                     ? 0
-                    : 20,
+                    : 24,
               },
             ]}>
             {/* Subtle Prompt Label for Video Pals */}
