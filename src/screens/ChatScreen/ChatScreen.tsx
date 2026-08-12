@@ -418,7 +418,9 @@ export const ChatScreen: React.FC = observer(() => {
           placeholder: !modelStore.engine
             ? modelStore.isContextLoading
               ? l10n.chat.loadingModel
-              : l10n.chat.modelNotLoaded
+              : promptWriter.isLoaded
+                ? '口袋八哥已就绪，输入即可聊天'
+                : l10n.chat.modelNotLoaded
             : l10n.chat.typeYourMessage,
         }}
       />

@@ -6,6 +6,7 @@ import {observer} from 'mobx-react';
 import {useTheme} from '../../hooks';
 import {createStyles} from './styles';
 import {modelStore, palStore} from '../../store';
+import {promptWriter} from '../../services/promptWriter';
 import {useNavigation} from '@react-navigation/native';
 import {NavigationProp} from '@react-navigation/native';
 import {L10nContext} from '../../utils';
@@ -53,6 +54,16 @@ export const ChatEmptyPlaceholder = observer(
             'We’ll let you know the moment your pal can chat. Tap the banner up top to see how it’s going.',
           buttonText: null,
           onPress: () => {},
+        };
+      }
+
+      // 管家就绪 → 启动即就绪：无需选模型/下载直接可聊（选更强模型为可选操作）
+      if (promptWriter.isLoaded) {
+        return {
+          title: '口袋八哥已就绪',
+          description: '直接输入即可聊天；说“画…”还能生图。想换更强模型随时可选。',
+          buttonText: '换更强模型（可选）',
+          onPress: onSelectModel,
         };
       }
 
