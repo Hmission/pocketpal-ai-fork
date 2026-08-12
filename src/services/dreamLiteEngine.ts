@@ -27,8 +27,12 @@ export async function loadDreamLite(): Promise<void> {
     executionProviders: ['cpu'],
     graphOptimizationLevel: 'all',
   };
-  unet = await ort.InferenceSession.create(`${DIR}/unet_fp16.onnx`, opts);
+  // fp16 转换留有不一致 Cast 节点且 ORT CPU 对 fp16 支持差，用 fp32
+  console.log('[DreamLite] loading unet.onnx ...');
+  unet = await ort.InferenceSession.create(`${DIR}/unet.onnx`, opts);
+  console.log('[DreamLite] unet loaded, loading vae ...');
   vae = await ort.InferenceSession.create(`${DIR}/vae_decoder.onnx`, opts);
+  console.log('[DreamLite] sessions ready');
 }
 
 export function unloadDreamLite(): void {
@@ -183,6 +187,7 @@ export async function generateDreamLite(size = 512, steps = 4): Promise<string> 
       time_ids: new ort.Tensor('float32', tid, [1, 2]),
     };
     const res = await unet!.run(feeds);
+    console.log(`[DreamLite] step ${i + 1}/${steps} done`);
     const np = res.noise_pred.data as Float32Array; // [1,4,lat,lat*2]
     // crop width to lat, then euler step: latents = latents - sigma_diff * np
     const next = new Float32Array(latents.length);
@@ -214,6 +219,7 @@ export async function generateDreamLite(size = 512, steps = 4): Promise<string> 
   const png = encodePng(rgb, size, size);
   const out = `${RNFS.DocumentDirectoryPath}/dreamlite_${Date.now()}.png`;
   await RNFS.writeFile(out, toBase64(png), 'base64');
+  console.log('[DreamLite] saved', out);
   return `file://${out}`;
 }
 
