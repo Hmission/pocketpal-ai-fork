@@ -165,6 +165,7 @@ class PromptWriter {
       }
     }
     engineStatus.setPhase('prompter', 'running', '管家思考中…');
+    const t0 = Date.now();
     try {
       let out = '';
       await this.ctx!.completion(
@@ -187,6 +188,9 @@ class PromptWriter {
       );
       engineStatus.setPhase('prompter', 'ready');
       const cleaned = out.replace(/[\s\S]*?<\/think>/g, '').trim();
+      console.info(
+        `[PromptWriter] chat done in ${Date.now() - t0}ms, ${cleaned.length} chars`,
+      );
       return cleaned.length > 0 ? cleaned : null;
     } catch (e) {
       console.warn('[PromptWriter] chat failed:', e);

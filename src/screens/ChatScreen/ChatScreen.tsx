@@ -93,6 +93,9 @@ export const ChatScreen: React.FC = observer(() => {
     async (message: MessageType.PartialText) => {
       const text = message.text.trim();
       const signal = routeTask(text);
+      console.info(
+        `[Scheduler] task=${signal.task} engine=${modelStore.engine ? 'chat' : 'none'} butler=${promptWriter.isLoaded ? 'ready' : 'off'}`,
+      );
 
       if (signal.task === 'image') {
         // 1. 记录用户消息（无会话时自动建会话）
@@ -109,15 +112,18 @@ export const ChatScreen: React.FC = observer(() => {
         }
 
         // 2. 任务卡片占位（实时进度由 ActiveTaskBanner 展示）
-        const cardId = `imgtask-${Date.now()}`;
-        await chatStoreForImg.addMessageToCurrentSession({
-          id: cardId,
+        const imgCardMsg = {
+          id: `imgtask-${Date.now()}`,
           author: assistant,
           createdAt: Date.now(),
-          text: `🎨 正在为你生成「${signal.payload}」…`,
+          text: `🎨 正在准备生成「${signal.payload}」…`,
           type: 'text',
           metadata: {imageTask: true},
-        } as MessageType.Text);
+        } as MessageType.Text;
+        await chatStoreForImg.addMessageToCurrentSession(imgCardMsg);
+        // DB 可能覆写消息 id → 插入后读回真实 id，保证后续 update 命中
+        const cardId =
+          chatStoreForImg.currentSessionMessages[0]?.id ?? imgCardMsg.id;
 
         // 3. 内联执行：加载引擎（如需）→ 出图
         const result = await runInlineImageTask(signal.payload);
@@ -186,15 +192,18 @@ export const ChatScreen: React.FC = observer(() => {
         if (!sessionId) {
           return;
         }
-        const cardId = `butler-${Date.now()}`;
-        await chatStoreForImg.addMessageToCurrentSession({
-          id: cardId,
+        const butlerCardMsg = {
+          id: `butler-${Date.now()}`,
           author: assistant,
           createdAt: Date.now(),
-          text: '🐦 …',
+          text: '🐦 八哥思考中…',
           type: 'text',
           metadata: {butler: true},
-        } as MessageType.Text);
+        } as MessageType.Text;
+        await chatStoreForImg.addMessageToCurrentSession(butlerCardMsg);
+        // DB 可能覆写消息 id → 插入后读回真实 id，保证后续 update 命中
+        const cardId =
+          chatStoreForImg.currentSessionMessages[0]?.id ?? butlerCardMsg.id;
         const reply = await promptWriter.chat(text);
         await chatStoreForImg.updateMessage(cardId, sessionId, {
           text:
@@ -389,8 +398,8 @@ export const ChatScreen: React.FC = observer(() => {
   // strip overlapping the system status bar area on Android.
   return (
     <>
-      <ActiveTaskBanner />
       <ChatView
+        headerAccessory={<ActiveTaskBanner />}
         renderBubble={renderBubble}
         messages={chatSessionStore.currentSessionMessages}
         activePal={activePal}

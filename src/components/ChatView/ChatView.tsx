@@ -132,6 +132,9 @@ export interface ChatProps extends ChatTopLevelProps {
   dateFormat?: string;
   /** Disable automatic image preview on tap. */
   disableImageGallery?: boolean;
+  /** 标题栏下方的附加内容插槽（如引擎任务横幅）。
+   * 顶部避让职责仍归 ChatHeader，插槽内容不做 insets 处理。 */
+  headerAccessory?: React.ReactNode;
   /** Allows you to change what the user sees when there are no messages.
    * `emptyChatPlaceholder` and `emptyChatPlaceholderTextStyle` are ignored
    * in this case. */
@@ -220,6 +223,7 @@ export const ChatView = observer(
     onPreviewDataFetched,
     onSendPress,
     onStopPress,
+    headerAccessory,
     renderBubble,
     renderCustomMessage,
     renderFileMessage,
@@ -1127,6 +1131,7 @@ export const ChatView = observer(
           {/* Header */}
           <View style={styles.headerWrapper}>
             <ChatHeader />
+            {headerAccessory}
           </View>
 
           {/* Main chat container */}
