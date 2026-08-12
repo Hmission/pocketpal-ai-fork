@@ -4,7 +4,7 @@ import {observer} from 'mobx-react';
 import {Text} from 'react-native-paper';
 
 import {styles} from './styles';
-import {chatSessionStore, modelStore} from '../../store';
+import {chatSessionStore} from '../../store';
 import {L10nContext} from '../../utils';
 
 export const ChatHeaderTitle: React.FC = observer(() => {
@@ -13,18 +13,13 @@ export const ChatHeaderTitle: React.FC = observer(() => {
   const activeSession = chatSessionStore.sessions.find(
     session => session.id === activeSessionId,
   );
-  const activeModel = modelStore.activeModel;
 
+  // 顶栏只保留会话标题：当前模型已在聊天流卡片归属标签展示（去重复显示）
   return (
     <View style={styles.container}>
       <Text numberOfLines={1} variant="titleSmall">
         {activeSession?.title || l10n.components.chatHeaderTitle.defaultTitle}
       </Text>
-      {activeModel?.name && (
-        <Text numberOfLines={1} variant="bodySmall">
-          {activeModel?.name}
-        </Text>
-      )}
     </View>
   );
 });

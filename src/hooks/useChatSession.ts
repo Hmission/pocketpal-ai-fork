@@ -227,6 +227,8 @@ const prepareCompletion = async ({
       // run_finished (success/maxTurns) or at the abort catch path with
       // partial content.
       multimodal: hasImages,
+      // 模型归属：聊天流卡片标签展示本轮由哪个模型发出
+      modelName: modelStore.activeModel?.name,
     },
   };
 

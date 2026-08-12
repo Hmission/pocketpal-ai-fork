@@ -1,4 +1,5 @@
 import React, {useRef, ReactNode, useState} from 'react';
+import {View, Text} from 'react-native';
 
 import {observer} from 'mobx-react';
 import {runInAction} from 'mobx';
@@ -49,14 +50,34 @@ const renderBubble = ({
   message: MessageType.Any;
   nextMessageInGroup: boolean;
   scale?: any;
-}) => (
-  <Bubble
-    child={child}
-    message={message}
-    nextMessageInGroup={nextMessageInGroup}
-    scale={scale}
-  />
-);
+}) => {
+  // 模型归属标签：每轮会话显示发出该消息的模型简称
+  const modelName =
+    message.author.id !== user.id
+      ? (message.metadata as {modelName?: string} | undefined)?.modelName
+      : undefined;
+  return (
+    <View>
+      {modelName ? (
+        <Text
+          style={{
+            fontSize: 9,
+            color: '#888',
+            marginLeft: 10,
+            marginBottom: 2,
+          }}>
+          {modelName.length > 14 ? `${modelName.slice(0, 14)}…` : modelName}
+        </Text>
+      ) : null}
+      <Bubble
+        child={child}
+        message={message}
+        nextMessageInGroup={nextMessageInGroup}
+        scale={scale}
+      />
+    </View>
+  );
+};
 
 export const ChatScreen: React.FC = observer(() => {
   const currentMessageInfo = useRef<{
@@ -118,7 +139,7 @@ export const ChatScreen: React.FC = observer(() => {
           createdAt: Date.now(),
           text: `🎨 正在准备生成「${signal.payload}」…`,
           type: 'text',
-          metadata: {imageTask: true},
+          metadata: {imageTask: true, modelName: '生图引擎'},
         } as MessageType.Text;
         await chatStoreForImg.addMessageToCurrentSession(imgCardMsg);
         // DB 可能覆写消息 id → 插入后读回真实 id，保证后续 update 命中
@@ -198,7 +219,7 @@ export const ChatScreen: React.FC = observer(() => {
           createdAt: Date.now(),
           text: '🐦 八哥思考中…',
           type: 'text',
-          metadata: {butler: true},
+          metadata: {butler: true, modelName: '管家八哥'},
         } as MessageType.Text;
         await chatStoreForImg.addMessageToCurrentSession(butlerCardMsg);
         // DB 可能覆写消息 id → 插入后读回真实 id，保证后续 update 命中

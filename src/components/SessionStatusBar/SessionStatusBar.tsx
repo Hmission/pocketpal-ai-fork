@@ -3,7 +3,6 @@ import {View, Text, StyleSheet, TouchableOpacity} from 'react-native';
 import {observer} from 'mobx-react';
 import {modelStore, chatSessionStore} from '../../store';
 import {engineStatus} from '../../store/engineStatus';
-import {promptWriter} from '../../services/promptWriter';
 import {getLastWriteTime} from '../../services/aiosMemory/conversationLog';
 import {getLastRecallInfo} from '../../services/aiosMemory/contextAssembler';
 import {getLastSentiment} from '../../services/aiosMemory/rituals';
@@ -21,7 +20,6 @@ import {getLastSentiment} from '../../services/aiosMemory/rituals';
 export const SessionStatusBar = observer(() => {
   const [expanded, setExpanded] = React.useState(false);
 
-  const activeModel = modelStore.activeModel;
   const nCtx = modelStore.activeContextSettings?.n_ctx;
   const snapshot = chatSessionStore.lastCompletionResult;
   const usedTokens = snapshot?.used ?? 0;
@@ -31,20 +29,7 @@ export const SessionStatusBar = observer(() => {
   const lastWrite = getLastWriteTime();
   const recallInfo = getLastRecallInfo();
 
-  const modelStatus = activeModel
-    ? modelStore.inferencing
-      ? '推理中'
-      : modelStore.isContextLoading
-        ? '加载中'
-        : '已加载'
-    : promptWriter.isLoaded
-      ? '常驻'
-      : '未加载';
-
-  // Estimate memory usage from model size (approx: model_size * 1.3 for runtime overhead)
-  const memEstimate = activeModel?.size
-    ? Math.round((activeModel.size * 1.3) / 1024 / 1024)
-    : 0;
+  // 模型归属信息已移入聊天流卡片标签，顶栏不再重复展示模型状态
 
   const writeTimeStr = lastWrite
     ? new Date(lastWrite).toLocaleTimeString().slice(0, 5)
@@ -92,20 +77,7 @@ export const SessionStatusBar = observer(() => {
         <Text style={styles.value}>{recallInfo.count}</Text>
       </TouchableOpacity>
 
-      {/* Model status + memory */}
-      <Text style={styles.separator}>|</Text>
-      <View style={[styles.section, {flex: 1}]}>
-        <Text style={styles.label} numberOfLines={1}>
-          {activeModel
-            ? activeModel.name?.slice(0, 14)
-            : promptWriter.isLoaded
-              ? '管家八哥'
-              : '无模型'}
-        </Text>
-        <Text style={[styles.value, {fontSize: 9}]}>
-          {modelStatus}{memEstimate > 0 ? ` ${memEstimate}MB` : ''}
-        </Text>
-      </View>
+      {/* 模型状态区已移入聊天流卡片归属标签（顶栏瘦身） */}
 
       {/* M7 情绪指示 */}
       <Text style={styles.separator}>|</Text>

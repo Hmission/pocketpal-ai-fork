@@ -11,6 +11,7 @@ import {useTheme} from '../../hooks';
 import {CodeRenderer} from './CodeRenderer';
 import {createTagsStyles} from './styles';
 import {tableHTMLElementModels, tableRenderers} from './TableRenderers';
+import {imageHTMLElementModels, imageRenderers} from './ImageRenderer';
 
 /**
  * Hosts the heavy parts of react-native-render-html once for the app:
@@ -46,6 +47,13 @@ const DEFAULT_TEXT_PROPS = {
 const renderers = {
   code: (props: any) => <CodeRenderer {...props} />,
   ...tableRenderers,
+  ...imageRenderers,
+};
+
+// 模块级常量：identity 稳定，避免 TRenderEngineProvider 无效重建
+const CUSTOM_HTML_ELEMENT_MODELS = {
+  ...tableHTMLElementModels,
+  ...imageHTMLElementModels,
 };
 
 export const MarkdownProvider: React.FC<React.PropsWithChildren> = ({
@@ -57,7 +65,7 @@ export const MarkdownProvider: React.FC<React.PropsWithChildren> = ({
   return (
     <TRenderEngineProvider
       tagsStyles={tagsStyles}
-      customHTMLElementModels={tableHTMLElementModels}
+      customHTMLElementModels={CUSTOM_HTML_ELEMENT_MODELS}
       systemFonts={SYSTEM_FONTS}>
       <RenderHTMLConfigProvider
         defaultTextProps={DEFAULT_TEXT_PROPS}

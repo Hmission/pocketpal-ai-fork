@@ -15,10 +15,10 @@ export const styles = ({
 }) => {
   return StyleSheet.create({
     contentContainer: {
-      backgroundColor:
-        !currentUserIsAuthor || message.type === 'image'
-          ? 'transparent' //theme.colors.secondary
-          : theme.colors.authorBubbleBackground,
+      // assistant 输出卡片化：surfaceVariant 背景（与用户卡片对称）
+      backgroundColor: currentUserIsAuthor
+        ? theme.colors.authorBubbleBackground
+        : theme.colors.surfaceVariant,
       borderBottomLeftRadius:
         currentUserIsAuthor || roundBorder
           ? theme.borders.messageBorderRadius
