@@ -6,6 +6,7 @@
 #include <jni.h>
 #include <mutex>
 #include <string>
+#include <dirent.h>
 
 #include <android/log.h>
 
@@ -21,8 +22,69 @@ sd_ctx_t* g_ctx = nullptr;
 // Cached model path (new_sd_ctx needs it each time)
 std::string g_model_path;
 
+// 探测同目录伴随文件 (SD3.5: clip_l/clip_g/vae; Z-Image: llm/ae)
+static bool name_has(const std::string& n, const char* sub) {
+  return n.find(sub) != std::string::npos;
+}
+
+static void find_companions(const std::string& model_path,
+                            std::string& clip_l, std::string& clip_g,
+                            std::string& vae, std::string& llm) {
+  // 目录部分
+  size_t slash = model_path.find_last_of('/');
+  if (slash == std::string::npos) {
+    return;
+  }
+  std::string dir = model_path.substr(0, slash + 1);
+  std::string base = model_path.substr(slash + 1);
+  DIR* d = opendir(dir.c_str());
+  if (!d) {
+    return;
+  }
+  struct dirent* ent;
+  while ((ent = readdir(d)) != nullptr) {
+    std::string n = ent->d_name;
+    if (n == base) {
+      continue;
+    }
+    std::string lower = n;
+    for (auto& c : lower) {
+      c = (char)tolower((unsigned char)c);
+    }
+    if (clip_l.empty() && name_has(lower, "clip_l")) {
+      clip_l = dir + n;
+    } else if (clip_g.empty() && name_has(lower, "clip_g")) {
+      clip_g = dir + n;
+    } else if (vae.empty() && (name_has(lower, "vae") || name_has(lower, "ae.safetensors"))) {
+      vae = dir + n;
+    } else if (llm.empty() && (name_has(lower, "llm") || name_has(lower, "qwen"))) {
+      llm = dir + n;
+    }
+  }
+  closedir(d);
+}
+
 // JavaVM + progress emitter for RN events
 JavaVM* g_jvm = nullptr;
+
+// RAII helper for JNI string access
+struct JStr {
+  JNIEnv* env_;
+  jstring js_;
+  const char* c_;
+  JStr(JNIEnv* env, jstring js) : env_(env), js_(js), c_(nullptr) {
+    if (js_) {
+      c_ = env_->GetStringUTFChars(js_, nullptr);
+    }
+  }
+  ~JStr() {
+    if (c_) {
+      env_->ReleaseStringUTFChars(js_, c_);
+    }
+  }
+  bool empty() const { return !c_ || !c_[0]; }
+  const char* c_str() const { return c_ ? c_ : ""; }
+};
 
 void sd_log_cb(enum sd_log_level_t level, const char* text, void* /*data*/) {
   __android_log_print(
@@ -68,11 +130,17 @@ extern "C" {
 
 JNIEXPORT jboolean JNICALL
 Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
-                                              jstring modelPath) {
+                                              jstring modelPath,
+                                              jstring clipLPath, jstring clipGPath,
+                                              jstring llmPath, jstring vaePath) {
   std::lock_guard<std::mutex> lock(g_mutex);
   env->GetJavaVM(&g_jvm);
-  const char* path = env->GetStringUTFChars(modelPath, nullptr);
-  if (!path) {
+  JStr model(env, modelPath);
+  JStr clip_l(env, clipLPath);
+  JStr clip_g(env, clipGPath);
+  JStr llm(env, llmPath);
+  JStr vae(env, vaePath);
+  if (model.empty()) {
     return JNI_FALSE;
   }
 
@@ -83,7 +151,29 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
 
   sd_ctx_params_t params;
   sd_ctx_params_init(&params);
-  params.model_path = path;
+  if (!llm.empty()) {
+    // Z-Image 系：拆分式（DiT + Qwen3-4B 文本编码器 + FLUX VAE）
+    params.diffusion_model_path = model.c_str();
+    params.llm_path = llm.c_str();
+    if (!vae.empty()) {
+      params.vae_path = vae.c_str();
+    }
+  } else if (!clip_l.empty() || !clip_g.empty()) {
+    // SD3/3.5 系：拆分式（DiT + clip_l/clip_g，端侧不带 T5）
+    params.diffusion_model_path = model.c_str();
+    if (!clip_l.empty()) {
+      params.clip_l_path = clip_l.c_str();
+    }
+    if (!clip_g.empty()) {
+      params.clip_g_path = clip_g.c_str();
+    }
+    if (!vae.empty()) {
+      params.vae_path = vae.c_str();
+    }
+  } else {
+    // 一体式（SDXL Turbo 等单文件模型）
+    params.model_path = model.c_str();
+  }
   params.n_threads = 4;  // conservative threads on mobile
   params.wtype = SD_TYPE_Q4_K;
   params.enable_mmap = true;
@@ -92,12 +182,11 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
   sd_set_log_callback(sd_log_cb, nullptr);
   sd_set_progress_callback(sd_progress_cb, nullptr);
   g_ctx = new_sd_ctx(&params);
-  env->ReleaseStringUTFChars(modelPath, path);
 
   if (!g_ctx) {
     return JNI_FALSE;
   }
-  g_model_path = std::string(path);
+  g_model_path = std::string(model.c_str());
   return JNI_TRUE;
 }
 

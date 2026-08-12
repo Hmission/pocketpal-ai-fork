@@ -24,6 +24,36 @@ import {useTheme} from '../../hooks';
 
 const SD_MODELS_DIR = '/sdcard/Documents/AIOS/models';
 
+// 生图模型架构族：zimage（Z-Image-Turbo）/ sd3（SD3.x/3.5）/ classic（SDXL Turbo 等一体式）
+type ModelFamily = 'zimage' | 'sd3' | 'classic';
+
+const familyOf = (name: string): ModelFamily => {
+  if (/z[_-]?image/i.test(name)) {
+    return 'zimage';
+  }
+  if (/sd[_-]?3/i.test(name)) {
+    return 'sd3';
+  }
+  return 'classic';
+};
+
+// 伴侣/辅助文件（不作为主模型展示）
+const isCompanion = (name: string) =>
+  /(clip[_-]?[lg]|\bvae\b|^ae\.|llm|qwen|t5)/i.test(name);
+
+// 每族推荐默认参数（步数/CFG）
+const FAMILY_DEFAULTS: Record<ModelFamily, {steps: string; cfg: string}> = {
+  zimage: {steps: '8', cfg: '1'},
+  sd3: {steps: '20', cfg: '4.5'},
+  classic: {steps: '2', cfg: '2'},
+};
+
+const FAMILY_LABEL: Record<ModelFamily, string> = {
+  zimage: 'Z-Image',
+  sd3: 'SD3.5',
+  classic: '',
+};
+
 export const ImageGenScreen: React.FC = observer(() => {
   const theme = useTheme();
   const [sdModels, setSdModels] = React.useState<string[]>([]);
@@ -42,11 +72,14 @@ export const ImageGenScreen: React.FC = observer(() => {
     setScanning(true);
     try {
       const files = await RNFS.readDir(SD_MODELS_DIR);
-      // SD 模型识别：GGUF/safetensors 均支持，文件名含生图关键词（排除聊天 LLM）
-      const models = files
-        .filter(f => f.name.endsWith('.gguf') || f.name.endsWith('.safetensors'))
-        .filter(f => /(sd|sdxl|flux|stable|turbo|pixart)/i.test(f.name))
-        .map(f => f.name);
+      const all = files.map(f => f.name);
+      // 主模型识别：GGUF/safetensors，文件名含生图关键词，排除伴侣文件与聊天 LLM
+      const models = all
+        .filter(n => n.endsWith('.gguf') || n.endsWith('.safetensors'))
+        .filter(n => !isCompanion(n))
+        .filter(n =>
+          /(sd|sdxl|flux|stable|turbo|pixart|z[_-]?image)/i.test(n),
+        );
       setSdModels(models);
       if (models.length > 0 && !selectedModel) {
         setSelectedModel(models[0]);
@@ -71,11 +104,67 @@ export const ImageGenScreen: React.FC = observer(() => {
     }
   }, []);
 
+  // 选中模型变化时同步该族推荐默认参数
+  React.useEffect(() => {
+    if (!selectedModel) {
+      return;
+    }
+    const d = FAMILY_DEFAULTS[familyOf(selectedModel)];
+    setSteps(d.steps);
+    setCfg(d.cfg);
+  }, [selectedModel]);
+
+  // 解析拆分式模型的伴侣文件（同目录约定命名）；返回 extras + 缺失清单
+  const resolveExtras = async (
+    model: string,
+  ): Promise<{
+    extras: {clipL?: string; clipG?: string; llm?: string; vae?: string};
+    missing: string[];
+  }> => {
+    const family = familyOf(model);
+    if (family === 'classic') {
+      return {extras: {}, missing: []};
+    }
+    const names = (await RNFS.readDir(SD_MODELS_DIR)).map(f => f.name);
+    const pick = (re: RegExp) => {
+      const hit = names.find(n => re.test(n));
+      return hit ? `${SD_MODELS_DIR}/${hit}` : undefined;
+    };
+    if (family === 'zimage') {
+      const llm = pick(/qwen.*4b|llm/i);
+      const vae = pick(/^ae\.|vae/i);
+      return {
+        extras: {llm, vae},
+        missing: [
+          ...(!llm ? ['Qwen3-4B 文本编码器 (llm)'] : []),
+          ...(!vae ? ['VAE (ae.safetensors)'] : []),
+        ],
+      };
+    }
+    // sd3 族
+    const clipL = pick(/clip[_-]?l/i);
+    const clipG = pick(/clip[_-]?g/i);
+    const vae = pick(/sd3.*vae|vae/i);
+    return {
+      extras: {clipL, clipG, vae},
+      missing: [
+        ...(!clipL ? ['clip_l 文本编码器'] : []),
+        ...(!clipG ? ['clip_g 文本编码器'] : []),
+        ...(!vae ? ['VAE'] : []),
+      ],
+    };
+  };
+
   const handleLoad = async () => {
     if (!selectedModel) {
       return;
     }
-    await imageGenStore.loadModel(`${SD_MODELS_DIR}/${selectedModel}`);
+    const {extras, missing} = await resolveExtras(selectedModel);
+    if (missing.length > 0) {
+      imageGenStore.error = `缺少伴侣文件：${missing.join('、')}`;
+      return;
+    }
+    await imageGenStore.loadModel(`${SD_MODELS_DIR}/${selectedModel}`, extras);
   };
 
   const handleGenerate = async () => {
@@ -105,7 +194,8 @@ export const ImageGenScreen: React.FC = observer(() => {
           <ActivityIndicator size="small" />
         ) : sdModels.length === 0 ? (
           <Text style={s.hint}>
-            未找到 SD 模型，请将 SDXL Turbo GGUF 放入 {SD_MODELS_DIR}
+            未找到生图模型，请将 SDXL Turbo / SD3.5 / Z-Image-Turbo 套件（GGUF）放入{' '}
+            {SD_MODELS_DIR}
           </Text>
         ) : (
           <FlatList
@@ -120,6 +210,9 @@ export const ImageGenScreen: React.FC = observer(() => {
                 ]}
                 onPress={() => setSelectedModel(item)}>
                 <Text style={s.modelName} numberOfLines={1}>
+                  {FAMILY_LABEL[familyOf(item)]
+                    ? `[${FAMILY_LABEL[familyOf(item)]}] `
+                    : ''}
                   {item}
                 </Text>
               </TouchableOpacity>

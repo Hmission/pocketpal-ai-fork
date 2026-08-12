@@ -70,10 +70,15 @@ class ImageGenStore {
   /**
    * 加载生图模型。调用前应确保聊天模型已卸载（modelStore 释放），
    * 否则可能 OOM。返回加载是否成功。
+   * extras：拆分式模型的伴侣文件（SD3.5 → clipL/clipG/vae；Z-Image → llm/vae），
+   * 一体式模型（SDXL Turbo）不传。
    */
-  async loadModel(modelPath: string): Promise<boolean> {
+  async loadModel(
+    modelPath: string,
+    extras: {clipL?: string; clipG?: string; llm?: string; vae?: string} = {},
+  ): Promise<boolean> {
     try {
-      const ok = await ImageGen.loadModel(modelPath);
+      const ok = await ImageGen.loadModel(modelPath, extras);
       runInAction(() => {
         this.modelLoaded = ok;
         this.error = ok ? null : '模型加载失败';

@@ -26,7 +26,10 @@ class ImageGenModule(reactContext: ReactApplicationContext) :
 
   override fun getName(): String = "ImageGen"
 
-  private external fun nativeLoadModel(modelPath: String): Boolean
+  private external fun nativeLoadModel(
+    modelPath: String, clipLPath: String, clipGPath: String,
+    llmPath: String, vaePath: String,
+  ): Boolean
   private external fun nativeUnloadModel(): Boolean
   private external fun nativeTxt2img(
     prompt: String, negativePrompt: String, seed: Long, steps: Int, cfg: Double,
@@ -34,9 +37,15 @@ class ImageGenModule(reactContext: ReactApplicationContext) :
   ): String
 
   @ReactMethod
-  fun loadModel(modelPath: String, promise: Promise) {
+  fun loadModel(modelPath: String, extras: ReadableMap?, promise: Promise) {
     try {
-      val ok = nativeLoadModel(modelPath)
+      val ok = nativeLoadModel(
+        modelPath,
+        extras?.getString("clipL") ?: "",
+        extras?.getString("clipG") ?: "",
+        extras?.getString("llm") ?: "",
+        extras?.getString("vae") ?: "",
+      )
       promise.resolve(ok)
     } catch (e: Throwable) {
       promise.reject("LOAD_FAILED", e.message)

@@ -110,10 +110,13 @@ export const AboutScreen: React.FC = () => {
           <View style={styles.header}>
             <View style={styles.headerContent}>
               <Text variant="titleLarge" style={styles.title}>
-                PocketPal AI
+                口袋八哥
               </Text>
               <Text variant="bodyMedium" style={styles.description}>
                 {l10n.about.description}
+              </Text>
+              <Text variant="bodySmall" style={styles.description}>
+                基于 PocketPal AI（MIT License）开发
               </Text>
               <View style={styles.versionContainer}>
                 <TouchableOpacity

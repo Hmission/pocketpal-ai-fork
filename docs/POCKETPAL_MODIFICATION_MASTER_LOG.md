@@ -1,6 +1,6 @@
 # 手机端 PocketPal 改造全志（Master Log）
 
-> 状态：进行中 | 维护：AIOS 女妖/猎隼专工 | 最后更新：2026-08-11
+> 状态：进行中 | 维护：AIOS 女妖/猎隼专工 | 最后更新：2026-08-12
 > 本文档是"口袋 AIOS"项目的唯一权威记录，覆盖：编译 → 注入 → 人设 → 选型 → 下载 → 生图改造规划。
 
 ---
@@ -273,6 +273,19 @@ Start-Process -FilePath "F:\Cursor\OneTakeMVP\.tmp\scrcpy\scrcpy-win64-v4.1\scrc
 
 ---
 
+## 12. 品牌改名：口袋八哥（2026-08-12）
+**大王钦定新名：口袋八哥**（八哥=学舌灵巧之鸟，AI 助手隐喻；口袋继承 PocketPal 血统）。
+- app.json displayName → 口袋八哥（name 保持 PocketPal，RN 注册标识不可动）
+- Android strings.xml app_name → 口袋八哥
+- iOS Info.plist CFBundleDisplayName → 口袋八哥
+- AboutScreen 标题 → 口袋八哥 + “基于 PocketPal AI（MIT License）开发”（MIT 合规署名）
+- l10n brand/eyebrow：zh/zh_Hant 口袋八哥，en Pocket Myna
+- AboutScreen 测试同步更新，9/9 通过
+- applicationId/bundleId 不变（com.pocketpalai，保签名/安装兼容）
+- 生图优化（SD3.5/Z-Image 量化+JNI 多文件）由并行窗口接手，本窗停止手机操作避免冲突
+
+---
+
 ## 11. 窗口闭环记录（2026-08-12 目标模式 · M4-M6 生图能力）
 
 ### 11.1 P5.1 引擎打通（stable-diffusion.cpp 编入）
@@ -300,6 +313,23 @@ Start-Process -FilePath "F:\Cursor\OneTakeMVP\.tmp\scrcpy\scrcpy-win64-v4.1\scrc
 - rituals.ts 新增 sentimentScore/trackSentiment/getLastSentiment（规则词库 -2..+2）
 - contextAssembler 每轮跟踪大王情绪；SessionStatusBar 显示 愉悦/平稳/低落（绿/灰/红）
 - 梦境模式=已有 compaction 摘要+开场仪式读上次摘要（buildTodayState 已含）；双人格/语音养成 UI 完整版延期
+
+### 11.6 生图交互设计（sd.cpp 参数 + 进度 + 聊天嵌入）
+**sd.cpp 传参**（sd_img_gen_params_t）：
+- width/height（尺寸：384/512/640/768 可选，手机跑通用小图）
+- sample_params.sample_steps（步数，SDXL Turbo 1-4 步）
+- sample_params.guidance.txt_cfg（CFG，Turbo 默认 ~2）
+- negative_prompt（负面提示词）
+- seed（随机种子）
+- sample_method/scheduler（默认 Euler A + discrete，sd.cpp 自动）
+
+**进度显示**：sd_set_progress_callback(step,steps,time) → JNI AttachCurrentThread → Kotlin @JvmStatic onProgressFromNative → RN DeviceEventEmitter "ImageGenProgress" → imageGenStore.progress → 进度条 UI。
+
+**聊天嵌入生图**（豆包化）：ChatScreen wrappedSendPress 检测 /(画|绘|生成).*(图|图片|画)/：
+- 模型已加载 → 聊天内直接 generate + 插入 assistant 图片消息（imageUris）
+- 未加载 → 跳转生图页预填提示词（引导加载）
+
+**性能实测**：fp16 6.9GB safetensors 加载 ~13min（CPU 转换 793s）；512² 采样慢 → 优化方向 Q4_K_M 量化 + OpenCL/Vulkan 后端。
 
 ---
 
@@ -399,3 +429,61 @@ Start-Process -FilePath "F:\Cursor\OneTakeMVP\.tmp\scrcpy\scrcpy-win64-v4.1\scrc
 - **根治（母仓 hook）**：gate-guard.py 新增 `_runtime_roots()` 双端查找（本仓 + junction 解析母仓），`_find_freshest_anchor` 与 search_depth_tracker 均双端遍历；补 `from pathlib import Path`（此前模块未导入 Path，双端逻辑被 NameError 静默吞掉）
 - **验证**：删除本仓 anchor 副本后模拟 PreToolUse → 从母仓找到 241s 前 anchor，exit 0 无警告 ✅
 - **临时解法（保留备查）**：gate 后手动 `Copy-Item` 母仓 anchor 到本仓对应 session 目录（已不需要）
+
+---
+
+## 12. 窗口闭环记录（2026-08-12 · P5.1 生图模型选型迭代：SD3.5 + Z-Image-Turbo 入场）
+
+### 12.1 背景与判断
+2025-2026 模型军备竞赛全在“更大更强”方向（FLUX.2 / Qwen-Image / HunyuanImage），端侧无代际突破——端侧瓶颈是内存带宽而非架构。**2.5B 左右仍是端侧甜点位**（与聊天模型选型逻辑一致，K90PM 实测 >3GB 明显变慢）。
+
+### 12.2 选型结论（大王钦定）
+| 模型 | 定位 | 决策 |
+|---|---|---|
+| SD 3.5 Medium (2.5B) GGUF Q4_K_M | 🥇 画质升级候选（MMDiT，提示词遵循优于 SDXL） | 下载入场 |
+| Z-Image-Turbo（阿里 6B）GGUF Q4_K | 🥈 中文场景之王 + 无审查（核心诉求） | 下载入场 |
+| SDXL Turbo | 🥉 基线保留（生态最成熟，4 步极速） | 不换，作对照 |
+
+### 12.3 关键技术事实（本次侦察）
+1. **引擎支持**：vendored stable-diffusion.cpp（2025-12-01 起）已内置 `VERSION_Z_IMAGE`（z_image.hpp）与 `VERSION_SD3`（SD3.5 同构自动识别），**引擎层零改动**。
+2. **拆分式模型**：city96/leejet 的 GGUF 均只含 DiT，无 TE/VAE：
+   - SD3.5 = DiT GGUF + clip_l + clip_g + VAE（**端侧不带 T5**：fp8 也 4.9GB；引擎 `SD3CLIPEmbedder` 自适应，缺 T5 照样跑，代价是长提示词遵循略降）
+   - Z-Image = DiT GGUF + Qwen3-4B 文本编码器（llm_path）+ FLUX VAE（ae.safetensors）
+3. **JNI 需扩展**（已做）：原只传单 `model_path`（一体式）；新增拆分式通道 `diffusion_model_path + clip_l/clip_g/llm/vae`，按伴侣文件有无自动分流。GGUF 加载 prefix 幂等，两种格式通吃。
+
+### 12.4 文件清单与下载源（落盘 `F:\pp\.tmp\models_sd\`，脚本 `.tmp/dl_sd35_zimage.py`，断点续传）
+| 文件 | 源 | 体积 |
+|---|---|---|
+| sd35_medium_q4_k_m.gguf | hf-mirror city96/stable-diffusion-3.5-medium-gguf | ~1.79GB |
+| sd35_clip_l.safetensors | hf-mirror Comfy-Org/stable-diffusion-3.5-fp8 | 246MB |
+| sd35_clip_g.safetensors | 同上 | 1.39GB |
+| sd35_vae.safetensors | modelscope AI-ModelScope/stable-diffusion-3.5-medium | ~330MB |
+| z_image_turbo_q4_k.gguf | hf-mirror leejet/Z-Image-Turbo-GGUF（sd.cpp 作者官方量化） | ~4.5GB |
+| zimage_llm.gguf（Qwen3-4B-Instruct-2507 Q4_K_M） | hf-mirror unsloth | ~2.5GB |
+| ae.safetensors（FLUX VAE） | hf-mirror Comfy-Org/z_image_turbo | 335MB |
+
+> 注：stabilityai 官方仓在 hf-mirror 被 gate（403），VAE 走 modelscope 镜像。
+
+### 12.5 App 集成（已完成）
+| 文件 | 改动 |
+|---|---|
+| `android/app/src/main/cpp/ImageGenJNI.cpp` | nativeLoadModel 新增 clipL/clipG/llm/vae 四参，自动分流拆分式/一体式 |
+| `android/.../ImageGenModule.kt` | loadModel(modelPath, extras) 透传 |
+| `src/store/imageGenStore.ts` | loadModel 支持 extras |
+| `src/screens/ImageGenScreen/ImageGenScreen.tsx` | 架构族识别（zimage/sd3/classic）+ 伴侣文件自动配对/缺失提示 + 每族默认参数（Z-Image: 8步/CFG1；SD3.5: 20步/CFG4.5）+ 列表族徽章 |
+
+**设备端文件命名约定**（`/sdcard/Documents/AIOS/models/`，扫描按正则配对）：主模型名含 `z_image`/`sd3`；伴侣：`*qwen*4b*`/`*llm*`、`^ae.`/`*vae*`、`*clip_l*`/`*clip_g*`。
+
+### 12.6 端侧加速方案调研（待验证项 → 见 §12.7 计划）
+1. **后端升级（最大收益）**：JNI 现 `backend="CPU"`；sd.cpp 支持 **OpenCL/Vulkan**，骁龙 8 Elite 的 Adreno 830 走 OpenCL 预计 3-10× 提速（参考 llama.cpp OpenCL 实测）——下一迭代改 `params.backend` 即可，引擎已就绪
+2. **Flash Attention**：sd-cli 的 `--diffusion-fa`（官方 Z-Image 示例即带），省内存提速，待确认 JNI 参数暴露
+3. **TAESD 预览/出图**：`taesd_path` 轻量 VAE，解码阶段提速 + 实时预览
+4. **LeMiCa4Z-Image**： timestep 级缓存加速（官方生态推荐，需引擎适配评估）
+5. **量化档位下探**：Q4_K → Q3_K 可再省 25% 带宽（官方对比图显示 q3_K 画质几乎不崩）
+6. **尺寸策略**：512 出图 + ESRGAN/SeedVR2 超分 vs 直接 768/1024，前者总耗时通常更低
+
+### 12.7 下一步（待大王下令）
+- [ ] 下载完成 → adb push 到真机 `/sdcard/Documents/AIOS/models/`（或 App 内导入）
+- [ ] 真机基线：SDXL Turbo 5~15s/张验证（邻居正在跑）
+- [ ] 对比测试：同 prompt/同尺寸/同后端，SD3.5 vs Z-Image vs SDXL Turbo 画质与速度
+- [ ] OpenCL 后端接入（P5.3 加速专项）
