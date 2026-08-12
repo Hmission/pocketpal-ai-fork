@@ -202,10 +202,13 @@
 - TE → 量化 4-bit GGUF 复用现有 llama.rn（已能跑 Qwen）提取 hidden states 作条件。
 - manifest 已声明 family 'dreamlite'（main=dreamlite_unet.mnn, companions vae/te），文件就位即自动识别。
 
-**进展（2026-08-13 续）**：
-- 本机已装 torch(CPU)+diffusers+onnx，导出能力具备。
-- 已取回 UNet 自定义代码（unet_2d_condition_mobile.py + unet_2d_blocks.py，ghproxy）与 vae/全部 config/scheduler。
-- 导出脚本已备：`scripts/aios/export_dreamlite_onnx.py`（unet.onnx + vae_decoder.onnx）。
+**进展（2026-08-13 续，浏览器破壁后重大突破）**：
+- 浏览器直连 GitHub 取回全部代码链；发现 embeddings/normalization 本不在仓库（来自 diffusers），用 shim 闭合导入链。
+- **UNet 加载成功（389.97M=0.39B，权重匹配）**；eager forward 10.3s/步（CPU,1024px）。
+- **ONNX 导出成功**：unet.onnx(1489MB fp32) + vae_decoder.onnx(4MB)。
+- **端到端生成验证**：4 步 flow-matching + TinyVAE 解码，CPU 38.3s 产出 1024×1024 基线图（TE 置零）。
+- forward 契约已固化：`scripts/aios/dreamlite_infer_ref.py`（model_input 宽拼接/time_ids/截宽/mu shift/解码）。
+- 导出脚本：`scripts/aios/export_dreamlite_onnx.py`。
 
 **阻断项（需外部条件）**：
 - unet 780MB 走 hf-mirror 带宽不足（~0.1MB/s），续传中；GitHub 仓库 zip 被墙（仅部分 raw 可取）。
