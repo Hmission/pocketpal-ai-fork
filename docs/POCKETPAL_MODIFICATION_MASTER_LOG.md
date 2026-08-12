@@ -286,6 +286,13 @@ Start-Process -FilePath "F:\Cursor\OneTakeMVP\.tmp\scrcpy\scrcpy-win64-v4.1\scrc
 - 边界：write/code 专用模型自动加载需“模型能力注册表”，列为下迭代；生图优化（imageGenStore 进度增强/native/ImageGenScreen）归并行窗口提交。
 - 验证：tsc 0 错，taskRouter 9/9，ChatScreen 预存 3 失败（palStore mock 缺 getAiosPal）经 stash 对比确认非本次引入。
 
+### 13.6 冷却期防错 + 内存预设 n_ctx + 状态增强（同日第三波）
+- **根因**（logcat 三对照）：管家加载链路无 bug（butler=ready）；“一直没回复”= chat 模型冷却期抛 Exception in HostFunction；状态栏“无模型”是 chat 引擎显示区误导。
+- **engineGuard.ts（新）**：推理串行化 Promise 链 + 400ms 冷却窗（横幅“引擎回温中”可见）+ HostFunction 退避 600ms 自动重试一次；收敛三出口（LocalCompletionEngine / startImageCompletion / promptWriter）。
+- **recommendNCtx**：按内存预设上下文（16G→8192/12G→4096/8G→2048/else→1024），启动仅向下保护。
+- **SessionStatusBar**：管家就绪显示“管家八哥/常驻”；ctx 区加剩余 tokens（余Xk）。
+- 验证：tsc 0 错，completionEngines 13/13，装机成功。
+
 ### 13.5 调度后续闭环（同日第二波）
 - **promptWriter**：新增通用 chat()（chitchat 兜底人设）+ 导出 isPrompterModelName（单测 3 组）。
 - **modelCapabilityRegistry.ts（新）**：write/code 任务→自动选模型（声明 capabilities 优先：code→code/write→rewriting|creativity；回退非管家最大模型）。
