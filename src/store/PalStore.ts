@@ -813,7 +813,7 @@ class PalStore {
   /**
    * Initialize the built-in AIOS Pal with persona + all talents.
    * Persona lives in Pal.systemPrompt (not in memory service).
-   * pact.talents declares all 5 tools — accessible out-of-box.
+   * pact.talents declares all 8 tools — accessible out-of-box.
    */
   private async initializeAiosPal(): Promise<void> {
     try {

@@ -372,7 +372,11 @@
         "benchmark": "基準測試",
         "pals": "Pal",
         "models": "模型",
-        "chat": "聊天"
+        "chat": "聊天",
+        "memory": "記憶管理",
+        "knowledge": "知識庫",
+        "workspace": "Workspace",
+        "tool": "工具設定"
       },
       "select": "選擇",
       "nSelected": "已選取 {{count}}",

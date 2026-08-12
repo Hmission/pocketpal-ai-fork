@@ -521,7 +521,7 @@ export const SidebarContent: React.FC<DrawerContentComponentProps> = observer(
           {/* AIOS 智能体：记忆/知识/工具类中频入口 */}
           <Drawer.Section showDivider={false}>
             <Drawer.Item
-              label="记忆管理"
+              label={l10n.components.sidebarContent.menuItems.memory}
               icon={() => (
                 <HeartIcon width={24} height={24} stroke={theme.colors.primary} />
               )}
@@ -529,7 +529,7 @@ export const SidebarContent: React.FC<DrawerContentComponentProps> = observer(
               style={styles.menuDrawerItem}
             />
             <Drawer.Item
-              label="知识库"
+              label={l10n.components.sidebarContent.menuItems.knowledge}
               icon={() => (
                 <GridIcon width={24} height={24} stroke={theme.colors.primary} />
               )}
@@ -537,7 +537,7 @@ export const SidebarContent: React.FC<DrawerContentComponentProps> = observer(
               style={styles.menuDrawerItem}
             />
             <Drawer.Item
-              label="Workspace"
+              label={l10n.components.sidebarContent.menuItems.workspace}
               icon={() => (
                 <EditBoxIcon width={24} height={24} stroke={theme.colors.primary} />
               )}
@@ -545,7 +545,7 @@ export const SidebarContent: React.FC<DrawerContentComponentProps> = observer(
               style={styles.menuDrawerItem}
             />
             <Drawer.Item
-              label="工具配置"
+              label={l10n.components.sidebarContent.menuItems.tool}
               icon={() => (
                 <AtomIcon width={24} height={24} stroke={theme.colors.primary} />
               )}

@@ -170,7 +170,7 @@ const AppDrawer: React.FC = () => {
         component={gestureHandlerRootHOC(MemoryScreen)}
         options={{
           headerStyle: styles.headerWithoutDivider,
-          title: '记忆管理',
+          title: currentL10n.components.sidebarContent.menuItems.memory,
         }}
       />
       <Drawer.Screen
@@ -178,7 +178,7 @@ const AppDrawer: React.FC = () => {
         component={gestureHandlerRootHOC(KnowledgeScreen)}
         options={{
           headerStyle: styles.headerWithoutDivider,
-          title: '知识库',
+          title: currentL10n.components.sidebarContent.menuItems.knowledge,
         }}
       />
 
@@ -187,7 +187,7 @@ const AppDrawer: React.FC = () => {
         component={gestureHandlerRootHOC(WorkspaceScreen)}
         options={{
           headerStyle: styles.headerWithoutDivider,
-          title: 'Workspace',
+          title: currentL10n.components.sidebarContent.menuItems.workspace,
         }}
       />
       <Drawer.Screen
@@ -195,7 +195,7 @@ const AppDrawer: React.FC = () => {
         component={gestureHandlerRootHOC(ToolScreen)}
         options={{
           headerStyle: styles.headerWithoutDivider,
-          title: '工具配置',
+          title: currentL10n.components.sidebarContent.menuItems.tool,
         }}
       />
 

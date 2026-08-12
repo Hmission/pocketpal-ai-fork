@@ -941,7 +941,11 @@
         "benchmark": "基准测试",
         "settings": "设置",
         "appInfo": "关于",
-        "testCompletion": "测试完成"
+        "testCompletion": "测试完成",
+        "memory": "记忆管理",
+        "knowledge": "知识库",
+        "workspace": "Workspace",
+        "tool": "工具配置"
       },
       "deleteChatTitle": "删除聊天",
       "deleteChatMessage": "确定要删除这个聊天记录吗？",

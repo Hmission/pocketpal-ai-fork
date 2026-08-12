@@ -77,9 +77,17 @@ export function ToolScreen({navigation}: any) {
   const renderItem = ({item}: {item: ToolDefinition}) => {
     const name = item.function.name;
     const enabled = enabledTalents.has(name);
+    // device_control is a Phase 2 skeleton — surface the gap instead of
+    // letting users toggle a tool whose execute() always errors out.
+    const isPhase2 = name === 'device_control';
     return (
       <List.Item
-        title={name}
+        title={
+          <View style={styles.titleRow}>
+            <Text style={styles.titleText}>{name}</Text>
+            {isPhase2 && <Text style={styles.phase2Badge}>Phase 2 未实现</Text>}
+          </View>
+        }
         description={item.function.description?.slice(0, 80)}
         left={props => (
           <List.Icon {...props} icon={enabled ? 'check-circle' : 'circle-outline'} />
@@ -87,6 +95,7 @@ export function ToolScreen({navigation}: any) {
         right={() => (
           <Switch
             value={enabled}
+            disabled={isPhase2}
             onValueChange={(v) => toggleTalent(name, v)}
           />
         )}
@@ -153,6 +162,25 @@ export function ToolScreen({navigation}: any) {
 
 const styles = StyleSheet.create({
   container: {flex: 1, backgroundColor: '#fff'},
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  titleText: {
+    fontSize: 15,
+    color: '#333',
+    fontWeight: '500',
+  },
+  phase2Badge: {
+    fontSize: 10,
+    color: '#b26a00',
+    backgroundColor: '#fff3e0',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
   infoBar: {
     paddingHorizontal: 16,
     paddingVertical: 8,
