@@ -1,0 +1,845 @@
+import * as React from 'react';
+import {ImageURISource, TextStyle} from 'react-native';
+
+import {MD3Theme} from 'react-native-paper';
+import {TemplateConfig} from 'chat-formatter';
+import {ContextParams, TokenData} from 'llama.rn';
+import {CompletionParams} from './completionTypes';
+import {PreviewData} from '@flyerhq/react-native-link-preview';
+import {MD3Colors, MD3Typescale} from 'react-native-paper/lib/typescript/types';
+import type {TokenRadius, TokenStroke, TokenTypography} from '../theme/tokens';
+import {SkillKey} from '.';
+import type {TalentResult} from '../services/talents/types';
+import type {ReasoningCapability} from './reasoningCapability';
+
+/**
+ * One model-emitted tool call within an `AgentStep`. The `arguments` field
+ * is `string` on the wire (what the OpenAI/llama.rn API expects) but
+ * llama.rn may return a parsed object on output, so we accept both shapes
+ * in memory and serialize back to string at the wire boundary in
+ * `convertToChatMessages`.
+ */
+/**
+ * Generation-side metrics for a tool call: how much work the model
+ * did to produce the call's `arguments` JSON, NOT how long the
+ * engine took to execute it. Surfaced post-hoc by the chip / preview
+ * footer so the user can see the "cost" of a tool call after it
+ * lands. Optional — older persisted calls (or steps where multi-tool
+ * accounting isn't useful) may carry no metrics.
+ */
+export interface AgentToolCallMetrics {
+  /** Streaming token events the runner counted while this call was being generated. */
+  tokens: number;
+  /** Wall-clock ms between the first generation token and step finalisation. */
+  durationMs: number;
+}
+
+export interface AgentToolCall {
+  id: string;
+  type?: 'function';
+  function: {name: string; arguments: string};
+  metrics?: AgentToolCallMetrics;
+}
+
+/**
+ * The execution outcome of a single tool call. `responseContent` is what
+ * gets fed back to the model as the `{role: 'tool', content}` payload on
+ * the next iteration.
+ */
+export interface AgentToolOutcome {
+  callId: string;
+  toolName: string;
+  result: TalentResult;
+  responseContent: string;
+}
+
+/**
+ * One model invocation within an `AssistantTurn`. A single-step no-tool
+ * turn is the degenerate case `{content: '...'}`; a multi-step turn (e.g.
+ * preamble → tool call → final answer) carries multiple steps.
+ */
+export interface AgentStep {
+  /** Visible text emitted during this turn (preamble / final answer). */
+  content?: string;
+  /** Reasoning / thinking content, if the model emitted any. */
+  reasoningContent?: string;
+  /** Model-emitted tool calls in this turn. */
+  toolCalls?: AgentToolCall[];
+  /** Execution outcomes for the calls, in invocation order. */
+  toolOutcomes?: AgentToolOutcome[];
+  /** True while this step is still streaming. Cleared on step_finished. */
+  partial?: boolean;
+}
+
+export namespace MessageType {
+  export type Any = AssistantTurn | Custom | File | Image | Text | Unsupported;
+
+  export type DerivedMessage =
+    | DerivedAssistantTurn
+    | DerivedCustom
+    | DerivedFile
+    | DerivedImage
+    | DerivedText
+    | DerivedUnsupported;
+  export type DerivedAny = DateHeader | DerivedMessage;
+
+  export type PartialAny =
+    | PartialCustom
+    | PartialFile
+    | PartialImage
+    | PartialText;
+
+  interface Base {
+    author: User;
+    createdAt?: number;
+    id: string;
+    metadata?: Record<string, any>;
+    roomId?: string;
+    status?: 'delivered' | 'error' | 'seen' | 'sending' | 'sent';
+    type:
+      | 'assistant_turn'
+      | 'custom'
+      | 'file'
+      | 'image'
+      | 'text'
+      | 'unsupported';
+    updatedAt?: number;
+  }
+
+  export interface DerivedMessageProps extends Base {
+    nextMessageInGroup: boolean;
+    // TODO: Check name?
+    offset: number;
+    showName: boolean;
+    showStatus: boolean;
+  }
+
+  export interface DerivedAssistantTurn
+    extends DerivedMessageProps,
+      AssistantTurn {
+    type: AssistantTurn['type'];
+  }
+
+  export interface DerivedCustom extends DerivedMessageProps, Custom {
+    type: Custom['type'];
+  }
+
+  export interface DerivedFile extends DerivedMessageProps, File {
+    type: File['type'];
+  }
+
+  export interface DerivedImage extends DerivedMessageProps, Image {
+    type: Image['type'];
+  }
+
+  export interface DerivedText extends DerivedMessageProps, Text {
+    type: Text['type'];
+  }
+
+  export interface DerivedUnsupported extends DerivedMessageProps, Unsupported {
+    type: Unsupported['type'];
+  }
+
+  export interface PartialCustom extends Base {
+    metadata?: Record<string, any>;
+    type: 'custom';
+  }
+
+  export interface Custom extends Base, PartialCustom {
+    type: 'custom';
+  }
+
+  export interface PartialFile {
+    metadata?: Record<string, any>;
+    mimeType?: string;
+    name: string;
+    size: number;
+    type: 'file';
+    uri: string;
+  }
+
+  export interface File extends Base, PartialFile {
+    type: 'file';
+  }
+
+  export interface PartialImage {
+    height?: number;
+    metadata?: Record<string, any>;
+    name: string;
+    size: number;
+    type: 'image';
+    uri: string;
+    width?: number;
+  }
+
+  export interface Image extends Base, PartialImage {
+    type: 'image';
+  }
+
+  export interface PartialText {
+    metadata?: Record<string, any>;
+    previewData?: PreviewData;
+    text: string;
+    type: 'text';
+    imageUris?: string[]; // Optional array of image URIs for multimodal messages
+  }
+
+  export interface Text extends Base, PartialText {
+    type: 'text';
+  }
+
+  /**
+   * One assistant reply represented as an ordered list of `AgentStep`s.
+   * Single-step no-tool turns are the degenerate case `steps: [{content}]`.
+   * `steps` is the in-memory top-level field; on disk it is JSON-serialized
+   * into `metadata.steps` (lift handled by `Message.toMessageObject()` and
+   * `ChatSessionRepository`). Consumers MUST read `steps` and never
+   * `metadata.steps`.
+   */
+  export interface AssistantTurn extends Base {
+    type: 'assistant_turn';
+    steps: AgentStep[];
+  }
+
+  export interface Unsupported extends Base {
+    type: 'unsupported';
+  }
+
+  export interface DateHeader {
+    id: string;
+    text: string;
+    type: 'dateHeader';
+  }
+}
+
+export interface PreviewImage {
+  id: string;
+  uri: ImageURISource['uri'];
+}
+
+export interface Size {
+  height: number;
+  width: number;
+}
+
+export interface MD3BaseColors extends MD3Colors {
+  primary: string;
+  onPrimary: string;
+  primaryContainer: string;
+  onPrimaryContainer: string;
+  secondary: string;
+  onSecondary: string;
+  secondaryContainer: string;
+  onSecondaryContainer: string;
+  tertiary: string;
+  onTertiary: string;
+  tertiaryContainer: string;
+  onTertiaryContainer: string;
+  error: string;
+  onError: string;
+  errorContainer: string;
+  onErrorContainer: string;
+  background: string;
+  onBackground: string;
+  surface: string;
+  onSurface: string;
+  surfaceVariant: string;
+  onSurfaceVariant: string;
+  outline: string;
+  outlineVariant: string;
+
+  // Additional MD3 required colors
+  surfaceDisabled: string;
+  onSurfaceDisabled: string;
+  inverseSurface: string;
+  inverseOnSurface: string;
+  inversePrimary: string;
+  inverseSecondary: string;
+  shadow: string;
+  scrim: string;
+}
+
+export interface ThemeIcons {
+  attachmentButtonIcon?: () => React.ReactNode;
+  deliveredIcon?: () => React.ReactNode;
+  documentIcon?: () => React.ReactNode;
+  errorIcon?: () => React.ReactNode;
+  seenIcon?: () => React.ReactNode;
+  sendButtonIcon?: () => React.ReactNode;
+  sendingIcon?: () => React.ReactNode;
+}
+
+export interface SemanticColors {
+  // Surface variants
+  surfaceContainerHighest: string;
+  surfaceContainerHigh: string;
+  surfaceContainer: string;
+  surfaceContainerLow: string;
+  surfaceContainerLowest: string;
+  surfaceDim: string;
+  surfaceBright: string;
+
+  text: string;
+  textSecondary: string;
+  inverseText: string;
+  inverseTextSecondary: string;
+
+  border: string;
+  placeholder: string;
+  // Subtle border / divider — Figma `Color/muted/light` (#e5e3e1).
+  mutedLight: string;
+  // Figma `Color/Secondary/Default` — small DS button surface.
+  secondaryDefault: string;
+
+  // Interactive states
+  stateLayerOpacity: number;
+  hoverStateOpacity: number;
+  pressedStateOpacity: number;
+  draggedStateOpacity: number;
+  focusStateOpacity: number;
+
+  // Menu specific
+  menuBackground: string;
+  menuBackgroundDimmed: string;
+  menuBackgroundActive: string;
+  menuSeparator: string;
+  menuGroupSeparator: string;
+  menuText: string;
+  menuDangerText: string;
+
+  // Message specific
+  authorBubbleBackground: string;
+  receivedMessageDocumentIcon: string;
+  sentMessageDocumentIcon: string;
+  userAvatarImageBackground: string;
+  userAvatarNameColors: string[];
+  searchBarBackground: string;
+
+  // Thinking bubble specific
+  thinkingBubbleBackground: string;
+  thinkingBubbleText: string;
+  thinkingBubbleBorder: string;
+  thinkingBubbleShadow: string;
+  thinkingBubbleChevronBackground: string;
+  thinkingBubbleChevronBorder: string;
+
+  // Status bar specific
+  bgStatusActive: string;
+  bgStatusIdle: string;
+
+  // Button specific
+  btnPrimaryBg: string;
+  btnPrimaryBorder: string;
+  btnPrimaryText: string;
+
+  btnReadyBg: string;
+  btnReadyBorder: string;
+  btnReadyText: string;
+
+  btnDownloadBg: string;
+  btnDownloadBorder: string;
+  btnDownloadText: string;
+
+  // Icon specific
+  iconModelTypeText: string;
+  iconModelTypeVision: string;
+  iconModelTypeAudio: string;
+
+  // Accent — peach pill / Recommended-tier card highlight; greenStrong
+  // powers the download progress-bar fill.
+  accent: {
+    peach: string;
+    greenStrong: string;
+  };
+}
+
+export interface ThemeBorders {
+  inputBorderRadius: number;
+  messageBorderRadius: number;
+  default: number;
+}
+
+export interface ThemeFonts extends MD3Typescale {
+  titleMediumLight: TextStyle;
+  dateDividerTextStyle: TextStyle;
+  emptyChatPlaceholderTextStyle: TextStyle;
+  inputTextStyle: TextStyle;
+  receivedMessageBodyTextStyle: TextStyle;
+  receivedMessageCaptionTextStyle: TextStyle;
+  receivedMessageLinkDescriptionTextStyle: TextStyle;
+  receivedMessageLinkTitleTextStyle: TextStyle;
+  sentMessageBodyTextStyle: TextStyle;
+  sentMessageCaptionTextStyle: TextStyle;
+  sentMessageLinkDescriptionTextStyle: TextStyle;
+  sentMessageLinkTitleTextStyle: TextStyle;
+  userAvatarTextStyle: TextStyle;
+  userNameTextStyle: TextStyle;
+}
+
+export interface ThemeInsets {
+  messageInsetsHorizontal: number;
+  messageInsetsVertical: number;
+}
+
+/**
+ * Spacing on the consumed Theme is a superset of the new token scale and
+ * the legacy `default` key (preserved verbatim for consumers like
+ * `theme.spacing.default` used in 4 files today; removed in a later
+ * cleanup phase).
+ */
+export interface ThemeSpacing {
+  default: number;
+  none: 0;
+  xxs: 2;
+  xs: 4;
+  s: 8;
+  sm: 12;
+  m: 16;
+  ml: 20;
+  l: 24;
+  xl: 32;
+  xxl: 40;
+}
+
+/**
+ * The Theme consumed via `useTheme()`. Superset of:
+ *   - resolved tokens (typography, radius, stroke) — the new surface that
+ *     per-screen restyle work migrates consumers onto.
+ *   - the legacy MD3 alias surface (colors keys + MD3 typescale on
+ *     `fonts`) — pinned to today's values to avoid visual regression.
+ *
+ * The two surfaces do NOT cross-feed: the legacy `fonts` block is
+ * preserved verbatim and is not derived from `theme.typography.*`. This
+ * is the migration window contract.
+ */
+export interface Theme extends MD3Theme {
+  colors: MD3BaseColors & SemanticColors;
+  borders: ThemeBorders;
+  spacing: ThemeSpacing;
+  fonts: ThemeFonts;
+  insets: ThemeInsets;
+  icons?: ThemeIcons;
+  typography: TokenTypography;
+  radius: TokenRadius;
+  stroke: TokenStroke;
+}
+
+export interface User {
+  createdAt?: number;
+  firstName?: string;
+  id: string;
+  imageUrl?: ImageURISource['uri'];
+  lastName?: string;
+  lastSeen?: number;
+  metadata?: Record<string, any>;
+  role?: 'admin' | 'agent' | 'moderator' | 'user';
+  updatedAt?: number;
+}
+
+export interface ChatTemplateConfig extends TemplateConfig {
+  addGenerationPrompt: boolean;
+  systemPrompt?: string;
+  name: string;
+}
+
+export type ChatMessage = {
+  role: 'system' | 'assistant' | 'user' | 'tool';
+  content:
+    | string
+    | Array<{
+        type: 'text' | 'image_url';
+        text?: string;
+        image_url?: {url: string};
+      }>;
+  reasoning_content?: string;
+  tool_calls?: Array<import('llama.rn').ToolCall>;
+  tool_call_id?: string;
+};
+
+export enum ModelOrigin {
+  PRESET = 'preset',
+  LOCAL = 'local',
+  HF = 'hf',
+  REMOTE = 'remote',
+}
+
+export interface ServerConfig {
+  id: string;
+  name: string;
+  url: string; // Base URL e.g. "http://192.168.1.100:1234"
+  lastConnected?: number; // Timestamp
+  requestTimeoutMs?: number; // Per-server network timeout in ms; undefined = API default
+  // User-selectable server type; gates the per-server reasoning wire payload.
+  // detectServerType seeds it best-effort; user selection wins. undefined = unknown.
+  serverType?:
+    | 'llama.cpp'
+    | 'LM Studio'
+    | 'Ollama'
+    | 'OpenAI'
+    | 'vLLM'
+    | string;
+}
+
+/**
+ * Capabilities a llama.cpp server reports for one model via GET /props.
+ * Keyed per full model id (`${serverId}/${remoteModelId}`) in ServerStore.
+ * An absent field means unknown; a field is only ever set from a response that
+ * describes an actually loaded model, never from a router placeholder.
+ */
+export interface RemoteModelCaps {
+  // Never written or read. Every other field here is optional, so without a
+  // discriminant the weaker list-derived type would be silently assignable to
+  // this one and could be passed wherever a probed answer is expected.
+  tier?: 'probe';
+  contextLength?: number; // /props n_ctx; only ever a finite number > 0
+  supportsVision?: boolean; // /props modalities.vision
+  // The backend these describe. ServerConfig.url is mutable and a live session
+  // does not follow it, so caps that do not carry their own url cannot be
+  // matched against the session. Absent on an entry written before this field
+  // existed: taken at face value, no migration.
+  probedUrl?: string;
+}
+
+/**
+ * The backend a live remote chat session is actually talking to. Captured when
+ * the completion engine is built and never repointed, unlike the ServerConfig
+ * it was built from — editing a server url leaves the session on the old
+ * backend until the model is re-selected. Owned by ModelStore, not persisted.
+ */
+export interface RemoteSessionBinding {
+  modelId: string; // `${serverId}/${remoteModelId}`
+  serverId: string;
+  remoteModelId: string;
+  url: string;
+  serverType?: string;
+}
+
+export enum ModelType {
+  PROJECTION = 'projection',
+  VISION = 'vision',
+  LLM = 'llm',
+}
+
+/**
+ * GGUF metadata (currently this is used for memory estimation)
+ * Parsed from model file using llama.rn's loadLlamaModelInfo()
+ */
+export interface GGUFMetadata {
+  architecture: string;
+  n_layers: number;
+  n_embd: number;
+  n_head: number;
+  n_head_kv: number;
+  n_vocab: number;
+  n_embd_head_k: number; // Key head dimension
+  n_embd_head_v: number; // Value head dimension
+  sliding_window?: number; // For SWA models
+  context_length?: number; // Native context length from GGUF
+}
+
+export interface Model {
+  id: string;
+  author: string;
+  repo?: string; // Repository name (e.g., "gemma-2-2b-it-GGUF")
+  name: string;
+  type?: string;
+  capabilities?: SkillKey[]; // Array of capability keys
+  size: number; // Size in bytes
+  params: number;
+  isDownloaded: boolean;
+  downloadUrl: string;
+  hfUrl: string;
+  progress: number; // Progress as a percentage
+  downloadSpeed?: string;
+  filename: string;
+  fullPath?: string; // Full path for local models
+  /**
+   * @deprecated Use 'origin' instead.
+   */
+  isLocal: boolean; // this need to be deprecated
+  origin: ModelOrigin;
+  modelType?: ModelType; // Type of model for multimodal support
+
+  // Multimodal support fields
+  supportsMultimodal?: boolean; // Whether this model supports multimodal input
+  compatibleProjectionModels?: string[]; // Array of mmproj model IDs that work with this model
+  defaultProjectionModel?: string; // Default mmproj model ID to use with this model
+  visionEnabled?: boolean; // User preference for enabling vision capabilities (defaults to true for backward compatibility)
+
+  // Thinking capabilities
+  /** @deprecated Read via resolveReasoningCapability; kept as a fallback for old records. */
+  supportsThinking?: boolean; // Whether this model supports thinking/reasoning mode
+  thinkingStartTag?: string; // Thinking start tag from getFormattedChat (e.g., '<think>')
+  thinkingEndTag?: string; // Thinking end tag from getFormattedChat (e.g., '</think>')
+  // Reasoning capability (two axes). Local home; persisted with the model.
+  reasoning?: ReasoningCapability;
+
+  // GGUF metadata (for memory estimation)
+  ggufMetadata?: GGUFMetadata;
+
+  defaultChatTemplate: ChatTemplateConfig;
+  chatTemplate: ChatTemplateConfig;
+  defaultStopWords: CompletionParams['stop'];
+  stopWords: CompletionParams['stop'];
+  defaultCompletionSettings: CompletionParams;
+  completionSettings: CompletionParams;
+  hfModelFile?: ModelFile;
+  hfModel?: HuggingFaceModel;
+  hash?: string;
+
+  // Provenance marker: set on models materialized from the device-rule preset
+  // list. Lets reconcile prune stale, non-downloaded rule stubs without touching
+  // user-added HF/LOCAL or downloaded models.
+  isRulePreset?: boolean;
+
+  // Remote model fields (for models from OpenAI-compatible servers)
+  serverId?: string; // Reference to ServerConfig.id for remote models
+  serverName?: string; // Denormalized for display convenience
+  remoteModelId?: string; // The model ID as reported by the server's /v1/models
+}
+
+export type RootDrawerParamList = {
+  Chat: undefined;
+  Models: undefined;
+  Settings: undefined;
+};
+
+export type TokenNativeEvent = {
+  contextId: number;
+  tokenResult: TokenData;
+};
+
+export interface ModelFile {
+  rfilename: string;
+  size?: number;
+  url?: string;
+  oid?: string;
+  lfs?: {
+    oid: string;
+    size: number;
+    pointerSize: number;
+  };
+  canFitInStorage?: boolean;
+}
+
+// Model data from HuggingFace search models
+export interface HuggingFaceModel {
+  _id: string;
+  id: string;
+  author: string;
+  gated: boolean | string;
+  inference: string;
+  lastModified: string;
+  likes: number;
+  trendingScore: number;
+  private: boolean;
+  sha: string;
+  downloads: number;
+  tags: string[];
+  library_name: string;
+  createdAt: string;
+  model_id: string;
+  siblings: ModelFile[];
+  url?: string;
+  specs?: GGUFSpecs;
+}
+
+export interface HuggingFaceModelsResponse {
+  models: HuggingFaceModel[];
+  nextLink: string | null; // null if there is no next page
+}
+
+export interface ModelFileDetails {
+  type: string;
+  oid: string;
+  size: number;
+  lfs?: {
+    oid: string;
+    size: number;
+    pointerSize: number;
+  };
+  path: string;
+}
+
+export interface GGUFSpecs {
+  _id: string;
+  id: string;
+  gguf: {
+    total: number;
+    architecture: string;
+    context_length: number;
+    quantize_imatrix_file?: string;
+    chat_template?: string;
+    bos_token?: string;
+    eos_token?: string;
+  };
+}
+export type BenchmarkConfig = {
+  pp: number;
+  tg: number;
+  pl: number;
+  nr: number;
+  label: string;
+};
+
+// Define which fields we always want to be required in ContextInitParams
+type RequiredContextFields =
+  | 'n_ctx'
+  | 'n_batch'
+  | 'n_ubatch'
+  | 'n_threads'
+  | 'cache_type_k'
+  | 'cache_type_v'
+  | 'n_gpu_layers'
+  | 'use_mlock';
+
+/**
+ * Context initialization parameters for PocketPal AI
+ * Extends llama.rn's ContextParams but excludes 'model' and makes core fields required
+ * This ensures type safety and eliminates the need for fallback values in UI components
+ */
+export interface ContextInitParams
+  extends Omit<
+      ContextParams,
+      'model' | 'use_mmap' | 'flash_attn' | RequiredContextFields
+    >,
+    Required<Pick<ContextParams, RequiredContextFields>> {
+  version: string; // Version of the context init params schema
+  use_mmap: 'true' | 'false' | 'smart'; // Extended to support 'smart' option (required for android, where we wanted conditional mmap based on quantization type, eg q4_0 )
+
+  // New parameters (v2.0+)
+  devices?: string[]; // Device selection (undefined = auto-select)
+  flash_attn_type?: 'auto' | 'on' | 'off'; // Replaces flash_attn boolean
+  kv_unified?: boolean; // Unified KV cache (CRITICAL: saves ~7GB memory)
+  n_parallel?: number; // Max parallel sequences (default: 1 for blocking completion)
+
+  // v2.1+
+  /** Maximum number of tokens for image input (for dynamic resolution VLMs). Default: 512 */
+  image_max_tokens?: number;
+
+  // v2.2+
+  /** Disable extra buffer types for weight repacking (CPU_REPACK). Android only.
+   * Reduces memory usage at the cost of slower prompt processing. Default: false */
+  no_extra_bufts?: boolean;
+
+  // Deprecated (kept for migration)
+  /** @deprecated Use devices instead */
+  no_gpu_devices?: boolean;
+  /** @deprecated Use flash_attn_type instead */
+  flash_attn?: boolean;
+}
+
+/**
+ * Legacy context initialization parameters for migration purposes
+ * Used to handle old data formats that may be missing fields or use old property names
+ */
+export interface LegacyContextInitParams {
+  version?: string;
+  n_ctx?: number;
+  n_batch: number;
+  n_ubatch: number;
+  n_threads: number;
+  flash_attn: boolean;
+  cache_type_k:
+    | 'f16'
+    | 'f32'
+    | 'q8_0'
+    | 'q4_0'
+    | 'q4_1'
+    | 'iq4_nl'
+    | 'q5_0'
+    | 'q5_1';
+  cache_type_v:
+    | 'f16'
+    | 'f32'
+    | 'q8_0'
+    | 'q4_0'
+    | 'q4_1'
+    | 'iq4_nl'
+    | 'q5_0'
+    | 'q5_1';
+  n_gpu_layers: number;
+  use_mlock?: boolean;
+  use_mmap?: boolean;
+  // Legacy property for migration (renamed to n_ctx)
+  n_context?: number;
+  no_gpu_devices?: boolean;
+}
+
+export interface BenchmarkResult {
+  config: BenchmarkConfig;
+  modelDesc: string;
+  modelSize: number;
+  modelNParams: number;
+  ppAvg: number;
+  ppStd: number;
+  tgAvg: number;
+  tgStd: number;
+  timestamp: string;
+  modelId: string;
+  modelName: string;
+  oid?: string;
+  rfilename?: string;
+  filename?: string;
+  peakMemoryUsage?: {
+    total: number;
+    used: number;
+    percentage: number;
+  };
+  wallTimeMs?: number;
+  uuid: string;
+  submitted?: boolean;
+  initSettings?: ContextInitParams | LegacyContextInitParams;
+}
+
+export type DeviceInfo = {
+  model: string;
+  systemName: string;
+  systemVersion: string;
+  brand: string;
+  cpuArch: string[];
+  isEmulator: boolean;
+  version: string;
+  buildNumber: string;
+  device: string;
+  deviceId: string;
+  totalMemory: number;
+  chipset: string;
+  cpu: string;
+  cpuDetails: {
+    cores: number;
+    processors: Array<{
+      processor: string;
+      'model name': string;
+      'cpu MHz': string;
+      vendor_id: string;
+    }>;
+    socModel: string;
+    features: string[];
+    hasFp16: boolean;
+    hasDotProd: boolean;
+    hasSve: boolean;
+    hasI8mm: boolean;
+  };
+  gpuDetails?: {
+    renderer: string;
+    vendor: string;
+    version: string;
+    hasAdreno: boolean;
+    hasMali: boolean;
+    hasPowerVR: boolean;
+    supportsOpenCL: boolean; // Note: On Android, this only checks for Adreno GPU. Full OpenCL support also requires i8mm and dotprod CPU features.
+    gpuType: string;
+  };
+};
+
+export enum CacheType {
+  F16 = 'f16',
+  F32 = 'f32',
+  Q8_0 = 'q8_0',
+  Q4_0 = 'q4_0',
+  Q4_1 = 'q4_1',
+  IQ4_NL = 'iq4_nl',
+  Q5_0 = 'q5_0',
+  Q5_1 = 'q5_1',
+}

@@ -1,0 +1,1568 @@
+{
+  "about": {
+    "screenTitle": "앱 정보",
+    "description": "대규모 언어 모델(LLM)을 모바일 기기에서 직접 구동하는 앱입니다. llama.cpp 및 llama.rn 라이브러리를 기반으로 구축되었습니다.",
+    "supportProject": "프로젝트 지원하기",
+    "supportProjectDescription": "PocketPal AI가 마음에 드신다면, 다음 방법으로 프로젝트를 지원해 주세요:",
+    "githubButton": "GitHub Star 주기",
+    "orText": "또는",
+    "orBy": "또는",
+    "versionCopiedDescription": "버전 정보가 클립보드에 복사되었습니다",
+    "sponsorButton": "스폰서 되기",
+    "versionCopiedTitle": "버전 복사됨",
+    "privacyPolicy": "개인정보 처리방침",
+    "termsOfService": "서비스 약관",
+    "tourDescription": "온보딩 화면을 재생하여 PocketPal AI가 제공하는 기능을 확인하세요.",
+    "showIntroButton": "인트로 다시 보기",
+    "tour": "둘러보기"
+  },
+  "benchmark": {
+    "title": "벤치마크",
+    "modelSelector": {
+      "prompt": "모델 선택하기",
+      "noModels": "다운로드된 모델 없음"
+    },
+    "buttons": {
+      "advancedSettings": "고급 설정",
+      "startTest": "테스트 시작",
+      "runningTest": "테스트 실행 중...",
+      "clearAll": "전체 삭제",
+      "done": "완료",
+      "share": "공유",
+      "sharing": "공유 중...",
+      "viewRawData": "RAW 데이터 보기",
+      "hideRawData": "RAW 데이터 숨기기",
+      "cancel": "취소",
+      "delete": "삭제"
+    },
+    "messages": {
+      "pleaseSelectModel": "시작하려면 모델 선택 및 초기화가 필요합니다.",
+      "testWarning": "주의: 테스트는 대형 모델의 경우 최대 2~5분까지 걸릴 수 있으며, 실행 중에 중단할 수 없습니다.",
+      "keepScreenOpen": "이 화면을 그대로 유지해 주세요.",
+      "initializingModel": "모델 초기화 중...",
+      "modelMaxValue": "(최대: {{maxValue}})"
+    },
+    "dialogs": {
+      "advancedSettings": {
+        "testProfile": "테스트 프로필",
+        "title": "고급 설정",
+        "customParameters": "사용자 정의 파라미터",
+        "description": "특정 테스트 시나리오에 맞게 벤치마크 파라미터를 미세 조정합니다."
+      },
+      "deleteResult": {
+        "title": "결과 삭제하기",
+        "message": "이 벤치마크 결과를 삭제하겠습니까?"
+      },
+      "clearAllResults": {
+        "title": "모든 결과 삭제하기",
+        "message": "모든 벤치마크 결과를 삭제하겠습니까?"
+      },
+      "shareResults": {
+        "title": "벤치마크 결과 공유",
+        "sharedDataTitle": "포함되는 공유 데이터:",
+        "deviceAndModelInfo": "• 기기 사양 및 모델 정보",
+        "performanceMetrics": "• 성능 지표",
+        "dontShowAgain": "이 메시지 다시 보지 않기"
+      }
+    },
+    "sections": {
+      "testResults": "테스트 결과"
+    },
+    "benchmarkResultCard": {
+      "modelMeta": {
+        "params": "파라미터"
+      },
+      "config": {
+        "title": "벤치마크 구성",
+        "format": "PP: {{pp}} • TG: {{tg}} • PL: {{pl}} • Rep: {{nr}}"
+      },
+      "modelSettings": {
+        "title": "모델 설정",
+        "context": "컨텍스트: {{context}}",
+        "batch": "배치 크기: {{batch}}",
+        "ubatch": "UBatch: {{ubatch}}",
+        "cpuThreads": "CPU 스레드: {{threads}}",
+        "gpuLayers": "GPU 레이어: {{layers}}",
+        "flashAttentionEnabled": "Flash Attention 활성화됨",
+        "flashAttentionDisabled": "Flash Attention 비활성화됨",
+        "cacheTypes": "캐시 유형: {{cacheK}}/{{cacheV}}",
+        "device": "기기: {{device}}"
+      },
+      "results": {
+        "promptProcessing": "프롬프트 처리 속도",
+        "tokenGeneration": "토큰 생성 속도",
+        "totalTime": "총 소요 시간",
+        "peakMemory": "최대 메모리 사용량",
+        "tokensPerSecond": "토큰/초"
+      },
+      "actions": {
+        "submittedText": "✓ 공유 대상",
+        "leaderboardLink": "AI Phone 리더보드 ↗",
+        "cannotShare": "공유할 수 없음",
+        "cannotShareTooltip": "로컬 모델 결과는 공유할 수 없습니다.",
+        "submitButton": "리더보드에 제출하기",
+        "viewLeaderboard": "리더보드 보기 ↗",
+        "deleteButton": " "
+      },
+      "errors": {
+        "networkRetry": "네트워크 연결 확인 후 다시 시도",
+        "appCheckRetry": "제출 다시 시도",
+        "serverRetry": "나중에 다시 시도해 주세요",
+        "genericRetry": "다시 시도",
+        "failedToSubmit": "벤치마크 제출 실패"
+      }
+    },
+    "deviceInfoCard": {
+      "title": "기기 정보",
+      "deviceSummary": "{{brand}} {{model}} • {{systemName}} {{systemVersion}}",
+      "coreSummary": "{{cores}} 코어 • {{memory}}",
+      "sections": {
+        "basicInfo": "기본 정보",
+        "cpuDetails": "CPU 세부 정보",
+        "appInfo": "앱 정보",
+        "gpuDetails": "GPU 세부정보",
+        "hexagonDetails": "Hexagon DSP"
+      },
+      "fields": {
+        "architecture": "아키텍처",
+        "totalMemory": "전체 메모리",
+        "deviceId": "디바이스 ID",
+        "cpuCores": "CPU 코어",
+        "cpuModel": "CPU 모델",
+        "chipset": "칩셋",
+        "instructions": "지침",
+        "version": "버전",
+        "gpuType": "GPU 유형",
+        "gpuRenderer": "렌더링 엔진",
+        "gpuVendor": "제조사",
+        "metalSupport": "Metal 지원",
+        "openclSupport": "OpenCL 지원",
+        "openclRequirement": "i8mm 및 dotprod 기능 필요"
+      },
+      "instructions": {
+        "format": "FP16: {{fp16}}, DotProd: {{dotProd}}, SVE: {{sve}}, I8MM: {{i8mm}}",
+        "yes": "✓",
+        "no": "✗"
+      },
+      "versionFormat": "{{version}} ({{buildNumber}})"
+    }
+  },
+  "chat": {
+    "conversationReset": "대화 초기화 완료!",
+    "modelNotLoaded": "모델이 로드되지 않았습니다. 먼저 모델 초기화를 진행해 주세요.",
+    "completionFailed": "생성 실패: ",
+    "loadingModel": "모델 로딩 중 ...",
+    "typeYourMessage": "여기에 메시지를 입력하세요",
+    "load": "불러오기",
+    "goToModels": "모델 목록으로 이동",
+    "readyToChat": "채팅을 시작할까요? 마지막으로 사용한 모델을 불러옵니다.",
+    "pleaseLoadModel": "채팅을 시작하려면 모델을 로드해 주세요.",
+    "multimodalNotEnabled": "이 모델은 멀티모달 기능이 활성화되지 않았습니다. 이미지는 표시되지만 AI가 처리하지는 않습니다.",
+    "cannotSendWithoutModel": "모델을 먼저 로드해 주세요",
+    "toolCallTruncated": "도구 호출 중단됨 — 모델의 컨텍스트 용량이 부족한 것으로 보입니다. 더 큰 컨텍스트를 지정하거나 요청 크기를 줄이십시오.",
+    "toolCompatWarning": "이 모델은 도구 호출을 지원하지 않을 수 있어, 결과가 정확하지 않을 수 있습니다.",
+    "softCapWarning": "최상의 성능을 위해 새로운 대화를 시작하세요.",
+    "generatingPreview": "미리보기 생성 중… ({{tokens}} 토큰)",
+    "generatingPreviewPending": "미리보기 생성 중…",
+    "toolUsedChip": "{{name}} 사용됨",
+    "toolErrorBlock": "{{name}} 실패함",
+    "contextWarning": "대화가 길어지고 있어 곧 공간이 부족해질 수 있습니다.",
+    "contextRemoteHedged": "이 응답이 중간에 끊겼을 수 있습니다. 다시 보내거나 요청을 줄여 보세요.",
+    "contextFull": "대화 공간이 가득 찼습니다. 새 채팅을 시작하거나 컨텍스트 크기를 늘려 주세요.",
+    "contextFullEscalated": "여전히 공간이 부족합니다. 새 채팅을 시작하거나, 계속하려면 컨텍스트 크기를 늘려 주세요.",
+    "contextFullHeavyTalent": "대화 공간이 가득 찼습니다 — {{talent}}은(는) 더 많은 공간이 필요한 편입니다. 새 채팅을 시작하거나 컨텍스트 크기를 늘려 주세요.",
+    "contextBannerDismiss": "닫기",
+    "contextNewChat": "새 채팅",
+    "contextIncrease": "컨텍스트 늘리기",
+    "contextMoreRoom": "공간 늘리기",
+    "increaseContextTitle": "이 채팅에 더 많은 공간 주기",
+    "increaseContextBody": "공간은 모델의 작업 메모리로, 이 채팅을 한 번에 얼마나 기억할 수 있는지를 나타냅니다. 공간이 많을수록 응답이 끊기기 전까지 더 긴 대화를 이어갈 수 있습니다.",
+    "increaseContextTokensUnit": "토큰",
+    "increaseContextWordsRam": "약 {{words}} 단어 · 약 {{ram}} RAM",
+    "increaseContextFitsChip": "충분함",
+    "increaseContextTightChip": "빠듯함",
+    "increaseContextWontFitChip": "부족함",
+    "increaseContextFitsStatus": "이 기기에서 충분히 여유롭습니다.",
+    "increaseContextFitsUnconstrainedStatus": "이 기기의 RAM이 충분합니다 — 모델에 따라서만 영향을 받습니다.",
+    "increaseContextTightStatus": "약 {{tokens}}을(를) 넘으면 이 기기의 메모리가 부족해 느려질 수 있습니다. 그래도 시도해 볼 수는 있습니다.",
+    "increaseContextWontFitStatus": "약 {{tokens}}은(는) 이 기기의 메모리에 맞지 않을 가능성이 높습니다. 더 작은 크기를 선택해 주세요.",
+    "increaseContextModelMax": "{{tokens}} · 모델 최대",
+    "increaseContextHedge": "다시 불러오는 데 몇 초가 걸립니다. 채팅 내용은 사라지지 않습니다.",
+    "increaseContextAdvanced": "고급",
+    "increaseContextAdvancedBody": "이 채팅의 컨텍스트 크기: {{from}} → {{to}} 토큰 (모델 최대 {{max}}). 기기 한도는 추정치이며, 더 큰 컨텍스트가 성공적으로 로드될수록 높아집니다.",
+    "increaseContextSliderA11yLabel": "컨텍스트 크기",
+    "increaseContextSliderA11yValue": "{{tokens}} 토큰",
+    "increaseContextConfirmSize": "{{size}}(으)로 설정",
+    "increaseContextReloadingShort": "다시 불러오는 중…",
+    "increaseContextNoFitBody": "이 기기는 이 모델에 더 큰 컨텍스트를 적용할 수 없습니다. 계속하려면 새 채팅을 시작해 주세요.",
+    "increaseContextCancel": "나중에",
+    "increaseContextReloading": "더 큰 컨텍스트로 모델을 다시 불러오는 중…",
+    "increaseContextSuccess": "컨텍스트가 {{target}} 토큰으로 늘어났습니다.",
+    "increaseContextFailure": "컨텍스트 크기를 늘릴 수 없습니다. 이전 설정으로 복원되었습니다.",
+    "palLoadHint": "이 Pal은 현재 컨텍스트 크기보다 더 많은 공간이 필요한 편입니다.",
+    "webSearch": {
+      "searched": "검색함: {{query}}",
+      "noResults": "결과 없음",
+      "noResultsFor": "{{query}}에 대한 결과 없음",
+      "resultsCount": "{{count}}개 결과",
+      "resultsCountOne": "결과 1개",
+      "searchResultsTitle": "검색 결과",
+      "showResultsAccessibilityLabel": "{{query}}에 대한 웹 검색 결과 표시",
+      "openLinkError": "이 링크를 열 수 없어요."
+    },
+    "contextFullRemote": "대화 공간이 가득 찼습니다. 새 채팅을 시작해 주세요."
+  },
+  "common": {
+    "cancel": "취소",
+    "delete": "삭제",
+    "dismiss": "닫기",
+    "rename": "이름 변경",
+    "reset": "재설정",
+    "save": "저장",
+    "networkError": "네트워크 오류가 발생했습니다. 다시 시도해 주세요.",
+    "calculating": "계산 중...",
+    "second": "초",
+    "seconds": "초",
+    "year": "년",
+    "years": "년",
+    "month": "개월",
+    "hour": "시간",
+    "downloadETA": "남은 시간",
+    "months": "개월",
+    "week": "주",
+    "weeks": "주",
+    "day": "일",
+    "days": "일",
+    "hours": "시간",
+    "minute": "분",
+    "minutes": "분",
+    "justNow": "방금 전",
+    "update": "업데이트",
+    "export": "내보내기",
+    "ok": "확인",
+    "close": "닫기",
+    "clear": "모두 삭제",
+    "gallery": "갤러리",
+    "error": "오류",
+    "stop": "중지",
+    "noResults": "결과 없음"
+  },
+  "completionParams": {
+    "grammar": "특정 문법 규칙을 적용하여 생성된 텍스트가 정해진 구조나 형식을 따르도록 강제합니다.",
+    "stop": "텍스트 생성을 중단할 특정 문구를 지정합니다.",
+    "n_predict": "생성할 최대 토큰 수를 설정하십시오. 제한을 없애려면 무제한을, 특정 수치를 입력하려면 사용자 정의를 선택하세요.",
+    "n_probs": "대체 단어들에 대한 확률 점수를 표시합니다.",
+    "top_k": "가장 확률이 높은 K개의 단어 중에서만 선택하도록 제한합니다. 값이 낮을수록 답변이 더 일관되고 정교해집니다.",
+    "top_p": "답변의 창의성을 조절합니다. 값이 클수록(1.0에 가까울수록) 답변이 창의적이지만, 때로는 주제에서 벗어날 수 있습니다.",
+    "min_p": "토큰이 고려되기 위한 최소 확률입니다. 확률이 낮은 단어를 제외하여 무의미하거나 문맥에서 벗어난 응답을 줄입니다.",
+    "penalty_last_n": "반복 여부를 확인할 범위입니다. 값이 클수록 긴 대화에서도 같은 말이 반복되는 것을 효과적으로 방지합니다.",
+    "penalty_repeat": "단어 반복을 억제합니다. 값이 높을수록 응답에 더 다양하고 풍부한 표현을 사용합니다.",
+    "penalty_freq": "자주 반복되는 단어에 패널티를 부여합니다. 값이 높을수록 더 다양한 어휘를 사용하도록 유도합니다.",
+    "penalty_present": "주제와 아이디어의 반복을 줄입니다. 값이 높을수록 더 다양하고 새로운 내용이 생성됩니다.",
+    "mirostat": "응답 창의성에 대한 고급 제어 기능을 활성화합니다. 1 또는 2를 선택하여 무작위성과 일관성을 실시간으로 최적화할 수 있습니다.",
+    "temperature": "창의성과 예측 가능성 사이의 균형을 조절합니다. 값이 높을수록 응답이 더 창의적이지만 덜 일관된 형태가 됩니다.",
+    "mirostat_tau": "Mirostat의 목표 창의성 수준을 설정합니다. 값이 높을수록 더 다양하고 상상력이 풍부한 응답을 생성하며, 값이 낮을수록 더 일관된 결과를 보장합니다.",
+    "mirostat_eta": "Mirostat이 창의성을 조정하는 속도입니다. 값이 클수록 더 빠르게 조정이 이루어집니다.",
+    "dry_multiplier": "DRY(반복 방지) 기능의 강도입니다. 값이 높을수록 동일한 표현의 반복을 강력하게 억제합니다.",
+    "dry_base": "DRY 모드에서의 반복 방지 기본 페널티입니다. 값이 높을수록 반복되는 문구를 더 강력하게 억제합니다.",
+    "dry_allowed_length": "DRY 페널티가 적용되기 전까지 허용되는 반복 단어 수",
+    "dry_penalty_last_n": "DRY 모드에서 반복을 감지할 이전 텍스트의 범위입니다.",
+    "dry_sequence_breakers": "DRY 모드에서 반복 검사를 초기화하는 기호",
+    "ignore_eos": "모델의 정지 신호를 무시하고 답변을 이어갑니다. 길게 답변하도록 유도하고 싶을 때 사용하세요.",
+    "logit_bias": "특정 단어가 응답에 나타날 확률을 조절합니다.",
+    "seed": "난수 생성기 시드를 설정합니다. 동일한 결과를 다시 생성하고 싶을 때 유용합니다.",
+    "xtc_probability": "XTC 샘플러를 통한 토큰 제거 확률을 설정합니다. 0으로 설정하면 비활성화됩니다.",
+    "xtc_threshold": "XTC 샘플러가 토큰을 제거하기 위한 최소 확률 임계값을 설정합니다. (0.5보다 크면 XTC 비활성화)",
+    "typical_p": "p값을 조절하여 문맥에 적합한 전형적인 단어들을 우선적으로 선택합니다. 1.0은 기능을 사용하지 않음을 의미합니다.",
+    "include_thinking_in_context": "모델에 전달되는 컨텍스트에 AI의 사고/추론 과정을 포함합니다. 이 기능을 끄면 컨텍스트 공간을 절약할 수 있지만, 답변의 품질이 떨어질 수 있습니다.",
+    "jinja": "채팅 형식에 Jinja 템플릿을 사용합니다. 활성화 시 Jinja 기반의 채팅 템플릿 프로세싱을 통해 최신 모델과의 호환성을 높입니다."
+  },
+  "components": {
+    "attachmentButton": {
+      "attachmentButtonAccessibilityLabel": "미디어 첨부하기"
+    },
+    "chatEmptyPlaceholder": {
+      "noModelsTitle": "사용 가능한 모델 없음",
+      "noModelsDescription": "PocketPal과 채팅을 시작하려면 모델을 다운로드해 주세요",
+      "noModelsButton": "모델 다운로드",
+      "activateModelTitle": "시작하려면 모델을 활성화하세요",
+      "loading": "로딩 중...",
+      "activateModelDescription": "모델을 선택하고 다운로드하세요. 다운로드가 완료되면 모델 옆의 불러오기 버튼을 눌러 채팅을 시작할 수 있습니다.",
+      "activateModelButton": "모델 선택",
+      "gettingReadyTitle": "{{name}}이 준비 중임",
+      "gettingReadyDescription": "Pal이 채팅할 수 있게 준비되면 바로 알려드릴게요. 위쪽 배너를 탭하여 진행 상황을 확인하세요."
+    },
+    "chatInput": {
+      "inputPlaceholder": "메시지",
+      "thinkingToggle": {
+        "enableThinking": "사고 모드 활성화",
+        "disableThinking": "사고 모드 비활성화",
+        "thinkingEnabled": "사고 모드 활성화됨",
+        "thinkingDisabled": "사고 모드 비활성화됨",
+        "thinkText": "사고",
+        "cycleEffort": "추론 강도: {{level}}. 두 번 탭하면 강도 단계가 바뀌어요"
+      }
+    },
+    "chatGenerationSettingsSheet": {
+      "invalidValues": "유효하지 않은 값",
+      "invalidNumericValuesMessage": "유효한 숫자여야 합니다",
+      "pleaseCorrect": "다음 사항을 수정해 주세요:",
+      "resetToSystemDefaults": "시스템 기본값으로 재설정",
+      "ok": "확인",
+      "saveChanges": "변경 사항 저장",
+      "saveAsPreset": "프리셋으로 저장",
+      "title_session": "채팅 생성 설정 (세션)",
+      "title_preset": "채팅 생성 설정 (프리셋)",
+      "resetToPreset": "프리셋으로 재설정",
+      "applytoPresetAlert": {
+        "title": "성공",
+        "message": "변경사항이 향후 모든 세션에 적용됩니다."
+      },
+      "palSettings": "Pal 설정",
+      "settingsSource": "설정 소스"
+    },
+    "modelsResetDialog": {
+      "confirmReset": "재설정 확인",
+      "proceedWithReset": "재설정 진행하기"
+    },
+    "modelsHeaderRight": {
+      "menuTitleHf": "Hugging Face 모델",
+      "menuTitleDownloaded": "다운로드된 모델",
+      "menuTitleGrouped": "모델 유형으로 그룹화",
+      "menuTitleReset": "모델 목록 초기화"
+    },
+    "chatHeaderTitle": {
+      "defaultTitle": "채팅"
+    },
+    "fileMessage": {
+      "fileButtonAccessibilityLabel": "파일"
+    },
+    "chatPalModelPickerSheet": {
+      "modelsTab": "모델",
+      "palsTab": "Pals",
+      "noPal": "Pal 없음",
+      "disablePal": "활성화된 Pal 해제",
+      "noDescription": "설명 없음",
+      "assistantType": "어시스턴트",
+      "roleplayType": "역할극",
+      "confirmationTitle": "확인",
+      "modelSwitchMessage": "해당 Pal에 설정된 기본 모델({{modelName}})이 현재 모델과 다릅니다. 모델을 전환하겠습니까?",
+      "keepButton": "유지",
+      "switchButton": "전환",
+      "videoType": "비디오"
+    },
+    "headerRight": {
+      "deleteChatTitle": "채팅 삭제하기",
+      "deleteChatMessage": "이 채팅을 삭제하겠습니까?",
+      "generationSettings": "답변 생성 설정",
+      "model": "모델",
+      "duplicateChatHistory": "채팅 복제하기",
+      "makeChatTemporary": "임시 채팅 사용하기",
+      "exportChatSession": "채팅 세션 내보내기",
+      "export": "내보내기/가져오기",
+      "exportCurrentSession": "현재 세션 내보내기",
+      "exportAllSessions": "모든 세션 내보내기",
+      "importSessions": "세션 가져오기"
+    },
+    "modelSettingsSheet": {
+      "modelSettings": "모델 설정",
+      "saveChanges": "변경 사항 저장",
+      "reasoningSection": "추론",
+      "isReasoningModel": "추론 모델",
+      "isReasoningModelHelp": "자동으로 감지되지 않았더라도 이 모델의 사고 제어를 표시해요.",
+      "supportsEffort": "단계별 강도 지원",
+      "effortValues": "이 모델이 지원하는 강도 단계",
+      "effortLevels": {
+        "minimal": "최소",
+        "low": "낮음",
+        "medium": "보통",
+        "high": "높음",
+        "xhigh": "매우 높음",
+        "max": "최대"
+      }
+    },
+    "assistantPalSheet": {
+      "title": {
+        "create": "어시스턴트 Pal 만들기",
+        "edit": "어시스턴트 Pal 편집"
+      },
+      "palName": "Pal 이름",
+      "palNamePlaceholder": "이름",
+      "defaultModel": "기본 모델",
+      "defaultModelPlaceholder": "모델 선택",
+      "validation": {
+        "generatingPromptRequired": "답변 생성 프롬프트를 입력해 주세요",
+        "promptModelRequired": "프롬프트 생성을 위한 모델을 선택해 주세요"
+      },
+      "create": "만들기"
+    },
+    "roleplayPalSheet": {
+      "palName": "Pal 이름",
+      "palNamePlaceholder": "이름",
+      "defaultModel": "기본 모델",
+      "defaultModelPlaceholder": "모델 선택",
+      "title": {
+        "create": "역할극 Pal 만들기",
+        "edit": "역할극 Pal 편집"
+      },
+      "descriptionSection": "설명",
+      "world": "세계관",
+      "worldPlaceholder": "판타지",
+      "location": "위치",
+      "locationPlaceholder": "마법의 숲",
+      "locationSublabel": "이야기의 배경은 어디인가요?",
+      "aiRole": "AI의 역할",
+      "aiRolePlaceholder": "엘다라, 장난기 가득한 숲의 요정",
+      "aiRoleSublabel": "캐릭터의 역할을 설정하세요",
+      "userRole": "사용자 역할",
+      "userRolePlaceholder": "엘란도르 경, 용감한 기사",
+      "userRoleSublabel": "당신은 누구인가요?",
+      "situation": "상황",
+      "situationPlaceholder": "구조 임무, 미스터리 해결 등",
+      "toneStyle": "말투 및 스타일",
+      "toneStylePlaceholder": "진지하게",
+      "validation": {
+        "promptModelRequired": "프롬프트 생성을 위한 모델을 선택해 주세요"
+      },
+      "create": "만들기"
+    },
+    "modelNotAvailable": {
+      "noModelsDownloaded": "아직 다운로드된 모델이 없습니다. 먼저 모델을 다운로드해 주세요.",
+      "downloadAModel": "모델 다운로드",
+      "defaultModelNotDownloaded": "기본 모델이 아직 다운로드되지 않았습니다. 먼저 다운로드해 주세요.",
+      "cancelDownload": "다운로드 취소",
+      "download": "다운로드",
+      "modelNotDownloadedShort": "모델 다운로드되지 않음",
+      "recommendedModel": "추천 모델"
+    },
+    "sendButton": {
+      "accessibilityLabel": "전송"
+    },
+    "systemPromptSection": {
+      "sectionTitle": "시스템 프롬프트",
+      "useAIPrompt": "AI로 시스템 프롬프트 생성하기",
+      "modelSelector": {
+        "label": "생성에 사용할 모델을 선택하세요*",
+        "sublabel": "권장 모델: Llama 3.2 3B 또는 Qwen2.5 3B",
+        "placeholder": "모델 선택"
+      },
+      "generatingPrompt": {
+        "label": "프롬프트 생성 중",
+        "placeholder": "생성을 위한 프롬프트 입력"
+      },
+      "buttons": {
+        "loadingModel": "모델 로딩 중...",
+        "stopGenerating": "생성 중단",
+        "generatePrompt": "시스템 프롬프트 생성",
+        "resetParameters": "파라미터 초기화",
+        "resetTemplate": "템플릿 초기화"
+      },
+      "systemPrompt": {
+        "label": "시스템 프롬프트",
+        "sublabel": "원하시는 상황에 맞는 최적의 프롬프트를 찾기 위해 자유롭게 수정하고 테스트해 보세요",
+        "placeholder": "당신은 친절한 비서입니다"
+      },
+      "warnings": {
+        "promptChanged": "시스템 프롬프트가 수동으로 설정되었습니다."
+      }
+    },
+    "sidebarContent": {
+      "menuItems": {
+        "chat": "채팅",
+        "models": "모델",
+        "pals": "Pal",
+        "benchmark": "벤치마크",
+        "settings": "설정",
+        "appInfo": "앱 정보",
+        "testCompletion": "테스트 완료"
+      },
+      "deleteChatTitle": "채팅 삭제",
+      "deleteChatMessage": "이 채팅을 삭제하겠습니까?",
+      "dateGroups": {
+        "today": "오늘",
+        "yesterday": "어제",
+        "thisWeek": "이번 주",
+        "lastWeek": "지난 주",
+        "twoWeeksAgo": "2주 전",
+        "threeWeeksAgo": "3주 전",
+        "fourWeeksAgo": "4주 전",
+        "lastMonth": "지난 달",
+        "older": "오래된 항목"
+      },
+      "select": "선택",
+      "nSelected": "{{count}}개 선택됨",
+      "selectAll": "전체 선택",
+      "deselectAll": "전체 선택 해제",
+      "exportCount": "내보내기 ({{count}})",
+      "deleteCount": "삭제 ({{count}})",
+      "bulkDeleteTitle": "채팅 세션 삭제",
+      "bulkDeleteMessage": "{{count}}개의 채팅 세션을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+      "bulkDeleteError": "채팅 세션 삭제에 실패했습니다. 다시 시도해 주세요.",
+      "exportError": "채팅 세션 내보내기에 실패했습니다. 다시 시도해 주세요.",
+      "bulkExportError": "채팅 세션 내보내기에 실패했습니다. 다시 시도해 주세요."
+    },
+    "usageStats": {
+      "tooltip": {
+        "title": "메모리 사용량",
+        "used": "사용 중: ",
+        "total": "총 용량: ",
+        "usage": "점유율: "
+      },
+      "byteSizes": [
+        "바이트",
+        "KB",
+        "MB",
+        "GB"
+      ]
+    },
+    "exportUtils": {
+      "fileSaved": "파일 저장됨",
+      "fileSavedMessage": "{{filename}} 파일이 다운로드 폴더에 저장되었습니다.",
+      "share": "공유",
+      "ok": "확인",
+      "shareError": "공유 실패",
+      "shareErrorMessage": "파일을 공유할 수 없습니다. 다시 시도해 주세요.",
+      "saveError": "다운로드 폴더에 저장하는데 오류 발생",
+      "saveOptions": "저장 옵션",
+      "saveOptionsMessage": "다운로드 폴더에 직접 저장할 수 없습니다. 대신 파일을 공유하시겠습니까?",
+      "cancel": "취소",
+      "shareContentErrorMessage": "콘텐츠 공유에 실패했습니다. 다시 시도해 주세요.",
+      "exportError": "내보내기 오류",
+      "exportErrorMessage": "파일을 내보내는 중 오류가 발생했습니다. 다시 시도해 주세요.",
+      "permissionRequired": "저장공간 접근 권한 필요",
+      "permissionMessage": "내보낼 파일을 다운로드 폴더에 저장하기 위해 권한 허용이 필요합니다.",
+      "permissionDenied": "권한 거부됨",
+      "permissionDeniedMessage": "저장공간 접근 권한이 없으면 내보내기 기능을 사용할 수 없습니다.",
+      "continue": "계속"
+    },
+    "thinkingBubble": {
+      "reasoning": "추론 중"
+    },
+    "contentReportSheet": {
+      "title": "콘텐츠 신고",
+      "privacyNote": "메시지 내용이나 대화 세부 정보는 전송되지 않습니다. 발생한 구체적인 문제를 설명해 주세요.",
+      "categoryLabel": "신고 유형",
+      "selectCategory": "유형을 선택하세요",
+      "categories": {
+        "hate": "혐오 표현",
+        "sexual": "성적 콘텐츠",
+        "selfHarm": "자해 및 자살",
+        "violence": "폭력적인 콘텐츠",
+        "other": "기타"
+      },
+      "descriptionLabel": "설명",
+      "descriptionPlaceholder": "이 콘텐츠에서 발견된 문제를 설명해 주세요...",
+      "includeModelInfo": "모델 정보 포함",
+      "includeModelInfoDescription": "조사에 도움이 되도록 모델 이름과 식별자를 포함해 주세요.",
+      "noActiveModelNote": "현재 활성화된 모델이 없습니다.",
+      "submit": "리포트 제출",
+      "validation": {
+        "title": "정보 누락됨",
+        "message": "카테고리를 선택하고 설명을 입력해 주세요."
+      },
+      "success": {
+        "title": "리포트 제출됨",
+        "message": "제보해 주셔서 감사합니다. 검토 후 적절한 조치를 취하겠습니다."
+      },
+      "error": {
+        "title": "리포트 제출 실패",
+        "message": "리포트 제출에 실패했습니다. 다시 시도해 주세요."
+      }
+    },
+    "modelErrorReportSheet": {
+      "title": "모델 로드 문제 신고",
+      "privacyNote": "오류 상세 내용을 공유하여 PocketPal의 성능 개선을 도와주세요. 공유되는 항목을 아래에서 확인하고, 포함하고 싶지 않은 항목은 선택 해제할 수 있습니다.",
+      "errorMessage": "오류 메시지",
+      "modelInfo": "모델 정보",
+      "modelName": "이름",
+      "modelSource": "출처",
+      "modelSize": "크기",
+      "contextParams": "컨텍스트 파라미터",
+      "deviceInfo": "기기 정보",
+      "deviceModel": "기기 모델",
+      "osVersion": "OS",
+      "memoryInfo": "메모리 정보",
+      "cpuArchitecture": "CPU 정보",
+      "isEmulator": "에뮬레이터",
+      "additionalInfoLabel": "추가 정보 (선택 사항)",
+      "additionalInfoPlaceholder": "문제 해결에 도움이 될 수 있는 상세 내용을 입력해 주세요.",
+      "submit": "리포트 제출",
+      "success": {
+        "title": "리포트 제출됨",
+        "message": "PocketPal의 개선을 도와주셔서 감사합니다. 보내주신 리포트는 문제를 해결하는 데 큰 도움이 됩니다."
+      },
+      "error": {
+        "title": "리포트 제출 실패",
+        "message": "리포트 제출에 실패했습니다. 나중에 다시 시도해 주세요."
+      }
+    },
+    "palGenerationSettingsSheet": {
+      "title": "생성 설정 - {{palName}}",
+      "invalidValues": "유효하지 않은 값",
+      "invalidNumericValuesMessage": "유효한 숫자를 입력해 주세요",
+      "pleaseCorrect": "아래 내용을 수정해 주세요:",
+      "ok": "확인",
+      "error": "오류",
+      "failedToSave": "Pal 설정 저장에 실패했습니다.",
+      "resetToGlobal": "전체 기본값으로 재설정",
+      "resetToSystem": "시스템 기본값으로 초기화",
+      "clearPalSettings": "Pal 설정 지우기",
+      "customSettingsFor": "{{palName}} 개별 설정",
+      "inheritedSettingsFor": "{{palName}}에 적용된 기본 설정"
+    },
+    "downloadErrorDialog": {
+      "downloadFailedTitle": "다운로드 실패",
+      "downloadFailedMessage": "모델 다운로드 실패: {{message}}",
+      "unauthorizedTitle": "인증 실패",
+      "unauthorizedMessage": "Hugging Face 토큰이 유효하지 않거나 만료되었습니다. 설정에서 토큰을 업데이트해 주세요.",
+      "forbiddenTitle": "접근 거부됨",
+      "forbiddenMessage": "이 모델에 접근할 권한이 없습니다. 아래 항목들을 확인해 보시기 바랍니다:",
+      "forbiddenSteps": [
+        "사용 중인 토큰에 \"읽기\" 권한이 있는지 확인",
+        "모델 접근 권한을 요청하고 승인받았는지 확인",
+        "모델 소유자가 접근 요청을 승인했습니다"
+      ],
+      "getTokenTitle": "Hugging Face 토큰 받기",
+      "getTokenMessage": "이 모델을 다운로드하려면 Hugging Face 토큰이 필요합니다.",
+      "getTokenSteps": [
+        "huggingface.co로 이동하여 로그인하세요",
+        "설정 > 액세스 토큰으로 이동하세요",
+        "\"읽기\" 권한이 있는 새 토큰을 생성하세요",
+        "토큰을 복사하여 토큰 입력란에 붙여넣으세요"
+      ],
+      "tokenDisabledTitle": "토큰 비활성화됨",
+      "tokenDisabledMessage": "Hugging Face 토큰이 설정되어 있지만, 현재 비활성 상태입니다. 이 모델을 다운로드하려면 토큰을 활성화하세요.",
+      "enableAndRetry": "활성화 및 재시도",
+      "goToSettings": "설정으로 이동",
+      "tryAgain": "다시 시도",
+      "viewOnHuggingFace": "HF에서 모델 보기 ↗"
+    },
+    "hfTokenSheet": {
+      "title": "Hugging Face 토큰",
+      "description": "접근 권한이 필요한 모델을 이용하기 위해 설정해야 합니다.",
+      "inputLabel": "개인 액세스 토큰",
+      "inputPlaceholder": "토큰을 여기에 입력하세요",
+      "save": "토큰 저장",
+      "saved": "토큰이 성공적으로 저장되었습니다.",
+      "reset": "토큰 초기화",
+      "resetSuccess": "토큰이 성공적으로 제거되었습니다.",
+      "instructions": "토큰 발급 방법:",
+      "instructionsSteps": [
+        "huggingface.co로 이동하여 로그인하세요",
+        "설정 > 액세스 토큰으로 이동하세요",
+        "\"읽기\" 권한이 있는 새 토큰을 생성하세요",
+        "토큰을 복사하여 토큰 입력란에 붙여넣으세요"
+      ],
+      "getTokenLink": "huggingface.co에서 토큰 발급받기 ↗",
+      "error": {
+        "saving": "토큰 저장 오류",
+        "missing": "Hugging Face 토큰을 입력해 주세요",
+        "invalid": "유효하지 않거나 만료된 토큰입니다",
+        "gatedModelAccess": "이 모델은 승인이 필요하며, 현재 접근이 거부되었습니다."
+      },
+      "gatedModelIndicator": "토큰 필요",
+      "tokenRequired": "이 모델을 사용하려면 Hugging Face 액세스 토큰이 필요합니다.",
+      "searchErrorHint": "Hugging Face API 토큰이 유효하지 않거나 만료되었습니다. 검색을 계속하려면 설정에서 토큰을 제거하거나 토큰 인증을 비활성화하세요.",
+      "disableAndRetry": "토큰 비활성화 및 다시 시도"
+    },
+    "palSheet": {
+      "title": {
+        "edit": "Pal 수정",
+        "newPal": "새 Pal 만들기",
+        "newVideoPal": "새 Video Pal 만들기"
+      },
+      "description": "설명",
+      "descriptionPlaceholder": "Pal에 대한 간단한 설명을 입력해 주세요",
+      "parameters": "파라미터",
+      "generationSettings": "생성 설정",
+      "configureGenerationSettings": "생성 설정 구성",
+      "validation": {
+        "nameRequired": "이름을 입력해 주세요",
+        "generatingPromptRequired": "AI 프롬프트를 사용한다면 답변 생성 프롬프트를 입력해 주세요",
+        "promptModelRequired": "AI 프롬프트를 사용한다면 프롬프트 생성을 위한 모델를 선택해 주세요"
+      },
+      "talents": "능력",
+      "talentNames": {
+        "render_html": "HTML 미리보기",
+        "calculate": "수학 표현식",
+        "datetime": "날짜와 시간",
+        "web_search": "웹 검색",
+        "read_url": "웹 페이지 읽기"
+      },
+      "talentDescriptions": {
+        "render_html": "채팅 내 HTML 문서 인라인 렌더링",
+        "calculate": "수학 표현식 계산",
+        "datetime": "현재 날짜와 시간 가져오기",
+        "web_search": "최신 정보를 인터넷에서 검색 (설정에서 API 키 필요)",
+        "read_url": "웹 페이지의 전체 내용 읽기 (설정에서 API 키 필요)"
+      },
+      "greeting": {
+        "removePromptLabel": "프롬프트 제거",
+        "sectionLabel": "인사말",
+        "textLabel": "환영 메시지",
+        "textPlaceholder": "채팅 시작 전 이 Pal이 뭐라고 말해야 할까요?",
+        "suggestedPromptsLabel": "제안된 프롬프트",
+        "addPromptButton": "프롬프트 추가",
+        "promptPlaceholder": "칩에 대한 짧은 프롬프트"
+      }
+    },
+    "lookiePalSheet": {
+      "title": {
+        "create": "Lookie Pal 만들기",
+        "edit": "Lookie Pal 수정"
+      },
+      "palName": "Pal 이름",
+      "palNamePlaceholder": "Lookie Pal의 이름을 입력하세요",
+      "visionModel": "시각 모델",
+      "visionModelPlaceholder": "시각 모델을 선택하세요",
+      "requiredModelsSection": "필요한 모델",
+      "captureInterval": "촬영 간격",
+      "captureIntervalHelper": "자동 촬영이 진행되는 시간(밀리세컨드 단위) 간격입니다.",
+      "create": "만들기"
+    },
+    "chatView": {
+      "menuItems": {
+        "copy": "복사",
+        "regenerate": "다시 생성",
+        "regenerateWith": "다른 모델로 다시 생성",
+        "edit": "수정",
+        "reportContent": "콘텐츠 리포트"
+      }
+    },
+    "palHeaderRight": {
+      "exportAllPals": "모든 Pal 내보내기",
+      "importPals": "Pal 가져오기",
+      "importSuccess": "{{count}}개의 Pal을 성공적으로 가져왔습니다.",
+      "importError": "Pal을 가져오지 못했습니다. 파일 형식을 확인해 주세요."
+    },
+    "bubble": {
+      "msPerToken": "{{value}}ms/토큰",
+      "tokensPerSec": "{{value}} 토큰/초",
+      "ttft": "{{value}}ms TTFT",
+      "interrupted": "중단됨",
+      "truncated": "응답 중단됨 — 컨텍스트가 가득 참"
+    },
+    "pendingIndicator": {
+      "preparingTool": "도구 준비 중",
+      "buildingPage": "페이지 생성 중",
+      "calculating": "계산 중",
+      "lookingUpTime": "시간 확인 중",
+      "stopping": "중단 중…"
+    },
+    "toolMetrics": {
+      "tokens": "{{count}} 토큰",
+      "elapsed": "{{seconds}}초"
+    }
+  },
+  "feedback": {
+    "title": "피드백 보내기",
+    "description": "여러분의 소중한 의견을 들려주세요! PocketPal AI가 어떻게 도움이 되고 있는지, 그리고 더 유용한 앱이 되려면 무엇을 개선하면 좋을지 알려주세요.",
+    "shareThoughtsButton": "의견 공유하기",
+    "useCase": {
+      "label": "PocketPal AI를 어떤 용도로 사용하시나요?",
+      "placeholder": "예: 요약, 역할극 등"
+    },
+    "featureRequests": {
+      "label": "기능 요청",
+      "placeholder": "어떤 기능이 추가되었으면 좋겠나요?"
+    },
+    "generalFeedback": {
+      "placeholder": "그 외에 전달하고 싶은 의견을 공유해 주세요.",
+      "label": "일반 피드백"
+    },
+    "usageFrequency": {
+      "label": "PocketPal AI를 얼마나 자주 사용하시나요? (선택 사항)",
+      "options": {
+        "daily": "매일",
+        "weekly": "매주",
+        "monthly": "매달",
+        "rarely": "거의 없음"
+      }
+    },
+    "success": "의견을 보내주셔서 감사합니다!",
+    "email": {
+      "label": "이메일 (선택 사항)",
+      "placeholder": "이메일 주소"
+    },
+    "submit": "피드백 제출",
+    "validation": {
+      "required": "피드백을 입력해 주세요"
+    },
+    "error": {
+      "general": "피드백 전송이 실패했습니다. 다시 시도해 주세요."
+    }
+  },
+  "generation": {
+    "modelNotInitialized": "모델 컨텍스트가 초기화되지 않았습니다.",
+    "failedToGenerate": "답변 생성 실패"
+  },
+  "memory": {
+    "shortWarning": "메모리 부족 주의",
+    "multimodalWarning": "이 기기는 멀티모달 모델을 실행하기 위한 사양이 부족할 수 있습니다.",
+    "memoryTight": "메모리 부족",
+    "lowMemory": "메모리 낮음",
+    "memoryDetailMessage": "이 모델은 약 {{needed}}가 필요하지만, 사용 가능한 용량은 약 {{available}}로 추정됩니다. 앱을 사용할수록 추정치는 더 정확해집니다.",
+    "estimatedMemory": "예상 메모리 사용량: 약 {{size}}",
+    "alerts": {
+      "memoryWarningTitle": "메모리 경고",
+      "memoryWarningMessage": "메모리 용량을 초과하여 오류가 발생할 가능성이 있습니다. 계속해서 모델을 불러오시겠습니까?",
+      "multimodalWarningTitle": "기기 성능 저하 주의",
+      "multimodalWarningMessage": "이 기기는 멀티모달 모델을 실행하기 위한 리소스가 부족할 수 있습니다. 로딩 시 시스템이 불안정해질 수 있습니다. 계속하시겠습니까?",
+      "combinedWarningTitle": "성능 경고",
+      "combinedWarningMessage": "이 모델은 사용 가능한 메모리를 초과할 수 있으며, 이 기기의 리소스가 멀티모달 모델을 실행하기에 부족할 수 있습니다. 로드 시 시스템이 불안정해질 수 있습니다. 계속하시겠습니까?",
+      "cancel": "취소",
+      "continue": "계속"
+    }
+  },
+  "models": {
+    "fileManagement": {
+      "fileAlreadyExists": "이미 존재하는 파일입니다",
+      "fileAlreadyExistsMessage": "이름이 같은 파일이 이미 있습니다. 수행할 작업을 선택해 주세요.",
+      "replace": "덮어쓰기",
+      "keepBoth": "둘 다 유지",
+      "copyFailed": "모델 파일 복사 실패",
+      "copyingModel": "모델 파일 복사 중..."
+    },
+    "labels": {
+      "localModel": "로컬",
+      "hfModel": "HF",
+      "availableToDownload": "다운로드 가능",
+      "useAddButtonForMore": "+ 버튼을 눌러 더 많은 모델을 찾아보세요",
+      "unknownGroup": "알 수 없음",
+      "availableToUse": "사용 가능"
+    },
+    "buttons": {
+      "addFromHuggingFace": "Hugging Face에서 가져오기",
+      "addLocalModel": "내 기기에서 모델 추가",
+      "reset": "재설정"
+    },
+    "modelsResetDialog": {
+      "confirmReset": "재설정 확인",
+      "proceedWithReset": "재설정 진행하기"
+    },
+    "modelsHeaderRight": {
+      "menuTitleHf": "Hugging Face 모델",
+      "menuTitleDownloaded": "다운로드된 모델",
+      "menuTitleGrouped": "모델 유형으로 그룹화",
+      "menuTitleReset": "모델 목록 초기화"
+    },
+    "chatTemplate": {
+      "label": "기본 채팅 템플릿:"
+    },
+    "details": {
+      "title": "사용 가능한 GGUF 파일"
+    },
+    "modelFile": {
+      "alerts": {
+        "cannotRemoveTitle": "삭제할 수 없음",
+        "modelPreset": "기본 모델로 설정되어 있습니다.",
+        "downloadedFirst": "모델이 이미 다운로드되어 있습니다. 먼저 파일을 삭제해 주세요.",
+        "removeTitle": "모델 삭제",
+        "removeMessage": "이 모델을 목록에서 삭제하겠습니까?",
+        "removeError": "모델 삭제에 실패했습니다.",
+        "alreadyDownloadedTitle": "모델 이미 다운로드됨",
+        "alreadyDownloadedMessage": "이미 다운로드된 모델입니다.",
+        "deleteTitle": "모델 삭제하기",
+        "deleteMessage": "이 다운로드된 모델을 삭제하겠습니까?"
+      },
+      "buttons": {
+        "remove": "삭제"
+      },
+      "warnings": {
+        "storage": {
+          "message": "저장 공간이 부족합니다.",
+          "shortMessage": "저장 공간 부족"
+        },
+        "memory": {
+          "message": "모델 크기가 기기의 전체 메모리와 비슷하거나 이를 초과합니다. 이는 예기치 않은 동작을 발생시킬 수 있습니다."
+        },
+        "legacy": {
+          "message": "구버전 양자화 형식 - 모델이 실행되지 않을 수 있습니다.",
+          "shortMessage": "구버전 양자화"
+        },
+        "multiple": "{{count}} 개의 경고"
+      },
+      "labels": {
+        "downloadSpeed": "{{speed}}"
+      }
+    },
+    "search": {
+      "noResults": "모델을 찾을 수 없습니다",
+      "loadingMore": "더 불러오는 중...",
+      "searchPlaceholder": "Hugging Face 모델 검색",
+      "modelUpdatedLong": "{{time}} 전 업데이트됨",
+      "modelUpdatedShort": "{{time}} 전",
+      "modelUpdatedJustNowLong": "방금 업데이트됨",
+      "modelUpdatedJustNowShort": "방금",
+      "errorOccurred": "모델을 로드할 수 없습니다. 다시 시도해 주세요.",
+      "filters": {
+        "author": "제작자",
+        "authorPlaceholder": "제작자로 필터링...",
+        "sortBy": "정렬 기준:",
+        "clearFilters": "필터 초기화",
+        "showFilters": "필터 보기",
+        "hideFilters": "필터 숨기기",
+        "sortRelevance": "관련성",
+        "sortDownloads": "다운로드 수",
+        "sortRecent": "최근 업데이트",
+        "sortLikes": "많은 추천"
+      }
+    },
+    "modelCard": {
+      "alerts": {
+        "deleteTitle": "모델 삭제",
+        "deleteMessage": "이 다운로드된 모델을 삭제하겠습니까?",
+        "removeTitle": "모델 삭제하기",
+        "removeMessage": "이 모델을 목록에서 삭제하겠습니까?"
+      },
+      "buttons": {
+        "settings": "설정",
+        "download": "다운로드",
+        "remove": "제거",
+        "load": "로드하기",
+        "offload": "오프로드하기"
+      },
+      "labels": {
+        "skills": "주요 기능: ",
+        "vision": "시각",
+        "capabilities": "기능.",
+        "modelName": "모델 이름",
+        "contextLength": "컨텍스트 길이",
+        "architecture": "아키텍처",
+        "author": "제작자",
+        "requiresProjectionModel": "프로젝션 모델 필요",
+        "downloadProjectionModel": "프로젝션 모델 다운로드",
+        "viewModelCardOnHuggingFace": "Hugging Face에서 모델 카드 보기",
+        "visionSupported": "지원함",
+        "visionNotSupported": "지원 안 함",
+        "visionUnknown": "알 수 없음"
+      },
+      "accessibility": {
+        "expandDetails": "세부정보 펼치기",
+        "collapseDetails": "세부정보 접기",
+        "memoryWarning": "메모리 경고",
+        "integrityWarning": "무결성 경고",
+        "downloadProgress": "다운로드 진행률",
+        "loadingIndicator": "로딩 중",
+        "loadButton": "모델 로드",
+        "offloadButton": "모델 오프로드",
+        "downloadButton": "모델 다운로드",
+        "settingsButton": "모델 설정",
+        "deleteButton": "모델 삭제",
+        "removeButton": "모델 제거",
+        "expandDetailsButton": "모델 세부정보 펼치기",
+        "memoryWarningButton": "메모리 경고 세부정보 보기",
+        "integrityWarningButton": "무결성 경고 세부정보 보기",
+        "memoryWarningSnackbar": "메모리 경고 알림"
+      }
+    },
+    "modelSettings": {
+      "template": {
+        "label": "대화 형식 템플릿:",
+        "editButton": "수정",
+        "dialogTitle": "대화 형식 템플릿 수정",
+        "note1": "참고 사항: 템플릿을 변경하면 BOS, EOS 및 시스템 프롬프트가 변경될 수 있습니다.",
+        "note2": "Nunjucks을(를) 사용합니다. 모델의 기본 템플릿을 사용하려면 비워 두세요.",
+        "placeholder": "여기에 채팅 템플릿을 입력하세요...",
+        "closeButton": "닫기"
+      },
+      "stopWords": {
+        "label": "생성 중단 단어",
+        "placeholder": "새 생성 중단 단어 추가"
+      },
+      "tokenSettings": {
+        "bos": "BOS",
+        "eos": "EOS",
+        "addGenerationPrompt": "생성 프롬프트 추가",
+        "bosTokenPlaceholder": "BOS 토큰",
+        "eosTokenPlaceholder": "EOS 토큰",
+        "systemPrompt": "시스템 프롬프트"
+      }
+    },
+    "modelDescription": {
+      "size": "크기: ",
+      "parameters": "파라미터: ",
+      "separator": " | ",
+      "notAvailable": "해당 없음"
+    },
+    "modelCapabilities": {
+      "questionAnswering": "질의응답",
+      "summarization": "요약",
+      "reasoning": "추론",
+      "roleplay": "역할극",
+      "instructions": "지시 이행",
+      "code": "코드 생성",
+      "math": "수학 문제 풀이",
+      "multilingual": "다국어",
+      "rewriting": "재작성",
+      "creativity": "창의적인 작문",
+      "vision": "시각"
+    },
+    "vision": "시각",
+    "mmproj": "시각 프로젝터",
+    "multimodal": {
+      "settings": "멀티모달 설정",
+      "projectionModels": "프로젝션 모델",
+      "noCompatibleModels": "호환되는 프로젝션 모델이 없음",
+      "noProjectionModels": "프로젝션 모델이 없음",
+      "selected": "선택됨",
+      "select": "선택",
+      "download": "다운로드",
+      "projectionNeededTitle": "프로젝션 모델이 필요합니다",
+      "projectionNeededMessage": "이 모델은 멀티모달 기능을 사용하기 위해 프로젝션 모델이 필요합니다.",
+      "projectionMissingWarning": "프로젝션 모델을 찾을 수 없음",
+      "projectionMissingShort": "프로젝션 누락",
+      "reloadModelTitle": "모델 다시 로드",
+      "reloadModelMessage": "새 프로젝션 모델을 적용하려면 모델을 다시 불러와야 합니다. 지금 다시 로드하시겠습니까?",
+      "reload": "다시 로드",
+      "deleteProjectionTitle": "프로젝션 모델 삭제",
+      "deleteProjectionMessage": "이 프로젝션 모델을 삭제하시겠습니까?",
+      "cannotDeleteTitle": "삭제할 수 없음",
+      "visionControls": {
+        "enableVision": "시각 기능 활성화",
+        "disableVision": "시각 기능 비활성화",
+        "visionEnabled": "시각 활성화됨",
+        "visionDisabled": "시각 비활성화됨",
+        "textOnlyMode": "텍스트 전용",
+        "visionMode": "시각 활성화됨",
+        "downloadWithVision": "시각 기능 포함 다운로드",
+        "downloadTextOnly": "텍스트만 다운로드",
+        "visionToggleDescription": "이미지 처리 기능 활성화",
+        "projectionModelSize": "+{{size}} 프로젝션 모델",
+        "visionModeDescription": "이미지 및 텍스트 처리",
+        "textOnlyModeDescription": "텍스트만 처리",
+        "includesVisionCapability": "시각 기능 포함",
+        "requiresProjectionModel": "호환되는 프로젝션 모델을 먼저 다운로드하세요"
+      },
+      "cannotDeleteActive": "이 프로젝션 모델이 현재 활성화되어 있습니다.",
+      "cannotDeleteInUse": "이 프로젝션 모델은 다운로드된 LLM 모델에서 사용됩니다:",
+      "dependentModels": "종속된 모델:",
+      "visionWillBeDisabled": "이 모델들의 시각 기능이 비활성화됩니다."
+    },
+    "hubRun": {
+      "title": "모델 다운로드",
+      "resolving": "모델 정보 불러오는 중…",
+      "cancel": "취소",
+      "retry": "다시 시도",
+      "invalidLinkTitle": "유효하지 않은 링크",
+      "invalidLinkMessage": "이 Hugging Face 링크에 모델이나 파일이 없거나 유효하지 않습니다.",
+      "resolveError": "모델 정보를 불러올 수 없습니다. 연결 상태를 확인하고 다시 시도해 주세요."
+    }
+  },
+  "screenTitles": {
+    "chat": "채팅",
+    "models": "모델",
+    "pals": "Pals (실험 기능)",
+    "benchmark": "벤치마크",
+    "settings": "설정",
+    "appInfo": "앱 정보",
+    "testCompletion": "테스트 완료"
+  },
+  "settings": {
+    "modelInitializationSettings": "모델 초기화 설정",
+    "metal": "Metal",
+    "metalDescription": "Apple의 하드웨어 가속 API입니다.",
+    "metalRequiresNewerIOS": "Metal 가속을 사용하려면 iOS 18 이상이 필요합니다. 이 기능을 사용하려면 기기를 업데이트해 주세요.",
+    "layersOnGPU": "GPU 레이어 수: {{gpuLayers}}",
+    "contextSize": "컨텍스트 크기",
+    "contextSizePlaceholder": "컨텍스트 크기 입력 (최소 {{minContextSize}})",
+    "modelReloadNotice": "변경 사항을 적용하려면 모델을 다시 로드해야 합니다.",
+    "advancedSettings": "고급 설정",
+    "batchSize": "배치 크기",
+    "batchSizeDescription": "배치 크기: {{batchSize}}{{effectiveBatch}}",
+    "effectiveLabel": "유효",
+    "invalidContextSizeError": "유효한 숫자를 입력해 주세요 (minimum {{minContextSize}})",
+    "physicalBatchSize": "하드웨어 배치 크기",
+    "physicalBatchSizeDescription": "하드웨어 배치 크기: {{physicalBatchSize}}{{effectivePhysicalBatch}}",
+    "cpuThreads": "CPU 스레드",
+    "cpuThreadsDescription": "{{maxThreads}}개의 스레드 중 {{threads}}개를 사용하고 있음",
+    "flashAttention": "Flash Attention",
+    "flashAttentionDescription": "처리 속도 향상을 위해 Flash Attention 활성화",
+    "keyCacheType": "키 캐시 유형",
+    "keyCacheTypeDescription": "키 계산을 위한 캐시 유형을 선택하세요",
+    "keyCacheTypeDisabledDescription": "캐시 유형을 변경하려면 Flash Attention을 활성화하세요",
+    "valueCacheType": "값 캐시 유형",
+    "valueCacheTypeDescription": "값 계산을 위한 캐시 유형을 선택하세요",
+    "valueCacheTypeDisabledDescription": "캐시 유형을 변경하려면 Flash Attention을 활성화하세요",
+    "modelLoadingSettings": "모델 로딩 설정",
+    "autoOffloadLoad": "자동 오프로드/로드",
+    "autoOffloadLoadDescription": "앱이 백그라운드 상태일 때 모델을 메모리에서 오프로드합니다.",
+    "autoNavigateToChat": "채팅 화면으로 자동 이동",
+    "autoNavigateToChatDescription": "로딩 시작 시 채팅 화면으로 이동합니다.",
+    "appSettings": "앱 설정",
+    "language": "언어",
+    "darkMode": "다크 모드",
+    "displayMemoryUsage": "메모리 사용량 표시",
+    "displayMemoryUsageDescription": "채팅 화면에서 메모리 사용량을 표시합니다.",
+    "openCL": "OpenCL (실험적 기능)",
+    "openCLDescription": "Adreno GPU 가속을 지원합니다. 프롬프트 처리 속도는 빨라지지만, 생성 속도는 항상 더 빠르지 않을 수 있습니다.",
+    "openCLNotAvailable": "이 기기에서는 OpenCL을 사용할 수 없습니다. i8mm 및 dotprod CPU 기능을 갖춘 Adreno GPU가 필요합니다.",
+    "openCLMissingCPUFeatures": "OpenCL은 i8mm 및 dotprod CPU 기능이 필요하지만, 현재 기기에서는 지원되지 않습니다.",
+    "openCLQuantizationNote": "참고: 순수 Q4_0 양자화 모델은 OpenCL에서 최상의 성능을 발휘합니다.",
+    "openCLDocsLink": "자세한 내용은 llama.cpp OpenCL 문서를 참고하세요.",
+    "deviceSelection": "기기 선택",
+    "deviceSelectionIOS": "기기 (Metal)",
+    "deviceSelectionIOSDescription": "Metal GPU 또는 CPU 전용 모드 선택",
+    "deviceSelectionAndroidDescription": "연산 장치 선택 (CPU, GPU 또는 Hexagon NPU)",
+    "cpuOnlyNoAccelerators": "CPU 전용 - 하드웨어 가속기가 감지되지 않았습니다.",
+    "imageMaxTokens": "이미지 토큰 한도",
+    "imageMaxTokensDescription": "이미지 처리 최대 토큰: {{tokens}}{{effectiveTokens}} (낮을수록 빠르지만, 세부 묘사는 줄어듭니다)",
+    "flashAttentionIOSDescription": "메모리 효율적 어텐션 (Metal에서 자동 활성화됨)",
+    "flashAttentionAndroidDescription": "OpenCL 상태 저장/불러오기를 사용하려면 비활성화해야 합니다.",
+    "flashAttentionAuto": "자동",
+    "flashAttentionOn": "사용",
+    "flashAttentionOff": "사용 안 함",
+    "memorySettings": "메모리 설정",
+    "useMlock": "메모리 고정 활성화",
+    "useMlockDescription": "모델 데이터를 가상 메모리로 옮기거나 압축하지 않고, RAM 메모리에 고정하여 성능을 유지합니다.",
+    "useMmap": "메모리 매핑",
+    "useMmapDescription": "모델을 더 빠르게 불러오기 위해 메모리 맵 파일(mmap)을 사용합니다.",
+    "useMmapTrue": "활성화됨",
+    "useMmapFalse": "비활성화됨",
+    "useMmapTrueDescription": "빠른 로딩을 위해 항상 메모리 매핑을 사용합니다.",
+    "useMmapFalseDescription": "메모리 사용량이 두 배로 늘어나는 것을 방지하기 위해, 가중치 리패킹 활성화 시 이 기능은 비활성화를 권장합니다.",
+    "exportOptions": "내보내기 옵션",
+    "exportLegacyChats": "이전 채팅 내보내기",
+    "exportLegacyChatsDescription": "마이그레이션에 실패했거나 이전 채팅 세션을 복구해야 하는 경우 이 기능을 사용하세요.",
+    "exportButton": "내보내기",
+    "importChats": "채팅 세션 가져오기",
+    "importChatsDescription": "기존에 내보낸 JSON 파일을 선택하여 채팅 세션을 불러옵니다.",
+    "importButton": "가져오기",
+    "importSuccess": "채팅 세션 {{count}}개를 성공적으로 가져왔습니다.",
+    "importError": "채팅 세션을 가져오지 못했습니다. 파일 형식을 확인해 주세요.",
+    "apiSettingsTitle": "API 설정",
+    "huggingFaceTokenLabel": "Hugging Face 토큰",
+    "tokenIsSetDescription": "토큰이 설정되었습니다. 승인이 필요한 모델에 액세스하는 데 필요합니다.",
+    "setTokenDescription": "Hugging Face에서 승인이 필요한 모델을 사용하려면 액세스 토큰을 입력해야 합니다.",
+    "setTokenButton": "토큰 설정",
+    "useHfTokenLabel": "HF 토큰 사용",
+    "useHfTokenDescription": "API 요청 시 토큰을 사용하려면 활성화하세요. 토큰으로 인해 인증 문제가 발생하는 경우 비활성화하세요.",
+    "cacheStorageTitle": "캐시 및 저장공간",
+    "clearPalCaches": "단축어 캐시 삭제",
+    "clearPalCachesDescription": "단축어 실행 속도를 높이는 데 사용된 캐시 데이터를 삭제합니다. 이 작업은 Pals 또는 채팅 기록에는 영향을 주지 않습니다.",
+    "clearCachesButton": "캐시 삭제",
+    "clearCachesConfirmTitle": "단축어 캐시를 삭제하시겠습니까?",
+    "clearCachesConfirmMessage": "모든 캐시된 세션 데이터({{fileCount}}개 파일, {{size}})를 삭제합니다. 삭제 후 처음 실행할 때 단축어가 느려질 수 있습니다. Pals 또는 채팅 기록에는 영향을 주지 않습니다.",
+    "clearCachesSuccess": "캐시 파일 {{count}}개를 성공적으로 삭제했습니다.",
+    "clearCachesError": "캐시를 삭제하지 못했습니다. 다시 시도해 주세요.",
+    "noCachesToClear": "삭제할 캐시가 없습니다.",
+    "weightRepacking": "가중치 리패킹 활성화",
+    "weightRepackingDescription": "메모리 매핑을 비활성화할 경우, 메모리 오버헤드를 최소화하면서 더 빠른 프롬프트 처리가 가능합니다. 토큰 생성 속도에는 영향을 주지 않습니다.",
+    "serverName": "서버 이름",
+    "serverUrl": "서버 URL",
+    "serverUrlPlaceholder": "예시: http://192.168.1.100:1234",
+    "apiKey": "API 키",
+    "apiKeyPlaceholder": "선택 사항 - OpenAI/Groq 사용 시 필수",
+    "apiKeyDescription": "기기에 안전하게 보관됩니다.",
+    "remoteModel": "원격",
+    "remotePrivacyNotice": "원격 서버로 보낸 메시지는 기기 외부로 전송됩니다. 반드시 신뢰할 수 있는 서버에만 연결하십시오.",
+    "remoteIndicator": "원격",
+    "serverUrlRequired": "서버 URL을 입력해 주세요",
+    "serverUrlInvalid": "유효하지 않은 URL 형식",
+    "serverUrlHttpWarning": "iOS 정책에 따라 외부 서버 연결 시 HTTPS가 필수입니다. https:// 주소 또는 로컬 네트워크 주소를 사용해 주십시오.",
+    "addRemoteModel": "원격 모델 추가",
+    "yourServers": "나의 서버",
+    "orConnectNewServer": "또는 새로운 서버에 연결하기",
+    "selectModel": "모델 선택",
+    "addModel": "모델 추가",
+    "connected": "연결됨",
+    "connectionFailed": "연결 실패: {{error}}",
+    "connecting": "연결 중...",
+    "noModelsAvailable": "이 서버에서 사용할 수 있는 모델이 없습니다.",
+    "alreadyAdded": "이미 추가됨",
+    "connectedServers": "연결된 서버",
+    "modelsCount": "{{count}}개의 모델",
+    "serverDetails": "서버 정보",
+    "modelsUsingServer": "이 서버를 사용하는 모델:",
+    "saveChanges": "변경 사항 저장",
+    "removeServer": "서버 제거",
+    "removeServerMessage": "{{serverName}} 및 해당 서버의 모델 {{count}}개를 삭제하시겠습니까?",
+    "removeRemoteModel": "{{modelName}} ({{serverName}}) 모델을 삭제하시겠습니까?",
+    "retryConnection": "재시도",
+    "enterUrlManually": "URL 수동 입력",
+    "manageServers": "서버 관리",
+    "ttsAvailability": "텍스트 음성 변환 (TTS)",
+    "ttsAvailabilityDescription": "어시스턴트의 답변을 음성으로 출력합니다.",
+    "ttsAvailabilityLowMemoryWarning": "귀하의 기기 메모리가 낮습니다 — 신뢰성 있게 작동하지 않을 수 있습니다.",
+    "requestTimeout": "요청 제한 시간(초)",
+    "requestTimeoutHelp": "서버 응답을 기다리는 최대 시간입니다. 비워 두면 기본값이 적용됩니다.",
+    "requestTimeoutPlaceholder": "선택 사항 - 비워 두면 기본값 적용",
+    "serverType": "서버 유형",
+    "serverTypeHelp": "자동으로 감지된 설정입니다. 틀린 부분이 있다면 변경해 주세요.",
+    "internetSearch": {
+      "title": "인터넷 검색",
+      "description": "Pal이 자체 도구로 웹을 검색할 수 있도록 해보세요. 본인의 API 키만 가져오시면 됩니다 — PocketPal은 사용자의 키를 저장하거나 쿼리를 라우팅하지 않습니다.",
+      "providerLabel": "검색 제공자",
+      "providerGated": "출시 예정",
+      "keyLabel": "API 키",
+      "keyIsSet": "{{provider}}의 키가 설정되었습니다.",
+      "keyNotSet": "{{provider}}의 키가 설정되지 않았습니다.",
+      "setKeyButton": "키 설정",
+      "updateKeyButton": "키 업데이트",
+      "clearKeyButton": "키 삭제",
+      "keyInputPlaceholder": "{{provider}}의 API 키를 붙여넣으세요",
+      "keyUpdateError": "키를 업데이트하지 못했어요. 다시 시도해 주세요.",
+      "showKeyAccessibilityLabel": "API 키 표시",
+      "hideKeyAccessibilityLabel": "API 키 숨기기",
+      "resultCountLabel": "검색당 결과 수",
+      "resultCountDescription": "결과가 적을수록 모델의 컨텍스트에 더 많은 공간이 유지됩니다.",
+      "consentTitle": "검색어는 기기 외부로 전송됩니다",
+      "consentDescription": "Pal이 웹을 검색하면 여러분의 검색어가 인터넷을 통해 선택한 제공자로 전송돼요. Pal이 페이지를 읽을 때, 선택한 제공자에 자체 리더가 없으면 URL과 페이지 내용이 대신 기본 리더 서비스(r.jina.ai)로 전송될 수 있어요. 키와 검색어는 절대 PocketPal로 전송되지 않아요.",
+      "consentAccept": "확인했습니다",
+      "consentRequired": "키를 설정하고 검색을 활성화하려면 위 고지에 동의해 주세요.",
+      "consentGivenTitle": "웹 검색이 활성화됨",
+      "consentGivenDescription": "위에서 설명한 대로 쿼리와 페이지 읽기 결과가 기기를 벗어날 수 있습니다.",
+      "consentRevoke": "동의 철회"
+    },
+    "languageSheetTitle": "언어",
+    "languageSearchPlaceholder": "언어 검색"
+  },
+  "storage": {
+    "checkFailed": "저장공간 확인 실패",
+    "lowStorage": "저장 공간 부족! 모델 크기 {{modelSize}}이(가) 여유 공간 {{freeSpace}}보다 큽니다."
+  },
+  "validation": {
+    "nameRequired": "이름을 입력해 주세요",
+    "systemPromptRequired": "시스템 프롬프트를 입력해 주세요",
+    "worldRequired": "세계관을 입력해 주세요",
+    "locationRequired": "위치를 입력해 주세요",
+    "aiRoleRequired": "AI의 역할을 입력해 주세요",
+    "userRoleRequired": "사용자 역할을 입력해 주세요",
+    "situationRequired": "상황을 입력해 주세요",
+    "toneStyleRequired": "말투 및 스타일을 입력해 주세요"
+  },
+  "palsScreen": {
+    "sectionTitles": {
+      "myPalsLocal": "내 Pal (로컬)",
+      "myLibrary": "내 라이브러리 (palshub.ai)",
+      "discoverPals": "Pals 둘러보기 (palshub.ai)"
+    },
+    "systemPrompt": "시스템 프롬프트",
+    "videoAnalysis": "비디오 분석",
+    "videoAnalysisDescription": "기기 카메라의 비디오 스트림을 실시간으로 분석하고 해설해 주는 비디오 기반 AI 어시스턴트입니다.",
+    "captureInterval": "촬영 간격",
+    "captureIntervalUnit": "ms",
+    "world": "세계관",
+    "toneStyle": "말투 및 스타일",
+    "aiRole": "AI의 역할",
+    "userRole": "내 역할",
+    "roleplay": "역할극",
+    "prompt": "프롬프트",
+    "assistant": "어시스턴트",
+    "video": "비디오",
+    "deletePal": "Pal 삭제",
+    "deletePalMessage": "이 Pal을 삭제하시겠습니까?",
+    "missingModel": "모델 없음",
+    "missingModelMessage": "이 Pal의 기본 모델 \"{{modelName}}\"은(는) 사용할 수 없습니다. 편집 시트에서 다운로드하시거나 다른 모델을 선택해 주세요.",
+    "search": "검색",
+    "profile": "프로필",
+    "signIn": "로그인",
+    "addPal": "Pal 만들기",
+    "signInToAccessLibrary": "로그인하여 palshub.ai에서 귀하의 라이브러리에 접근하세요",
+    "signOut": "로그아웃",
+    "signOutConfirmation": "로그아웃 하시겠습니까?",
+    "signOutError": "로그아웃에 실패했습니다. 다시 시도해 주세요.",
+    "account": "계정",
+    "signInToPalsHub": "PalsHub에 로그인하기",
+    "signInDescription": "라이브러리에 접근하고, 비공개 Pals를 생성하며, 기기 간에 동기화하세요",
+    "searchAllPals": "모든 Pals 검색...",
+    "deletePalConfirmation": "\"{{palName}}\"을(를) 삭제하시겠습니까?",
+    "filters": {
+      "all": "전체",
+      "myPals": "내 Pal",
+      "local": "로컬",
+      "video": "비디오",
+      "free": "무료",
+      "premium": "프리미엄"
+    },
+    "labels": {
+      "free": "무료",
+      "premium": "프리미엄",
+      "private": "비공개",
+      "download": "다운로드",
+      "getFree": "무료로 얻기"
+    },
+    "premiumPalDescription": "Palshub.ai 커뮤니티에서 제작된 프리미엄 Pal",
+    "premiumInfoText": "Palshub.ai를 방문하여 더 많은 Pal을 찾아보세요",
+    "sortOptions": {
+      "newest": "최신순",
+      "oldest": "오래된순",
+      "rating": "높은 평점순",
+      "popular": "인기순"
+    },
+    "palDetailSheet": {
+      "by": "제작됨",
+      "unknown": "알 수 없음",
+      "rating": "평점",
+      "reviews": "리뷰",
+      "created": "제작됨",
+      "description": "설명",
+      "noDescriptionAvailable": "설명이 없습니다.",
+      "categories": "카테고리",
+      "tags": "태그",
+      "systemPrompt": "시스템 프롬프트",
+      "downloaded": "다운로드됨",
+      "success": "성공",
+      "palAddedToCollection": "Pal이 귀하의 컬렉션에 추가되었습니다!",
+      "error": "오류",
+      "failedToLoadDetails": "Pal 세부정보 로드에 실패함",
+      "failedToDownload": "Pal 다운로드 실패",
+      "premiumPalMessage": "이 Pal은 프리미엄입니다.\n• 이미 Palshub 계정으로 잠금을 해제하셨다면, 간단히 로그인하여 접근할 수 있습니다.\n• 아직 잠금 해제하지 않으셨나요? palshub.ai 앱을 방문하여 자세히 알아보세요.",
+      "notAvailable": "비어있음",
+      "buyOnPalshub": "Palshub에서 구매하기",
+      "finalizingPurchase": "구매를 마무리하는 중…",
+      "processingPurchase": "처리 중 — 곧 잠금이 해제됩니다.",
+      "checkoutSessionExpired": "세션이 만료되었습니다. 계속하려면 다시 로그인해 주세요.",
+      "signInAgain": "다시 로그인하기",
+      "palNotAvailable": "이 Pal은 현재 구매할 수 없습니다.",
+      "checkoutFailed": "문제가 발생했습니다. 다시 시도해 주세요."
+    }
+  },
+  "video": {
+    "captureInterval": "촬영 간격",
+    "captureIntervalUnit": "ms",
+    "permissionTitle": "카메라 권한 필요",
+    "permissionMessage": "PocketPal은 비디오 분석을 위해 카메라 접근 권한이 필요합니다.",
+    "requestingPermission": "카메라 권한 요청 중...",
+    "noDevice": "카메라 기기를 찾을 수 없습니다",
+    "errorTitle": "카메라 오류",
+    "errorMessage": "카메라에 오류가 발생했습니다.",
+    "startCamera": "카메라 시작",
+    "stopCamera": "카메라 중지",
+    "emptyPlaceholder": {
+      "step2": "• 카메라 버튼을 눌러 실시간 비디오 분석을 시작하십시오.",
+      "step3": "• 카메라가 활성화된 동안 스냅샷 빈도를 조정하십시오.",
+      "title": "Lookie에 오신 것을 환영합니다",
+      "subtitle": "비공개 온디바이스 실시간 비디오 분석",
+      "experimentalNotice": "이 기능은 실험적 기능입니다. 정확도는 선택한 모델에 따라 다를 수 있으며, 기기 사양에 따라 속도에 차이가 있을 수 있습니다. 또한 일부 모델은 작동하지 않을 수 있습니다.",
+      "howToUse": "사용 방법:",
+      "step1": "• 분석 방향을 설정하려면 프롬프트를 수정하세요. (선택 사항)",
+      "step4": "• 일반적인 텍스트 기반의 대화를 원하시면 다른 Pal로 전환해 보세요."
+    },
+    "flip": "회전",
+    "analyzing": "비디오 분석 중...",
+    "promptPlaceholder": "이 비디오에 대해 무엇을 알고 싶나요?",
+    "liveCommentary": "실시간 해설"
+  },
+  "camera": {
+    "permissionTitle": "카메라 권한 필요",
+    "permissionMessage": "PocketPal은 이미지를 분석하기 위해 카메라 접근 권한이 필요합니다.",
+    "requestingPermission": "카메라 권한 요청 중...",
+    "noDevice": "카메라 기기를 찾을 수 없습니다",
+    "errorTitle": "카메라 오류",
+    "errorMessage": "사진을 촬영하는 중 오류가 발생했습니다.",
+    "flip": "회전",
+    "analyzing": "이미지 분석 중...",
+    "startCamera": "카메라 시작",
+    "stopCamera": "카메라 중지",
+    "promptPlaceholder": "이 이미지에 대해 무엇을 알고 싶으신가요?",
+    "takePhoto": "카메라"
+  },
+  "errors": {
+    "cameraErrorTitle": "카메라 오류",
+    "cameraErrorMessage": "사진 촬영에 실패했습니다.",
+    "unexpectedError": "예상치 못한 오류가 발생했습니다.",
+    "hfAuthenticationError": "Hugging Face 인증 오류: 토큰이 누락되었거나 유효하지 않음",
+    "hfAuthenticationErrorSearch": "Hugging Face 인증 오류: 토큰이 유효하지 않음",
+    "authenticationError": "인증 오류: 토큰이 누락되었거나 유효하지 않습니다.",
+    "hfAuthorizationError": "Hugging Face 인증 오류: 이 리소스에 접근할 권한이 없음",
+    "authorizationError": "인증 오류: 이 리소스에 접근할 권한이 없음",
+    "hfServerError": "Hugging Face 서버 오류: API 서버 문제",
+    "serverError": "서버 오류: API 서버 문제",
+    "hfNetworkTimeout": "네트워크 연결 시간 초과: Hugging Face 서버 응답 시간이 너무 길어 요청을 완료하지 못함",
+    "networkTimeout": "네트워크 연결 시간 초과: 응답 시간이 너무 길어 요청을 완료하지 못함",
+    "hfNetworkError": "네트워크 오류: Hugging Face API에 연결할 수 없음",
+    "networkError": "네트워크 오류: API에 연결할 수 없음",
+    "downloadSetupFailedTitle": "다운로드 설정 실패",
+    "downloadSetupFailedMessage": "모델 다운로드 준비에 실패했습니다: {{message}}",
+    "galleryErrorTitle": "갤러리 오류",
+    "galleryErrorMessage": "이미지 선택에 실패했습니다"
+  },
+  "simulator": {
+    "cameraNotAvailable": "시뮬레이터에서는 카메라를 사용할 수 없습니다. 실제 기기를 사용해 주세요."
+  },
+  "voiceAndSpeech": {
+    "stopPreviewButton": "미리보기 중지",
+    "voicesTitle": "음성",
+    "voiceRowTitle": "음성",
+    "notSet": "설정되지 않음",
+    "previewButton": "미리보기",
+    "voicesEmptyHint": "원하는 음성을 탭하여 설치 후 사용해 보세요. 또는 시스템 음성을 선택할 수도 있습니다 — 시스템 음성은 언제나 사용 가능합니다.",
+    "supertonicStepsLabel": "품질 (디퓨전 단계)",
+    "toggleAutoSpeakLabel": "자동 말하기 토글",
+    "openSettingsLabel": "TTS 설정",
+    "playMessageLabel": "메시지 재생",
+    "stopMessageLabel": "메시지 중단",
+    "autoSpeakLabel": "응답 자동 말하기",
+    "autoSpeakDescription": "새 답변이 생성되면 음성으로 읽어줍니다.",
+    "engineChipKitten": "Kitten",
+    "engineChipKokoro": "Kokoro",
+    "engineChipSupertonic": "Supertonic",
+    "engineChipSystem": "시스템",
+    "stepsCount": "{{steps}} 스텝",
+    "engineKittenTagline": "최소한의 리소스 점유. 뛰어난 안정성. 구형 기기에 최적화.",
+    "engineKokoroTagline": "최고 수준의 품질. 초기 구동 속도 느림. 일부 음성은 기기에 따라 작동하지 않을 수 있음.",
+    "engineSupertonicTagline": "가장 빠른 구동 속도. 더 많은 RAM 사용. 간혹 일부 단어가 누락될 수 있음.",
+    "engineSystemTagline": "운영체제 내장 음성. 설치가 필요 없으며 언제나 즉시 사용 가능.",
+    "engineSystemTitleIos": "iOS 음성",
+    "engineSystemTitleAndroid": "Android 음성",
+    "engineSystemTier": "항상 사용 가능",
+    "sectionTitle": "음성 & 말하기",
+    "engineTierLightest": "가장 가벼움",
+    "engineTierBestQuality": "가장 고성능",
+    "engineTierFastestStart": "가장 빠른 시작",
+    "engineSpecsLine": "{{voices}}개의 음성  ·  {{sizeMb}} MB  ·  ~{{ramMb}} MB RAM",
+    "engineSystemSpecsLine": "{{voices}}개의 음성",
+    "engineRemoveTitle": "{{engineTitle}}을(를) 제거하시겠습니까?",
+    "engineRemoveCancel": "취소",
+    "engineRemoveConfirm": "제거",
+    "engineInstallCta": "설치 · {{sizeMb}} MB",
+    "engineDownloadingLabel": "다운로드 중…  {{pct}}%  ·  {{mbDone}} / {{sizeMb}} MB",
+    "engineRetryCta": "다시 시도하기",
+    "voicesEmptyState": "음성 없음.",
+    "kokoroDeviceNote": "일부 음성은 모든 기기에서 작동하지 않을 수 있습니다.",
+    "insufficientStorage": "저장 공간 부족 — 이 엔진 설치에 필요한 {{requiredMb}}MB를 확보하세요. ({{freeMb}} MB 사용 가능).",
+    "engineRemoveBody": "저장 공간 {{sizeMb}} MB 확보 가능",
+    "supertonicLanguageLabel": "언어",
+    "supertonicLanguageAuto": "자동",
+    "supertonicLanguageSheetTitle": "언어",
+    "supertonicLanguageSearchPlaceholder": "언어 검색",
+    "supertonicLanguageNames": {
+      "ar": "아랍어",
+      "bg": "불가리아어",
+      "hr": "크로아티아어",
+      "cs": "체코어",
+      "da": "덴마크어",
+      "nl": "네덜란드어",
+      "en": "영어",
+      "et": "에스토니아어",
+      "fi": "핀란드어",
+      "fr": "프랑스어",
+      "de": "독일어",
+      "el": "그리스어",
+      "hi": "힌디어",
+      "hu": "헝가리어",
+      "id": "인도네시아어",
+      "it": "이탈리아어",
+      "ja": "일본어",
+      "ko": "한국어",
+      "lv": "라트비아어",
+      "lt": "리투아니아어",
+      "pl": "폴란드어",
+      "pt": "포르투갈어",
+      "ro": "루마니아어",
+      "ru": "러시아어",
+      "sk": "슬로바키아어",
+      "sl": "슬로베니아어",
+      "es": "스페인어",
+      "sv": "스웨덴어",
+      "tr": "튀르키예어",
+      "uk": "우크라이나어",
+      "vi": "베트남어"
+    }
+  },
+  "htmlPreview": {
+    "defaultTitle": "미리보기",
+    "showPreview": "렌더링된 미리보기 표시",
+    "showCode": "HTML 코드 표시",
+    "copyHtml": "HTML 복사",
+    "closePreview": "미리보기 닫기",
+    "openFullscreen": "전체화면 표시: {{title}}"
+  },
+  "onboarding": {
+    "back": "뒤로 가기",
+    "skip": "건너뛰기",
+    "skipForNow": "나중에 다시 보기",
+    "splash": {
+      "brand": "PocketPal"
+    },
+    "screen1": {
+      "title": "당신의 Pal을 만나보세요.",
+      "titleAccent": "Pal.",
+      "body": "당신의 휴대폰 안에 사는 똑똑한 작은 친구들.\n설정을 시작해 보세요 - 시간이 잠시 걸립니다.",
+      "cta": "둘러볼게요",
+      "eyebrow": "PocketPal에 오신 걸 환영해요"
+    },
+    "screen2": {
+      "title": "언제나,\n어디서나.",
+      "body": "Pal은 여러분의 휴대폰 안에 살아요.\n인터넷도, 신호도 필요 없어요 - 비행기 안에서도, 오지에서도, 외딴 마을에서도 작동해요.",
+      "highlight": "인터넷도, 신호도 필요 없어요",
+      "cta": "다음",
+      "eyebrow": "기본 아이디어",
+      "titleAccent": "언제나,"
+    },
+    "screen3": {
+      "title": "작지만,\n온전히 내 것.",
+      "titleAccent": "작지만,",
+      "body": "휴대폰 속 Pal은 빠르고 프라이버시를 지켜줘요 - 다만 클라우드 AI보다는 가벼워요. 모든 걸 아는 신탁이 아니라, 주머니 속 동반자라고 생각하면 돼요.",
+      "highlight": "빠르고 프라이버시를 지켜줘요",
+      "cta": "알겠어요",
+      "eyebrow": "참고하세요"
+    },
+    "screen4": {
+      "title": "어떤 것도 휴대폰을 벗어나지 않아요.",
+      "titleAccent": "벗어나지 않아요",
+      "body": "계정도, 클라우드도, 추적도 없어요. 대화는 온전히 여러분의 것으로 남아요.",
+      "highlight": "계정도, 클라우드도, 추적도 없어요.",
+      "cta": "시작하기",
+      "eyebrow": "프라이버시 약속"
+    },
+    "screen5": {
+      "title": "Pal을 어디에 쓰고 싶나요?",
+      "body": "이야기 나누고 싶은 주제를 골라 주세요 - 여러분의 휴대폰에 맞는 Pal을 찾아드릴게요.",
+      "topic": {
+        "smartchat": "스마트 채팅",
+        "coding": "코딩",
+        "education": "교육",
+        "roleplay": "역할극",
+        "creative_writing": "창작 글쓰기",
+        "else": "다른 걸 찾고 있나요?"
+      },
+      "topicDescription": {
+        "smartchat": "친근한 일상 동반자",
+        "coding": "코딩, 디버깅, 설명",
+        "education": "학습, 설명, 퀴즈",
+        "roleplay": "캐릭터, 시나리오",
+        "creative_writing": "이야기, 아이디어, 초안",
+        "else": "나중에 앱에서 모든 Pal을 둘러보세요"
+      }
+    },
+    "screen6": {
+      "cta": "{{name}} 다운로드",
+      "ctaTemplate": "{{name}} 다운로드 ({{size}})",
+      "useTemplate": "{{name}} 사용하기",
+      "deviceRamSuffix": "GB RAM",
+      "deviceFreeSuffix": "GB 여유",
+      "recommended": "추천",
+      "downloaded": "다운로드됨",
+      "modelTier": {
+        "quick": "빠름",
+        "balanced": "균형",
+        "best": "최고"
+      },
+      "subtitleTemplate": "{{name}}은(는) 휴대폰에서 작은 AI 모델로 생각해요 - 잘 맞는 모델을 골라 주세요.",
+      "pal": {
+        "pip": {
+          "body": "여러분에게 딱 맞는 Pal을 찾았어요 - 친근한 일상 동반자예요. 대부분의 일을 똑똑하게 처리하면서도, 어떤 휴대폰에서나 가볍게 돌아가요."
+        },
+        "codie": {
+          "body": "Codie를 소개할게요 — 휴대폰 안의 페어 프로그래머예요. 코드를 읽고, 코드를 쓰고, 까다로운 부분을 설명해 줘요. 그 모든 일이 휴대폰을 벗어나지 않아요."
+        },
+        "sage": {
+          "body": "Sage는 인내심 있고 호기심 많아서, 개념을 하나씩 차근차근 안내해 줘요. 주머니 속에 두는 학습 친구예요."
+        },
+        "echo": {
+          "body": "Echo는 다재다능한 역할극 동반자예요 — 캐릭터를 끝까지 유지하고, 장면을 생생하게 그려내며, 이야기가 어디로 흘러가든 함께해요."
+        },
+        "muse": {
+          "body": "Muse는 글쓰기를 도와줘요. 표현을 제안하고, 리듬을 찾아주며, 여러분의 어조를 그대로 살려줘요."
+        }
+      }
+    }
+  },
+  "downloadBanner": {
+    "titleByPal": "{{name}}이 다운로드 중",
+    "titleByModel": "{{name}}이 다운로드 중",
+    "extraInProgress": "+{{count}}개 추가 진행 중"
+  }
+}

@@ -1,0 +1,119 @@
+# OSX
+#
+.DS_Store
+
+# Xcode
+#
+build/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata
+*.xccheckout
+*.moved-aside
+DerivedData
+*.hmap
+*.ipa
+*.xcuserstate
+**/.xcode.env.local
+ios/dist
+
+# Android/IntelliJ
+#
+build/
+.idea
+.gradle
+local.properties
+*.iml
+*.hprof
+.cxx/
+*.keystore
+!debug.keystore
+.kotlin/
+
+# node.js
+#
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+.yarn
+
+# fastlane
+#
+# It is recommended to not store the screenshots in the git repo. Instead, use fastlane to re-generate the
+# screenshots whenever they are needed.
+# For more information about the recommended setup visit:
+# https://docs.fastlane.tools/best-practices/source-control/
+
+**/fastlane/report.xml
+**/fastlane/Preview.html
+**/fastlane/screenshots
+**/fastlane/test_output
+
+# Bundle artifact
+*.jsbundle
+
+# Ruby / CocoaPods
+**/Pods/
+/vendor/bundle/
+
+# Temporary files created by Metro to check the health of the file watcher
+.metro-health-check*
+
+# testing
+/coverage
+.env
+
+# Firebase config files (prod + all flavor-specific overrides)
+android/app/**/google-services.json
+ios/GoogleService-Info.plist
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# environment config
+ios/Config/Env.xcconfig
+
+# Android native libraries (should not be committed)
+**/libggml-htp*.so
+
+# E2E debug output
+e2e/debug-output/
+e2e/device-farm-artifacts/
+e2e/test-package.zip
+e2e/testspec-*-allmodels.yml
+
+# E2E pipeline
+e2e/devices.json
+e2e/reports/
+e2e/dist/
+
+# Per-task one-shot visual-capture specs. Authored in the worktree for a
+# single PR review (pre/post diff against main), never committed. They die
+# with the worktree.
+e2e/specs/visual-capture/TASK-*.spec.ts
+
+# Dev-team workflow control-plane artefacts (story docs, designer asks,
+# screenshot inventories). Live in the dev-team repo and are sometimes
+# synced into the worktree for local reference; never committed here.
+workflows/
+# === AIOS PocketPal 二开追加 ===
+# Temp edit workspace (cross-workspace SearchReplace relay)
+.tmp/
+# GGUF models (never track, stored in /sdcard/Documents/AIOS/models/)
+*.gguf
+*.gguf.tmp
+# AIOS runtime data (lives on device /sdcard, not in repo)
+aios_runtime/
+# Qoder/cursor agent artifacts (not part of PocketPal source)
+.qoder/
+.cursor/
+.qodercn/

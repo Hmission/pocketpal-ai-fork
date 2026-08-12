@@ -1,0 +1,1568 @@
+{
+  "common": {
+    "cancel": "لغو",
+    "delete": "حذف",
+    "dismiss": "بستن",
+    "rename": "تغییر نام",
+    "reset": "بازنشانی",
+    "save": "ذخیره",
+    "update": "به‌روزرسانی",
+    "error": "خطا",
+    "export": "خروجی",
+    "networkError": "خطای شبکه. لطفاً دوباره تلاش کنید.",
+    "downloadETA": "زمان تخمینی",
+    "calculating": "در حال محاسبه...",
+    "second": "ثانیه",
+    "seconds": "ثانیه",
+    "year": "سال",
+    "years": "سال",
+    "month": "ماه",
+    "months": "ماه",
+    "week": "هفته",
+    "weeks": "هفته",
+    "day": "روز",
+    "days": "روز",
+    "hour": "ساعت",
+    "hours": "ساعت",
+    "minute": "دقیقه",
+    "minutes": "دقیقه",
+    "justNow": "همین الان",
+    "ok": "باشه",
+    "close": "بستن",
+    "clear": "پاک کردن همه",
+    "gallery": "گالری",
+    "stop": "توقف",
+    "noResults": "نتیجه‌ای یافت نشد"
+  },
+  "settings": {
+    "modelInitializationSettings": "تنظیمات راه‌اندازی مدل",
+    "metal": "Metal",
+    "metalDescription": "رابط سخت‌افزاری شتاب‌دهنده Apple.",
+    "metalRequiresNewerIOS": "شتاب‌دهنده Metal نیاز به iOS 18 یا بالاتر دارد. لطفاً دستگاه خود را به‌روزرسانی کنید.",
+    "openCL": "OpenCL (آزمایشی)",
+    "openCLDescription": "شتاب‌دهنده GPU برای پردازنده‌های Adreno. پردازش prompt سریع‌تر، اما تولید متن همیشه سریع‌تر نیست.",
+    "openCLNotAvailable": "OpenCL روی این دستگاه در دسترس نیست. نیاز به GPU از نوع Adreno با قابلیت‌های i8mm و dotprod دارد.",
+    "openCLMissingCPUFeatures": "OpenCL نیاز به قابلیت‌های i8mm و dotprod در CPU دارد که روی این دستگاه موجود نیستند.",
+    "openCLQuantizationNote": "نکته: مدل‌های کوانتیزه‌شده Q4_0 خالص بهترین عملکرد را با OpenCL دارند.",
+    "openCLDocsLink": "برای جزئیات بیشتر مستندات OpenCL در llama.cpp را ببینید.",
+    "layersOnGPU": "لایه‌ها روی GPU: {{gpuLayers}}",
+    "deviceSelection": "انتخاب دستگاه",
+    "deviceSelectionIOS": "دستگاه (Metal)",
+    "deviceSelectionIOSDescription": "انتخاب GPU با Metal یا حالت فقط CPU",
+    "deviceSelectionAndroidDescription": "انتخاب واحد پردازشی (CPU، GPU یا Hexagon NPU)",
+    "cpuOnlyNoAccelerators": "فقط CPU - شتاب‌دهنده سخت‌افزاری شناسایی نشد",
+    "contextSize": "اندازه Context",
+    "contextSizePlaceholder": "اندازه context را وارد کنید (حداقل {{minContextSize}})",
+    "invalidContextSizeError": "لطفاً عددی معتبر وارد کنید (حداقل {{minContextSize}})",
+    "modelReloadNotice": "برای اعمال تغییرات، بارگذاری مجدد مدل لازم است.",
+    "advancedSettings": "تنظیمات پیشرفته",
+    "batchSize": "اندازه Batch",
+    "batchSizeDescription": "اندازه batch: {{batchSize}}{{effectiveBatch}}",
+    "effectiveLabel": "مؤثر",
+    "physicalBatchSize": "اندازه Batch فیزیکی",
+    "physicalBatchSizeDescription": "اندازه batch فیزیکی: {{physicalBatchSize}}{{effectivePhysicalBatch}}",
+    "cpuThreads": "ریسه‌های CPU",
+    "cpuThreadsDescription": "استفاده از {{threads}} ریسه از {{maxThreads}} ریسه موجود",
+    "imageMaxTokens": "حداکثر token تصویر",
+    "imageMaxTokensDescription": "حداکثر token برای پردازش تصویر: {{tokens}}{{effectiveTokens}} (کمتر = سریع‌تر، جزئیات کمتر)",
+    "flashAttention": "Flash Attention",
+    "flashAttentionDescription": "فعال‌سازی Flash Attention برای پردازش سریع‌تر",
+    "flashAttentionIOSDescription": "توجه بهینه از نظر حافظه (روی Metal خودکار فعال می‌شود)",
+    "flashAttentionAndroidDescription": "برای ذخیره/بارگذاری وضعیت OpenCL باید غیرفعال باشد",
+    "flashAttentionAuto": "خودکار",
+    "flashAttentionOn": "روشن",
+    "flashAttentionOff": "خاموش",
+    "keyCacheType": "نوع کش Key",
+    "keyCacheTypeDescription": "نوع کش برای محاسبه key را انتخاب کنید",
+    "keyCacheTypeDisabledDescription": "برای تغییر نوع کش، Flash Attention را فعال کنید",
+    "valueCacheType": "نوع کش Value",
+    "valueCacheTypeDescription": "نوع کش برای محاسبه value را انتخاب کنید",
+    "valueCacheTypeDisabledDescription": "برای تغییر نوع کش، Flash Attention را فعال کنید",
+    "memorySettings": "تنظیمات حافظه",
+    "useMlock": "قفل حافظه",
+    "useMlockDescription": "مدل را در RAM نگه می‌دارد و از swap یا فشرده‌سازی جلوگیری می‌کند",
+    "useMmap": "نگاشت حافظه",
+    "useMmapDescription": "استفاده از فایل‌های نگاشت‌شده به حافظه برای بارگذاری سریع‌تر مدل",
+    "useMmapTrue": "فعال",
+    "useMmapFalse": "غیرفعال",
+    "useMmapTrueDescription": "همیشه از نگاشت حافظه برای بارگذاری سریع‌تر استفاده شود",
+    "useMmapFalseDescription": "غیرفعال‌سازی توصیه می‌شود وقتی بازآرایی وزن‌ها فعال است تا از دو برابر شدن مصرف حافظه جلوگیری شود",
+    "modelLoadingSettings": "تنظیمات بارگذاری مدل",
+    "autoOffloadLoad": "تخلیه/بارگذاری خودکار",
+    "autoOffloadLoadDescription": "تخلیه مدل وقتی برنامه در پس‌زمینه است.",
+    "autoNavigateToChat": "رفتن خودکار به چت",
+    "autoNavigateToChatDescription": "هنگام شروع بارگذاری، به صفحه چت هدایت می‌شود.",
+    "appSettings": "تنظیمات برنامه",
+    "language": "زبان",
+    "darkMode": "حالت تاریک",
+    "displayMemoryUsage": "نمایش مصرف حافظه",
+    "displayMemoryUsageDescription": "نمایش مصرف حافظه در صفحه چت.",
+    "exportOptions": "گزینه‌های خروجی",
+    "exportLegacyChats": "خروجی چت‌های قدیمی",
+    "exportLegacyChatsDescription": "اگر انتقال داده‌ها با مشکل مواجه شد یا نیاز به بازیابی چت‌های قدیمی دارید از این استفاده کنید.",
+    "exportButton": "خروجی",
+    "importChats": "وارد کردن جلسات چت",
+    "importChatsDescription": "وارد کردن جلسات چت از یک فایل JSON (خروجی‌گرفته‌شده).",
+    "importButton": "وارد کردن",
+    "importSuccess": "{{count}} جلسه چت با موفقیت وارد شد.",
+    "importError": "وارد کردن جلسات چت ناموفق بود. لطفاً فرمت فایل را بررسی کنید.",
+    "apiSettingsTitle": "تنظیمات API",
+    "huggingFaceTokenLabel": "توکن Hugging Face",
+    "tokenIsSetDescription": "توکن تنظیم شده است. برای دسترسی به مدل‌های محدودشده لازم است.",
+    "setTokenDescription": "برای دسترسی به مدل‌های محدودشده Hugging Face یک توکن تنظیم کنید.",
+    "setTokenButton": "تنظیم توکن",
+    "useHfTokenLabel": "استفاده از توکن HF",
+    "useHfTokenDescription": "فعال کنید تا از توکن برای درخواست‌های API استفاده شود. اگر توکن مشکل احراز هویت ایجاد می‌کند غیرفعال کنید.",
+    "cacheStorageTitle": "کش و فضای ذخیره‌سازی",
+    "clearPalCaches": "پاک کردن کش میانبرها",
+    "clearPalCachesDescription": "داده‌های کش‌شده برای سرعت‌بخشی به میانبرها پاک می‌شود. این کار روی پَل‌ها یا تاریخچه چت تأثیری ندارد.",
+    "clearCachesButton": "پاک کردن کش",
+    "clearCachesConfirmTitle": "کش میانبرها پاک شود؟",
+    "clearCachesConfirmMessage": "تمام داده‌های کش‌شده جلسات پاک می‌شود ({{fileCount}} فایل، {{size}}). میانبرها ممکن است در اولین استفاده بعد از پاک‌سازی کندتر باشند. این کار روی پَل‌ها یا تاریخچه چت تأثیری ندارد.",
+    "clearCachesSuccess": "{{count}} فایل کش با موفقیت پاک شد.",
+    "clearCachesError": "پاک کردن کش ناموفق بود. لطفاً دوباره تلاش کنید.",
+    "noCachesToClear": "کشی برای پاک کردن وجود ندارد.",
+    "weightRepacking": "فعال‌سازی بازآرایی وزن‌ها",
+    "weightRepackingDescription": "پردازش سریع‌تر پرامپت با حداقل سربار حافظه هنگامی که نگاشت حافظه غیرفعال است. تولید توکن تحت تأثیر قرار نمی‌گیرد.",
+    "serverName": "نام سرور",
+    "serverUrl": "آدرس سرور",
+    "serverUrlPlaceholder": "مثلاً http://192.168.1.100:1234",
+    "apiKey": "کلید API",
+    "apiKeyPlaceholder": "اختیاری - برای OpenAI/Groq لازم است",
+    "apiKeyDescription": "به صورت امن در دستگاه ذخیره می‌شود.",
+    "remoteModel": "ریموت",
+    "remotePrivacyNotice": "پیام‌های ارسالی به سرورهای ریموت از دستگاه شما خارج می‌شوند. فقط به سرورهای مورد اعتماد متصل شوید.",
+    "remoteIndicator": "ریموت",
+    "serverUrlRequired": "آدرس سرور الزامی است",
+    "serverUrlInvalid": "فرمت آدرس نامعتبر است",
+    "serverUrlHttpWarning": "iOS برای سرورهای غیرمحلی به HTTPS نیاز دارد. از https:// یا آدرس شبکه محلی استفاده کنید.",
+    "addRemoteModel": "افزودن مدل ریموت",
+    "yourServers": "سرورهای شما",
+    "orConnectNewServer": "یا اتصال به سرور جدید",
+    "selectModel": "انتخاب مدل",
+    "addModel": "افزودن مدل",
+    "connected": "متصل",
+    "connectionFailed": "اتصال ناموفق: {{error}}",
+    "connecting": "در حال اتصال...",
+    "noModelsAvailable": "هیچ مدلی در این سرور موجود نیست.",
+    "alreadyAdded": "قبلاً اضافه شده",
+    "connectedServers": "سرورهای متصل",
+    "modelsCount": "{{count}} مدل",
+    "serverDetails": "جزئیات سرور",
+    "modelsUsingServer": "مدل‌هایی که از این سرور استفاده می‌کنند:",
+    "saveChanges": "ذخیره تغییرات",
+    "removeServer": "حذف سرور",
+    "removeServerMessage": "حذف {{serverName}} و {{count}} مدل آن؟",
+    "removeRemoteModel": "حذف {{modelName}} ({{serverName}})؟",
+    "retryConnection": "تلاش مجدد",
+    "enterUrlManually": "ورود دستی آدرس",
+    "manageServers": "مدیریت سرورها",
+    "ttsAvailability": "تبدیل متن به گفتار",
+    "ttsAvailabilityDescription": "خواندن پاسخ‌ها با صدای بلند.",
+    "ttsAvailabilityLowMemoryWarning": "حافظه دستگاه شما کم است — ممکن است این قابلیت به‌درستی کار نکند.",
+    "requestTimeout": "مهلت درخواست (ثانیه)",
+    "requestTimeoutHelp": "حداکثر زمان انتظار برای پاسخ سرور کند. برای مقدار پیش‌فرض خالی بگذارید.",
+    "requestTimeoutPlaceholder": "اختیاری - برای مقدار پیش‌فرض خالی بگذارید",
+    "serverType": "نوع سرور",
+    "serverTypeHelp": "به‌صورت خودکار تشخیص داده می‌شود؛ اگر درست نیست تغییرش بدهید.",
+    "internetSearch": {
+      "title": "جستجوی اینترنتی",
+      "description": "بگذارید پَل‌ها با ابزارهای خودشان در وب جستجو کنند. کلید API خودتان را بیاورید — PocketPal هرگز کلیدهای شما را نگه نمی‌دارد و درخواست‌هایتان را هدایت نمی‌کند.",
+      "providerLabel": "ارائه‌دهنده جستجو",
+      "providerGated": "به‌زودی",
+      "keyLabel": "کلید API",
+      "keyIsSet": "کلید برای {{provider}} تنظیم شده است.",
+      "keyNotSet": "کلیدی برای {{provider}} تنظیم نشده است.",
+      "setKeyButton": "تنظیم کلید",
+      "updateKeyButton": "به‌روزرسانی کلید",
+      "clearKeyButton": "پاک کردن کلید",
+      "keyInputPlaceholder": "کلید API {{provider}} خود را جای‌گذاری کنید",
+      "keyUpdateError": "به‌روزرسانی کلید ممکن نشد. لطفاً دوباره تلاش کنید.",
+      "showKeyAccessibilityLabel": "نمایش کلید API",
+      "hideKeyAccessibilityLabel": "مخفی کردن کلید API",
+      "resultCountLabel": "تعداد نتایج در هر جستجو",
+      "resultCountDescription": "نتایج کمتر فضای بیشتری در context مدل باقی می‌گذارد.",
+      "consentTitle": "جستجوها از دستگاه شما خارج می‌شوند",
+      "consentDescription": "وقتی یک پَل در وب جستجو می‌کند، درخواست شما از طریق اینترنت به ارائه‌دهنده انتخاب‌شده ارسال می‌شود. وقتی یک پَل صفحه‌ای را می‌خواند، اگر ارائه‌دهنده انتخاب‌شده خواننده اختصاصی نداشته باشد، ممکن است به‌جای آن آدرس و محتوای صفحه به یک سرویس خواننده پیش‌فرض (r.jina.ai) ارسال شود. کلیدها و درخواست‌ها هرگز به PocketPal ارسال نمی‌شوند.",
+      "consentAccept": "متوجه شدم",
+      "consentRequired": "برای تنظیم کلید و فعال‌سازی جستجو، توضیحات بالا را بپذیرید.",
+      "consentGivenTitle": "جستجوی وب فعال است",
+      "consentGivenDescription": "همان‌طور که در بالا توضیح داده شد، درخواست‌ها و خواندن صفحات ممکن است از دستگاه شما خارج شوند.",
+      "consentRevoke": "لغو دسترسی"
+    },
+    "languageSheetTitle": "زبان",
+    "languageSearchPlaceholder": "جستجوی زبان‌ها"
+  },
+  "memory": {
+    "shortWarning": "هشدار حافظه",
+    "multimodalWarning": "این دستگاه ممکن است منابع کافی برای مدل‌های چندوجهی نداشته باشد.",
+    "memoryTight": "حافظه محدود",
+    "lowMemory": "حافظه کم",
+    "memoryDetailMessage": "این مدل به حدود {{needed}} نیاز دارد اما تنها حدود {{available}} قابل استفاده تخمین زده می‌شود. تخمین‌ها با استفاده بیشتر از برنامه دقیق‌تر می‌شوند.",
+    "estimatedMemory": "حافظه تخمینی: ~{{size}}",
+    "alerts": {
+      "memoryWarningTitle": "هشدار حافظه",
+      "memoryWarningMessage": "این مدل ممکن است از حافظه موجود بیشتر باشد و باعث ناپایداری شود. ادامه می‌دهید؟",
+      "multimodalWarningTitle": "هشدار عملکرد دستگاه",
+      "multimodalWarningMessage": "این دستگاه ممکن است منابع کافی برای مدل‌های چندوجهی نداشته باشد. بارگذاری ممکن است باعث ناپایداری شود. ادامه می‌دهید؟",
+      "combinedWarningTitle": "هشدار عملکرد",
+      "combinedWarningMessage": "این مدل ممکن است از حافظه موجود بیشتر باشد و این دستگاه ممکن است منابع کافی برای مدل‌های چندوجهی نداشته باشد. بارگذاری ممکن است باعث ناپایداری شود. ادامه می‌دهید؟",
+      "cancel": "لغو",
+      "continue": "ادامه"
+    }
+  },
+  "storage": {
+    "checkFailed": "بررسی فضای ذخیره‌سازی ناموفق بود",
+    "lowStorage": "فضا کم! مدل {{modelSize}} > {{freeSpace}} آزاد"
+  },
+  "generation": {
+    "modelNotInitialized": "محیط مدل راه‌اندازی نشده است",
+    "failedToGenerate": "تولید خروجی ناموفق بود"
+  },
+  "models": {
+    "fileManagement": {
+      "fileAlreadyExists": "فایل از قبل وجود دارد",
+      "fileAlreadyExistsMessage": "فایلی با این نام از قبل وجود دارد. می‌خواهید چه کار کنید؟",
+      "replace": "جایگزینی",
+      "keepBoth": "حفظ هر دو",
+      "copyingModel": "در حال کپی کردن فایل مدل…",
+      "copyFailed": "کپی کردن فایل مدل ناموفق بود"
+    },
+    "labels": {
+      "localModel": "محلی",
+      "hfModel": "HF",
+      "unknownGroup": "نامشخص",
+      "availableToUse": "آماده استفاده",
+      "availableToDownload": "قابل دانلود",
+      "useAddButtonForMore": "برای یافتن مدل‌های بیشتر از دکمه + استفاده کنید"
+    },
+    "vision": "بینایی",
+    "mmproj": "پروجکتور",
+    "multimodal": {
+      "settings": "تنظیمات چندوجهی",
+      "projectionModels": "مدل‌های پروجکشن",
+      "noCompatibleModels": "مدل پروجکشن سازگاری یافت نشد",
+      "noProjectionModels": "مدل پروجکشنی موجود نیست",
+      "selected": "انتخاب شده",
+      "select": "انتخاب",
+      "download": "دانلود",
+      "projectionNeededTitle": "نیاز به مدل پروجکشن",
+      "projectionNeededMessage": "این مدل برای قابلیت‌های چندوجهی به یک مدل پروجکشن نیاز دارد.",
+      "projectionMissingWarning": "مدل پروجکشن موجود نیست",
+      "projectionMissingShort": "پروجکشن ناموجود",
+      "reloadModelTitle": "بارگذاری مجدد مدل",
+      "reloadModelMessage": "برای اعمال مدل پروجکشن جدید، مدل باید دوباره بارگذاری شود. آیا می‌خواهید الان بارگذاری شود؟",
+      "reload": "بارگذاری مجدد",
+      "deleteProjectionTitle": "حذف مدل پروجکشن",
+      "deleteProjectionMessage": "آیا مطمئنید که می‌خواهید این مدل پروجکشن را حذف کنید؟",
+      "cannotDeleteTitle": "امکان حذف نیست",
+      "visionControls": {
+        "enableVision": "فعال‌سازی قابلیت بینایی",
+        "disableVision": "غیرفعال‌سازی قابلیت بینایی",
+        "visionEnabled": "بینایی فعال",
+        "visionDisabled": "بینایی غیرفعال",
+        "textOnlyMode": "فقط متن",
+        "visionMode": "بینایی فعال",
+        "downloadWithVision": "دانلود با بینایی",
+        "downloadTextOnly": "دانلود فقط متن",
+        "visionToggleDescription": "فعال‌سازی قابلیت پردازش تصویر",
+        "projectionModelSize": "+{{size}} مدل پروجکشن",
+        "visionModeDescription": "پردازش تصویر و متن",
+        "textOnlyModeDescription": "فقط پردازش متن",
+        "includesVisionCapability": "شامل قابلیت بینایی",
+        "requiresProjectionModel": "ابتدا یک مدل پروجکشن سازگار دانلود کنید"
+      },
+      "cannotDeleteActive": "این مدل پروجکشن در حال حاضر فعال است.",
+      "cannotDeleteInUse": "این مدل پروجکشن توسط مدل‌های LLM دانلود شده استفاده می‌شود:",
+      "dependentModels": "مدل‌های وابسته:",
+      "visionWillBeDisabled": "قابلیت بینایی برای این مدل‌ها غیرفعال خواهد شد."
+    },
+    "buttons": {
+      "addFromHuggingFace": "افزودن از Hugging Face",
+      "addLocalModel": "افزودن مدل محلی",
+      "reset": "بازنشانی"
+    },
+    "modelsHeaderRight": {
+      "menuTitleHf": "مدل‌های Hugging Face",
+      "menuTitleDownloaded": "مدل‌های دانلود شده",
+      "menuTitleGrouped": "گروه‌بندی بر اساس نوع مدل",
+      "menuTitleReset": "بازنشانی لیست مدل‌ها"
+    },
+    "modelsResetDialog": {
+      "proceedWithReset": "ادامه بازنشانی",
+      "confirmReset": "تأیید بازنشانی"
+    },
+    "chatTemplate": {
+      "label": "قالب پایه چت:"
+    },
+    "details": {
+      "title": "فایل‌های GGUF موجود"
+    },
+    "modelFile": {
+      "alerts": {
+        "cannotRemoveTitle": "امکان حذف نیست",
+        "modelPreset": "این مدل از پیش تنظیم شده است.",
+        "downloadedFirst": "مدل دانلود شده است. لطفاً ابتدا فایل را حذف کنید.",
+        "removeTitle": "حذف مدل",
+        "removeMessage": "آیا مطمئنید که می‌خواهید این مدل را از لیست حذف کنید؟",
+        "removeError": "حذف مدل با خطا مواجه شد.",
+        "alreadyDownloadedTitle": "مدل قبلاً دانلود شده",
+        "alreadyDownloadedMessage": "این مدل قبلاً دانلود شده است.",
+        "deleteTitle": "حذف مدل",
+        "deleteMessage": "آیا مطمئنید که می‌خواهید این مدل دانلود شده را حذف کنید؟"
+      },
+      "buttons": {
+        "remove": "حذف"
+      },
+      "warnings": {
+        "storage": {
+          "message": "فضای ذخیره‌سازی کافی نیست.",
+          "shortMessage": "کمبود فضا"
+        },
+        "memory": {
+          "message": "حجم مدل نزدیک به حافظه کل دستگاه شماست یا از آن بیشتر است. ممکن است مشکلاتی پیش بیاید."
+        },
+        "legacy": {
+          "message": "فرمت کوانتیزاسیون قدیمی - ممکن است مدل اجرا نشود.",
+          "shortMessage": "کوانتیزاسیون قدیمی"
+        },
+        "multiple": "{{count}} هشدار"
+      },
+      "labels": {
+        "downloadSpeed": "{{speed}}"
+      }
+    },
+    "search": {
+      "noResults": "مدلی یافت نشد",
+      "loadingMore": "بارگذاری بیشتر...",
+      "searchPlaceholder": "جستجوی مدل‌های Hugging Face",
+      "modelUpdatedLong": "{{time}} پیش به‌روزرسانی شده",
+      "modelUpdatedShort": "{{time}} پیش",
+      "modelUpdatedJustNowLong": "همین الان به‌روزرسانی شده",
+      "modelUpdatedJustNowShort": "همین الان",
+      "errorOccurred": "بارگذاری مدل‌ها ممکن نشد. لطفاً دوباره تلاش کنید.",
+      "filters": {
+        "author": "نویسنده",
+        "authorPlaceholder": "فیلتر بر اساس نویسنده...",
+        "sortBy": "مرتب‌سازی",
+        "clearFilters": "پاک کردن فیلترها",
+        "showFilters": "نمایش فیلترها",
+        "hideFilters": "مخفی کردن فیلترها",
+        "sortRelevance": "مرتبط‌ترین",
+        "sortDownloads": "دانلودها",
+        "sortRecent": "آخرین به‌روزرسانی",
+        "sortLikes": "محبوب‌ترین"
+      }
+    },
+    "modelCard": {
+      "alerts": {
+        "deleteTitle": "حذف مدل",
+        "deleteMessage": "آیا مطمئنید که می‌خواهید این مدل دانلود شده را حذف کنید؟",
+        "removeTitle": "حذف مدل",
+        "removeMessage": "آیا مطمئنید که می‌خواهید این مدل را از لیست حذف کنید؟"
+      },
+      "buttons": {
+        "settings": "تنظیمات",
+        "download": "دانلود",
+        "remove": "حذف",
+        "load": "بارگذاری",
+        "offload": "تخلیه"
+      },
+      "labels": {
+        "skills": "مهارت‌ها: ",
+        "vision": "بینایی",
+        "capabilities": "قابلیت‌ها.",
+        "modelName": "نام مدل",
+        "contextLength": "طول زمینه",
+        "architecture": "معماری",
+        "author": "نویسنده",
+        "requiresProjectionModel": "نیاز به مدل پروجکشن",
+        "downloadProjectionModel": "دانلود مدل پروجکشن",
+        "viewModelCardOnHuggingFace": "مشاهده کارت مدل در Hugging Face",
+        "visionSupported": "پشتیبانی می‌شود",
+        "visionNotSupported": "پشتیبانی نمی‌شود",
+        "visionUnknown": "نامشخص"
+      },
+      "accessibility": {
+        "expandDetails": "نمایش جزئیات",
+        "collapseDetails": "بستن جزئیات",
+        "memoryWarning": "هشدار حافظه",
+        "integrityWarning": "هشدار یکپارچگی",
+        "downloadProgress": "پیشرفت دانلود",
+        "loadingIndicator": "در حال بارگذاری",
+        "loadButton": "بارگذاری مدل",
+        "offloadButton": "تخلیه مدل",
+        "downloadButton": "دانلود مدل",
+        "settingsButton": "تنظیمات مدل",
+        "deleteButton": "حذف مدل",
+        "removeButton": "حذف مدل",
+        "expandDetailsButton": "نمایش جزئیات مدل",
+        "memoryWarningButton": "نمایش جزئیات هشدار حافظه",
+        "integrityWarningButton": "نمایش جزئیات هشدار یکپارچگی",
+        "memoryWarningSnackbar": "اعلان هشدار حافظه"
+      }
+    },
+    "modelSettings": {
+      "template": {
+        "label": "قالب:",
+        "editButton": "ویرایش",
+        "dialogTitle": "ویرایش قالب چت",
+        "note1": "توجه: تغییر قالب ممکن است BOS، EOS و پرامپت سیستمی را تغییر دهد.",
+        "note2": "از Nunjucks استفاده می‌کند. برای استفاده از قالب پیش‌فرض مدل، خالی بگذارید.",
+        "placeholder": "قالب چت خود را اینجا وارد کنید...",
+        "closeButton": "بستن"
+      },
+      "stopWords": {
+        "label": "کلمات توقف",
+        "placeholder": "افزودن کلمه توقف جدید"
+      },
+      "tokenSettings": {
+        "bos": "BOS",
+        "eos": "EOS",
+        "addGenerationPrompt": "افزودن پرامپت تولید",
+        "bosTokenPlaceholder": "توکن BOS",
+        "eosTokenPlaceholder": "توکن EOS",
+        "systemPrompt": "پرامپت سیستمی"
+      }
+    },
+    "modelDescription": {
+      "size": "حجم: ",
+      "parameters": "پارامترها: ",
+      "separator": " | ",
+      "notAvailable": "ندارد"
+    },
+    "modelCapabilities": {
+      "questionAnswering": "پاسخ به سؤال",
+      "summarization": "خلاصه‌سازی",
+      "reasoning": "استدلال",
+      "roleplay": "ایفای نقش",
+      "instructions": "دستورات",
+      "code": "تولید کد",
+      "math": "ریاضیات",
+      "multilingual": "چندزبانه",
+      "rewriting": "بازنویسی",
+      "creativity": "نوشتن خلاقانه",
+      "vision": "بینایی"
+    },
+    "hubRun": {
+      "title": "دانلود مدل",
+      "resolving": "در حال بارگذاری جزئیات مدل…",
+      "cancel": "لغو",
+      "retry": "تلاش مجدد",
+      "invalidLinkTitle": "لینک نامعتبر",
+      "invalidLinkMessage": "این لینک Hugging Face ناقص است یا مدل یا فایل نامعتبری دارد.",
+      "resolveError": "بارگذاری جزئیات مدل ممکن نشد. اتصال خود را بررسی کرده و دوباره تلاش کنید."
+    }
+  },
+  "completionParams": {
+    "include_thinking_in_context": "بخش‌های تفکر/استدلال هوش مصنوعی را در متنی که به مدل ارسال می‌شود بگنجانید. غیرفعال کردن این گزینه می‌تواند فضای متن را ذخیره کند. ممکن است روی عملکرد تأثیر بگذارد.",
+    "jinja": "قالب‌بندی Jinja را برای فرمت چت فعال کنید. وقتی فعال باشد، از پردازش قالب چت مبتنی بر Jinja برای سازگاری بهتر با مدل‌های جدید استفاده می‌شود.",
+    "grammar": "اعمال قوانین دستوری خاص برای اطمینان از اینکه متن تولید شده از ساختار یا فرمت مشخصی پیروی کند",
+    "stop": "عبارت‌های خاصی تعریف کنید که تولید متن را متوقف می‌کنند",
+    "n_predict": "حداکثر توکن‌های تولیدی. برای حذف محدودیت «نامحدود» یا برای تعیین مقدار «سفارشی» را انتخاب کنید.",
+    "n_probs": "امتیاز احتمال کلمات جایگزین را نشان دهید.",
+    "top_k": "خلاقیت را با محدود کردن انتخاب کلمات به K گزینه محتمل‌تر کنترل کنید. مقادیر کمتر پاسخ‌ها را متمرکزتر می‌کنند",
+    "top_p": "تعادل بین خلاقیت و انسجام. مقادیر بالاتر (نزدیک به ۱.۰) پاسخ‌های خلاقانه‌تر اما احتمالاً کمتر متمرکز ایجاد می‌کنند",
+    "min_p": "حداقل احتمال برای در نظر گرفتن یک token. کلمات بعید را فیلتر کنید تا پاسخ‌های بی‌معنی یا نامربوط کاهش یابند",
+    "temperature": "خلاقیت در برابر قابل‌پیش‌بینی بودن را کنترل کنید. مقادیر بالاتر پاسخ‌ها را خلاقانه‌تر اما کمتر متمرکز می‌کنند",
+    "penalty_last_n": "چقدر به عقب برگردد تا تکرار را بررسی کند. مقادیر بزرگ‌تر از تکرارهای طولانی‌مدت جلوگیری می‌کنند",
+    "penalty_repeat": "از تکرار کلمات جلوگیری کنید. مقادیر بالاتر باعث استفاده از زبان متنوع‌تر می‌شوند",
+    "penalty_freq": "کلمات پرکاربرد را جریمه کنید. مقادیر بالاتر استفاده از واژگان گسترده‌تر را تشویق می‌کنند",
+    "penalty_present": "تکرار مضامین و ایده‌ها را کاهش دهید. مقادیر بالاتر محتوای متنوع‌تر را تشویق می‌کنند",
+    "mirostat": "کنترل پیشرفته روی خلاقیت پاسخ را فعال کنید. روی ۱ یا ۲ (نرم‌تر) تنظیم کنید برای تنظیمات هوشمند و لحظه‌ای تصادفی بودن و انسجام.",
+    "mirostat_tau": "سطح خلاقیت هدف برای Mirostat را تنظیم کنید. مقادیر بالاتر پاسخ‌های متنوع‌تر و خلاقانه‌تر ایجاد می‌کنند، در حالی که مقادیر پایین‌تر خروجی‌های متمرکزتر تضمین می‌کنند.",
+    "mirostat_eta": "سرعت تنظیم خلاقیت توسط Mirostat. مقادیر بالاتر یعنی تنظیمات سریع‌تر",
+    "dry_multiplier": "شدت قابلیت DRY (خودت را تکرار نکن). مقادیر بالاتر قویاً از تکرار جلوگیری می‌کنند",
+    "dry_base": "جریمه پایه برای تکرار در حالت DRY. مقادیر بالاتر تهاجمی‌تر از تکرار جلوگیری می‌کنند",
+    "dry_allowed_length": "چند کلمه می‌توانند تکرار شوند قبل از اینکه جریمه DRY فعال شود",
+    "dry_penalty_last_n": "چقدر به عقب نگاه کند برای بررسی تکرار در حالت DRY",
+    "dry_sequence_breakers": "نمادهایی که بررسی‌کننده تکرار را در حالت DRY بازنشانی می‌کنند",
+    "ignore_eos": "حتی اگر مدل بخواهد متوقف شود، به تولید ادامه دهید. برای تولید پاسخ‌های طولانی‌تر مفید است",
+    "logit_bias": "تأثیرگذاری بر احتمال ظاهر شدن کلمات خاص در پاسخ",
+    "seed": "بذر تولیدکننده اعداد تصادفی را تنظیم کنید. برای نتایج تکرارپذیر مفید است",
+    "xtc_probability": "احتمال حذف token توسط نمونه‌بردار XTC را تنظیم کنید. ۰ یعنی غیرفعال",
+    "xtc_threshold": "حداقل آستانه احتمال برای حذف token‌ها توسط نمونه‌بردار XTC را تنظیم کنید. (بیشتر از ۰.۵ XTC را غیرفعال می‌کند)",
+    "typical_p": "نمونه‌برداری محلی معمول را با پارامتر p فعال کنید. ۱.۰ یعنی غیرفعال"
+  },
+  "about": {
+    "screenTitle": "درباره برنامه",
+    "description": "برنامه‌ای که مدل‌های زبانی را مستقیماً به گوشی شما می‌آورد. بر پایه llama.cpp و llama.rn ساخته شده.",
+    "supportProject": "حمایت از پروژه",
+    "supportProjectDescription": "اگر از استفاده PocketPal AI لذت می‌برید، لطفاً حمایت از پروژه را در نظر بگیرید:",
+    "githubButton": "ستاره در GitHub",
+    "orText": "یا",
+    "orBy": "یا با",
+    "sponsorButton": "حامی مالی شوید",
+    "versionCopiedTitle": "نسخه کپی شد",
+    "versionCopiedDescription": "اطلاعات نسخه در کلیپ‌بورد کپی شد",
+    "privacyPolicy": "سیاست حریم خصوصی",
+    "termsOfService": "شرایط استفاده از خدمات",
+    "tour": "تور معرفی",
+    "tourDescription": "صفحه‌های خوش‌آمدگویی را دوباره ببینید تا با امکانات PocketPal AI آشنا شوید.",
+    "showIntroButton": "نمایش دوباره معرفی"
+  },
+  "feedback": {
+    "title": "ارسال بازخورد",
+    "description": "نظر شما مهم است! به ما بگویید PocketPal AI چطور به شما کمک می‌کند و چه کاری می‌توانیم انجام دهیم تا مفیدتر شود.",
+    "shareThoughtsButton": "نظرات خود را به اشتراک بگذارید",
+    "useCase": {
+      "label": "PocketPal AI را برای چه کاری استفاده می‌کنید؟",
+      "placeholder": "مثلاً خلاصه‌سازی، ایفای نقش و غیره"
+    },
+    "featureRequests": {
+      "label": "درخواست قابلیت",
+      "placeholder": "دوست دارید چه قابلیت‌هایی اضافه شود؟"
+    },
+    "generalFeedback": {
+      "label": "بازخورد عمومی",
+      "placeholder": "هر نظر دیگری دارید با ما به اشتراک بگذارید."
+    },
+    "usageFrequency": {
+      "label": "چقدر از PocketPal AI استفاده می‌کنید؟ (اختیاری)",
+      "options": {
+        "daily": "روزانه",
+        "weekly": "هفتگی",
+        "monthly": "ماهانه",
+        "rarely": "به‌ندرت"
+      }
+    },
+    "email": {
+      "label": "ایمیل تماس (اختیاری)",
+      "placeholder": "آدرس ایمیل شما"
+    },
+    "submit": "ارسال بازخورد",
+    "validation": {
+      "required": "لطفاً حداقل مقداری بازخورد ارائه دهید"
+    },
+    "success": "از بازخورد شما ممنونیم!",
+    "error": {
+      "general": "خطا در ارسال بازخورد. لطفاً دوباره تلاش کنید."
+    }
+  },
+  "components": {
+    "attachmentButton": {
+      "attachmentButtonAccessibilityLabel": "ارسال رسانه"
+    },
+    "exportUtils": {
+      "fileSaved": "فایل ذخیره شد",
+      "fileSavedMessage": "فایل در پوشه دانلودها با نام {{filename}} ذخیره شد",
+      "share": "اشتراک‌گذاری",
+      "ok": "باشه",
+      "shareError": "خطا در اشتراک‌گذاری",
+      "shareErrorMessage": "اشتراک‌گذاری فایل ممکن نشد. لطفاً دوباره امتحان کنید.",
+      "saveError": "خطا در ذخیره در پوشه دانلودها",
+      "saveOptions": "گزینه‌های ذخیره",
+      "saveOptionsMessage": "ذخیره مستقیم در پوشه دانلودها ممکن نشد. می‌خواهید فایل را به اشتراک بگذارید؟",
+      "cancel": "لغو",
+      "shareContentErrorMessage": "اشتراک‌گذاری محتوا ممکن نشد. لطفاً دوباره امتحان کنید.",
+      "exportError": "خطا در خروجی‌گیری",
+      "exportErrorMessage": "در خروجی‌گیری فایل خطایی رخ داد. لطفاً دوباره امتحان کنید.",
+      "permissionRequired": "نیاز به دسترسی حافظه",
+      "permissionMessage": "برای ذخیره فایل خروجی در پوشه دانلودها به دسترسی نیاز داریم.",
+      "permissionDenied": "دسترسی رد شد",
+      "permissionDeniedMessage": "بدون دسترسی حافظه، قابلیت خروجی‌گیری غیرفعال خواهد شد.",
+      "continue": "ادامه"
+    },
+    "thinkingBubble": {
+      "reasoning": "استدلال"
+    },
+    "chatEmptyPlaceholder": {
+      "noModelsTitle": "مدلی موجود نیست",
+      "noModelsDescription": "یک مدل دانلود کنید تا گفتگو با PocketPal را شروع کنید",
+      "noModelsButton": "دانلود مدل",
+      "activateModelTitle": "برای شروع یک مدل را فعال کنید",
+      "activateModelDescription": "مدل را انتخاب و دانلود کنید. بعد از دانلود، روی بارگذاری کنار مدل بزنید و گفتگو را شروع کنید.",
+      "activateModelButton": "انتخاب مدل",
+      "loading": "در حال بارگذاری...",
+      "gettingReadyTitle": "{{name}} در حال آماده‌شدن است",
+      "gettingReadyDescription": "همین که پَل شما آماده گفتگو شد به شما خبر می‌دهیم. روی نوار بالای صفحه بزنید تا روند کار را ببینید."
+    },
+    "chatInput": {
+      "inputPlaceholder": "پیام",
+      "thinkingToggle": {
+        "enableThinking": "فعال‌سازی حالت تفکر",
+        "disableThinking": "غیرفعال‌سازی حالت تفکر",
+        "thinkingEnabled": "حالت تفکر فعال شد",
+        "thinkingDisabled": "حالت تفکر غیرفعال شد",
+        "thinkText": "تفکر",
+        "cycleEffort": "میزان استدلال: {{level}}. برای تغییر میزان دوبار ضربه بزنید"
+      }
+    },
+    "contentReportSheet": {
+      "title": "گزارش محتوا",
+      "privacyNote": "ما هیچ محتوای پیام یا جزئیات مکالمه‌ای ارسال نمی‌کنیم. لطفاً مشکلی که با آن مواجه شدید را توضیح دهید.",
+      "categoryLabel": "دسته‌بندی گزارش",
+      "selectCategory": "یک دسته‌بندی انتخاب کنید",
+      "categories": {
+        "hate": "نفرت‌پراکنی",
+        "sexual": "محتوای جنسی",
+        "selfHarm": "خودآزاری",
+        "violence": "خشونت",
+        "other": "سایر"
+      },
+      "descriptionLabel": "توضیحات",
+      "descriptionPlaceholder": "لطفاً مشکل این محتوا را توضیح دهید...",
+      "includeModelInfo": "شامل اطلاعات مدل",
+      "includeModelInfoDescription": "نام و شناسه مدل را برای کمک به بررسی ارسال کنید",
+      "noActiveModelNote": "در حال حاضر مدلی فعال نیست",
+      "submit": "ارسال گزارش",
+      "validation": {
+        "title": "اطلاعات ناقص",
+        "message": "لطفاً یک دسته‌بندی انتخاب کنید و توضیحات را وارد کنید."
+      },
+      "success": {
+        "title": "گزارش ارسال شد",
+        "message": "ممنون از گزارش شما. آن را بررسی کرده و اقدام مناسب انجام خواهیم داد."
+      },
+      "error": {
+        "title": "ارسال گزارش ناموفق بود",
+        "message": "ارسال گزارش ممکن نشد. لطفاً دوباره امتحان کنید."
+      }
+    },
+    "modelErrorReportSheet": {
+      "title": "گزارش مشکل بارگذاری مدل",
+      "privacyNote": "با اشتراک‌گذاری جزئیات این خطا به بهبود PocketPal کمک کنید. موارد زیر را بررسی کنید — می‌توانید هر موردی که نمی‌خواهید ارسال شود را غیرفعال کنید.",
+      "errorMessage": "پیام خطا",
+      "modelInfo": "اطلاعات مدل",
+      "modelName": "نام",
+      "modelSource": "منبع",
+      "modelSize": "حجم",
+      "contextParams": "پارامترهای context",
+      "deviceInfo": "اطلاعات دستگاه",
+      "deviceModel": "دستگاه",
+      "osVersion": "سیستم‌عامل",
+      "memoryInfo": "حافظه",
+      "cpuArchitecture": "CPU",
+      "isEmulator": "شبیه‌ساز",
+      "additionalInfoLabel": "توضیحات اضافی (اختیاری)",
+      "additionalInfoPlaceholder": "هر جزئیات دیگری که ممکن است به درک مشکل کمک کند...",
+      "submit": "ارسال گزارش",
+      "success": {
+        "title": "گزارش ارسال شد",
+        "message": "ممنون که به بهبود PocketPal کمک می‌کنید. گزارش شما به رفع این مشکل کمک خواهد کرد."
+      },
+      "error": {
+        "title": "ارسال گزارش ناموفق بود",
+        "message": "ارسال گزارش ممکن نشد. لطفاً بعداً دوباره امتحان کنید."
+      }
+    },
+    "chatGenerationSettingsSheet": {
+      "invalidValues": "مقادیر نامعتبر",
+      "invalidNumericValuesMessage": "باید یک عدد معتبر باشد",
+      "pleaseCorrect": "لطفاً موارد زیر را اصلاح کنید:",
+      "ok": "باشه",
+      "saveChanges": "ذخیره تغییرات",
+      "saveAsPreset": "ذخیره به‌عنوان پیش‌تنظیم",
+      "title_session": "تنظیمات تولید متن (جلسه)",
+      "title_preset": "تنظیمات تولید متن (پیش‌تنظیم)",
+      "resetToSystemDefaults": "بازنشانی به پیش‌فرض سیستم",
+      "resetToPreset": "بازنشانی به پیش‌تنظیم",
+      "applytoPresetAlert": {
+        "title": "انجام شد",
+        "message": "این تنظیمات روی تمام جلسات آینده اعمال خواهد شد"
+      },
+      "palSettings": "تنظیمات پَل",
+      "settingsSource": "منبع تنظیمات"
+    },
+    "palGenerationSettingsSheet": {
+      "title": "تنظیمات تولید متن - {{palName}}",
+      "invalidValues": "مقادیر نامعتبر",
+      "invalidNumericValuesMessage": "باید یک عدد معتبر باشد",
+      "pleaseCorrect": "لطفاً موارد زیر را اصلاح کنید:",
+      "ok": "باشه",
+      "error": "خطا",
+      "failedToSave": "ذخیره تنظیمات پَل ممکن نشد",
+      "resetToGlobal": "بازنشانی به پیش‌فرض کلی",
+      "resetToSystem": "بازنشانی به پیش‌فرض سیستم",
+      "clearPalSettings": "پاک‌سازی تنظیمات پَل",
+      "customSettingsFor": "تنظیمات سفارشی برای {{palName}}",
+      "inheritedSettingsFor": "تنظیمات ارثی برای {{palName}}"
+    },
+    "chatHeaderTitle": {
+      "defaultTitle": "چت"
+    },
+    "fileMessage": {
+      "fileButtonAccessibilityLabel": "فایل"
+    },
+    "chatPalModelPickerSheet": {
+      "modelsTab": "مدل‌ها",
+      "palsTab": "پَل‌ها",
+      "noPal": "بدون پَل",
+      "disablePal": "غیرفعال‌سازی پَل فعال",
+      "noDescription": "بدون توضیحات",
+      "assistantType": "دستیار",
+      "roleplayType": "نقش‌آفرینی",
+      "videoType": "ویدیو",
+      "confirmationTitle": "تأیید",
+      "modelSwitchMessage": "این پَل مدل پیش‌فرض متفاوتی دارد ({{modelName}}). می‌خواهید به مدل پیش‌فرض پَل تغییر دهید؟",
+      "keepButton": "نگه‌دار",
+      "switchButton": "تغییر بده"
+    },
+    "downloadErrorDialog": {
+      "downloadFailedTitle": "دانلود ناموفق",
+      "downloadFailedMessage": "دانلود مدل ممکن نشد: {{message}}",
+      "unauthorizedTitle": "احراز هویت ناموفق",
+      "unauthorizedMessage": "توکن Hugging Face شما نامعتبر یا منقضی شده. لطفاً توکن خود را در تنظیمات به‌روز کنید.",
+      "forbiddenTitle": "دسترسی رد شد",
+      "forbiddenMessage": "شما به این مدل دسترسی ندارید. لطفاً مطمئن شوید:",
+      "forbiddenSteps": [
+        "توکن شما دسترسی \"read\" دارد",
+        "درخواست دسترسی به این مدل داده‌اید و تأیید شده",
+        "صاحب مدل درخواست دسترسی شما را تأیید کرده"
+      ],
+      "getTokenTitle": "دریافت توکن Hugging Face",
+      "getTokenMessage": "این مدل برای دانلود به توکن Hugging Face نیاز دارد.",
+      "getTokenSteps": [
+        "به huggingface.co بروید و وارد شوید",
+        "به Settings > Access Tokens بروید",
+        "یک توکن جدید با دسترسی \"read\" بسازید",
+        "توکن را کپی کرده و در فیلد توکن وارد کنید"
+      ],
+      "tokenDisabledTitle": "توکن غیرفعال است",
+      "tokenDisabledMessage": "شما یک توکن Hugging Face دارید، اما در حال حاضر غیرفعال است. این مدل برای دانلود به توکن نیاز دارد. توکن را فعال کنید تا ادامه دهید.",
+      "enableAndRetry": "فعال‌سازی و تلاش مجدد",
+      "goToSettings": "رفتن به تنظیمات",
+      "tryAgain": "تلاش مجدد",
+      "viewOnHuggingFace": "مشاهده مدل در HF ↗"
+    },
+    "headerRight": {
+      "deleteChatTitle": "حذف چت",
+      "deleteChatMessage": "آیا از حذف این چت مطمئن هستید؟",
+      "generationSettings": "تنظیمات تولید متن",
+      "model": "مدل",
+      "duplicateChatHistory": "کپی تاریخچه چت",
+      "makeChatTemporary": "تبدیل به چت موقت",
+      "export": "خروجی/ورودی",
+      "exportCurrentSession": "خروجی جلسه فعلی",
+      "exportAllSessions": "خروجی همه جلسات",
+      "exportChatSession": "خروجی جلسه چت",
+      "importSessions": "ورود جلسات"
+    },
+    "hfTokenSheet": {
+      "title": "توکن Hugging Face",
+      "description": "برای دسترسی به مدل‌های محدود لازم است",
+      "inputLabel": "توکن دسترسی شخصی",
+      "inputPlaceholder": "توکن خود را اینجا وارد کنید",
+      "save": "ذخیره توکن",
+      "saved": "توکن با موفقیت ذخیره شد",
+      "reset": "بازنشانی توکن",
+      "resetSuccess": "توکن با موفقیت حذف شد",
+      "instructions": "نحوه دریافت توکن:",
+      "instructionsSteps": [
+        "به huggingface.co بروید و وارد شوید",
+        "به Settings > Access Tokens بروید",
+        "یک توکن جدید با دسترسی \"read\" بسازید",
+        "توکن را کپی کرده و در زیر وارد کنید"
+      ],
+      "getTokenLink": "دریافت توکن از huggingface.co ↗",
+      "error": {
+        "saving": "خطا در ذخیره توکن",
+        "missing": "توکن Hugging Face لازم است",
+        "invalid": "توکن نامعتبر یا منقضی شده",
+        "gatedModelAccess": "دسترسی به این مدل محدود رد شد"
+      },
+      "gatedModelIndicator": "نیاز به توکن",
+      "tokenRequired": "این مدل به توکن دسترسی Hugging Face نیاز دارد",
+      "searchErrorHint": "توکن API Hugging Face شما نامعتبر یا منقضی شده. برای ادامه جستجو، لطفاً توکن را حذف کنید یا احراز هویت توکن را در تنظیمات غیرفعال کنید.",
+      "disableAndRetry": "غیرفعال‌سازی توکن و تلاش مجدد"
+    },
+    "modelSettingsSheet": {
+      "modelSettings": "تنظیمات مدل",
+      "saveChanges": "ذخیره تغییرات",
+      "reasoningSection": "استدلال",
+      "isReasoningModel": "مدل استدلالی",
+      "isReasoningModelHelp": "نمایش کنترل تفکر برای این مدل، حتی اگر به‌صورت خودکار تشخیص داده نشده باشد.",
+      "supportsEffort": "پشتیبانی از میزان استدلال درجه‌بندی‌شده",
+      "effortValues": "میزان‌های استدلالی که این مدل پشتیبانی می‌کند",
+      "effortLevels": {
+        "minimal": "حداقل",
+        "low": "کم",
+        "medium": "متوسط",
+        "high": "زیاد",
+        "xhigh": "خیلی زیاد",
+        "max": "حداکثر"
+      }
+    },
+    "modelsHeaderRight": {
+      "menuTitleHf": "مدل‌های Hugging Face",
+      "menuTitleDownloaded": "مدل‌های دانلود شده",
+      "menuTitleGrouped": "گروه‌بندی بر اساس نوع مدل",
+      "menuTitleReset": "بازنشانی لیست مدل‌ها"
+    },
+    "modelsResetDialog": {
+      "proceedWithReset": "ادامه بازنشانی",
+      "confirmReset": "تأیید بازنشانی"
+    },
+    "palSheet": {
+      "title": {
+        "edit": "ویرایش پَل",
+        "newPal": "پَل جدید",
+        "newVideoPal": "پَل ویدیویی جدید"
+      },
+      "description": "توضیحات",
+      "descriptionPlaceholder": "یک توضیح کوتاه درباره پَل خود بنویسید",
+      "parameters": "پارامترها",
+      "generationSettings": "تنظیمات تولید",
+      "configureGenerationSettings": "پیکربندی تنظیمات تولید",
+      "validation": {
+        "nameRequired": "نام الزامی است",
+        "generatingPromptRequired": "هنگام استفاده از پرامپت هوش مصنوعی، پرامپت تولید الزامی است",
+        "promptModelRequired": "هنگام استفاده از پرامپت هوش مصنوعی، مدل تولید پرامپت الزامی است"
+      },
+      "talents": "توانایی‌ها",
+      "talentNames": {
+        "render_html": "پیش‌نمایش HTML",
+        "calculate": "عبارت‌های ریاضی",
+        "datetime": "تاریخ و زمان",
+        "web_search": "جستجوی وب",
+        "read_url": "خواندن صفحه وب"
+      },
+      "talentDescriptions": {
+        "render_html": "نمایش اسناد HTML به‌صورت درون‌خطی در چت",
+        "calculate": "محاسبه عبارت‌های ریاضی",
+        "datetime": "دریافت تاریخ و زمان فعلی",
+        "web_search": "جستجوی اینترنت برای اطلاعات به‌روز (به کلید API در تنظیمات نیاز دارد)",
+        "read_url": "خواندن کامل محتوای یک صفحه وب (به کلید API در تنظیمات نیاز دارد)"
+      },
+      "greeting": {
+        "sectionLabel": "خوش‌آمدگویی",
+        "textLabel": "پیام خوش‌آمدگویی",
+        "textPlaceholder": "این پَل در چت خالی چه بگوید؟",
+        "suggestedPromptsLabel": "پرامپت‌های پیشنهادی",
+        "addPromptButton": "افزودن پرامپت",
+        "promptPlaceholder": "یک پرامپت کوتاه برای چیپ",
+        "removePromptLabel": "حذف پرامپت"
+      }
+    },
+    "assistantPalSheet": {
+      "title": {
+        "create": "ایجاد پَل دستیار",
+        "edit": "ویرایش پَل دستیار"
+      },
+      "palName": "نام پَل",
+      "palNamePlaceholder": "نام",
+      "defaultModel": "مدل پیش‌فرض",
+      "defaultModelPlaceholder": "انتخاب مدل",
+      "validation": {
+        "generatingPromptRequired": "پرامپت تولید الزامی است",
+        "promptModelRequired": "مدل تولید پرامپت الزامی است"
+      },
+      "create": "ایجاد"
+    },
+    "modelNotAvailable": {
+      "noModelsDownloaded": "هنوز هیچ مدلی دانلود نکرده‌اید. لطفاً ابتدا یک مدل دانلود کنید.",
+      "downloadAModel": "دانلود یک مدل",
+      "defaultModelNotDownloaded": "این پَل یک مدل خاص پیشنهاد می‌دهد که باید دانلود شود، یا می‌توانید مدل دیگری انتخاب کنید.",
+      "modelNotDownloadedShort": "مدل دانلود نشده",
+      "recommendedModel": "مدل پیشنهادی",
+      "cancelDownload": "لغو دانلود",
+      "download": "دانلود"
+    },
+    "roleplayPalSheet": {
+      "title": {
+        "create": "ایجاد پَل نقش‌آفرینی",
+        "edit": "ویرایش پَل نقش‌آفرینی"
+      },
+      "palName": "نام پَل",
+      "palNamePlaceholder": "نام",
+      "defaultModel": "مدل پیش‌فرض",
+      "defaultModelPlaceholder": "انتخاب مدل",
+      "descriptionSection": "توضیحات",
+      "world": "دنیا",
+      "worldPlaceholder": "فانتزی",
+      "location": "مکان",
+      "locationPlaceholder": "جنگل افسون‌شده",
+      "locationSublabel": "داستان کجا اتفاق می‌افتد؟",
+      "aiRole": "نقش هوش مصنوعی",
+      "aiRolePlaceholder": "الدارا، یک پری شیطون جنگل",
+      "aiRoleSublabel": "نقش شخصیت را تعیین کنید",
+      "userRole": "نقش کاربر",
+      "userRolePlaceholder": "سِر الاندور، یک شوالیه شجاع",
+      "userRoleSublabel": "شما چه کسی هستید؟",
+      "situation": "موقعیت",
+      "situationPlaceholder": "مأموریت نجات، حل یک معما",
+      "toneStyle": "لحن/سبک",
+      "toneStylePlaceholder": "جدی",
+      "validation": {
+        "promptModelRequired": "مدل تولید پرامپت الزامی است"
+      },
+      "create": "ایجاد"
+    },
+    "lookiePalSheet": {
+      "title": {
+        "create": "ایجاد پَل Lookie",
+        "edit": "ویرایش پَل Lookie"
+      },
+      "palName": "نام پَل",
+      "palNamePlaceholder": "یک نام برای پَل Lookie خود وارد کنید",
+      "visionModel": "مدل بینایی",
+      "visionModelPlaceholder": "یک مدل بینایی انتخاب کنید",
+      "requiredModelsSection": "مدل‌های مورد نیاز",
+      "captureInterval": "فاصله زمانی عکس‌برداری",
+      "captureIntervalHelper": "زمان بین عکس‌برداری‌های خودکار بر حسب میلی‌ثانیه",
+      "create": "ایجاد"
+    },
+    "sendButton": {
+      "accessibilityLabel": "ارسال"
+    },
+    "systemPromptSection": {
+      "sectionTitle": "پرامپت سیستم",
+      "useAIPrompt": "استفاده از هوش مصنوعی برای تولید پرامپت سیستم",
+      "modelSelector": {
+        "label": "انتخاب مدل برای تولید*",
+        "sublabel": "پیشنهادی: Llama 3.2 3B یا Qwen3 4B Instruct 2507.",
+        "placeholder": "انتخاب مدل"
+      },
+      "generatingPrompt": {
+        "label": "هدف و زمینه",
+        "placeholder": "نقش، هدف یا سناریوی این پَل را توضیح دهید..."
+      },
+      "buttons": {
+        "loadingModel": "در حال بارگذاری مدل...",
+        "stopGenerating": "توقف تولید",
+        "generatePrompt": "تولید پرامپت سیستم",
+        "resetParameters": "بازنشانی پارامترها",
+        "resetTemplate": "بازنشانی قالب"
+      },
+      "systemPrompt": {
+        "label": "پرامپت سیستم",
+        "sublabel": "آزادانه ویرایش و آزمایش کنید تا بهترین پرامپت را برای سناریوی خود پیدا کنید",
+        "placeholder": "شما یک دستیار مفید هستید"
+      },
+      "warnings": {
+        "promptChanged": "پرامپت سیستم به صورت دستی تغییر کرده است"
+      }
+    },
+    "sidebarContent": {
+      "menuItems": {
+        "chat": "چت",
+        "models": "مدل‌ها",
+        "pals": "پَل‌ها",
+        "benchmark": "بنچمارک",
+        "settings": "تنظیمات",
+        "appInfo": "درباره برنامه",
+        "testCompletion": "تست تکمیل"
+      },
+      "deleteChatTitle": "حذف چت",
+      "deleteChatMessage": "آیا مطمئنید که می‌خواهید این چت را حذف کنید؟",
+      "select": "انتخاب",
+      "nSelected": "{{count}} انتخاب شده",
+      "selectAll": "انتخاب همه",
+      "deselectAll": "لغو انتخاب همه",
+      "exportCount": "خروجی ({{count}})",
+      "deleteCount": "حذف ({{count}})",
+      "bulkDeleteTitle": "حذف جلسات چت",
+      "bulkDeleteMessage": "{{count}} جلسه چت حذف شود؟ این عمل قابل بازگشت نیست.",
+      "bulkDeleteError": "حذف جلسات چت انجام نشد. لطفاً دوباره تلاش کنید.",
+      "exportError": "خروجی‌گیری از جلسه چت انجام نشد. لطفاً دوباره تلاش کنید.",
+      "bulkExportError": "خروجی‌گیری از جلسات چت انجام نشد. لطفاً دوباره تلاش کنید.",
+      "dateGroups": {
+        "today": "امروز",
+        "yesterday": "دیروز",
+        "thisWeek": "این هفته",
+        "lastWeek": "هفته گذشته",
+        "twoWeeksAgo": "۲ هفته پیش",
+        "threeWeeksAgo": "۳ هفته پیش",
+        "fourWeeksAgo": "۴ هفته پیش",
+        "lastMonth": "ماه گذشته",
+        "older": "قدیمی‌تر"
+      }
+    },
+    "usageStats": {
+      "tooltip": {
+        "title": "مصرف حافظه",
+        "used": "استفاده شده: ",
+        "total": "کل: ",
+        "usage": "مصرف: "
+      },
+      "byteSizes": [
+        "Bytes",
+        "KB",
+        "MB",
+        "GB"
+      ]
+    },
+    "chatView": {
+      "menuItems": {
+        "copy": "کپی",
+        "regenerate": "تولید مجدد",
+        "regenerateWith": "تولید مجدد با",
+        "edit": "ویرایش",
+        "reportContent": "گزارش محتوا"
+      }
+    },
+    "palHeaderRight": {
+      "exportAllPals": "خروجی از همه پَل‌ها",
+      "importPals": "وارد کردن پَل‌ها",
+      "importSuccess": "{{count}} پَل با موفقیت وارد شد.",
+      "importError": "وارد کردن پَل‌ها انجام نشد. لطفاً فرمت فایل را بررسی کنید."
+    },
+    "bubble": {
+      "msPerToken": "{{value}}ms/توکن",
+      "tokensPerSec": "{{value}} توکن/ثانیه",
+      "ttft": "{{value}}ms TTFT",
+      "interrupted": "متوقف شد",
+      "truncated": "قطع شد — احتمالاً context پر شده"
+    },
+    "pendingIndicator": {
+      "preparingTool": "در حال آماده‌سازی ابزار",
+      "buildingPage": "در حال ساخت صفحه",
+      "calculating": "در حال محاسبه",
+      "lookingUpTime": "در حال یافتن زمان",
+      "stopping": "در حال توقف…"
+    },
+    "toolMetrics": {
+      "tokens": "{{count}} توکن",
+      "elapsed": "{{seconds}} ثانیه"
+    }
+  },
+  "palsScreen": {
+    "sectionTitles": {
+      "myPalsLocal": "پَل‌های من (محلی)",
+      "myLibrary": "کتابخانه من (palshub.ai)",
+      "discoverPals": "کشف پَل‌ها (palshub.ai)"
+    },
+    "systemPrompt": "پرامپت سیستم",
+    "videoAnalysis": "تحلیل ویدیو",
+    "videoAnalysisDescription": "این یک دستیار هوش مصنوعی مبتنی بر ویدیو است که تحلیل لحظه‌ای از استریم ویدیویی دوربین دستگاه شما ارائه می‌دهد.",
+    "captureInterval": "فاصله زمانی تصویربرداری",
+    "captureIntervalUnit": "ms",
+    "world": "دنیا",
+    "toneStyle": "لحن/سبک",
+    "aiRole": "نقش هوش مصنوعی",
+    "userRole": "نقش من",
+    "prompt": "پرامپت",
+    "assistant": "دستیار",
+    "roleplay": "نقش‌آفرینی",
+    "video": "ویدیو",
+    "deletePal": "حذف پَل",
+    "deletePalMessage": "آیا مطمئنید می‌خواهید این پَل را حذف کنید؟",
+    "missingModel": "مدل موجود نیست",
+    "missingModelMessage": "مدل پیش‌فرض «{{modelName}}» برای این پَل در دسترس نیست. لطفاً آن را در صفحه ویرایش دانلود کنید یا مدل دیگری انتخاب کنید.",
+    "search": "جستجو",
+    "profile": "پروفایل",
+    "signIn": "ورود",
+    "addPal": "افزودن پَل",
+    "signInToAccessLibrary": "برای دسترسی به کتابخانه‌تان از palshub.ai وارد شوید",
+    "signOut": "خروج",
+    "signOutConfirmation": "آیا مطمئنید می‌خواهید خارج شوید؟",
+    "signOutError": "خروج با مشکل مواجه شد. لطفاً دوباره تلاش کنید.",
+    "account": "حساب کاربری",
+    "signInToPalsHub": "ورود به PalsHub",
+    "signInDescription": "به کتابخانه‌تان دسترسی پیدا کنید، پَل‌های خصوصی بسازید و بین دستگاه‌ها همگام‌سازی کنید",
+    "searchAllPals": "جستجو در همه پَل‌ها...",
+    "deletePalConfirmation": "آیا مطمئنید می‌خواهید «{{palName}}» را حذف کنید؟",
+    "filters": {
+      "all": "همه",
+      "myPals": "پَل‌های من",
+      "local": "محلی",
+      "video": "ویدیو",
+      "free": "رایگان",
+      "premium": "ویژه"
+    },
+    "labels": {
+      "free": "رایگان",
+      "premium": "ویژه",
+      "private": "خصوصی",
+      "download": "دانلود",
+      "getFree": "دریافت رایگان"
+    },
+    "premiumPalDescription": "پَل ویژه از جامعه palshub.ai",
+    "premiumInfoText": "برای کشف پَل‌های بیشتر به palshub.ai سر بزنید",
+    "sortOptions": {
+      "newest": "جدیدترین",
+      "oldest": "قدیمی‌ترین",
+      "rating": "پرامتیازترین",
+      "popular": "محبوب‌ترین"
+    },
+    "palDetailSheet": {
+      "by": "توسط",
+      "unknown": "ناشناس",
+      "rating": "امتیاز",
+      "reviews": "نظرات",
+      "created": "تاریخ ایجاد",
+      "description": "توضیحات",
+      "noDescriptionAvailable": "توضیحاتی موجود نیست.",
+      "categories": "دسته‌بندی‌ها",
+      "tags": "برچسب‌ها",
+      "systemPrompt": "پرامپت سیستم",
+      "downloaded": "دانلود شد",
+      "success": "موفق",
+      "palAddedToCollection": "پَل به مجموعه شما اضافه شد!",
+      "error": "خطا",
+      "failedToLoadDetails": "بارگذاری جزئیات پَل با مشکل مواجه شد",
+      "failedToDownload": "دانلود پَل با مشکل مواجه شد",
+      "premiumPalMessage": "این یک پَل ویژه است.\n• اگر قبلاً با حساب Palshub خود آن را فعال کرده‌اید، کافی است وارد شوید تا به جزئیات کامل دسترسی پیدا کنید.\n• هنوز فعال نکرده‌اید؟ برای اطلاعات بیشتر به برنامه palshub.ai مراجعه کنید.",
+      "notAvailable": "ندارد",
+      "buyOnPalshub": "خرید در Palshub",
+      "finalizingPurchase": "در حال نهایی‌سازی خرید شما…",
+      "processingPurchase": "در حال پردازش — به‌زودی فعال می‌شود.",
+      "checkoutSessionExpired": "نشست شما منقضی شد. برای ادامه دوباره وارد شوید.",
+      "signInAgain": "ورود مجدد",
+      "palNotAvailable": "این پَل در حال حاضر برای خرید در دسترس نیست.",
+      "checkoutFailed": "مشکلی پیش آمد. لطفاً دوباره تلاش کنید."
+    }
+  },
+  "validation": {
+    "nameRequired": "نام الزامی است",
+    "systemPromptRequired": "پرامپت سیستم الزامی است",
+    "worldRequired": "دنیا الزامی است",
+    "locationRequired": "مکان الزامی است",
+    "aiRoleRequired": "نقش هوش مصنوعی الزامی است",
+    "userRoleRequired": "نقش کاربر الزامی است",
+    "situationRequired": "موقعیت الزامی است",
+    "toneStyleRequired": "لحن/سبک الزامی است"
+  },
+  "camera": {
+    "permissionTitle": "دسترسی به دوربین لازم است",
+    "permissionMessage": "PocketPal برای تحلیل تصاویر به دسترسی دوربین نیاز دارد",
+    "requestingPermission": "درخواست دسترسی به دوربین...",
+    "noDevice": "دوربینی یافت نشد",
+    "errorTitle": "خطای دوربین",
+    "errorMessage": "هنگام گرفتن عکس خطایی رخ داد",
+    "flip": "چرخش",
+    "analyzing": "در حال تحلیل تصویر...",
+    "startCamera": "شروع دوربین",
+    "stopCamera": "توقف دوربین",
+    "promptPlaceholder": "درباره این تصویر چه می‌خواهید بدانید؟",
+    "takePhoto": "دوربین"
+  },
+  "video": {
+    "permissionTitle": "دسترسی به دوربین لازم است",
+    "permissionMessage": "PocketPal برای تحلیل ویدیو به دسترسی دوربین نیاز دارد",
+    "requestingPermission": "درخواست دسترسی به دوربین...",
+    "noDevice": "دوربینی یافت نشد",
+    "errorTitle": "خطای دوربین",
+    "errorMessage": "خطایی در دوربین رخ داد",
+    "flip": "چرخش",
+    "analyzing": "در حال تحلیل ویدیو...",
+    "startCamera": "شروع دوربین",
+    "stopCamera": "توقف دوربین",
+    "promptPlaceholder": "درباره این ویدیو چه می‌خواهید بدانید؟",
+    "captureInterval": "فاصله زمانی تصویربرداری",
+    "captureIntervalUnit": "ms",
+    "liveCommentary": "تفسیر زنده",
+    "emptyPlaceholder": {
+      "title": "به Lookie خوش آمدید",
+      "subtitle": "تحلیل ویدیوی لحظه‌ای و خصوصی روی دستگاه",
+      "experimentalNotice": "این یک قابلیت آزمایشی است. دقت به مدل انتخاب‌شده، سرعت به مشخصات دستگاه شما بستگی دارد و برخی مدل‌ها ممکن است کار نکنند.",
+      "howToUse": "نحوه استفاده:",
+      "step1": "• پرامپت را ویرایش کنید (اختیاری) تا تحلیل را هدایت کنید",
+      "step2": "• دکمه دوربین را بزنید تا تحلیل زنده ویدیو شروع شود",
+      "step3": "• فرکانس تصویربرداری را هنگام فعال بودن دوربین تنظیم کنید",
+      "step4": "• به پَل دیگری بروید برای چت متنی معمولی"
+    }
+  },
+  "screenTitles": {
+    "chat": "چت",
+    "models": "مدل‌ها",
+    "pals": "پَل‌ها (آزمایشی)",
+    "benchmark": "بنچمارک",
+    "settings": "تنظیمات",
+    "appInfo": "درباره برنامه",
+    "testCompletion": "تست تکمیل"
+  },
+  "chat": {
+    "conversationReset": "مکالمه بازنشانی شد!",
+    "modelNotLoaded": "مدل بارگذاری نشده. لطفاً مدل را راه‌اندازی کنید.",
+    "completionFailed": "تکمیل ناموفق بود: ",
+    "loadingModel": "در حال بارگذاری مدل ...",
+    "typeYourMessage": "پیام خود را اینجا بنویسید",
+    "load": "بارگذاری",
+    "goToModels": "رفتن به مدل‌ها",
+    "readyToChat": "آماده چت هستید؟ آخرین مدل استفاده‌شده را بارگذاری کنید.",
+    "pleaseLoadModel": "برای چت یک مدل بارگذاری کنید.",
+    "multimodalNotEnabled": "قابلیت چندرسانه‌ای برای این مدل فعال نیست. تصاویر نمایش داده می‌شوند اما توسط هوش مصنوعی پردازش نمی‌شوند.",
+    "cannotSendWithoutModel": "ابتدا یک مدل بارگذاری کنید",
+    "toolCallTruncated": "فراخوانی ابزار قطع شد — احتمالاً فضای مدل تمام شده. context بزرگ‌تری امتحان کنید یا درخواست کوچک‌تری بدهید.",
+    "toolCompatWarning": "ممکن است این مدل از فراخوانی ابزار پشتیبانی نکند. نتایج ممکن است قابل اعتماد نباشند.",
+    "softCapWarning": "برای بهترین عملکرد، یک چت جدید شروع کنید.",
+    "contextWarning": "این مکالمه طولانی شده و ممکن است به‌زودی فضایش تمام شود.",
+    "contextRemoteHedged": "ممکن است این پاسخ قطع شده باشد. دوباره ارسال کنید یا درخواست را کوتاه‌تر کنید.",
+    "contextFull": "فضای مکالمه تمام شد. یک چت جدید شروع کنید یا اندازه context را افزایش دهید.",
+    "contextFullEscalated": "هنوز فضا کافی نیست. یک چت جدید شروع کنید یا برای ادامه اندازه context را افزایش دهید.",
+    "contextFullHeavyTalent": "فضای مکالمه تمام شد — {{talent}} معمولاً به فضای بیشتری نیاز دارد. یک چت جدید شروع کنید یا اندازه context را افزایش دهید.",
+    "contextBannerDismiss": "بستن",
+    "contextNewChat": "چت جدید",
+    "contextIncrease": "افزایش context",
+    "contextMoreRoom": "فضای بیشتر",
+    "increaseContextTitle": "به این چت فضای بیشتری بدهید",
+    "increaseContextBody": "فضا همان حافظه کاری مدل است — اینکه چه مقدار از این چت را همزمان می‌تواند به‌خاطر بسپارد. فضای بیشتر یعنی چت‌های طولانی‌تر قبل از اینکه پاسخ‌ها قطع شوند.",
+    "increaseContextTokensUnit": "توکن",
+    "increaseContextWordsRam": "~{{words}} کلمه · ≈{{ram}} RAM",
+    "increaseContextFitsChip": "جا می‌شود",
+    "increaseContextTightChip": "محدود",
+    "increaseContextWontFitChip": "جا نمی‌شود",
+    "increaseContextFitsStatus": "برای این دستگاه مناسب است.",
+    "increaseContextFitsUnconstrainedStatus": "RAM فراوان است — تنها محدودیت از سمت مدل است.",
+    "increaseContextTightStatus": "فراتر از ~{{tokens}}، ممکن است حافظه این دستگاه کم بیاید و کند شود. با این حال می‌تواند تلاش کند.",
+    "increaseContextWontFitStatus": "~{{tokens}} احتمالاً در حافظه این دستگاه جا نمی‌شود. اندازه کوچک‌تری انتخاب کنید.",
+    "increaseContextModelMax": "{{tokens}} · حداکثر مدل",
+    "increaseContextHedge": "بارگذاری مجدد چند ثانیه طول می‌کشد. چیزی از چت شما از بین نمی‌رود.",
+    "increaseContextAdvanced": "پیشرفته",
+    "increaseContextAdvancedBody": "اندازه context برای این چت: {{from}} ← {{to}} توکن (حداکثر مدل {{max}}). محدودیت دستگاه یک تخمین است و با بارگذاری موفق context‌های بزرگ‌تر افزایش می‌یابد.",
+    "increaseContextSliderA11yLabel": "اندازه context",
+    "increaseContextSliderA11yValue": "{{tokens}} توکن",
+    "increaseContextConfirmSize": "تنظیم روی {{size}}",
+    "increaseContextReloadingShort": "در حال بارگذاری مجدد…",
+    "increaseContextNoFitBody": "این دستگاه نمی‌تواند context بزرگ‌تری برای این مدل جا دهد. برای ادامه یک چت جدید شروع کنید.",
+    "increaseContextCancel": "الان نه",
+    "increaseContextReloading": "در حال بارگذاری مجدد مدل با context بزرگ‌تر…",
+    "increaseContextSuccess": "context به {{target}} توکن افزایش یافت.",
+    "increaseContextFailure": "افزایش اندازه context ممکن نشد. تنظیم قبلی شما بازگردانده شد.",
+    "palLoadHint": "این پَل معمولاً به فضای بیشتری از اندازه context فعلی نیاز دارد.",
+    "generatingPreview": "در حال تولید پیش‌نمایش… ({{tokens}} توکن)",
+    "generatingPreviewPending": "در حال تولید پیش‌نمایش…",
+    "toolUsedChip": "از {{name}} استفاده شد",
+    "toolErrorBlock": "{{name}} ناموفق بود",
+    "webSearch": {
+      "searched": "جستجو شد: {{query}}",
+      "noResults": "نتیجه‌ای یافت نشد",
+      "noResultsFor": "نتیجه‌ای برای {{query}} یافت نشد",
+      "resultsCount": "{{count}} نتیجه",
+      "resultsCountOne": "۱ نتیجه",
+      "searchResultsTitle": "نتایج جستجو",
+      "showResultsAccessibilityLabel": "نمایش نتایج جستجوی وب برای {{query}}",
+      "openLinkError": "باز کردن این لینک ممکن نشد."
+    },
+    "contextFullRemote": "گنجایش گفتگو پر شد. یک چت جدید شروع کنید."
+  },
+  "benchmark": {
+    "title": "بنچمارک",
+    "modelSelector": {
+      "prompt": "انتخاب مدل",
+      "noModels": "هیچ مدلی دانلود نشده"
+    },
+    "buttons": {
+      "advancedSettings": "تنظیمات پیشرفته",
+      "startTest": "شروع تست",
+      "runningTest": "در حال اجرای تست...",
+      "clearAll": "پاک کردن همه",
+      "done": "تمام",
+      "cancel": "لغو",
+      "delete": "حذف",
+      "share": "اشتراک‌گذاری",
+      "sharing": "در حال اشتراک‌گذاری...",
+      "viewRawData": "نمایش داده خام",
+      "hideRawData": "مخفی کردن داده خام"
+    },
+    "messages": {
+      "pleaseSelectModel": "لطفاً ابتدا یک مدل انتخاب و راه‌اندازی کنید",
+      "testWarning": "توجه: تست ممکن است برای مدل‌های بزرگ‌تر ۲ تا ۵ دقیقه طول بکشد و بعد از شروع قابل توقف نیست.",
+      "keepScreenOpen": "لطفاً این صفحه را باز نگه دارید.",
+      "initializingModel": "در حال راه‌اندازی مدل...",
+      "modelMaxValue": "(حداکثر: {{maxValue}})"
+    },
+    "dialogs": {
+      "advancedSettings": {
+        "title": "تنظیمات پیشرفته",
+        "testProfile": "پروفایل تست",
+        "customParameters": "پارامترهای سفارشی",
+        "description": "پارامترهای بنچمارک را برای سناریوهای تست خاص تنظیم کنید."
+      },
+      "deleteResult": {
+        "title": "حذف نتیجه",
+        "message": "آیا مطمئنید می‌خواهید این نتیجه بنچمارک را حذف کنید؟"
+      },
+      "clearAllResults": {
+        "title": "پاک کردن همه نتایج",
+        "message": "آیا مطمئنید می‌خواهید همه نتایج بنچمارک را حذف کنید؟"
+      },
+      "shareResults": {
+        "title": "اشتراک‌گذاری نتایج بنچمارک",
+        "sharedDataTitle": "داده‌های به اشتراک گذاشته شده شامل:",
+        "deviceAndModelInfo": "• مشخصات دستگاه و اطلاعات مدل",
+        "performanceMetrics": "• معیارهای عملکرد",
+        "dontShowAgain": "دیگر این پیام را نشان نده"
+      }
+    },
+    "sections": {
+      "testResults": "نتایج تست"
+    },
+    "benchmarkResultCard": {
+      "modelMeta": {
+        "params": "پارامتر"
+      },
+      "config": {
+        "title": "تنظیمات بنچمارک",
+        "format": "PP: {{pp}} • TG: {{tg}} • PL: {{pl}} • Rep: {{nr}}"
+      },
+      "modelSettings": {
+        "title": "تنظیمات مدل",
+        "context": "Context: {{context}}",
+        "batch": "Batch: {{batch}}",
+        "ubatch": "UBatch: {{ubatch}}",
+        "cpuThreads": "ریسه‌های CPU: {{threads}}",
+        "gpuLayers": "لایه‌های GPU: {{layers}}",
+        "device": "دستگاه: {{device}}",
+        "flashAttentionEnabled": "Flash Attention فعال",
+        "flashAttentionDisabled": "Flash Attention غیرفعال",
+        "cacheTypes": "نوع کش: {{cacheK}}/{{cacheV}}"
+      },
+      "results": {
+        "promptProcessing": "پردازش پرامپت",
+        "tokenGeneration": "تولید توکن",
+        "totalTime": "زمان کل",
+        "peakMemory": "حداکثر حافظه",
+        "tokensPerSecond": "t/s"
+      },
+      "actions": {
+        "deleteButton": " ",
+        "submittedText": "✓ ارسال شد به",
+        "leaderboardLink": "AI Phone Leaderboard ↗",
+        "cannotShare": "امکان اشتراک‌گذاری نیست",
+        "cannotShareTooltip": "نتایج مدل‌های محلی قابل اشتراک‌گذاری نیستند",
+        "submitButton": "ارسال به لیدربورد",
+        "viewLeaderboard": "مشاهده لیدربورد ↗"
+      },
+      "errors": {
+        "networkRetry": "اتصال را بررسی کنید و دوباره تلاش کنید",
+        "appCheckRetry": "ارسال مجدد",
+        "serverRetry": "بعداً دوباره تلاش کنید",
+        "genericRetry": "تلاش مجدد",
+        "failedToSubmit": "ارسال نتیجه بنچمارک ناموفق بود"
+      }
+    },
+    "deviceInfoCard": {
+      "title": "اطلاعات دستگاه",
+      "deviceSummary": "{{brand}} {{model}} • {{systemName}} {{systemVersion}}",
+      "coreSummary": "{{cores}} هسته • {{memory}}",
+      "sections": {
+        "basicInfo": "اطلاعات پایه",
+        "cpuDetails": "جزئیات CPU",
+        "gpuDetails": "جزئیات GPU",
+        "hexagonDetails": "Hexagon DSP",
+        "appInfo": "اطلاعات برنامه"
+      },
+      "fields": {
+        "architecture": "معماری",
+        "totalMemory": "حافظه کل",
+        "deviceId": "شناسه دستگاه",
+        "cpuCores": "هسته‌های CPU",
+        "cpuModel": "مدل CPU",
+        "chipset": "چیپست",
+        "instructions": "دستورالعمل‌ها",
+        "version": "نسخه",
+        "gpuType": "نوع GPU",
+        "gpuRenderer": "رندرر",
+        "gpuVendor": "سازنده",
+        "metalSupport": "پشتیبانی Metal",
+        "openclSupport": "پشتیبانی OpenCL",
+        "openclRequirement": "نیاز به i8mm و dotprod"
+      },
+      "instructions": {
+        "format": "FP16: {{fp16}}, DotProd: {{dotProd}}, SVE: {{sve}}, I8MM: {{i8mm}}",
+        "yes": "✓",
+        "no": "✗"
+      },
+      "versionFormat": "{{version}} ({{buildNumber}})"
+    }
+  },
+  "errors": {
+    "unexpectedError": "یک خطای غیرمنتظره رخ داد",
+    "hfAuthenticationError": "خطای احراز هویت Hugging Face: توکن وجود ندارد یا نامعتبر است",
+    "hfAuthenticationErrorSearch": "خطای احراز هویت Hugging Face: توکن نامعتبر است",
+    "authenticationError": "خطای احراز هویت: توکن وجود ندارد یا نامعتبر است",
+    "hfAuthorizationError": "خطای مجوز Hugging Face: دسترسی به این منبع مجاز نیست",
+    "authorizationError": "خطای مجوز: دسترسی به این منبع مجاز نیست",
+    "hfServerError": "خطای سرور Hugging Face: مشکل سرور API",
+    "serverError": "خطای سرور: مشکل سرور API",
+    "hfNetworkTimeout": "وقفه شبکه: درخواست به Hugging Face خیلی طول کشید",
+    "networkTimeout": "وقفه شبکه: درخواست خیلی طول کشید",
+    "hfNetworkError": "خطای شبکه: اتصال به API Hugging Face ممکن نیست",
+    "networkError": "خطای شبکه: اتصال به API ممکن نیست",
+    "downloadSetupFailedTitle": "خطا در آماده‌سازی دانلود",
+    "downloadSetupFailedMessage": "آماده‌سازی مدل برای دانلود ناموفق بود: {{message}}",
+    "cameraErrorTitle": "خطای دوربین",
+    "cameraErrorMessage": "گرفتن عکس ناموفق بود",
+    "galleryErrorTitle": "خطای گالری",
+    "galleryErrorMessage": "انتخاب تصاویر ناموفق بود"
+  },
+  "simulator": {
+    "cameraNotAvailable": "دوربین در شبیه‌ساز در دسترس نیست. لطفاً از دستگاه واقعی استفاده کنید."
+  },
+  "voiceAndSpeech": {
+    "sectionTitle": "صدا و گفتار",
+    "voiceRowTitle": "صدا",
+    "notSet": "تنظیم نشده",
+    "previewButton": "پیش‌نمایش",
+    "stopPreviewButton": "توقف پیش‌نمایش",
+    "voicesTitle": "صداها",
+    "voicesEmptyHint": "روی هر صدایی ضربه بزنید تا نصب و استفاده شود. یا یک صدای سیستمی انتخاب کنید — آن‌ها همیشه در دسترس‌اند.",
+    "supertonicStepsLabel": "کیفیت (گام‌های انتشار)",
+    "toggleAutoSpeakLabel": "تغییر وضعیت خواندن خودکار",
+    "openSettingsLabel": "تنظیمات تبدیل متن به گفتار",
+    "playMessageLabel": "پخش پیام",
+    "stopMessageLabel": "توقف پخش پیام",
+    "autoSpeakLabel": "خواندن خودکار پاسخ‌ها",
+    "autoSpeakDescription": "پاسخ‌های جدید را با رسیدن، با صدای بلند می‌خواند.",
+    "engineChipKitten": "Kitten",
+    "engineChipKokoro": "Kokoro",
+    "engineChipSupertonic": "Supertonic",
+    "engineChipSystem": "سیستم",
+    "stepsCount": "{{steps}} گام",
+    "engineKittenTagline": "کم‌حجم‌ترین. قابل اعتماد. بهترین انتخاب برای دستگاه‌های قدیمی.",
+    "engineKokoroTagline": "بالاترین کیفیت. شروع کندتر. ممکن است برخی صداها روی همه دستگاه‌ها کار نکنند.",
+    "engineSupertonicTagline": "سریع‌ترین شروع. RAM بیشتری مصرف می‌کند. گاهی ممکن است کلماتی را از قلم بیندازد.",
+    "engineSystemTagline": "صداهای داخلی سیستم‌عامل. همیشه در دسترس، بدون نیاز به نصب.",
+    "engineSystemTitleIos": "صداهای iOS",
+    "engineSystemTitleAndroid": "صداهای Android",
+    "engineSystemTier": "همیشه در دسترس",
+    "engineTierLightest": "سبک‌ترین",
+    "engineTierBestQuality": "بهترین کیفیت",
+    "engineTierFastestStart": "سریع‌ترین شروع",
+    "engineSpecsLine": "{{voices}} صدا  ·  {{sizeMb}} MB  ·  ~{{ramMb}} MB RAM",
+    "engineSystemSpecsLine": "{{voices}} صدا",
+    "engineRemoveTitle": "حذف {{engineTitle}}؟",
+    "engineRemoveBody": "~{{sizeMb}} MB روی این دستگاه آزاد می‌کند.",
+    "engineRemoveCancel": "لغو",
+    "engineRemoveConfirm": "حذف",
+    "engineInstallCta": "نصب · {{sizeMb}} MB",
+    "engineDownloadingLabel": "در حال دانلود…  {{pct}}%  ·  {{mbDone}} / {{sizeMb}} MB",
+    "engineRetryCta": "تلاش مجدد",
+    "voicesEmptyState": "هیچ صدایی یافت نشد.",
+    "kokoroDeviceNote": "ممکن است برخی صداها روی همه دستگاه‌ها کار نکنند.",
+    "insufficientStorage": "فضای کافی نیست — برای نصب این موتور {{requiredMb}} MB فضا آزاد کنید ({{freeMb}} MB در دسترس است).",
+    "supertonicLanguageLabel": "زبان",
+    "supertonicLanguageAuto": "خودکار",
+    "supertonicLanguageSheetTitle": "زبان",
+    "supertonicLanguageSearchPlaceholder": "جستجوی زبان‌ها",
+    "supertonicLanguageNames": {
+      "ar": "عربی",
+      "bg": "بلغاری",
+      "hr": "کرواتی",
+      "cs": "چکی",
+      "da": "دانمارکی",
+      "nl": "هلندی",
+      "en": "انگلیسی",
+      "et": "استونیایی",
+      "fi": "فنلاندی",
+      "fr": "فرانسوی",
+      "de": "آلمانی",
+      "el": "یونانی",
+      "hi": "هندی",
+      "hu": "مجاری",
+      "id": "اندونزیایی",
+      "it": "ایتالیایی",
+      "ja": "ژاپنی",
+      "ko": "کره‌ای",
+      "lv": "لتونیایی",
+      "lt": "لیتوانیایی",
+      "pl": "لهستانی",
+      "pt": "پرتغالی",
+      "ro": "رومانیایی",
+      "ru": "روسی",
+      "sk": "اسلواکی",
+      "sl": "اسلوونیایی",
+      "es": "اسپانیایی",
+      "sv": "سوئدی",
+      "tr": "ترکی",
+      "uk": "اوکراینی",
+      "vi": "ویتنامی"
+    }
+  },
+  "htmlPreview": {
+    "defaultTitle": "پیش‌نمایش",
+    "showPreview": "نمایش پیش‌نمایش رندرشده",
+    "showCode": "نمایش کد HTML",
+    "copyHtml": "کپی HTML",
+    "closePreview": "بستن پیش‌نمایش",
+    "openFullscreen": "باز کردن تمام‌صفحه: {{title}}"
+  },
+  "onboarding": {
+    "back": "بازگشت",
+    "skip": "رد کردن",
+    "skipForNow": "فعلاً رد کن",
+    "splash": {
+      "brand": "PocketPal"
+    },
+    "screen1": {
+      "title": "با پَل‌هایت آشنا شو.",
+      "titleAccent": "پَل‌هایت.",
+      "body": "دوستان کوچک و باهوشی که داخل گوشی تو زندگی می‌کنند.\nبیا با هم آماده‌ات کنیم - فقط یک دقیقه طول می‌کشد.",
+      "cta": "بگرد و نشانم بده",
+      "eyebrow": "به PocketPal خوش آمدی"
+    },
+    "screen2": {
+      "title": "هر زمان،\nهر جا.",
+      "body": "پَل‌هایت داخل گوشی تو زندگی می‌کنند.\nبدون اینترنت، بدون آنتن - توی هواپیما، دور از شبکه و در روستاهای دورافتاده هم کار می‌کنند.",
+      "highlight": "بدون اینترنت، بدون آنتن",
+      "cta": "بعدی",
+      "eyebrow": "ایده",
+      "titleAccent": "هر زمان،"
+    },
+    "screen3": {
+      "title": "کوچک‌تر،\nاما مال خودت.",
+      "titleAccent": "کوچک‌تر،",
+      "body": "پَل‌های روی گوشی‌ات سریع و خصوصی‌اند - اما سبک‌تر از هوش مصنوعی ابری. مثل یک همراه جیبی، نه یک پیشگوی همه‌چیزدان.",
+      "highlight": "سریع و خصوصی",
+      "cta": "متوجه شدم",
+      "eyebrow": "یک یادآوری"
+    },
+    "screen4": {
+      "title": "هیچ‌چیز از گوشی‌ات بیرون نمی‌رود.",
+      "titleAccent": "بیرون نمی‌رود",
+      "body": "بدون حساب کاربری. بدون فضای ابری. بدون ردیابی. گفتگوهایت مال خودت می‌مانند.",
+      "highlight": "بدون حساب کاربری. بدون فضای ابری. بدون ردیابی.",
+      "cta": "شروع کنیم",
+      "eyebrow": "تضمین حریم خصوصی"
+    },
+    "screen5": {
+      "title": "پَلت را برای چه می‌خواهی؟",
+      "body": "انتخاب کن دوست داری درباره چه چیزی صحبت کنی - ما پَلی متناسب با گوشی‌ات پیدا می‌کنیم.",
+      "topic": {
+        "smartchat": "گفتگوی هوشمند",
+        "coding": "برنامه‌نویسی",
+        "education": "آموزش",
+        "roleplay": "نقش‌آفرینی",
+        "creative_writing": "نوشتن خلاقانه",
+        "else": "دنبال چیز دیگری هستی؟"
+      },
+      "topicDescription": {
+        "smartchat": "همراه صمیمی روزمره",
+        "coding": "کدنویسی، رفع اشکال، توضیح",
+        "education": "یادگیری، توضیح، آزمون",
+        "roleplay": "شخصیت‌ها، سناریوها",
+        "creative_writing": "داستان‌ها، ایده‌ها، پیش‌نویس‌ها",
+        "else": "بعداً همه پَل‌ها را در برنامه ببین"
+      }
+    },
+    "screen6": {
+      "cta": "دانلود {{name}}",
+      "ctaTemplate": "دانلود {{name}} ({{size}})",
+      "useTemplate": "استفاده از {{name}}",
+      "deviceRamSuffix": "گیگابایت RAM",
+      "deviceFreeSuffix": "گیگابایت آزاد",
+      "recommended": "پیشنهادی",
+      "downloaded": "دانلود شده",
+      "modelTier": {
+        "quick": "سریع",
+        "balanced": "متعادل",
+        "best": "بهترین"
+      },
+      "subtitleTemplate": "{{name}} با یک مدل هوش مصنوعی کوچک روی گوشی‌ات فکر می‌کند - یکی را که مناسب است انتخاب کن.",
+      "pal": {
+        "pip": {
+          "body": "یک پَل عالی برایت پیدا کردیم - یک همراه صمیمی روزمره. به اندازه کافی باهوش برای بیشتر کارها، و به اندازه کافی سبک برای هر گوشی."
+        },
+        "codie": {
+          "body": "با Codie آشنا شو — هم‌برنامه‌نویس محلی تو. کد می‌خواند، کد می‌نویسد و بخش‌های پیچیده را توضیح می‌دهد، بدون اینکه هرگز از گوشی‌ات بیرون برود."
+        },
+        "sage": {
+          "body": "Sage صبور و کنجکاو است و ایده‌ها را قدم‌به‌قدم برایت توضیح می‌دهد. یک همدرس که توی جیبت داری."
+        },
+        "echo": {
+          "body": "Echo یک همراه همه‌فن‌حریف برای نقش‌آفرینی است — در نقش می‌ماند، صحنه‌ها را می‌سازد و هر جا داستانت برود همراهت می‌آید."
+        },
+        "muse": {
+          "body": "Muse در نوشتن کمکت می‌کند. عبارت‌ها را پیشنهاد می‌دهد، ریتم را پیدا می‌کند و لحن تو را حفظ می‌کند."
+        }
+      }
+    }
+  },
+  "downloadBanner": {
+    "titleByPal": "{{name}} در حال دانلود است",
+    "titleByModel": "{{name}} در حال دانلود است",
+    "extraInProgress": "+{{count}} مورد دیگر در حال انجام"
+  }
+}
