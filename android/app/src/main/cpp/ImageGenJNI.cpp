@@ -21,10 +21,45 @@ sd_ctx_t* g_ctx = nullptr;
 // Cached model path (new_sd_ctx needs it each time)
 std::string g_model_path;
 
+// JavaVM + progress emitter for RN events
+JavaVM* g_jvm = nullptr;
+
 void sd_log_cb(enum sd_log_level_t level, const char* text, void* /*data*/) {
   __android_log_print(
       level == SD_LOG_ERROR ? ANDROID_LOG_ERROR : ANDROID_LOG_INFO,
       "ImageGen", "%s", text ? text : "");
+}
+
+// Progress callback → Kotlin companion onProgressFromNative(step, steps)
+void sd_progress_cb(int step, int steps, float /*time*/, void* /*data*/) {
+  if (!g_jvm) {
+    return;
+  }
+  JNIEnv* env = nullptr;
+  bool attached = false;
+  jint st = g_jvm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
+  if (st == JNI_EDETACHED) {
+    if (g_jvm->AttachCurrentThread(&env, nullptr) != JNI_OK) {
+      return;
+    }
+    attached = true;
+  }
+  if (env) {
+    jclass cls = env->FindClass("com/pocketpal/ImageGenModule");
+    if (cls) {
+      jmethodID mid = env->GetStaticMethodID(
+          cls, "onProgressFromNative", "(II)V");
+      if (mid) {
+        env->CallStaticVoidMethod(cls, mid, step, steps);
+      }
+    }
+    if (env->ExceptionCheck()) {
+      env->ExceptionClear();
+    }
+  }
+  if (attached) {
+    g_jvm->DetachCurrentThread();
+  }
 }
 
 }  // namespace
@@ -32,9 +67,10 @@ void sd_log_cb(enum sd_log_level_t level, const char* text, void* /*data*/) {
 extern "C" {
 
 JNIEXPORT jboolean JNICALL
-Java_com_pocketpal_ImageGenModule_loadModel(JNIEnv* env, jobject /*thiz*/,
+Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
                                               jstring modelPath) {
   std::lock_guard<std::mutex> lock(g_mutex);
+  env->GetJavaVM(&g_jvm);
   const char* path = env->GetStringUTFChars(modelPath, nullptr);
   if (!path) {
     return JNI_FALSE;
@@ -54,6 +90,7 @@ Java_com_pocketpal_ImageGenModule_loadModel(JNIEnv* env, jobject /*thiz*/,
   params.backend = "CPU";  // P5.1 CPU first; OpenCL/Vulkan later
 
   sd_set_log_callback(sd_log_cb, nullptr);
+  sd_set_progress_callback(sd_progress_cb, nullptr);
   g_ctx = new_sd_ctx(&params);
   env->ReleaseStringUTFChars(modelPath, path);
 
@@ -65,7 +102,7 @@ Java_com_pocketpal_ImageGenModule_loadModel(JNIEnv* env, jobject /*thiz*/,
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_pocketpal_ImageGenModule_unloadModel(JNIEnv* /*env*/, jobject /*thiz*/) {
+Java_com_pocketpal_ImageGenModule_nativeUnloadModel(JNIEnv* /*env*/, jobject /*thiz*/) {
   std::lock_guard<std::mutex> lock(g_mutex);
   if (g_ctx) {
     free_sd_ctx(g_ctx);
@@ -76,17 +113,20 @@ Java_com_pocketpal_ImageGenModule_unloadModel(JNIEnv* /*env*/, jobject /*thiz*/)
 }
 
 JNIEXPORT jstring JNICALL
-Java_com_pocketpal_ImageGenModule_txt2img(
-    JNIEnv* env, jobject /*thiz*/, jstring prompt, jlong seed, jint steps,
-    jfloat cfg, jint width, jint height, jstring outPath) {
+Java_com_pocketpal_ImageGenModule_nativeTxt2img(
+    JNIEnv* env, jobject /*thiz*/, jstring prompt, jstring negativePrompt,
+    jlong seed, jint steps, jfloat cfg, jint width, jint height,
+    jstring outPath) {
   std::lock_guard<std::mutex> lock(g_mutex);
   if (!g_ctx) {
     return env->NewStringUTF("ERR_NO_MODEL");
   }
   const char* promptStr = env->GetStringUTFChars(prompt, nullptr);
+  const char* negStr = env->GetStringUTFChars(negativePrompt, nullptr);
   const char* outStr = env->GetStringUTFChars(outPath, nullptr);
   if (!promptStr || !outStr) {
     if (promptStr) env->ReleaseStringUTFChars(prompt, promptStr);
+    if (negStr) env->ReleaseStringUTFChars(negativePrompt, negStr);
     if (outStr) env->ReleaseStringUTFChars(outPath, outStr);
     return env->NewStringUTF("ERR_ARGS");
   }
@@ -94,7 +134,7 @@ Java_com_pocketpal_ImageGenModule_txt2img(
   sd_img_gen_params_t gen;
   sd_img_gen_params_init(&gen);
   gen.prompt = promptStr;
-  gen.negative_prompt = "";
+  gen.negative_prompt = negStr;
   gen.width = width;
   gen.height = height;
   gen.seed = seed;
@@ -108,6 +148,7 @@ Java_com_pocketpal_ImageGenModule_txt2img(
   const bool ok = generate_image(g_ctx, &gen, &images, &numImages);
 
   env->ReleaseStringUTFChars(prompt, promptStr);
+  env->ReleaseStringUTFChars(negativePrompt, negStr);
   if (!ok || numImages <= 0 || !images) {
     env->ReleaseStringUTFChars(outPath, outStr);
     return env->NewStringUTF("ERR_GENERATE");
@@ -124,4 +165,5 @@ Java_com_pocketpal_ImageGenModule_txt2img(
 }
 
 }  // extern "C"
+
 

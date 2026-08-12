@@ -1,10 +1,12 @@
 package com.pocketpal
 
+import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.ReadableMap
+import com.facebook.react.modules.core.DeviceEventManagerModule
 
 /**
  * ImageGen native module (P5.2): bridges stable-diffusion.cpp via JNI.
@@ -13,16 +15,21 @@ import com.facebook.react.bridge.ReadableMap
  *
  * Engine is a singleton and mutually exclusive with the chat model:
  * loadModel() assumes the chat model has been unloaded (ImageGenStore).
+ * Progress is pushed to RN via the "ImageGenProgress" device event.
  */
 class ImageGenModule(reactContext: ReactApplicationContext) :
   ReactContextBaseJavaModule(reactContext) {
+
+  init {
+    reactContextRef = reactContext
+  }
 
   override fun getName(): String = "ImageGen"
 
   private external fun nativeLoadModel(modelPath: String): Boolean
   private external fun nativeUnloadModel(): Boolean
   private external fun nativeTxt2img(
-    prompt: String, seed: Long, steps: Int, cfg: Double,
+    prompt: String, negativePrompt: String, seed: Long, steps: Int, cfg: Double,
     width: Int, height: Int, outPath: String,
   ): String
 
@@ -55,6 +62,7 @@ class ImageGenModule(reactContext: ReactApplicationContext) :
       }
       val result = nativeTxt2img(
         params.getString("prompt") ?: "",
+        params.getString("negativePrompt") ?: "",
         params.getDouble("seed").toLong(),
         params.getInt("steps"),
         params.getDouble("cfg"),
@@ -69,6 +77,23 @@ class ImageGenModule(reactContext: ReactApplicationContext) :
       }
     } catch (e: Throwable) {
       promise.reject("GEN_FAILED", e.message)
+    }
+  }
+
+  companion object {
+    private var reactContextRef: ReactApplicationContext? = null
+
+    /** Called from JNI progress callback (sd_set_progress_callback). */
+    @JvmStatic
+    fun onProgressFromNative(step: Int, steps: Int) {
+      val ctx = reactContextRef ?: return
+      val args = Arguments.createMap().apply {
+        putInt("step", step)
+        putInt("steps", steps)
+      }
+      ctx
+        .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+        .emit("ImageGenProgress", args)
     }
   }
 }

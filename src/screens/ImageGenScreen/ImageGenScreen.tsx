@@ -29,16 +29,23 @@ export const ImageGenScreen: React.FC = observer(() => {
   const [sdModels, setSdModels] = React.useState<string[]>([]);
   const [selectedModel, setSelectedModel] = React.useState<string | null>(null);
   const [prompt, setPrompt] = React.useState('');
+  const [negativePrompt, setNegativePrompt] = React.useState('');
   const [steps, setSteps] = React.useState('2');
+  const [cfg, setCfg] = React.useState('2');
+  const [size, setSize] = React.useState(512);
   const [currentImage, setCurrentImage] = React.useState<string | null>(null);
   const [scanning, setScanning] = React.useState(false);
+
+  const SIZES = [384, 512, 640, 768];
 
   const scanModels = React.useCallback(async () => {
     setScanning(true);
     try {
       const files = await RNFS.readDir(SD_MODELS_DIR);
+      // SD 模型识别：GGUF/safetensors 均支持，文件名含生图关键词（排除聊天 LLM）
       const models = files
-        .filter(f => f.name.endsWith('.gguf'))
+        .filter(f => f.name.endsWith('.gguf') || f.name.endsWith('.safetensors'))
+        .filter(f => /(sd|sdxl|flux|stable|turbo|pixart)/i.test(f.name))
         .map(f => f.name);
       setSdModels(models);
       if (models.length > 0 && !selectedModel) {
@@ -77,6 +84,10 @@ export const ImageGenScreen: React.FC = observer(() => {
     }
     const uri = await imageGenStore.generate(prompt.trim(), {
       steps: parseInt(steps, 10) || 2,
+      cfg: parseFloat(cfg) || 2,
+      width: size,
+      height: size,
+      negativePrompt: negativePrompt.trim(),
     });
     if (uri) {
       setCurrentImage(uri);
@@ -137,12 +148,39 @@ export const ImageGenScreen: React.FC = observer(() => {
           placeholderTextColor="#999"
           multiline
         />
+        <TextInput
+          style={[s.input, s.inputSmall]}
+          value={negativePrompt}
+          onChangeText={setNegativePrompt}
+          placeholder="负面提示词（可选，如 blurry, low quality）"
+          placeholderTextColor="#999"
+          multiline
+        />
+        {/* 尺寸选择 */}
+        <View style={s.paramRow}>
+          <Text style={s.paramLabel}>尺寸</Text>
+          {SIZES.map(sz => (
+            <TouchableOpacity
+              key={sz}
+              style={[s.sizeBtn, size === sz && s.sizeBtnSelected]}
+              onPress={() => setSize(sz)}>
+              <Text style={s.sizeBtnText}>{sz}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
         <View style={s.paramRow}>
           <Text style={s.paramLabel}>步数</Text>
           <TextInput
             style={s.paramInput}
             value={steps}
             onChangeText={setSteps}
+            keyboardType="numeric"
+          />
+          <Text style={s.paramLabel}>CFG</Text>
+          <TextInput
+            style={s.paramInput}
+            value={cfg}
+            onChangeText={setCfg}
             keyboardType="numeric"
           />
           <TouchableOpacity
@@ -156,6 +194,17 @@ export const ImageGenScreen: React.FC = observer(() => {
             )}
           </TouchableOpacity>
         </View>
+        {/* 生成进度 */}
+        {imageGenStore.generating && (
+          <View style={s.progressWrap}>
+            <View style={[s.progressBar, {width: `${Math.max(imageGenStore.progress, 2)}%`}]} />
+            <Text style={s.progressText}>
+              {imageGenStore.progressText
+                ? `采样 ${imageGenStore.progressText}`
+                : '加载权重/准备中…'}
+            </Text>
+          </View>
+        )}
       </View>
 
       {/* 结果预览 */}
@@ -242,6 +291,28 @@ const createStyles = (theme: any) =>
       width: 60,
       color: theme.colors.onSurface,
     },
+    inputSmall: {minHeight: 44, padding: 8},
+    sizeBtn: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 8,
+      backgroundColor: theme.colors.surfaceVariant,
+    },
+    sizeBtnSelected: {borderWidth: 1, borderColor: theme.colors.primary},
+    sizeBtnText: {fontSize: 12, color: theme.colors.onSurface},
+    progressWrap: {
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: theme.colors.surfaceVariant,
+      overflow: 'hidden',
+      marginTop: 6,
+    },
+    progressBar: {
+      height: 8,
+      backgroundColor: theme.colors.primary,
+      borderRadius: 4,
+    },
+    progressText: {fontSize: 11, color: theme.colors.onSurfaceVariant, marginTop: 4},
     preview: {width: '100%', aspectRatio: 1, borderRadius: 8},
     historyItem: {flex: 1, margin: 4},
     historyThumb: {width: '100%', aspectRatio: 1, borderRadius: 8},

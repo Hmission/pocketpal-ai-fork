@@ -32,6 +32,7 @@ import {ErrorState} from '../../utils/errors';
 import {user, assistant} from '../../utils/chat';
 import {ROUTES} from '../../utils/navigationConstants';
 import {imageGenStore} from '../../store/imageGenStore';
+import {chatSessionStore as chatStoreForImg} from '../../store';
 
 import {VideoPalScreen} from './VideoPalScreen';
 
@@ -82,13 +83,37 @@ export const ChatScreen: React.FC = observer(() => {
   );
   const navigation = useNavigation();
 
-  // M6 豆包化：聊天中“画/生成 XX”→ 路由到生图页并预填提示词
+  // M6 豆包化 + 聊天嵌入生图：
+  // - 意图命中且 SD 模型已加载 → 聊天内直接生成并插入图片消息
+  // - 意图命中但未加载 → 跳转生图页预填提示词（引导加载）
   const wrappedSendPress = React.useCallback(
-    (message: MessageType.PartialText) => {
+    async (message: MessageType.PartialText) => {
       const text = message.text.trim();
-      const drawMatch = text.match(/(画|绘|生成)(一[张幅]?|个)?\s*([^。！？!?]{2,40}?)(图|图片|画)/);
+      const drawMatch = text.match(
+        /(画|绘|生成)(一[张幅]?|个)?\s*([^。！？!?]{2,40}?)(图|图片|画)/,
+      );
       if (drawMatch) {
-        imageGenStore.pendingPrompt = drawMatch[3] ?? text;
+        const drawPrompt = drawMatch[3] ?? text;
+        if (imageGenStore.modelLoaded) {
+          // 聊天内嵌入：先走正常发送，再异步生成并插入结果图
+          handleSendPress(message);
+          const uri = await imageGenStore.generate(drawPrompt, {
+            width: 512,
+            height: 512,
+          });
+          if (uri) {
+            chatStoreForImg.addMessageToCurrentSession({
+              id: `img-${Date.now()}`,
+              author: assistant,
+              createdAt: Date.now(),
+              text: `🎨 已为你生成：${drawPrompt}`,
+              imageUris: [uri],
+              type: 'text',
+            } as MessageType.Text);
+          }
+          return;
+        }
+        imageGenStore.pendingPrompt = drawPrompt;
         navigation.navigate(ROUTES.IMAGE_GEN as never);
         return;
       }

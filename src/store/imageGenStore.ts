@@ -6,10 +6,13 @@
  * UI 层（生图 Tab）通过此 store 驱动加载/出图/进度。
  */
 import {makeAutoObservable, runInAction} from 'mobx';
-import {NativeModules} from 'react-native';
+import {NativeModules, NativeEventEmitter} from 'react-native';
 import * as RNFS from '@dr.pogodin/react-native-fs';
 
 const ImageGen = NativeModules.ImageGen;
+
+// 进度事件源（JNI sd_set_progress_callback → Kotlin → RN）
+const emitter = ImageGen ? new NativeEventEmitter(ImageGen) : null;
 
 export interface GeneratedImage {
   uri: string;
@@ -31,11 +34,28 @@ class ImageGenStore {
   history: GeneratedImage[] = [];
   /** 聊天意图路由带入的待生成提示词（M6 豆包化） */
   pendingPrompt: string | null = null;
+  /** 生成进度（0-100，-1 表示无进度） */
+  progress = -1;
+  /** 进度文本（step/steps） */
+  progressText = '';
   /** 输出目录（App 私有 filesDir 下） */
   private outDir = '';
 
   constructor() {
     makeAutoObservable(this);
+    // 订阅原生进度事件
+    if (emitter) {
+      emitter.addListener(
+        'ImageGenProgress',
+        (e: {step: number; steps: number}) => {
+          runInAction(() => {
+            this.progress =
+              e.steps > 0 ? Math.round((e.step / e.steps) * 100) : -1;
+            this.progressText = `${e.step}/${e.steps}`;
+          });
+        },
+      );
+    }
   }
 
   async init(): Promise<void> {
@@ -86,7 +106,14 @@ class ImageGenStore {
    */
   async generate(
     prompt: string,
-    opts: {steps?: number; cfg?: number; width?: number; height?: number; seed?: number} = {},
+    opts: {
+      steps?: number;
+      cfg?: number;
+      width?: number;
+      height?: number;
+      seed?: number;
+      negativePrompt?: string;
+    } = {},
   ): Promise<string | null> {
     if (!this.modelLoaded) {
       runInAction(() => {
@@ -103,10 +130,13 @@ class ImageGenStore {
     runInAction(() => {
       this.generating = true;
       this.error = null;
+      this.progress = -1;
+      this.progressText = '';
     });
     try {
       const result = await ImageGen.txt2img({
         prompt,
+        negativePrompt: opts.negativePrompt ?? '',
         seed,
         steps: opts.steps ?? 2,
         cfg: opts.cfg ?? 2.0,
@@ -142,6 +172,8 @@ class ImageGenStore {
     } finally {
       runInAction(() => {
         this.generating = false;
+        this.progress = -1;
+        this.progressText = '';
       });
     }
   }
