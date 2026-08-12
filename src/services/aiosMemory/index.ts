@@ -283,6 +283,8 @@ export async function extractAndSaveMemories(
         n_predict: 150,
         temperature: 0,
         response_format: EXTRACTION_SCHEMA,
+        // Qwen 系模型开启 thinking 时 reasoning token 会混入流 → JSON 解析失败
+        enable_thinking: false,
       } as any,
       (data: {token?: string; content?: string}) => {
         const piece = data?.token ?? data?.content ?? '';
@@ -291,8 +293,24 @@ export async function extractAndSaveMemories(
         }
       },
     );
-    // grammar \u7ea6\u675f\u4fdd\u8bc1\u5408\u6cd5 JSON\uff0c\u76f4\u63a5\u89e3\u6790\uff08\u5220\u9664\u6b63\u5219\u56de\u9000\uff09
-    const parsed = JSON.parse(output);
+    // grammar 约束保证合法 JSON，直接解析（删除正则回退）
+    // 2026-08-12 真机复测：本地 llama.rn 引擎不识别 OpenAI 式 response_format
+    // json_schema，输出会带 <s> BOS 前缀/围栏 → 解析前剥离非 JSON 头尾。
+    const jsonText = output.trim().replace(/^<s>\s*/i, '').replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/s, '');
+    let parsed: any;
+    try {
+      parsed = JSON.parse(jsonText);
+    } catch {
+      // 兜底：从输出中提取第一个 { 到最后一个 } 的子串（BOS/围栏/推理杂讯剔除后仍不
+      // 是纯 JSON 时使用）
+      const first = jsonText.indexOf('{');
+      const last = jsonText.lastIndexOf('}');
+      if (first >= 0 && last > first) {
+        parsed = JSON.parse(jsonText.slice(first, last + 1));
+      } else {
+        throw new Error('no JSON object found in extraction output');
+      }
+    }
     const items = Array.isArray(parsed.memories) ? parsed.memories : [];
     for (const item of items.slice(0, 3)) {
       if (item && typeof item.content === 'string' && item.content.trim()) {

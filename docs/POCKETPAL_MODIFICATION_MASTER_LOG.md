@@ -273,6 +273,25 @@ Start-Process -FilePath "F:\Cursor\OneTakeMVP\.tmp\scrcpy\scrcpy-win64-v4.1\scrc
 
 ---
 
+## 10. 窗口闭环记录（2026-08-12 目标模式 · M1-M2）
+
+### 10.1 M1 device_control 标记 + 文档债（commit e0f8324）
+- ToolScreen：device_control 显示橙色 "Phase 2 未实现" 徽标 + Switch 禁用（避免用户误触发报错）
+- PalStore 注释 "all 5 tools" → "all 8 tools"
+- 抽屉 AIOS 标题 l10n：记忆/知识库/Workspace/工具配置 → en/zh/zh_Hant menuItems 新增 memory/knowledge/workspace/tool，SidebarContent + App.tsx 引用替换
+
+### 10.2 M2 记忆提取复测（真机发现 + 修复 + 验证）
+**真机发现**：5 轮对话后提取全部失败，logcat：`JSON Parse error: Unexpected character: <`
+**根因**：本地 llama.rn 对 response_format.json_schema 的 GBNF 转换在 Qwen 系模型上仍会输出 `<s>` BOS/推理杂讯；且模型 thinking 模式开启时 reasoning token 混入流。
+**修复**（src/services/aiosMemory/index.ts）：
+1. 解析前剥离 `<s>` / ```json 围栏
+2. `enable_thinking: false`（Qwen 不开思考）
+3. JSON 兜底提取（首 `{` 至末 `}`，防杂讯）
+**复测**：2 轮对话 → 提取成功 2 条真实记忆（"大王自称小红，住杭州，养狗旺财" / "大王最近在学吉他"）→ USER.md 自动聚合 3 facts ✅ | logcat 零错误 ✅
+**占位符**：真机记忆库无占位条目（仅 1 条测试记忆）✅
+
+---
+
 ## 9. 窗口闭环记录（2026-08-12 中场 · App UI 四项：状态栏/输入框/换标）
 
 ### 9.1 安卓状态栏彻底修复（大王实测反馈驱动）
