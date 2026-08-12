@@ -213,7 +213,8 @@
 - UX 真机手动验证：抽屉生图第二位✅ 下拉悬浮盖住✅ 点外收起✅。
 - **端侧出图成功（2026-08-13）**：swipe 触发“DreamLite 基线”，logcat 完整：unet 加载4.2s→vae就绪→step1-4/4(各~4.8s)→saved，无OOM/崩溃；屏幕渲染生成图+彩色操作按钮。512px 4步全程~25s。
   - 坑：fp16 ONNX 留不一致 Cast 节点且 ORT CPU 支持差→改 fp32；固定维导出→改动态维（unet_dyn/vae_dyn）；RN 应用需 swipe 触发。
-  - 当前为零 TE 基线（unconditioned）；真实文本条件待 TE(Qwen3-VL) GGUF；编辑路径待接线。
+  - 当前为零 TE 基线（unconditioned）；真实文本条件待 TE(Qwen3-VL) GGUF。
+- **编辑路径**：`editDreamLite`（vae_encoder 编码源图→条件去噪）+ “DreamLite 编辑”入口（commit 115849b）；ONNX 桌面验证 cond(1,4,64,64)→4步→(1,3,512,512) 5.9s。
 
 **阻断项（需外部条件）**：
 - unet 780MB 走 hf-mirror 带宽不足（~0.1MB/s），续传中；GitHub 仓库 zip 被墙（仅部分 raw 可取）。
