@@ -1,5 +1,4 @@
 import React, {useRef, ReactNode, useState} from 'react';
-import {useNavigation} from '@react-navigation/native';
 
 import {observer} from 'mobx-react';
 import {runInAction} from 'mobx';
@@ -30,9 +29,10 @@ import {resolveReasoningCapability} from '../../utils/reasoningCapability';
 import {MessageType} from '../../utils/types';
 import {ErrorState} from '../../utils/errors';
 import {user, assistant} from '../../utils/chat';
-import {ROUTES} from '../../utils/navigationConstants';
-import {imageGenStore} from '../../store/imageGenStore';
 import {chatSessionStore as chatStoreForImg} from '../../store';
+import {routeTask} from '../../store/taskRouter';
+import {runInlineImageTask} from '../../services/chatImageTask';
+import {ActiveTaskBanner} from '../../components/ActiveTaskBanner/ActiveTaskBanner';
 
 import {VideoPalScreen} from './VideoPalScreen';
 
@@ -81,47 +81,58 @@ export const ChatScreen: React.FC = observer(() => {
     user,
     assistant,
   );
-  const navigation = useNavigation();
 
-  // M6 豆包化 + 聊天嵌入生图：
-  // - 意图命中且 SD 模型已加载 → 聊天内直接生成并插入图片消息
-  // - 意图命中但未加载 → 跳转生图页预填提示词（引导加载）
+  // 任务驱动调度（调度叙事）：
+  // - image → 聊天内联闭环（加载引擎→出图→插入图片/错误卡片），不跳转页面
+  // - chitchat/write/code → 常规聊天链路（P4 深化 write/code 专用模型）
   const wrappedSendPress = React.useCallback(
     async (message: MessageType.PartialText) => {
       const text = message.text.trim();
-      const drawMatch = text.match(
-        /(画|绘|生成)(一[张幅]?|个)?\s*([^。！？!?]{2,40}?)(图|图片|画)/,
-      );
-      if (drawMatch) {
-        const drawPrompt = drawMatch[3] ?? text;
-        if (imageGenStore.modelLoaded) {
-          // 聊天内嵌入：先走正常发送，再异步生成并插入结果图
-          handleSendPress(message);
-          const uri = await imageGenStore.generate(drawPrompt, {
-            width: 512,
-            height: 512,
-          });
-          if (uri) {
-            chatStoreForImg.addMessageToCurrentSession({
-              id: `img-${Date.now()}`,
-              author: assistant,
-              createdAt: Date.now(),
-              text: `🎨 已为你生成：${drawPrompt}`,
-              imageUris: [uri],
-              type: 'text',
-            } as MessageType.Text);
-          }
+      const signal = routeTask(text);
+
+      if (signal.task === 'image') {
+        // 1. 记录用户消息（无会话时自动建会话）
+        await chatStoreForImg.addMessageToCurrentSession({
+          id: `u-${Date.now()}`,
+          author: user,
+          createdAt: Date.now(),
+          text,
+          type: 'text',
+        } as MessageType.Text);
+        const sessionId = chatStoreForImg.activeSessionId;
+        if (!sessionId) {
           return;
         }
-        runInAction(() => {
-          imageGenStore.pendingPrompt = drawPrompt;
-        });
-        navigation.navigate(ROUTES.IMAGE_GEN as never);
+
+        // 2. 任务卡片占位（实时进度由 ActiveTaskBanner 展示）
+        const cardId = `imgtask-${Date.now()}`;
+        await chatStoreForImg.addMessageToCurrentSession({
+          id: cardId,
+          author: assistant,
+          createdAt: Date.now(),
+          text: `🎨 正在为你生成「${signal.payload}」…`,
+          type: 'text',
+          metadata: {imageTask: true},
+        } as MessageType.Text);
+
+        // 3. 内联执行：加载引擎（如需）→ 出图
+        const result = await runInlineImageTask(signal.payload);
+        if (result.uri) {
+          await chatStoreForImg.updateMessage(cardId, sessionId, {
+            text: `🎨 已为你生成：${signal.payload}`,
+            imageUris: [result.uri],
+          });
+        } else {
+          await chatStoreForImg.updateMessage(cardId, sessionId, {
+            text: `⚠️ 生图未完成：${result.error ?? '未知错误'}`,
+          });
+        }
         return;
       }
+
       handleSendPress(message);
     },
-    [handleSendPress, navigation],
+    [handleSendPress],
   );
 
   // Handle deep linking for message prefill
@@ -305,6 +316,7 @@ export const ChatScreen: React.FC = observer(() => {
   // strip overlapping the system status bar area on Android.
   return (
     <>
+      <ActiveTaskBanner />
       <ChatView
         renderBubble={renderBubble}
         messages={chatSessionStore.currentSessionMessages}

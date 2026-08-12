@@ -273,6 +273,21 @@ Start-Process -FilePath "F:\Cursor\OneTakeMVP\.tmp\scrcpy\scrcpy-win64-v4.1\scrc
 
 ---
 
+## 13. 模型智能调度产品升级（2026-08-12）
+**产品命题：启动即就绪 · 任务即加载 · 聊天内闭环 · 状态永远可见。** 详见 `docs/AIOS_MODEL_SCHEDULING_SPEC.md`。
+- **P1 验证**：llama.rn 原生支持多 context（LlamaContext.id + JSI 全函数带 contextId + setContextLimit）→ 管家模型与大模型可共存，硬门槛解除。
+- **engineStatus.ts（新）**：三引擎（prompter/chat/image）统一状态源 phase/progress/stage/error + summary 派生。
+- **taskRouter.ts（新）**：规则快筛 chitchat/image/write/code，只判断不执行；单测 9/9。
+- **promptWriter.ts**：接入 engineStatus；App.tsx 启动自动加载常驻管家模型（MiniCPM5-1B）。
+- **chatImageTask.ts（新）**：聊天内联生图 runner（选模型→加载→prompter 扩写提示词→出图）。
+- **ActiveTaskBanner（新）**：聊天区顶部任务横幅，实时显示引擎加载/运行进度，出错引导去生图页。
+- **ChatScreen**：wrappedSendPress 重构——image 任务聊天内闭环（任务卡片→生成→插图/错误卡片），删除“未加载跳生图页”逻辑。
+- **SessionStatusBar**：新增引擎全景一行（engineStatus.summary）。
+- 边界：write/code 专用模型自动加载需“模型能力注册表”，列为下迭代；生图优化（imageGenStore 进度增强/native/ImageGenScreen）归并行窗口提交。
+- 验证：tsc 0 错，taskRouter 9/9，ChatScreen 预存 3 失败（palStore mock 缺 getAiosPal）经 stash 对比确认非本次引入。
+
+---
+
 ## 12. 品牌改名：口袋八哥（2026-08-12）
 **大王钦定新名：口袋八哥**（八哥=学舌灵巧之鸟，AI 助手隐喻；口袋继承 PocketPal 血统）。
 - app.json displayName → 口袋八哥（name 保持 PocketPal，RN 注册标识不可动）

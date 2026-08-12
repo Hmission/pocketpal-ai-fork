@@ -16,6 +16,7 @@ import {
 
 import {ttsStore, uiStore, modelStore} from './src/store';
 import {ensureAiosDirs, ensureWorkspaceFiles} from './src/utils/paths';
+import {promptWriter} from './src/services/promptWriter';
 import {initIndex} from './src/services/aiosMemory/searchEngine';
 import {useTheme} from './src/hooks';
 import {useDeepLinking} from './src/hooks/useDeepLinking';
@@ -266,7 +267,17 @@ const App = observer(() => {
 
   // Initialize AIOS shared storage dirs + scan models on startup.
   React.useEffect(() => {
-    ensureAiosDirs().then(() => ensureWorkspaceFiles()).then(() => { initIndex(); return modelStore.scanLocalModels(); });
+    ensureAiosDirs()
+      .then(() => ensureWorkspaceFiles())
+      .then(() => {
+        initIndex();
+        return modelStore.scanLocalModels();
+      })
+      .then(() => {
+        // 启动即就绪：常驻管家模型（MiniCPM5-1B）。失败静默不阻断，
+        // 状态由 engineStatus 驱动 SessionStatusBar 展示。
+        promptWriter.ensureLoaded().catch(() => {});
+      });
   }, []);
 
   return (

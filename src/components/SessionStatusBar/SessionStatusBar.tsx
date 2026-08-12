@@ -2,6 +2,7 @@ import * as React from 'react';
 import {View, Text, StyleSheet, TouchableOpacity} from 'react-native';
 import {observer} from 'mobx-react';
 import {modelStore, chatSessionStore} from '../../store';
+import {engineStatus} from '../../store/engineStatus';
 import {getLastWriteTime} from '../../services/aiosMemory/conversationLog';
 import {getLastRecallInfo} from '../../services/aiosMemory/contextAssembler';
 import {getLastSentiment} from '../../services/aiosMemory/rituals';
@@ -100,6 +101,15 @@ export const SessionStatusBar = observer(() => {
       <Text style={styles.separator}>|</Text>
       <View style={styles.section}>
         <Text style={[styles.value, {color: sentimentColor}]}>{sentiment.label}</Text>
+      </View>
+
+      {/* 引擎全景（prompter/chat/image 调度状态） */}
+      <Text style={styles.separator}>|</Text>
+      <View style={styles.section}>
+        <Text style={styles.label}>引擎</Text>
+        <Text style={styles.value} numberOfLines={1}>
+          {engineStatus.summary}
+        </Text>
       </View>
 
       {/* Expandable recall preview */}
