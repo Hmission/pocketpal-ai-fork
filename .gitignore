@@ -1,4 +1,4 @@
-# OSX
+﻿# OSX
 #
 .DS_Store
 
@@ -105,7 +105,7 @@ e2e/specs/visual-capture/TASK-*.spec.ts
 # screenshot inventories). Live in the dev-team repo and are sometimes
 # synced into the worktree for local reference; never committed here.
 workflows/
-# === AIOS PocketPal 二开追加 ===
+# === AIOS PocketPal 浜屽紑杩藉姞 ===
 # Temp edit workspace (cross-workspace SearchReplace relay)
 .tmp/
 # GGUF models (never track, stored in /sdcard/Documents/AIOS/models/)
@@ -113,7 +113,9 @@ workflows/
 *.gguf.tmp
 # AIOS runtime data (lives on device /sdcard, not in repo)
 aios_runtime/
-# Qoder/cursor agent artifacts (not part of PocketPal source)
-.qoder/
-.cursor/
+# 连仓 junction（指向母仓，不入子仓 git）
+.qoder/hooks/
+scripts/agent/
+# Qoder/cursor agent artifacts
 .qodercn/
+.cursor/
