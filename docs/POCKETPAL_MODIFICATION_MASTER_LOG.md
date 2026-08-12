@@ -296,6 +296,11 @@ Start-Process -FilePath "F:\Cursor\OneTakeMVP\.tmp\scrcpy\scrcpy-win64-v4.1\scrc
 - [ ] 真机出图验证（加载→txt2img→PNG）
 - [ ] 内存互斥验证（聊天模型卸载→SD 加载）
 
+### 11.5 M7 玩法扩展（情绪系统轻量落地）
+- rituals.ts 新增 sentimentScore/trackSentiment/getLastSentiment（规则词库 -2..+2）
+- contextAssembler 每轮跟踪大王情绪；SessionStatusBar 显示 愉悦/平稳/低落（绿/灰/红）
+- 梦境模式=已有 compaction 摘要+开场仪式读上次摘要（buildTodayState 已含）；双人格/语音养成 UI 完整版延期
+
 ---
 
 ## 10. 窗口闭环记录（2026-08-12 目标模式 · M1-M2）
