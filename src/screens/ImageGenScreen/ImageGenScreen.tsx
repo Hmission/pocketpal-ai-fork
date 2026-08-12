@@ -26,6 +26,7 @@ import {runInAction} from 'mobx';
 import Share from 'react-native-share';
 
 import {imageGenStore} from '../../store/imageGenStore';
+import {loadDreamLite, generateDreamLite} from '../../services/dreamLiteEngine';
 import {useTheme} from '../../hooks';
 import {AIOS_MODELS_DIR} from '../../utils/paths';
 import {
@@ -146,6 +147,18 @@ export const ImageGenScreen: React.FC = observer(() => {
     setSelectedId(entry.manifest.id);
     setShowModelDrop(false);
     loadEntry(entry);
+  };
+
+  const handleDreamLite = async () => {
+    try {
+      await loadDreamLite();
+      const uri = await generateDreamLite(512, 4);
+      setCurrentImage(uri);
+    } catch (e) {
+      runInAction(() => {
+        imageGenStore.error = `DreamLite: ${(e as any)?.message ?? e}`;
+      });
+    }
   };
 
   const handleGenerate = async () => {
@@ -410,6 +423,11 @@ export const ImageGenScreen: React.FC = observer(() => {
               </View>
             </>
           )}
+          <TouchableOpacity
+            style={[s.button, s.buttonSecondary]}
+            onPress={handleDreamLite}>
+            <Text style={s.buttonText}>DreamLite 基线</Text>
+          </TouchableOpacity>
           <TouchableOpacity
             style={[s.button, !imageGenStore.modelLoaded && s.buttonDisabled]}
             disabled={!imageGenStore.modelLoaded || imageGenStore.generating}
