@@ -307,11 +307,15 @@ Start-Process -FilePath "F:\Cursor\OneTakeMVP\.tmp\scrcpy\scrcpy-win64-v4.1\scrc
 
 ### 8.5 验证
 - [x] `npx tsc --noEmit` 零错误
-- [ ] 真机：各页面顶部不被状态栏遮挡（待装机）
-- [ ] 真机：抽屉图标一眼可辨 + 三组分层清晰（待装机）
-- [ ] 真机：输入框两行间有横线区隔（待装机）
+- [x] 真机（小米13 Ultra 66b1777f）：状态栏安全区 ✅（Chat 页 header 内容 Y=188+、记忆管理页 header 标题 Y=165+，均低于状态栏 107px）
+- [x] 真机：抽屉图标/三组分层清晰 ✅（UI 树确认：导航3项 → AIOS 4项 → 系统3项）
+- [x] 真机：输入框两行间横线 ✅（像素分析 Y=2201 处 1px (161,162,164)=outlineVariant）
+- [x] 截图存档：`.tmp/verify_*.png`（聊天页/抽屉/记忆管理页）
 
-### 8.6 连仓坑（junction anchor 撕裂）
+> **过程中排掉的雷（RedBox）**：首版把 `useSafeAreaInsets()` 放在 App 组件顶层，但 SafeAreaProvider 是 App 渲染的子节点 → hook 在 Provider 外执行报 "No safe area value available" 崩溃。修复：抽 `AppDrawer` 组件（SafeAreaProvider 内取 insets）——`App.tsx` 重构为 AppDrawer + SwitchPoint 两层。
+
+### 8.6 连仓坑（junction anchor 撕裂）→ 已根治（2026-08-12 上半场）
 - **现象**：gate 命令写 session_anchor.json 到母仓 `F:\Cursor\OneTakeMVP\data\session_runtime\`（agent_router 用 `Path.resolve()` 解析 junction），而 IDE hook gate-guard.py 用 `os.path.abspath`（不解析 junction）到本仓 `F:\pp\data\session_runtime\` 查找 → 找不到 anchor → PreToolUse 被 CP-002 拦截
-- **临时解法**：gate 后手动 `Copy-Item` 母仓 anchor 到本仓对应 session 目录
-- **待修**：母仓 gate-guard 增加 AIOS_REPO_ROOT 或双端查找逻辑（下轮迭代）
+- **根治（母仓 hook）**：gate-guard.py 新增 `_runtime_roots()` 双端查找（本仓 + junction 解析母仓），`_find_freshest_anchor` 与 search_depth_tracker 均双端遍历；补 `from pathlib import Path`（此前模块未导入 Path，双端逻辑被 NameError 静默吞掉）
+- **验证**：删除本仓 anchor 副本后模拟 PreToolUse → 从母仓找到 241s 前 anchor，exit 0 无警告 ✅
+- **临时解法（保留备查）**：gate 后手动 `Copy-Item` 母仓 anchor 到本仓对应 session 目录（已不需要）
