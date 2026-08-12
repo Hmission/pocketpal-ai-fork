@@ -217,6 +217,7 @@
 - **编辑路径**：`editDreamLite`（vae_encoder 编码源图→条件去噪）+ “DreamLite 编辑”入口（commit 115849b）；ONNX 桌面验证 cond(1,4,64,64)→4步→(1,3,512,512) 5.9s。
 
 **阻断项（需外部条件）**：
+- 真实文本条件（TE）：DreamLite TE=微调 Qwen3-VL(4.25GB)，需转 GGUF/ONNX；现成 ONNX-WebGPU 版(dror201031)仅含 unet/vae 无 TE；通用 Qwen3-VL GGUF 权重不匹配。受带宽阻断。
 - unet 780MB 走 hf-mirror 带宽不足（~0.1MB/s），续传中；GitHub 仓库 zip 被墙（仅部分 raw 可取）。
 - TE=Qwen3-VL 4.25GB，端侧需 4-bit GGUF + llama.rn hidden-states 提取，待验证。
 - MNN Android 编译 + 真机验证待 ONNX 导出件就绪。
