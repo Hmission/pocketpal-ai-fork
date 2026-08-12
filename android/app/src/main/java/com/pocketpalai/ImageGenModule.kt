@@ -10,7 +10,6 @@ import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.ReadableMap
-import com.facebook.react.modules.core.DeviceEventManagerModule
 import java.io.File
 
 /**
@@ -133,34 +132,47 @@ class ImageGenModule(reactContext: ReactApplicationContext) :
     }
   }
 
+  /**
+   * 推拉反转（weak-ref 溢出根治）：JNI 回调只写内存快照，不发 bridge 事件；
+   * RN 侧以 1Hz 单通道 pull getGenSnapshot()。事件风暴从架构上消失。
+   */
+  @ReactMethod
+  fun getGenSnapshot(promise: Promise) {
+    promise.resolve(
+      Arguments.createMap().apply {
+        putInt("step", snapStep)
+        putInt("steps", snapSteps)
+        putDouble("time", snapTime.toDouble())
+        putString("stage", snapStage)
+        putDouble("lastEvent", snapLastEvent.toDouble())
+      },
+    )
+  }
+
   companion object {
     private var reactContextRef: ReactApplicationContext? = null
 
-    /** Called from JNI progress callback (sd_set_progress_callback). */
+    // 进度/阶段快照（JNI 后台线程写，RN 1Hz 读）
+    @Volatile var snapStep = 0
+    @Volatile var snapSteps = 0
+    @Volatile var snapTime = 0f
+    @Volatile var snapStage = ""
+    @Volatile var snapLastEvent = 0L
+
+    /** Called from JNI progress callback —— 只写快照，不发事件。 */
     @JvmStatic
     fun onProgressFromNative(step: Int, steps: Int, time: Float) {
-      val ctx = reactContextRef ?: return
-      val args = Arguments.createMap().apply {
-        putInt("step", step)
-        putInt("steps", steps)
-        putDouble("time", time.toDouble())
-      }
-      ctx
-        .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-        .emit("ImageGenProgress", args)
+      snapStep = step
+      snapSteps = steps
+      snapTime = time
+      snapLastEvent = System.currentTimeMillis()
     }
 
-    /** Called from JNI log callback (sd_set_log_callback)，阶段日志透传。 */
+    /** Called from JNI log callback —— 只写快照，不发事件。 */
     @JvmStatic
     fun onLogFromNative(level: Int, text: String) {
-      val ctx = reactContextRef ?: return
-      val args = Arguments.createMap().apply {
-        putInt("level", level)
-        putString("text", text)
-      }
-      ctx
-        .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-        .emit("ImageGenLog", args)
+      snapStage = text
+      snapLastEvent = System.currentTimeMillis()
     }
   }
 }

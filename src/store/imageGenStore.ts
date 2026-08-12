@@ -6,7 +6,7 @@
  * UI 层（生图 Tab）通过此 store 驱动加载/出图/进度。
  */
 import {makeAutoObservable, runInAction} from 'mobx';
-import {NativeModules, NativeEventEmitter} from 'react-native';
+import {NativeModules} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as RNFS from '@dr.pogodin/react-native-fs';
 import {engineMutex} from './engineMutex';
@@ -14,9 +14,6 @@ import {engineStatus} from './engineStatus';
 
 const ImageGen = NativeModules.ImageGen;
 const HISTORY_KEY = '@imagegen_history_v1';
-
-// 进度事件源（JNI sd_set_progress_callback → Kotlin → RN）
-const emitter = ImageGen ? new NativeEventEmitter(ImageGen) : null;
 
 export interface GeneratedImage {
   uri: string;
@@ -65,56 +62,38 @@ class ImageGenStore {
     engineMutex.register('image', async () => {
       await this.unloadModel();
     });
-    // 订阅原生进度事件（双保险节流：progress 300ms 内重复事件丢弃）
-    if (emitter) {
-      let lastProgressTs = 0;
-      emitter.addListener(
-        'ImageGenProgress',
-        (e: {step: number; steps: number; time?: number}) => {
-          const now = Date.now();
-          const isFirst = e.step <= 1;
-          const isLast = e.steps > 0 && e.step >= e.steps;
-          if (!isFirst && !isLast && now - lastProgressTs < 300) {
-            return;
-          }
-          lastProgressTs = now;
-          runInAction(() => {
-            this.progress =
-              e.steps > 0 ? Math.round((e.step / e.steps) * 100) : -1;
-            this.progressText = `${e.step}/${e.steps}`;
-            this.stepTime = e.time ?? 0;
-            this.lastEventAt = now;
-          });
-          // 同步到统一状态源（任务卡片/状态栏消费）
-          engineStatus.setProgress('image', this.progress, `采样 ${this.progressText}`);
-        },
-      );
-      // 阶段日志透传（JNI sd_log_cb 过滤后的关键行）
-      // 双保险节流：相同 stage 文本 500ms 内丢弃
-      let lastLogTs = 0;
-      let lastLogText = '';
-      emitter.addListener(
-        'ImageGenLog',
-        (e: {level: number; text: string}) => {
-          const now = Date.now();
-          const t = (e.text ?? '')
-            .replace(/^[\w.]+:\d+\s*-\s*/, '')
-            .trim();
-          if (!t) {
-            return;
-          }
-          if (t === lastLogText && now - lastLogTs < 500) {
-            return;
-          }
-          lastLogTs = now;
-          lastLogText = t;
-          runInAction(() => {
-            this.stage = t.length > 120 ? t.slice(0, 120) + '…' : t;
-            this.lastEventAt = now;
-            this.logTail = [this.stage, ...this.logTail].slice(0, 3);
-          });
-        },
-      );
+  }
+
+  /** 进度快照轮询定时器（推拉反转：1Hz 单通道 pull，替代事件风暴） */
+  private pollTimer: ReturnType<typeof setInterval> | null = null;
+  private syncPoll() {
+    const active = this.loading || this.generating;
+    if (active && !this.pollTimer) {
+      this.pollTimer = setInterval(() => this.pullSnapshot(), 1000);
+    } else if (!active && this.pollTimer) {
+      clearInterval(this.pollTimer);
+      this.pollTimer = null;
+    }
+  }
+  private async pullSnapshot() {
+    try {
+      const s = await ImageGen.getGenSnapshot();
+      runInAction(() => {
+        if (s.steps > 0) {
+          this.progress = Math.round((s.step / s.steps) * 100);
+          this.progressText = `${s.step}/${s.steps}`;
+        }
+        this.stepTime = s.time ?? 0;
+        if (s.stage) {
+          this.stage = s.stage.length > 120 ? s.stage.slice(0, 120) + '…' : s.stage;
+        }
+        if (s.lastEvent) {
+          this.lastEventAt = s.lastEvent;
+        }
+      });
+      engineStatus.setProgress('image', this.progress, `采样 ${this.progressText}`);
+    } catch {
+      /* 快照不可用时静默 */
     }
   }
 
@@ -195,6 +174,7 @@ class ImageGenStore {
       this.lastEventAt = Date.now();
       this.loadingStartedAt = Date.now();
     });
+    this.syncPoll();
     engineStatus.setPhase('image', 'loading', '加载生图引擎…');
     try {
       const ok = await ImageGen.loadModel(modelPath, extras);
@@ -203,6 +183,7 @@ class ImageGenStore {
         this.loading = false;
         this.error = ok ? null : '模型加载失败';
       });
+      this.syncPoll();
       engineStatus.setPhase('image', ok ? 'ready' : 'error', ok ? '' : '模型加载失败');
       return ok;
     } catch (e: any) {
@@ -210,6 +191,7 @@ class ImageGenStore {
         this.loading = false;
         this.error = `加载失败: ${e?.message ?? e}`;
       });
+      this.syncPoll();
       engineStatus.setError('image', `加载失败: ${e?.message ?? e}`);
       return false;
     }
@@ -226,6 +208,7 @@ class ImageGenStore {
       this.modelLoaded = false;
       this.loading = false;
     });
+    this.syncPoll();
     engineStatus.setPhase('image', 'idle');
     engineMutex.release();
   }
@@ -270,6 +253,7 @@ class ImageGenStore {
       this.lastEventAt = Date.now();
       this.genStartedAt = Date.now();
     });
+    this.syncPoll();
     engineStatus.setPhase('image', 'running', '准备出图…');
     try {
       const result = await ImageGen.txt2img({
@@ -317,6 +301,7 @@ class ImageGenStore {
         this.progress = -1;
         this.progressText = '';
       });
+      this.syncPoll();
     }
   }
 }

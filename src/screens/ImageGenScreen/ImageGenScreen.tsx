@@ -114,12 +114,12 @@ export const ImageGenScreen: React.FC = observer(() => {
 
   const selectedEntry = available.find(a => a.manifest.id === selectedId) ?? null;
 
-  const handleLoad = async () => {
-    if (!selectedEntry) {
-      return;
-    }
+  const loadEntry = async (entry: {
+    manifest: ImageGenManifest;
+    mainPath: string;
+  }) => {
     const {extras, missing} = await resolveCompanions(
-      selectedEntry.manifest,
+      entry.manifest,
       AIOS_MODELS_DIR,
     );
     if (missing.length > 0) {
@@ -128,7 +128,23 @@ export const ImageGenScreen: React.FC = observer(() => {
       });
       return;
     }
-    await imageGenStore.loadModel(selectedEntry.mainPath, extras);
+    await imageGenStore.loadModel(entry.mainPath, extras);
+  };
+
+  const handleLoad = () => {
+    if (selectedEntry) {
+      loadEntry(selectedEntry);
+    }
+  };
+
+  // 下拉选中：选中 + 收起 + 自动加载（选即载，产品锋利）
+  const handleSelectModel = (entry: {
+    manifest: ImageGenManifest;
+    mainPath: string;
+  }) => {
+    setSelectedId(entry.manifest.id);
+    setShowModelDrop(false);
+    loadEntry(entry);
   };
 
   const handleGenerate = async () => {
@@ -245,64 +261,6 @@ export const ImageGenScreen: React.FC = observer(() => {
             <Text style={s.modelChipStatus}>{modelStatus} {showModelDrop ? '▴' : '▾'}</Text>
           </TouchableOpacity>
 
-          {showModelDrop && (
-            <View style={s.dropPanel}>
-              {scanning ? (
-                <ActivityIndicator size="small" />
-              ) : available.length === 0 ? (
-                <Text style={s.hint}>
-                  未找到生图模型，请将 SDXL Turbo / SD3.5 / Z-Image-Turbo 套件（GGUF）放入{' '}
-                  {AIOS_MODELS_DIR}
-                </Text>
-              ) : (
-                available.map(item => (
-                  <TouchableOpacity
-                    key={item.manifest.id}
-                    style={[
-                      s.modelRow,
-                      selectedId === item.manifest.id && s.modelRowSelected,
-                    ]}
-                    onPress={() => setSelectedId(item.manifest.id)}>
-                    <Text style={s.modelName} numberOfLines={1}>
-                      {FAMILY_BADGE[item.manifest.family]
-                        ? `[${FAMILY_BADGE[item.manifest.family]}] `
-                        : ''}
-                      {item.manifest.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))
-              )}
-              <TouchableOpacity
-                style={[s.button, imageGenStore.modelLoaded && s.buttonSecondary]}
-                disabled={!selectedId || imageGenStore.generating || imageGenStore.loading}
-                onPress={imageGenStore.modelLoaded ? imageGenStore.unloadModel : handleLoad}>
-                {imageGenStore.loading ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={s.buttonText}>
-                    {imageGenStore.modelLoaded ? '卸载模型' : '加载模型'}
-                  </Text>
-                )}
-              </TouchableOpacity>
-              {imageGenStore.loading && (
-                <View style={s.statusPanel}>
-                  <Text style={s.progressText}>
-                    正在加载模型…{' · 已耗时 '}
-                    {Math.max(0, Math.round((now - imageGenStore.loadingStartedAt) / 1000))}
-                    {'s'}
-                  </Text>
-                  {imageGenStore.stage ? (
-                    <Text style={s.stageText} numberOfLines={2}>
-                      ▸ {imageGenStore.stage}
-                    </Text>
-                  ) : null}
-                </View>
-              )}
-              {imageGenStore.modelLoaded && !imageGenStore.loading && (
-                <Text style={s.readyText}>✓ 模型已就绪，可以出图</Text>
-              )}
-            </View>
-          )}
         </View>
 
         {/* ① 结果区（主角，置顶；生成中进度 overlay 叠上） */}
@@ -323,22 +281,22 @@ export const ImageGenScreen: React.FC = observer(() => {
             <>
               <View style={s.actionRow}>
                 <TouchableOpacity
-                  style={s.actionBtn}
+                  style={[s.actionBtn, s.actionSave]}
                   onPress={() => currentImage && imageGenStore.saveToAlbum(currentImage)}>
-                  <Text style={s.actionText}>存相册</Text>
+                  <Text style={s.actionTextLight}>存相册</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={s.actionBtn} onPress={handleShare}>
-                  <Text style={s.actionText}>分享</Text>
+                <TouchableOpacity style={[s.actionBtn, s.actionShare]} onPress={handleShare}>
+                  <Text style={s.actionTextLight}>分享</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={s.actionBtn} onPress={handleReuse}>
-                  <Text style={s.actionText}>同参数</Text>
+                <TouchableOpacity style={[s.actionBtn, s.actionReuse]} onPress={handleReuse}>
+                  <Text style={s.actionTextLight}>同参数</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={s.actionBtn}
+                  style={[s.actionBtn, s.actionDelete]}
                   onPress={() =>
                     currentImage && imageGenStore.deleteHistory([currentImage], true)
                   }>
-                  <Text style={[s.actionText, s.actionDanger]}>删除</Text>
+                  <Text style={s.actionTextLight}>删除</Text>
                 </TouchableOpacity>
               </View>
               {currentItem ? (
@@ -464,6 +422,78 @@ export const ImageGenScreen: React.FC = observer(() => {
         </View>
       </KeyboardAwareScrollView>
 
+      {/* 模型锚定下拉：悬浮盖住下方 + 点外收起 */}
+      {showModelDrop && (
+        <View style={s.dropOverlay} pointerEvents="box-none">
+          <TouchableOpacity
+            style={s.dropBackdrop}
+            activeOpacity={1}
+            onPress={() => setShowModelDrop(false)}
+          />
+          <View style={s.dropPanelAbs}>
+            {scanning ? (
+              <ActivityIndicator size="small" />
+            ) : available.length === 0 ? (
+              <Text style={s.hint}>
+                未找到生图模型，请将 SDXL Turbo / SD3.5 / Z-Image-Turbo 套件（GGUF）放入{' '}
+                {AIOS_MODELS_DIR}
+              </Text>
+            ) : (
+              available.map(item => (
+                <TouchableOpacity
+                  key={item.manifest.id}
+                  style={[
+                    s.modelRow,
+                    selectedId === item.manifest.id && s.modelRowSelected,
+                  ]}
+                  onPress={() => handleSelectModel(item)}>
+                  <Text style={s.modelName} numberOfLines={1}>
+                    {FAMILY_BADGE[item.manifest.family] ? (
+                      <Text
+                        style={
+                          item.manifest.family === 'sd3' ? s.badgeSd3 : s.badgeZ
+                        }>
+                        [{FAMILY_BADGE[item.manifest.family]}]{' '}
+                      </Text>
+                    ) : null}
+                    {item.manifest.label}
+                  </Text>
+                </TouchableOpacity>
+              ))
+            )}
+            <TouchableOpacity
+              style={[s.button, imageGenStore.modelLoaded && s.buttonSecondary]}
+              disabled={!selectedId || imageGenStore.generating || imageGenStore.loading}
+              onPress={imageGenStore.modelLoaded ? imageGenStore.unloadModel : handleLoad}>
+              {imageGenStore.loading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={s.buttonText}>
+                  {imageGenStore.modelLoaded ? '卸载模型' : '加载模型'}
+                </Text>
+              )}
+            </TouchableOpacity>
+            {imageGenStore.loading && (
+              <View style={s.statusPanel}>
+                <Text style={s.progressText}>
+                  正在加载模型…{' · 已耗时 '}
+                  {Math.max(0, Math.round((now - imageGenStore.loadingStartedAt) / 1000))}
+                  {'s'}
+                </Text>
+                {imageGenStore.stage ? (
+                  <Text style={s.stageText} numberOfLines={2}>
+                    ▸ {imageGenStore.stage}
+                  </Text>
+                ) : null}
+              </View>
+            )}
+            {imageGenStore.modelLoaded && !imageGenStore.loading && (
+              <Text style={s.readyText}>✓ 模型已就绪，可以出图</Text>
+            )}
+          </View>
+        </View>
+      )}
+
       {/* 全屏查看 */}
       <Modal visible={fullscreen} transparent animationType="fade">
         <View style={s.fullscreenBackdrop}>
@@ -562,7 +592,39 @@ const createStyles = (theme: any) =>
       backgroundColor: theme.colors.surfaceVariant,
     },
     actionText: {fontSize: 12, color: theme.colors.onSurface},
+    actionTextLight: {fontSize: 12, color: '#fff', fontWeight: '600'},
     actionDanger: {color: theme.colors.error},
+    // 语义彩色点缀
+    actionSave: {backgroundColor: '#2e7d32'},
+    actionShare: {backgroundColor: '#1565c0'},
+    actionReuse: {backgroundColor: '#ef6c00'},
+    actionDelete: {backgroundColor: '#c62828'},
+    badgeSd3: {color: '#8e24aa', fontWeight: '700'},
+    badgeZ: {color: '#00838f', fontWeight: '700'},
+    dropOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      zIndex: 50,
+      elevation: 50,
+    },
+    dropBackdrop: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(0,0,0,0.25)',
+    },
+    dropPanelAbs: {
+      position: 'absolute',
+      top: 64,
+      left: 16,
+      right: 16,
+      backgroundColor: theme.colors.surface,
+      borderRadius: 12,
+      padding: 12,
+      gap: 8,
+      elevation: 12,
+      shadowColor: '#000',
+      shadowOpacity: 0.25,
+      shadowRadius: 10,
+      shadowOffset: {width: 0, height: 6},
+    },
     watermark: {fontSize: 10, color: theme.colors.onSurfaceVariant},
     historyHeader: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
     manageText: {fontSize: 12, color: theme.colors.primary},

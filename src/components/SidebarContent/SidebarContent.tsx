@@ -504,6 +504,17 @@ export const SidebarContent: React.FC<DrawerContentComponentProps> = observer(
               testID="drawer-item-chat"
             />
             <Drawer.Item
+              label={
+                l10n.components.sidebarContent.menuItems.imageGen ?? '生图'
+              }
+              icon={() => (
+                <CameraIcon width={24} height={24} stroke={theme.colors.primary} />
+              )}
+              onPress={() => props.navigation.navigate(ROUTES.IMAGE_GEN)}
+              style={styles.menuDrawerItem}
+              testID="drawer-item-imagegen"
+            />
+            <Drawer.Item
               label={l10n.components.sidebarContent.menuItems.pals}
               icon={() => <PalIcon stroke={theme.colors.primary} />}
               onPress={() => props.navigation.navigate(ROUTES.PALS)}
@@ -551,16 +562,6 @@ export const SidebarContent: React.FC<DrawerContentComponentProps> = observer(
                 <AtomIcon width={24} height={24} stroke={theme.colors.primary} />
               )}
               onPress={() => props.navigation.navigate(ROUTES.TOOL)}
-              style={styles.menuDrawerItem}
-            />
-            <Drawer.Item
-              label={
-                l10n.components.sidebarContent.menuItems.imageGen ?? '生图'
-              }
-              icon={() => (
-                <CameraIcon width={24} height={24} stroke={theme.colors.primary} />
-              )}
-              onPress={() => props.navigation.navigate(ROUTES.IMAGE_GEN)}
               style={styles.menuDrawerItem}
             />
           </Drawer.Section>
