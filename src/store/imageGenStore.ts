@@ -227,6 +227,8 @@ class ImageGenStore {
       height?: number;
       seed?: number;
       negativePrompt?: string;
+      loraPath?: string;
+      loraMultiplier?: number;
     } = {},
   ): Promise<string | null> {
     if (!this.modelLoaded) {
@@ -264,6 +266,8 @@ class ImageGenStore {
         cfg: opts.cfg ?? 2.0,
         width: opts.width ?? 512,
         height: opts.height ?? 512,
+        loraPath: opts.loraPath ?? '',
+        loraMultiplier: opts.loraMultiplier ?? 1,
         outPath,
       });
       if (typeof result === 'string' && result.startsWith('ERR_')) {

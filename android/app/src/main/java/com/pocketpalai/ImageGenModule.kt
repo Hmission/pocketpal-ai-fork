@@ -37,7 +37,7 @@ class ImageGenModule(reactContext: ReactApplicationContext) :
   private external fun nativeUnloadModel(): Boolean
   private external fun nativeTxt2img(
     prompt: String, negativePrompt: String, seed: Long, steps: Int, cfg: Double,
-    width: Int, height: Int, outPath: String,
+    width: Int, height: Int, loraPath: String, loraMultiplier: Double, outPath: String,
   ): String
 
   @ReactMethod
@@ -120,6 +120,8 @@ class ImageGenModule(reactContext: ReactApplicationContext) :
         params.getDouble("cfg"),
         params.getInt("width"),
         params.getInt("height"),
+        params.getString("loraPath") ?: "",
+        params.getDouble("loraMultiplier"),
         outPath,
       )
       if (result.startsWith("ERR_")) {

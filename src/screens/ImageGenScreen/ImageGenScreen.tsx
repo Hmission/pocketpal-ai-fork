@@ -151,12 +151,15 @@ export const ImageGenScreen: React.FC = observer(() => {
     if (!prompt.trim()) {
       return;
     }
+    const m = selectedEntry?.manifest;
     const uri = await imageGenStore.generate(prompt.trim(), {
       steps: parseInt(steps, 10) || 2,
       cfg: parseFloat(cfg) || 2,
       width: size,
       height: size,
       negativePrompt: negativePrompt.trim(),
+      loraPath: m?.lora ? `${AIOS_MODELS_DIR}/${m.lora}` : undefined,
+      loraMultiplier: m?.loraMultiplier,
     });
     if (uri) {
       setCurrentImage(uri);

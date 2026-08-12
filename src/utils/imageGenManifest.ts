@@ -28,6 +28,9 @@ export interface ImageGenManifest {
     cfg: number;
     size: number;
   };
+  /** 加速 LoRA 文件名（可选，sd.cpp 原生挂载） */
+  lora?: string;
+  loraMultiplier?: number;
   note?: string;
 }
 
@@ -58,7 +61,8 @@ export const BUILTIN_MANIFESTS: ImageGenManifest[] = [
       clipG: 'sd35_clip_g.safetensors',
       vae: 'sd35_vae.safetensors',
     },
-    defaults: {steps: 20, cfg: 4.5, size: 512},
+    // P6 提速：SD3.5 裸跑 20 步过慢（实测 375s+），默认降 10 步求速度
+    defaults: {steps: 10, cfg: 4.5, size: 512},
     note: 'MMDiT，端侧不带 T5（省 4.9GB）',
   },
   {

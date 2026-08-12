@@ -318,7 +318,7 @@ JNIEXPORT jstring JNICALL
 Java_com_pocketpal_ImageGenModule_nativeTxt2img(
     JNIEnv* env, jobject /*thiz*/, jstring prompt, jstring negativePrompt,
     jlong seed, jint steps, jfloat cfg, jint width, jint height,
-    jstring outPath) {
+    jstring loraPath, jfloat loraMultiplier, jstring outPath) {
   std::lock_guard<std::mutex> lock(g_mutex);
   if (!g_ctx) {
     dbg_log("txt2img ERR_NO_MODEL");
@@ -330,6 +330,7 @@ Java_com_pocketpal_ImageGenModule_nativeTxt2img(
   const char* promptStr = env->GetStringUTFChars(prompt, nullptr);
   const char* negStr = env->GetStringUTFChars(negativePrompt, nullptr);
   const char* outStr = env->GetStringUTFChars(outPath, nullptr);
+  JStr lora(env, loraPath);
   if (!promptStr || !outStr) {
     if (promptStr) env->ReleaseStringUTFChars(prompt, promptStr);
     if (negStr) env->ReleaseStringUTFChars(negativePrompt, negStr);
@@ -348,6 +349,17 @@ Java_com_pocketpal_ImageGenModule_nativeTxt2img(
   // SDXL Turbo: default euler + 1-4 steps is enough
   gen.sample_params.sample_steps = steps > 0 ? steps : 2;
   gen.sample_params.guidance.txt_cfg = cfg > 0 ? cfg : 2.0f;
+
+  // 加速 LoRA 通道（sd.cpp 原生 sd_lora_t）：manifest 声明即插即用
+  sd_lora_t loraArr[1];
+  if (!lora.empty()) {
+    loraArr[0].is_high_noise = false;
+    loraArr[0].multiplier = loraMultiplier > 0 ? loraMultiplier : 1.0f;
+    loraArr[0].path = lora.c_str();
+    gen.loras = loraArr;
+    gen.lora_count = 1;
+    dbg_log("txt2img with lora=%s mult=%.2f", lora.c_str(), loraArr[0].multiplier);
+  }
 
   sd_image_t* images = nullptr;
   int numImages = 0;
