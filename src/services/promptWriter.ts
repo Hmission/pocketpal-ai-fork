@@ -22,6 +22,18 @@ const SYSTEM_PROMPT =
   'and quality tags (e.g. "masterpiece, best quality"). ' +
   'Output ONLY the English prompt, no explanation, no quotes.';
 
+// 管家通用闲聊人设（chitchat 兜底：chat 大模型未加载时由管家直接回答）
+const CHITCHAT_SYSTEM_PROMPT =
+  '你是口袋八哥（Pocket Myna），一只聪明伶俐的 AI 八哥助手。' +
+  '用用户的语言简洁、友好、带点机智地回答。若用户用中文提问则用中文回答。';
+
+/**
+ * 判定文件名是否属于管家模型（MiniCPM5-1B / Qwen3-0.6B）。
+ * modelCapabilityRegistry 用它把管家从“写作/代码专用模型”候选中排除。
+ */
+export const isPrompterModelName = (name: string): boolean =>
+  /minicpm5?[-_ ]?1b/i.test(name) || /qwen3[-_ ]?0\.?6b/i.test(name);
+
 // chat 结束符（im_end / llama eos）
 const STOP_TOKENS = ['<im_end>', '<|eot_id|>'];
 
@@ -37,7 +49,9 @@ class PromptWriter {
       const heretic = ggufs.find(f =>
         /minicpm5?[-_ ]?1b/i.test(f.name) && /heretic/i.test(f.name),
       );
-      const minicpm = ggufs.find(f => /minicpm5?[-_ ]?1b/i.test(f.name));
+      const minicpm = ggufs.find(
+        f => /minicpm5?[-_ ]?1b/i.test(f.name) && !/heretic/i.test(f.name),
+      );
       const qwen = ggufs.find(f => /qwen3[-_ ]?0\.?6b/i.test(f.name));
       const hit = heretic ?? minicpm ?? qwen;
       return hit ? hit.path : null;
@@ -136,6 +150,48 @@ class PromptWriter {
       await this.ctx.release();
       this.ctx = undefined;
       engineStatus.setPhase('prompter', 'idle');
+    }
+  }
+
+  /**
+   * 通用闲聊（chitchat 兜底）：chat 大模型未加载时，由常驻管家直接回答，
+   * 实现“启动即就绪”的产品闭环。
+   */
+  async chat(text: string): Promise<string | null> {
+    if (!this.ctx) {
+      const ok = await this.ensureLoaded();
+      if (!ok || !this.ctx) {
+        return null;
+      }
+    }
+    engineStatus.setPhase('prompter', 'running', '管家思考中…');
+    try {
+      let out = '';
+      await this.ctx!.completion(
+        {
+          messages: [
+            {role: 'system', content: CHITCHAT_SYSTEM_PROMPT},
+            {role: 'user', content: text},
+          ],
+          n_predict: 512,
+          temperature: 0.7,
+          enable_thinking: false,
+          stop: STOP_TOKENS,
+        } as any,
+        (data: {token?: string; content?: string}) => {
+          const piece = data?.token ?? data?.content ?? '';
+          if (typeof piece === 'string') {
+            out += piece;
+          }
+        },
+      );
+      engineStatus.setPhase('prompter', 'ready');
+      const cleaned = out.replace(/[\s\S]*?<\/think>/g, '').trim();
+      return cleaned.length > 0 ? cleaned : null;
+    } catch (e) {
+      console.warn('[PromptWriter] chat failed:', e);
+      engineStatus.setPhase('prompter', 'ready');
+      return null;
     }
   }
 }

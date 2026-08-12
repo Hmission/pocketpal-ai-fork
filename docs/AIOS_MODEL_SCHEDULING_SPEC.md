@@ -86,7 +86,7 @@ SessionStatusBar 扩展为全景一行显示（常驻引擎 + 阶段 + 进度）
 | P1 验证 | llama.rn 双实例共存 | 源码确认多 context 支持 | ✅ 通过（contextId 索引 + setContextLimit） |
 | P2 调度骨架 | EngineRegistry 三槽 + prompter 启动常驻 + EngineStatus + SessionStatusBar 全景 | 启动即“管家就绪” | ✅ engineStatus + promptWriter + App 启动加载 |
 | P3 聊天闭环 | TaskRouter + 任务卡片 + 生图聊天内闭环 + 失败卡片 | 聊天页“画→加载→出图→插入”零跳转 | ✅ taskRouter + chatImageTask + ActiveTaskBanner + ChatScreen |
-| P4 扩展 | 写作/代码任务接入 + 生图页专业工作台升级 | 多任务类型可路由 | ⚠️ 部分：prompter 提示词增强已接入；write/code 专用模型需模型能力注册表，列下迭代 |
+| P4 扩展 | 写作/代码任务接入 + 生图页专业工作台升级 | 多任务类型可路由 | ✅ modelCapabilityRegistry 自动选模型加载；prompter 提示词增强 + chitchat 管家兜底 |
 
 ## 6. 不做清单（防臃肿）
 

@@ -286,6 +286,12 @@ Start-Process -FilePath "F:\Cursor\OneTakeMVP\.tmp\scrcpy\scrcpy-win64-v4.1\scrc
 - 边界：write/code 专用模型自动加载需“模型能力注册表”，列为下迭代；生图优化（imageGenStore 进度增强/native/ImageGenScreen）归并行窗口提交。
 - 验证：tsc 0 错，taskRouter 9/9，ChatScreen 预存 3 失败（palStore mock 缺 getAiosPal）经 stash 对比确认非本次引入。
 
+### 13.5 调度后续闭环（同日第二波）
+- **promptWriter**：新增通用 chat()（chitchat 兜底人设）+ 导出 isPrompterModelName（单测 3 组）。
+- **modelCapabilityRegistry.ts（新）**：write/code 任务→自动选模型（声明 capabilities 优先：code→code/write→rewriting|creativity；回退非管家最大模型）。
+- **ChatScreen**：write/code 且 chat 引擎未加载 → 自动 selectModel（ActiveTaskBanner 显示进度，失败插错误卡片）；chitchat 且无 chat 引擎且管家就绪 → 管家直接回答（“启动即就绪”真正闭环）。
+- 验证：tsc 0 错，调度相关单测 12/12。
+
 ---
 
 ## 12. 品牌改名：口袋八哥（2026-08-12）
