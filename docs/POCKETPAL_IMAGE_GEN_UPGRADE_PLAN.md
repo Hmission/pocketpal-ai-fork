@@ -202,7 +202,12 @@
 - TE → 量化 4-bit GGUF 复用现有 llama.rn（已能跑 Qwen）提取 hidden states 作条件。
 - manifest 已声明 family 'dreamlite'（main=dreamlite_unet.mnn, companions vae/te），文件就位即自动识别。
 
+**进展（2026-08-13 续）**：
+- 本机已装 torch(CPU)+diffusers+onnx，导出能力具备。
+- 已取回 UNet 自定义代码（unet_2d_condition_mobile.py + unet_2d_blocks.py，ghproxy）与 vae/全部 config/scheduler。
+- 导出脚本已备：`scripts/aios/export_dreamlite_onnx.py`（unet.onnx + vae_decoder.onnx）。
+
 **阻断项（需外部条件）**：
-- ONNX→MNN 导出需 torch+diffusers 机器（本机无），unet 780MB 下载走 mirror 慢需续传。
-- MNN Android 编译 + 真机验证待导出件就绪。
-- TE 4-bit GGUF 与 llama.rn hidden-states 提取需验证。
+- unet 780MB 走 hf-mirror 带宽不足（~0.1MB/s），续传中；GitHub 仓库 zip 被墙（仅部分 raw 可取）。
+- TE=Qwen3-VL 4.25GB，端侧需 4-bit GGUF + llama.rn hidden-states 提取，待验证。
+- MNN Android 编译 + 真机验证待 ONNX 导出件就绪。
