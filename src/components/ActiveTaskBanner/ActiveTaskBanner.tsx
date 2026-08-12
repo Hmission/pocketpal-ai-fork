@@ -11,6 +11,7 @@ import * as React from 'react';
 import {View, Text, StyleSheet, ActivityIndicator, TouchableOpacity} from 'react-native';
 import {observer} from 'mobx-react';
 import {useNavigation} from '@react-navigation/native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {engineStatus, EngineKind} from '../../store/engineStatus';
 import {ROUTES} from '../../utils/navigationConstants';
 
@@ -22,6 +23,7 @@ const ENGINE_NAME: Record<EngineKind, string> = {
 
 export const ActiveTaskBanner: React.FC = observer(() => {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const busy = engineStatus.busy;
   if (!busy) {
     return null;
@@ -31,7 +33,13 @@ export const ActiveTaskBanner: React.FC = observer(() => {
   const indeterminate = st.progress < 0;
 
   return (
-    <View style={[styles.wrap, isError && styles.wrapError]}>
+    <View
+      style={[
+        styles.wrap,
+        isError && styles.wrapError,
+        // ChatScreen 是 headerShown:false，横幅位于屏幕顶端 → 必须避让系统状态栏
+        {paddingTop: insets.top + 6},
+      ]}>
       <View style={styles.row}>
         {isError ? (
           <Text style={styles.icon}>⚠️</Text>

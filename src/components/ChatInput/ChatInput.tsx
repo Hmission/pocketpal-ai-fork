@@ -30,6 +30,7 @@ import {useTheme} from '../../hooks';
 import {createStyles} from './styles';
 
 import {chatSessionStore, modelStore, palStore, uiStore} from '../../store';
+import {promptWriter} from '../../services/promptWriter';
 
 import {MessageType} from '../../utils/types';
 import {L10nContext, UserContext} from '../../utils';
@@ -156,7 +157,8 @@ export const ChatInput = observer(
     // Camera permission hook from react-native-vision-camera
     const {hasPermission, requestPermission} = useCameraPermission();
 
-    const hasActiveModel = !!modelStore.activeModelId;
+    // 可发送判定：chat 模型已激活，或常驻管家就绪（chitchat 兜底/生图闭环可处理）
+    const hasActiveModel = !!modelStore.activeModelId || promptWriter.isLoaded;
 
     // Use `defaultValue` if provided
     const [text, setText] = React.useState(textInputProps?.defaultValue ?? '');
