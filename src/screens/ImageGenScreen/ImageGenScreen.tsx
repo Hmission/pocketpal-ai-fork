@@ -26,7 +26,11 @@ import {runInAction} from 'mobx';
 import Share from 'react-native-share';
 
 import {imageGenStore} from '../../store/imageGenStore';
-import {loadDreamLite, generateDreamLite} from '../../services/dreamLiteEngine';
+import {
+  loadDreamLite,
+  generateDreamLite,
+  editDreamLite,
+} from '../../services/dreamLiteEngine';
 import {useTheme} from '../../hooks';
 import {AIOS_MODELS_DIR} from '../../utils/paths';
 import {
@@ -157,6 +161,29 @@ export const ImageGenScreen: React.FC = observer(() => {
     } catch (e) {
       runInAction(() => {
         imageGenStore.error = `DreamLite: ${(e as any)?.message ?? e}`;
+      });
+    }
+  };
+
+  const handleDreamLiteEdit = async () => {
+    try {
+      await loadDreamLite();
+      // 合成渐变源图 [-1,1]，验证编辑链路（vae_encoder+条件去噪）
+      const size = 512;
+      const src = new Float32Array(size * size * 3);
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          const i = (y * size + x) * 3;
+          src[i] = (x / size) * 2 - 1;
+          src[i + 1] = (y / size) * 2 - 1;
+          src[i + 2] = 0.2;
+        }
+      }
+      const uri = await editDreamLite(src, size, 4);
+      setCurrentImage(uri);
+    } catch (e) {
+      runInAction(() => {
+        imageGenStore.error = `DreamLite编辑: ${(e as any)?.message ?? e}`;
       });
     }
   };
@@ -427,6 +454,11 @@ export const ImageGenScreen: React.FC = observer(() => {
             style={[s.button, s.buttonSecondary]}
             onPress={handleDreamLite}>
             <Text style={s.buttonText}>DreamLite 基线</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[s.button, s.buttonSecondary]}
+            onPress={handleDreamLiteEdit}>
+            <Text style={s.buttonText}>DreamLite 编辑</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[s.button, !imageGenStore.modelLoaded && s.buttonDisabled]}

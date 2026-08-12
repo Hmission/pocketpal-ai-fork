@@ -16,6 +16,7 @@ const DIR = '/sdcard/Documents/AIOS/dreamlite';
 
 let unet: ort.InferenceSession | null = null;
 let vae: ort.InferenceSession | null = null;
+let vaeEnc: ort.InferenceSession | null = null;
 
 export const dreamLiteReady = () => !!unet && !!vae;
 
@@ -32,6 +33,7 @@ export async function loadDreamLite(): Promise<void> {
   unet = await ort.InferenceSession.create(`${DIR}/unet.onnx`, opts);
   console.log('[DreamLite] unet loaded, loading vae ...');
   vae = await ort.InferenceSession.create(`${DIR}/vae_decoder.onnx`, opts);
+  vaeEnc = await ort.InferenceSession.create(`${DIR}/vae_encoder.onnx`, opts);
   console.log('[DreamLite] sessions ready');
 }
 
@@ -145,18 +147,13 @@ export function encodePng(rgb: Uint8Array, w: number, h: number): Uint8Array {
   return out;
 }
 
-/** 4 步 flow-matching 生成（unconditioned 基线），返回保存的 PNG uri */
-export async function generateDreamLite(size = 512, steps = 4): Promise<string> {
-  if (!unet || !vae) {
-    throw new Error('DreamLite not loaded');
-  }
+/** 4 步 flow-matching 去噪（cond 为条件 latents），返回解码 RGB [-1,1] */
+async function denoise(cond: Float32Array, size: number, steps: number): Promise<Float32Array> {
   const lat = size / 8;
-  // latents [1,4,lat,lat]
   let latents = new Float32Array(4 * lat * lat);
   for (let i = 0; i < latents.length; i++) {
     latents[i] = gauss();
   }
-  const cond = new Float32Array(latents.length); // zeros (generate)
   const enc = new Float32Array(77 * 2048); // zero TE (baseline)
   const tid = new Float32Array([size, size]);
   // sigmas + mu
@@ -211,7 +208,10 @@ export async function generateDreamLite(size = 512, steps = 4): Promise<string> 
     dec[i] = latents[i] / sf;
   }
   const vres = await vae!.run({latents: new ort.Tensor('float32', dec, [1, 4, lat, lat])});
-  const img = vres.image.data as Float32Array; // [1,3,size,size]
+  return vres.image.data as Float32Array; // [1,3,size,size] [-1,1]
+}
+
+async function saveRgb(img: Float32Array, size: number): Promise<string> {
   const rgb = new Uint8Array(size * size * 3);
   for (let i = 0; i < rgb.length; i++) {
     rgb[i] = Math.max(0, Math.min(255, Math.round((img[i] * 0.5 + 0.5) * 255)));
@@ -221,6 +221,33 @@ export async function generateDreamLite(size = 512, steps = 4): Promise<string> 
   await RNFS.writeFile(out, toBase64(png), 'base64');
   console.log('[DreamLite] saved', out);
   return `file://${out}`;
+}
+
+/** 文生图（unconditioned 基线） */
+export async function generateDreamLite(size = 512, steps = 4): Promise<string> {
+  if (!unet || !vae) {
+    throw new Error('DreamLite not loaded');
+  }
+  const img = await denoise(new Float32Array(4 * (size / 8) * (size / 8)), size, steps);
+  return saveRgb(img, size);
+}
+
+/** 图像编辑：源图 RGB[-1,1] → VAE encode 作条件 → 4 步去噪 */
+export async function editDreamLite(
+  sourceRgb: Float32Array,
+  size = 512,
+  steps = 4,
+): Promise<string> {
+  if (!unet || !vae || !vaeEnc) {
+    throw new Error('DreamLite not loaded');
+  }
+  const eres = await vaeEnc.run({
+    image: new ort.Tensor('float32', sourceRgb, [1, 3, size, size]),
+  });
+  const cond = eres.latents.data as Float32Array;
+  console.log('[DreamLite] source encoded, cond len', cond.length);
+  const img = await denoise(cond, size, steps);
+  return saveRgb(img, size);
 }
 
 function gauss(): number {
