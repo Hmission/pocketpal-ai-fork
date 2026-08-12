@@ -17,38 +17,19 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import {observer} from 'mobx-react-lite';
+import {runInAction} from 'mobx';
 import * as RNFS from '@dr.pogodin/react-native-fs';
 
 import {imageGenStore} from '../../store/imageGenStore';
 import {useTheme} from '../../hooks';
+import {AIOS_MODELS_DIR} from '../../utils/paths';
+import {
+  listAvailableModels,
+  resolveCompanions,
+  ImageGenManifest,
+} from '../../utils/imageGenManifest';
 
-const SD_MODELS_DIR = '/sdcard/Documents/AIOS/models';
-
-// 生图模型架构族：zimage（Z-Image-Turbo）/ sd3（SD3.x/3.5）/ classic（SDXL Turbo 等一体式）
-type ModelFamily = 'zimage' | 'sd3' | 'classic';
-
-const familyOf = (name: string): ModelFamily => {
-  if (/z[_-]?image/i.test(name)) {
-    return 'zimage';
-  }
-  if (/sd[_-]?3/i.test(name)) {
-    return 'sd3';
-  }
-  return 'classic';
-};
-
-// 伴侣/辅助文件（不作为主模型展示）
-const isCompanion = (name: string) =>
-  /(clip[_-]?[lg]|\bvae\b|^ae\.|llm|qwen|t5)/i.test(name);
-
-// 每族推荐默认参数（步数/CFG）
-const FAMILY_DEFAULTS: Record<ModelFamily, {steps: string; cfg: string}> = {
-  zimage: {steps: '8', cfg: '1'},
-  sd3: {steps: '20', cfg: '4.5'},
-  classic: {steps: '2', cfg: '2'},
-};
-
-const FAMILY_LABEL: Record<ModelFamily, string> = {
+const FAMILY_BADGE: Record<ImageGenManifest['family'], string> = {
   zimage: 'Z-Image',
   sd3: 'SD3.5',
   classic: '',
@@ -56,8 +37,10 @@ const FAMILY_LABEL: Record<ModelFamily, string> = {
 
 export const ImageGenScreen: React.FC = observer(() => {
   const theme = useTheme();
-  const [sdModels, setSdModels] = React.useState<string[]>([]);
-  const [selectedModel, setSelectedModel] = React.useState<string | null>(null);
+  const [available, setAvailable] = React.useState<
+    {manifest: ImageGenManifest; mainPath: string}[]
+  >([]);
+  const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [prompt, setPrompt] = React.useState('');
   const [negativePrompt, setNegativePrompt] = React.useState('');
   const [steps, setSteps] = React.useState('2');
@@ -71,25 +54,17 @@ export const ImageGenScreen: React.FC = observer(() => {
   const scanModels = React.useCallback(async () => {
     setScanning(true);
     try {
-      const files = await RNFS.readDir(SD_MODELS_DIR);
-      const all = files.map(f => f.name);
-      // 主模型识别：GGUF/safetensors，文件名含生图关键词，排除伴侣文件与聊天 LLM
-      const models = all
-        .filter(n => n.endsWith('.gguf') || n.endsWith('.safetensors'))
-        .filter(n => !isCompanion(n))
-        .filter(n =>
-          /(sd|sdxl|flux|stable|turbo|pixart|z[_-]?image)/i.test(n),
-        );
-      setSdModels(models);
-      if (models.length > 0 && !selectedModel) {
-        setSelectedModel(models[0]);
+      const list = await listAvailableModels(AIOS_MODELS_DIR);
+      setAvailable(list);
+      if (list.length > 0 && !selectedId) {
+        setSelectedId(list[0].manifest.id);
       }
     } catch (e) {
       console.warn('[ImageGenScreen] scan failed:', e);
     } finally {
       setScanning(false);
     }
-  }, [selectedModel]);
+  }, [selectedId]);
 
   React.useEffect(() => {
     imageGenStore.init();
@@ -100,71 +75,45 @@ export const ImageGenScreen: React.FC = observer(() => {
   React.useEffect(() => {
     if (imageGenStore.pendingPrompt) {
       setPrompt(imageGenStore.pendingPrompt);
-      imageGenStore.pendingPrompt = null;
+      runInAction(() => {
+        imageGenStore.pendingPrompt = null;
+      });
     }
   }, []);
 
-  // 选中模型变化时同步该族推荐默认参数
+  // 选中模型变化时同步该 manifest 的默认参数
   React.useEffect(() => {
-    if (!selectedModel) {
+    if (!selectedId) {
       return;
     }
-    const d = FAMILY_DEFAULTS[familyOf(selectedModel)];
-    setSteps(d.steps);
-    setCfg(d.cfg);
-  }, [selectedModel]);
-
-  // 解析拆分式模型的伴侣文件（同目录约定命名）；返回 extras + 缺失清单
-  const resolveExtras = async (
-    model: string,
-  ): Promise<{
-    extras: {clipL?: string; clipG?: string; llm?: string; vae?: string};
-    missing: string[];
-  }> => {
-    const family = familyOf(model);
-    if (family === 'classic') {
-      return {extras: {}, missing: []};
+    const m = available.find(a => a.manifest.id === selectedId);
+    if (!m) {
+      return;
     }
-    const names = (await RNFS.readDir(SD_MODELS_DIR)).map(f => f.name);
-    const pick = (re: RegExp) => {
-      const hit = names.find(n => re.test(n));
-      return hit ? `${SD_MODELS_DIR}/${hit}` : undefined;
-    };
-    if (family === 'zimage') {
-      const llm = pick(/qwen.*4b|llm/i);
-      const vae = pick(/^ae\.|vae/i);
-      return {
-        extras: {llm, vae},
-        missing: [
-          ...(!llm ? ['Qwen3-4B 文本编码器 (llm)'] : []),
-          ...(!vae ? ['VAE (ae.safetensors)'] : []),
-        ],
-      };
-    }
-    // sd3 族
-    const clipL = pick(/clip[_-]?l/i);
-    const clipG = pick(/clip[_-]?g/i);
-    const vae = pick(/sd3.*vae|vae/i);
-    return {
-      extras: {clipL, clipG, vae},
-      missing: [
-        ...(!clipL ? ['clip_l 文本编码器'] : []),
-        ...(!clipG ? ['clip_g 文本编码器'] : []),
-        ...(!vae ? ['VAE'] : []),
-      ],
-    };
-  };
+    setSteps(String(m.manifest.defaults.steps));
+    setCfg(String(m.manifest.defaults.cfg));
+    setSize(m.manifest.defaults.size);
+  }, [selectedId, available]);
 
   const handleLoad = async () => {
-    if (!selectedModel) {
+    if (!selectedId) {
       return;
     }
-    const {extras, missing} = await resolveExtras(selectedModel);
+    const entry = available.find(a => a.manifest.id === selectedId);
+    if (!entry) {
+      return;
+    }
+    const {extras, missing} = await resolveCompanions(
+      entry.manifest,
+      AIOS_MODELS_DIR,
+    );
     if (missing.length > 0) {
-      imageGenStore.error = `缺少伴侣文件：${missing.join('、')}`;
+      runInAction(() => {
+        imageGenStore.error = `缺少伴侣文件：${missing.join('、')}`;
+      });
       return;
     }
-    await imageGenStore.loadModel(`${SD_MODELS_DIR}/${selectedModel}`, extras);
+    await imageGenStore.loadModel(entry.mainPath, extras);
   };
 
   const handleGenerate = async () => {
@@ -192,28 +141,28 @@ export const ImageGenScreen: React.FC = observer(() => {
         <Text style={s.cardTitle}>生图模型</Text>
         {scanning ? (
           <ActivityIndicator size="small" />
-        ) : sdModels.length === 0 ? (
+        ) : available.length === 0 ? (
           <Text style={s.hint}>
             未找到生图模型，请将 SDXL Turbo / SD3.5 / Z-Image-Turbo 套件（GGUF）放入{' '}
-            {SD_MODELS_DIR}
+            {AIOS_MODELS_DIR}
           </Text>
         ) : (
           <FlatList
-            data={sdModels}
-            keyExtractor={item => item}
+            data={available}
+            keyExtractor={item => item.manifest.id}
             scrollEnabled={false}
             renderItem={({item}) => (
               <TouchableOpacity
                 style={[
                   s.modelRow,
-                  selectedModel === item && s.modelRowSelected,
+                  selectedId === item.manifest.id && s.modelRowSelected,
                 ]}
-                onPress={() => setSelectedModel(item)}>
+                onPress={() => setSelectedId(item.manifest.id)}>
                 <Text style={s.modelName} numberOfLines={1}>
-                  {FAMILY_LABEL[familyOf(item)]
-                    ? `[${FAMILY_LABEL[familyOf(item)]}] `
+                  {FAMILY_BADGE[item.manifest.family]
+                    ? `[${FAMILY_BADGE[item.manifest.family]}] `
                     : ''}
-                  {item}
+                  {item.manifest.label}
                 </Text>
               </TouchableOpacity>
             )}
@@ -221,7 +170,7 @@ export const ImageGenScreen: React.FC = observer(() => {
         )}
         <TouchableOpacity
           style={[s.button, imageGenStore.modelLoaded && s.buttonSecondary]}
-          disabled={!selectedModel || imageGenStore.generating}
+          disabled={!selectedId || imageGenStore.generating}
           onPress={imageGenStore.modelLoaded ? imageGenStore.unloadModel : handleLoad}>
           <Text style={s.buttonText}>
             {imageGenStore.modelLoaded ? '卸载模型' : '加载模型'}

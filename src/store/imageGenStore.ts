@@ -8,6 +8,7 @@
 import {makeAutoObservable, runInAction} from 'mobx';
 import {NativeModules, NativeEventEmitter} from 'react-native';
 import * as RNFS from '@dr.pogodin/react-native-fs';
+import {engineMutex} from './engineMutex';
 
 const ImageGen = NativeModules.ImageGen;
 
@@ -43,6 +44,10 @@ class ImageGenStore {
 
   constructor() {
     makeAutoObservable(this);
+    // 互斥：chat 引擎加载前会调本 releaser 释放 sd 引擎
+    engineMutex.register('image', async () => {
+      await this.unloadModel();
+    });
     // 订阅原生进度事件
     if (emitter) {
       emitter.addListener(
@@ -77,6 +82,8 @@ class ImageGenStore {
     modelPath: string,
     extras: {clipL?: string; clipG?: string; llm?: string; vae?: string} = {},
   ): Promise<boolean> {
+    // 互斥：加载 sd 前确保 chat 引擎已释放（自动调 modelStore.releaseContext）
+    await engineMutex.acquire('image');
     try {
       const ok = await ImageGen.loadModel(modelPath, extras);
       runInAction(() => {
@@ -102,6 +109,7 @@ class ImageGenStore {
     runInAction(() => {
       this.modelLoaded = false;
     });
+    engineMutex.release();
   }
 
   /**

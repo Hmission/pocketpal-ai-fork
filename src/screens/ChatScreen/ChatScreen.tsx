@@ -113,7 +113,9 @@ export const ChatScreen: React.FC = observer(() => {
           }
           return;
         }
-        imageGenStore.pendingPrompt = drawPrompt;
+        runInAction(() => {
+          imageGenStore.pendingPrompt = drawPrompt;
+        });
         navigation.navigate(ROUTES.IMAGE_GEN as never);
         return;
       }

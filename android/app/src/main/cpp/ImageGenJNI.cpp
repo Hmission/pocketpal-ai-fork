@@ -6,7 +6,8 @@
 #include <jni.h>
 #include <mutex>
 #include <string>
-#include <dirent.h>
+#include <thread>
+#include <algorithm>
 
 #include <android/log.h>
 
@@ -21,48 +22,6 @@ sd_ctx_t* g_ctx = nullptr;
 
 // Cached model path (new_sd_ctx needs it each time)
 std::string g_model_path;
-
-// 探测同目录伴随文件 (SD3.5: clip_l/clip_g/vae; Z-Image: llm/ae)
-static bool name_has(const std::string& n, const char* sub) {
-  return n.find(sub) != std::string::npos;
-}
-
-static void find_companions(const std::string& model_path,
-                            std::string& clip_l, std::string& clip_g,
-                            std::string& vae, std::string& llm) {
-  // 目录部分
-  size_t slash = model_path.find_last_of('/');
-  if (slash == std::string::npos) {
-    return;
-  }
-  std::string dir = model_path.substr(0, slash + 1);
-  std::string base = model_path.substr(slash + 1);
-  DIR* d = opendir(dir.c_str());
-  if (!d) {
-    return;
-  }
-  struct dirent* ent;
-  while ((ent = readdir(d)) != nullptr) {
-    std::string n = ent->d_name;
-    if (n == base) {
-      continue;
-    }
-    std::string lower = n;
-    for (auto& c : lower) {
-      c = (char)tolower((unsigned char)c);
-    }
-    if (clip_l.empty() && name_has(lower, "clip_l")) {
-      clip_l = dir + n;
-    } else if (clip_g.empty() && name_has(lower, "clip_g")) {
-      clip_g = dir + n;
-    } else if (vae.empty() && (name_has(lower, "vae") || name_has(lower, "ae.safetensors"))) {
-      vae = dir + n;
-    } else if (llm.empty() && (name_has(lower, "llm") || name_has(lower, "qwen"))) {
-      llm = dir + n;
-    }
-  }
-  closedir(d);
-}
 
 // JavaVM + progress emitter for RN events
 JavaVM* g_jvm = nullptr;
@@ -174,10 +133,14 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
     // 一体式（SDXL Turbo 等单文件模型）
     params.model_path = model.c_str();
   }
-  params.n_threads = 4;  // conservative threads on mobile
+  // 探测核数（big.LITTLE 取上限 6 避免小核竞争），fallback 4
+  unsigned int hw = std::thread::hardware_concurrency();
+  params.n_threads = hw ? std::min(hw, 6u) : 4;
   params.wtype = SD_TYPE_Q4_K;
   params.enable_mmap = true;
-  params.backend = "CPU";  // P5.1 CPU first; OpenCL/Vulkan later
+  // 后端：CPU 先行。OpenCL 接入需 CMake SD_OPENCL=ON + NDK sysroot 补
+  // OpenCL headers/ICD loader（见 docs/POCKETPAL_IMAGE_GEN_UPGRADE_PLAN.md P2）
+  params.backend = "CPU";
 
   sd_set_log_callback(sd_log_cb, nullptr);
   sd_set_progress_callback(sd_progress_cb, nullptr);

@@ -472,7 +472,7 @@ Start-Process -FilePath "F:\Cursor\OneTakeMVP\.tmp\scrcpy\scrcpy-win64-v4.1\scrc
 | `src/store/imageGenStore.ts` | loadModel 支持 extras |
 | `src/screens/ImageGenScreen/ImageGenScreen.tsx` | 架构族识别（zimage/sd3/classic）+ 伴侣文件自动配对/缺失提示 + 每族默认参数（Z-Image: 8步/CFG1；SD3.5: 20步/CFG4.5）+ 列表族徽章 |
 
-**设备端文件命名约定**（`/sdcard/Documents/AIOS/models/`，扫描按正则配对）：主模型名含 `z_image`/`sd3`；伴侣：`*qwen*4b*`/`*llm*`、`^ae.`/`*vae*`、`*clip_l*`/`*clip_g*`。
+**设备端文件命名约定**（`/sdcard/Documents/AIOS/models/`，扫描按正则配对）：主模型名含 `z_image`/`sd3`；伴侣：`zimage_llm`/`qwen3-4b`（连字符，避免误配聊天模型 Qwen3.5-4B）、`^ae.`/`*vae*`、`*clip_l*`/`*clip_g*`。
 
 ### 12.6 端侧加速方案调研（待验证项 → 见 §12.7 计划）
 1. **后端升级（最大收益）**：JNI 现 `backend="CPU"`；sd.cpp 支持 **OpenCL/Vulkan**，骁龙 8 Elite 的 Adreno 830 走 OpenCL 预计 3-10× 提速（参考 llama.cpp OpenCL 实测）——下一迭代改 `params.backend` 即可，引擎已就绪
@@ -483,7 +483,10 @@ Start-Process -FilePath "F:\Cursor\OneTakeMVP\.tmp\scrcpy\scrcpy-win64-v4.1\scrc
 6. **尺寸策略**：512 出图 + ESRGAN/SeedVR2 超分 vs 直接 768/1024，前者总耗时通常更低
 
 ### 12.7 下一步（待大王下令）
-- [ ] 下载完成 → adb push 到真机 `/sdcard/Documents/AIOS/models/`（或 App 内导入）
+- [x] 下载完成（10.29GB，字节级校验通过）→ 已 adb push 真机 `/sdcard/Documents/AIOS/models/`（~36MB/s，全量 5 分钟）
+- [x] 编译验证：externalNativeBuildProdDebug + compileProdDebugKotlin 均 BUILD SUCCESSFUL
+- [x] **P5.3 链路升级 P0+P1 完成**：EngineMutex 互斥根治双引擎 OOM + manifest 声明式模型注册（反臃肿/反补丁），详见 `docs/POCKETPAL_IMAGE_GEN_UPGRADE_PLAN.md`
+- [x] P2 代码层完成（n_threads 探测 + backend 注释），OpenCL CMake+headers 待真机环境专项
 - [ ] 真机基线：SDXL Turbo 5~15s/张验证（邻居正在跑）
 - [ ] 对比测试：同 prompt/同尺寸/同后端，SD3.5 vs Z-Image vs SDXL Turbo 画质与速度
-- [ ] OpenCL 后端接入（P5.3 加速专项）
+- [ ] OpenCL 后端真机接入（P5.3 加速专项）

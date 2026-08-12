@@ -6,6 +6,7 @@ import 'react-native-get-random-values';
 import {makePersistable} from 'mobx-persist-store';
 import * as RNFS from '@dr.pogodin/react-native-fs';
 import {AIOS_MODELS_DIR} from '../utils/paths';
+import {engineMutex} from './engineMutex';
 import {MMProjRegex} from '../utils/multimodalPatterns';
 
 import {computed, makeAutoObservable, runInAction, toJS} from 'mobx';
@@ -1806,6 +1807,8 @@ class ModelStore {
         }
 
         // Release existing context
+        // 互斥：换 chat 模型前先释放 sd 引擎（engineMutex 自动调 imageGenStore.unloadModel）
+        await engineMutex.acquire('chat');
         await this._releaseContextInternal();
 
         // Small delay for native cleanup before loading next model
@@ -2122,6 +2125,8 @@ class ModelStore {
       .then(() => {})
       .catch(() => {});
 
+    await operationPromise.catch(() => {});
+    engineMutex.release();
     return operationPromise;
   };
 
@@ -3626,3 +3631,6 @@ class ModelStore {
 }
 
 export const modelStore = new ModelStore();
+engineMutex.register('chat', async () => {
+  await modelStore.releaseContext();
+});
