@@ -7,10 +7,13 @@
  */
 import {makeAutoObservable, runInAction} from 'mobx';
 import {NativeModules, NativeEventEmitter} from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as RNFS from '@dr.pogodin/react-native-fs';
 import {engineMutex} from './engineMutex';
+import {engineStatus} from './engineStatus';
 
 const ImageGen = NativeModules.ImageGen;
+const HISTORY_KEY = '@imagegen_history_v1';
 
 // 进度事件源（JNI sd_set_progress_callback → Kotlin → RN）
 const emitter = ImageGen ? new NativeEventEmitter(ImageGen) : null;
@@ -35,10 +38,24 @@ class ImageGenStore {
   history: GeneratedImage[] = [];
   /** 聊天意图路由带入的待生成提示词（M6 豆包化） */
   pendingPrompt: string | null = null;
+  /** 模型加载中 */
+  loading = false;
+  /** 加载开始时间戳 */
+  loadingStartedAt = 0;
   /** 生成进度（0-100，-1 表示无进度） */
   progress = -1;
   /** 进度文本（step/steps） */
   progressText = '';
+  /** 当前阶段（引擎日志最新行，已去 file:line 前缀） */
+  stage = '';
+  /** 最近引擎日志（新在前，最多 3 行） */
+  logTail: string[] = [];
+  /** 最近一次引擎事件时间戳（心跳判活） */
+  lastEventAt = 0;
+  /** 上一个采样步耗时（秒） */
+  stepTime = 0;
+  /** 本次出图开始时间戳 */
+  genStartedAt = 0;
   /** 输出目录（App 私有 filesDir 下） */
   private outDir = '';
 
@@ -48,15 +65,53 @@ class ImageGenStore {
     engineMutex.register('image', async () => {
       await this.unloadModel();
     });
-    // 订阅原生进度事件
+    // 订阅原生进度事件（双保险节流：progress 300ms 内重复事件丢弃）
     if (emitter) {
+      let lastProgressTs = 0;
       emitter.addListener(
         'ImageGenProgress',
-        (e: {step: number; steps: number}) => {
+        (e: {step: number; steps: number; time?: number}) => {
+          const now = Date.now();
+          const isFirst = e.step <= 1;
+          const isLast = e.steps > 0 && e.step >= e.steps;
+          if (!isFirst && !isLast && now - lastProgressTs < 300) {
+            return;
+          }
+          lastProgressTs = now;
           runInAction(() => {
             this.progress =
               e.steps > 0 ? Math.round((e.step / e.steps) * 100) : -1;
             this.progressText = `${e.step}/${e.steps}`;
+            this.stepTime = e.time ?? 0;
+            this.lastEventAt = now;
+          });
+          // 同步到统一状态源（任务卡片/状态栏消费）
+          engineStatus.setProgress('image', this.progress, `采样 ${this.progressText}`);
+        },
+      );
+      // 阶段日志透传（JNI sd_log_cb 过滤后的关键行）
+      // 双保险节流：相同 stage 文本 500ms 内丢弃
+      let lastLogTs = 0;
+      let lastLogText = '';
+      emitter.addListener(
+        'ImageGenLog',
+        (e: {level: number; text: string}) => {
+          const now = Date.now();
+          const t = (e.text ?? '')
+            .replace(/^[\w.]+:\d+\s*-\s*/, '')
+            .trim();
+          if (!t) {
+            return;
+          }
+          if (t === lastLogText && now - lastLogTs < 500) {
+            return;
+          }
+          lastLogTs = now;
+          lastLogText = t;
+          runInAction(() => {
+            this.stage = t.length > 120 ? t.slice(0, 120) + '…' : t;
+            this.lastEventAt = now;
+            this.logTail = [this.stage, ...this.logTail].slice(0, 3);
           });
         },
       );
@@ -69,6 +124,54 @@ class ImageGenStore {
       await RNFS.mkdir(this.outDir);
     } catch (e) {
       console.warn('[ImageGenStore] init failed:', e);
+    }
+    // 历史持久化：重启后恢复（图片文件仍在磁盘，仅元数据落盘）
+    try {
+      const raw = await AsyncStorage.getItem(HISTORY_KEY);
+      if (raw) {
+        const list = JSON.parse(raw) as GeneratedImage[];
+        runInAction(() => {
+          this.history = Array.isArray(list) ? list : [];
+        });
+      }
+    } catch (e) {
+      console.warn('[ImageGenStore] load history failed:', e);
+    }
+  }
+
+  /** 历史元数据落盘（fire-and-forget） */
+  private persistHistory() {
+    AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(this.history)).catch(() => {});
+  }
+
+  /** 删除单条历史（可选删文件） */
+  async deleteHistory(uris: string[], removeFile = false): Promise<void> {
+    runInAction(() => {
+      this.history = this.history.filter(h => !uris.includes(h.uri));
+    });
+    this.persistHistory();
+    if (removeFile) {
+      for (const uri of uris) {
+        try {
+          await RNFS.unlink(uri.replace(/^file:\/\//, ''));
+        } catch {
+          /* 文件可能已不存在 */
+        }
+      }
+    }
+  }
+
+  /** 存到系统相册（MediaStore → Pictures/AIOS） */
+  async saveToAlbum(uri: string): Promise<boolean> {
+    try {
+      const path = uri.replace(/^file:\/\//, '');
+      await ImageGen.saveToAlbum(path);
+      return true;
+    } catch (e) {
+      runInAction(() => {
+        this.error = `存相册失败: ${(e as any)?.message ?? e}`;
+      });
+      return false;
     }
   }
 
@@ -84,17 +187,30 @@ class ImageGenStore {
   ): Promise<boolean> {
     // 互斥：加载 sd 前确保 chat 引擎已释放（自动调 modelStore.releaseContext）
     await engineMutex.acquire('image');
+    runInAction(() => {
+      this.loading = true;
+      this.error = null;
+      this.stage = '';
+      this.logTail = [];
+      this.lastEventAt = Date.now();
+      this.loadingStartedAt = Date.now();
+    });
+    engineStatus.setPhase('image', 'loading', '加载生图引擎…');
     try {
       const ok = await ImageGen.loadModel(modelPath, extras);
       runInAction(() => {
         this.modelLoaded = ok;
+        this.loading = false;
         this.error = ok ? null : '模型加载失败';
       });
+      engineStatus.setPhase('image', ok ? 'ready' : 'error', ok ? '' : '模型加载失败');
       return ok;
     } catch (e: any) {
       runInAction(() => {
+        this.loading = false;
         this.error = `加载失败: ${e?.message ?? e}`;
       });
+      engineStatus.setError('image', `加载失败: ${e?.message ?? e}`);
       return false;
     }
   }
@@ -108,7 +224,9 @@ class ImageGenStore {
     }
     runInAction(() => {
       this.modelLoaded = false;
+      this.loading = false;
     });
+    engineStatus.setPhase('image', 'idle');
     engineMutex.release();
   }
 
@@ -132,6 +250,7 @@ class ImageGenStore {
       runInAction(() => {
         this.error = '生图模型未加载';
       });
+      engineStatus.setError('image', '生图模型未加载');
       return null;
     }
     if (!this.outDir) {
@@ -145,7 +264,13 @@ class ImageGenStore {
       this.error = null;
       this.progress = -1;
       this.progressText = '';
+      this.stage = '';
+      this.logTail = [];
+      this.stepTime = 0;
+      this.lastEventAt = Date.now();
+      this.genStartedAt = Date.now();
     });
+    engineStatus.setPhase('image', 'running', '准备出图…');
     try {
       const result = await ImageGen.txt2img({
         prompt,
@@ -161,6 +286,7 @@ class ImageGenStore {
         runInAction(() => {
           this.error = result;
         });
+        engineStatus.setError('image', result);
         return null;
       }
       runInAction(() => {
@@ -176,11 +302,14 @@ class ImageGenStore {
           this.history = this.history.slice(0, 50);
         }
       });
+      this.persistHistory();
+      engineStatus.setPhase('image', 'ready');
       return `file://${outPath}`;
     } catch (e: any) {
       runInAction(() => {
         this.error = `出图失败: ${e?.message ?? e}`;
       });
+      engineStatus.setError('image', `出图失败: ${e?.message ?? e}`);
       return null;
     } finally {
       runInAction(() => {

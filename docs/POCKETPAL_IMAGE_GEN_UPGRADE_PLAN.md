@@ -108,3 +108,41 @@
 - P0：真机连续操作（聊天→画图→聊天→画图）不 OOM；mobx 状态可观察追踪；tsc+Gradle 编译通过
 - P1：新增模型只放 manifest 文件，UI 自动识别 + 伴侣配对 + 默认参数，零改代码
 - P2：OpenCL 后端真机出图，速度对比 CPU 有量级提升
+
+## 五、P5.4 生图页 UX 重构 + 崩溃取证（2026-08-12）
+
+### 5.1 崩溃取证：持久化落盘日志
+
+**问题**：weak-ref 修复装机后仍崩。取证发现 21:11 后无新 native tombstone，logcat 已轮转，
+且静默 OOM kill 不写 tombstone → 日志不足以定位。
+
+**方案**（ImageGenJNI.cpp）：新增 `dbg_log()` 落盘日志器，写
+`/sdcard/Documents/AIOS/imagegen_debug.log`，每行 `fflush`，进程被 SIGKILL/OOM 杀后最后一行仍保留。
+`dbg_mem()` 读 `/proc/self/status` VmRSS 追踪内存 buildup → 判别 OOM。
+埋点覆盖 loadModel（new_sd_ctx 前后）与 txt2img（generate_image 前后、write_png 前后）全链路。
+
+**判读**：若日志停在 `generate_image begin` 且 VmRSS 持续走高 → OOM；
+若停在 `write_png` → 写盘崩溃；若日志完整 `txt2img done` 但 UI 崩 → RN 层问题。
+
+### 5.2 三行布局重构（用户视角设计）
+
+现状问题：模型卡占首屏（低频操作）、结果图在折叠线下、历史仅内存且最底、出图按钮无文字、结果无出口。
+
+**三区布局**（单列）：
+1. **① 结果区（置顶主角）**：最新生成图 + 操作条[存相册/分享/同参数/全屏/删除] + 参数水印
+2. **② 历史区（紧凑横条）**：横向滑动缩略图，[管理]多选删除，点图全屏+详情
+3. **③ 创作区（底部 composer）**：提示词 + 折叠高级参数 + 全宽出图按钮（拇指可达）
+
+模型选择收进 header 状态胶囊（点开弹底部面板切换/加载）。
+
+**功能补全**：历史持久化（重启不丢）、存相册（MediaStore → Pictures/AIOS）、全屏查看、同参数回填、多选管理。
+
+### 5.3 依次开发计划（P5.4）
+
+| 序号 | 任务 | 文件 | 状态 |
+|---|---|---|---|
+| 1 | 持久化崩溃日志 + 内存埋点 | ImageGenJNI.cpp | ✅ |
+| 2 | 三行布局：结果置顶+历史横条+底部composer | ImageGenScreen.tsx | ✅ |
+| 3 | 历史持久化 + 存相册(MediaStore) + 全屏 + 多选管理 | imageGenStore.ts + ImageGenModule.kt + ImageGenScreen.tsx | ✅ |
+| 4 | tsc + Gradle + 装机 | — | ✅ |
+| 5 | 复现抓日志定位崩溃根因 | imagegen_debug.log | ⏳ 待大王复现 |

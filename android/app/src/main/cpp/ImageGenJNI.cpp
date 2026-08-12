@@ -8,6 +8,10 @@
 #include <string>
 #include <thread>
 #include <algorithm>
+#include <cstring>
+#include <chrono>
+#include <cstdio>
+#include <cstdarg>
 
 #include <android/log.h>
 
@@ -23,8 +27,73 @@ sd_ctx_t* g_ctx = nullptr;
 // Cached model path (new_sd_ctx needs it each time)
 std::string g_model_path;
 
-// JavaVM + progress emitter for RN events
+// JavaVM + cached jclass/jmethodID for RN event emission
 JavaVM* g_jvm = nullptr;
+jclass g_imageGenClass = nullptr;
+jmethodID g_onLogMid = nullptr;
+jmethodID g_onProgressMid = nullptr;
+
+// Throttle: last forward timestamps (steady_clock, ms since epoch)
+auto g_lastLogForward = std::chrono::steady_clock::time_point::min();
+auto g_lastProgressForward = std::chrono::steady_clock::time_point::min();
+
+// ---- 持久化崩溃取证日志 ----
+// logcat 会轮转、静默 OOM kill 不写 tombstone，故用落盘日志：每行 fflush，
+// 进程被 SIGKILL/OOM 杀掉后最后一行仍保留，可精确定位死在哪一步。
+const char* kDbgLogPath = "/sdcard/Documents/AIOS/imagegen_debug.log";
+void dbg_log(const char* fmt, ...) {
+  FILE* f = fopen(kDbgLogPath, "a");
+  if (!f) {
+    return;
+  }
+  char line[512];
+  va_list ap;
+  va_start(ap, fmt);
+  vsnprintf(line, sizeof(line), fmt, ap);
+  va_end(ap);
+  auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now().time_since_epoch())
+                .count();
+  fprintf(f, "[%lld] %s\n", (long long)ms, line);
+  fflush(f);
+  fclose(f);
+}
+// 记录当前 RSS（KB）追踪内存 buildup → OOM
+void dbg_mem(const char* tag) {
+  FILE* f = fopen("/proc/self/status", "r");
+  if (!f) {
+    return;
+  }
+  char buf[64];
+  long rss_kb = -1;
+  while (fgets(buf, sizeof(buf), f)) {
+    if (strncmp(buf, "VmRSS:", 6) == 0) {
+      sscanf(buf + 6, "%ld", &rss_kb);
+      break;
+    }
+  }
+  fclose(f);
+  dbg_log("MEM %s VmRSS=%ld KB", tag, rss_kb);
+}
+
+/// Cache jclass + jmethodIDs once (called from nativeLoadModel).
+/// Must be called with a valid JNIEnv (on the JS thread).
+void cacheJniRefs(JNIEnv* env) {
+  if (g_imageGenClass) {
+    return;  // already cached
+  }
+  jclass local = env->FindClass("com/pocketpal/ImageGenModule");
+  if (local) {
+    g_imageGenClass = static_cast<jclass>(env->NewGlobalRef(local));
+    env->DeleteLocalRef(local);
+  }
+  if (g_imageGenClass) {
+    g_onLogMid = env->GetStaticMethodID(
+        g_imageGenClass, "onLogFromNative", "(ILjava/lang/String;)V");
+    g_onProgressMid = env->GetStaticMethodID(
+        g_imageGenClass, "onProgressFromNative", "(IIF)V");
+  }
+}
 
 // RAII helper for JNI string access
 struct JStr {
@@ -49,13 +118,36 @@ void sd_log_cb(enum sd_log_level_t level, const char* text, void* /*data*/) {
   __android_log_print(
       level == SD_LOG_ERROR ? ANDROID_LOG_ERROR : ANDROID_LOG_INFO,
       "ImageGen", "%s", text ? text : "");
-}
-
-// Progress callback → Kotlin companion onProgressFromNative(step, steps)
-void sd_progress_cb(int step, int steps, float /*time*/, void* /*data*/) {
-  if (!g_jvm) {
+  // 阶段日志透传 RN：WARN/ERROR 全透传；INFO 只透关键阶段行（防刷屏）
+  if (!g_jvm || !g_imageGenClass || !g_onLogMid || !text || !text[0]) {
     return;
   }
+  bool forward = (level == SD_LOG_ERROR || level == SD_LOG_WARN);
+  if (!forward) {
+    static const char* kStageKeys[] = {
+        "loading",  "load ",   "params memory", "prepar",
+        "weights",  "generate_image", "sampling", "denoise",
+        "vae",      "VAE",     "opencl",  "OpenCL",
+        "backend",  "Version", "eval",    "encode",
+    };
+    for (const char* k : kStageKeys) {
+      if (strstr(text, k)) {
+        forward = true;
+        break;
+      }
+    }
+  }
+  if (!forward) {
+    return;
+  }
+  // 节流：相同阶段日志最多每 500ms 透传一次（防 RN 事件风暴 → weak ref 溢出）
+  auto now = std::chrono::steady_clock::now();
+  auto msSinceLast = std::chrono::duration_cast<std::chrono::milliseconds>(
+      now - g_lastLogForward).count();
+  if (msSinceLast < 500) {
+    return;
+  }
+  g_lastLogForward = now;
   JNIEnv* env = nullptr;
   bool attached = false;
   jint st = g_jvm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
@@ -66,14 +158,48 @@ void sd_progress_cb(int step, int steps, float /*time*/, void* /*data*/) {
     attached = true;
   }
   if (env) {
-    jclass cls = env->FindClass("com/pocketpal/ImageGenModule");
-    if (cls) {
-      jmethodID mid = env->GetStaticMethodID(
-          cls, "onProgressFromNative", "(II)V");
-      if (mid) {
-        env->CallStaticVoidMethod(cls, mid, step, steps);
-      }
+    jstring jtext = env->NewStringUTF(text);
+    env->CallStaticVoidMethod(g_imageGenClass, g_onLogMid,
+                               static_cast<jint>(level), jtext);
+    env->DeleteLocalRef(jtext);
+    if (env->ExceptionCheck()) {
+      env->ExceptionClear();
     }
+  }
+  if (attached) {
+    g_jvm->DetachCurrentThread();
+  }
+}
+
+// Progress callback → Kotlin companion onProgressFromNative(step, steps, time)
+// 节流：最多每 500ms 透传一次，但首步(step==1)和末步(step==steps)强制透传
+void sd_progress_cb(int step, int steps, float time, void* /*data*/) {
+  if (!g_jvm || !g_imageGenClass || !g_onProgressMid) {
+    return;
+  }
+  bool isFirst = (step <= 1);
+  bool isLast = (steps > 0 && step >= steps);
+  if (!isFirst && !isLast) {
+    auto now = std::chrono::steady_clock::now();
+    auto msSinceLast = std::chrono::duration_cast<std::chrono::milliseconds>(
+        now - g_lastProgressForward).count();
+    if (msSinceLast < 500) {
+      return;
+    }
+  }
+  g_lastProgressForward = std::chrono::steady_clock::now();
+  JNIEnv* env = nullptr;
+  bool attached = false;
+  jint st = g_jvm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
+  if (st == JNI_EDETACHED) {
+    if (g_jvm->AttachCurrentThread(&env, nullptr) != JNI_OK) {
+      return;
+    }
+    attached = true;
+  }
+  if (env) {
+    env->CallStaticVoidMethod(g_imageGenClass, g_onProgressMid,
+                               step, steps, time);
     if (env->ExceptionCheck()) {
       env->ExceptionClear();
     }
@@ -94,6 +220,9 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
                                               jstring llmPath, jstring vaePath) {
   std::lock_guard<std::mutex> lock(g_mutex);
   env->GetJavaVM(&g_jvm);
+  cacheJniRefs(env);  // cache jclass + jmethodID once (fix weak-ref overflow)
+  dbg_log("==== loadModel begin ====");
+  dbg_mem("loadModel entry");
   JStr model(env, modelPath);
   JStr clip_l(env, clipLPath);
   JStr clip_g(env, clipGPath);
@@ -138,18 +267,37 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
   params.n_threads = hw ? std::min(hw, 6u) : 4;
   params.wtype = SD_TYPE_Q4_K;
   params.enable_mmap = true;
-  // 后端：CPU 先行。OpenCL 接入需 CMake SD_OPENCL=ON + NDK sysroot 补
-  // OpenCL headers/ICD loader（见 docs/POCKETPAL_IMAGE_GEN_UPGRADE_PLAN.md P2）
+  // P2 后端选择：arm64 设备优先 Adreno OpenCL，加载失败自动降级 CPU（硬件可用性降级）
+#if defined(__aarch64__)
+  params.backend = "OpenCL";
+#else
   params.backend = "CPU";
+#endif
 
   sd_set_log_callback(sd_log_cb, nullptr);
   sd_set_progress_callback(sd_progress_cb, nullptr);
+  dbg_mem("before new_sd_ctx");
+  dbg_log("new_sd_ctx begin backend=%s n_threads=%u", params.backend,
+          params.n_threads);
   g_ctx = new_sd_ctx(&params);
+#if defined(__aarch64__)
+  if (!g_ctx) {
+    __android_log_print(ANDROID_LOG_WARN, "ImageGen",
+                        "OpenCL backend init failed, falling back to CPU");
+    dbg_log("OpenCL init failed, fallback CPU");
+    params.backend = "CPU";
+    g_ctx = new_sd_ctx(&params);
+  }
+#endif
+  dbg_log("new_sd_ctx ret=%p", (void*)g_ctx);
+  dbg_mem("after new_sd_ctx");
 
   if (!g_ctx) {
+    dbg_log("==== loadModel FAILED (ctx null) ====");
     return JNI_FALSE;
   }
   g_model_path = std::string(model.c_str());
+  dbg_log("==== loadModel OK ====");
   return JNI_TRUE;
 }
 
@@ -171,8 +319,12 @@ Java_com_pocketpal_ImageGenModule_nativeTxt2img(
     jstring outPath) {
   std::lock_guard<std::mutex> lock(g_mutex);
   if (!g_ctx) {
+    dbg_log("txt2img ERR_NO_MODEL");
     return env->NewStringUTF("ERR_NO_MODEL");
   }
+  dbg_log("==== txt2img begin %dx%d steps=%d cfg=%.2f seed=%lld ====", width,
+          height, steps, cfg, (long long)seed);
+  dbg_mem("txt2img entry");
   const char* promptStr = env->GetStringUTFChars(prompt, nullptr);
   const char* negStr = env->GetStringUTFChars(negativePrompt, nullptr);
   const char* outStr = env->GetStringUTFChars(outPath, nullptr);
@@ -197,21 +349,31 @@ Java_com_pocketpal_ImageGenModule_nativeTxt2img(
 
   sd_image_t* images = nullptr;
   int numImages = 0;
+  dbg_mem("before generate_image");
+  dbg_log("generate_image begin");
   const bool ok = generate_image(g_ctx, &gen, &images, &numImages);
+  dbg_log("generate_image ret=%d numImages=%d", (int)ok, numImages);
+  dbg_mem("after generate_image");
 
   env->ReleaseStringUTFChars(prompt, promptStr);
   env->ReleaseStringUTFChars(negativePrompt, negStr);
   if (!ok || numImages <= 0 || !images) {
+    dbg_log("txt2img ERR_GENERATE");
     env->ReleaseStringUTFChars(outPath, outStr);
     return env->NewStringUTF("ERR_GENERATE");
   }
 
   const sd_image_t& img = images[0];
+  dbg_log("write_png begin %s (%dx%d ch%d)", outStr, img.width, img.height,
+          img.channel);
   const int writeOk =
       stbi_write_png(outStr, (int)img.width, (int)img.height, (int)img.channel,
                      img.data, (int)img.width * (int)img.channel);
+  dbg_log("write_png ret=%d", writeOk);
   free_sd_images(images, numImages);
   env->ReleaseStringUTFChars(outPath, outStr);
+  dbg_mem("after write_png");
+  dbg_log("==== txt2img done ret=%s ====", writeOk ? "OK" : "ERR_WRITE");
 
   return env->NewStringUTF(writeOk ? outStr : "ERR_WRITE");
 }

@@ -1,5 +1,9 @@
 package com.pocketpal
 
+import android.content.ContentValues
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
@@ -7,6 +11,7 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.modules.core.DeviceEventManagerModule
+import java.io.File
 
 /**
  * ImageGen native module (P5.2): bridges stable-diffusion.cpp via JNI.
@@ -61,6 +66,45 @@ class ImageGenModule(reactContext: ReactApplicationContext) :
     }
   }
 
+  /** 将生成图写入系统相册（MediaStore → Pictures/AIOS），系统图库可见。 */
+  @ReactMethod
+  fun saveToAlbum(path: String, promise: Promise) {
+    try {
+      val src = File(path)
+      if (!src.exists()) {
+        promise.reject("NO_FILE", "source not found: $path")
+        return
+      }
+      val resolver = reactApplicationContext.contentResolver
+      val values = ContentValues().apply {
+        put(MediaStore.Images.Media.DISPLAY_NAME, src.name)
+        put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+          put(MediaStore.Images.Media.RELATIVE_PATH, "${Environment.DIRECTORY_PICTURES}/AIOS")
+          put(MediaStore.Images.Media.IS_PENDING, 1)
+        }
+      }
+      val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+        ?: run {
+          promise.reject("INSERT_FAILED", "MediaStore insert returned null")
+          return
+        }
+      resolver.openOutputStream(uri)?.use { out -> src.inputStream().use { it.copyTo(out) } }
+        ?: run {
+          promise.reject("WRITE_FAILED", "cannot open output stream")
+          return
+        }
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        values.clear()
+        values.put(MediaStore.Images.Media.IS_PENDING, 0)
+        resolver.update(uri, values, null, null)
+      }
+      promise.resolve(uri.toString())
+    } catch (e: Throwable) {
+      promise.reject("SAVE_FAILED", e.message)
+    }
+  }
+
   @ReactMethod
   fun txt2img(params: ReadableMap, promise: Promise) {
     try {
@@ -94,15 +138,29 @@ class ImageGenModule(reactContext: ReactApplicationContext) :
 
     /** Called from JNI progress callback (sd_set_progress_callback). */
     @JvmStatic
-    fun onProgressFromNative(step: Int, steps: Int) {
+    fun onProgressFromNative(step: Int, steps: Int, time: Float) {
       val ctx = reactContextRef ?: return
       val args = Arguments.createMap().apply {
         putInt("step", step)
         putInt("steps", steps)
+        putDouble("time", time.toDouble())
       }
       ctx
         .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
         .emit("ImageGenProgress", args)
+    }
+
+    /** Called from JNI log callback (sd_set_log_callback)，阶段日志透传。 */
+    @JvmStatic
+    fun onLogFromNative(level: Int, text: String) {
+      val ctx = reactContextRef ?: return
+      val args = Arguments.createMap().apply {
+        putInt("level", level)
+        putString("text", text)
+      }
+      ctx
+        .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+        .emit("ImageGenLog", args)
     }
   }
 }
