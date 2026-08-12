@@ -48,6 +48,9 @@ export class UIStore {
 
   displayMemUsage = false;
 
+  // P4 智能体仪式：自检开关（重要回复跑两遍：生成→自检→修正）
+  selfCheckEnabled = false;
+
   iOSBackgroundDownloading = true;
 
   benchmarkShareDialog = {
@@ -117,6 +120,7 @@ export class UIStore {
         'colorScheme',
         'autoNavigatetoChat',
         'displayMemUsage',
+        'selfCheckEnabled',
         'benchmarkShareDialog',
         '_language',
         'toolCompatWarnedModels',
@@ -147,6 +151,12 @@ export class UIStore {
   setColorScheme(colorScheme: 'light' | 'dark') {
     runInAction(() => {
       this.colorScheme = colorScheme;
+    });
+  }
+
+  setSelfCheckEnabled(enabled: boolean) {
+    runInAction(() => {
+      this.selfCheckEnabled = enabled;
     });
   }
 

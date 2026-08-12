@@ -15,6 +15,7 @@ import {
 } from '../../utils/paths';
 import {buildMemoryFragment} from './index';
 import {searchMemory} from './searchEngine';
+import {buildTodayState, intentGuidance} from './rituals';
 
 export interface AssembledContext {
   systemPrompt: string;
@@ -73,7 +74,10 @@ export async function assembleContext(
   const agents = await readFileSafe(AIOS_AGENTS_FILE);
   const memoryDoc = (await readFileSafe(AIOS_MEMORY_FILE)).slice(0, 2000);
   const memoryFragment = await buildMemoryFragment(currentUserText);
-  const systemPrompt = [soul, user, agents, memoryDoc, memoryFragment]
+  // P4 仪式：开场状态（日期+上次摘要）+ 意图语气（闲聊/倾诉/问答/任务）
+  const todayState = recentMessageCount <= 2 ? await buildTodayState() : '';
+  const intent = intentGuidance(currentUserText);
+  const systemPrompt = [soul, user, agents, memoryDoc, todayState, intent, memoryFragment]
     .filter(Boolean)
     .join('\n\n---\n\n');
 

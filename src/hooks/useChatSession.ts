@@ -30,6 +30,7 @@ import {
 import {assembleContext} from '../services/aiosMemory/contextAssembler';
 import {appendConversation} from '../services/aiosMemory/conversationLog';
 import {compactAndFlush} from '../services/aiosMemory/compaction';
+import {maybeClosingSummary, selfCheck} from '../services/aiosMemory/rituals';
 import {convertToChatMessages, removeThinkingParts} from '../utils/chat';
 import {activateKeepAwake, deactivateKeepAwake} from '../utils/keepAwake';
 import {
@@ -477,9 +478,21 @@ async function applyEventToStore(
         const memUserText = ctx.userText;
         const memAssistantText = finalResult.text ?? '';
         setTimeout(() => {
-          void extractAndSaveMemories(memUserText, memAssistantText);
-          void appendConversation(memUserText, memAssistantText);
+          // P4 自检：开启时对回复跑一遍自检修正，修正版用于落盘
+          const persistText = uiStore.selfCheckEnabled
+            ? selfCheck(memAssistantText)
+            : Promise.resolve(memAssistantText);
+          void persistText.then(corrected => {
+            void extractAndSaveMemories(memUserText, corrected);
+            void appendConversation(memUserText, corrected);
+          });
           void compactAndFlush();
+          // P4 收尾协议：当日对话超阈值后触发今日小结
+          void maybeClosingSummary(
+            memUserText,
+            memAssistantText,
+            chatSessionStore.currentSessionMessages.length,
+          );
         }, 1200);
       } catch (memErr) {
         console.warn('[useChatSession] memory extraction hook failed:', memErr);

@@ -1001,6 +1001,26 @@ export const SettingsScreen: React.FC = observer(() => {
                     </View>
                   </>
                 )}
+
+                {/* P4 自检修正：重要回复跑两遍（生成→自检→修正） */}
+                <Divider />
+                <View style={styles.switchContainer}>
+                  <View style={styles.textContainer}>
+                    <Text variant="titleMedium" style={styles.textLabel}>
+                      自检修正
+                    </Text>
+                    <Text variant="labelSmall" style={styles.textDescription}>
+                      开启后重要回复会跑两遍（生成→自检→修正），更稳但更慢
+                    </Text>
+                  </View>
+                  <Switch
+                    testID="self-check-switch"
+                    value={uiStore.selfCheckEnabled}
+                    onValueChange={value =>
+                      uiStore.setSelfCheckEnabled(value)
+                    }
+                  />
+                </View>
               </View>
             </Card.Content>
           </Card>
