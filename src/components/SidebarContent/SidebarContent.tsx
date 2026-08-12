@@ -12,6 +12,7 @@ import {chatSessionStore, SessionMetaData} from '../../store';
 import {Menu, RenameModal, Checkbox} from '..';
 import {
   BenchmarkIcon,
+  CameraIcon,
   ChatIcon,
   EditBoxIcon,
   EditIcon,
@@ -550,6 +551,16 @@ export const SidebarContent: React.FC<DrawerContentComponentProps> = observer(
                 <AtomIcon width={24} height={24} stroke={theme.colors.primary} />
               )}
               onPress={() => props.navigation.navigate(ROUTES.TOOL)}
+              style={styles.menuDrawerItem}
+            />
+            <Drawer.Item
+              label={
+                l10n.components.sidebarContent.menuItems.imageGen ?? '生图'
+              }
+              icon={() => (
+                <CameraIcon width={24} height={24} stroke={theme.colors.primary} />
+              )}
+              onPress={() => props.navigation.navigate(ROUTES.IMAGE_GEN)}
               style={styles.menuDrawerItem}
             />
           </Drawer.Section>

@@ -1,4 +1,5 @@
 import React, {useRef, ReactNode, useState} from 'react';
+import {useNavigation} from '@react-navigation/native';
 
 import {observer} from 'mobx-react';
 import {runInAction} from 'mobx';
@@ -29,6 +30,8 @@ import {resolveReasoningCapability} from '../../utils/reasoningCapability';
 import {MessageType} from '../../utils/types';
 import {ErrorState} from '../../utils/errors';
 import {user, assistant} from '../../utils/chat';
+import {ROUTES} from '../../utils/navigationConstants';
+import {imageGenStore} from '../../store/imageGenStore';
 
 import {VideoPalScreen} from './VideoPalScreen';
 
@@ -76,6 +79,22 @@ export const ChatScreen: React.FC = observer(() => {
     currentMessageInfo,
     user,
     assistant,
+  );
+  const navigation = useNavigation();
+
+  // M6 豆包化：聊天中“画/生成 XX”→ 路由到生图页并预填提示词
+  const wrappedSendPress = React.useCallback(
+    (message: MessageType.PartialText) => {
+      const text = message.text.trim();
+      const drawMatch = text.match(/(画|绘|生成)(一[张幅]?|个)?\s*([^。！？!?]{2,40}?)(图|图片|画)/);
+      if (drawMatch) {
+        imageGenStore.pendingPrompt = drawMatch[3] ?? text;
+        navigation.navigate(ROUTES.IMAGE_GEN as never);
+        return;
+      }
+      handleSendPress(message);
+    },
+    [handleSendPress, navigation],
   );
 
   // Handle deep linking for message prefill
@@ -263,7 +282,7 @@ export const ChatScreen: React.FC = observer(() => {
         renderBubble={renderBubble}
         messages={chatSessionStore.currentSessionMessages}
         activePal={activePal}
-        onSendPress={handleSendPress}
+        onSendPress={wrappedSendPress}
         onStopPress={handleStopPress}
         onPalSettingsSelect={handleOpenPalSheet}
         user={user}

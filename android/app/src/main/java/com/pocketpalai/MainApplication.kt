@@ -33,6 +33,7 @@ class MainApplication : Application(), ReactApplication {
               add(AuthSessionPackage())
               add(ExternalContentLinkPackage())
               add(DownloadPackage())
+              add(ImageGenPackage())
             }
 
         override fun getJSMainModuleName(): String = "index"

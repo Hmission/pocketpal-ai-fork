@@ -945,7 +945,8 @@
         "memory": "记忆管理",
         "knowledge": "知识库",
         "workspace": "Workspace",
-        "tool": "工具配置"
+        "tool": "工具配置",
+        "imageGen": "生图"
       },
       "deleteChatTitle": "删除聊天",
       "deleteChatMessage": "确定要删除这个聊天记录吗？",

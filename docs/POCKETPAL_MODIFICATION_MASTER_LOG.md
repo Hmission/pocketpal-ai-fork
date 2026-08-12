@@ -273,6 +273,31 @@ Start-Process -FilePath "F:\Cursor\OneTakeMVP\.tmp\scrcpy\scrcpy-win64-v4.1\scrc
 
 ---
 
+## 11. 窗口闭环记录（2026-08-12 目标模式 · M4-M6 生图能力）
+
+### 11.1 P5.1 引擎打通（stable-diffusion.cpp 编入）
+- 源码：`android/app/src/main/cpp/stable-diffusion.cpp/`（gh-proxy 镜像 clone master + ggml 子模块 3f85508）
+- CMake：jni/CMakeLists.txt add_subdirectory（SD_BUILD_EXAMPLES/WEBP/WEBM 全关，GGML_NATIVE=OFF，CPU 后端静态链接进 libappmodules.so）
+- 踩坑：① clone 直连超时 → gh-proxy.com 镜像；② add_subdirectory 路径 jni/src 应为 ../cpp；③ sd.h 新 API 字段：sample_steps / guidance.txt_cfg / SD_TYPE_Q4_K / free_sd_images 签名
+- JNI：ImageGenJNI.cpp（new_sd_ctx / generate_image / stbi_write_png 写 PNG）
+- 验证：BUILD SUCCESSFUL（ggml+sd 静态编译 270 目标）✅
+
+### 11.2 P5.2 桥接 UI
+- Kotlin：ImageGenModule.kt + ImageGenPackage.kt（ReactContextBaseJavaModule 手动注册，JNI 名 Java_com_pocketpal_ImageGenModule_*）
+- RN：imageGenStore.ts（loadModel/unloadModel/generate，单例引擎与聊天模型互斥）
+- 页面：ImageGenScreen（SD 模型扫描/加载/提示词出图/历史网格）
+- 导航：ROUTES.IMAGE_GEN + 抽屉“生图”入口（CameraIcon）+ l10n
+
+### 11.3 M6 豆包化（聊天意图路由）
+- ChatScreen 发送前检测 /(画|绘|生成).*(图|图片|画)/ → 设 pendingPrompt + 跳生图页预填
+
+### 11.4 待完成（模型链路）
+- [ ] SDXL Turbo GGUF 下载（q8_0 6.5GB 断点续传中）→ adb push 到 /sdcard/Documents/AIOS/models/
+- [ ] 真机出图验证（加载→txt2img→PNG）
+- [ ] 内存互斥验证（聊天模型卸载→SD 加载）
+
+---
+
 ## 10. 窗口闭环记录（2026-08-12 目标模式 · M1-M2）
 
 ### 10.1 M1 device_control 标记 + 文档债（commit e0f8324）

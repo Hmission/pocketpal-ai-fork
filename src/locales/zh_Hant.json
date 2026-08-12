@@ -376,7 +376,8 @@
         "memory": "記憶管理",
         "knowledge": "知識庫",
         "workspace": "Workspace",
-        "tool": "工具設定"
+        "tool": "工具設定",
+        "imageGen": "生圖"
       },
       "select": "選擇",
       "nSelected": "已選取 {{count}}",

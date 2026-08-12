@@ -24,7 +24,23 @@ project(appmodules)
 
 include(${REACT_ANDROID_DIR}/cmake-utils/ReactNative-application.cmake)
 
-target_sources(${CMAKE_PROJECT_NAME} PRIVATE src/hardware_info.cpp)
+# ── stable-diffusion.cpp (P5.1 生图引擎, CPU 后端) ──
+# 引擎源码: src/stable-diffusion.cpp/ (含 ggml 子模块)
+set(SD_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(SD_WEBP OFF CACHE BOOL "" FORCE)
+set(SD_WEBM OFF CACHE BOOL "" FORCE)
+set(SD_CUDA OFF CACHE BOOL "" FORCE)
+set(SD_METAL OFF CACHE BOOL "" FORCE)
+set(SD_VULKAN OFF CACHE BOOL "" FORCE)
+set(SD_OPENCL OFF CACHE BOOL "" FORCE)
+set(SD_BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+# NDK 交叉编译: 关掉 -march=native 类宿主指令
+set(GGML_NATIVE OFF CACHE BOOL "" FORCE)
+add_subdirectory(../cpp/stable-diffusion.cpp sd-build)
+
+target_sources(${CMAKE_PROJECT_NAME} PRIVATE src/hardware_info.cpp ../cpp/ImageGenJNI.cpp)
+
+target_link_libraries(${CMAKE_PROJECT_NAME} stable-diffusion)
 
 find_library(log-lib log)
 target_link_libraries(${CMAKE_PROJECT_NAME} ${log-lib})

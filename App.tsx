@@ -53,6 +53,7 @@ import {MemoryScreen} from './src/screens/MemoryScreen/MemoryScreen';
 import {KnowledgeScreen} from './src/screens/KnowledgeScreen/KnowledgeScreen';
 import {WorkspaceScreen} from './src/screens/WorkspaceScreen/WorkspaceScreen';
 import {ToolScreen} from './src/screens/ToolScreen/ToolScreen';
+import {ImageGenScreen} from './src/screens/ImageGenScreen/ImageGenScreen';
 
 // Check if app is in debug mode
 const isDebugMode = __DEV__;
@@ -196,6 +197,15 @@ const AppDrawer: React.FC = () => {
         options={{
           headerStyle: styles.headerWithoutDivider,
           title: currentL10n.components.sidebarContent.menuItems.tool,
+        }}
+      />
+
+      <Drawer.Screen
+        name={ROUTES.IMAGE_GEN}
+        component={gestureHandlerRootHOC(ImageGenScreen)}
+        options={{
+          headerStyle: styles.headerWithoutDivider,
+          title: currentL10n.components.sidebarContent.menuItems.imageGen ?? '生图',
         }}
       />
 
