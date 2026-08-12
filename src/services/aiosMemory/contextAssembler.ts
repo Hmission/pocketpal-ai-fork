@@ -15,7 +15,7 @@ import {
 } from '../../utils/paths';
 import {buildMemoryFragment} from './index';
 import {searchMemory} from './searchEngine';
-import {buildTodayState, intentGuidance} from './rituals';
+import {buildTodayState, intentGuidance, trackSentiment} from './rituals';
 
 export interface AssembledContext {
   systemPrompt: string;
@@ -77,6 +77,8 @@ export async function assembleContext(
   // P4 仪式：开场状态（日期+上次摘要）+ 意图语气（闲聊/倾诉/问答/任务）
   const todayState = recentMessageCount <= 2 ? await buildTodayState() : '';
   const intent = intentGuidance(currentUserText);
+  // M7 情绪：跟踪大王输入情绪，供状态展示
+  trackSentiment(currentUserText);
   const systemPrompt = [soul, user, agents, memoryDoc, todayState, intent, memoryFragment]
     .filter(Boolean)
     .join('\n\n---\n\n');

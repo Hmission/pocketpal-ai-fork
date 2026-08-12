@@ -63,6 +63,34 @@ export async function buildTodayState(): Promise<string> {
 // ─── 2. 意图状态机 ───────────────────────────────────────────
 export type IntentKind = 'chat' | 'vent' | 'qa' | 'task';
 
+// M7 情绪系统：规则词库情感打分（-2..+2），供开场仪式/状态展示用
+const POSITIVE_MARKERS = ['开心', '高兴', '棒', '太好了', '喜欢', '爱', '成功', '完成', '中奖', '幸运'];
+const NEGATIVE_MARKERS = ['烦', '难过', '伤心', '生气', '累', '压力', '焦虑', '失眠', '崩溃', '委屈', '孤独', '沮丧', '失望', '失败', '讨厌'];
+
+export function sentimentScore(text: string): number {
+  let score = 0;
+  for (const m of POSITIVE_MARKERS) {
+    if (text.includes(m)) score += 1;
+  }
+  for (const m of NEGATIVE_MARKERS) {
+    if (text.includes(m)) score -= 1;
+  }
+  return Math.max(-2, Math.min(2, score));
+}
+
+let _lastSentiment = 0;
+
+export function trackSentiment(userText: string): void {
+  _lastSentiment = sentimentScore(userText);
+}
+
+/** 最近情绪（供 SessionStatusBar 等展示） */
+export function getLastSentiment(): {score: number; label: string} {
+  const label =
+    _lastSentiment > 0 ? '愉悦' : _lastSentiment < 0 ? '低落' : '平稳';
+  return {score: _lastSentiment, label};
+}
+
 const VENT_MARKERS = [
   '烦', '难过', '伤心', '生气', '累', '压力', '焦虑', '失眠', '哭', '讨厌',
   '想死', '崩溃', '委屈', '孤独', '沮丧', '失望',

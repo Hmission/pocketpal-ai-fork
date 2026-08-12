@@ -4,6 +4,7 @@ import {observer} from 'mobx-react';
 import {modelStore, chatSessionStore} from '../../store';
 import {getLastWriteTime} from '../../services/aiosMemory/conversationLog';
 import {getLastRecallInfo} from '../../services/aiosMemory/contextAssembler';
+import {getLastSentiment} from '../../services/aiosMemory/rituals';
 
 /**
  * Session Status Bar — shows context usage, disk status, recall preview,
@@ -44,6 +45,11 @@ export const SessionStatusBar = observer(() => {
   const writeTimeStr = lastWrite
     ? new Date(lastWrite).toLocaleTimeString().slice(0, 5)
     : '--';
+
+  // M7 情绪：大王最近输入的情绪状态
+  const sentiment = getLastSentiment();
+  const sentimentColor =
+    sentiment.score > 0 ? '#4CAF50' : sentiment.score < 0 ? '#F44336' : '#888';
 
   const contextColor = contextFull
     ? '#F44336'
@@ -88,6 +94,12 @@ export const SessionStatusBar = observer(() => {
         <Text style={[styles.value, {fontSize: 9}]}>
           {modelStatus}{memEstimate > 0 ? ` ${memEstimate}MB` : ''}
         </Text>
+      </View>
+
+      {/* M7 情绪指示 */}
+      <Text style={styles.separator}>|</Text>
+      <View style={styles.section}>
+        <Text style={[styles.value, {color: sentimentColor}]}>{sentiment.label}</Text>
       </View>
 
       {/* Expandable recall preview */}
