@@ -217,9 +217,9 @@ export const ChatScreen: React.FC = observer(() => {
           id: `butler-${Date.now()}`,
           author: assistant,
           createdAt: Date.now(),
-          text: '🐦 八哥思考中…',
+          text: '🐤 小鸡思考中…',
           type: 'text',
-          metadata: {butler: true, modelName: '管家八哥'},
+          metadata: {butler: true, modelName: '管家小鸡'},
         } as MessageType.Text;
         await chatStoreForImg.addMessageToCurrentSession(butlerCardMsg);
         // DB 可能覆写消息 id → 插入后读回真实 id，保证后续 update 命中
@@ -449,7 +449,7 @@ export const ChatScreen: React.FC = observer(() => {
             ? modelStore.isContextLoading
               ? l10n.chat.loadingModel
               : promptWriter.isLoaded
-                ? '口袋八哥已就绪，输入即可聊天'
+                ? '小黄鸡已就绪，输入即可聊天'
                 : l10n.chat.modelNotLoaded
             : l10n.chat.typeYourMessage,
         }}

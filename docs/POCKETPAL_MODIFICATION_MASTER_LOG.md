@@ -273,6 +273,19 @@ Start-Process -FilePath "F:\Cursor\OneTakeMVP\.tmp\scrcpy\scrcpy-win64-v4.1\scrc
 
 ---
 
+## 14. 品牌二次改名：小黄鸡（2026-08-13）
+**大王钦定：口袋八哥 → 小黄鸡**（英文 Pocket Chick，大王选定）。
+- app.json displayName / Android app_name / iOS CFBundleDisplayName → 小黄鸡
+- About 标题 → 小黄鸡（MIT 署名行保留）；About 测试同步 9/9
+- l10n：zh 小黄鸡 / zh_Hant 小黃雞 / en Pocket Chick（brand+eyebrow）
+- 人设文案联动：promptWriter 闲聊人设「小黄鸡·AI 小鸡助手」；空态「小黄鸡已就绪」；
+  输入框 placeholder、管家归属标签「管家小鸡」、卡片「🐤 小鸡思考中…」
+- 图标：大王手动换源图（src/assets/pocketpal-*.png）→ 重生成 Android mipmap 10 个 + iOS AppIcon 12 个
+- 不可改红线保持：app.json name=PocketPal、applicationId=com.pocketpalai
+- 验证：tsc 0 错、l10n valid、About 9/9、装机成功
+
+---
+
 ## 13. 模型智能调度产品升级（2026-08-12）
 **产品命题：启动即就绪 · 任务即加载 · 聊天内闭环 · 状态永远可见。** 详见 `docs/AIOS_MODEL_SCHEDULING_SPEC.md`。
 - **P1 验证**：llama.rn 原生支持多 context（LlamaContext.id + JSI 全函数带 contextId + setContextLimit）→ 管家模型与大模型可共存，硬门槛解除。

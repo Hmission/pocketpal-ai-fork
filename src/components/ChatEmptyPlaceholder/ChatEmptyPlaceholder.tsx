@@ -60,7 +60,7 @@ export const ChatEmptyPlaceholder = observer(
       // 管家就绪 → 启动即就绪：无需选模型/下载直接可聊（选更强模型为可选操作）
       if (promptWriter.isLoaded) {
         return {
-          title: '口袋八哥已就绪',
+          title: '小黄鸡已就绪',
           description: '直接输入即可聊天；说“画…”还能生图。想换更强模型随时可选。',
           buttonText: '换更强模型（可选）',
           onPress: onSelectModel,

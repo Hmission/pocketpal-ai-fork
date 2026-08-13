@@ -25,7 +25,7 @@ const SYSTEM_PROMPT =
 
 // 管家通用闲聊人设（chitchat 兜底：chat 大模型未加载时由管家直接回答）
 const CHITCHAT_SYSTEM_PROMPT =
-  '你是口袋八哥（Pocket Myna），一只聪明伶俐的 AI 八哥助手。' +
+  '你是小黄鸡（Pocket Chick），一只聪明可爱的 AI 小鸡助手。' +
   '用用户的语言简洁、友好、带点机智地回答。若用户用中文提问则用中文回答。';
 
 /**
