@@ -217,7 +217,8 @@
 - **编辑路径**：`editDreamLite`（vae_encoder 编码源图→条件去噪）+ “DreamLite 编辑”入口（commit 115849b）；ONNX 桌面验证 cond(1,4,64,64)→4步→(1,3,512,512) 5.9s。
 
 **阻断项（需外部条件）**：
-- 真实文本条件（TE）：DreamLite TE=Qwen3-VL-2B(hidden2048)。HF 无 DreamLite 专用转好 TE：ivan2026HF/cuio 仅原始 safetensors(4.25GB 未转换)；dror201031 ONNX 无 TE。基座 Qwen3-VL-2B 有 GGUF(mradermacher)/MNN(taobao-mnn)，但 README 未声明冻结 TE 且官方权重 gated，基座与微调 TE 不匹配风险高→近似不可靠。受带宽+权重匹配双重阻断。
+- **真实 TE 已转换（2026-08-13）**：下载官方微调 TE(4.25GB, ivan2026HF 公开镜像)→llama.cpp convert 产出 te_f16.gguf(3.21GB)/te_q8.gguf(1.71GB)，te_q8 已推真机。架构=Qwen3VLForConditionalGeneration(hidden2048)。
+  - 接线方案：llama.rn initLlama(pooling_type:'none') + embedding() 取 per-token hidden states→复刻 encode_prompt(chat模板+drop_idx=34+pad)→encoder_hidden_states。待接线+真机验证。
 - unet 780MB 走 hf-mirror 带宽不足（~0.1MB/s），续传中；GitHub 仓库 zip 被墙（仅部分 raw 可取）。
 - TE=Qwen3-VL 4.25GB，端侧需 4-bit GGUF + llama.rn hidden-states 提取，待验证。
 - MNN Android 编译 + 真机验证待 ONNX 导出件就绪。

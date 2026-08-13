@@ -11,12 +11,16 @@
  */
 import * as ort from 'onnxruntime-react-native';
 import * as RNFS from '@dr.pogodin/react-native-fs';
+import {initLlama, LlamaContext} from 'llama.rn';
 
 const DIR = '/sdcard/Documents/AIOS/dreamlite';
+const TE_DIM = 2048;
+const DROP_IDX = 34; // generate 模式截断模板前缀 token 数
 
 let unet: ort.InferenceSession | null = null;
 let vae: ort.InferenceSession | null = null;
 let vaeEnc: ort.InferenceSession | null = null;
+let teCtx: LlamaContext | null = null;
 
 export const dreamLiteReady = () => !!unet && !!vae;
 
@@ -40,6 +44,56 @@ export async function loadDreamLite(): Promise<void> {
 export function unloadDreamLite(): void {
   unet = null;
   vae = null;
+  vaeEnc = null;
+}
+
+/** 加载真实 TE（Qwen3-VL q8 GGUF，pooling=none 取 per-token hidden states） */
+export async function loadTE(): Promise<void> {
+  if (teCtx) {
+    return;
+  }
+  console.log('[DreamLite] loading TE te_q8.gguf ...');
+  teCtx = await initLlama({
+    model: `${DIR}/te_q8.gguf`,
+    pooling_type: 'none',
+    n_ctx: 256,
+    n_threads: 4,
+  });
+  console.log('[DreamLite] TE ready');
+}
+
+const GEN_TEMPLATE =
+  '<|im_start|>system\nDescribe the image by detailing the color, shape, size, texture, ' +
+  'quantity, text, spatial relationships of the objects and background:<|im_end|>\n' +
+  '<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n';
+
+/** 复刻 pipeline encode_prompt(generate)：模板→TE per-token→drop34→pad77 */
+export async function encodePrompt(prompt: string, maxLen = 77): Promise<Float32Array | null> {
+  if (!teCtx) {
+    return null;
+  }
+  try {
+    const text = GEN_TEMPLATE.replace('{}', prompt);
+    const res = await teCtx.embedding(text);
+    const flat = res.embedding as number[];
+    const tokens = Math.floor(flat.length / TE_DIM);
+    if (tokens <= DROP_IDX) {
+      return null;
+    }
+    const kept = tokens - DROP_IDX;
+    const len = Math.min(kept, maxLen);
+    const out = new Float32Array(maxLen * TE_DIM); // zero pad
+    for (let i = 0; i < len; i++) {
+      for (let d = 0; d < TE_DIM; d++) {
+        out[i * TE_DIM + d] = flat[(DROP_IDX + i) * TE_DIM + d];
+      }
+    }
+    console.log('[DreamLite] TE encoded tokens=', tokens, 'kept=', len);
+    return out;
+  } catch (e) {
+    console.log('[DreamLite] TE encode fail', (e as any)?.message);
+    return null;
+  }
 }
 
 function calculateShift(seq: number): number {
@@ -148,13 +202,18 @@ export function encodePng(rgb: Uint8Array, w: number, h: number): Uint8Array {
 }
 
 /** 4 步 flow-matching 去噪（cond 为条件 latents），返回解码 RGB [-1,1] */
-async function denoise(cond: Float32Array, size: number, steps: number): Promise<Float32Array> {
+async function denoise(
+  cond: Float32Array,
+  size: number,
+  steps: number,
+  encOverride?: Float32Array,
+): Promise<Float32Array> {
   const lat = size / 8;
   let latents = new Float32Array(4 * lat * lat);
   for (let i = 0; i < latents.length; i++) {
     latents[i] = gauss();
   }
-  const enc = new Float32Array(77 * 2048); // zero TE (baseline)
+  const enc = encOverride ?? new Float32Array(77 * TE_DIM);
   const tid = new Float32Array([size, size]);
   // sigmas + mu
   const sigmas: number[] = [];
@@ -223,12 +282,26 @@ async function saveRgb(img: Float32Array, size: number): Promise<string> {
   return `file://${out}`;
 }
 
-/** 文生图（unconditioned 基线） */
-export async function generateDreamLite(size = 512, steps = 4): Promise<string> {
+/** 文生图：有 TE 用真实 prompt 条件，无 TE 回退零填充基线 */
+export async function generateDreamLite(
+  size = 512,
+  steps = 4,
+  prompt?: string,
+): Promise<string> {
   if (!unet || !vae) {
     throw new Error('DreamLite not loaded');
   }
-  const img = await denoise(new Float32Array(4 * (size / 8) * (size / 8)), size, steps);
+  let enc: Float32Array | null = null;
+  if (prompt) {
+    await loadTE();
+    enc = await encodePrompt(prompt);
+  }
+  const img = await denoise(
+    new Float32Array(4 * (size / 8) * (size / 8)),
+    size,
+    steps,
+    enc ?? undefined,
+  );
   return saveRgb(img, size);
 }
 

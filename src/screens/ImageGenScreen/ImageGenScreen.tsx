@@ -156,7 +156,7 @@ export const ImageGenScreen: React.FC = observer(() => {
   const handleDreamLite = async () => {
     try {
       await loadDreamLite();
-      const uri = await generateDreamLite(512, 4);
+      const uri = await generateDreamLite(512, 4, prompt.trim() || undefined);
       setCurrentImage(uri);
     } catch (e) {
       runInAction(() => {
