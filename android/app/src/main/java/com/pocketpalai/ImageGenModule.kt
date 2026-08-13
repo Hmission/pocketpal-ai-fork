@@ -1,6 +1,8 @@
 package com.pocketpal
 
 import android.content.ContentValues
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
@@ -149,6 +151,31 @@ class ImageGenModule(reactContext: ReactApplicationContext) :
         putDouble("lastEvent", snapLastEvent.toDouble())
       },
     )
+  }
+
+  /** 解码图片→按较大边压缩到 size×size→归一化 RGB[-1,1] 平坦数组（供 DreamLite 编辑 vae_encoder）。 */
+  @ReactMethod
+  fun decodeImageToRgb(path: String, size: Int, promise: Promise) {
+    Thread {
+      try {
+        val src = BitmapFactory.decodeFile(path) ?: run {
+          promise.reject("DECODE_FAIL", "cannot decode $path")
+          return@Thread
+        }
+        val scaled = Bitmap.createScaledBitmap(src, size, size, true)
+        val pixels = IntArray(size * size)
+        scaled.getPixels(pixels, 0, size, 0, 0, size, size)
+        val arr = Arguments.createArray()
+        for (p in pixels) {
+          arr.pushDouble(((p shr 16 and 0xFF) / 127.5) - 1.0)
+          arr.pushDouble(((p shr 8 and 0xFF) / 127.5) - 1.0)
+          arr.pushDouble(((p and 0xFF) / 127.5) - 1.0)
+        }
+        promise.resolve(arr)
+      } catch (e: Throwable) {
+        promise.reject("DECODE_FAIL", e.message)
+      }
+    }.start()
   }
 
   companion object {

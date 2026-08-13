@@ -11,7 +11,10 @@
  */
 import * as ort from 'onnxruntime-react-native';
 import * as RNFS from '@dr.pogodin/react-native-fs';
+import {NativeModules} from 'react-native';
 import {initLlama, LlamaContext} from 'llama.rn';
+
+const ImageGenNative = NativeModules.ImageGen;
 
 const DIR = '/sdcard/Documents/AIOS/dreamlite';
 const TE_DIM = 2048;
@@ -346,11 +349,25 @@ export async function generateDreamLite(
   return saveRgb(img, size);
 }
 
+/** 原生解码上传图片→归一化 RGB（按较大边压缩到 size） */
+export async function decodeImageToRgb(
+  path: string,
+  size: number,
+): Promise<Float32Array> {
+  const arr = await ImageGenNative.decodeImageToRgb(path, size);
+  const f = new Float32Array(arr.length);
+  for (let i = 0; i < arr.length; i++) {
+    f[i] = arr[i];
+  }
+  return f;
+}
+
 /** 图像编辑：源图 RGB[-1,1] → VAE encode 作条件 → 4 步去噪 */
 export async function editDreamLite(
   sourceRgb: Float32Array,
   size = 512,
   steps = 4,
+  onStep?: (step: number, steps: number) => void,
 ): Promise<string> {
   if (!unet || !vae || !vaeEnc) {
     throw new Error('DreamLite not loaded');
@@ -360,7 +377,7 @@ export async function editDreamLite(
   });
   const cond = eres.latents.data as Float32Array;
   console.log('[DreamLite] source encoded, cond len', cond.length);
-  const img = await denoise(cond, size, steps);
+  const img = await denoise(cond, size, steps, undefined, onStep);
   return saveRgb(img, size);
 }
 

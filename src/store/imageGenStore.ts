@@ -22,6 +22,9 @@ export interface GeneratedImage {
   ts: number;
   width: number;
   height: number;
+  steps?: number;
+  cfg?: number;
+  family?: string;
 }
 
 class ImageGenStore {
@@ -118,6 +121,17 @@ class ImageGenStore {
     } catch (e) {
       console.warn('[ImageGenStore] load history failed:', e);
     }
+  }
+
+  /** 推入历史（DreamLite/通用），供结果轮播回填参数 */
+  pushHistory(entry: GeneratedImage): void {
+    runInAction(() => {
+      this.history.unshift(entry);
+      if (this.history.length > 50) {
+        this.history = this.history.slice(0, 50);
+      }
+    });
+    this.persistHistory();
   }
 
   /** 历史元数据落盘（fire-and-forget） */

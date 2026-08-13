@@ -17,6 +17,7 @@ import {
   Image,
   StyleSheet,
   FlatList,
+  ScrollView,
   ActivityIndicator,
   Modal,
 } from 'react-native';
@@ -24,12 +25,14 @@ import {KeyboardAwareScrollView} from 'react-native-keyboard-controller';
 import {observer} from 'mobx-react-lite';
 import {runInAction} from 'mobx';
 import Share from 'react-native-share';
+import {launchImageLibrary} from 'react-native-image-picker';
 
 import {imageGenStore} from '../../store/imageGenStore';
 import {
   loadDreamLite,
   generateDreamLite,
   editDreamLite,
+  decodeImageToRgb,
 } from '../../services/dreamLiteEngine';
 import {useTheme} from '../../hooks';
 import {AIOS_MODELS_DIR} from '../../utils/paths';
@@ -77,6 +80,10 @@ export const ImageGenScreen: React.FC = observer(() => {
   const [fullscreen, setFullscreen] = React.useState(false);
   const [manageMode, setManageMode] = React.useState(false);
   const [toDelete, setToDelete] = React.useState<string[]>([]);
+  const [mode, setMode] = React.useState<'gen' | 'edit'>('gen');
+  const [editSource, setEditSource] = React.useState<string | null>(null);
+  const [editRgb, setEditRgb] = React.useState<Float32Array | null>(null);
+  const [pageW, setPageW] = React.useState(0);
 
   React.useEffect(() => {
     if (!imageGenStore.generating && !imageGenStore.loading) {
@@ -202,25 +209,91 @@ export const ImageGenScreen: React.FC = observer(() => {
     loadEntry(entry);
   };
 
-  const handleDreamLiteEdit = async () => {
+  // 结果轮播切换→回填该历史图的提示词/参数
+  const syncFrom = (item: {
+    uri: string;
+    prompt: string;
+    width: number;
+    steps?: number;
+    cfg?: number;
+  }) => {
+    setCurrentImage(item.uri);
+    setPrompt(item.prompt);
+    if (item.width) {
+      setSize(item.width);
+    }
+    if (item.steps) {
+      setSteps(String(item.steps));
+    }
+    if (item.cfg) {
+      setCfg(String(item.cfg));
+    }
+  };
+
+  const handleReroll = () => {
+    handleGenerate(); // 同参数再次抽卡
+  };
+
+  const handlePickEditImage = async () => {
+    const res = await launchImageLibrary({mediaType: 'photo', includeBase64: false});
+    const p = res.assets?.[0]?.uri;
+    if (!p) {
+      return;
+    }
+    const path = p.replace('file://', '');
+    setEditSource(path);
+    // 按较大边压缩到支持尺寸（当前 size）
+    try {
+      const rgb = await decodeImageToRgb(path, size);
+      setEditRgb(rgb);
+    } catch (e) {
+      runInAction(() => {
+        imageGenStore.error = `解码图片: ${(e as any)?.message ?? e}`;
+      });
+    }
+  };
+
+  const handleEditRun = async () => {
+    if (!editRgb) {
+      return;
+    }
+    runInAction(() => {
+      imageGenStore.generating = true;
+      imageGenStore.genStartedAt = Date.now();
+      imageGenStore.progress = 0;
+      imageGenStore.stage = '编辑: TE 编码…';
+    });
     try {
       await loadDreamLite();
-      // 合成渐变源图 [-1,1]，验证编辑链路（vae_encoder+条件去噪）
-      const size = 512;
-      const src = new Float32Array(size * size * 3);
-      for (let y = 0; y < size; y++) {
-        for (let x = 0; x < size; x++) {
-          const i = (y * size + x) * 3;
-          src[i] = (x / size) * 2 - 1;
-          src[i + 1] = (y / size) * 2 - 1;
-          src[i + 2] = 0.2;
-        }
-      }
-      const uri = await editDreamLite(src, size, 4);
+      const uri = await editDreamLite(
+        editRgb,
+        size,
+        parseInt(steps, 10) || 4,
+        (st, tot) => {
+          runInAction(() => {
+            imageGenStore.progress = Math.round((st / tot) * 100);
+            imageGenStore.stage = `编辑 采样 ${st}/${tot}`;
+          });
+        },
+      );
       setCurrentImage(uri);
+      imageGenStore.pushHistory({
+        uri,
+        prompt: prompt.trim(),
+        seed: Date.now() % 1e9,
+        ts: Date.now(),
+        width: size,
+        height: size,
+        steps: parseInt(steps, 10) || 4,
+        family: 'dreamlite',
+      });
     } catch (e) {
       runInAction(() => {
         imageGenStore.error = `DreamLite编辑: ${(e as any)?.message ?? e}`;
+      });
+    } finally {
+      runInAction(() => {
+        imageGenStore.generating = false;
       });
     }
   };
@@ -256,6 +329,16 @@ export const ImageGenScreen: React.FC = observer(() => {
           },
         );
         setCurrentImage(uri);
+        imageGenStore.pushHistory({
+          uri,
+          prompt: prompt.trim(),
+          seed: Date.now() % 1e9,
+          ts: Date.now(),
+          width: size,
+          height: size,
+          steps: parseInt(steps, 10) || 4,
+          family: 'dreamlite',
+        });
       } catch (e) {
         runInAction(() => {
           imageGenStore.error = `DreamLite: ${(e as any)?.message ?? e}`;
@@ -382,16 +465,39 @@ export const ImageGenScreen: React.FC = observer(() => {
 
         </View>
 
-        {/* ① 结果区（主角，置顶；生成中进度 overlay 叠上） */}
+        {/* ① 结果区（左右滑动切换历史图；切换自动回填提示词/参数） */}
         <View style={s.card}>
-          <View style={s.resultWrap}>
-            {currentImage ? (
-              <TouchableOpacity onPress={() => setFullscreen(true)}>
-                <Image source={{uri: currentImage}} style={s.preview} resizeMode="contain" />
-              </TouchableOpacity>
+          <View
+            style={s.resultWrap}
+            onLayout={e => setPageW(e.nativeEvent.layout.width)}>
+            {imageGenStore.history.length > 0 ? (
+              <ScrollView
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onMomentumScrollEnd={e => {
+                  if (!pageW) {
+                    return;
+                  }
+                  const idx = Math.round(e.nativeEvent.contentOffset.x / pageW);
+                  const item = imageGenStore.history[idx];
+                  if (item) {
+                    syncFrom(item);
+                  }
+                }}>
+                {imageGenStore.history.map(h => (
+                  <TouchableOpacity key={h.uri} onPress={() => setFullscreen(true)}>
+                    <Image
+                      source={{uri: h.uri}}
+                      style={[s.preview, pageW ? {width: pageW} : null]}
+                      resizeMode="contain"
+                    />
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
             ) : (
               <View style={s.emptyResult}>
-                <Text style={s.hint}>生成结果将显示在这里</Text>
+                <Text style={s.hint}>生成结果将显示在这里（左右滑动切换历史）</Text>
               </View>
             )}
             {genOverlay}
@@ -407,8 +513,8 @@ export const ImageGenScreen: React.FC = observer(() => {
                 <TouchableOpacity style={[s.actionBtn, s.actionShare]} onPress={handleShare}>
                   <Text style={s.actionTextLight}>分享</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[s.actionBtn, s.actionReuse]} onPress={handleReuse}>
-                  <Text style={s.actionTextLight}>同参数</Text>
+                <TouchableOpacity style={[s.actionBtn, s.actionReuse]} onPress={handleReroll}>
+                  <Text style={s.actionTextLight}>抽卡</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[s.actionBtn, s.actionDelete]}
@@ -535,12 +641,44 @@ export const ImageGenScreen: React.FC = observer(() => {
             </>
           )}
           {isDream && (
-            <TouchableOpacity
-              style={[s.button, s.buttonSecondary]}
-              onPress={handleDreamLiteEdit}>
-              <Text style={s.buttonText}>编辑（示例源）</Text>
-            </TouchableOpacity>
+            <View style={s.modeRow}>
+              <TouchableOpacity
+                style={[s.modeBtn, mode === 'gen' && s.modeBtnActive]}
+                onPress={() => setMode('gen')}>
+                <Text style={s.modeBtnText}>出图</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.modeBtn, mode === 'edit' && s.modeBtnActive]}
+                onPress={() => setMode('edit')}>
+                <Text style={s.modeBtnText}>编辑</Text>
+              </TouchableOpacity>
+            </View>
           )}
+          {isDream && mode === 'edit' && (
+            <>
+              <TouchableOpacity
+                style={[s.button, s.buttonSecondary]}
+                onPress={handlePickEditImage}>
+                <Text style={s.buttonText}>
+                  {editSource ? '重新上传图片' : '上传图片'}
+                </Text>
+              </TouchableOpacity>
+              {editSource ? (
+                <Text style={s.promptHint}>已按较大边压缩至 {size}×{size}</Text>
+              ) : null}
+              <TouchableOpacity
+                style={[s.button, (!editRgb || !loaded) && s.buttonDisabled]}
+                disabled={!editRgb || !loaded || imageGenStore.generating}
+                onPress={handleEditRun}>
+                {imageGenStore.generating ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={s.buttonText}>编辑</Text>
+                )}
+              </TouchableOpacity>
+            </>
+          )}
+          {(!isDream || mode === 'gen') && (
           <TouchableOpacity
             style={[s.button, !loaded && s.buttonDisabled]}
             disabled={!loaded || imageGenStore.generating}
@@ -553,6 +691,7 @@ export const ImageGenScreen: React.FC = observer(() => {
               <Text style={s.buttonTextDisabled}>请先加载模型</Text>
             )}
           </TouchableOpacity>
+          )}
           {imageGenStore.error && <Text style={s.error}>{imageGenStore.error}</Text>}
         </View>
       </KeyboardAwareScrollView>
@@ -809,6 +948,16 @@ const createStyles = (theme: any) =>
     advToggle: {fontSize: 12, color: theme.colors.primary},
     promptHint: {fontSize: 10, color: theme.colors.onSurfaceVariant},
     promptHintWarn: {fontSize: 10, color: theme.colors.error},
+    modeRow: {flexDirection: 'row', gap: 8},
+    modeBtn: {
+      flex: 1,
+      alignItems: 'center',
+      paddingVertical: 8,
+      borderRadius: 8,
+      backgroundColor: theme.colors.surfaceVariant,
+    },
+    modeBtnActive: {backgroundColor: theme.colors.primary},
+    modeBtnText: {fontSize: 13, color: '#fff', fontWeight: '600'},
     paramRow: {flexDirection: 'row', alignItems: 'center', gap: 10},
     paramLabel: {fontSize: 13, color: theme.colors.onSurfaceVariant},
     paramInput: {
