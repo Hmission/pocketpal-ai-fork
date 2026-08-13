@@ -78,6 +78,7 @@ export async function encodePrompt(prompt: string, maxLen = 77): Promise<Float32
     const res = await teCtx.embedding(text);
     const flat = res.embedding as number[];
     const tokens = Math.floor(flat.length / TE_DIM);
+    console.log('[DreamLite] TE emb flat.len=', flat.length, 'tokens=', tokens);
     if (tokens <= DROP_IDX) {
       return null;
     }

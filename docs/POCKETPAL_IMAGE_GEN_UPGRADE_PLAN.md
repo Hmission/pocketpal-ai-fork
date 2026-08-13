@@ -218,7 +218,9 @@
 
 **阻断项（需外部条件）**：
 - **真实 TE 已转换（2026-08-13）**：下载官方微调 TE(4.25GB, ivan2026HF 公开镜像)→llama.cpp convert 产出 te_f16.gguf(3.21GB)/te_q8.gguf(1.71GB)，te_q8 已推真机。架构=Qwen3VLForConditionalGeneration(hidden2048)。
-  - 接线方案：llama.rn initLlama(pooling_type:'none') + embedding() 取 per-token hidden states→复刻 encode_prompt(chat模板+drop_idx=34+pad)→encoder_hidden_states。待接线+真机验证。
+  - 接线已实现（initLlama pooling:'none'+embedding:true+encode_prompt 复刻），但真机验证输出仍为灰纹理。
+  - **根因确认**：llama.rn `rn-completion.cpp:1247` embedding() 只返回单个 n_embd 池化向量（flat.len=2048, tokens=1），**无法提供 per-token hidden_states[-1]**→真实文本条件经 llama.rn 不可行。
+  - 结论：DreamLite 端侧=文生图基线(unconditioned)+编辑(image-conditioned)。真实文生图条件需 ONNX TE（Qwen3-VL 2B，端侧过重）或专用小 TE，列为后续。
 - unet 780MB 走 hf-mirror 带宽不足（~0.1MB/s），续传中；GitHub 仓库 zip 被墙（仅部分 raw 可取）。
 - TE=Qwen3-VL 4.25GB，端侧需 4-bit GGUF + llama.rn hidden-states 提取，待验证。
 - MNN Android 编译 + 真机验证待 ONNX 导出件就绪。
