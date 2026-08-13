@@ -350,7 +350,7 @@ const shareJsonData = async (
                 try {
                   const options = {
                     title: `Share ${filename}`,
-                    message: 'PocketPal AI Chat Export',
+                    message: '小黄鸡 AI Chat Export',
                     url: `file://${savePath}`,
                     type: 'application/json',
                     failOnCancel: false,

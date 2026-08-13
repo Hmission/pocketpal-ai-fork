@@ -273,6 +273,45 @@ Start-Process -FilePath "F:\Cursor\OneTakeMVP\.tmp\scrcpy\scrcpy-win64-v4.1\scrc
 
 ---
 
+## 15. 品牌改名 SOP：完整改动清单（未来再改名复用）
+
+> 当前品牌：**小黄鸡 / Pocket Chick**（2026-08-13）。本清单经两次改名（口袋八哥→小黄鸡）实战校准。
+> 改名后全仓 grep 旧品牌词必须 = 0（docs 历史记录除外）。
+
+### A. 必改（用户可见层）
+| # | 位置 | 说明 |
+|---|---|---|
+| 1 | `app.json` displayName | 显示名（name 不动） |
+| 2 | `android/app/src/main/res/values/strings.xml` app_name | 安卓桌面/最近任务名 |
+| 3 | `ios/PocketPal/Info.plist` CFBundleDisplayName | iOS 桌面名 |
+| 4 | `src/screens/AboutScreen/AboutScreen.tsx` 标题 + `__tests__` 断言 | 关于页 |
+| 5 | `src/locales/{zh,zh_Hant,en}.json` splash.brand + screen1.eyebrow | 启动品牌+欢迎语三语 |
+| 6 | `src/services/promptWriter.ts` CHITCHAT_SYSTEM_PROMPT | 闲聊人设（动物意象随品牌换） |
+| 7 | `src/components/ChatEmptyPlaceholder/ChatEmptyPlaceholder.tsx` title | 空态「XX已就绪」 |
+| 8 | `src/screens/ChatScreen/ChatScreen.tsx` 四处 | placeholder / 管家回复 fallback 文案 / 归属标签 modelName / 思考卡片文案+emoji |
+| 9 | `src/utils/exportUtils.ts` 导出 message | 聊天导出分享标题 |
+| 10 | 图标全套 | 源图 `src/assets/pocketpal-*.png` 换后跑 `.tmp/gen_icons_chick.py`（mipmap 10 + AppIcon 12；1024 条目无 scale 需兜底） |
+
+### B. 必保留（红线，改了会崩/失兼容/违协议）
+- `app.json` name = PocketPal（RN registerComponent 标识）
+- applicationId/bundleId = com.pocketpalai（签名/升级安装兼容）
+- About 页「基于 PocketPal AI（MIT License）开发」署名行
+- LICENSE / README / assets/images（上游原文件）
+- 内部标识符/注释/函数名（convertJsonSchemaToPocketPal、theme 注释等）
+
+### C. 酌情（外部协议标识，不影响用户可见品牌）
+- `src/utils/hfUserAgent.ts` UA `PocketPal/x.x.x (ai.pocketpal)`
+- fastlane metadata 商店文案
+- e2e/测试 mock 字符串
+
+### D. 验证流程
+1. grep 旧品牌词 = 0（代码+配置）
+2. tsc 0 错 + `node scripts/validate-l10n.js` + About jest
+3. 图标重生成 + Gradle 构建 + 装机
+4. 手动清单：桌面图标/名、关于页、空态、发“你好”看人设+归属标签
+
+---
+
 ## 14. 品牌二次改名：小黄鸡（2026-08-13）
 **大王钦定：口袋八哥 → 小黄鸡**（英文 Pocket Chick，大王选定）。
 - app.json displayName / Android app_name / iOS CFBundleDisplayName → 小黄鸡

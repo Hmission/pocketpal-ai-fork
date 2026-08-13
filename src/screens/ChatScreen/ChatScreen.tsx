@@ -228,7 +228,7 @@ export const ChatScreen: React.FC = observer(() => {
         const reply = await promptWriter.chat(text);
         await chatStoreForImg.updateMessage(cardId, sessionId, {
           text:
-            reply ?? '抱歉，八哥暂时没想到怎么回答。可到模型页加载更强的对话模型。',
+            reply ?? '抱歉，小黄鸡暂时没想到怎么回答。可到模型页加载更强的对话模型。',
         });
         return;
       }
