@@ -333,4 +333,83 @@
 - `CMakeLists.txt`：arm64 开 OpenCL（运行时默认 CPU）
 - assets 图标更新；docs 6.5/6.6/6.7 落盘
 
+### 6.8 全链路复盘审计：根因修复 vs 兜底/补丁（2026-08-14，大王令，啄木鸟闭环）
+
+对照产品工程哲学（锋利不臃肿、不兜底不补丁、单状态机链路），对 ImageGen 全链路历史修改方案逐项判定。
+
+#### ① 真根因修复（✅ 判定通过）
+
+| # | 方案 | 根因 | 证据 |
+|---|---|---|---|
+| 1 | DreamLite 黑图 sigmas 修复 | 旧实现 seq=(area²)/4 → mu 溢出 → exp=Inf → NaN | seq=latArea/4，与 diffusers 比对 max diff 6e-8 |
+| 2 | VAE 缩放 sf 1.5305→1.0 | SD3 遗留魔数 vs ckpt 实值 | config.json scaling_factor=1.0 |
+| 3 | session 释放 await 化 | ORT/Llama release() 异步，未 await 叠加 OOM | dreamLiteEngine releaseTE/Promise.all |
+| 4 | enableCpuMemArena:false | ORT arena 跨 run 保留峰值不归还 | 注释实锤 9.4GB swap 叠加被 LMK 杀 |
+| 5 | TE int8→fp16 | per-tensor 激活量化毁掉离群通道 | fp16 与 transformers 逐 token cos=1.0 |
+| 6 | 推拉反转（快照+1Hz pull） | NativeEventEmitter 高频事件风暴 = weak-ref 主源 | 移除 emitter，getGenSnapshot 零事件 |
+| 7 | cacheJniRefs | FindClass/GetStaticMethodID 每次调用不缓存 | jclass/jmethodID 全局缓存 |
+| 8 | ONNX 固定维→动态维 | 固定维导出与运行时尺寸不匹配 | unet_dyn/vae_dyn |
+| 9 | engineMutex 引擎互斥 | 双引擎同驻 OOM | 加载前自动释放对方 |
+| 10 | previewIndex 单状态机 | mode/currentImage 双源冲突 | 删除双源改派生，符合单状态机哲学 |
+
+#### ② 根因已定位但未修复（⛔ 技术债，两模型复活先决条件）
+
+| # | 遗留 | 根因定位状态 | 影响 |
+|---|---|---|---|
+| B1 | pulse 动效 useNativeDriver loop | **已实锤**（tombstone_04：50252/51200 全为 NativeAnimatedModule weak ref，分钟级任务必溢出）| SD3.5/Z-Image 实质不可用（标实验性止损） |
+| B2 | Adreno OpenCL 采样 hang | **未定位**（日志停 generate_image begin 无返回、无 tombstone）| 后端恒 CPU，685s 级出图不可接受 |
+
+#### ③ 兜底/补丁候选（⚠️ 违反哲学，建议清理）
+
+| # | 位置 | 现状 | 判定 |
+|---|---|---|---|
+| C1 | JNI L351 `cfg > 0 ? cfg : 2.0f` | 冗余防御 | 调用链（manifest defaults + store ?? 2.0）已保证 cfg 有值，应删 |
+| C2 | JNI L350 `steps > 0 ? steps : 2` | 冗余防御 | 同上，应删 |
+| C3 | JNI L357 `loraMultiplier > 0 ? : 1.0f` | 冗余防御 | 同上，应删 |
+| C4 | JNI L285-293 OpenCL fallback retry | 死代码 + 重试兜底 | backend 恒 CPU 后该分支永远不触发（注释名不副实），应删 |
+| C5 | dreamLiteEngine fp32→fp16 fallback | 双文件 fallback | fp32 已真机稳定验证，冗余防御分支，建议收口 |
+| C6 | JNI log/progress 500ms 节流残留 | 推拉反转后非必需 | 性质已从防崩溃补丁转为 JNI 开销优化，无害但可随 C1-C4 一并精简 |
+
+#### ④ 止损标记（🔶 产品决策，非修复）
+
+- 实验性标记：诚实承认不可用（防误触），方向正确且符合哲学（明示状态，不假装可用）；但它是**状态标记而非修复**，真正修复是 ② 中 B1/B2。
+
+#### ⑤ 审计结论
+
+- **10/10 项根因修复为真根因**（有对比验证或机制实锤），无一错判。
+- **最大技术债**：B1 pulse 动效 weak-ref 残留源（根因已实锤、修复方案已明确：JS driver 或静态呈现，未落地）；B2 OpenCL hang（根因未破）。
+- **违哲学存量 6 处**：C1-C6 兜底分支与节流残留，建议下窗口清理（纯删防御，零风险）。
+- **单状态机哲学**：previewIndex 派生驱动全链路 ✅ 典范；JNI g_mutex 单引擎约束 ✅ 一致。
+
+### 6.9 遗留项治理（C 类清理 + B1 根治 + B2 规划，2026-08-14，大王令）
+
+按 6.8 审计结论依次治理，三波展开：
+
+#### 第一波 C 类兜底清理（锋利化，零风险）
+
+| # | 治理决策 | 理由 |
+|---|---|---|
+| C1/C2/C3 | 删 JNI `cfg/steps/loraMultiplier` 三处 `>0 ? : default` 兜底 | 调用链（manifest defaults + store `??` 默认）已保证参数有值，JNI 不重复防御 |
+| C4 | 删 L285-293 OpenCL fallback retry 死代码 | backend 恒 CPU 后该分支永不触发（new_sd_ctx 失败直接返回 JNI_FALSE） |
+| C5 | dreamLiteEngine 删 fp32→fp16 fallback | fp32 已真机稳定验证，单文件单路径 |
+| C6 | 半收口：**删** progress 500ms 节流（每步一次回调本就低频，节流永不触发）；**保留** log 节流并注释改为“JNI attach/detach 开销控制”（高频 log 每帧 Attach/DetachCurrentThread 是真实开销，非防御） | 区分“冗余防御”与“真实开销阀” |
+
+#### 第二波 B1 weak-ref 残余源根治（两模型复活先决条件①）
+
+- 根因（tombstone_04 实锤）：生图页长时任务期间 `Animated.loop` pulse 动效 `useNativeDriver: true` 持续触发 TurboModule invokeJavaMethod → weak ref 分钟级累积至 51200 溢出。
+- 治理：生图页**全部** Animated（pulse 循环 + toast 淡入淡出）改 `useNativeDriver: false`（JS driver），切断该页 NativeAnimatedModule 调用链。JS driver 由 JS 帧循环驱动 setNativeProps（Fabric 直接更新 ShadowTree，不产生 weak ref）。
+- 权衡：生图期间 JS 线程负载低（1Hz pull + 2s 心跳），JS driver 掉帧风险可接受；动效形态不变，UX 零损失。
+- 注意：聊天页 ThinkingBubble 等循环动效仍为 native driver，但聊天场景从未崩溃（token 流 UI 更新节奏与生图不同），不在本波治理范围；若未来聊天页出现同型 tombstone 再扩展。
+
+#### 第三波 B2 OpenCL hang 侦察规划（根因未破，本轮只规划不瞎改）
+
+- 现象：Adreno OpenCL 在 generate_image 采样阶段 hang（日志停入口无返回、无 tombstone）。
+- 侦察路线（下窗口专项）：
+  1. 复用 .tmp/probe 探针脚本模式：最小复现（OpenCL 后端 + 384²/2 步）观察是否必现；
+  2. `dmesg | grep -i kgsl/adreno` 抓 GPU 侧内核日志，确认 hang 在用户态驱动还是内核态；
+  3. ggml 层加阶段日志二分：采样循环定位到具体 op（如 attention/silu/matmul）；
+  4. 对照 sd.cpp 上游 OpenCL 已知 issue 与 Adreno 兼容性矩阵；
+  5. 若确认 Adreno 驱动 bug：维持 CPU 默认（当前决策已正确），OpenCL 降级为“设备白名单启用”。
+- 当前 backend 强制 CPU 是**明确决策 + TODO 标记**（非隐性兜底），在 B2 侦察完成前维持。
+
 

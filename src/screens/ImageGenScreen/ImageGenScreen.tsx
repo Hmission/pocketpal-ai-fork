@@ -122,13 +122,15 @@ export const ImageGenScreen: React.FC = observer(() => {
       Animated.timing(toastOpacity, {
         toValue: 1,
         duration: 200,
-        useNativeDriver: true,
+        // B1 weak-ref 根治：生图页全部动效走 JS driver（useNativeDriver:false），
+        // 切断 NativeAnimatedModule 高频 weak ref 来源（tombstone_04 实锤的分钟级溢出源）
+        useNativeDriver: false,
       }).start();
       toastTimer.current = setTimeout(() => {
         Animated.timing(toastOpacity, {
           toValue: 0,
           duration: 400,
-          useNativeDriver: true,
+          useNativeDriver: false,
         }).start(() => setToast(null));
       }, 2500);
     },
@@ -143,8 +145,13 @@ export const ImageGenScreen: React.FC = observer(() => {
     }
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, {toValue: 1, duration: 900, useNativeDriver: true}),
-        Animated.timing(pulse, {toValue: 0, duration: 900, useNativeDriver: true}),
+        // B1 weak-ref 根治：pulse 循环动效必须 JS driver。useNativeDriver:true 会在
+        // 长时出图（分钟级）期间持续触发 TurboModule invokeJavaMethod → weak ref
+        // 累积至 51200 溢出（tombstone_04：50252 全为 NativeAnimatedModule）→ SIGABRT。
+        // JS driver 经 Fabric setNativeProps 更新，不产生 weak ref；
+        // 生图期间 JS 线程负载低（1Hz pull + 2s 心跳），掉帧风险可接受。
+        Animated.timing(pulse, {toValue: 1, duration: 900, useNativeDriver: false}),
+        Animated.timing(pulse, {toValue: 0, duration: 900, useNativeDriver: false}),
       ]),
     );
     loop.start();

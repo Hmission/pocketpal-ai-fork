@@ -33,9 +33,9 @@ jclass g_imageGenClass = nullptr;
 jmethodID g_onLogMid = nullptr;
 jmethodID g_onProgressMid = nullptr;
 
-// Throttle: last forward timestamps (steady_clock, ms since epoch)
+// Log 透传节流：高频 log 回调每次透传都要 Attach/DetachCurrentThread，
+// 500ms 窗口控制 JNI 开销（推拉反转后 RN 侧无事件风暴，此阀纯为开销控制）
 auto g_lastLogForward = std::chrono::steady_clock::time_point::min();
-auto g_lastProgressForward = std::chrono::steady_clock::time_point::min();
 
 // ---- 持久化崩溃取证日志 ----
 // logcat 会轮转、静默 OOM kill 不写 tombstone，故用落盘日志：每行 fflush，
@@ -140,7 +140,8 @@ void sd_log_cb(enum sd_log_level_t level, const char* text, void* /*data*/) {
   if (!forward) {
     return;
   }
-  // 节流：相同阶段日志最多每 500ms 透传一次（防 RN 事件风暴 → weak ref 溢出）
+  // 节流：log 回调高频（采样循环内部），每次透传都要 Attach/DetachCurrentThread，
+  // 500ms 窗口控制 JNI 开销（推拉反转后 RN 侧无事件风暴，此阀纯为开销控制）
   auto now = std::chrono::steady_clock::now();
   auto msSinceLast = std::chrono::duration_cast<std::chrono::milliseconds>(
       now - g_lastLogForward).count();
@@ -172,22 +173,11 @@ void sd_log_cb(enum sd_log_level_t level, const char* text, void* /*data*/) {
 }
 
 // Progress callback → Kotlin companion onProgressFromNative(step, steps, time)
-// 节流：最多每 500ms 透传一次，但首步(step==1)和末步(step==steps)强制透传
+// 每步一次回调，频率天然低（每步秒级），无需节流
 void sd_progress_cb(int step, int steps, float time, void* /*data*/) {
   if (!g_jvm || !g_imageGenClass || !g_onProgressMid) {
     return;
   }
-  bool isFirst = (step <= 1);
-  bool isLast = (steps > 0 && step >= steps);
-  if (!isFirst && !isLast) {
-    auto now = std::chrono::steady_clock::now();
-    auto msSinceLast = std::chrono::duration_cast<std::chrono::milliseconds>(
-        now - g_lastProgressForward).count();
-    if (msSinceLast < 500) {
-      return;
-    }
-  }
-  g_lastProgressForward = std::chrono::steady_clock::now();
   JNIEnv* env = nullptr;
   bool attached = false;
   jint st = g_jvm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
@@ -267,14 +257,10 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
   params.n_threads = hw ? std::min(hw, 6u) : 4;
   params.wtype = SD_TYPE_Q4_K;
   params.enable_mmap = true;
-  // P2 后端选择：真机取证发现 Adreno OpenCL 在 generate_image 采样阶段 hang
-  // （日志停 generate_image begin 不返回，非崩溃），故默认 CPU 保证可用；
-  // OpenCL 待 hang 根因定位后再启用（new_sd_ctx 失败仍会降级 CPU）。
-#if defined(__aarch64__)
+  // P2 后端决策：真机取证发现 Adreno OpenCL 在 generate_image 采样阶段 hang
+  // （日志停 generate_image begin 不返回，非崩溃），故恒用 CPU 保证可用；
+  // OpenCL 待 hang 根因定位后再启用（见 docs 6.9 第三波侦察路线）。
   params.backend = "CPU";  // TODO(opencl-hang): 定位 Adreno hang 后改回 "OpenCL"
-#else
-  params.backend = "CPU";
-#endif
 
   sd_set_log_callback(sd_log_cb, nullptr);
   sd_set_progress_callback(sd_progress_cb, nullptr);
@@ -282,15 +268,6 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
   dbg_log("new_sd_ctx begin backend=%s n_threads=%u", params.backend,
           params.n_threads);
   g_ctx = new_sd_ctx(&params);
-#if defined(__aarch64__)
-  if (!g_ctx) {
-    __android_log_print(ANDROID_LOG_WARN, "ImageGen",
-                        "OpenCL backend init failed, falling back to CPU");
-    dbg_log("OpenCL init failed, fallback CPU");
-    params.backend = "CPU";
-    g_ctx = new_sd_ctx(&params);
-  }
-#endif
   dbg_log("new_sd_ctx ret=%p", (void*)g_ctx);
   dbg_mem("after new_sd_ctx");
 
@@ -346,15 +323,15 @@ Java_com_pocketpal_ImageGenModule_nativeTxt2img(
   gen.height = height;
   gen.seed = seed;
   gen.batch_count = 1;
-  // SDXL Turbo: default euler + 1-4 steps is enough
-  gen.sample_params.sample_steps = steps > 0 ? steps : 2;
-  gen.sample_params.guidance.txt_cfg = cfg > 0 ? cfg : 2.0f;
+  // 参数由 manifest defaults + RN store 默认值保证有值，JNI 不重复防御
+  gen.sample_params.sample_steps = steps;
+  gen.sample_params.guidance.txt_cfg = cfg;
 
   // 加速 LoRA 通道（sd.cpp 原生 sd_lora_t）：manifest 声明即插即用
   sd_lora_t loraArr[1];
   if (!lora.empty()) {
     loraArr[0].is_high_noise = false;
-    loraArr[0].multiplier = loraMultiplier > 0 ? loraMultiplier : 1.0f;
+    loraArr[0].multiplier = loraMultiplier;
     loraArr[0].path = lora.c_str();
     gen.loras = loraArr;
     gen.lora_count = 1;

@@ -28,8 +28,6 @@ let vae: ort.InferenceSession | null = null;
 let vaeEnc: ort.InferenceSession | null = null;
 let teCtx: LlamaContext | null = null; // 仅用作 Qwen3 tokenizer
 let teOrt: ort.InferenceSession | null = null; // ONNX TE（输出 per-token hidden_states）
-let teMode: 'fp16' | 'int8' = 'fp16';
-let unetMode: 'fp16' | 'fp32' = 'fp16';
 
 export const dreamLiteReady = () => !!unet && !!vae;
 
@@ -44,17 +42,10 @@ export async function loadDreamLite(): Promise<void> {
     graphOptimizationLevel: 'all',
     enableCpuMemArena: false,
   };
-  // unet 默认 fp32（ORT CPU 模拟 fp16 计算慢 ~50%，速度优先）；
-  // unet_masked_fp16.onnx（746MB）已导出并验证输出 cos≈1.0，若 fp32 仍内存紧张可切换：改下方顺序即可
+  // unet 单路径 fp32（ORT CPU 模拟 fp16 计算慢 ~50%，速度优先）；
+  // 不设 fp16 降级分支：fp32 已真机稳定验证，单文件单路径（产品哲学：不兜底不补丁）
   console.log('[DreamLite] loading unet (fp32) ...');
-  try {
-    unet = await ort.InferenceSession.create(`${DIR}/unet_masked.onnx`, opts);
-    unetMode = 'fp32';
-  } catch (e) {
-    console.log('[DreamLite] unet fp32 fail, fallback fp16:', (e as any)?.message);
-    unet = await ort.InferenceSession.create(`${DIR}/unet_masked_fp16.onnx`, opts);
-    unetMode = 'fp16';
-  }
+  unet = await ort.InferenceSession.create(`${DIR}/unet_masked.onnx`, opts);
   console.log('[DreamLite] unet loaded, loading vae ...');
   vae = await ort.InferenceSession.create(`${DIR}/vae_decoder.onnx`, opts);
   vaeEnc = await ort.InferenceSession.create(`${DIR}/vae_encoder.onnx`, opts);
@@ -99,8 +90,8 @@ export async function releaseTE(): Promise<void> {
 }
 
 /** 加载真实 TE：fp16 ONNX（per-token hidden_states，输出 Cast fp32；桌面实测与 transformers FP32 逐 token cos=1.0）。
- * 旧 te_int8.onnx 因 per-tensor 动态激活量化毁坏 Qwen3 离群通道（kept 区 cos 0.17-0.56 → 糊图）弃用，
- * 仅保留为 fp16 加载失败的回退。tokenizer 仍用 llama.rn 加载 te_q8.gguf。 */
+ * 旧 te_int8.onnx 因 per-tensor 动态激活量化毁坏 Qwen3 离群通道（kept 区 cos 0.17-0.56 → 糊图）弃用；
+ * 不做静默降级：fp16 加载失败直接报错（产品哲学：不兑底不补丁）。tokenizer 仍用 llama.rn 加载 te_q8.gguf。 */
 export async function loadTE(): Promise<void> {
   if (teCtx) {
     return;
@@ -113,22 +104,11 @@ export async function loadTE(): Promise<void> {
     n_ctx: 256,
     n_threads: 4,
   });
-  try {
-    teOrt = await ort.InferenceSession.create(`${DIR}/te_fp16.onnx`, {
-      executionProviders: ['cpu'],
-      enableCpuMemArena: false,
-    });
-    teMode = 'fp16';
-    console.log('[DreamLite] TE fp16 ONNX ready');
-  } catch (e) {
-    console.log('[DreamLite] te_fp16 load fail, fallback int8:', (e as any)?.message);
-    teOrt = await ort.InferenceSession.create(`${DIR}/te_int8.onnx`, {
-      executionProviders: ['cpu'],
-      enableCpuMemArena: false,
-    });
-    teMode = 'int8';
-    console.log('[DreamLite] TE int8 fallback ready (quality degraded)');
-  }
+  teOrt = await ort.InferenceSession.create(`${DIR}/te_fp16.onnx`, {
+    executionProviders: ['cpu'],
+    enableCpuMemArena: false,
+  });
+  console.log('[DreamLite] TE fp16 ONNX ready');
 }
 
 // flow-matching 动态位移（对齐官方 scheduler.set_timesteps(mu)）
@@ -189,31 +169,10 @@ export async function encodePrompt(
     }
     const ids64 = trimmed.map(v => BigInt(v));
     const mask64 = trimmed.map(() => BigInt(1));
-    let res: any;
-    try {
-      res = await teOrt.run({
-        input_ids: new ort.Tensor('int64', ids64 as any, [1, seq]),
-        attention_mask: new ort.Tensor('int64', mask64 as any, [1, seq]),
-      });
-    } catch (e) {
-      // RN 版 ORT 若缺 fp16 kernel，回退 int8 重跑一次（质量降级但可用）
-      if (teMode !== 'fp16') {
-        throw e;
-      }
-      console.log('[DreamLite] TE fp16 run fail, retry int8:', (e as any)?.message);
-      const fb = await ort.InferenceSession.create(`${DIR}/te_int8.onnx`, {
-        executionProviders: ['cpu'],
-      });
-      try {
-        res = await fb.run({
-          input_ids: new ort.Tensor('int64', ids64 as any, [1, seq]),
-          attention_mask: new ort.Tensor('int64', mask64 as any, [1, seq]),
-        });
-      } finally {
-        await fb.release();
-      }
-      teMode = 'int8';
-    }
+    const res: any = await teOrt.run({
+      input_ids: new ort.Tensor('int64', ids64 as any, [1, seq]),
+      attention_mask: new ort.Tensor('int64', mask64 as any, [1, seq]),
+    });
     const hs = res.hidden_states.data as Float32Array; // [1,seq,2048]
     const kept = seq - dropIdx;
     const len = Math.min(kept, maxLen);
