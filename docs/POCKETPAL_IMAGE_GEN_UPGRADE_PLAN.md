@@ -523,5 +523,14 @@
 - PendingIndicator JS driver 在 token 流高峰期的掉帧风险：可接受（崩溃>掉帧的取舍，已大王确认产品哲学方向）；
 - 真机验证均需大王手动触发生成（自动化屏幕操作禁令）。
 
+#### 执行状态（2026-08-14 本窗口三波落地）
+
+- ✅ 第一波：LoadingBubble/PendingIndicator/CircularActivityIndicator 全部改 `useNativeDriver:false` + 机制注释。全 App `Animated.loop` 零 native driver（生图 pulse 上窗口已收）。tsc 零错误。
+- ✅ 第二波：backend 上 manifest（sd.cpp 系 defaults.backend 字段，当前值 'CPU'）；JNI 删硬编码+TODO 改为透传（空→引擎默认 CPU，无兑底）；Kotlin/RN store/Screen 一条数据流透传；CMakeLists arm64 纯 CPU（OpenCL 永久弃用）；store 加 120s 无引擎事件超时判定→明确报错（干净失败，禁回退重试）。
+- ⚠️ Vulkan 编译链实测受阻（预案退化）：ggml-vulkan 构建需宿主机 SPIRV-Headers CMake 包 + glslc 工具链（NDK 自带 glslc.exe，但缺 SPIRV-Headers Config 包）→ CMakeLists 保持 SD_VULKAN OFF。**机制已就位**：Vulkan 启用=补链（SPIRV-Headers/宿主机 SDK）+ manifest 值改 'Vulkan' + CMakeLists 开 ON，三处单点，无需再动逻辑。挂下窗口。
+- ✅ 第三波：unetMode 死存储已被大王清理完毕（0 引用），无需改动；RN 上游 weak-ref 追踪为长期观察项。
+- ✅ 构建装机：Gradle BUILD SUCCESSFUL（3m40s）+ adb install Success（21:45:37，460MB）。
+- 待大王实测：聊天页动效冒烟（第一波）+ SD3.5 512²/10 步长时任务 B1 终验（进程存活+出图），我 logcat 只读旁证。
+
 
 
