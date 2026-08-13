@@ -31,6 +31,8 @@ export interface ImageGenManifest {
   /** 加速 LoRA 文件名（可选，sd.cpp 原生挂载） */
   lora?: string;
   loraMultiplier?: number;
+  /** 实验性标记：已知不可用/未验证的模型，下拉显示警示徽章 */
+  experimental?: boolean;
   note?: string;
 }
 
@@ -62,8 +64,10 @@ export const BUILTIN_MANIFESTS: ImageGenManifest[] = [
       vae: 'sd35_vae.safetensors',
     },
     // P6 提速：SD3.5 裸跑 20 步过慢（实测 375s+），默认降 10 步求速度
+    // 6.6 实验性标记：真机取证长时出图必被 weak-ref 溢出崩溃杀死（tombstone_04），实质不可用
+    experimental: true,
     defaults: {steps: 10, cfg: 4.5, size: 512},
-    note: 'MMDiT，端侧不带 T5（省 4.9GB）',
+    note: 'MMDiT，端侧不带 T5；CPU 后端 10 步约 3 分钟',
   },
   {
     id: 'z-image-turbo-q4',
@@ -74,8 +78,10 @@ export const BUILTIN_MANIFESTS: ImageGenManifest[] = [
       llm: 'zimage_llm.gguf',
       vae: 'ae.safetensors',
     },
+    // 6.6 实验性标记：CPU 后端分钟级 + 长时出图必被 weak-ref 溢出崩溃杀死，实质不可用
+    experimental: true,
     defaults: {steps: 8, cfg: 1, size: 512},
-    note: '无审查，中文优化',
+    note: '无审查，中文优化；CPU 后端 8 步预计数分钟',
   },
   {
     // P6 DreamLite：统一生图+编辑。UNet 0.39B(MNN)+TinyVAE+TE(Qwen-VL 4bit GGUF)
@@ -114,7 +120,7 @@ async function loadDeviceManifests(
         console.warn('[imageGenManifest] bad manifest', f.name, e);
       }
     }
-  } catch (e) {
+  } catch {
     // dir not exist etc
   }
   return out;
@@ -138,7 +144,7 @@ export async function listAvailableModels(
       if (await RNFS.exists(mainPath)) {
         result.push({manifest: m, mainPath});
       }
-    } catch (e) {
+    } catch {
       // skip
     }
   }

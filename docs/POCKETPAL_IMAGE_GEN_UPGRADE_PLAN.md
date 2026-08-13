@@ -224,10 +224,91 @@
   - 修复：VAE ONNX 输出 NCHW 被按 HWC 读→灰图/9宫格；改 NCHW→HWC 后出彩色正常图。
   - 对齐官方：默认 1024 + 多画幅(1:1/3:4/4:3/9:16/16:9) + unet_masked(attention_mask) + mu-shifted sigmas。
 
-### 6.4 待办（新窗口接力）
-- **黑图回归诊断**：切 unet_masked+shifted+1024 后真机出纯黑图。假设：①mask 约定/dtype(int64) 与 cross-attn 不符→注意力全屏蔽→noise_pred≈0；②shifted sigmas 与 diffusers scheduler 不一致→timestep 错→解码饱和黑。需桌面 A/B：masked vs unmasked unet 在 1024 维 noise_pred std 对比 + 与 diffusers set_timesteps(mu) 输出逐值比对。回退预案：若 masked 有问题，回退 unet.onnx(无mask)+保留 shifted。
-- **UI 直连按钮**：去掉二段确认，分段切换即动作——[文生图] 直接生成、[图像编辑] 进编辑（上传→压缩→提示词→编辑），不再另设主“出图”按钮造成重复。
-- **接力提示词**：见下。
-- unet 780MB 走 hf-mirror 带宽不足（~0.1MB/s），续传中；GitHub 仓库 zip 被墙（仅部分 raw 可取）。
-- TE=Qwen3-VL 4.25GB，端侧需 4-bit GGUF + llama.rn hidden-states 提取，待验证。
-- MNN Android 编译 + 真机验证待 ONNX 导出件就绪。
+### 6.4 纯黑图回归诊断与直连改造（2026-08-13，啄木鸟专工闭环）
+
+**黑图根因（桌面 A/B 定位，`.tmp/dreamlite/ab_black_regression.py`）**：
+
+| 假设 | A/B 结论 |
+|---|---|
+| ① encoder_attention_mask(int64) 约定/dtype 与 cross-attn 不符→注意力全屏蔽→noise_pred≈0 | **排除**。torch 参考 vs unet_masked.onnx 同输入 diff 4.4e-5；masked(ones) vs unet.onnx(无mask) diff 1.3e-5；mask 全0 vs 全1 仅差 3.5e-3。mask 路径健康。 |
+| ② shifted sigmas 与 diffusers FlowMatchEulerDiscreteScheduler 不一致→timestep 错→解码饱和黑 | **实锤**。`shiftedSigmas(steps, latH*latW)` 内部再平方/4：1024² 时 seq=(16384²)/4≈6.7e7 → mu≈11535 → Math.exp=Inf → sigmas 全 NaN → timestep=NaN → noise_pred=NaN → Uint8Array 转 0 → 纯黑。diffusers 正确值 sigmas=[1.0, 0.905391, 0.761333, 0.515342]、timesteps=×1000。 |
+
+**修复（src/services/dreamLiteEngine.ts）**：
+- `shiftedSigmas` seq 改为 `latArea/4`（对齐 `dreamlite_infer_ref.py` 的 `calculate_shift(lat*lat//4)`，1024² → mu=1.16）；与 diffusers `set_timesteps(sigmas, mu)` 逐值比对 max diff 6e-8。
+- VAE 解码缩放 `sf=1.5305`（SD3 遗留魔数）→ `sf=1.0`（ckpt vae/config.json scaling_factor=1.0/shift_factor=0.0）。
+- **保留** unet_masked.onnx + shifted sigmas，不回退。
+
+**桌面 e2e（`.tmp/dreamlite/e2e_fixed_sigmas.py`）**：修正后 4 步 1024 去噪链健康（latents std 0.92→0.52 无 NaN），解码 [-0.89, 0.67] 非黑。
+
+**UI 直连（src/screens/ImageGenScreen/ImageGenScreen.tsx）**：
+- 分段切换即动作：[文生图] 点击直接生成（未加载则自动加载+生成）；[图像编辑] 点击进编辑流（自动唤起上传→较大边压缩→提示词→[编辑]）。
+- 删除 DreamLite 模式下重复的主“出图”按钮（其他模型保留）。
+
+**验收状态**：
+- tsc 零错误 ✅ / Gradle assembleProdDebug ✅（app-prod-debug.apk 463MB）
+- 真机手动验收（待大王）：人物提示词出清晰人像（非黑/非灰）+ 画幅切换正常 + 文生图/编辑直连无重复按钮。
+
+**遗留待办**：
+- TE=Qwen3-VL 4.25GB 4-bit GGUF + llama.rn hidden-states 提取（已由 ONNX TE 路线替代，待长期收敛）。
+- unet 780MB hf-mirror 带宽不足（已绕过，权重就位）。
+- MNN Android 编译 + 真机验证（可选加速路线）。
+
+### 6.5 生图页产品级重构：预览区单状态机 + 编辑心智闭环（2026-08-13/14）
+
+#### 6.5.1 DreamLite 内存闪退根治
+- 根因：真机出图 OOM 闪退（TE 加载 + UNet + 解码同驻）。
+- 修法：`llama.rn` initLlama 加 `enableCpuMemArena: false` + `vocab_only: true`（TE 推理峰值大降）；编辑完成后释放 `editRgb/editSource`。
+
+#### 6.5.2 顶部模型选择栏迭代（三轮收敛）
+- 共用“加载/卸载”按钮 → **行内按钮**：每模型行右侧独立按钮（未加载=主题色“加载”；已加载=红描边“卸载”），卸载 Alert 二次确认；`imageGenStore.loadedModelId` 追踪驻留模型。
+- “出图/编辑”双条目 → **恢复单条目**：同一模型不分家（出图与编辑是同一引擎），模式切换下沉到预览区分页。
+- 交互规则：**点卡片只选中高亮，不折叠面板；点“加载”才折叠 + 面板内加载中提示**（卡片选择≠引擎加载，动作与状态解耦）。
+
+#### 6.5.3 预览区单状态机（产品级重构）
+- 状态：`previewIndex` 唯一驱动（0=编辑槽，≥1=历史第 i-1 张）；删除 `mode/currentImage` state（改派生）。
+- **0 页编辑槽**：预览区横向分页（pagingEnabled），向左滑翻到 0 页——无图时虚线框“＋ 上传本地图片”，有图时显示待编辑图 + 右下“重新上传”。
+- 派生规则：`inEdit = previewIndex === 0 && history.length > 0`（无历史时 0 页只是空占位，composer 保持出图心智，保护新用户）。
+- 编辑为纯文本指令：placeholder 引导“输入图像编辑指令，如：把天空换成日落…”，编辑指令经官方 diptych 语义模板进入条件去噪。
+
+#### 6.5.4 历史横栏联动 + 上传入历史
+- **缩略图点击 → 大图翻页 + 提示词/画幅/步数回填**（scrollToPreview + syncFromParams，历史缩略图与预览分页共用回填）。
+- 历史横栏“管理”左侧新增“上传”入口：上传图入历史（`kind:'upload'`，右下角“上传”角标，watermark 显示“上传 · WxH”），可点选查看/编辑。
+- **提示词生命周期**：上传新图/进入编辑 → 清空提示词（新图无历史提示词，编辑指令与生成描述语义不同）；切到已生成图 → 回填历史提示词+参数；上传图（prompt=''）→ 自动清空。
+- 生成/编辑完成 → 新图入 history[0] → 自动翻结果页；删除 → 回 0 页（防 previewIndex 越界）。
+
+**对账状态（2026-08-13/14）**：
+- ✅ 已落地：P0/P1 全部、P2 代码层（CMake arm64 开 OpenCL，运行时默认 CPU）、P5.4 全系列、P6-1/2、P6-5 DreamLite 全闭环（真实文生图+编辑）、6.4 黑图修复、6.5 产品级重构、6.5.5 双形态动效。
+- ⏳ 未落地：P6-3 SDXL-Lightning 下载（网络下载任务）；P6-4 MNN+SANA（新引擎工程）；P2 OpenCL 真机速度对比验证。
+
+### 6.5.5 生成/编辑双形态动效 + 编辑·出图并列（大王三轮反馈，2026-08-14）
+
+- **composer 按钮并列**：`[编辑(蓝)] [出图(主题色)]` 并排（buttonRow），编辑在前；编辑语义=二创当前预览图，出图语义=新生成一张。
+- **编辑单按钮两段式**（editArming 状态机）：浏览态点「编辑」→ 锁定当前预览图（0 页=上传图/历史页=当前图）+ 清空提示词 + placeholder 切编辑指令；预备态点「执行编辑」→ 执行二创。0 页无图时点编辑→自动唤起相册选图。
+- **出图动效**（taskKind='gen'）：生成中预览区盖不透明空白页（rgba 0.97）+ 中心 ✦ 呼吸球（Animated 脉冲）+「正在生成新图…」+ 进度条。
+- **编辑动效**（taskKind='edit'）：生成中半透明遮罩（rgba 0.6）叠在当前图上（图可见）+ 同款脉冲球 +「正在编辑此图…」+ 进度条。
+- **状态清理规则**：翻页/程序导航（scrollToPreview）→ 退出编辑预备态（目标图已变）；出图/编辑完成 taskKind 清 null；操作栏「编辑」按钮同步接 handleEditArm（文案随预备态切换），图区快捷入口与 composer 主入口行为一致。
+
+### 6.6 SD3.5/Z-Image 实验性标记（真机评估闭环，2026-08-13）
+
+#### 评估结论（大王发问：两模型是否实质不可用？）
+
+**结论：不是“没等到”，而是“永远等不到”——进程在长时出图途中先崩溃。**
+
+证据链（真机取证，啄木鸟闭环）：
+
+| 证据 | 内容 |
+|---|---|
+| imagegen_debug.log | 全部 txt2img 仅最早 SDXL Turbo 384²/2步（OpenCL，685s）成功返回；SD3.5 512²/10步、Z-Image 512²/8步均停 `generate_image begin` 无返回 |
+| tombstone_04（08-13 19:51） | SIGABRT：weak global reference table overflow（50252/51200 为 NativeAnimatedModule weak ref）——P5.4 v3 推拉反转根治后**回归**，残余高频桥调用（出图脉冲动效 useNativeDriver + TurboModule invokeJavaMethod weak ref）在分钟级长时出图中累积至溢出 |
+| 因果链 | DreamLite 秒级出图→weak-ref 无累积窗口→存活；SD3.5/Z-Image 分钟级→累积至 51200→必死。**跑得越久越必死** |
+
+#### 设计决策
+
+- **短期止损**：SD3.5/Z-Image 下拉标记「实验性」（manifest 声明 `experimental: true`，下拉行/顶部胶囊显示琥珀色徽章），明确“可能不可用”预期；DreamLite 维持唯一可用出图主力。
+- **长期复活路径（待办）**：①weak-ref 溢出回归根治（出图动效改 JS driver 或静态呈现，切断 NativeAnimatedModule 高频 weak ref）；②Adreno OpenCL hang 根因（日志证明 OpenCL 曾成功出图，685s 含首次内核编译）；③P6-3 SDXL-Lightning 快模型。
+
+#### 对账状态更新
+
+- ✅ 已落地：6.6 SD3.5/Z-Image「实验性」标记（manifest 声明 + 下拉/胶囊徽章）。
+- ⏳ 未落地：weak-ref 溢出回归根治（两模型复活先决条件）；OpenCL hang 根因；P6-3/P6-4。
+

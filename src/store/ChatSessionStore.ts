@@ -311,6 +311,15 @@ class ChatSessionStore {
       runInAction(() => {
         this.sessions = sessionMetadata;
       });
+
+      // 恢复上次会话：启动直接回到最近对话，不再每次新会话
+      if (!this.activeSessionId && sessionMetadata.length > 0) {
+        const newest = [...sessionMetadata].sort(
+          (a, b) =>
+            new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime(),
+        )[0];
+        await this.setActiveSession(newest.id);
+      }
     } catch (error) {
       console.error('Failed to load session list:', error);
     }

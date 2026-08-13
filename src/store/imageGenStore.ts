@@ -25,11 +25,15 @@ export interface GeneratedImage {
   steps?: number;
   cfg?: number;
   family?: string;
+  /** 来源：生图结果 or 用户上传（用于编辑的本地图） */
+  kind?: 'generated' | 'upload';
 }
 
 class ImageGenStore {
   /** 引擎是否已加载（SD 模型常驻标记） */
   modelLoaded = false;
+  /** 当前驻留的 SD 模型 id（下拉行内按钮状态：加载/卸载） */
+  loadedModelId: string | null = null;
   /** DreamLite 引擎是否已加载 */
   dreamliteLoaded = false;
   /** 出图任务是否进行中 */
@@ -179,6 +183,7 @@ class ImageGenStore {
   async loadModel(
     modelPath: string,
     extras: {clipL?: string; clipG?: string; llm?: string; vae?: string} = {},
+    id?: string,
   ): Promise<boolean> {
     // 互斥：加载 sd 前确保 chat 引擎已释放（自动调 modelStore.releaseContext）
     await engineMutex.acquire('image');
@@ -196,6 +201,7 @@ class ImageGenStore {
       const ok = await ImageGen.loadModel(modelPath, extras);
       runInAction(() => {
         this.modelLoaded = ok;
+        this.loadedModelId = ok ? id ?? null : null;
         this.loading = false;
         this.error = ok ? null : '模型加载失败';
       });
@@ -222,6 +228,7 @@ class ImageGenStore {
     }
     runInAction(() => {
       this.modelLoaded = false;
+      this.loadedModelId = null;
       this.loading = false;
     });
     this.syncPoll();
