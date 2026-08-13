@@ -941,8 +941,14 @@
         "benchmark": "بنچمارک",
         "settings": "تنظیمات",
         "appInfo": "درباره برنامه",
-        "testCompletion": "تست تکمیل"
+        "testCompletion": "تست تکمیل",
+        "generationSettings": "Generation Settings"
       },
+      "searchPlaceholder": "Search chats",
+      "newChat": "New chat",
+      "noSearchResults": "No chats found",
+      "groupAios": "AIOS",
+      "groupSystem": "System",
       "deleteChatTitle": "حذف چت",
       "deleteChatMessage": "آیا مطمئنید که می‌خواهید این چت را حذف کنید؟",
       "select": "انتخاب",

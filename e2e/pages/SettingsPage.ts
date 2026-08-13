@@ -29,16 +29,16 @@ export class SettingsPage extends BasePage {
   }
 
   /**
-   * Open drawer from Chat and navigate to the Settings screen.
+   * Open drawer from Chat and navigate to the Generation Settings screen
+   * (the context-size card lives there now, behind the Settings hub).
    */
   async navigateTo(): Promise<void> {
     const chatPage = new ChatPage();
     const drawerPage = new DrawerPage();
     await chatPage.openDrawer();
-    await drawerPage.waitForOpen();
-    await this.tap(Selectors.drawer.settingsTab);
+    await drawerPage.openSettingsHub();
+    await this.tap(Selectors.settingsHub.generationSettingsEntry);
     await browser.pause(300);
-    await drawerPage.waitForClose();
     await this.waitForReady();
   }
 

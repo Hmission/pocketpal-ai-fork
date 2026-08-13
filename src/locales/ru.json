@@ -474,8 +474,14 @@
         "benchmark": "Бенчмарк",
         "settings": "Настройки",
         "appInfo": "О приложении",
-        "testCompletion": "Завершение теста"
+        "testCompletion": "Завершение теста",
+        "generationSettings": "Generation Settings"
       },
+      "searchPlaceholder": "Search chats",
+      "newChat": "New chat",
+      "noSearchResults": "No chats found",
+      "groupAios": "AIOS",
+      "groupSystem": "System",
       "deleteChatTitle": "Удалить чат",
       "deleteChatMessage": "Вы уверены, что хотите удалить этот чат?",
       "dateGroups": {

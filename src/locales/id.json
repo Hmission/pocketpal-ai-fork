@@ -941,8 +941,14 @@
         "benchmark": "Benchmark",
         "settings": "Pengaturan",
         "appInfo": "Info Aplikasi",
-        "testCompletion": "Uji Penyelesaian"
+        "testCompletion": "Uji Penyelesaian",
+        "generationSettings": "Generation Settings"
       },
+      "searchPlaceholder": "Search chats",
+      "newChat": "New chat",
+      "noSearchResults": "No chats found",
+      "groupAios": "AIOS",
+      "groupSystem": "System",
       "deleteChatTitle": "Hapus Obrolan",
       "deleteChatMessage": "Yakin ingin menghapus obrolan ini?",
       "select": "Pilih",

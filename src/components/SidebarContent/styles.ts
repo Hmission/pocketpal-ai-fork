@@ -8,22 +8,77 @@ export const createStyles = (theme: MD3Theme) =>
       flex: 1,
       backgroundColor: theme.colors.surface,
     },
-    divider: {
-      marginHorizontal: 16,
-      backgroundColor: theme.colors.onSurfaceVariant,
-      height: 1,
-      opacity: 0.1,
-    },
     contentWrapper: {
       flex: 1,
       display: 'flex',
       flexDirection: 'column',
     },
+    // 顶部固定区：搜索 + 新对话
+    topSection: {
+      paddingHorizontal: 12,
+      paddingTop: 8,
+    },
+    searchContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: 10,
+      borderRadius: 10,
+      backgroundColor: theme.colors.surfaceVariant,
+    },
+    searchInput: {
+      flex: 1,
+      paddingVertical: 8,
+      fontSize: 14,
+      color: theme.colors.onSurface,
+    },
+    newChatRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingVertical: 12,
+      paddingHorizontal: 2,
+    },
+    newChatText: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: theme.colors.primary,
+    },
+    topDivider: {
+      marginHorizontal: 0,
+      backgroundColor: theme.colors.onSurfaceVariant,
+      height: 1,
+      opacity: 0.1,
+    },
+    sessionList: {
+      flex: 1,
+    },
+    // 底部固定 footer：齿轮 + 设置
+    drawerFooter: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.outline,
+      opacity: 1,
+    },
+    footerText: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: theme.colors.onSurface,
+    },
+    emptySearch: {
+      paddingVertical: 24,
+      alignItems: 'center',
+    },
+    emptySearchText: {
+      fontSize: 13,
+      color: theme.colors.onSurfaceVariant,
+    },
     sessionDrawerItem: {
       height: 40,
-    },
-    menuDrawerItem: {
-      height: 44,
     },
     versionText: {
       color: theme.colors.onSurfaceVariant,

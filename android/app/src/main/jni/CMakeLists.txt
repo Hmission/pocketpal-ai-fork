@@ -31,17 +31,48 @@ set(SD_WEBP OFF CACHE BOOL "" FORCE)
 set(SD_WEBM OFF CACHE BOOL "" FORCE)
 set(SD_CUDA OFF CACHE BOOL "" FORCE)
 set(SD_METAL OFF CACHE BOOL "" FORCE)
-# P2 单后端：arm64-v8a 当前纯 CPU。Vulkan 为下窗口路线（Adreno 官方图形 API，
-# NDK 自带 glslc），但 ggml-vulkan 构建需宿主机 SPIRV-Headers CMake 包 + glslc
-# 工具链（find_package(SPIRV-Headers CONFIG REQUIRED)），待补链后改 SD_VULKAN ON。
-# OpenCL 因 Adreno 采样 hang 永久弃用。编译期与运行时单后端一致（无 fallback）。
+# P2 单后端：arm64-v8a 启用 Vulkan（6.12 长链打穿），OpenCL 因 Adreno 采样 hang 永久弃用。
+# 编译期与运行时单后端一致（无 fallback）。运行时 hang 由 JS 侧 120s 干净失败覆盖。
 if (ANDROID_ABI STREQUAL "arm64-v8a")
-    set(SD_VULKAN OFF CACHE BOOL "" FORCE)
+    set(SD_VULKAN ON CACHE BOOL "" FORCE)
     set(SD_OPENCL OFF CACHE BOOL "" FORCE)
 else()
     set(SD_VULKAN OFF CACHE BOOL "" FORCE)
     set(SD_OPENCL OFF CACHE BOOL "" FORCE)
 endif()
+
+# ── Vulkan 补链（6.12）：NDK 原生资产（glslc/spirv-headers/libvulkan）+ Khronos 官方头 vendor ──
+# 侦察结论：SPIRV-Headers 仅 find_package(CONFIG REQUIRED) 未被 link，真实需求是
+# ggml-vulkan.cpp __has_include(<spirv/unified1/spirv.hpp>) 的 include path；host 端
+# vulkan-shaders-gen.exe 需 cl.exe（不在 PATH，用 GGML_VULKAN_SHADERS_GEN_TOOLCHAIN 指定）。
+if (SD_VULKAN AND ANDROID)
+    set(_pp_spirv_inc "${ANDROID_NDK}/sources/third_party/shaderc/third_party/spirv-tools/external/spirv-headers/include")
+    set(_pp_glslc "${ANDROID_NDK}/shader-tools/${ANDROID_HOST_TAG}/glslc${CMAKE_HOST_EXECUTABLE_SUFFIX}")
+    # ① find_package(Vulkan COMPONENTS glslc) 预设 → FindVulkan 短路通过
+    set(Vulkan_GLSLC_EXECUTABLE "${_pp_glslc}" CACHE FILEPATH "" FORCE)
+    # Vulkan C 头（<vulkan/vulkan.h> 等）：Vulkan-Hpp 与 C 头必须同版本（vulkan.hpp 静态断言
+    # VK_HEADER_VERSION == 359）。vendor Khronos 官方 Vulkan-Headers v1.4.359（1.4 世代，
+    # Apache-2.0），目录约定 thirdparty/Vulkan-Headers/ = 上游 include/ 原样放入；缺失时明确报错（非静默）。
+    if (NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/Vulkan-Headers/include/vulkan/vulkan_core.h")
+        message(FATAL_ERROR "Vulkan C headers (v1.4.359) missing. Vendor Khronos Vulkan-Headers v1.4.359 include/ into android/app/src/main/jni/thirdparty/Vulkan-Headers/")
+    endif()
+    set(Vulkan_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/Vulkan-Headers/include" CACHE PATH "" FORCE)
+    # NDK 的 libvulkan.so stub 按 API 级别裁剪导出表（API 24/26 只导 1.0，1.1 core 如
+    # vkGetPhysicalDeviceFeatures2 需 28+，1.2/1.3 core 需更高）。链接期专用 stub 用本机最高
+    # API 级别保证导出表完整；运行时由设备 Vulkan loader 解析（现代设备 loader 全量导出）。
+    set(Vulkan_LIBRARY "${CMAKE_SYSROOT}/usr/lib/${CMAKE_LIBRARY_ARCHITECTURE}/35/libvulkan.so" CACHE FILEPATH "" FORCE)
+    # ② SPIRV-Headers Config（满足 find_package CONFIG REQUIRED）
+    set(POCKETPAL_SPIRV_HEADERS_INCLUDE "${_pp_spirv_inc}")
+    set(SPIRV-Headers_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cmake" CACHE PATH "" FORCE)
+    # ③ spirv.hpp + Vulkan-Hpp include 注入（ggml-vulkan.cpp __has_include 命中）
+    include_directories("${_pp_spirv_inc}")
+    # Vulkan-Hpp（vendored，大王选定）：ggml-vulkan.cpp L22 硬依赖 <vulkan/vulkan.hpp>；
+    # vulkan.h(C API) 由 ① 处 vendor 的 Vulkan-Headers v1.4.359 同版本提供。
+    include_directories("${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/Vulkan-Hpp")
+    # ④ host shader-gen toolchain（绕过 detect_host_compiler）
+    set(GGML_VULKAN_SHADERS_GEN_TOOLCHAIN "${CMAKE_CURRENT_SOURCE_DIR}/cmake/host-toolchain.cmake" CACHE FILEPATH "" FORCE)
+endif()
+
 set(SD_BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 # NDK 交叉编译: 关掉 -march=native 类宿主指令
 set(GGML_NATIVE OFF CACHE BOOL "" FORCE)

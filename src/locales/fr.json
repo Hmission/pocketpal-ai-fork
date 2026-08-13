@@ -554,8 +554,14 @@
         "benchmark": "Benchmark",
         "settings": "Paramètres",
         "appInfo": "Info application",
-        "testCompletion": "Test de complétion"
+        "testCompletion": "Test de complétion",
+        "generationSettings": "Generation Settings"
       },
+      "searchPlaceholder": "Search chats",
+      "newChat": "New chat",
+      "noSearchResults": "No chats found",
+      "groupAios": "AIOS",
+      "groupSystem": "System",
       "deleteChatTitle": "Supprimer la discussion",
       "deleteChatMessage": "Êtes-vous sûr de vouloir supprimer cette discussion ?",
       "dateGroups": {

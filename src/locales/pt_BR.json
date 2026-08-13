@@ -959,8 +959,14 @@
         "benchmark": "Benchmark",
         "settings": "Configurações",
         "appInfo": "Sobre o App",
-        "testCompletion": "Testar Completação"
+        "testCompletion": "Testar Completação",
+        "generationSettings": "Generation Settings"
       },
+      "searchPlaceholder": "Search chats",
+      "newChat": "New chat",
+      "noSearchResults": "No chats found",
+      "groupAios": "AIOS",
+      "groupSystem": "System",
       "deleteChatTitle": "Excluir Chat",
       "deleteChatMessage": "Tem certeza de que deseja excluir este chat?",
       "select": "Selecionar",

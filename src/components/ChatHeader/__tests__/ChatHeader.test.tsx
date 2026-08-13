@@ -1,6 +1,21 @@
 import React from 'react';
+import {fireEvent} from '@testing-library/react-native';
 import {render} from '../../../../jest/test-utils';
 import {ChatHeader} from '../ChatHeader';
+import {ROUTES} from '../../../utils/navigationConstants';
+import {chatSessionStore} from '../../../store';
+
+const mockNavigate = jest.fn();
+
+// ChatHeader now carries the Image Gen entry button, which navigates via
+// useNavigation. Provide a stable navigation mock.
+jest.mock('@react-navigation/native', () => {
+  const actual = jest.requireActual('@react-navigation/native');
+  return {
+    ...actual,
+    useNavigation: () => ({navigate: mockNavigate}),
+  };
+});
 
 // Mock the child components
 jest.mock('../../HeaderLeft', () => ({
@@ -24,21 +39,20 @@ jest.mock('../../ChatHeaderTitle', () => ({
   },
 }));
 
-// Create a mock store object
-const mockChatSessionStore = {
-  shouldShowHeaderDivider: false,
+// shouldShowHeaderDivider is an accessor on the global mock store; replace it
+// with a controllable getter per test.
+const setHeaderDivider = (value: boolean) => {
+  Object.defineProperty(chatSessionStore, 'shouldShowHeaderDivider', {
+    get: () => value,
+    configurable: true,
+  });
 };
-
-// Mock the stores
-jest.mock('../../../store', () => ({
-  chatSessionStore: mockChatSessionStore,
-}));
 
 describe('ChatHeader', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // Reset the mock store value
-    mockChatSessionStore.shouldShowHeaderDivider = false;
+    setHeaderDivider(false);
   });
 
   it('renders all child components', () => {
@@ -51,7 +65,7 @@ describe('ChatHeader', () => {
   });
 
   it('applies correct styles when header divider should not be shown', () => {
-    mockChatSessionStore.shouldShowHeaderDivider = false;
+    setHeaderDivider(false);
     const {getByTestId} = render(<ChatHeader />, {withSafeArea: true});
 
     const headerView = getByTestId('header-view');
@@ -64,12 +78,20 @@ describe('ChatHeader', () => {
   });
 
   it('applies correct styles when header divider should be shown', () => {
-    mockChatSessionStore.shouldShowHeaderDivider = true;
+    setHeaderDivider(true);
     const {getByTestId} = render(<ChatHeader />, {withSafeArea: true});
 
     const headerView = getByTestId('header-view');
     expect(headerView.props.style[1]).toMatchObject({
       backgroundColor: expect.any(String),
     });
+  });
+
+  it('navigates to Image Gen screen when the image gen button is pressed', () => {
+    const {getByTestId} = render(<ChatHeader />);
+
+    fireEvent.press(getByTestId('imagegen-button'));
+
+    expect(mockNavigate).toHaveBeenCalledWith(ROUTES.IMAGE_GEN);
   });
 });

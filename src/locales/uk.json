@@ -948,8 +948,14 @@
         "benchmark": "Бенчмарк",
         "settings": "Налаштування",
         "appInfo": "Інформація про додаток",
-        "testCompletion": "Завершення тесту"
+        "testCompletion": "Завершення тесту",
+        "generationSettings": "Generation Settings"
       },
+      "searchPlaceholder": "Search chats",
+      "newChat": "New chat",
+      "noSearchResults": "No chats found",
+      "groupAios": "AIOS",
+      "groupSystem": "System",
       "deleteChatTitle": "Видалити чат",
       "deleteChatMessage": "Ви впевнені, що хочете видалити цей чат?",
       "select": "Вибрати",

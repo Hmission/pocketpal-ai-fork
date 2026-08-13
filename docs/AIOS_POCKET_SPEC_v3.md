@@ -235,7 +235,7 @@ AIOS 是寄宿型智能体，不做 IDE，寄宿在 Cursor/Qoder 等宿主上。
 | 混合检索 | 注入种子记忆 → 问相关问题 | FTS5+关键词混合召回优于纯关键词 |
 | 稳定抽取 | 连续 10 轮抽取 | JSON 解析成功率 100%（grammar） |
 | memory_search 工具 | 问"我之前说过什么" → 模型调用 search_memory | 工具链路打通 |
-| 前端管理入口 | 抽屉进入各面板 | 记忆/知识库/workspace/工具面板可用 |
+| 前端管理入口 | 设置页入口中心进入各面板 | 记忆/知识库/智能体/工具面板可用 |
 | 跨会话连续 | 告诉模型"我叫大王" → 新建会话 → 问 | 回答"大王" |
 | 人设稳定 | 10 轮对话 | 自称奴家、称大王 |
 | 数据独立化 | 卸载 → 重装 → 启动 | 模型/workspace/conversations/memories 全恢复 |
@@ -294,3 +294,18 @@ AIOS 是寄宿型智能体，不做 IDE，寄宿在 Cursor/Qoder 等宿主上。
 ### 已记录偏差（不修，避免臃肿）
 - **FTS5 索引路径**: spec 原文"索引存 AIOS_DB_DIR/search.db"，实现为 WatermelonDB SQLiteAdapter(dbName:'aios_search') 且运行时因 WatermelonDB 封装不可达回退纯 JS 全文检索。功能等效（手机端少量文档场景），引新原生依赖违背锋利原则 → 保留纯 JS 方案并记录。
 - **AIOS_INTEGRATION_PLAN.md P4 智能体仪式**: 延期至下一迭代（开场白/意图状态机/收尾/自检），本迭代聚焦记忆闭环。
+
+
+## v3.5 迭代记录（2026-08-14 抽屉与设置页信息架构重构）
+
+### 变更
+1. **抽屉纯会话中心**：SidebarContent 移除全部功能导航 Drawer.Item，改为顶部搜索框（session-search-input）→「+ 新对话」（new-chat-button）→ 会话分组列表 → 底部固定齿轮设置（drawer-item-settings）；长按菜单/多选批量导出删除/日期分组保留。
+2. **生图入口迁移**：聊天页头部新增生图图标按钮（imagegen-button）→ IMAGE_GEN，不再从抽屉进入。
+3. **设置页入口中心**：新建 SettingsScreen 入口中心——AIOS 组（伙伴/模型/记忆/知识库/智能体/工具配置）+ 系统组（基准测试/生成设置/关于），Dev Tools 仅 __DEV__ 追加；原生成参数页整体迁移为 GenerationSettingsScreen 二级页面（GENERATION_SETTINGS 路由）。
+4. **命名与 l10n**：workspace=智能体（zh_Hant 智慧體）、pals=伙伴；18 语言文件补齐 6 新键（zh/zh_Hant 真实翻译，其余英文值兜底；et/it 无 sidebarContent 命名空间维持全英文回退设计）。
+5. **e2e 适配**：抽屉开合指示器 drawer-item-pals→drawer-item-settings；DrawerPage 导航链改「开抽屉→设置页入口中心→settings-item-xxx」。
+
+### 验证
+- [x] tsc 零错误；目标单测 126/126（SidebarContent/Settings/GenerationSettingsScreen/locales/ChatHeader）
+- [x] Gradle assembleProdDebug BUILD SUCCESSFUL（Vulkan 原生链 v1.4.359 六关打通）+ adb install Success + 启动零崩溃
+- [ ] 真机手动验证清单（抽屉/聊天页生图图标/设置页 9 入口，待大王）

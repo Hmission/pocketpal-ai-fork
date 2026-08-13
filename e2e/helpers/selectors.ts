@@ -118,18 +118,49 @@ export const Selectors = {
     get modelsTab(): string {
       return byText('Models');
     },
-    // Pals tab doubles as the drawer-open indicator (DrawerPage.isOpen /
+    // Settings footer doubles as the drawer-open indicator (DrawerPage.isOpen /
     // waitForOpen / waitForClose), so it must survive a language switch.
-    // Match the app's stable testID (SidebarContent drawer-item-pals) instead
-    // of the English label.
-    get palsTab(): string {
-      return byTestId('drawer-item-pals');
-    },
-    get benchmarkTab(): string {
-      return byText('Benchmark');
-    },
+    // Match the app's stable testID (SidebarContent drawer-item-settings).
     get settingsTab(): string {
-      return byText('Settings');
+      return byTestId('drawer-item-settings');
+    },
+    get newChatButton(): string {
+      return byTestId('new-chat-button');
+    },
+    get searchInput(): string {
+      return byTestId('session-search-input');
+    },
+  },
+
+  // Settings hub page: feature entries moved out of the drawer into the
+  // Settings screen (SettingsScreen.tsx entry hub).
+  settingsHub: {
+    get palsEntry(): string {
+      return byTestId('settings-item-pals');
+    },
+    get modelsEntry(): string {
+      return byTestId('settings-item-models');
+    },
+    get memoryEntry(): string {
+      return byTestId('settings-item-memory');
+    },
+    get knowledgeEntry(): string {
+      return byTestId('settings-item-knowledge');
+    },
+    get workspaceEntry(): string {
+      return byTestId('settings-item-workspace');
+    },
+    get toolEntry(): string {
+      return byTestId('settings-item-tool');
+    },
+    get benchmarkEntry(): string {
+      return byTestId('settings-item-benchmark');
+    },
+    get generationSettingsEntry(): string {
+      return byTestId('settings-item-generation-settings');
+    },
+    get appInfoEntry(): string {
+      return byTestId('settings-item-appinfo');
     },
   },
 

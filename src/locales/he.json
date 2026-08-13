@@ -941,8 +941,14 @@
         "benchmark": "מבחן ביצועים",
         "settings": "הגדרות",
         "appInfo": "מידע על האפליקציה",
-        "testCompletion": "בדיקת השלמת טקסט"
+        "testCompletion": "בדיקת השלמת טקסט",
+        "generationSettings": "Generation Settings"
       },
+      "searchPlaceholder": "Search chats",
+      "newChat": "New chat",
+      "noSearchResults": "No chats found",
+      "groupAios": "AIOS",
+      "groupSystem": "System",
       "deleteChatTitle": "מחק צ'אט",
       "deleteChatMessage": "האם אתה בטוח שאתה רוצה למחוק את הצ'אט הזה?",
       "select": "בחר",

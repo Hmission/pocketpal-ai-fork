@@ -6,6 +6,7 @@ export const ROUTES = {
   PALS: 'Pals (experimental)',
   BENCHMARK: 'Benchmark',
   SETTINGS: 'Settings',
+  GENERATION_SETTINGS: 'GenerationSettings',
   APP_INFO: 'App Info',
   MEMORY: 'Memory',
   KNOWLEDGE: 'Knowledge',

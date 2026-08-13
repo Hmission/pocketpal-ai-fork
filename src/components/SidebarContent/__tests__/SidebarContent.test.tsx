@@ -54,10 +54,10 @@ describe('SidebarContent Component', () => {
   it('navigates to Chat screen when a session is pressed', async () => {
     const {getByText, queryByText} = render(<TestNavigator />);
 
-    // Navigate to a differnet page (as the default is chat screen)
-    fireEvent.press(getByText('Models'));
+    // Navigate to a different page (as the default is chat screen)
+    fireEvent.press(getByText('Settings'));
     expect(queryByText('Chat Screen')).toBeNull();
-    expect(getByText('Models Screen')).toBeTruthy();
+    expect(getByText('Settings Screen')).toBeTruthy();
 
     // Pressing a session should navigate to the Chat screen
     fireEvent.press(getByText('Session 1'));
@@ -66,18 +66,47 @@ describe('SidebarContent Component', () => {
     });
   });
 
-  it('navigates to correct screen from drawer items', () => {
+  it('navigates to Settings screen from the drawer footer', () => {
     const {getByText, queryByText} = render(<TestNavigator />);
 
-    // Ensure the Models screen is rendered by pressing the 'Models' drawer item
-    fireEvent.press(getByText('Models'));
-    expect(getByText('Models Screen')).toBeTruthy();
-    expect(queryByText('Chat Screen')).toBeNull();
-
-    // Ensure the Settings screen is rendered by pressing the 'Settings' drawer item
+    // Ensure the Settings screen is rendered by pressing the footer entry
     fireEvent.press(getByText('Settings'));
     expect(getByText('Settings Screen')).toBeTruthy();
-    expect(queryByText('Models Screen')).toBeNull();
+    expect(queryByText('Chat Screen')).toBeNull();
+  });
+
+  it('starts a new chat when the new-chat button is pressed', async () => {
+    const {getByTestId} = render(<TestNavigator />);
+
+    fireEvent.press(getByTestId('new-chat-button'));
+
+    await waitFor(() => {
+      expect(chatSessionStore.resetActiveSession).toHaveBeenCalled();
+    });
+  });
+
+  it('filters sessions by search query', () => {
+    const {getByTestId, queryByText} = render(<TestNavigator />);
+
+    // Both sessions visible initially
+    expect(queryByText('Session 1')).toBeTruthy();
+    expect(queryByText('Session 2')).toBeTruthy();
+
+    // Filter down to one session
+    fireEvent.changeText(getByTestId('session-search-input'), 'Session 2');
+    expect(queryByText('Session 1')).toBeNull();
+    expect(queryByText('Session 2')).toBeTruthy();
+  });
+
+  it('shows empty state when search has no matches', () => {
+    const {getByTestId, getByText} = render(<TestNavigator />);
+
+    fireEvent.changeText(
+      getByTestId('session-search-input'),
+      'no-such-session',
+    );
+
+    expect(getByText('No chats found')).toBeTruthy();
   });
 
   describe('Selection Mode', () => {

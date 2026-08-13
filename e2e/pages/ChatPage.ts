@@ -58,16 +58,21 @@ export class ChatPage extends BasePage {
    *
    * The single tap is occasionally missed on Android (the drawer never opens),
    * which then fails the downstream waitForOpen. Tap, verify the drawer
-   * actually opened (the Pals item appears), and retry the tap if it didn't —
-   * checking "already open" first so a retry can't toggle an open drawer shut.
+   * actually opened (the Settings footer appears), and retry the tap if it
+   * didn't — checking "already open" first so a retry can't toggle an open
+   * drawer shut.
    */
   async openDrawer(): Promise<void> {
     for (let attempt = 0; attempt < 3; attempt++) {
-      if (await this.isElementDisplayed(Selectors.drawer.palsTab, 1000)) {
+      if (
+        await this.isElementDisplayed(Selectors.drawer.settingsTab, 1000)
+      ) {
         return;
       }
       await this.tap(Selectors.chat.menuButton);
-      if (await this.isElementDisplayed(Selectors.drawer.palsTab, 5000)) {
+      if (
+        await this.isElementDisplayed(Selectors.drawer.settingsTab, 5000)
+      ) {
         return;
       }
     }

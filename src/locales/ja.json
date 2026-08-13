@@ -941,8 +941,14 @@
         "benchmark": "ベンチマーク",
         "settings": "設定",
         "appInfo": "アプリ情報",
-        "testCompletion": "テスト完了"
+        "testCompletion": "テスト完了",
+        "generationSettings": "Generation Settings"
       },
+      "searchPlaceholder": "Search chats",
+      "newChat": "New chat",
+      "noSearchResults": "No chats found",
+      "groupAios": "AIOS",
+      "groupSystem": "System",
       "deleteChatTitle": "チャットを削除",
       "deleteChatMessage": "このチャットを削除してもよろしいですか？",
       "select": "選択",

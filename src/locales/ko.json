@@ -474,8 +474,14 @@
         "benchmark": "벤치마크",
         "settings": "설정",
         "appInfo": "앱 정보",
-        "testCompletion": "테스트 완료"
+        "testCompletion": "테스트 완료",
+        "generationSettings": "Generation Settings"
       },
+      "searchPlaceholder": "Search chats",
+      "newChat": "New chat",
+      "noSearchResults": "No chats found",
+      "groupAios": "AIOS",
+      "groupSystem": "System",
       "deleteChatTitle": "채팅 삭제",
       "deleteChatMessage": "이 채팅을 삭제하겠습니까?",
       "dateGroups": {

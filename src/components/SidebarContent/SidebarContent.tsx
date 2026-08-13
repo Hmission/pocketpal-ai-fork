@@ -1,5 +1,11 @@
 import React, {useContext, useEffect, useState} from 'react';
-import {TouchableOpacity, View, Alert, SectionList} from 'react-native';
+import {
+  TouchableOpacity,
+  View,
+  Alert,
+  SectionList,
+  TextInput,
+} from 'react-native';
 import {observer} from 'mobx-react';
 import {Divider, Drawer, Text} from 'react-native-paper';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
@@ -11,29 +17,17 @@ import {createStyles} from './styles';
 import {chatSessionStore, SessionMetaData} from '../../store';
 import {Menu, RenameModal, Checkbox} from '..';
 import {
-  BenchmarkIcon,
-  CameraIcon,
-  ChatIcon,
-  EditBoxIcon,
   EditIcon,
-  GridIcon,
-  HeartIcon,
-  AtomIcon,
-  CodeIcon,
-  ModelIcon,
-  PalIcon,
+  PlusIcon,
+  SearchIcon,
   SettingsIcon,
   ShareIcon,
   TrashIcon,
-  AppInfoIcon,
 } from '../../assets/icons';
 import {L10nContext} from '../../utils';
 import {t} from '../../locales';
 import {ROUTES} from '../../utils/navigationConstants';
 import {exportChatSession} from '../../utils/exportUtils';
-
-// Check if app is in debug mode
-const isDebugMode = __DEV__;
 
 // Session item props interface
 interface SessionItemProps {
@@ -271,20 +265,27 @@ export const SidebarContent: React.FC<DrawerContentComponentProps> = observer(
     const [menuPosition, setMenuPosition] = useState({x: 0, y: 0});
     const [sessionToRename, setSessionToRename] =
       useState<SessionMetaData | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
 
     const theme = useTheme();
     const styles = createStyles(theme);
     const l10n = useContext(L10nContext);
     const insets = useSafeAreaInsets();
 
-    // Convert groupedSessions to SectionList format
-    // observer() HOC handles MobX reactivity, transformation is cheap
-    const sections = Object.entries(chatSessionStore.groupedSessions).map(
-      ([dateLabel, sessions]) => ({
+    // Convert groupedSessions to SectionList format, filtered by the search
+    // query when one is active. observer() HOC handles MobX reactivity,
+    // transformation is cheap.
+    const query = searchQuery.trim().toLowerCase();
+    const sections = Object.entries(chatSessionStore.groupedSessions)
+      .map(([dateLabel, sessions]) => ({
         title: dateLabel,
-        data: sessions,
-      }),
-    );
+        data: query
+          ? sessions.filter(session =>
+              session.title.toLowerCase().includes(query),
+            )
+          : sessions,
+      }))
+      .filter(({data}) => data.length > 0);
 
     useEffect(() => {
       chatSessionStore.loadSessionList();
@@ -312,6 +313,15 @@ export const SidebarContent: React.FC<DrawerContentComponentProps> = observer(
       },
       [props.navigation],
     );
+
+    const handleNewChat = React.useCallback(() => {
+      chatSessionStore.resetActiveSession();
+      props.navigation.navigate(ROUTES.CHAT);
+    }, [props.navigation]);
+
+    const handleOpenSettings = React.useCallback(() => {
+      props.navigation.navigate(ROUTES.SETTINGS);
+    }, [props.navigation]);
 
     const handleSessionLongPress = React.useCallback(
       (sessionId: string, event: any) => {
@@ -490,138 +500,6 @@ export const SidebarContent: React.FC<DrawerContentComponentProps> = observer(
       ],
     );
 
-    // List header with main menu items
-    const ListHeaderComponent = React.useMemo(
-      () => (
-        <View>
-          {/* 核心导航：高频日常使用 */}
-          <Drawer.Section showDivider={false}>
-            <Drawer.Item
-              label={l10n.components.sidebarContent.menuItems.chat}
-              icon={() => <ChatIcon stroke={theme.colors.primary} />}
-              onPress={() => props.navigation.navigate(ROUTES.CHAT)}
-              style={styles.menuDrawerItem}
-              testID="drawer-item-chat"
-            />
-            <Drawer.Item
-              label={
-                l10n.components.sidebarContent.menuItems.imageGen ?? '生图'
-              }
-              icon={() => (
-                <CameraIcon width={24} height={24} stroke={theme.colors.primary} />
-              )}
-              onPress={() => props.navigation.navigate(ROUTES.IMAGE_GEN)}
-              style={styles.menuDrawerItem}
-              testID="drawer-item-imagegen"
-            />
-            <Drawer.Item
-              label={l10n.components.sidebarContent.menuItems.pals}
-              icon={() => <PalIcon stroke={theme.colors.primary} />}
-              onPress={() => props.navigation.navigate(ROUTES.PALS)}
-              style={styles.menuDrawerItem}
-              testID="drawer-item-pals"
-            />
-            <Drawer.Item
-              label={l10n.components.sidebarContent.menuItems.models}
-              icon={() => <ModelIcon stroke={theme.colors.primary} />}
-              onPress={() => props.navigation.navigate(ROUTES.MODELS)}
-              style={styles.menuDrawerItem}
-              testID="drawer-item-models"
-            />
-          </Drawer.Section>
-
-          {/* AIOS 智能体：记忆/知识/工具类中频入口 */}
-          <Drawer.Section showDivider={false}>
-            <Drawer.Item
-              label={l10n.components.sidebarContent.menuItems.memory}
-              icon={() => (
-                <HeartIcon width={24} height={24} stroke={theme.colors.primary} />
-              )}
-              onPress={() => props.navigation.navigate(ROUTES.MEMORY)}
-              style={styles.menuDrawerItem}
-            />
-            <Drawer.Item
-              label={l10n.components.sidebarContent.menuItems.knowledge}
-              icon={() => (
-                <GridIcon width={24} height={24} stroke={theme.colors.primary} />
-              )}
-              onPress={() => props.navigation.navigate(ROUTES.KNOWLEDGE)}
-              style={styles.menuDrawerItem}
-            />
-            <Drawer.Item
-              label={l10n.components.sidebarContent.menuItems.workspace}
-              icon={() => (
-                <EditBoxIcon width={24} height={24} stroke={theme.colors.primary} />
-              )}
-              onPress={() => props.navigation.navigate(ROUTES.WORKSPACE)}
-              style={styles.menuDrawerItem}
-            />
-            <Drawer.Item
-              label={l10n.components.sidebarContent.menuItems.tool}
-              icon={() => (
-                <AtomIcon width={24} height={24} stroke={theme.colors.primary} />
-              )}
-              onPress={() => props.navigation.navigate(ROUTES.TOOL)}
-              style={styles.menuDrawerItem}
-            />
-          </Drawer.Section>
-
-          {/* 系统：低频设置与信息 */}
-          <Drawer.Section showDivider={false}>
-            <Drawer.Item
-              label={l10n.components.sidebarContent.menuItems.benchmark}
-              icon={() => <BenchmarkIcon stroke={theme.colors.primary} />}
-              onPress={() => props.navigation.navigate(ROUTES.BENCHMARK)}
-              style={styles.menuDrawerItem}
-              testID="drawer-item-benchmark"
-            />
-            <Drawer.Item
-              label={l10n.components.sidebarContent.menuItems.settings}
-              icon={() => (
-                <SettingsIcon
-                  width={24}
-                  height={24}
-                  stroke={theme.colors.primary}
-                />
-              )}
-              onPress={() => props.navigation.navigate(ROUTES.SETTINGS)}
-              style={styles.menuDrawerItem}
-              testID="drawer-item-settings"
-            />
-            <Drawer.Item
-              label={l10n.components.sidebarContent.menuItems.appInfo}
-              icon={() => (
-                <AppInfoIcon
-                  width={24}
-                  height={24}
-                  stroke={theme.colors.primary}
-                />
-              )}
-              onPress={() => props.navigation.navigate(ROUTES.APP_INFO)}
-              style={styles.menuDrawerItem}
-            />
-            {/* Only show Dev Tools in debug mode */}
-            {isDebugMode && (
-              <Drawer.Item
-                label="Dev Tools"
-                icon={() => (
-                  <CodeIcon
-                    width={24}
-                    height={24}
-                    stroke={theme.colors.primary}
-                  />
-                )}
-                onPress={() => props.navigation.navigate(ROUTES.DEV_TOOLS)}
-                style={styles.menuDrawerItem}
-              />
-            )}
-          </Drawer.Section>
-          <Divider style={styles.divider} />
-        </View>
-      ),
-      [l10n, theme, styles, props.navigation],
-    );
-
     return (
       <GestureHandlerRootView style={styles.sidebarContainer}>
         <View
@@ -657,19 +535,78 @@ export const SidebarContent: React.FC<DrawerContentComponentProps> = observer(
                 renderItem={renderItem}
                 renderSectionHeader={renderSectionHeader}
                 stickySectionHeadersEnabled={false}
+                style={styles.sessionList}
                 contentContainerStyle={styles.scrollViewContent}
               />
             </>
           ) : (
-            <SectionList
-              sections={sections}
-              keyExtractor={keyExtractor}
-              renderItem={renderItem}
-              renderSectionHeader={renderSectionHeader}
-              ListHeaderComponent={ListHeaderComponent}
-              stickySectionHeadersEnabled={false}
-              contentContainerStyle={styles.scrollViewContent}
-            />
+            <>
+              {/* 顶部固定区：搜索 + 新对话 */}
+              <View style={styles.topSection}>
+                <View style={styles.searchContainer}>
+                  <SearchIcon stroke={theme.colors.onSurfaceVariant} />
+                  <TextInput
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    placeholder={
+                      l10n.components.sidebarContent.searchPlaceholder
+                    }
+                    placeholderTextColor={theme.colors.onSurfaceVariant}
+                    style={styles.searchInput}
+                    testID="session-search-input"
+                    returnKeyType="search"
+                    autoCorrect={false}
+                  />
+                </View>
+                <TouchableOpacity
+                  style={styles.newChatRow}
+                  onPress={handleNewChat}
+                  testID="new-chat-button">
+                  <PlusIcon
+                    stroke={theme.colors.primary}
+                    width={22}
+                    height={22}
+                  />
+                  <Text style={styles.newChatText}>
+                    {l10n.components.sidebarContent.newChat}
+                  </Text>
+                </TouchableOpacity>
+                <Divider style={styles.topDivider} />
+              </View>
+              <SectionList
+                sections={sections}
+                keyExtractor={keyExtractor}
+                renderItem={renderItem}
+                renderSectionHeader={renderSectionHeader}
+                stickySectionHeadersEnabled={false}
+                style={styles.sessionList}
+                contentContainerStyle={styles.scrollViewContent}
+                keyboardShouldPersistTaps="handled"
+                ListEmptyComponent={
+                  query ? (
+                    <View style={styles.emptySearch}>
+                      <Text style={styles.emptySearchText}>
+                        {l10n.components.sidebarContent.noSearchResults}
+                      </Text>
+                    </View>
+                  ) : null
+                }
+              />
+              {/* 底部固定：齿轮 + 设置 */}
+              <TouchableOpacity
+                style={styles.drawerFooter}
+                onPress={handleOpenSettings}
+                testID="drawer-item-settings">
+                <SettingsIcon
+                  width={24}
+                  height={24}
+                  stroke={theme.colors.primary}
+                />
+                <Text style={styles.footerText}>
+                  {l10n.components.sidebarContent.menuItems.settings}
+                </Text>
+              </TouchableOpacity>
+            </>
           )}
         </View>
         <RenameModal

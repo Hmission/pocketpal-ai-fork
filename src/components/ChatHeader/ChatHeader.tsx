@@ -1,6 +1,9 @@
 import React from 'react';
 import {Platform, View, TouchableOpacity, Text} from 'react-native';
 import {observer} from 'mobx-react';
+import {IconButton} from 'react-native-paper';
+import {DrawerNavigationProp} from '@react-navigation/drawer';
+import {useNavigation} from '@react-navigation/native';
 
 import {createStyles} from './styles';
 import {HeaderRight} from '../HeaderRight';
@@ -14,10 +17,13 @@ import {useTheme} from '../../hooks';
 import {chatSessionStore, modelStore} from '../../store';
 import {HeaderLeft} from '../HeaderLeft';
 import {SessionStatusBar} from '../SessionStatusBar';
+import {CameraIcon} from '../../assets/icons';
+import {ROUTES} from '../../utils/navigationConstants';
 
 export const ChatHeader: React.FC<{onModelPickerPress?: () => void}> = observer(
   ({onModelPickerPress}) => {
   const theme = useTheme();
+  const navigation = useNavigation<DrawerNavigationProp<any>>();
 
   const insets = useSafeAreaInsets();
   const layout = useSafeAreaFrame();
@@ -67,6 +73,18 @@ export const ChatHeader: React.FC<{onModelPickerPress?: () => void}> = observer(
               </Text>
             </TouchableOpacity>
           )}
+          {/* 生图入口：抽屉已改为聊天记录中心，生图从头部进入 */}
+          <IconButton
+            icon={() => (
+              <CameraIcon
+                width={24}
+                height={24}
+                stroke={theme.colors.primary}
+              />
+            )}
+            testID="imagegen-button"
+            onPress={() => navigation.navigate(ROUTES.IMAGE_GEN)}
+          />
           <HeaderRight />
         </View>
       </View>

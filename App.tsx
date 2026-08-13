@@ -44,6 +44,7 @@ import {
   ChatScreen,
   ModelsScreen,
   SettingsScreen,
+  GenerationSettingsScreen,
   BenchmarkScreen,
   AboutScreen,
 
@@ -158,6 +159,14 @@ const AppDrawer: React.FC = () => {
         options={{
           headerStyle: styles.headerWithoutDivider,
           title: currentL10n.screenTitles.settings,
+        }}
+      />
+      <Drawer.Screen
+        name={ROUTES.GENERATION_SETTINGS}
+        component={gestureHandlerRootHOC(GenerationSettingsScreen)}
+        options={{
+          headerStyle: styles.headerWithoutDivider,
+          title: currentL10n.components.sidebarContent.menuItems.generationSettings,
         }}
       />
       <Drawer.Screen

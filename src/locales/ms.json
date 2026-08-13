@@ -941,8 +941,14 @@
         "benchmark": "Tolok Ukur",
         "settings": "Tetapan",
         "appInfo": "Maklumat Aplikasi",
-        "testCompletion": "Uji Penyiapan"
+        "testCompletion": "Uji Penyiapan",
+        "generationSettings": "Generation Settings"
       },
+      "searchPlaceholder": "Search chats",
+      "newChat": "New chat",
+      "noSearchResults": "No chats found",
+      "groupAios": "AIOS",
+      "groupSystem": "System",
       "deleteChatTitle": "Padam Sembang",
       "deleteChatMessage": "Pasti mahu memadam sembang ini?",
       "select": "Pilih",

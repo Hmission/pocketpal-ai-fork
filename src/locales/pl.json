@@ -914,8 +914,14 @@
         "benchmark": "Benchmark",
         "settings": "Ustawienia",
         "appInfo": "Informacje o Aplikacji",
-        "testCompletion": "Test generowania"
+        "testCompletion": "Test generowania",
+        "generationSettings": "Generation Settings"
       },
+      "searchPlaceholder": "Search chats",
+      "newChat": "New chat",
+      "noSearchResults": "No chats found",
+      "groupAios": "AIOS",
+      "groupSystem": "System",
       "deleteChatTitle": "Usuń Czat",
       "deleteChatMessage": "Czy na pewno chcesz usunąć tę rozmowę?",
       "select": "Wybierz",

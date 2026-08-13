@@ -551,5 +551,103 @@
 
 **工作区收束**：真机取证产物（截图/logcat/uiautomator dump/监控脚本）已归置 .gitignore 根锚定模式，git status 清零；文件保留于工作区不物理删除。
 
+### 6.12 Vulkan 补链长链打穿设计（2026-08-13，大王令：收束风险，一次性长链打穿）
+
+> 目标：将 6.11 R1「Vulkan 补链」从确定性待办落地为可编译的 Vulkan 后端。原则：**零下载、零安装宿主机 SDK、不改 vendored ggml 源码**（锋利、可跟踪上游、不补丁堆叠）。
+
+#### 深度侦察结论（本轮取证）
+
+| 项 | 结论 |
+|---|---|
+| SPIRV-Headers 消费点 | 仅 ggml-vulkan/CMakeLists L14 `find_package(... CONFIG REQUIRED)`；target **未被 link**（ggml 全目录零 target_link_libraries）。真实需求 = ggml-vulkan.cpp L40 `__has_include(<spirv/unified1/spirv.hpp>)` 编译期 include path |
+| NDK spirv.hpp | ✅ `…\spirv-headers\include\spirv\unified1\spirv.hpp`（unified1 共 31 文件） |
+| NDK vulkan.h | ✅ `sysroot\usr\include\vulkan\vulkan.h` |
+| NDK libvulkan.so | ✅ `sysroot\usr\lib\<triple>\libvulkan.so` |
+| NDK glslc | ✅ `shader-tools\windows-x86_64\glslc.exe`（shader-gen L221 消费） |
+| host shader-gen 编译 | ExternalProject 用 detect_host_compiler 找 cl/gcc/clang（NO_CMAKE_FIND_ROOT_PATH）；cl.exe 完整路径在但**不在 PATH** → 需 `GGML_VULKAN_SHADERS_GEN_TOOLCHAIN` 显式指定 |
+
+#### 补链方案（4 处配置 + 1 个 Config，全在我方 jni/ 下，零改 ggml）
+
+1. **SPIRV-HeadersConfig.cmake**（新增 `android/app/src/main/jni/cmake/`）：定义 `SPIRV-Headers::SPIRV-Headers` INTERFACE IMPORTED，INTERFACE_INCLUDE_DIRECTORIES 指向 NDK spirv-headers/include → 满足 L14 REQUIRED。
+2. **find_package(Vulkan) 预设**：`Vulkan_GLSLC_EXECUTABLE` / `Vulkan_INCLUDE_DIR` / `Vulkan_LIBRARY` FORCE cache 指向 NDK（glslc / sysroot include / libvulkan.so）→ FindVulkan 短路通过。
+3. **spirv.hpp include 注入**：add_subdirectory 前 `include_directories(NDK spirv-headers/include)`，让 ggml-vulkan.cpp 的 __has_include 命中。
+4. **host shader-gen toolchain**：`GGML_VULKAN_SHADERS_GEN_TOOLCHAIN` 指向 host-toolchain.cmake（cl.exe 完整路径），绕过 detect_host_compiler。
+
+#### 风险点（诚实声明）
+
+- **host 编译器 MSVC 环境**：裸 cl.exe 需 INCLUDE/LIB 环境（vcvarsall）。Gradle externalNativeBuild 是否继承 MSVC 环境待实测；若不继承，shader-gen.exe 编译失败 → 需大王构建前激活 vcvarsall 或提供 MinGW。**唯一可能需外部输入的点**。
+- shader 数量多 → 首次构建时间显著增加。
+
+#### 三处启用单点（与 6.11 机制衔接）
+
+- CMakeLists：`SD_VULKAN ON`（arm64）
+- manifest：defaults.backend='Vulkan'
+- 运行时 hang 已由 JS 侧 120s 干净失败覆盖（无兜底）
+
+#### 执行状态与交接（2026-08-13，本窗口因与另一窗口构建趋同被停，移交新窗口）
+
+**本窗口突破五关（补链构建实测，按序）**：
+1. `find_package(SPIRV-Headers CONFIG)` → 自写极简 SPIRV-HeadersConfig.cmake（jni/cmake/，指向 NDK spirv-headers，满足 REQUIRED；真实 include 由 include_directories 注入）✅
+2. `find_package(Vulkan COMPONENTS glslc)` → 预设 Vulkan_GLSLC_EXECUTABLE / Vulkan_INCLUDE_DIR / Vulkan_LIBRARY FORCE cache 指向 NDK（glslc / sysroot / libvulkan.so），FindVulkan 短路通过 ✅
+3. host ninja 缺失 → host-toolchain.cmake 设 CMAKE_MAKE_PROGRAM 指向 SDK cmake 的 ninja.exe ✅
+4. cl.exe broken（无 MSVC 环境）→ 构建包装脚本先 call vcvarsall.bat x64 再 gradlew，host 端 vulkan-shaders-gen.exe 编译通过 ✅（构建推进至 [233/323]）
+5. vulkan.hpp 缺失 → ggml-vulkan.cpp L22 硬依赖 `<vulkan/vulkan.hpp>`（Vulkan-Hpp），NDK/ggml 均不带 → 大王选定 vendored：代理 clone 精简至 vulkan/ 14 hpp（jni/thirdparty/Vulkan-Hpp）✅
+
+**最终停止点（交接状态）**：
+- 全量重编失败：大量 `unknown type name 'VkPushConstantsInfo'` 等新 API 类型错误 = **VK_HEADER_VERSION 版本失配**（Vulkan-Hpp main 分支需更新 vulkan.h，include 路径当前由 NDK sysroot 旧版提供）。
+- **版本匹配风险**：本窗口 vendored 的 Vulkan-Hpp 为 **main 分支**；若配 Vulkan-Headers v1.3.359 需同步把 Vulkan-Hpp 切到 sdk-1.3.359 tag（两者须同版本 tag）。
+
+**新窗口 checklist**：
+1. ~~vendor Vulkan-Headers~~ ✅ 已完成（2026-08-13，代理 clone tag 落地）：`jni/thirdparty/Vulkan-Headers/include/`（38 头文件，VK_HEADER_VERSION 359）。**版本更正**：上游无 v1.3.359 tag——1.3 系列最高仅 v1.3.302，359 属 1.4 系列，实际落地 **v1.4.359**（与本窗口 vendored 的 Vulkan-Hpp main 世代匹配）；
+2. CMakeLists 将 Vulkan-Headers include 置于 NDK sysroot 之前（vendored vulkan.h/vulkan_core.h 优先），重构建验证；
+3. 重构建（vcvarsall 包装 + 全量重编）→ ggml-vulkan.cpp 编译验证 → link；
+4. 装机 + 真机实测 SOP：SDXL Turbo 384²/2 步 Vulkan 最小验证 → SD3.5 512²/10 步 B1 终验（logcat 只读旁证 grep "weak global"/SIGABRT）。
+
+**本窗口交付物（保留于工作区）**：
+- `android/app/src/main/jni/CMakeLists.txt` 补链块（4 处配置，arm64 SD_VULKAN ON）
+- `android/app/src/main/jni/cmake/`：SPIRV-HeadersConfig.cmake + host-toolchain.cmake
+- `android/app/src/main/jni/thirdparty/Vulkan-Hpp/vulkan/`：14 个 hpp
+- `src/utils/imageGenManifest.ts`：backend='Vulkan' 已启用（异常一行回 'CPU'）
+
+**趋同说明**：本窗口与另一并行窗口原做不同任务，均推进至 Vulkan 补链构建阶段趋同；大王停本窗口，剩余工作移交新窗口。本窗口临时构建日志/脚本已清理；构建包装脚本如需重建：call vcvarsall.bat x64 → gradlew（host shader-gen 必需 MSVC 环境）。
 
 
+
+
+
+### 6.12 Vulkan 补链·新窗口终态（2026-08-14）
+
+五关已破其五 + 版本对，构建链全程打通、装机启动成功。新窗口增补记录：
+
+1. **版本配对落地**：Vulkan-Hpp（main，1.4 世代）+ Vulkan-Headers v1.4.359 ✅（静态断言 359==359；v1.3.359 上游不存在，359 属 1.4 系列）。
+2. **第 6 关：链接期 undefined symbol vkGetPhysicalDeviceFeatures2**。根因：NDK libvulkan.so stub 按 API 级别裁剪导出表（llvm-nm 逐级验证：API 24/26 只导 1.0，28+ 才导 1.1 core；本仓原用 ANDROID_NATIVE_API_LEVEL=24）。修复：Vulkan_LIBRARY 改用本机最高 API 35 stub（链接期专用，运行时由设备 Vulkan loader 解析，现代设备 loader 全量导出），CMakeLists 已注释原理。
+3. **构建证据链**：externalNativeBuildProdDebug --rerun-tasks BUILD SUCCESSFUL（2m57s/191 tasks）；assembleProdDebug BUILD SUCCESSFUL（app-prod-debug.apk，549MB 调试版）；adb install Success（66b1777f）；启动观察：pid 存活 + Running "PocketPal" + SoLoader 成功加载 libappmodules.so（208MB，Vulkan 链）+ 零 FATAL/SIGABRT。
+4. **剩余（大王真机实测）**：SDXL Turbo 384²/2 步 Vulkan 最小验证 → SD3.5 512²/10 步 B1 终验；AI 侧 logcat 只读旁证（grep "weak global"/SIGABRT）就绪。
+
+工作区：build_vk.cmd / precheck_cl.cmd（vcvarsall 包装 + cl.exe 预检）保留；jni/thirdparty/ 下 Vulkan-Headers（v1.4.359，38 头文件）与 Vulkan-Hpp（main）并存，CMakeLists 缺失守卫 fail-fast。
+
+
+
+### 6.13 抽屉与设置页信息架构重构（本窗口闭环，2026-08-14）
+
+> 本窗口任务：抽屉纯会话中心 + 设置页入口中心 + 聊天头部生图入口。详见设计文档 AIOS_POCKET_SPEC_v3.md v3.5 迭代记录。
+
+#### 落地点
+
+| 项 | 内容 |
+|---|---|
+| 抽屉（SidebarContent） | 移除全部功能导航 Drawer.Item；顶部搜索框 + 「+ 新对话」 + 会话分组列表 + 底部固定齿轮设置（drawer-item-settings，e2e 开合指示器）；长按菜单/多选/日期分组保留 |
+| 聊天页头部（ChatHeader） | 新增生图图标按钮（imagegen-button）→ IMAGE_GEN |
+| 设置页入口中心（SettingsScreen） | AIOS 组（伙伴/模型/记忆/知识库/智能体/工具配置）+ 系统组（基准测试/生成设置/关于）+ debug DevTools；原参数页迁移 GenerationSettingsScreen（GENERATION_SETTINGS 路由） |
+| 命名 | workspace=智能体（zh_Hant 智慧體）、pals=伙伴；18 语言补 6 新键（13 文件英文兜底，et/it 全回退设计维持） |
+| e2e | 指示器 drawer-item-pals→drawer-item-settings；DrawerPage 走设置中心链 |
+
+#### 验证证据
+
+- tsc 零错误；目标单测 126/126；完整套件无回归（HEAD worktree 对比）
+- Gradle BUILD SUCCESSFUL（Vulkan 链）+ adb install Success + 启动零 FATAL/SIGABRT（pid 存活 + SoLoader 加载 208MB libappmodules.so）
+- 记忆「侧拉抽屉与设置页信息架构」已重写（原「抽屉菜单顺序规范」作废）
+
+#### 遗留（大王侧）
+
+- 真机手动验证清单（抽屉 6 项 / 聊天页生图 / 设置页 9 入口）；Vulkan 生图实测（SDXL Turbo 最小验证 → SD3.5 B1 终验）。
