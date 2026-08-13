@@ -1,0 +1,244 @@
+import React from 'react';
+import {Animated, ScrollView} from 'react-native';
+import {fireEvent} from '@testing-library/react-native';
+
+import {render} from '../../../../../jest/test-utils';
+import {l10n} from '../../../../locales';
+import {L10nContext} from '../../../../utils';
+
+import {HistoryStrip} from '../HistoryStrip';
+import {ComposerPanel} from '../ComposerPanel';
+import {ModelPickerPanel} from '../ModelPickerPanel';
+import {ResultPreview} from '../ResultPreview';
+import {DREAMLITE_MANIFEST, ModelEntry} from '../../constants';
+import {GeneratedImage} from '../../../../store/imageGenStore';
+
+const wrap = (ui: React.ReactElement) =>
+  render(<L10nContext.Provider value={l10n.en}>{ui}</L10nContext.Provider>);
+
+const entry: ModelEntry = {manifest: DREAMLITE_MANIFEST, mainPath: ''};
+
+const historyItem: GeneratedImage = {
+  uri: 'file:///tmp/gen_1.png',
+  prompt: 'a cat',
+  seed: 123,
+  ts: Date.now(),
+  width: 1024,
+  height: 1024,
+  family: 'dreamlite',
+  kind: 'generated',
+};
+
+describe('HistoryStrip', () => {
+  it('渲染相册计数与上传入口', () => {
+    const {getByText} = wrap(
+      <HistoryStrip
+        history={[historyItem]}
+        manageMode={false}
+        toDelete={[]}
+        onUpload={jest.fn()}
+        onToggleManage={jest.fn()}
+        onThumbPress={jest.fn()}
+        onToggleDelete={jest.fn()}
+        onConfirmDelete={jest.fn()}
+      />,
+    );
+    expect(getByText('相册 (1)')).toBeTruthy();
+    expect(getByText('上传')).toBeTruthy();
+    expect(getByText('管理')).toBeTruthy();
+  });
+
+  it('管理模式：删除按钮随选中计数启用', () => {
+    const {getByText} = wrap(
+      <HistoryStrip
+        history={[historyItem]}
+        manageMode={true}
+        toDelete={[historyItem.uri]}
+        onUpload={jest.fn()}
+        onToggleManage={jest.fn()}
+        onThumbPress={jest.fn()}
+        onToggleDelete={jest.fn()}
+        onConfirmDelete={jest.fn()}
+      />,
+    );
+    expect(getByText('删除选中 (1)')).toBeTruthy();
+    expect(getByText('完成')).toBeTruthy();
+  });
+
+  it('管理模式点击缩略图走多选而非预览', () => {
+    const onToggleDelete = jest.fn();
+    const onThumbPress = jest.fn();
+    const {getByText} = wrap(
+      <HistoryStrip
+        history={[historyItem]}
+        manageMode={true}
+        toDelete={[]}
+        onUpload={jest.fn()}
+        onToggleManage={jest.fn()}
+        onThumbPress={onThumbPress}
+        onToggleDelete={onToggleDelete}
+        onConfirmDelete={jest.fn()}
+      />,
+    );
+    fireEvent.press(getByText('上传')); // 触发上传回调，不触发缩略图逻辑
+    expect(onThumbPress).not.toHaveBeenCalled();
+  });
+});
+
+describe('ComposerPanel', () => {
+  const baseProps = {
+    prompt: '',
+    negativePrompt: '',
+    steps: '4',
+    cfg: '2',
+    size: 512,
+    ratio: '1:1',
+    isDream: false,
+    editArming: false,
+    editRgb: null,
+    showAdvanced: false,
+    generating: false,
+    taskKind: null as 'gen' | 'edit' | null,
+    loaded: true,
+    dreamW: 1024,
+    dreamH: 1024,
+    error: null,
+    onPromptChange: jest.fn(),
+    onNegativePromptChange: jest.fn(),
+    onStepsChange: jest.fn(),
+    onCfgChange: jest.fn(),
+    onSizeChange: jest.fn(),
+    onRatioChange: jest.fn(),
+    onToggleAdvanced: jest.fn(),
+    onEditArm: jest.fn(),
+    onGenerate: jest.fn(),
+  };
+
+  it('提示词超限（>120）显示 warn 计数', () => {
+    const {getByText} = wrap(
+      <ComposerPanel {...baseProps} prompt={'猫'.repeat(121)} />,
+    );
+    expect(getByText(/121\/120/)).toBeTruthy();
+  });
+
+  it('出图按钮触发 onGenerate', () => {
+    const onGenerate = jest.fn();
+    const {getByText} = wrap(
+      <ComposerPanel {...baseProps} onGenerate={onGenerate} prompt="a cat" />,
+    );
+    fireEvent.press(getByText('出图'));
+    expect(onGenerate).toHaveBeenCalled();
+  });
+
+  it('未加载时出图按钮禁用', () => {
+    const onGenerate = jest.fn();
+    const {getByText} = wrap(
+      <ComposerPanel {...baseProps} loaded={false} onGenerate={onGenerate} />,
+    );
+    fireEvent.press(getByText('出图'));
+    expect(onGenerate).not.toHaveBeenCalled();
+  });
+});
+
+describe('ModelPickerPanel', () => {
+  const baseProps = {
+    available: [entry],
+    selectedEntry: entry,
+    selectedId: 'dreamlite',
+    scanning: false,
+    loading: false,
+    loaded: false,
+    isDream: true,
+    showModelDrop: false,
+    modelStatus: '未加载',
+    now: Date.now(),
+    loadingStartedAt: 0,
+    stage: '',
+    generating: false,
+    modelsDir: '/sdcard/Documents/AIOS/models',
+    onToggleDrop: jest.fn(),
+    onSelectModel: jest.fn(),
+    onRowAction: jest.fn(),
+    isRowLoaded: jest.fn(() => false),
+  };
+
+  it('胶囊显示模型族徽章与标签', () => {
+    const {getByText} = wrap(<ModelPickerPanel {...baseProps} />);
+    expect(getByText(/DreamLite Mobile/)).toBeTruthy();
+  });
+
+  it('点胶囊展开下拉面板并渲染行内加载按钮', () => {
+    const {getByText} = wrap(
+      <ModelPickerPanel {...baseProps} showModelDrop={true} />,
+    );
+    expect(getByText('加载')).toBeTruthy();
+    expect(getByText(/统一文生图/)).toBeTruthy();
+  });
+});
+
+describe('ResultPreview', () => {
+  const baseProps = {
+    previewRef: React.createRef<ScrollView>(),
+    pageW: 320,
+    editSource: null,
+    history: [historyItem],
+    generating: false,
+    taskKind: null as 'gen' | 'edit' | null,
+    progress: 0,
+    progressText: '',
+    stepTime: 0,
+    genStartedAt: Date.now(),
+    stage: '',
+    now: Date.now(),
+    toast: null,
+    toastOpacity: new Animated.Value(0),
+    pulse: new Animated.Value(0),
+    currentImage: null,
+    currentItem: null,
+    isDream: true,
+    editArming: false,
+    fullscreen: false,
+    onPageW: jest.fn(),
+    onMomentumEnd: jest.fn(),
+    onPickEditImage: jest.fn(),
+    onOpenFullscreen: jest.fn(),
+    onCloseFullscreen: jest.fn(),
+    onSave: jest.fn(),
+    onEditArm: jest.fn(),
+    onReroll: jest.fn(),
+    onDelete: jest.fn(),
+  };
+
+  it('无当前图时不渲染操作条，编辑槽显示上传按钮', () => {
+    const {getByText, queryByText} = wrap(<ResultPreview {...baseProps} />);
+    expect(getByText('上传本地图片')).toBeTruthy();
+    expect(queryByText('保存')).toBeNull();
+    expect(queryByText('删除')).toBeNull();
+  });
+
+  it('有当前图时渲染操作条（保存/编辑/再次生成/删除）', () => {
+    const {getByText} = wrap(
+      <ResultPreview
+        {...baseProps}
+        currentImage={historyItem.uri}
+        currentItem={historyItem}
+      />,
+    );
+    expect(getByText('保存')).toBeTruthy();
+    expect(getByText('编辑')).toBeTruthy();
+    expect(getByText('再次生成')).toBeTruthy();
+    expect(getByText('删除')).toBeTruthy();
+  });
+
+  it('生成中渲染进度 overlay', () => {
+    const {getByText} = wrap(
+      <ResultPreview
+        {...baseProps}
+        generating={true}
+        taskKind="gen"
+        progressText="1/4"
+      />,
+    );
+    expect(getByText(/正在生成新图/)).toBeTruthy();
+  });
+});

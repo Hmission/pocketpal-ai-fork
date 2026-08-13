@@ -7,7 +7,10 @@ import {NavigationContainer} from '@react-navigation/native';
 import {Provider as PaperProvider} from 'react-native-paper';
 import {BottomSheetModalProvider} from '@gorhom/bottom-sheet';
 import {createDrawerNavigator} from '@react-navigation/drawer';
-import {SafeAreaProvider, useSafeAreaInsets} from 'react-native-safe-area-context';
+import {
+  SafeAreaProvider,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 import {KeyboardProvider} from 'react-native-keyboard-controller';
 import {
   gestureHandlerRootHOC,
@@ -47,17 +50,17 @@ import {
   GenerationSettingsScreen,
   BenchmarkScreen,
   AboutScreen,
+  PalsScreen,
+  MemoryScreen,
+  KnowledgeScreen,
+  WorkspaceScreen,
+  ToolScreen,
+  ImageGenScreen,
 
   // Dev tools screen. Only available in debug mode.
   DevToolsScreen,
 } from './src/screens';
-import PalsScreen from './src/screens/PalsScreen';
 import {OnboardingStack} from './src/screens/OnboardingScreens';
-import {MemoryScreen} from './src/screens/MemoryScreen/MemoryScreen';
-import {KnowledgeScreen} from './src/screens/KnowledgeScreen/KnowledgeScreen';
-import {WorkspaceScreen} from './src/screens/WorkspaceScreen/WorkspaceScreen';
-import {ToolScreen} from './src/screens/ToolScreen/ToolScreen';
-import {ImageGenScreen} from './src/screens/ImageGenScreen/ImageGenScreen';
 
 // Check if app is in debug mode
 const isDebugMode = __DEV__;
@@ -117,9 +120,7 @@ const AppDrawer: React.FC = () => {
         headerTintColor: theme.colors.onBackground,
         headerTitleStyle: styles.headerTitle,
       }}
-      drawerContent={props => (
-        <SidebarContent {...props} />
-      )}>
+      drawerContent={props => <SidebarContent {...props} />}>
       <Drawer.Screen
         name={ROUTES.CHAT}
         component={gestureHandlerRootHOC(ChatScreen)}
@@ -166,7 +167,8 @@ const AppDrawer: React.FC = () => {
         component={gestureHandlerRootHOC(GenerationSettingsScreen)}
         options={{
           headerStyle: styles.headerWithoutDivider,
-          title: currentL10n.components.sidebarContent.menuItems.generationSettings,
+          title:
+            currentL10n.components.sidebarContent.menuItems.generationSettings,
         }}
       />
       <Drawer.Screen
@@ -217,7 +219,8 @@ const AppDrawer: React.FC = () => {
         component={gestureHandlerRootHOC(ImageGenScreen)}
         options={{
           headerStyle: styles.headerWithoutDivider,
-          title: currentL10n.components.sidebarContent.menuItems.imageGen ?? '生图',
+          title:
+            currentL10n.components.sidebarContent.menuItems.imageGen ?? '生图',
         }}
       />
 
@@ -244,9 +247,7 @@ const AppDrawer: React.FC = () => {
       {__E2E__ && (
         <Drawer.Screen
           name={ROUTES.BENCHMARK_RUNNER}
-          component={gestureHandlerRootHOC(
-            BenchmarkRunnerScreen,
-          )}
+          component={gestureHandlerRootHOC(BenchmarkRunnerScreen)}
           options={{
             headerStyle: styles.headerWithoutDivider,
             title: 'Benchmark Runner',

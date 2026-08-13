@@ -570,3 +570,32 @@ Start-Process -FilePath "F:\Cursor\OneTakeMVP\.tmp\scrcpy\scrcpy-win64-v4.1\scrc
 - [ ] 真机基线：SDXL Turbo 5~15s/张验证（邻居正在跑）
 - [ ] 对比测试：同 prompt/同尺寸/同后端，SD3.5 vs Z-Image vs SDXL Turbo 画质与速度
 - [ ] OpenCL 后端真机接入（P5.3 加速专项）
+
+---
+
+## 13. Tab 解耦拆分波次（2026-08-14 完成）与债务登记
+
+### 13.1 本波交付（4 次提交）
+- ea9ee37 生图页目录化：ImageGenScreen 1399 行 → 编排层 + 4 区组件（ModelPickerPanel/ResultPreview/HistoryStrip/ComposerPanel）+ 2 hooks（useToast/usePulse）+ constants/styles。
+- 32c69e DreamLite 五函数收编进 imageGenStore 单通道（Screen 零直连 engine 层）；补 SD↔DreamLite 同槽互斥（原双驻留 OOM 缺口）；新增 onnxruntime jest mock。
+- 6696893 抽屉会话中心组件化：SidebarContent → 编排 + SessionListItem/SelectionModeBar/SessionSearchBar。
+- 8a02d4 聊天调度链抽 useChatScheduler hook（ChatScreen 485→约 350 行）。
+- 导出统一：5 个 Screen 目录补 index.ts，App.tsx 子路径直导全部收口 './src/screens'。
+- 新增 Panel 冒烟测试 11 例（Panels.test.tsx）；星图域清单 docs/POCKETPAL_STARMAP_DOMAINS.md。
+
+### 13.2 遗留债务登记（本期不动，待后续迭代）
+| 债务 | 现状 | 处置 |
+|---|---|---|
+| GenerationSettingsScreen.tsx | 1321 行（旧 SettingsScreen 迁移，债务转移非消除） | 后续按参数分区拆（与 ModelsScreen 职责重叠待审计） |
+| ModelStore.ts | 3252 行（扫描/加载/配置/下载混装） | 后续分期：扫描/加载/下载/配置四段拆 |
+| ChatSessionStore.ts | 1398 行 | 后续拆会话 CRUD 与消息流 |
+| ChatView.tsx / useChatSession.ts | 1208 / 909 行 | 聊天域肥组件，后续分区 |
+| openai.ts | 1009 行 | 后续按接口族拆 |
+| ChatScreen.test 3 例既有失败 | modelStore.context.completion 断言与调度架构脱节（chitchat 管家分支） | 测试与调度架构对齐专项 |
+| 母仓 KG 未索引本仓 | starmap subgraph 本仓域 0 命中 | 域清单已就绪（POCKETPAL_STARMAP_DOMAINS.md），Wenpu 索引器扩展为跨仓专项 |
+| ImageGenScreen 编排层全链路测试 | 仅 Panel 级冒烟，编排层（出图/编辑流）未覆盖 | 与 DreamLite 真机链路验证同批推进 |
+
+### 13.3 域边界约束（星图清单同源）
+- 生图域禁止反向引用聊天域；Screen 禁止直连 dreamLiteEngine（单通道经 imageGenStore）。
+- 引擎互斥一律经 engineMutex；taskRouter 只判不执。
+- 抽屉只承载会话能力；功能入口进设置页入口中心；生图入口固定在聊天页头部（imagegen-button）。
