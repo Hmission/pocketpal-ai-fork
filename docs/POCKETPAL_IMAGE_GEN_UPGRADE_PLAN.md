@@ -462,4 +462,66 @@
 
 `unetMode` 变量现为死存储（只写不读，恒 'fp32'）：建议下窗口删变量或将类型收窄为字面量 'fp32'，与 denoise/loadDreamLite 单路径一致。
 
+### 6.11 三大风险修复升级方案（2026-08-14，大王令，6D+星图全量排查，待批）
+
+> 排查方式：KG preflight（fallback_grep，母仓无本仓索引）→ 全仓库 `Animated.loop`/`useNativeDriver` 全量 grep → 引擎构建系统/backend 取值取证 → JNI/store/CMakeLists 逐点取证。
+
+#### 6D 全量排查结论
+
+- **D1 数据流**：backend 不在 manifest defaults（缺失），硬编码在 ImageGenJNI L263。数据流缺口=backend 未入配置层。
+- **D2 控制流**：后端决策点唯一但写死于注释（TODO(opencl-hang)）；CMakeLists 编译期 arm64 SD_OPENCL=ON 而运行时不用——**编译期/运行时半开不一致**（违单后端）。
+- **D3 状态**：无新增状态面（backend 作为只读配置入 manifest，不进运行时状态机）。
+- **D4 资源**：Vulkan 路线取证全绿——引擎 `option(SD_VULKAN)` 一等公民 + 官方 build.md/docker 支持 + ggml-vulkan 源码 vendored + **z_image.hpp/qwen_image.hpp 均含 Vulkan 分支**（两实验性模型原生支持）；NDK 原生带头文件+系统 libvulkan（比 OpenCL 补 headers/ICD 干净）。
+- **D5 错误**：当前无超时判定——hang 时进度条无限转=失败不可见（违锋利哲学：不是兑底，是脏）。锋利方案=**超时判定+明确报错+释放引擎（干净失败，禁回退重试）**。
+- **D6 演进**：manifest defaults + 设备端 *.manifest.json 扩展点已有——backend 入 manifest 后设备级显式覆盖（配置能力，非自动回退）。
+
+#### 全 App 循环动画盘点（本轮全量 grep）
+
+`Animated.loop` 全仓仅 4 处；其余 11 处 useNativeDriver 均为一次性动画（无累积，保持 native）：
+
+| 组件 | loop 结构 | 现状 | 处置 |
+|---|---|---|---|
+| ImageGenScreen pulse | 900ms×2 timing | ✅ 已 JS driver（c516993） | 无 |
+| LoadingBubble | 500ms×2 timing ×1 | ⚠️ native | 改 JS driver |
+| PendingIndicator Dot | 500ms×2 timing ×3 | ⚠️ native | 改 JS driver |
+| CircularActivityIndicator | 600ms 线性 ×1 | ⚠️ native | 改 JS driver |
+
+**全局规范（锋利）**：**`Animated.loop` 一律 `useNativeDriver:false`；一次性动画允许 native driver**。一条规则覆盖全 App（含未来新增），杜绝逐页补丁；可选 eslint 自定义规则强制。
+
+**PendingIndicator 特殊分析**：挂载窗口=工具调用期间，token 流时 JS 线程高频（每 token re-render ~50ms）；ChatView observer 隔离（L186-195）为保 loop alive 设计，JS driver 下同样成立；3 个 Dot opacity 插值每帧 JS 计算量极小，token 流期间可接受（取舍：宁轻微掉帧不崩）。
+
+#### 波次执行方案
+
+**第一波（本窗口落）：动画全局收口（B1 终验 + B3 收口）**
+1. LoadingBubble/PendingIndicator/CircularActivityIndicator 改 `useNativeDriver:false` + 机制注释（同 B1 注释风格）；
+2. 规范写入本文档 + 记忆沉淀；
+3. 验证：tsc + eslint 零错误 + 聊天页手动冒烟（大王）；
+4. B1 真机终验（大王手动）：SD3.5 512²/10 步完整跑完+进程存活，我只读 logcat 旁证 grep "weak global"/SIGABRT。
+
+**第二波（B2 Vulkan 单后端，下窗口专攻）**
+1. **backend 上 manifest**：imageGenManifest defaults 加 backend 字段，ImageGenJNI 从 manifest 读（删硬编码+删 TODO），值暂 "CPU"；
+2. **编译期单后端**：CMakeLists arm64 分支 SD_OPENCL OFF + SD_VULKAN ON（x86_64 保持全 OFF）；
+3. **干净失败**：imageGenStore 加 step 无推进超时判定（120s）→ 取消+释放引擎+明确报错（禁回退重试，无兑底）；
+4. **真机最小验证**：SDXL Turbo 384²/2 步 Vulkan（OpenCL 曾 685s 成功的同模型）对比 CPU 基线；
+5. **决策点**：Vulkan 稳 → manifest 值改 "Vulkan" + SD3.5/Z-Image 长时全流程（同时复验 B1）；Vulkan 也 hang → manifest 值留 "CPU"（一行决策，单后端不变），回 6.9 五步侦察法。
+
+**第三波（顺手收口 + 上游追踪）**
+1. dreamLiteEngine 删 unetMode 死存储（用户已删 fp16 分支，恒 'fp32'）；
+2. RN 上游追踪：0.82.1 新架构 TurboModule invokeJavaMethod weak ref 泄漏上游修复状态为长期观察项（release notes 跟踪，版本升级时消化）。
+
+#### 锋利哲学声明（本方案的边界）
+
+- **单后端**：编译期与运行时 backend 一致，无 fallback 链、无 retry；
+- **决策唯一**：backend 只在 manifest 一处（设备级覆盖也是显式配置，非自动回退）；
+- **干净失败**：hang 判定=超时+明确报错+释放，不是静默回退（回退=兑底，报错=锋利）；
+- **动画规则一条**：loop 一律 JS driver（防弱引用累积是规则的自然结果，不是逐页补丁）。
+
+#### 风险与依赖
+
+- Vulkan 编译链：NDK 头文件/libvulkan 需实构建验证（第一波不涉，第二波首步即验）；
+- Vulkan 也可能 hang（Adreno 驱动另一面）→ 方案含 manifest 一行决策点，损失可控；
+- PendingIndicator JS driver 在 token 流高峰期的掉帧风险：可接受（崩溃>掉帧的取舍，已大王确认产品哲学方向）；
+- 真机验证均需大王手动触发生成（自动化屏幕操作禁令）。
+
+
 
