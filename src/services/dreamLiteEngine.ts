@@ -20,7 +20,8 @@ const DROP_IDX = 34; // generate 模式截断模板前缀 token 数
 let unet: ort.InferenceSession | null = null;
 let vae: ort.InferenceSession | null = null;
 let vaeEnc: ort.InferenceSession | null = null;
-let teCtx: LlamaContext | null = null;
+let teCtx: LlamaContext | null = null; // 仅用作 Qwen3 tokenizer
+let teOrt: ort.InferenceSession | null = null; // ONNX TE（输出 per-token hidden_states）
 
 export const dreamLiteReady = () => !!unet && !!vae;
 
@@ -60,7 +61,10 @@ export async function loadTE(): Promise<void> {
     n_ctx: 256,
     n_threads: 4,
   });
-  console.log('[DreamLite] TE ready');
+  teOrt = await ort.InferenceSession.create(`${DIR}/te_int8.onnx`, {
+    executionProviders: ['cpu'],
+  });
+  console.log('[DreamLite] TE ready (llama tokenize + ORT hidden states)');
 }
 
 const GEN_TEMPLATE =
@@ -75,22 +79,28 @@ export async function encodePrompt(prompt: string, maxLen = 77): Promise<Float32
   }
   try {
     const text = GEN_TEMPLATE.replace('{}', prompt);
-    const res = await teCtx.embedding(text);
-    const flat = res.embedding as number[];
-    const tokens = Math.floor(flat.length / TE_DIM);
-    console.log('[DreamLite] TE emb flat.len=', flat.length, 'tokens=', tokens);
-    if (tokens <= DROP_IDX) {
+    const tk = await teCtx!.tokenize(text);
+    const ids: number[] = (tk as any).tokens ?? (tk as any);
+    const seq = ids.length;
+    if (seq <= DROP_IDX || !teOrt) {
       return null;
     }
-    const kept = tokens - DROP_IDX;
+    const ids64 = ids.map(v => BigInt(v));
+    const mask64 = ids.map(() => BigInt(1));
+    const res = await teOrt.run({
+      input_ids: new ort.Tensor('int64', ids64 as any, [1, seq]),
+      attention_mask: new ort.Tensor('int64', mask64 as any, [1, seq]),
+    });
+    const hs = res.hidden_states.data as Float32Array; // [1,seq,2048]
+    const kept = seq - DROP_IDX;
     const len = Math.min(kept, maxLen);
     const out = new Float32Array(maxLen * TE_DIM); // zero pad
     for (let i = 0; i < len; i++) {
       for (let d = 0; d < TE_DIM; d++) {
-        out[i * TE_DIM + d] = flat[(DROP_IDX + i) * TE_DIM + d];
+        out[i * TE_DIM + d] = hs[(DROP_IDX + i) * TE_DIM + d];
       }
     }
-    console.log('[DreamLite] TE encoded tokens=', tokens, 'kept=', len);
+    console.log('[DreamLite] TE(ORT) encoded seq=', seq, 'kept=', len);
     return out;
   } catch (e) {
     console.log('[DreamLite] TE encode fail', (e as any)?.message);
