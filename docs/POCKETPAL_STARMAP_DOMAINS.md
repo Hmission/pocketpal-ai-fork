@@ -72,5 +72,6 @@ SidebarContent → chatSessionStore（会话中心只承载会话能力）
 
 ## 备注
 
+- 星图命中已落地：母仓 `docs/pocketpal-imagegen-domain.md` / `pocketpal-chat-domain.md` 指针文件使 `starmap_query subgraph imagegen|chat` 可命中本仓域。
 - 母仓 KG 索引本仓需扩展 Wenpu 索引器（跨仓专项），本清单即为其输入源。
 - 两域共享基建：engineMutex / engineStatus（引擎层闭环，不属于任一 tab 域）。
