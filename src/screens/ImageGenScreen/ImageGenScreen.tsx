@@ -46,6 +46,18 @@ const FAMILY_BADGE: Record<ImageGenManifest['family'], string> = {
   dreamlite: 'DreamLite',
 };
 
+// DreamLite 作为统一模型选项进入顶部选择栏（非独立按钮）
+const DREAMLITE_MANIFEST: ImageGenManifest = {
+  id: 'dreamlite',
+  label: 'DreamLite Mobile (4步)',
+  family: 'dreamlite',
+  main: '',
+  defaults: {steps: 4, cfg: 1, size: 512},
+  note: '统一文生图+编辑',
+};
+
+const PROMPT_LIMIT = 120;
+
 export const ImageGenScreen: React.FC = observer(() => {
   const theme = useTheme();
   const [available, setAvailable] = React.useState<
@@ -80,9 +92,10 @@ export const ImageGenScreen: React.FC = observer(() => {
     setScanning(true);
     try {
       const list = await listAvailableModels(AIOS_MODELS_DIR);
-      setAvailable(list);
-      if (list.length > 0 && !selectedId) {
-        setSelectedId(list[0].manifest.id);
+      const withDream = [...list, {manifest: DREAMLITE_MANIFEST, mainPath: ''}];
+      setAvailable(withDream);
+      if (withDream.length > 0 && !selectedId) {
+        setSelectedId(withDream[0].manifest.id);
       }
     } catch (e) {
       console.warn('[ImageGenScreen] scan failed:', e);
@@ -120,10 +133,34 @@ export const ImageGenScreen: React.FC = observer(() => {
 
   const selectedEntry = available.find(a => a.manifest.id === selectedId) ?? null;
 
+  const isDream = selectedEntry?.manifest.family === 'dreamlite';
+  const loaded = isDream
+    ? imageGenStore.dreamliteLoaded
+    : imageGenStore.modelLoaded;
+
   const loadEntry = async (entry: {
     manifest: ImageGenManifest;
     mainPath: string;
   }) => {
+    if (entry.manifest.family === 'dreamlite') {
+      runInAction(() => {
+        imageGenStore.loading = true;
+        imageGenStore.error = null;
+      });
+      try {
+        await loadDreamLite();
+        runInAction(() => {
+          imageGenStore.dreamliteLoaded = true;
+          imageGenStore.loading = false;
+        });
+      } catch (e) {
+        runInAction(() => {
+          imageGenStore.loading = false;
+          imageGenStore.error = `DreamLite: ${(e as any)?.message ?? e}`;
+        });
+      }
+      return;
+    }
     const {extras, missing} = await resolveCompanions(
       entry.manifest,
       AIOS_MODELS_DIR,
@@ -138,9 +175,21 @@ export const ImageGenScreen: React.FC = observer(() => {
   };
 
   const handleLoad = () => {
-    if (selectedEntry) {
-      loadEntry(selectedEntry);
+    if (!selectedEntry) {
+      return;
     }
+    if (loaded) {
+      // 卸载
+      if (isDream) {
+        runInAction(() => {
+          imageGenStore.dreamliteLoaded = false;
+        });
+      } else {
+        imageGenStore.unloadModel();
+      }
+      return;
+    }
+    loadEntry(selectedEntry);
   };
 
   // 下拉选中：选中 + 收起 + 自动加载（选即载，产品锋利）
@@ -151,18 +200,6 @@ export const ImageGenScreen: React.FC = observer(() => {
     setSelectedId(entry.manifest.id);
     setShowModelDrop(false);
     loadEntry(entry);
-  };
-
-  const handleDreamLite = async () => {
-    try {
-      await loadDreamLite();
-      const uri = await generateDreamLite(512, 4, prompt.trim() || undefined);
-      setCurrentImage(uri);
-    } catch (e) {
-      runInAction(() => {
-        imageGenStore.error = `DreamLite: ${(e as any)?.message ?? e}`;
-      });
-    }
   };
 
   const handleDreamLiteEdit = async () => {
@@ -190,6 +227,44 @@ export const ImageGenScreen: React.FC = observer(() => {
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
+      return;
+    }
+    if (isDream) {
+      runInAction(() => {
+        imageGenStore.generating = true;
+        imageGenStore.genStartedAt = Date.now();
+        imageGenStore.progress = 0;
+        imageGenStore.progressText = '';
+        imageGenStore.stage = 'TE 编码/准备…';
+        imageGenStore.error = null;
+      });
+      try {
+        await loadDreamLite();
+        runInAction(() => {
+          imageGenStore.dreamliteLoaded = true;
+        });
+        const uri = await generateDreamLite(
+          size,
+          parseInt(steps, 10) || 4,
+          prompt.trim(),
+          (st, tot) => {
+            runInAction(() => {
+              imageGenStore.progress = Math.round((st / tot) * 100);
+              imageGenStore.progressText = `${st}/${tot}`;
+              imageGenStore.stage = `采样 ${st}/${tot}`;
+            });
+          },
+        );
+        setCurrentImage(uri);
+      } catch (e) {
+        runInAction(() => {
+          imageGenStore.error = `DreamLite: ${(e as any)?.message ?? e}`;
+        });
+      } finally {
+        runInAction(() => {
+          imageGenStore.generating = false;
+        });
+      }
       return;
     }
     const m = selectedEntry?.manifest;
@@ -252,7 +327,7 @@ export const ImageGenScreen: React.FC = observer(() => {
 
   const modelStatus = imageGenStore.loading
     ? '加载中…'
-    : imageGenStore.modelLoaded
+    : loaded
       ? '已就绪'
       : '未加载';
 
@@ -406,21 +481,26 @@ export const ImageGenScreen: React.FC = observer(() => {
             placeholderTextColor="#999"
             multiline
           />
+          <Text style={prompt.length > PROMPT_LIMIT ? s.promptHintWarn : s.promptHint}>
+            {prompt.length}/{PROMPT_LIMIT} · 端侧建议≤{PROMPT_LIMIT}字，过长拖慢速度
+          </Text>
           <TouchableOpacity onPress={() => setShowAdvanced(a => !a)}>
             <Text style={s.advToggle}>
-              高级参数（负面/尺寸/步数/CFG）{showAdvanced ? '▴' : '▾'}
+              高级参数（{isDream ? '尺寸/步数' : '负面/尺寸/步数/CFG'}）{showAdvanced ? '▴' : '▾'}
             </Text>
           </TouchableOpacity>
           {showAdvanced && (
             <>
-              <TextInput
-                style={[s.input, s.inputSmall]}
-                value={negativePrompt}
-                onChangeText={setNegativePrompt}
-                placeholder="负面提示词（可选，如 blurry, low quality）"
-                placeholderTextColor="#999"
-                multiline
-              />
+              {!isDream && (
+                <TextInput
+                  style={[s.input, s.inputSmall]}
+                  value={negativePrompt}
+                  onChangeText={setNegativePrompt}
+                  placeholder="负面提示词（可选，如 blurry, low quality）"
+                  placeholderTextColor="#999"
+                  multiline
+                />
+              )}
               <View style={s.paramRow}>
                 <Text style={s.paramLabel}>尺寸</Text>
                 {SIZES.map(sz => (
@@ -440,33 +520,34 @@ export const ImageGenScreen: React.FC = observer(() => {
                   onChangeText={setSteps}
                   keyboardType="numeric"
                 />
-                <Text style={s.paramLabel}>CFG</Text>
-                <TextInput
-                  style={s.paramInput}
-                  value={cfg}
-                  onChangeText={setCfg}
-                  keyboardType="numeric"
-                />
+                {!isDream && (
+                  <>
+                    <Text style={s.paramLabel}>CFG</Text>
+                    <TextInput
+                      style={s.paramInput}
+                      value={cfg}
+                      onChangeText={setCfg}
+                      keyboardType="numeric"
+                    />
+                  </>
+                )}
               </View>
             </>
           )}
+          {isDream && (
+            <TouchableOpacity
+              style={[s.button, s.buttonSecondary]}
+              onPress={handleDreamLiteEdit}>
+              <Text style={s.buttonText}>编辑（示例源）</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
-            style={[s.button, s.buttonSecondary]}
-            onPress={handleDreamLite}>
-            <Text style={s.buttonText}>DreamLite 基线</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[s.button, s.buttonSecondary]}
-            onPress={handleDreamLiteEdit}>
-            <Text style={s.buttonText}>DreamLite 编辑</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[s.button, !imageGenStore.modelLoaded && s.buttonDisabled]}
-            disabled={!imageGenStore.modelLoaded || imageGenStore.generating}
+            style={[s.button, !loaded && s.buttonDisabled]}
+            disabled={!loaded || imageGenStore.generating}
             onPress={handleGenerate}>
             {imageGenStore.generating ? (
               <ActivityIndicator size="small" color="#fff" />
-            ) : imageGenStore.modelLoaded ? (
+            ) : loaded ? (
               <Text style={s.buttonText}>出图</Text>
             ) : (
               <Text style={s.buttonTextDisabled}>请先加载模型</Text>
@@ -505,7 +586,11 @@ export const ImageGenScreen: React.FC = observer(() => {
                     {FAMILY_BADGE[item.manifest.family] ? (
                       <Text
                         style={
-                          item.manifest.family === 'sd3' ? s.badgeSd3 : s.badgeZ
+                          item.manifest.family === 'sd3'
+                            ? s.badgeSd3
+                            : item.manifest.family === 'dreamlite'
+                              ? s.badgeDream
+                              : s.badgeZ
                         }>
                         [{FAMILY_BADGE[item.manifest.family]}]{' '}
                       </Text>
@@ -516,15 +601,13 @@ export const ImageGenScreen: React.FC = observer(() => {
               ))
             )}
             <TouchableOpacity
-              style={[s.button, imageGenStore.modelLoaded && s.buttonSecondary]}
+              style={[s.button, loaded && s.buttonSecondary]}
               disabled={!selectedId || imageGenStore.generating || imageGenStore.loading}
-              onPress={imageGenStore.modelLoaded ? imageGenStore.unloadModel : handleLoad}>
+              onPress={handleLoad}>
               {imageGenStore.loading ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Text style={s.buttonText}>
-                  {imageGenStore.modelLoaded ? '卸载模型' : '加载模型'}
-                </Text>
+                <Text style={s.buttonText}>{loaded ? '卸载模型' : '加载模型'}</Text>
               )}
             </TouchableOpacity>
             {imageGenStore.loading && (
@@ -541,7 +624,7 @@ export const ImageGenScreen: React.FC = observer(() => {
                 ) : null}
               </View>
             )}
-            {imageGenStore.modelLoaded && !imageGenStore.loading && (
+            {loaded && !imageGenStore.loading && (
               <Text style={s.readyText}>✓ 模型已就绪，可以出图</Text>
             )}
           </View>
@@ -724,6 +807,8 @@ const createStyles = (theme: any) =>
     },
     inputSmall: {minHeight: 44, padding: 8},
     advToggle: {fontSize: 12, color: theme.colors.primary},
+    promptHint: {fontSize: 10, color: theme.colors.onSurfaceVariant},
+    promptHintWarn: {fontSize: 10, color: theme.colors.error},
     paramRow: {flexDirection: 'row', alignItems: 'center', gap: 10},
     paramLabel: {fontSize: 13, color: theme.colors.onSurfaceVariant},
     paramInput: {

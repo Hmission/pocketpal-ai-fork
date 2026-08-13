@@ -235,6 +235,7 @@ async function denoise(
   size: number,
   steps: number,
   encOverride?: Float32Array,
+  onStep?: (step: number, steps: number) => void,
 ): Promise<Float32Array> {
   const lat = size / 8;
   let latents = new Float32Array(4 * lat * lat);
@@ -272,6 +273,7 @@ async function denoise(
     };
     const res = await unet!.run(feeds);
     console.log(`[DreamLite] step ${i + 1}/${steps} done`);
+    onStep?.(i + 1, steps);
     const np = res.noise_pred.data as Float32Array; // [1,4,lat,lat*2]
     // crop width to lat, then euler step: latents = latents - sigma_diff * np
     const next = new Float32Array(latents.length);
@@ -323,6 +325,7 @@ export async function generateDreamLite(
   size = 512,
   steps = 4,
   prompt?: string,
+  onStep?: (step: number, steps: number) => void,
 ): Promise<string> {
   if (!unet || !vae) {
     throw new Error('DreamLite not loaded');
@@ -338,6 +341,7 @@ export async function generateDreamLite(
     size,
     steps,
     enc ?? undefined,
+    onStep,
   );
   return saveRgb(img, size);
 }

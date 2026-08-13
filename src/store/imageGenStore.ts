@@ -27,6 +27,8 @@ export interface GeneratedImage {
 class ImageGenStore {
   /** 引擎是否已加载（SD 模型常驻标记） */
   modelLoaded = false;
+  /** DreamLite 引擎是否已加载 */
+  dreamliteLoaded = false;
   /** 出图任务是否进行中 */
   generating = false;
   /** 最近一次错误信息 */
