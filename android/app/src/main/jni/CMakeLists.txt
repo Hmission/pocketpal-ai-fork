@@ -24,22 +24,22 @@ project(appmodules)
 
 include(${REACT_ANDROID_DIR}/cmake-utils/ReactNative-application.cmake)
 
-# ── stable-diffusion.cpp (P5.1 生图引擎, CPU 后端) ──
+# ── stable-diffusion.cpp (P5.1 生图引擎) ──
 # 引擎源码: src/stable-diffusion.cpp/ (含 ggml 子模块)
 set(SD_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(SD_WEBP OFF CACHE BOOL "" FORCE)
 set(SD_WEBM OFF CACHE BOOL "" FORCE)
 set(SD_CUDA OFF CACHE BOOL "" FORCE)
 set(SD_METAL OFF CACHE BOOL "" FORCE)
-set(SD_VULKAN OFF CACHE BOOL "" FORCE)
-# P2 加速：arm64-v8a 开 OpenCL（Adreno GPU）；x86_64 sysroot 无 OpenCL 库，保持 CPU
-# 依赖：NDK sysroot 需已补 Khronos OpenCL-Headers + 设备厂商 libOpenCL.so
-#（构建步骤见 docs/POCKETPAL_IMAGE_GEN_UPGRADE_PLAN.md P2）
+# P2 单后端：arm64-v8a 当前纯 CPU。Vulkan 为下窗口路线（Adreno 官方图形 API，
+# NDK 自带 glslc），但 ggml-vulkan 构建需宿主机 SPIRV-Headers CMake 包 + glslc
+# 工具链（find_package(SPIRV-Headers CONFIG REQUIRED)），待补链后改 SD_VULKAN ON。
+# OpenCL 因 Adreno 采样 hang 永久弃用。编译期与运行时单后端一致（无 fallback）。
 if (ANDROID_ABI STREQUAL "arm64-v8a")
-    set(SD_OPENCL ON CACHE BOOL "" FORCE)
-    set(GGML_OPENCL_EMBED_KERNELS ON CACHE BOOL "" FORCE)
-    set(GGML_OPENCL_USE_ADRENO_KERNELS ON CACHE BOOL "" FORCE)
+    set(SD_VULKAN OFF CACHE BOOL "" FORCE)
+    set(SD_OPENCL OFF CACHE BOOL "" FORCE)
 else()
+    set(SD_VULKAN OFF CACHE BOOL "" FORCE)
     set(SD_OPENCL OFF CACHE BOOL "" FORCE)
 endif()
 set(SD_BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)

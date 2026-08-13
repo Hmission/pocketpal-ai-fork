@@ -87,6 +87,17 @@ class ImageGenStore {
   private async pullSnapshot() {
     try {
       const s = await ImageGen.getGenSnapshot();
+      // 干净失败：生成中 120s 无引擎事件（心跳停）→ 判定 native 采样 hang。
+      // 锋利哲学：明确报错+停任务，不静默回退不重试（无兑底）。
+      if (this.generating && this.lastEventAt > 0 && Date.now() - this.lastEventAt > 120_000) {
+        runInAction(() => {
+          this.generating = false;
+          this.error = '采样超时（引擎无响应），请重启应用后重试';
+        });
+        engineStatus.setError('image', '采样超时（引擎无响应），请重启应用后重试');
+        this.syncPoll();
+        return;
+      }
       runInAction(() => {
         if (s.steps > 0) {
           this.progress = Math.round((s.step / s.steps) * 100);
@@ -177,12 +188,12 @@ class ImageGenStore {
   /**
    * 加载生图模型。调用前应确保聊天模型已卸载（modelStore 释放），
    * 否则可能 OOM。返回加载是否成功。
-   * extras：拆分式模型的伴侣文件（SD3.5 → clipL/clipG/vae；Z-Image → llm/vae），
-   * 一体式模型（SDXL Turbo）不传。
+   * extras：拆分式模型的伴侣文件（SD3.5 → clipL/clipG/vae；Z-Image → llm/vae）+ backend
+   * （manifest defaults 单点决策，'CPU'|'Vulkan'；一体式模型如 SDXL Turbo 只传 backend）。
    */
   async loadModel(
     modelPath: string,
-    extras: {clipL?: string; clipG?: string; llm?: string; vae?: string} = {},
+    extras: {clipL?: string; clipG?: string; llm?: string; vae?: string; backend?: string} = {},
     id?: string,
   ): Promise<boolean> {
     // 互斥：加载 sd 前确保 chat 引擎已释放（自动调 modelStore.releaseContext）

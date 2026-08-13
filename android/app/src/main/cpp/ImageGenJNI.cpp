@@ -207,7 +207,8 @@ JNIEXPORT jboolean JNICALL
 Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
                                               jstring modelPath,
                                               jstring clipLPath, jstring clipGPath,
-                                              jstring llmPath, jstring vaePath) {
+                                              jstring llmPath, jstring vaePath,
+                                              jstring backend) {
   std::lock_guard<std::mutex> lock(g_mutex);
   env->GetJavaVM(&g_jvm);
   cacheJniRefs(env);  // cache jclass + jmethodID once (fix weak-ref overflow)
@@ -218,6 +219,7 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
   JStr clip_g(env, clipGPath);
   JStr llm(env, llmPath);
   JStr vae(env, vaePath);
+  JStr backend_s(env, backend);
   if (model.empty()) {
     return JNI_FALSE;
   }
@@ -257,10 +259,12 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
   params.n_threads = hw ? std::min(hw, 6u) : 4;
   params.wtype = SD_TYPE_Q4_K;
   params.enable_mmap = true;
-  // P2 后端决策：真机取证发现 Adreno OpenCL 在 generate_image 采样阶段 hang
-  // （日志停 generate_image begin 不返回，非崩溃），故恒用 CPU 保证可用；
-  // OpenCL 待 hang 根因定位后再启用（见 docs 6.9 第三波侦察路线）。
-  params.backend = "CPU";  // TODO(opencl-hang): 定位 Adreno hang 后改回 "OpenCL"
+  // P2 后端决策：backend 由 manifest defaults 透传（RN → Kotlin → JNI 一条数据流），
+  // JNI 不决策。空则用引擎默认（sd_ctx_params_init 清零 → backend null → CPU）。
+  // 单后端无 fallback：Vulkan 挂机风险由 JS 侧 120s 无事件超时判定兜底（干净失败）。
+  if (!backend_s.empty()) {
+    params.backend = backend_s.c_str();
+  }
 
   sd_set_log_callback(sd_log_cb, nullptr);
   sd_set_progress_callback(sd_progress_cb, nullptr);

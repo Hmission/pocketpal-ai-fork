@@ -34,7 +34,7 @@ class ImageGenModule(reactContext: ReactApplicationContext) :
 
   private external fun nativeLoadModel(
     modelPath: String, clipLPath: String, clipGPath: String,
-    llmPath: String, vaePath: String,
+    llmPath: String, vaePath: String, backend: String,
   ): Boolean
   private external fun nativeUnloadModel(): Boolean
   private external fun nativeTxt2img(
@@ -45,12 +45,14 @@ class ImageGenModule(reactContext: ReactApplicationContext) :
   @ReactMethod
   fun loadModel(modelPath: String, extras: ReadableMap?, promise: Promise) {
     try {
+      // backend 透传（manifest defaults 单点决策，本层不决策）
       val ok = nativeLoadModel(
         modelPath,
         extras?.getString("clipL") ?: "",
         extras?.getString("clipG") ?: "",
         extras?.getString("llm") ?: "",
         extras?.getString("vae") ?: "",
+        extras?.getString("backend") ?: "",
       )
       promise.resolve(ok)
     } catch (e: Throwable) {

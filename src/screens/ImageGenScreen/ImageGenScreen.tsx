@@ -270,7 +270,11 @@ export const ImageGenScreen: React.FC = observer(() => {
       });
       return;
     }
-    await imageGenStore.loadModel(entry.mainPath, extras, entry.manifest.id);
+    await imageGenStore.loadModel(
+      entry.mainPath,
+      {...extras, backend: entry.manifest.defaults.backend},
+      entry.manifest.id,
+    );
   };
 
   // 卸载（行内按钮）

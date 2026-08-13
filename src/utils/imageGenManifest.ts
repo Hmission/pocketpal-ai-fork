@@ -27,6 +27,13 @@ export interface ImageGenManifest {
     steps: number;
     cfg: number;
     size: number;
+    /**
+     * 引擎后端（sd.cpp 系可选）：'CPU' | 'Vulkan'。
+     * 单后端决策唯一在 manifest（设备端 *.manifest.json 可显式覆盖，非自动回退）。
+     * 不设则透传空 → 引擎默认 CPU。DreamLite 走独立 ORT/MNN 引擎不适用。
+     * 当前值 'CPU'：Vulkan 待宿主机 SPIRV-Headers 工具链补链后切换（单点决策）。
+     */
+    backend?: string;
   };
   /** 加速 LoRA 文件名（可选，sd.cpp 原生挂载） */
   lora?: string;
@@ -43,7 +50,7 @@ export const BUILTIN_MANIFESTS: ImageGenManifest[] = [
     label: 'SDXL Turbo (fp16)',
     family: 'classic',
     main: 'sd_xl_turbo_1.0_fp16.safetensors',
-    defaults: {steps: 2, cfg: 2, size: 512},
+    defaults: {steps: 2, cfg: 2, size: 512, backend: 'CPU'},
     note: '4 步极速，生态最成熟',
   },
   {
@@ -51,7 +58,7 @@ export const BUILTIN_MANIFESTS: ImageGenManifest[] = [
     label: 'SDXL Turbo (Q8 GGUF)',
     family: 'classic',
     main: 'sd_xl_turbo_1.0.q8_0.gguf',
-    defaults: {steps: 2, cfg: 2, size: 512},
+    defaults: {steps: 2, cfg: 2, size: 512, backend: 'CPU'},
   },
   {
     id: 'sd35-medium-q4',
@@ -66,7 +73,7 @@ export const BUILTIN_MANIFESTS: ImageGenManifest[] = [
     // P6 提速：SD3.5 裸跑 20 步过慢（实测 375s+），默认降 10 步求速度
     // 6.6 实验性标记：真机取证长时出图必被 weak-ref 溢出崩溃杀死（tombstone_04），实质不可用
     experimental: true,
-    defaults: {steps: 10, cfg: 4.5, size: 512},
+    defaults: {steps: 10, cfg: 4.5, size: 512, backend: 'CPU'},
     note: 'MMDiT，端侧不带 T5；CPU 后端 10 步约 3 分钟',
   },
   {
@@ -80,7 +87,7 @@ export const BUILTIN_MANIFESTS: ImageGenManifest[] = [
     },
     // 6.6 实验性标记：CPU 后端分钟级 + 长时出图必被 weak-ref 溢出崩溃杀死，实质不可用
     experimental: true,
-    defaults: {steps: 8, cfg: 1, size: 512},
+    defaults: {steps: 8, cfg: 1, size: 512, backend: 'CPU'},
     note: '无审查，中文优化；CPU 后端 8 步预计数分钟',
   },
   {
