@@ -1,13 +1,7 @@
 import React, {useContext, useEffect, useState} from 'react';
-import {
-  TouchableOpacity,
-  View,
-  Alert,
-  SectionList,
-  TextInput,
-} from 'react-native';
+import {TouchableOpacity, View, Alert, SectionList} from 'react-native';
 import {observer} from 'mobx-react';
-import {Divider, Drawer, Text} from 'react-native-paper';
+import {Divider, Text} from 'react-native-paper';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {DrawerContentComponentProps} from '@react-navigation/drawer';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -15,250 +9,22 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTheme} from '../../hooks';
 import {createStyles} from './styles';
 import {chatSessionStore, SessionMetaData} from '../../store';
-import {Menu, RenameModal, Checkbox} from '..';
-import {
-  EditIcon,
-  PlusIcon,
-  SearchIcon,
-  SettingsIcon,
-  ShareIcon,
-  TrashIcon,
-} from '../../assets/icons';
+import {RenameModal} from '..';
+import {SettingsIcon} from '../../assets/icons';
 import {L10nContext} from '../../utils';
 import {t} from '../../locales';
 import {ROUTES} from '../../utils/navigationConstants';
 import {exportChatSession} from '../../utils/exportUtils';
+import {SessionListItem} from './SessionListItem';
+import {SelectionModeBar} from './SelectionModeBar';
+import {SessionSearchBar} from './SessionSearchBar';
 
-// Session item props interface
-interface SessionItemProps {
-  session: SessionMetaData;
-  isActive: boolean;
-  onPress: (sessionId: string) => void;
-  onLongPress: (sessionId: string, event: any) => void;
-  menuVisible: string | null;
-  menuPosition: {x: number; y: number};
-  onMenuDismiss: () => void;
-  onPressRename: (session: SessionMetaData) => void;
-  onPressDelete: (sessionId: string) => void;
-  onPressExport: (sessionId: string) => void;
-  onPressSelect: (sessionId: string) => void;
-  isSelectionMode: boolean;
-  isSelected: boolean;
-  onToggleSelection: (sessionId: string) => void;
-  theme: any;
-  styles: any;
-  l10n: any;
-}
-
-// Memoized session item component
-const SessionItem = React.memo<SessionItemProps>(
-  ({
-    session,
-    isActive,
-    onPress,
-    onLongPress,
-    menuVisible,
-    menuPosition,
-    onMenuDismiss,
-    onPressRename,
-    onPressDelete,
-    onPressExport,
-    onPressSelect,
-    isSelectionMode,
-    isSelected,
-    onToggleSelection,
-    theme,
-    styles,
-    l10n,
-  }) => {
-    const handlePress = () => {
-      if (isSelectionMode) {
-        onToggleSelection(session.id);
-      } else {
-        onPress(session.id);
-      }
-    };
-
-    const handleLongPress = (event: any) => {
-      if (!isSelectionMode) {
-        onLongPress(session.id, event);
-      }
-    };
-
-    return (
-      <View style={styles.sessionItemContainer}>
-        {isSelectionMode && (
-          <View style={styles.sessionCheckbox}>
-            <Checkbox
-              checked={isSelected}
-              onPress={() => onToggleSelection(session.id)}
-              testID={`checkbox-${session.id}`}
-            />
-          </View>
-        )}
-        <TouchableOpacity
-          onPress={handlePress}
-          onLongPress={handleLongPress}
-          style={styles.sessionTouchable}>
-          <Drawer.Item
-            active={isActive}
-            label={session.title}
-            style={styles.sessionDrawerItem}
-          />
-        </TouchableOpacity>
-        {!isSelectionMode && (
-          <Menu
-            visible={menuVisible === session.id}
-            onDismiss={onMenuDismiss}
-            anchor={menuPosition}
-            style={styles.menu}
-            contentStyle={{}}
-            anchorPosition="bottom">
-            <Menu.Item
-              onPress={() => {
-                onPressRename(session);
-                onMenuDismiss();
-              }}
-              label={l10n.common.rename}
-              leadingIcon={() => <EditIcon stroke={theme.colors.primary} />}
-            />
-            <Menu.Item
-              onPress={() => {
-                onPressExport(session.id);
-                onMenuDismiss();
-              }}
-              label={l10n.common.export}
-              leadingIcon={() => <ShareIcon stroke={theme.colors.primary} />}
-            />
-            <Menu.Item
-              onPress={() => {
-                onPressDelete(session.id);
-                onMenuDismiss();
-              }}
-              label={l10n.common.delete}
-              labelStyle={{color: theme.colors.error}}
-              leadingIcon={() => <TrashIcon stroke={theme.colors.error} />}
-            />
-            <Divider style={styles.menuDivider} />
-            <Menu.Item
-              onPress={() => {
-                onPressSelect(session.id);
-                onMenuDismiss();
-              }}
-              label={`${l10n.components.sidebarContent.select}...`}
-            />
-          </Menu>
-        )}
-      </View>
-    );
-  },
-);
-
-SessionItem.displayName = 'SessionItem';
-
-// Selection mode header component
-interface SelectionModeHeaderProps {
-  selectedCount: number;
-  onCancel: () => void;
-  onExport: () => void;
-  onDelete: () => void;
-  l10n: any;
-  theme: any;
-  styles: any;
-}
-
-const SelectionModeHeader: React.FC<SelectionModeHeaderProps> = ({
-  selectedCount,
-  onCancel,
-  onExport,
-  onDelete,
-  l10n,
-  theme,
-  styles,
-}) => {
-  return (
-    <View style={styles.selectionModeHeader}>
-      <TouchableOpacity onPress={onCancel} testID="cancel-selection-button">
-        <Text style={{color: theme.colors.primary}}>{l10n.common.cancel}</Text>
-      </TouchableOpacity>
-
-      <Text style={styles.selectedCountText}>
-        {t(l10n.components.sidebarContent.nSelected, {
-          count: selectedCount.toString(),
-        })}
-      </Text>
-
-      <View style={styles.headerActions}>
-        <TouchableOpacity
-          onPress={onExport}
-          disabled={selectedCount === 0}
-          style={[
-            styles.headerActionButton,
-            selectedCount === 0 && styles.headerActionButtonDisabled,
-          ]}
-          testID="bulk-export-button">
-          <ShareIcon
-            stroke={
-              selectedCount === 0
-                ? theme.colors.onSurfaceDisabled
-                : theme.colors.primary
-            }
-          />
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={onDelete}
-          disabled={selectedCount === 0}
-          style={[
-            styles.headerActionButton,
-            selectedCount === 0 && styles.headerActionButtonDisabled,
-          ]}
-          testID="bulk-delete-button">
-          <TrashIcon
-            stroke={
-              selectedCount === 0
-                ? theme.colors.onSurfaceDisabled
-                : theme.colors.error
-            }
-          />
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-};
-
-SelectionModeHeader.displayName = 'SelectionModeHeader';
-
-// Select all row component
-interface SelectAllRowProps {
-  allSelected: boolean;
-  onToggle: () => void;
-  l10n: any;
-  styles: any;
-}
-
-const SelectAllRow: React.FC<SelectAllRowProps> = ({
-  allSelected,
-  onToggle,
-  l10n,
-  styles,
-}) => {
-  return (
-    <TouchableOpacity
-      onPress={onToggle}
-      style={styles.selectAllRow}
-      testID="select-all-row">
-      <View style={styles.selectAllCheckbox}>
-        <Checkbox checked={allSelected} onPress={onToggle} />
-      </View>
-      <Text style={styles.selectAllText}>
-        {l10n.components.sidebarContent.selectAll}
-      </Text>
-    </TouchableOpacity>
-  );
-};
-
-SelectAllRow.displayName = 'SelectAllRow';
-
+/**
+ * SidebarContent — 抽屉会话中心（编排层）。
+ * 顶部：搜索 + 新对话（SessionSearchBar）；中部：日期分组会话列表（SessionListItem）；
+ * 选择模式头/全选（SelectionModeBar）；底部固定「齿轮+设置」footer。
+ * 各子组件只读 props 渲染，会话 CRUD 动作全部在编排层经 chatSessionStore 受控。
+ */
 export const SidebarContent: React.FC<DrawerContentComponentProps> = observer(
   props => {
     const [menuVisible, setMenuVisible] = useState<string | null>(null);
@@ -462,7 +228,7 @@ export const SidebarContent: React.FC<DrawerContentComponentProps> = observer(
         const isActive = chatSessionStore.activeSessionId === item.id;
         const isSelected = chatSessionStore.selectedSessionIds.has(item.id);
         return (
-          <SessionItem
+          <SessionListItem
             session={item}
             isActive={isActive}
             onPress={handleSessionPress}
@@ -477,9 +243,6 @@ export const SidebarContent: React.FC<DrawerContentComponentProps> = observer(
             isSelectionMode={chatSessionStore.isSelectionMode}
             isSelected={isSelected}
             onToggleSelection={handleToggleSelection}
-            theme={theme}
-            styles={styles}
-            l10n={l10n}
           />
         );
       },
@@ -494,9 +257,6 @@ export const SidebarContent: React.FC<DrawerContentComponentProps> = observer(
         handlePressExport,
         handlePressSelect,
         handleToggleSelection,
-        theme,
-        styles,
-        l10n,
       ],
     );
 
@@ -509,24 +269,17 @@ export const SidebarContent: React.FC<DrawerContentComponentProps> = observer(
           ]}>
           {chatSessionStore.isSelectionMode ? (
             <>
-              <SelectionModeHeader
+              <SelectionModeBar
                 selectedCount={chatSessionStore.selectedCount}
+                allSelected={chatSessionStore.allSelected}
                 onCancel={handleExitSelectionMode}
                 onExport={handleBulkExport}
                 onDelete={handleBulkDelete}
-                l10n={l10n}
-                theme={theme}
-                styles={styles}
-              />
-              <SelectAllRow
-                allSelected={chatSessionStore.allSelected}
-                onToggle={() =>
+                onToggleAll={() =>
                   chatSessionStore.allSelected
                     ? chatSessionStore.deselectAllSessions()
                     : chatSessionStore.selectAllSessions()
                 }
-                l10n={l10n}
-                styles={styles}
               />
               <Divider style={styles.selectAllDivider} />
               <SectionList
@@ -542,37 +295,11 @@ export const SidebarContent: React.FC<DrawerContentComponentProps> = observer(
           ) : (
             <>
               {/* 顶部固定区：搜索 + 新对话 */}
-              <View style={styles.topSection}>
-                <View style={styles.searchContainer}>
-                  <SearchIcon stroke={theme.colors.onSurfaceVariant} />
-                  <TextInput
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                    placeholder={
-                      l10n.components.sidebarContent.searchPlaceholder
-                    }
-                    placeholderTextColor={theme.colors.onSurfaceVariant}
-                    style={styles.searchInput}
-                    testID="session-search-input"
-                    returnKeyType="search"
-                    autoCorrect={false}
-                  />
-                </View>
-                <TouchableOpacity
-                  style={styles.newChatRow}
-                  onPress={handleNewChat}
-                  testID="new-chat-button">
-                  <PlusIcon
-                    stroke={theme.colors.primary}
-                    width={22}
-                    height={22}
-                  />
-                  <Text style={styles.newChatText}>
-                    {l10n.components.sidebarContent.newChat}
-                  </Text>
-                </TouchableOpacity>
-                <Divider style={styles.topDivider} />
-              </View>
+              <SessionSearchBar
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                onNewChat={handleNewChat}
+              />
               <SectionList
                 sections={sections}
                 keyExtractor={keyExtractor}
