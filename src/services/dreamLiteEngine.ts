@@ -255,39 +255,41 @@ export function encodePng(rgb: Uint8Array, w: number, h: number): Uint8Array {
 /** 4 步 flow-matching 去噪（cond 为条件 latents），返回解码 RGB [-1,1] */
 async function denoise(
   cond: Float32Array,
-  size: number,
+  width: number,
+  height: number,
   steps: number,
   encOverride?: Float32Array,
   onStep?: (step: number, steps: number) => void,
   maskOverride?: Float32Array,
 ): Promise<Float32Array> {
-  const lat = size / 8;
-  let latents = new Float32Array(4 * lat * lat);
+  const latW = width / 8;
+  const latH = height / 8;
+  let latents = new Float32Array(4 * latH * latW);
   for (let i = 0; i < latents.length; i++) {
     latents[i] = gauss();
   }
   const enc = encOverride ?? new Float32Array(77 * TE_DIM);
   const mask = maskOverride ?? new Float32Array(77);
-  const tid = new Float32Array([size, size]);
+  const tid = new Float32Array([width, height]);
   // 对齐官方：mu-shifted sigmas
-  const sigmas = shiftedSigmas(steps, lat);
+  const sigmas = shiftedSigmas(steps, latH * latW);
   const mask64 = Array.from(mask).map(v => BigInt(v));
   for (let i = 0; i < steps; i++) {
     const sigma = sigmas[i];
     const t = sigma * 1000;
-    // model_input = cat([latents, cond], dim=3) -> [1,4,lat,lat*2]
-    const inp = new Float32Array(4 * lat * lat * 2);
-    for (let y = 0; y < lat; y++) {
-      for (let x = 0; x < lat; x++) {
+    // model_input = cat([latents, cond], dim=3) -> [1,4,latH,latW*2]
+    const inp = new Float32Array(4 * latH * latW * 2);
+    for (let y = 0; y < latH; y++) {
+      for (let x = 0; x < latW; x++) {
         for (let c = 0; c < 4; c++) {
-          const src = ((c * lat + y) * lat + x);
-          inp[((c * lat + y) * lat * 2) + x] = latents[src];
-          inp[((c * lat + y) * lat * 2) + lat + x] = cond[src];
+          const src = (c * latH + y) * latW + x;
+          inp[((c * latH + y) * latW * 2) + x] = latents[src];
+          inp[((c * latH + y) * latW * 2) + latW + x] = cond[src];
         }
       }
     }
     const feeds = {
-      sample: new ort.Tensor('float32', inp, [1, 4, lat, lat * 2]),
+      sample: new ort.Tensor('float32', inp, [1, 4, latH, latW * 2]),
       timestep: new ort.Tensor('float32', [t], [1]),
       encoder_hidden_states: new ort.Tensor('float32', enc, [1, 77, 2048]),
       encoder_attention_mask: new ort.Tensor('int64', mask64 as any, [1, 77]),
@@ -296,16 +298,15 @@ async function denoise(
     const res = await unet!.run(feeds);
     console.log(`[DreamLite] step ${i + 1}/${steps} done`);
     onStep?.(i + 1, steps);
-    const np = res.noise_pred.data as Float32Array; // [1,4,lat,lat*2]
-    // crop width to lat, then euler step: latents = latents - sigma_diff * np
+    const np = res.noise_pred.data as Float32Array; // [1,4,latH,latW*2]
     const next = new Float32Array(latents.length);
     const sigmaNext = i + 1 < steps ? sigmas[i + 1] : 0;
     const d = sigmaNext - sigma;
-    for (let y = 0; y < lat; y++) {
-      for (let x = 0; x < lat; x++) {
+    for (let y = 0; y < latH; y++) {
+      for (let x = 0; x < latW; x++) {
         for (let c = 0; c < 4; c++) {
-          const dst = (c * lat + y) * lat + x;
-          const srcNp = ((c * lat + y) * lat * 2) + x;
+          const dst = (c * latH + y) * latW + x;
+          const srcNp = ((c * latH + y) * latW * 2) + x;
           next[dst] = latents[dst] + d * np[srcNp];
         }
       }
@@ -318,24 +319,30 @@ async function denoise(
   for (let i = 0; i < latents.length; i++) {
     dec[i] = latents[i] / sf;
   }
-  const vres = await vae!.run({latents: new ort.Tensor('float32', dec, [1, 4, lat, lat])});
-  return vres.image.data as Float32Array; // [1,3,size,size] [-1,1]
+  const vres = await vae!.run({
+    latents: new ort.Tensor('float32', dec, [1, 4, latH, latW]),
+  });
+  return vres.image.data as Float32Array; // [1,3,height,width] [-1,1]
 }
 
-async function saveRgb(img: Float32Array, size: number): Promise<string> {
+async function saveRgb(
+  img: Float32Array,
+  width: number,
+  height: number,
+): Promise<string> {
   // VAE ONNX 输出为 NCHW [1,3,H,W]，需转 HWC(RGB 交错)，否则灰图/9宫格
-  const hw = size * size;
+  const hw = width * height;
   const to8 = (v: number) => Math.max(0, Math.min(255, Math.round((v * 0.5 + 0.5) * 255)));
-  const rgb = new Uint8Array(size * size * 3);
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const p = y * size + x;
+  const rgb = new Uint8Array(hw * 3);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const p = y * width + x;
       rgb[p * 3] = to8(img[p]);
       rgb[p * 3 + 1] = to8(img[hw + p]);
       rgb[p * 3 + 2] = to8(img[2 * hw + p]);
     }
   }
-  const png = encodePng(rgb, size, size);
+  const png = encodePng(rgb, width, height);
   const out = `${RNFS.DocumentDirectoryPath}/dreamlite_${Date.now()}.png`;
   await RNFS.writeFile(out, toBase64(png), 'base64');
   console.log('[DreamLite] saved', out);
@@ -344,7 +351,8 @@ async function saveRgb(img: Float32Array, size: number): Promise<string> {
 
 /** 文生图：有 TE 用真实 prompt 条件，无 TE 回退零填充基线 */
 export async function generateDreamLite(
-  size = 512,
+  width = 1024,
+  height = 1024,
   steps = 4,
   prompt?: string,
   onStep?: (step: number, steps: number) => void,
@@ -364,14 +372,15 @@ export async function generateDreamLite(
     }
   }
   const img = await denoise(
-    new Float32Array(4 * (size / 8) * (size / 8)),
-    size,
+    new Float32Array(4 * (height / 8) * (width / 8)),
+    width,
+    height,
     steps,
     enc ?? undefined,
     onStep,
     mask ?? undefined,
   );
-  return saveRgb(img, size);
+  return saveRgb(img, width, height);
 }
 
 /** 原生解码上传图片→归一化 RGB（按较大边压缩到 size） */
@@ -390,7 +399,8 @@ export async function decodeImageToRgb(
 /** 图像编辑：源图 RGB[-1,1] → VAE encode 作条件 → 4 步去噪 */
 export async function editDreamLite(
   sourceRgb: Float32Array,
-  size = 512,
+  width = 1024,
+  height = 1024,
   steps = 4,
   onStep?: (step: number, steps: number) => void,
 ): Promise<string> {
@@ -398,12 +408,12 @@ export async function editDreamLite(
     throw new Error('DreamLite not loaded');
   }
   const eres = await vaeEnc.run({
-    image: new ort.Tensor('float32', sourceRgb, [1, 3, size, size]),
+    image: new ort.Tensor('float32', sourceRgb, [1, 3, height, width]),
   });
   const cond = eres.latents.data as Float32Array;
   console.log('[DreamLite] source encoded, cond len', cond.length);
-  const img = await denoise(cond, size, steps, undefined, onStep);
-  return saveRgb(img, size);
+  const img = await denoise(cond, width, height, steps, undefined, onStep);
+  return saveRgb(img, width, height);
 }
 
 function gauss(): number {

@@ -61,6 +61,15 @@ const DREAMLITE_MANIFEST: ImageGenManifest = {
 
 const PROMPT_LIMIT = 120;
 
+// 官方支持多分辨率/画幅（base 1024）
+const RATIOS: Record<string, [number, number]> = {
+  '1:1': [1024, 1024],
+  '3:4': [768, 1024],
+  '4:3': [1024, 768],
+  '9:16': [576, 1024],
+  '16:9': [1024, 576],
+};
+
 export const ImageGenScreen: React.FC = observer(() => {
   const theme = useTheme();
   const [available, setAvailable] = React.useState<
@@ -81,6 +90,9 @@ export const ImageGenScreen: React.FC = observer(() => {
   const [manageMode, setManageMode] = React.useState(false);
   const [toDelete, setToDelete] = React.useState<string[]>([]);
   const [mode, setMode] = React.useState<'gen' | 'edit'>('gen');
+  const [ratio, setRatio] = React.useState('1:1');
+  const dreamW = RATIOS[ratio]?.[0] ?? 1024;
+  const dreamH = RATIOS[ratio]?.[1] ?? 1024;
   const [editSource, setEditSource] = React.useState<string | null>(null);
   const [editRgb, setEditRgb] = React.useState<Float32Array | null>(null);
   const [pageW, setPageW] = React.useState(0);
@@ -242,9 +254,10 @@ export const ImageGenScreen: React.FC = observer(() => {
     }
     const path = p.replace('file://', '');
     setEditSource(path);
-    // 按较大边压缩到支持尺寸（当前 size）
+    // 按较大边压缩到支持尺寸
+    const sq = Math.min(dreamW, dreamH);
     try {
-      const rgb = await decodeImageToRgb(path, size);
+      const rgb = await decodeImageToRgb(path, sq);
       setEditRgb(rgb);
     } catch (e) {
       runInAction(() => {
@@ -265,9 +278,11 @@ export const ImageGenScreen: React.FC = observer(() => {
     });
     try {
       await loadDreamLite();
+      const sq = Math.min(dreamW, dreamH);
       const uri = await editDreamLite(
         editRgb,
-        size,
+        sq,
+        sq,
         parseInt(steps, 10) || 4,
         (st, tot) => {
           runInAction(() => {
@@ -317,7 +332,8 @@ export const ImageGenScreen: React.FC = observer(() => {
           imageGenStore.dreamliteLoaded = true;
         });
         const uri = await generateDreamLite(
-          size,
+          dreamW,
+          dreamH,
           parseInt(steps, 10) || 4,
           prompt.trim(),
           (st, tot) => {
@@ -607,17 +623,31 @@ export const ImageGenScreen: React.FC = observer(() => {
                   multiline
                 />
               )}
-              <View style={s.paramRow}>
-                <Text style={s.paramLabel}>尺寸</Text>
-                {SIZES.map(sz => (
-                  <TouchableOpacity
-                    key={sz}
-                    style={[s.sizeBtn, size === sz && s.sizeBtnSelected]}
-                    onPress={() => setSize(sz)}>
-                    <Text style={s.sizeBtnText}>{sz}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              {isDream ? (
+                <View style={s.paramRow}>
+                  <Text style={s.paramLabel}>画幅</Text>
+                  {Object.keys(RATIOS).map(r => (
+                    <TouchableOpacity
+                      key={r}
+                      style={[s.sizeBtn, ratio === r && s.sizeBtnSelected]}
+                      onPress={() => setRatio(r)}>
+                      <Text style={s.sizeBtnText}>{r}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ) : (
+                <View style={s.paramRow}>
+                  <Text style={s.paramLabel}>尺寸</Text>
+                  {SIZES.map(sz => (
+                    <TouchableOpacity
+                      key={sz}
+                      style={[s.sizeBtn, size === sz && s.sizeBtnSelected]}
+                      onPress={() => setSize(sz)}>
+                      <Text style={s.sizeBtnText}>{sz}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
               <View style={s.paramRow}>
                 <Text style={s.paramLabel}>步数</Text>
                 <TextInput
@@ -645,12 +675,12 @@ export const ImageGenScreen: React.FC = observer(() => {
               <TouchableOpacity
                 style={[s.modeBtn, mode === 'gen' && s.modeBtnActive]}
                 onPress={() => setMode('gen')}>
-                <Text style={s.modeBtnText}>出图</Text>
+                <Text style={s.modeBtnText}>文生图</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[s.modeBtn, mode === 'edit' && s.modeBtnActive]}
                 onPress={() => setMode('edit')}>
-                <Text style={s.modeBtnText}>编辑</Text>
+                <Text style={s.modeBtnText}>图像编辑</Text>
               </TouchableOpacity>
             </View>
           )}
