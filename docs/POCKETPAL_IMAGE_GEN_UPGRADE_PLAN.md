@@ -312,3 +312,25 @@
 - ✅ 已落地：6.6 SD3.5/Z-Image「实验性」标记（manifest 声明 + 下拉/胶囊徽章）。
 - ⏳ 未落地：weak-ref 溢出回归根治（两模型复活先决条件）；OpenCL hang 根因；P6-3/P6-4。
 
+### 6.7 文案规范化 + 本窗口闭环（2026-08-14）
+
+**UI 文案改名（大王指定，去行话化）**：
+
+| 位置 | 原文案 | 新文案 |
+|---|---|---|
+| 操作栏按钮（橙） | 抽卡 | 再次生成 |
+| 相册横栏标题 | 历史 (N) | 相册 (N) |
+| 操作栏按钮（绿）+ 成功 toast | 存相册 / 已存入相册 | 保存 / 已保存 · Pictures/AIOS |
+
+仅改 UI 文案，变量名（handleReroll/history/saveToAlbum）不动，零回归风险。
+
+**本窗口（task-48b）提交清单**：
+- `ImageGenScreen.tsx`：预览区单状态机 + 双形态动效 + 编辑·出图并列 + 提示词生命周期 + 文案改名
+- `dreamLiteEngine.ts`：内存根治（enableCpuMemArena:false + vocab_only:true）+ 异步释放 await
+- `imageGenStore.ts`：kind 字段 + loadedModelId
+- `imageGenManifest.ts`：note 时长提示 + catch 语法精简
+- `ChatSessionStore.ts`：启动恢复上次会话
+- `CMakeLists.txt`：arm64 开 OpenCL（运行时默认 CPU）
+- assets 图标更新；docs 6.5/6.6/6.7 落盘
+
+

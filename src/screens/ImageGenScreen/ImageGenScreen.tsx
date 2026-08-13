@@ -356,7 +356,7 @@ export const ImageGenScreen: React.FC = observer(() => {
   };
 
   const handleReroll = () => {
-    handleGenerate(); // 同参数再次抽卡
+    handleGenerate(); // 同参数再次生成
   };
 
   const handlePickEditImage = async () => {
@@ -722,7 +722,7 @@ export const ImageGenScreen: React.FC = observer(() => {
               ))}
             </ScrollView>
             {genOverlay}
-            {/* 轻量滚动信息条：存相册/编辑等操作的即时反馈，不打断操作 */}
+            {/* 轻量滚动信息条：保存/编辑等操作的即时反馈，不打断操作 */}
             {toast ? (
               <Animated.View
                 pointerEvents="none"
@@ -743,9 +743,9 @@ export const ImageGenScreen: React.FC = observer(() => {
                       return;
                     }
                     const ok = await imageGenStore.saveToAlbum(currentImage);
-                    showToast(ok ? '已存入相册 · Pictures/AIOS' : '保存失败，请重试');
+                    showToast(ok ? '已保存 · Pictures/AIOS' : '保存失败，请重试');
                   }}>
-                  <Text style={s.actionTextLight}>存相册</Text>
+                  <Text style={s.actionTextLight}>保存</Text>
                 </TouchableOpacity>
                 {isDream && (
                   <TouchableOpacity style={[s.actionBtn, s.actionEdit]} onPress={handleEditArm}>
@@ -755,7 +755,7 @@ export const ImageGenScreen: React.FC = observer(() => {
                   </TouchableOpacity>
                 )}
                 <TouchableOpacity style={[s.actionBtn, s.actionReuse]} onPress={handleReroll}>
-                  <Text style={s.actionTextLight}>抽卡</Text>
+                  <Text style={s.actionTextLight}>再次生成</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[s.actionBtn, s.actionDelete]}
@@ -784,7 +784,7 @@ export const ImageGenScreen: React.FC = observer(() => {
         {/* ② 历史区（紧凑横条）：上传入口 + 历史缩略图（点击联动大图预览） */}
         <View style={s.card}>
           <View style={s.historyHeader}>
-            <Text style={s.cardTitle}>历史 ({imageGenStore.history.length})</Text>
+            <Text style={s.cardTitle}>相册 ({imageGenStore.history.length})</Text>
             <View style={s.historyHeaderActions}>
               <TouchableOpacity onPress={handlePickEditImage}>
                 <Text style={s.uploadText}>上传</Text>
