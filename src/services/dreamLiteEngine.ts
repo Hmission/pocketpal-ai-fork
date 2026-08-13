@@ -107,7 +107,10 @@ const GEN_TEMPLATE =
   '<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n';
 
 /** 复刻 pipeline encode_prompt(generate)：模板→TE per-token→drop34→pad77 */
-export async function encodePrompt(prompt: string, maxLen = 77): Promise<Float32Array | null> {
+export async function encodePrompt(
+  prompt: string,
+  maxLen = 77,
+): Promise<{enc: Float32Array; mask: Float32Array} | null> {
   if (!teCtx) {
     return null;
   }
