@@ -299,9 +299,17 @@ async function denoise(
 }
 
 async function saveRgb(img: Float32Array, size: number): Promise<string> {
+  // VAE ONNX 输出为 NCHW [1,3,H,W]，需转 HWC(RGB 交错)，否则灰图/9宫格
+  const hw = size * size;
+  const to8 = (v: number) => Math.max(0, Math.min(255, Math.round((v * 0.5 + 0.5) * 255)));
   const rgb = new Uint8Array(size * size * 3);
-  for (let i = 0; i < rgb.length; i++) {
-    rgb[i] = Math.max(0, Math.min(255, Math.round((img[i] * 0.5 + 0.5) * 255)));
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const p = y * size + x;
+      rgb[p * 3] = to8(img[p]);
+      rgb[p * 3 + 1] = to8(img[hw + p]);
+      rgb[p * 3 + 2] = to8(img[2 * hw + p]);
+    }
   }
   const png = encodePng(rgb, size, size);
   const out = `${RNFS.DocumentDirectoryPath}/dreamlite_${Date.now()}.png`;
