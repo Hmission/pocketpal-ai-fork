@@ -91,7 +91,7 @@ export async function releaseTE(): Promise<void> {
 
 /** 加载真实 TE：fp16 ONNX（per-token hidden_states，输出 Cast fp32；桌面实测与 transformers FP32 逐 token cos=1.0）。
  * 旧 te_int8.onnx 因 per-tensor 动态激活量化毁坏 Qwen3 离群通道（kept 区 cos 0.17-0.56 → 糊图）弃用；
- * 不做静默降级：fp16 加载失败直接报错（产品哲学：不兑底不补丁）。tokenizer 仍用 llama.rn 加载 te_q8.gguf。 */
+ * 不做静默降级：fp16 加载失败直接报错（产品哲学：不兜底不补丁）。tokenizer 仍用 llama.rn 加载 te_q8.gguf。 */
 export async function loadTE(): Promise<void> {
   if (teCtx) {
     return;
@@ -297,88 +297,6 @@ export function encodePng(rgb: Uint8Array, w: number, h: number): Uint8Array {
   return out;
 }
 
-/** float32 -> float16 位表示（IEEE 754 半精度，round-to-nearest-even） */
-function f32ToF16(src: Float32Array): Uint16Array {
-  const out = new Uint16Array(src.length);
-  const buf = new ArrayBuffer(4);
-  const fv = new Float32Array(buf);
-  const iv = new Uint32Array(buf);
-  for (let i = 0; i < src.length; i++) {
-    fv[0] = src[i];
-    const x = iv[0];
-    const sign = (x >>> 16) & 0x8000;
-    const e32 = (x >>> 23) & 0xff;
-    const mant = x & 0x7fffff;
-    let exp = e32 - 127 + 15;
-    let v: number;
-    if (e32 === 0xff) {
-      // NaN/Inf
-      v = sign | 0x7c00 | (mant ? 0x200 | (mant >>> 13) : 0);
-    } else if (exp >= 31) {
-      v = sign | 0x7c00;
-    } else if (exp <= 0) {
-      // subnormal（含舍入）
-      if (exp < -10) {
-        v = sign;
-      } else {
-        const m = mant | 0x800000;
-        const shift = 14 - exp;
-        let t = m >> shift;
-        if ((m >> (shift - 1)) & 1) {
-          t += 1;
-        }
-        v = sign | t;
-      }
-    } else {
-      v = mant >>> 13;
-      const rem = mant & 0x1fff;
-      if (rem > 0x1000 || (rem === 0x1000 && (v & 1))) {
-        v += 1;
-      }
-      v = sign | (exp << 10) | v;
-    }
-    out[i] = v >>> 0;
-  }
-  return out;
-}
-
-/** float16 位表示 -> float32 */
-function f16ToF32(src: Uint16Array): Float32Array {
-  const out = new Float32Array(src.length);
-  const buf = new ArrayBuffer(4);
-  const fv = new Float32Array(buf);
-  const iv = new Uint32Array(buf);
-  for (let i = 0; i < src.length; i++) {
-    const h = src[i];
-    const sign = (h & 0x8000) << 16;
-    const exp = (h >> 10) & 0x1f;
-    const mant = h & 0x3ff;
-    let x: number;
-    if (exp === 0) {
-      if (mant === 0) {
-        x = sign;
-      } else {
-        // subnormal
-        let e = -14;
-        let m = mant;
-        while ((m & 0x400) === 0) {
-          m <<= 1;
-          e -= 1;
-        }
-        m &= 0x3ff;
-        x = sign | ((e + 127) << 23) | (m << 13);
-      }
-    } else if (exp === 0x1f) {
-      x = sign | 0x7f800000 | (mant << 13);
-    } else {
-      x = sign | ((exp - 15 + 127) << 23) | (mant << 13);
-    }
-    iv[0] = x >>> 0;
-    out[i] = fv[0];
-  }
-  return out;
-}
-
 /** 4 步 flow-matching 去噪（cond 为条件 latents），返回解码 RGB [-1,1] */
 async function denoise(
   cond: Float32Array,
@@ -398,9 +316,6 @@ async function denoise(
   const enc = encOverride ?? new Float32Array(MAX_SEQ * TE_DIM);
   const mask = maskOverride ?? new Float32Array(MAX_SEQ);
   const tid = new Float32Array([width, height]);
-  // fp16 unet：encoder_hidden_states 每步相同，预转一次
-  const fp16 = unetMode === 'fp16';
-  const enc16 = fp16 ? f32ToF16(enc) : null;
   // 对齐官方：mu-shifted sigmas
   const sigmas = shiftedSigmas(steps, latH * latW);
   const mask64 = Array.from(mask).map(v => BigInt(v));
@@ -418,28 +333,17 @@ async function denoise(
         }
       }
     }
-    const inp16 = fp16 ? f32ToF16(inp) : null;
-    const feeds = fp16
-      ? {
-          sample: new ort.Tensor('float16', inp16 as Uint16Array, [1, 4, latH, latW * 2]),
-          timestep: new ort.Tensor('float32', [t], [1]),
-          encoder_hidden_states: new ort.Tensor('float16', enc16 as Uint16Array, [1, MAX_SEQ, TE_DIM]),
-          encoder_attention_mask: new ort.Tensor('int64', mask64 as any, [1, MAX_SEQ]),
-          time_ids: new ort.Tensor('float32', tid, [1, 2]),
-        }
-      : {
-          sample: new ort.Tensor('float32', inp, [1, 4, latH, latW * 2]),
-          timestep: new ort.Tensor('float32', [t], [1]),
-          encoder_hidden_states: new ort.Tensor('float32', enc, [1, MAX_SEQ, TE_DIM]),
-          encoder_attention_mask: new ort.Tensor('int64', mask64 as any, [1, MAX_SEQ]),
-          time_ids: new ort.Tensor('float32', tid, [1, 2]),
-        };
+    const feeds = {
+      sample: new ort.Tensor('float32', inp, [1, 4, latH, latW * 2]),
+      timestep: new ort.Tensor('float32', [t], [1]),
+      encoder_hidden_states: new ort.Tensor('float32', enc, [1, MAX_SEQ, TE_DIM]),
+      encoder_attention_mask: new ort.Tensor('int64', mask64 as any, [1, MAX_SEQ]),
+      time_ids: new ort.Tensor('float32', tid, [1, 2]),
+    };
     const res = await unet!.run(feeds);
     console.log(`[DreamLite] step ${i + 1}/${steps} done`);
     onStep?.(i + 1, steps);
-    // fp16 模型输出 noise_pred 为 fp16 位表示，转回 fp32
-    const npRaw = res.noise_pred.data;
-    const np = fp16 ? f16ToF32(npRaw as Uint16Array) : (npRaw as Float32Array); // [1,4,latH,latW*2]
+    const np = res.noise_pred.data as Float32Array; // [1,4,latH,latW*2]
     const next = new Float32Array(latents.length);
     const sigmaNext = i + 1 < steps ? sigmas[i + 1] : 0;
     const d = sigmaNext - sigma;

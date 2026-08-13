@@ -391,7 +391,7 @@
 |---|---|---|
 | C1/C2/C3 | 删 JNI `cfg/steps/loraMultiplier` 三处 `>0 ? : default` 兜底 | 调用链（manifest defaults + store `??` 默认）已保证参数有值，JNI 不重复防御 |
 | C4 | 删 L285-293 OpenCL fallback retry 死代码 | backend 恒 CPU 后该分支永不触发（new_sd_ctx 失败直接返回 JNI_FALSE） |
-| C5 | dreamLiteEngine 删 fp32→fp16 fallback | fp32 已真机稳定验证，单文件单路径 |
+| C5 | dreamLiteEngine 删 fp32→fp16 fallback | fp32 已真机稳定验证，单文件单路径（已落地：删 teMode/unetMode + f32ToF16/f16ToF32 死代码 -104 行；同步删 TE int8 静默降级——int8 已实证毁图（cos 0.17-0.56），降级=静默出坏图，改 fail-fast 报错） |
 | C6 | 半收口：**删** progress 500ms 节流（每步一次回调本就低频，节流永不触发）；**保留** log 节流并注释改为“JNI attach/detach 开销控制”（高频 log 每帧 Attach/DetachCurrentThread 是真实开销，非防御） | 区分“冗余防御”与“真实开销阀” |
 
 #### 第二波 B1 weak-ref 残余源根治（两模型复活先决条件①）
@@ -411,5 +411,12 @@
   4. 对照 sd.cpp 上游 OpenCL 已知 issue 与 Adreno 兼容性矩阵；
   5. 若确认 Adreno 驱动 bug：维持 CPU 默认（当前决策已正确），OpenCL 降级为“设备白名单启用”。
 - 当前 backend 强制 CPU 是**明确决策 + TODO 标记**（非隐性兜底），在 B2 侦察完成前维持。
+
+#### 治理状态（2026-08-14 闭环）
+
+- ✅ 第一波 C1-C6 全部落地：C1-C4（JNI 删兑底/死代码）、C5（dreamLiteEngine 删 fp32→fp16 fallback + TE int8 静默降级 fail-fast，-104 行）、C6 半收口（progress 节流删、log 节流保留为 attach/detach 开销控制）。
+- ✅ 第二波 B1 全部落地：生图页全部 Animated 改 JS driver（pulse loop + toast），切断 NativeAnimatedModule weak ref 累积源。
+- ⏳ 第三波 B2 未动（有意规划态）：OpenCL hang 根因侦察 5 条路线待下窗口专项，当前 CPU 强制为明确决策。
+- 提交：`c516993`（C 类 + B1）+ 本窗口补交（C5 末段 + 文档）。
 
 
