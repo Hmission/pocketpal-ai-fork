@@ -48,6 +48,22 @@ export function unloadDreamLite(): void {
   vaeEnc = null;
 }
 
+/** 释放 TE（ORT+llama tokenizer），用于编码后降内存峰值 */
+export function releaseTE(): void {
+  try {
+    teOrt?.release();
+  } catch {
+    /* noop */
+  }
+  try {
+    teCtx?.release();
+  } catch {
+    /* noop */
+  }
+  teOrt = null;
+  teCtx = null;
+}
+
 /** 加载真实 TE（Qwen3-VL q8 GGUF，pooling=none 取 per-token hidden states） */
 export async function loadTE(): Promise<void> {
   if (teCtx) {
@@ -307,6 +323,7 @@ export async function generateDreamLite(
   if (prompt) {
     await loadTE();
     enc = await encodePrompt(prompt);
+    releaseTE(); // 编码完即释放 TE，降低与 UNet 同驻的内存峰值
   }
   const img = await denoise(
     new Float32Array(4 * (size / 8) * (size / 8)),
