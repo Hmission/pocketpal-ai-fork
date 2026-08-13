@@ -1,28 +1,18 @@
 /**
- * ImageGenScreen — 生图页（P5.4 三行布局 v2）
+ * ImageGenScreen — 生图页（P5.4 三行布局 v2，目录化编排层）
  *
  * 布局（用户视角，单列三区）：
- *  顶部：模型状态胶囊 → 点按展开锚定下拉面板（选模型 + 加载/卸载确认）
- *  ① 结果区（置顶主角）：最新图 + 操作条 + 参数水印；生成中进度 overlay 叠在结果区上
- *  ② 历史区（紧凑横条）：横向滑动 + [管理]多选删除
- *  ③ 创作区（底部 composer）：提示词 + 折叠高级参数 + 出图/编辑按钮（模式由顶部下拉 dreamlite 条目驱动）
+ *  顶部：模型状态胶囊 → 点按展开锚定下拉面板（ModelPickerPanel）
+ *  ① 结果区（置顶主角）：最新图 + 操作条 + 参数水印；生成中进度 overlay 叠在结果区上（ResultPreview）
+ *  ② 历史区（紧凑横条）：横向滑动 + [管理]多选删除（HistoryStrip）
+ *  ③ 创作区（底部 composer）：提示词 + 折叠高级参数 + 出图/编辑按钮（ComposerPanel）
  * 键盘：外层 KeyboardAwareScrollView，聚焦输入框自动滚入可见区。
+ *
+ * 编排层职责：单状态机（预览区分页 previewIndex）+ 业务动作 + 子区组装。
+ * 各 Panel 只读 props 渲染；store 状态经 observer 自动联动。
  */
 import * as React from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  Image,
-  StyleSheet,
-  FlatList,
-  ScrollView,
-  ActivityIndicator,
-  Modal,
-  Animated,
-  Alert,
-} from 'react-native';
+import {View, ScrollView, Alert} from 'react-native';
 import {KeyboardAwareScrollView} from 'react-native-keyboard-controller';
 import {observer} from 'mobx-react-lite';
 import {runInAction} from 'mobx';
@@ -41,44 +31,22 @@ import {AIOS_MODELS_DIR} from '../../utils/paths';
 import {
   listAvailableModels,
   resolveCompanions,
-  ImageGenManifest,
 } from '../../utils/imageGenManifest';
 
-const FAMILY_BADGE: Record<ImageGenManifest['family'], string> = {
-  zimage: 'Z-Image',
-  sd3: 'SD3.5',
-  classic: '',
-  dreamlite: 'DreamLite',
-};
-
-// DreamLite 作为统一模型选项进入顶部选择栏（同一模型不分出图/编辑；模式切换由预览区分页驱动）
-const DREAMLITE_MANIFEST: ImageGenManifest = {
-  id: 'dreamlite',
-  label: 'DreamLite Mobile',
-  family: 'dreamlite',
-  main: '',
-  defaults: {steps: 4, cfg: 1, size: 1024},
-  note: '统一文生图 + 图像编辑，4 步 1024px 约 25s',
-};
-
-const PROMPT_LIMIT = 120;
-
-// 官方多分辨率训练桶（~1M 像素，与 HF Space 选项一致；旧自定尺寸如 576×1024 偏离训练桶会导致非方图质量下降）
-const RATIOS: Record<string, [number, number]> = {
-  '1:1': [1024, 1024],
-  '9:7': [1152, 896],
-  '7:9': [896, 1152],
-  '3:2': [1216, 832],
-  '2:3': [832, 1216],
-  '16:9': [1344, 768],
-  '9:16': [768, 1344],
-};
+import {createStyles} from './styles';
+import {DREAMLITE_MANIFEST, RATIOS, ModelEntry} from './constants';
+import {useToast} from './hooks/useToast';
+import {usePulse} from './hooks/usePulse';
+import {ModelPickerPanel} from './components/ModelPickerPanel';
+import {ResultPreview} from './components/ResultPreview';
+import {HistoryStrip} from './components/HistoryStrip';
+import {ComposerPanel} from './components/ComposerPanel';
 
 export const ImageGenScreen: React.FC = observer(() => {
   const theme = useTheme();
-  const [available, setAvailable] = React.useState<
-    {manifest: ImageGenManifest; mainPath: string}[]
-  >([]);
+  const s = createStyles(theme);
+
+  const [available, setAvailable] = React.useState<ModelEntry[]>([]);
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [prompt, setPrompt] = React.useState('');
   const [negativePrompt, setNegativePrompt] = React.useState('');
@@ -106,67 +74,21 @@ export const ImageGenScreen: React.FC = observer(() => {
   const [editArming, setEditArming] = React.useState(false);
   // 进行中任务类型：'gen'=新生成（预览区空白页动效）｜'edit'=二创当前图（图上叠动效）
   const [taskKind, setTaskKind] = React.useState<'gen' | 'edit' | null>(null);
-  // 生成/编辑动效脉冲（呼吸缩放）
-  const pulse = React.useRef(new Animated.Value(0)).current;
-  // 轻量滚动信息条（替代弹窗）：不打断操作，2.5s 后自动淡出
-  const [toast, setToast] = React.useState<string | null>(null);
-  const toastOpacity = React.useRef(new Animated.Value(0)).current;
-  const toastTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const showToast = React.useCallback(
-    (msg: string) => {
-      setToast(msg);
-      if (toastTimer.current) {
-        clearTimeout(toastTimer.current);
-      }
-      Animated.timing(toastOpacity, {
-        toValue: 1,
-        duration: 200,
-        // B1 weak-ref 根治：生图页全部动效走 JS driver（useNativeDriver:false），
-        // 切断 NativeAnimatedModule 高频 weak ref 来源（tombstone_04 实锤的分钟级溢出源）
-        useNativeDriver: false,
-      }).start();
-      toastTimer.current = setTimeout(() => {
-        Animated.timing(toastOpacity, {
-          toValue: 0,
-          duration: 400,
-          useNativeDriver: false,
-        }).start(() => setToast(null));
-      }, 2500);
-    },
-    [toastOpacity],
-  );
-
+  const {toast, toastOpacity, showToast} = useToast();
   // 生成/编辑进行中：脉冲呼吸动效循环
-  React.useEffect(() => {
-    if (!imageGenStore.generating) {
-      pulse.setValue(0);
-      return;
-    }
-    const loop = Animated.loop(
-      Animated.sequence([
-        // B1 weak-ref 根治：pulse 循环动效必须 JS driver。useNativeDriver:true 会在
-        // 长时出图（分钟级）期间持续触发 TurboModule invokeJavaMethod → weak ref
-        // 累积至 51200 溢出（tombstone_04：50252 全为 NativeAnimatedModule）→ SIGABRT。
-        // JS driver 经 Fabric setNativeProps 更新，不产生 weak ref；
-        // 生图期间 JS 线程负载低（1Hz pull + 2s 心跳），掉帧风险可接受。
-        Animated.timing(pulse, {toValue: 1, duration: 900, useNativeDriver: false}),
-        Animated.timing(pulse, {toValue: 0, duration: 900, useNativeDriver: false}),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [imageGenStore.generating, pulse]);
+  const pulse = usePulse(imageGenStore.generating);
 
+  // observer 本地读：依赖变化时重新执行计时器（loading/generating 期间每 2s 刷新 now）
+  const generating = imageGenStore.generating;
+  const loading = imageGenStore.loading;
   React.useEffect(() => {
-    if (!imageGenStore.generating && !imageGenStore.loading) {
+    if (!generating && !loading) {
       return;
     }
     const t = setInterval(() => setNow(Date.now()), 2000);
     return () => clearInterval(t);
-  }, [imageGenStore.generating, imageGenStore.loading]);
-
-  const SIZES = [384, 512, 640, 768];
+  }, [generating, loading]);
 
   const scanModels = React.useCallback(async () => {
     setScanning(true);
@@ -191,7 +113,11 @@ export const ImageGenScreen: React.FC = observer(() => {
 
   // 启动定位：有历史直接显示最新一张（页 1），无历史停在 0 页编辑槽
   React.useEffect(() => {
-    if (bootedRef.current || pageW === 0 || imageGenStore.history.length === 0) {
+    if (
+      bootedRef.current ||
+      pageW === 0 ||
+      imageGenStore.history.length === 0
+    ) {
       return;
     }
     bootedRef.current = true;
@@ -223,7 +149,8 @@ export const ImageGenScreen: React.FC = observer(() => {
     setSize(m.manifest.defaults.size);
   }, [selectedId, available]);
 
-  const selectedEntry = available.find(a => a.manifest.id === selectedId) ?? null;
+  const selectedEntry =
+    available.find(a => a.manifest.id === selectedId) ?? null;
 
   const isDream = selectedEntry?.manifest.family === 'dreamlite';
   const loaded = isDream
@@ -233,14 +160,13 @@ export const ImageGenScreen: React.FC = observer(() => {
   // 预览分页派生（单状态机）：0 页 = 编辑槽（上传图）；≥1 = 历史图。
   // 编辑目标 = 当前预览区显示的图（0 页=editSource，历史页=currentImage），由「编辑」按钮锁定。
   const currentImage =
-    previewIndex > 0 ? imageGenStore.history[previewIndex - 1]?.uri ?? null : null;
+    previewIndex > 0
+      ? (imageGenStore.history[previewIndex - 1]?.uri ?? null)
+      : null;
   const currentItem =
-    previewIndex > 0 ? imageGenStore.history[previewIndex - 1] ?? null : null;
+    previewIndex > 0 ? (imageGenStore.history[previewIndex - 1] ?? null) : null;
 
-  const loadEntry = async (entry: {
-    manifest: ImageGenManifest;
-    mainPath: string;
-  }) => {
+  const loadEntry = async (entry: ModelEntry) => {
     if (entry.manifest.family === 'dreamlite') {
       runInAction(() => {
         imageGenStore.loading = true;
@@ -278,7 +204,7 @@ export const ImageGenScreen: React.FC = observer(() => {
   };
 
   // 卸载（行内按钮）
-  const doUnload = async (entry: {manifest: ImageGenManifest; mainPath: string}) => {
+  const doUnload = async (entry: ModelEntry) => {
     if (entry.manifest.family === 'dreamlite') {
       runInAction(() => {
         imageGenStore.dreamliteLoaded = false;
@@ -294,7 +220,7 @@ export const ImageGenScreen: React.FC = observer(() => {
   };
 
   // 行内按钮：加载 / 卸载（卸载二次确认）
-  const handleRowAction = (entry: {manifest: ImageGenManifest; mainPath: string}) => {
+  const handleRowAction = (entry: ModelEntry) => {
     setSelectedId(entry.manifest.id);
     if (isRowLoaded(entry)) {
       Alert.alert(
@@ -313,18 +239,18 @@ export const ImageGenScreen: React.FC = observer(() => {
   };
 
   // 行内按钮状态：该行模型是否已加载
-  const isRowLoaded = (entry: {manifest: ImageGenManifest; mainPath: string}) => {
+  const isRowLoaded = (entry: ModelEntry) => {
     if (entry.manifest.family === 'dreamlite') {
       return imageGenStore.dreamliteLoaded;
     }
-    return imageGenStore.modelLoaded && imageGenStore.loadedModelId === entry.manifest.id;
+    return (
+      imageGenStore.modelLoaded &&
+      imageGenStore.loadedModelId === entry.manifest.id
+    );
   };
 
   // 下拉选中：只选中高亮 + 回填参数。不折叠面板、不加载、不切模式（点卡片只是“看参数”）。
-  const handleSelectModel = (entry: {
-    manifest: ImageGenManifest;
-    mainPath: string;
-  }) => {
+  const handleSelectModel = (entry: ModelEntry) => {
     setSelectedId(entry.manifest.id);
   };
 
@@ -371,7 +297,10 @@ export const ImageGenScreen: React.FC = observer(() => {
   };
 
   const handlePickEditImage = async () => {
-    const res = await launchImageLibrary({mediaType: 'photo', includeBase64: false});
+    const res = await launchImageLibrary({
+      mediaType: 'photo',
+      includeBase64: false,
+    });
     const p = res.assets?.[0]?.uri;
     if (!p) {
       return;
@@ -591,808 +520,153 @@ export const ImageGenScreen: React.FC = observer(() => {
     setManageMode(false);
   };
 
-  const s = createStyles(theme);
-
   const modelStatus = imageGenStore.loading
     ? '加载中…'
     : loaded
       ? '已就绪'
       : '未加载';
 
-  // 生成/编辑动效 overlay：出图=空白页盖住预览区（正在生成新图）；编辑=半透明叠在当前图上（正在编辑此图）
-  const genOverlay = imageGenStore.generating ? (
-    <View style={[s.genOverlay, taskKind === 'edit' ? s.genOverlayEdit : null]}>
-      <Animated.View
-        style={[
-          s.genOrb,
-          {
-            opacity: pulse.interpolate({inputRange: [0, 1], outputRange: [0.35, 0.95]}),
-            transform: [
-              {
-                scale: pulse.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.92, 1.15],
-                }),
-              },
-            ],
-          },
-        ]}>
-        <Text style={s.genOrbText}>✦</Text>
-      </Animated.View>
-      <Text style={s.genOverlayTitle}>
-        {taskKind === 'edit' ? '正在编辑此图…' : '正在生成新图…'}
-      </Text>
-      <View style={[s.progressTrack, {width: '70%'}]}>
-        <View
-          style={[
-            s.progressBarFill,
-            {width: `${Math.max(imageGenStore.progress, 2)}%`},
-          ]}
-        />
-      </View>
-      <Text style={s.overlayText}>
-        {imageGenStore.progressText
-          ? `采样 ${imageGenStore.progressText}` +
-            (imageGenStore.stepTime > 0
-              ? `（${imageGenStore.stepTime.toFixed(1)}s/步）`
-              : '')
-          : '加载权重/准备中…'}
-        {' · '}
-        {Math.max(0, Math.round((now - imageGenStore.genStartedAt) / 1000))}s
-      </Text>
-      {imageGenStore.stage ? (
-        <Text style={s.overlayStage} numberOfLines={2}>
-          ▸ {imageGenStore.stage}
-        </Text>
-      ) : null}
-    </View>
-  ) : null;
+  // 预览横向翻页：手动导航视为完成启动定位，历史页回填参数
+  const handleMomentumEnd = (e: {
+    nativeEvent: {contentOffset: {x: number}};
+  }) => {
+    if (!pageW) {
+      return;
+    }
+    const idx = Math.round(e.nativeEvent.contentOffset.x / pageW);
+    setEditArming(false); // 手动翻页退出编辑预备态（目标图已变）
+    setPreviewIndex(idx);
+    if (idx >= 1) {
+      const item = imageGenStore.history[idx - 1];
+      if (item) {
+        syncFromParams(item);
+      }
+    }
+  };
+
+  const handleSave = async () => {
+    if (!currentImage) {
+      return;
+    }
+    const ok = await imageGenStore.saveToAlbum(currentImage);
+    showToast(ok ? '已保存 · Pictures/AIOS' : '保存失败，请重试');
+  };
+
+  const handleDeleteCurrent = () => {
+    if (!currentImage) {
+      return;
+    }
+    imageGenStore.deleteHistory([currentImage], true);
+    // 历史缩短后回 0 页，避免 previewIndex 越界
+    scrollToPreview(0, false);
+  };
 
   return (
     <View style={s.container}>
       <KeyboardAwareScrollView contentContainerStyle={s.content}>
-        {/* 模型状态胶囊 + 锚定下拉 */}
-        <View>
-          <TouchableOpacity
-            style={s.modelChip}
-            onPress={() => setShowModelDrop(v => !v)}>
-            <Text style={s.modelChipText} numberOfLines={1}>
-              {selectedEntry
-                ? `${
-                    FAMILY_BADGE[selectedEntry.manifest.family]
-                      ? `[${FAMILY_BADGE[selectedEntry.manifest.family]}] `
-                      : ''
-                  }${selectedEntry.manifest.label}`
-                : '选择模型'}
-              {selectedEntry?.manifest.experimental ? (
-                <Text style={s.badgeExp}>  [实验性]</Text>
-              ) : null}
-            </Text>
-            <Text style={s.modelChipStatus}>{modelStatus} {showModelDrop ? '▴' : '▾'}</Text>
-          </TouchableOpacity>
+        {/* 顶部：模型状态胶囊 + 锚定下拉 */}
+        <ModelPickerPanel
+          available={available}
+          selectedEntry={selectedEntry}
+          selectedId={selectedId}
+          scanning={scanning}
+          loading={imageGenStore.loading}
+          loaded={loaded}
+          isDream={isDream}
+          showModelDrop={showModelDrop}
+          modelStatus={modelStatus}
+          now={now}
+          loadingStartedAt={imageGenStore.loadingStartedAt}
+          stage={imageGenStore.stage}
+          generating={imageGenStore.generating}
+          modelsDir={AIOS_MODELS_DIR}
+          onToggleDrop={() => setShowModelDrop(v => !v)}
+          onSelectModel={handleSelectModel}
+          onRowAction={handleRowAction}
+          isRowLoaded={isRowLoaded}
+        />
 
-        </View>
+        {/* ① 结果区 */}
+        <ResultPreview
+          previewRef={previewRef}
+          pageW={pageW}
+          editSource={editSource}
+          history={imageGenStore.history}
+          generating={imageGenStore.generating}
+          taskKind={taskKind}
+          progress={imageGenStore.progress}
+          progressText={imageGenStore.progressText}
+          stepTime={imageGenStore.stepTime}
+          genStartedAt={imageGenStore.genStartedAt}
+          stage={imageGenStore.stage}
+          now={now}
+          toast={toast}
+          toastOpacity={toastOpacity}
+          pulse={pulse}
+          currentImage={currentImage}
+          currentItem={currentItem}
+          isDream={isDream}
+          editArming={editArming}
+          fullscreen={fullscreen}
+          onPageW={setPageW}
+          onMomentumEnd={handleMomentumEnd}
+          onPickEditImage={handlePickEditImage}
+          onOpenFullscreen={() => setFullscreen(true)}
+          onCloseFullscreen={() => setFullscreen(false)}
+          onSave={handleSave}
+          onEditArm={handleEditArm}
+          onReroll={handleReroll}
+          onDelete={handleDeleteCurrent}
+        />
 
-        {/* ① 结果区：横向分页 = [0页编辑槽（上传/编辑）] + 历史图；翻页自动回填提示词/参数 */}
-        <View style={s.card}>
-          <View
-            style={s.resultWrap}
-            onLayout={e => setPageW(e.nativeEvent.layout.width)}>
-            <ScrollView
-              ref={previewRef}
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              onMomentumScrollEnd={e => {
-                if (!pageW) {
-                  return;
-                }
-                const idx = Math.round(e.nativeEvent.contentOffset.x / pageW);
-                setEditArming(false); // 手动翻页退出编辑预备态（目标图已变）
-                setPreviewIndex(idx);
-                if (idx >= 1) {
-                  const item = imageGenStore.history[idx - 1];
-                  if (item) {
-                    syncFromParams(item);
-                  }
-                }
-              }}>
-              {/* 0 页：编辑槽（无图=上传大按钮；有图=待编辑图预览+重新上传） */}
-              <View style={[s.editSlot, pageW ? {width: pageW} : null]}>
-                {editSource ? (
-                  <>
-                    <Image
-                      source={{
-                        uri: editSource.startsWith('file://')
-                          ? editSource
-                          : `file://${editSource}`,
-                      }}
-                      style={s.editSlotImg}
-                      resizeMode="contain"
-                    />
-                    <TouchableOpacity style={s.uploadFab} onPress={handlePickEditImage}>
-                      <Text style={s.uploadFabText}>重新上传</Text>
-                    </TouchableOpacity>
-                  </>
-                ) : (
-                  <TouchableOpacity style={s.uploadBig} onPress={handlePickEditImage}>
-                    <Text style={s.uploadBigIcon}>＋</Text>
-                    <Text style={s.uploadBigText}>上传本地图片</Text>
-                    <Text style={s.uploadBigHint}>从手机相册选图，输入指令进行 AI 编辑</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-              {imageGenStore.history.map(h => (
-                <TouchableOpacity key={h.uri} onPress={() => setFullscreen(true)}>
-                  <Image
-                    source={{uri: h.uri}}
-                    style={[s.preview, pageW ? {width: pageW} : null]}
-                    resizeMode="contain"
-                  />
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-            {genOverlay}
-            {/* 轻量滚动信息条：保存/编辑等操作的即时反馈，不打断操作 */}
-            {toast ? (
-              <Animated.View
-                pointerEvents="none"
-                style={[s.toastBar, {opacity: toastOpacity}]}>
-                <Text style={s.toastText} numberOfLines={2}>
-                  {toast}
-                </Text>
-              </Animated.View>
-            ) : null}
-          </View>
-          {currentImage && (
-            <>
-              <View style={s.actionRow}>
-                <TouchableOpacity
-                  style={[s.actionBtn, s.actionSave]}
-                  onPress={async () => {
-                    if (!currentImage) {
-                      return;
-                    }
-                    const ok = await imageGenStore.saveToAlbum(currentImage);
-                    showToast(ok ? '已保存 · Pictures/AIOS' : '保存失败，请重试');
-                  }}>
-                  <Text style={s.actionTextLight}>保存</Text>
-                </TouchableOpacity>
-                {isDream && (
-                  <TouchableOpacity style={[s.actionBtn, s.actionEdit]} onPress={handleEditArm}>
-                    <Text style={s.actionTextLight}>
-                      {editArming ? '执行编辑' : '编辑'}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-                <TouchableOpacity style={[s.actionBtn, s.actionReuse]} onPress={handleReroll}>
-                  <Text style={s.actionTextLight}>再次生成</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[s.actionBtn, s.actionDelete]}
-                  onPress={() => {
-                    if (!currentImage) {
-                      return;
-                    }
-                    imageGenStore.deleteHistory([currentImage], true);
-                    // 历史缩短后回 0 页，避免 previewIndex 越界
-                    scrollToPreview(0, false);
-                  }}>
-                  <Text style={s.actionTextLight}>删除</Text>
-                </TouchableOpacity>
-              </View>
-              {currentItem ? (
-                <Text style={s.watermark} numberOfLines={1}>
-                  {currentItem.kind === 'upload'
-                    ? `上传 · ${currentItem.width}×${currentItem.height}`
-                    : `seed ${currentItem.seed} · ${currentItem.width}×${currentItem.height}`}
-                </Text>
-              ) : null}
-            </>
-          )}
-        </View>
+        {/* ② 历史区 */}
+        <HistoryStrip
+          history={imageGenStore.history}
+          manageMode={manageMode}
+          toDelete={toDelete}
+          onUpload={handlePickEditImage}
+          onToggleManage={() => {
+            setManageMode(m => !m);
+            setToDelete([]);
+          }}
+          onThumbPress={(item, index) => {
+            // 点击缩略图 → 大图预览翻到对应页 + 回填参数
+            scrollToPreview(index + 1);
+            syncFromParams(item);
+          }}
+          onToggleDelete={toggleDelete}
+          onConfirmDelete={confirmDelete}
+        />
 
-        {/* ② 历史区（紧凑横条）：上传入口 + 历史缩略图（点击联动大图预览） */}
-        <View style={s.card}>
-          <View style={s.historyHeader}>
-            <Text style={s.cardTitle}>相册 ({imageGenStore.history.length})</Text>
-            <View style={s.historyHeaderActions}>
-              <TouchableOpacity onPress={handlePickEditImage}>
-                <Text style={s.uploadText}>上传</Text>
-              </TouchableOpacity>
-              {imageGenStore.history.length > 0 && (
-                <TouchableOpacity
-                  onPress={() => {
-                    setManageMode(m => !m);
-                    setToDelete([]);
-                  }}>
-                  <Text style={s.manageText}>{manageMode ? '完成' : '管理'}</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
-          {imageGenStore.history.length > 0 && (
-            <FlatList
-              data={imageGenStore.history}
-              keyExtractor={item => item.uri}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              renderItem={({item, index}) => (
-                <TouchableOpacity
-                  style={s.historyItem}
-                  onPress={() => {
-                    if (manageMode) {
-                      toggleDelete(item.uri);
-                      return;
-                    }
-                    // 点击缩略图 → 大图预览翻到对应页 + 回填参数
-                    scrollToPreview(index + 1);
-                    syncFromParams(item);
-                  }}>
-                  <Image source={{uri: item.uri}} style={s.historyThumb} />
-                  {item.kind === 'upload' && !manageMode && (
-                    <View style={s.historyKindBadge}>
-                      <Text style={s.historyKindText}>上传</Text>
-                    </View>
-                  )}
-                  {manageMode && toDelete.includes(item.uri) && (
-                    <View style={s.historySel}>
-                      <Text style={s.historySelText}>✓</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              )}
-            />
-          )}
-            {manageMode && (
-              <TouchableOpacity
-                style={[s.button, s.buttonDanger]}
-                disabled={toDelete.length === 0}
-                onPress={confirmDelete}>
-                <Text style={s.buttonText}>删除选中 ({toDelete.length})</Text>
-              </TouchableOpacity>
-            )}
-        </View>
-
-        {/* ③ 创作区（底部 composer） */}
-        <View style={s.card}>
-          <TextInput
-            style={s.input}
-            value={prompt}
-            onChangeText={setPrompt}
-            placeholder={
-              isDream && editArming
-                ? '输入图像编辑指令，如：把天空换成日落、人物换上红色外套…'
-                : '描述你想生成的画面…'
-            }
-            placeholderTextColor="#999"
-            multiline
-          />
-          <Text style={prompt.length > PROMPT_LIMIT ? s.promptHintWarn : s.promptHint}>
-            {prompt.length}/{PROMPT_LIMIT} · 端侧建议≤{PROMPT_LIMIT}字，过长拖慢速度
-          </Text>
-          <TouchableOpacity onPress={() => setShowAdvanced(a => !a)}>
-            <Text style={s.advToggle}>
-              高级参数（{isDream && editArming ? '步数' : isDream ? '尺寸/步数' : '负面/尺寸/步数/CFG'}）{showAdvanced ? '▴' : '▾'}
-            </Text>
-          </TouchableOpacity>
-          {showAdvanced && (
-            <>
-              {!isDream && (
-                <TextInput
-                  style={[s.input, s.inputSmall]}
-                  value={negativePrompt}
-                  onChangeText={setNegativePrompt}
-                  placeholder="负面提示词（可选，如 blurry, low quality）"
-                  placeholderTextColor="#999"
-                  multiline
-                />
-              )}
-              {isDream ? (
-                editArming ? (
-                  <Text style={s.promptHint}>
-                    编辑输出 {Math.min(dreamW, dreamH)}×{Math.min(dreamW, dreamH)} 正方形（按较大边压缩）
-                  </Text>
-                ) : (
-                  <View style={s.paramRow}>
-                    <Text style={s.paramLabel}>画幅</Text>
-                    {Object.keys(RATIOS).map(r => (
-                      <TouchableOpacity
-                        key={r}
-                        style={[s.sizeBtn, ratio === r && s.sizeBtnSelected]}
-                        onPress={() => setRatio(r)}>
-                        <Text style={s.sizeBtnText}>{r}</Text>
-                        <Text style={s.sizeBtnSub}>
-                          {RATIOS[r][0]}×{RATIOS[r][1]}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )
-              ) : (
-                <View style={s.paramRow}>
-                  <Text style={s.paramLabel}>尺寸</Text>
-                  {SIZES.map(sz => (
-                    <TouchableOpacity
-                      key={sz}
-                      style={[s.sizeBtn, size === sz && s.sizeBtnSelected]}
-                      onPress={() => setSize(sz)}>
-                      <Text style={s.sizeBtnText}>{sz}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-              <View style={s.paramRow}>
-                <Text style={s.paramLabel}>步数</Text>
-                <TextInput
-                  style={s.paramInput}
-                  value={steps}
-                  onChangeText={setSteps}
-                  keyboardType="numeric"
-                />
-                {!isDream && (
-                  <>
-                    <Text style={s.paramLabel}>CFG</Text>
-                    <TextInput
-                      style={s.paramInput}
-                      value={cfg}
-                      onChangeText={setCfg}
-                      keyboardType="numeric"
-                    />
-                  </>
-                )}
-              </View>
-            </>
-          )}
-          {isDream && (
-            <>
-              {editArming && (
-                <Text style={s.promptHint}>
-                  已锁定当前预览图（{Math.min(dreamW, dreamH)}×{Math.min(dreamW, dreamH)}），编辑指令见上方输入框
-                </Text>
-              )}
-              <View style={s.buttonRow}>
-                <TouchableOpacity
-                  style={[
-                    s.button,
-                    s.buttonEdit,
-                    editArming && !editRgb && s.buttonDisabled,
-                  ]}
-                  disabled={imageGenStore.generating || (editArming && !editRgb)}
-                  onPress={handleEditArm}>
-                  {imageGenStore.generating && taskKind === 'edit' ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <Text style={s.buttonText}>
-                      {editArming ? '执行编辑' : '编辑'}
-                    </Text>
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[s.button, s.buttonGen]}
-                  disabled={imageGenStore.generating}
-                  onPress={handleGenerate}>
-                  {imageGenStore.generating && taskKind === 'gen' ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <Text style={s.buttonText}>出图</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </>
-          )}
-          {!isDream && (
-            <TouchableOpacity
-              style={[s.button, !loaded && s.buttonDisabled]}
-              disabled={imageGenStore.generating || !loaded}
-              onPress={handleGenerate}>
-              {imageGenStore.generating ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={s.buttonText}>出图</Text>
-              )}
-            </TouchableOpacity>
-          )}
-          {imageGenStore.error && <Text style={s.error}>{imageGenStore.error}</Text>}
-        </View>
+        {/* ③ 创作区 */}
+        <ComposerPanel
+          prompt={prompt}
+          negativePrompt={negativePrompt}
+          steps={steps}
+          cfg={cfg}
+          size={size}
+          ratio={ratio}
+          isDream={isDream}
+          editArming={editArming}
+          editRgb={editRgb}
+          showAdvanced={showAdvanced}
+          generating={imageGenStore.generating}
+          taskKind={taskKind}
+          loaded={loaded}
+          dreamW={dreamW}
+          dreamH={dreamH}
+          error={imageGenStore.error}
+          onPromptChange={setPrompt}
+          onNegativePromptChange={setNegativePrompt}
+          onStepsChange={setSteps}
+          onCfgChange={setCfg}
+          onSizeChange={setSize}
+          onRatioChange={setRatio}
+          onToggleAdvanced={() => setShowAdvanced(a => !a)}
+          onEditArm={handleEditArm}
+          onGenerate={handleGenerate}
+        />
       </KeyboardAwareScrollView>
-
-      {/* 模型锚定下拉：悬浮盖住下方 + 点外收起 */}
-      {showModelDrop && (
-        <View style={s.dropOverlay} pointerEvents="box-none">
-          <TouchableOpacity
-            style={s.dropBackdrop}
-            activeOpacity={1}
-            onPress={() => setShowModelDrop(false)}
-          />
-          <View style={s.dropPanelAbs}>
-            {scanning ? (
-              <ActivityIndicator size="small" />
-            ) : available.length === 0 ? (
-              <Text style={s.hint}>
-                未找到生图模型，请将 SDXL Turbo / SD3.5 / Z-Image-Turbo 套件（GGUF）放入{' '}
-                {AIOS_MODELS_DIR}
-              </Text>
-            ) : (
-              available.map(item => {
-                const rowLoaded = isRowLoaded(item);
-                const rowLoading = imageGenStore.loading;
-                return (
-                  <TouchableOpacity
-                    key={item.manifest.id}
-                    style={[
-                      s.modelRow,
-                      selectedId === item.manifest.id && s.modelRowSelected,
-                    ]}
-                    onPress={() => handleSelectModel(item)}>
-                    <View style={s.modelRowMain}>
-                      <Text style={s.modelName} numberOfLines={1}>
-                        {FAMILY_BADGE[item.manifest.family] ? (
-                          <Text
-                            style={
-                              item.manifest.family === 'sd3'
-                                ? s.badgeSd3
-                                : item.manifest.family === 'dreamlite'
-                                  ? s.badgeDream
-                                  : s.badgeZ
-                            }>
-                            [{FAMILY_BADGE[item.manifest.family]}]{' '}
-                          </Text>
-                        ) : null}
-                        {item.manifest.label}
-                        {item.manifest.experimental ? (
-                          <Text style={s.badgeExp}>  [实验性]</Text>
-                        ) : null}
-                      </Text>
-                      {item.manifest.note ? (
-                        <Text style={s.modelNote} numberOfLines={2}>
-                          {item.manifest.note}
-                        </Text>
-                      ) : null}
-                    </View>
-                    <TouchableOpacity
-                      style={[
-                        s.rowActionBtn,
-                        rowLoaded && s.rowActionBtnUnload,
-                      ]}
-                      disabled={imageGenStore.loading || imageGenStore.generating}
-                      onPress={() => handleRowAction(item)}>
-                      {rowLoading ? (
-                        <ActivityIndicator
-                          size="small"
-                          color={rowLoaded ? '#c62828' : '#ffffff'}
-                        />
-                      ) : (
-                        <Text
-                          style={[
-                            s.rowActionText,
-                            rowLoaded && s.rowActionTextUnload,
-                          ]}>
-                          {rowLoaded ? '卸载' : '加载'}
-                        </Text>
-                      )}
-                    </TouchableOpacity>
-                  </TouchableOpacity>
-                );
-              })
-            )}
-            {imageGenStore.loading && (
-              <View style={s.statusPanel}>
-                <Text style={s.progressText}>
-                  正在加载模型…{' · 已耗时 '}
-                  {Math.max(0, Math.round((now - imageGenStore.loadingStartedAt) / 1000))}
-                  {'s'}
-                </Text>
-                {imageGenStore.stage ? (
-                  <Text style={s.stageText} numberOfLines={2}>
-                    ▸ {imageGenStore.stage}
-                  </Text>
-                ) : null}
-              </View>
-            )}
-            {loaded && !imageGenStore.loading && (
-              <Text style={s.readyText}>
-                {isDream
-                  ? '✓ 模型已就绪，可以出图（4 步 1024px 约 25s）'
-                  : '✓ 模型已就绪（CPU 后端，512px 预计数分钟，请耐心）'}
-              </Text>
-            )}
-          </View>
-        </View>
-      )}
-
-      {/* 全屏查看 */}
-      <Modal visible={fullscreen} transparent animationType="fade">
-        <View style={s.fullscreenBackdrop}>
-          <TouchableOpacity
-            style={s.fullscreenTouch}
-            onPress={() => setFullscreen(false)}>
-            {currentImage ? (
-              <Image
-                source={{uri: currentImage}}
-                style={s.fullscreenImage}
-                resizeMode="contain"
-              />
-            ) : null}
-          </TouchableOpacity>
-          <Text style={s.fullscreenHint}>点按关闭</Text>
-        </View>
-      </Modal>
     </View>
   );
 });
-
-const createStyles = (theme: any) =>
-  StyleSheet.create({
-    container: {flex: 1, backgroundColor: theme.colors.background},
-    content: {padding: 16, gap: 12},
-    card: {
-      backgroundColor: theme.colors.surface,
-      borderRadius: 12,
-      padding: 12,
-      gap: 10,
-    },
-    cardTitle: {fontSize: 15, fontWeight: '600', color: theme.colors.onSurface},
-    hint: {fontSize: 12, color: theme.colors.onSurfaceVariant},
-    modelChip: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      backgroundColor: theme.colors.surface,
-      borderRadius: 999,
-      paddingHorizontal: 14,
-      paddingVertical: 10,
-      gap: 8,
-    },
-    modelChipText: {flex: 1, fontSize: 13, fontWeight: '600', color: theme.colors.onSurface},
-    modelChipStatus: {fontSize: 12, color: theme.colors.primary},
-    dropPanel: {
-      marginTop: 6,
-      backgroundColor: theme.colors.surface,
-      borderRadius: 12,
-      padding: 12,
-      gap: 8,
-      // 锚定下拉：盖在后续内容之上
-      elevation: 8,
-      shadowColor: '#000',
-      shadowOpacity: 0.2,
-      shadowRadius: 8,
-      shadowOffset: {width: 0, height: 4},
-    },
-    modelRow: {
-      paddingVertical: 10,
-      paddingHorizontal: 10,
-      borderRadius: 8,
-      backgroundColor: theme.colors.surfaceVariant,
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    modelRowMain: {flex: 1, paddingRight: 8},
-    modelRowSelected: {borderWidth: 1, borderColor: theme.colors.primary},
-    modelName: {fontSize: 13, color: theme.colors.onSurface},
-    modelNote: {fontSize: 11, color: theme.colors.onSurfaceVariant, marginTop: 2},
-    // 行内加载/卸载按钮（操作就近，状态可见；卸载需二次确认）
-    rowActionBtn: {
-      minWidth: 56,
-      paddingVertical: 6,
-      paddingHorizontal: 10,
-      borderRadius: 6,
-      alignItems: 'center',
-      backgroundColor: theme.colors.primary,
-    },
-    rowActionBtnUnload: {
-      backgroundColor: 'transparent',
-      borderWidth: 1,
-      borderColor: '#c62828',
-    },
-    rowActionText: {fontSize: 12, color: '#fff', fontWeight: '600'},
-    rowActionTextUnload: {color: '#c62828'},
-    resultWrap: {position: 'relative'},
-    preview: {width: '100%', aspectRatio: 1, borderRadius: 8},
-    // 0 页编辑槽：上传大按钮 / 待编辑图预览 + 重新上传
-    editSlot: {
-      aspectRatio: 1,
-      borderRadius: 8,
-      backgroundColor: theme.colors.surfaceVariant,
-      alignItems: 'center',
-      justifyContent: 'center',
-      position: 'relative',
-    },
-    editSlotImg: {width: '100%', height: '100%', borderRadius: 8},
-    uploadBig: {
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 6,
-      borderWidth: 1.5,
-      borderStyle: 'dashed',
-      borderColor: theme.colors.outline,
-      borderRadius: 12,
-      paddingHorizontal: 32,
-      paddingVertical: 28,
-    },
-    uploadBigIcon: {fontSize: 40, color: theme.colors.primary, fontWeight: '300'},
-    uploadBigText: {fontSize: 15, color: theme.colors.onSurface, fontWeight: '600'},
-    uploadBigHint: {fontSize: 11, color: theme.colors.onSurfaceVariant},
-    uploadFab: {
-      position: 'absolute',
-      bottom: 10,
-      backgroundColor: 'rgba(21,101,192,0.9)',
-      borderRadius: 6,
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-    },
-    uploadFabText: {fontSize: 12, color: '#fff', fontWeight: '600'},
-    genOverlay: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: 'rgba(8,10,18,0.97)', // 出图：空白页盖住预览区（正在生成新图）
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: 16,
-      gap: 8,
-    },
-    genOverlayEdit: {
-      backgroundColor: 'rgba(8,10,18,0.6)', // 编辑：半透明叠在当前图上，图可见
-    },
-    genOrb: {
-      width: 56,
-      height: 56,
-      borderRadius: 28,
-      borderWidth: 2,
-      borderColor: theme.colors.primary,
-      backgroundColor: 'rgba(255,255,255,0.06)',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    genOrbText: {fontSize: 22, color: theme.colors.primary},
-    genOverlayTitle: {fontSize: 14, color: '#fff', fontWeight: '600', marginTop: 4},
-    overlayText: {fontSize: 11, color: '#fff'},
-    overlayStage: {fontSize: 10, color: '#fff'},
-    actionRow: {flexDirection: 'row', gap: 8},
-    actionBtn: {
-      flex: 1,
-      alignItems: 'center',
-      paddingVertical: 8,
-      borderRadius: 8,
-      backgroundColor: theme.colors.surfaceVariant,
-    },
-    actionText: {fontSize: 12, color: theme.colors.onSurface},
-    actionTextLight: {fontSize: 12, color: '#fff', fontWeight: '600'},
-    actionDanger: {color: theme.colors.error},
-    // 语义彩色点缀
-    actionSave: {backgroundColor: '#2e7d32'},
-    actionEdit: {backgroundColor: '#1565c0'},
-    actionReuse: {backgroundColor: '#ef6c00'},
-    actionDelete: {backgroundColor: '#c62828'},
-    badgeSd3: {color: '#8e24aa', fontWeight: '700'},
-    badgeZ: {color: '#00838f', fontWeight: '700'},
-    badgeDream: {color: '#d81b60', fontWeight: '700'},
-    // 实验性徽章：琥珀警示色（模型可能不可用，与操作按钮橙区分）
-    badgeExp: {color: '#f57c00', fontWeight: '700', fontSize: 11},
-    dropOverlay: {
-      ...StyleSheet.absoluteFillObject,
-      zIndex: 50,
-      elevation: 50,
-    },
-    dropBackdrop: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: 'rgba(0,0,0,0.25)',
-    },
-    dropPanelAbs: {
-      position: 'absolute',
-      top: 64,
-      left: 16,
-      right: 16,
-      backgroundColor: theme.colors.surface,
-      borderRadius: 12,
-      padding: 12,
-      gap: 8,
-      elevation: 12,
-      shadowColor: '#000',
-      shadowOpacity: 0.25,
-      shadowRadius: 10,
-      shadowOffset: {width: 0, height: 6},
-    },
-    watermark: {fontSize: 10, color: theme.colors.onSurfaceVariant},
-    toastBar: {
-      position: 'absolute',
-      top: 8,
-      left: 8,
-      right: 8,
-      backgroundColor: 'rgba(0,0,0,0.75)',
-      borderRadius: 8,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-    },
-    toastText: {fontSize: 12, color: '#fff'},
-    historyHeader: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
-    historyHeaderActions: {flexDirection: 'row', alignItems: 'center', gap: 14},
-    uploadText: {fontSize: 12, color: '#1565c0', fontWeight: '600'},
-    manageText: {fontSize: 12, color: theme.colors.primary},
-    historyItem: {marginRight: 8, position: 'relative'},
-    historyThumb: {width: 72, height: 72, borderRadius: 8},
-    historyKindBadge: {
-      position: 'absolute',
-      bottom: 2,
-      right: 2,
-      backgroundColor: 'rgba(21,101,192,0.9)',
-      borderRadius: 4,
-      paddingHorizontal: 4,
-      paddingVertical: 1,
-    },
-    historyKindText: {fontSize: 9, color: '#fff', fontWeight: '600'},
-    historySel: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      borderRadius: 8,
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    historySelText: {color: '#fff', fontSize: 20, fontWeight: '700'},
-    button: {
-      backgroundColor: theme.colors.primary,
-      borderRadius: 8,
-      paddingVertical: 12,
-      alignItems: 'center',
-    },
-    buttonRow: {flexDirection: 'row', gap: 10},
-    buttonEdit: {flex: 1, backgroundColor: '#1565c0'},
-    buttonGen: {flex: 1},
-    buttonSecondary: {backgroundColor: theme.colors.surfaceVariant},
-    buttonDanger: {backgroundColor: theme.colors.error},
-    buttonDisabled: {backgroundColor: theme.colors.surfaceVariant},
-    buttonText: {color: '#fff', fontSize: 14, fontWeight: '600'},
-    error: {fontSize: 12, color: theme.colors.error},
-    input: {
-      borderWidth: 1,
-      borderColor: theme.colors.outline,
-      borderRadius: 8,
-      padding: 12,
-      minHeight: 72,
-      color: theme.colors.onSurface,
-      textAlignVertical: 'top',
-    },
-    inputSmall: {minHeight: 44, padding: 8},
-    advToggle: {fontSize: 12, color: theme.colors.primary},
-    promptHint: {fontSize: 10, color: theme.colors.onSurfaceVariant},
-    promptHintWarn: {fontSize: 10, color: theme.colors.error},
-    paramRow: {flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 10},
-    paramLabel: {fontSize: 13, color: theme.colors.onSurfaceVariant},
-    paramInput: {
-      borderWidth: 1,
-      borderColor: theme.colors.outline,
-      borderRadius: 8,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      width: 60,
-      color: theme.colors.onSurface,
-    },
-    sizeBtn: {
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 8,
-      backgroundColor: theme.colors.surfaceVariant,
-      alignItems: 'center',
-    },
-    sizeBtnSelected: {borderWidth: 1, borderColor: theme.colors.primary},
-    sizeBtnText: {fontSize: 12, color: theme.colors.onSurface},
-    sizeBtnSub: {fontSize: 10, color: theme.colors.onSurfaceVariant, marginTop: 2},
-    statusPanel: {marginTop: 6, gap: 3},
-    progressTrack: {
-      height: 8,
-      borderRadius: 4,
-      backgroundColor: 'rgba(255,255,255,0.3)',
-      overflow: 'hidden',
-    },
-    progressBarFill: {height: 8, backgroundColor: theme.colors.primary, borderRadius: 4},
-    progressText: {fontSize: 11, color: theme.colors.onSurfaceVariant, marginTop: 2},
-    stageText: {fontSize: 10, color: theme.colors.primary},
-    readyText: {fontSize: 12, color: theme.colors.primary, marginTop: 4},
-    fullscreenBackdrop: {flex: 1, backgroundColor: '#000'},
-    fullscreenTouch: {flex: 1, alignItems: 'center', justifyContent: 'center'},
-    fullscreenImage: {width: '100%', height: '100%'},
-    fullscreenHint: {position: 'absolute', bottom: 24, alignSelf: 'center', color: '#fff', fontSize: 12},
-  });
