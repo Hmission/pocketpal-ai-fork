@@ -122,3 +122,13 @@ scripts/agent/
 # Qoder/cursor agent artifacts
 .qodercn/
 .cursor/
+# === 真机取证产物（根目录散落，随取证窗口生灭，不入库） ===
+# 截图 / logcat / uiautomator dump / 临时监控脚本
+/dl3_*
+/te2_*
+/ux_*
+/ui*.xml
+/ui*.txt
+/log*.txt
+/monitor*.ps1
+__pycache__/

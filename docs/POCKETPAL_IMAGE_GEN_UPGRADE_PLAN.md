@@ -532,5 +532,24 @@
 - ✅ 构建装机：Gradle BUILD SUCCESSFUL（3m40s）+ adb install Success（21:45:37，460MB）。
 - 待大王实测：聊天页动效冒烟（第一波）+ SD3.5 512²/10 步长时任务 B1 终验（进程存活+出图），我 logcat 只读旁证。
 
+#### 风险收束与下窗口 checklist（2026-08-14，收束挂起项为确定性待办）
+
+> 本窗口三波已闭环；依赖外部触发/干净路径的风险收束为“有明确解除路径的确定性待办”，不模糊挂起、不臃肿 hack。
+
+**R1 · Vulkan 补链（确定性收束，本窗口不强补）**
+- 侦察结论：宿主机无 VulkanSDK（无 `VULKAN_SDK`、无安装目录）；NDK 27.3 自带 glslc.exe（shader-tools\windows-x86_64）与 spirv-headers 源码，但缺 SPIRV-HeadersConfig.cmake。
+- 补链需过三重关卡，均须 CMake hack=补丁堆叠（违锋利哲学）：①`find_package(Vulkan COMPONENTS glslc)` 无 SDK 必失败；②`find_package(SPIRV-Headers CONFIG)` 缺 Config 包；③交叉编译下 ExternalProject 需宿主机编译器（cl.exe 已在）编译 shader-gen 工具。
+- **干净解除路径（下窗口推荐，零 hack）**：安装 LunarG VulkanSDK（一站式提供 FindVulkan + SPIRV-Headers Config + glslc）→ 三处单点开关：manifest 值改 'Vulkan' + CMakeLists `SD_VULKAN ON` + 重构建。
+- 运行时 hang 风险已由 JS 侧 120s 干净失败覆盖（明确报错非静默，无兜底）。
+
+**R2 · 真机终验（依赖大王手动，屏幕操作禁令）**
+- 清单：①聊天页动效冒烟（第一波验收）；②SD3.5 512²/10 步 B1 终验（进程存活至出图 + 无 tombstone）。AI 侧只读 logcat 旁证（grep "weak global"/SIGABRT）就绪，待大王触发。
+- 决策点：实测稳→维持；异常→manifest 一行回 'CPU'（单后端不变）。
+
+**R3 · RN 上游 weak-ref（长期观察项）**
+- 0.82.1 新架构 TurboModule invokeJavaMethod weak ref 泄漏，跟踪上游 release notes，版本升级时消化（非本仓改动面）。
+
+**工作区收束**：真机取证产物（截图/logcat/uiautomator dump/监控脚本）已归置 .gitignore 根锚定模式，git status 清零；文件保留于工作区不物理删除。
+
 
 
