@@ -16,17 +16,21 @@ const LoadingDot: React.FC<LoadingDotProps> = ({delay, theme}) => {
   const opacity = useRef(new Animated.Value(0.3)).current;
 
   useEffect(() => {
+    // 全局动画规范：Animated.loop 一律 JS driver。useNativeDriver:true 会在
+    // 循环期间持续触发 TurboModule invokeJavaMethod → weak ref 累积至 51200
+    // 溢出（tombstone_03/04 实锤）。本组件挂载窗口=首 token 前（秒~分钟级），
+    // 历史无崩溃但收口规则先行；opacity 属性 JS driver 完全支持。
     const animation = Animated.sequence([
       Animated.timing(opacity, {
         toValue: 1,
         duration: 500,
         delay,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
       Animated.timing(opacity, {
         toValue: 0.3,
         duration: 500,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
     ]);
 

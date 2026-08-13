@@ -38,17 +38,20 @@ const Dot: React.FC<DotProps> = ({delay, theme}) => {
   const opacity = useRef(new Animated.Value(0.3)).current;
 
   useEffect(() => {
+    // 全局动画规范：Animated.loop 一律 JS driver。本组件在工具调用期间持续循环，
+    // token 流期间 JS 高频活跃，3 个 opacity 插值每帧 JS 开销极小（ChatView
+    // observer 隔离已保证 loop 不被 remount 打断），JS driver 下同样成立。
     const animation = Animated.sequence([
       Animated.timing(opacity, {
         toValue: 1,
         duration: 500,
         delay,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
       Animated.timing(opacity, {
         toValue: 0.3,
         duration: 500,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
     ]);
     Animated.loop(animation).start();
