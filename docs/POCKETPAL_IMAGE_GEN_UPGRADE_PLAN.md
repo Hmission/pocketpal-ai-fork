@@ -414,9 +414,52 @@
 
 #### 治理状态（2026-08-14 闭环）
 
-- ✅ 第一波 C1-C6 全部落地：C1-C4（JNI 删兑底/死代码）、C5（dreamLiteEngine 删 fp32→fp16 fallback + TE int8 静默降级 fail-fast，-104 行）、C6 半收口（progress 节流删、log 节流保留为 attach/detach 开销控制）。
+- ✅ 第一波 C1-C6 全部落地：C1-C4（JNI 删兜底/死代码）、C5（dreamLiteEngine 删 fp32→fp16 fallback + TE int8 静默降级 fail-fast，-104 行）、C6 半收口（progress 节流删、log 节流保留为 attach/detach 开销控制）。
 - ✅ 第二波 B1 全部落地：生图页全部 Animated 改 JS driver（pulse loop + toast），切断 NativeAnimatedModule weak ref 累积源。
 - ⏳ 第三波 B2 未动（有意规划态）：OpenCL hang 根因侦察 5 条路线待下窗口专项，当前 CPU 强制为明确决策。
 - 提交：`c516993`（C 类 + B1）+ 本窗口补交（C5 末段 + 文档）。
+
+### 6.10 三大遗留风险深化评估（2026-08-14，大王令，啄木鸟闭环）
+
+#### 风险 1：B2 OpenCL hang 根因未破（后端恒 CPU，慢是代价）
+
+**机理推断**：Adreno GPU 上 OpenCL 是二等公民（厂商投入远小于 Vulkan），采样阶段 hang 大概率是 Adreno OpenCL 驱动 bug（barrier/内存一致性或内置函数实现差异），非我们代码问题。修根因=绕驱动 bug，成本高收益不确定。
+
+**关键新发现——Vulkan 替代路线**：vendored 引擎已带 `ggml-vulkan` 源码目录 ✅（SD_VULKAN 现为 OFF）。Vulkan 是 Android 官方图形 API：NDK 原生带头文件（无需像 OpenCL 那样补 Khronos headers + 厂商 libOpenCL.so），Adreno 5xx+ 的 Vulkan 支持成熟，llama.cpp 社区 Android Vulkan 验证充分。
+
+**路线建议（下窗口优先试 Vulkan）**：
+1. CMakeLists arm64 开 `SD_VULKAN ON`（两行改动，NDK 零补丁）；
+2. JNI backend 参数改 "Vulkan"（gated 构建标志或运行时参数）；
+3. 真机最小验证：SDXL Turbo 384²/2 步对比 CPU 基线；
+4. 若 Vulkan 稳定 → SD3.5/Z-Image 复活后的速度问题一并解决；若同样 hang → 回 OpenCL 侦察路线（6.9 五步法）。
+
+#### 风险 2：B1 weak-ref 根治待真机长时实测
+
+**泄漏率反推**（tombstone_04 数据）：50252 weak ref / 12min，pulse 循环 1.8s 周期 × 2 段 × ~54 帧/段 ≈ 4.3 万帧 → **泄漏率 ≈ 1.16 weak ref/帧（invokeJavaMethod）**。
+
+**根治后残余面审计**：生图页 pulse/toast 已全改 JS driver（零帧 native 动画 ✅）；残余 native 调用仅 1Hz syncPoll → 12 分钟 720 次，即使按 1.16/次泄漏仅 835，安全边际 60x+ ✅。且 JS driver 动效每帧 JS 计算使 JS 线程更活跃 → GC 更频繁 → 对 weak ref 回收有利（双保险）。
+
+**实测方案（待大王）**：装机已交付（21:05:44 APK）。大王手动触发 SD3.5 512²/10 步（CPU ~3-6 分钟），观察：①进程存活至出图完成；②无 tombstone。只读旁证：adb logcat -d | grep -i "weak global"（授权范围内可代查）。
+
+**置信度**：逻辑链完整 + 泄漏源已归零，不崩概率 >90%；唯一未覆盖 = 未预见的其他 native driver 动画（已全量 grep 本页确认无）。
+
+#### 风险 3：聊天页 ThinkingBubble 仍 native driver（暂不治理）
+
+**取证结论（本轮深查）**：ThinkingBubble 的 6 处 useNativeDriver **全是点击 chevron 的一次性动画**（200-350ms），非循环 ✅ 无累积风险。真正的聊天循环动效是：
+
+| 组件 | 循环结构 | 挂载窗口 | 泄漏量估算 |
+|---|---|---|---|
+| LoadingBubble | Animated.loop 1s 周期 ×2 timing | 首 token 前（等待回复） | 首 token 等 2min ≈ 7200 帧 ≈ 8.4k weak ref |
+| CircularActivityIndicator | Animated.loop 600ms 周期 | StatusIcon 'sending' 态 + 分页 footer | 同上，窗口短 |
+
+**聊天从未崩溃的机理**：两类循环动效挂载窗口都是“首 token 前”（秒~分钟级），token 流开始即卸载；且 token 流期间 JS 线程高频活跃（每 token setState）→ GC 频繁回收 weak ref。生图则相反：JS 几乎空闲 + 动效循环贯穿 12 分钟 → 溢出。
+
+**风险重估**：当前（MiniCPM 4B 首 token <1min）安全边际充足 ✅；**条件风险**=若未来换大模型（思考期长/首 token 延迟 >10 分钟），首 token 等待期间 JS 空闲 + 循环动效持续 → 重蹈生图覆辙。
+
+**决策**：维持暂不治理（符合“不为未发生的事加防御”哲学）；触发条件 = 换模决策落地时，将 LoadingBubble/CircularActivityIndicator 同改 JS driver（与 B1 同法，零成本）。
+
+#### 附：fp16 死代码清理后的残留收口（大王已删 f32ToF16/f16ToF32）
+
+`unetMode` 变量现为死存储（只写不读，恒 'fp32'）：建议下窗口删变量或将类型收窄为字面量 'fp32'，与 denoise/loadDreamLite 单路径一致。
 
 
