@@ -222,7 +222,12 @@
   - **根因确认**：llama.rn `rn-completion.cpp:1247` embedding() 只返回单个 n_embd 池化向量（flat.len=2048, tokens=1），**无法提供 per-token hidden_states[-1]**→真实文本条件经 llama.rn 不可行。
   - **真实文生图已生效（2026-08-13）**：ONNX TE(int8, per-token hidden_states)+llama.rn tokenize 接线后，真机出图出现 prompt 语义结构（wooden table），证实文本条件生效。
   - 修复：VAE ONNX 输出 NCHW 被按 HWC 读→灰图/9宫格；改 NCHW→HWC 后出彩色正常图。
-  - 结论：DreamLite 端侧=真实文生图(ONNX TE)+编辑(image-conditioned) 全闭环。
+  - 对齐官方：默认 1024 + 多画幅(1:1/3:4/4:3/9:16/16:9) + unet_masked(attention_mask) + mu-shifted sigmas。
+
+### 6.4 待办（新窗口接力）
+- **黑图回归诊断**：切 unet_masked+shifted+1024 后真机出纯黑图。假设：①mask 约定/dtype(int64) 与 cross-attn 不符→注意力全屏蔽→noise_pred≈0；②shifted sigmas 与 diffusers scheduler 不一致→timestep 错→解码饱和黑。需桌面 A/B：masked vs unmasked unet 在 1024 维 noise_pred std 对比 + 与 diffusers set_timesteps(mu) 输出逐值比对。回退预案：若 masked 有问题，回退 unet.onnx(无mask)+保留 shifted。
+- **UI 直连按钮**：去掉二段确认，分段切换即动作——[文生图] 直接生成、[图像编辑] 进编辑（上传→压缩→提示词→编辑），不再另设主“出图”按钮造成重复。
+- **接力提示词**：见下。
 - unet 780MB 走 hf-mirror 带宽不足（~0.1MB/s），续传中；GitHub 仓库 zip 被墙（仅部分 raw 可取）。
 - TE=Qwen3-VL 4.25GB，端侧需 4-bit GGUF + llama.rn hidden-states 提取，待验证。
 - MNN Android 编译 + 真机验证待 ONNX 导出件就绪。
