@@ -56,6 +56,7 @@ export async function loadTE(): Promise<void> {
   teCtx = await initLlama({
     model: `${DIR}/te_q8.gguf`,
     pooling_type: 'none',
+    embedding: true,
     n_ctx: 256,
     n_threads: 4,
   });
