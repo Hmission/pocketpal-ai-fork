@@ -38,7 +38,7 @@ export async function loadDreamLite(): Promise<void> {
   };
   // fp16 转换留有不一致 Cast 节点且 ORT CPU 对 fp16 支持差，用 fp32
   console.log('[DreamLite] loading unet.onnx ...');
-  unet = await ort.InferenceSession.create(`${DIR}/unet.onnx`, opts);
+  unet = await ort.InferenceSession.create(`${DIR}/unet_masked.onnx`, opts);
   console.log('[DreamLite] unet loaded, loading vae ...');
   vae = await ort.InferenceSession.create(`${DIR}/vae_decoder.onnx`, opts);
   vaeEnc = await ort.InferenceSession.create(`${DIR}/vae_encoder.onnx`, opts);
@@ -86,6 +86,21 @@ export async function loadTE(): Promise<void> {
   console.log('[DreamLite] TE ready (llama tokenize + ORT hidden states)');
 }
 
+// flow-matching 动态位移（对齐官方 scheduler.set_timesteps(mu)）
+function shiftedSigmas(steps: number, lat: number): number[] {
+  const seq = (lat * lat) / 4;
+  const m = (1.16 - 0.5) / (4096 - 256);
+  const b = 0.5 - m * 256;
+  const mu = seq * m + b;
+  const em = Math.exp(mu);
+  const out: number[] = [];
+  for (let i = 0; i < steps; i++) {
+    const t = 1 - (i / (steps - 1)) * (1 - 1 / steps);
+    out.push(em / (em + (1 / t - 1)));
+  }
+  return out;
+}
+
 const GEN_TEMPLATE =
   '<|im_start|>system\nDescribe the image by detailing the color, shape, size, texture, ' +
   'quantity, text, spatial relationships of the objects and background:<|im_end|>\n' +
@@ -114,13 +129,15 @@ export async function encodePrompt(prompt: string, maxLen = 77): Promise<Float32
     const kept = seq - DROP_IDX;
     const len = Math.min(kept, maxLen);
     const out = new Float32Array(maxLen * TE_DIM); // zero pad
+    const mask = new Float32Array(maxLen); // 1=真实 token, 0=pad
     for (let i = 0; i < len; i++) {
+      mask[i] = 1;
       for (let d = 0; d < TE_DIM; d++) {
         out[i * TE_DIM + d] = hs[(DROP_IDX + i) * TE_DIM + d];
       }
     }
     console.log('[DreamLite] TE(ORT) encoded seq=', seq, 'kept=', len);
-    return out;
+    return {enc: out, mask};
   } catch (e) {
     console.log('[DreamLite] TE encode fail', (e as any)?.message);
     return null;
@@ -239,6 +256,7 @@ async function denoise(
   steps: number,
   encOverride?: Float32Array,
   onStep?: (step: number, steps: number) => void,
+  maskOverride?: Float32Array,
 ): Promise<Float32Array> {
   const lat = size / 8;
   let latents = new Float32Array(4 * lat * lat);
@@ -246,14 +264,11 @@ async function denoise(
     latents[i] = gauss();
   }
   const enc = encOverride ?? new Float32Array(77 * TE_DIM);
+  const mask = maskOverride ?? new Float32Array(77);
   const tid = new Float32Array([size, size]);
-  // sigmas + mu
-  const sigmas: number[] = [];
-  for (let i = 0; i < steps; i++) {
-    sigmas.push(1.0 - (i / (steps - 1)) * (1.0 - 1.0 / steps));
-  }
-  const mu = calculateShift((lat * lat) / 4);
-  // FlowMatchEuler timesteps approx: t = sigma*1000
+  // 对齐官方：mu-shifted sigmas
+  const sigmas = shiftedSigmas(steps, lat);
+  const mask64 = Array.from(mask).map(v => BigInt(v));
   for (let i = 0; i < steps; i++) {
     const sigma = sigmas[i];
     const t = sigma * 1000;
@@ -272,6 +287,7 @@ async function denoise(
       sample: new ort.Tensor('float32', inp, [1, 4, lat, lat * 2]),
       timestep: new ort.Tensor('float32', [t], [1]),
       encoder_hidden_states: new ort.Tensor('float32', enc, [1, 77, 2048]),
+      encoder_attention_mask: new ort.Tensor('int64', mask64 as any, [1, 77]),
       time_ids: new ort.Tensor('float32', tid, [1, 2]),
     };
     const res = await unet!.run(feeds);
@@ -334,10 +350,15 @@ export async function generateDreamLite(
     throw new Error('DreamLite not loaded');
   }
   let enc: Float32Array | null = null;
+  let mask: Float32Array | null = null;
   if (prompt) {
     await loadTE();
-    enc = await encodePrompt(prompt);
+    const r = await encodePrompt(prompt);
     releaseTE(); // 编码完即释放 TE，降低与 UNet 同驻的内存峰值
+    if (r) {
+      enc = r.enc;
+      mask = r.mask;
+    }
   }
   const img = await denoise(
     new Float32Array(4 * (size / 8) * (size / 8)),
@@ -345,6 +366,7 @@ export async function generateDreamLite(
     steps,
     enc ?? undefined,
     onStep,
+    mask ?? undefined,
   );
   return saveRgb(img, size);
 }
