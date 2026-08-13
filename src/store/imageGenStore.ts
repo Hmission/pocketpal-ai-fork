@@ -9,6 +9,13 @@ import {makeAutoObservable, runInAction} from 'mobx';
 import {NativeModules} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as RNFS from '@dr.pogodin/react-native-fs';
+import {
+  loadDreamLite,
+  unloadDreamLite,
+  generateDreamLite,
+  editDreamLite,
+  decodeImageToRgb,
+} from '../services/dreamLiteEngine';
 import {engineMutex} from './engineMutex';
 import {engineStatus} from './engineStatus';
 
@@ -67,9 +74,19 @@ class ImageGenStore {
 
   constructor() {
     makeAutoObservable(this);
-    // 互斥：chat 引擎加载前会调本 releaser 释放 sd 引擎
+    // 互斥：chat 引擎加载前会调本 releaser 释放 sd/dreamlite 双引擎
     engineMutex.register('image', async () => {
       await this.unloadModel();
+      if (this.dreamliteLoaded) {
+        runInAction(() => {
+          this.dreamliteLoaded = false;
+        });
+        try {
+          await unloadDreamLite();
+        } catch {
+          /* releaser 内静默：卸载失败不影响 chat 引擎加载 */
+        }
+      }
     });
   }
 
@@ -89,12 +106,19 @@ class ImageGenStore {
       const s = await ImageGen.getGenSnapshot();
       // 干净失败：生成中 120s 无引擎事件（心跳停）→ 判定 native 采样 hang。
       // 锋利哲学：明确报错+停任务，不静默回退不重试（无兑底）。
-      if (this.generating && this.lastEventAt > 0 && Date.now() - this.lastEventAt > 120_000) {
+      if (
+        this.generating &&
+        this.lastEventAt > 0 &&
+        Date.now() - this.lastEventAt > 120_000
+      ) {
         runInAction(() => {
           this.generating = false;
           this.error = '采样超时（引擎无响应），请重启应用后重试';
         });
-        engineStatus.setError('image', '采样超时（引擎无响应），请重启应用后重试');
+        engineStatus.setError(
+          'image',
+          '采样超时（引擎无响应），请重启应用后重试',
+        );
         this.syncPoll();
         return;
       }
@@ -105,13 +129,18 @@ class ImageGenStore {
         }
         this.stepTime = s.time ?? 0;
         if (s.stage) {
-          this.stage = s.stage.length > 120 ? s.stage.slice(0, 120) + '…' : s.stage;
+          this.stage =
+            s.stage.length > 120 ? s.stage.slice(0, 120) + '…' : s.stage;
         }
         if (s.lastEvent) {
           this.lastEventAt = s.lastEvent;
         }
       });
-      engineStatus.setProgress('image', this.progress, `采样 ${this.progressText}`);
+      engineStatus.setProgress(
+        'image',
+        this.progress,
+        `采样 ${this.progressText}`,
+      );
     } catch {
       /* 快照不可用时静默 */
     }
@@ -151,7 +180,9 @@ class ImageGenStore {
 
   /** 历史元数据落盘（fire-and-forget） */
   private persistHistory() {
-    AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(this.history)).catch(() => {});
+    AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(this.history)).catch(
+      () => {},
+    );
   }
 
   /** 删除单条历史（可选删文件） */
@@ -193,9 +224,26 @@ class ImageGenStore {
    */
   async loadModel(
     modelPath: string,
-    extras: {clipL?: string; clipG?: string; llm?: string; vae?: string; backend?: string} = {},
+    extras: {
+      clipL?: string;
+      clipG?: string;
+      llm?: string;
+      vae?: string;
+      backend?: string;
+    } = {},
     id?: string,
   ): Promise<boolean> {
+    // 同槽互斥：加载 sd 前释放 DreamLite（双驻留会 OOM）
+    if (this.dreamliteLoaded) {
+      runInAction(() => {
+        this.dreamliteLoaded = false;
+      });
+      try {
+        await unloadDreamLite();
+      } catch (e) {
+        console.warn('[DreamLite] unload before sd load failed:', e);
+      }
+    }
     // 互斥：加载 sd 前确保 chat 引擎已释放（自动调 modelStore.releaseContext）
     await engineMutex.acquire('image');
     runInAction(() => {
@@ -212,12 +260,16 @@ class ImageGenStore {
       const ok = await ImageGen.loadModel(modelPath, extras);
       runInAction(() => {
         this.modelLoaded = ok;
-        this.loadedModelId = ok ? id ?? null : null;
+        this.loadedModelId = ok ? (id ?? null) : null;
         this.loading = false;
         this.error = ok ? null : '模型加载失败';
       });
       this.syncPoll();
-      engineStatus.setPhase('image', ok ? 'ready' : 'error', ok ? '' : '模型加载失败');
+      engineStatus.setPhase(
+        'image',
+        ok ? 'ready' : 'error',
+        ok ? '' : '模型加载失败',
+      );
       return ok;
     } catch (e: any) {
       runInAction(() => {
@@ -341,6 +393,165 @@ class ImageGenStore {
       });
       this.syncPoll();
     }
+  }
+
+  // ===== DreamLite 单通道（收编：Screen 只调 store，engine 层仅供 store 引用）=====
+
+  /**
+   * 加载 DreamLite（同槽互斥 + 单状态机）。
+   * 同槽互斥：加载前释放 sd 引擎（双驻留会 OOM）；与 chat 引擎经 engineMutex 互斥。
+   */
+  async loadDreamLiteEntry(): Promise<boolean> {
+    if (this.modelLoaded) {
+      await this.unloadModel(); // 释放 SD（内部 engineMutex.release()）
+    }
+    await engineMutex.acquire('image');
+    runInAction(() => {
+      this.loading = true;
+      this.error = null;
+      this.loadingStartedAt = Date.now();
+      this.stage = '';
+    });
+    this.syncPoll();
+    engineStatus.setPhase('image', 'loading', '加载 DreamLite 引擎…');
+    try {
+      await loadDreamLite();
+      runInAction(() => {
+        this.dreamliteLoaded = true;
+        this.loading = false;
+      });
+      this.syncPoll();
+      engineStatus.setPhase('image', 'ready', '');
+      return true;
+    } catch (e: any) {
+      runInAction(() => {
+        this.loading = false;
+        this.error = `DreamLite: ${e?.message ?? e}`;
+      });
+      this.syncPoll();
+      engineStatus.setError('image', `DreamLite: ${e?.message ?? e}`);
+      return false;
+    }
+  }
+
+  /** 卸载 DreamLite（内存归还；标记引擎空闲） */
+  async unloadDreamLiteEntry(): Promise<void> {
+    runInAction(() => {
+      this.dreamliteLoaded = false;
+    });
+    try {
+      await unloadDreamLite();
+    } catch (e) {
+      console.warn('[DreamLite] unload failed:', e);
+    }
+    engineStatus.setPhase('image', 'idle');
+    engineMutex.release();
+  }
+
+  /**
+   * DreamLite 文生图（单通道）：内部确保引擎已加载；进度写本 store 单状态机。
+   * 成功返回图片 URI，失败返回 null（error 已写入 store）。
+   */
+  async generateDreamLiteEntry(
+    width: number,
+    height: number,
+    steps: number,
+    prompt: string,
+  ): Promise<string | null> {
+    if (!this.dreamliteLoaded) {
+      const ok = await this.loadDreamLiteEntry();
+      if (!ok) {
+        return null;
+      }
+    }
+    runInAction(() => {
+      this.generating = true;
+      this.genStartedAt = Date.now();
+      this.progress = 0;
+      this.progressText = '';
+      this.stage = 'TE 编码/准备…';
+      this.error = null;
+    });
+    try {
+      const uri = await generateDreamLite(
+        width,
+        height,
+        steps,
+        prompt,
+        (st, tot) => {
+          runInAction(() => {
+            this.progress = Math.round((st / tot) * 100);
+            this.progressText = `${st}/${tot}`;
+            this.stage = `采样 ${st}/${tot}`;
+          });
+        },
+      );
+      return uri;
+    } catch (e: any) {
+      runInAction(() => {
+        this.error = `DreamLite: ${e?.message ?? e}`;
+      });
+      return null;
+    } finally {
+      runInAction(() => {
+        this.generating = false;
+      });
+    }
+  }
+
+  /**
+   * DreamLite 图像编辑（单通道）：内部确保引擎已加载；进度写本 store 单状态机。
+   * 成功返回图片 URI，失败返回 null（error 已写入 store）。
+   */
+  async editDreamLiteEntry(
+    sourceRgb: Float32Array,
+    width: number,
+    height: number,
+    steps: number,
+    instruction: string,
+  ): Promise<string | null> {
+    if (!this.dreamliteLoaded) {
+      const ok = await this.loadDreamLiteEntry();
+      if (!ok) {
+        return null;
+      }
+    }
+    runInAction(() => {
+      this.generating = true;
+      this.genStartedAt = Date.now();
+      this.progress = 0;
+      this.stage = '编辑: 准备…';
+    });
+    try {
+      const uri = await editDreamLite(
+        sourceRgb,
+        width,
+        height,
+        steps,
+        (st, tot) => {
+          runInAction(() => {
+            this.progress = Math.round((st / tot) * 100);
+            this.stage = `编辑 采样 ${st}/${tot}`;
+          });
+        },
+        instruction,
+      );
+      return uri;
+    } catch (e: any) {
+      runInAction(() => {
+        this.error = `DreamLite编辑: ${e?.message ?? e}`;
+      });
+      return null;
+    } finally {
+      runInAction(() => {
+        this.generating = false;
+      });
+    }
+  }
+
+  /** 解码上传图（编辑源图 RGB）：engine 层纯工具函数的 store 包装（单通道约束） */
+  async decodeEditImage(path: string, size: number): Promise<Float32Array> {
+    return decodeImageToRgb(path, size);
   }
 }
 

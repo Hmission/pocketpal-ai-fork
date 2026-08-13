@@ -83,5 +83,7 @@ module.exports = {
       '<rootDir>/__mocks__/external/@gorhom/bottom-sheet.js',
     '@pocketpalai/react-native-speech':
       '<rootDir>/__mocks__/external/@pocketpalai/react-native-speech.ts',
+    'onnxruntime-react-native':
+      '<rootDir>/__mocks__/external/onnxruntime-react-native.js',
   },
 };

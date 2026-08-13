@@ -19,13 +19,6 @@ import {runInAction} from 'mobx';
 import {launchImageLibrary} from 'react-native-image-picker';
 
 import {imageGenStore} from '../../store/imageGenStore';
-import {
-  loadDreamLite,
-  unloadDreamLite,
-  generateDreamLite,
-  editDreamLite,
-  decodeImageToRgb,
-} from '../../services/dreamLiteEngine';
 import {useTheme} from '../../hooks';
 import {AIOS_MODELS_DIR} from '../../utils/paths';
 import {
@@ -168,22 +161,7 @@ export const ImageGenScreen: React.FC = observer(() => {
 
   const loadEntry = async (entry: ModelEntry) => {
     if (entry.manifest.family === 'dreamlite') {
-      runInAction(() => {
-        imageGenStore.loading = true;
-        imageGenStore.error = null;
-      });
-      try {
-        await loadDreamLite();
-        runInAction(() => {
-          imageGenStore.dreamliteLoaded = true;
-          imageGenStore.loading = false;
-        });
-      } catch (e) {
-        runInAction(() => {
-          imageGenStore.loading = false;
-          imageGenStore.error = `DreamLite: ${(e as any)?.message ?? e}`;
-        });
-      }
+      await imageGenStore.loadDreamLiteEntry();
       return;
     }
     const {extras, missing} = await resolveCompanions(
@@ -206,14 +184,7 @@ export const ImageGenScreen: React.FC = observer(() => {
   // 卸载（行内按钮）
   const doUnload = async (entry: ModelEntry) => {
     if (entry.manifest.family === 'dreamlite') {
-      runInAction(() => {
-        imageGenStore.dreamliteLoaded = false;
-      });
-      try {
-        await unloadDreamLite();
-      } catch (e) {
-        console.warn('[DreamLite] unload failed:', e);
-      }
+      await imageGenStore.unloadDreamLiteEntry();
       return;
     }
     await imageGenStore.unloadModel();
@@ -310,7 +281,7 @@ export const ImageGenScreen: React.FC = observer(() => {
     // 按较大边压缩到支持尺寸
     const sq = Math.min(dreamW, dreamH);
     try {
-      const rgb = await decodeImageToRgb(path, sq);
+      const rgb = await imageGenStore.decodeEditImage(path, sq);
       setEditRgb(rgb);
       // 上传图入历史横栏（可点选查看/编辑），并在 0 页编辑槽显示
       imageGenStore.pushHistory({
@@ -360,7 +331,10 @@ export const ImageGenScreen: React.FC = observer(() => {
       return;
     }
     try {
-      const rgb = await decodeImageToRgb(targetUri.replace('file://', ''), sq);
+      const rgb = await imageGenStore.decodeEditImage(
+        targetUri.replace('file://', ''),
+        sq,
+      );
       setEditRgb(rgb);
       showToast(`已锁定当前图（${sq}×${sq}），输入编辑指令后点「执行编辑」`);
     } catch (e) {
@@ -376,54 +350,34 @@ export const ImageGenScreen: React.FC = observer(() => {
       return;
     }
     setTaskKind('edit'); // 编辑动效：叠在当前图上
-    runInAction(() => {
-      imageGenStore.generating = true;
-      imageGenStore.genStartedAt = Date.now();
-      imageGenStore.progress = 0;
-      imageGenStore.stage = '编辑: 准备…';
-    });
-    try {
-      await loadDreamLite();
-      const sq = Math.min(dreamW, dreamH);
-      const uri = await editDreamLite(
-        editRgb,
-        sq,
-        sq,
-        parseInt(steps, 10) || 4,
-        (st, tot) => {
-          runInAction(() => {
-            imageGenStore.progress = Math.round((st / tot) * 100);
-            imageGenStore.stage = `编辑 采样 ${st}/${tot}`;
-          });
-        },
-        prompt.trim(), // 编辑指令（官方 diptych 语义文本条件）
-      );
-      setEditRgb(null);
-      setEditSource(null);
-      imageGenStore.pushHistory({
-        uri,
-        prompt: prompt.trim(),
-        seed: Date.now() % 1e9,
-        ts: Date.now(),
-        width: sq,
-        height: sq,
-        steps: parseInt(steps, 10) || 4,
-        family: 'dreamlite',
-        kind: 'generated',
-      });
-      // 新图在 history[0] → 预览页 1
-      scrollToPreview(1);
-      showToast('编辑完成');
-    } catch (e) {
-      runInAction(() => {
-        imageGenStore.error = `DreamLite编辑: ${(e as any)?.message ?? e}`;
-      });
-    } finally {
-      runInAction(() => {
-        imageGenStore.generating = false;
-      });
-      setTaskKind(null);
+    const sq = Math.min(dreamW, dreamH);
+    const uri = await imageGenStore.editDreamLiteEntry(
+      editRgb,
+      sq,
+      sq,
+      parseInt(steps, 10) || 4,
+      prompt.trim(), // 编辑指令（官方 diptych 语义文本条件）
+    );
+    setTaskKind(null);
+    if (!uri) {
+      return;
     }
+    setEditRgb(null);
+    setEditSource(null);
+    imageGenStore.pushHistory({
+      uri,
+      prompt: prompt.trim(),
+      seed: Date.now() % 1e9,
+      ts: Date.now(),
+      width: sq,
+      height: sq,
+      steps: parseInt(steps, 10) || 4,
+      family: 'dreamlite',
+      kind: 'generated',
+    });
+    // 新图在 history[0] → 预览页 1
+    scrollToPreview(1);
+    showToast('编辑完成');
   };
 
   const handleGenerate = async () => {
@@ -433,56 +387,30 @@ export const ImageGenScreen: React.FC = observer(() => {
     setEditArming(false); // 出图退出编辑预备态
     if (isDream) {
       setTaskKind('gen'); // 出图动效：预览区空白页
-      runInAction(() => {
-        imageGenStore.generating = true;
-        imageGenStore.genStartedAt = Date.now();
-        imageGenStore.progress = 0;
-        imageGenStore.progressText = '';
-        imageGenStore.stage = 'TE 编码/准备…';
-        imageGenStore.error = null;
-      });
-      try {
-        await loadDreamLite();
-        runInAction(() => {
-          imageGenStore.dreamliteLoaded = true;
-        });
-        const uri = await generateDreamLite(
-          dreamW,
-          dreamH,
-          parseInt(steps, 10) || 4,
-          prompt.trim(),
-          (st, tot) => {
-            runInAction(() => {
-              imageGenStore.progress = Math.round((st / tot) * 100);
-              imageGenStore.progressText = `${st}/${tot}`;
-              imageGenStore.stage = `采样 ${st}/${tot}`;
-            });
-          },
-        );
-        imageGenStore.pushHistory({
-          uri,
-          prompt: prompt.trim(),
-          seed: Date.now() % 1e9,
-          ts: Date.now(),
-          width: dreamW,
-          height: dreamH,
-          steps: parseInt(steps, 10) || 4,
-          family: 'dreamlite',
-          kind: 'generated',
-        });
-        // 新图在 history[0] → 预览页 1
-        scrollToPreview(1);
-        showToast(`生成完成（${dreamW}×${dreamH}）`);
-      } catch (e) {
-        runInAction(() => {
-          imageGenStore.error = `DreamLite: ${(e as any)?.message ?? e}`;
-        });
-      } finally {
-        runInAction(() => {
-          imageGenStore.generating = false;
-        });
-        setTaskKind(null);
+      const uri = await imageGenStore.generateDreamLiteEntry(
+        dreamW,
+        dreamH,
+        parseInt(steps, 10) || 4,
+        prompt.trim(),
+      );
+      setTaskKind(null);
+      if (!uri) {
+        return;
       }
+      imageGenStore.pushHistory({
+        uri,
+        prompt: prompt.trim(),
+        seed: Date.now() % 1e9,
+        ts: Date.now(),
+        width: dreamW,
+        height: dreamH,
+        steps: parseInt(steps, 10) || 4,
+        family: 'dreamlite',
+        kind: 'generated',
+      });
+      // 新图在 history[0] → 预览页 1
+      scrollToPreview(1);
+      showToast(`生成完成（${dreamW}×${dreamH}）`);
       return;
     }
     const m = selectedEntry?.manifest;
