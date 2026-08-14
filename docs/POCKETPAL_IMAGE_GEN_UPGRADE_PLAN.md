@@ -651,3 +651,105 @@
 #### 遗留（大王侧）
 
 - 真机手动验证清单（抽屉 6 项 / 聊天页生图 / 设置页 9 入口）；Vulkan 生图实测（SDXL Turbo 最小验证 → SD3.5 B1 终验）。
+
+### 6.14 真机实测工具链与模型选型复盘（2026-08-14，大王令记录）
+
+**投屏工具（scrcpy，已复制到本工作区随手位置）**：
+- 本工作区：`F:\pp\.tmp\scrcpy\scrcpy\scrcpy-win64-v4.1\scrcpy.exe`（v4.1 实测可用；另有 v2.7 在同级目录）
+- 母仓原件：`F:\Cursor\OneTakeMVP\.tmp\scrcpy\scrcpy-win64-v4.1\scrcpy.exe`（手册见母仓 POCKETPAL_MODIFICATION_MASTER_LOG.md 附录 B）
+- 启动：`Start-Process -FilePath "<路径>\scrcpy.exe" -ArgumentList "--serial=<serial>","--window-title=<名>","--max-size=1200"`（主力机 aab688d9 / 备用机 66b1777f）
+- **操作路径实锤**：u2/adb input 注入触摸对本 App RN 层无效（系统设置等原生 App 有效，根因未明）；有效路径 = ComputerUse agent 鼠标点击投屏窗口（人类模拟操作，手机屏幕可见，符合授权规范）
+- 坐标换算：投屏截图物理像素 ≈ 窗口逻辑 ×1.47
+
+**模型选型坑（复盘）**：首测误选 SDXL Turbo fp16（6.9GB）→ 手机端加载失败；本地 q8 文件为 0MB 损坏件。规则已立记忆：首测选最小 footprint（SD3.5 Medium Q4_K_M 1.7GB），推送前校验文件非零。
+
+**实测现状**：主力机已装最新 APK（含各窗口全部提交 + appCategory=game）；10 个模型文件已推送就位；待以 SD3.5 Q4 重测 Vulkan。
+
+### 6.15 Vulkan 真机实测数据与结论（2026-08-14，K90+ishtar 双机）
+
+**ishtar（Adreno 740）**：`createComputePipeline: ErrorUnknown`——q4_k matmul pipeline 创建即败（驱动虚报特性，禁 f16/coopmat 后换变体仍败）。
+
+**K90（Adreno 830）SD3.5 512²/10 步全链路**：
+
+| 阶段 | 耗时 | 备注 |
+|---|---|---|
+| 文本编码（CLIP 加载+计算） | 258s | convert(repack) 主导 |
+| MMDiT 加载 | 162s | repack 124s；VRAM 1023+1019+84 MB |
+| **采样** | **665s（66s/步）** | **比 CPU 基线慢 2-4 倍** |
+| VAE | 1984 MB VRAM buffer | 内存爆涨源，终被杀 |
+
+**结论**：ggml-vulkan × Adreno 当前不可用——740 建不了 pipeline；830 全链路比 CPU 慢且内存开销巨大。根因归上游 ggml-vulkan 移动端适配（量化 repack 开销 + 图分裂嫌疑），非本仓代码问题。
+
+**判别实验（待补）**：K90 跑 SDXL Turbo（经典 UNet，op 集简单，fp16 无 repack）。若 Vulkan 快 → Vulkan 仅经典族可用，SD3.5 待上游；若仍慢 → 执行决策点 manifest 回 'CPU'，Vulkan 挂长期观察（待 ggml 上游移动端优化）。
+
+### 6.16 OpenCL 回归方案：从 Vulkan 死路到 Adreno 正确路径（2026-08-15，啄木鸟长链打穿）
+
+#### 互联网调研结论（6 轮搜索 + 代码层验证）
+
+| 证据来源 | 发现 | 指向 |
+|---|---|---|
+| saoniuhuo.com (2024-04) | llama.cpp Vulkan on Adreno 740 → 同款 `createComputePipeline: ErrorUnknown` | Vulkan 在 Adreno 无社区成功案例 |
+| ncnn GitHub issue | Adreno 840 第五代骁龙必现 SIGSEGV (`vkCmdBindPipeline`) | Vulkan compute 在 Adreno 系统性失败 |
+| Filament GitHub | Adreno 640 `vkCreateGraphicsPipelines` SIGSEGV | Adreno Vulkan 驱动跨代不稳定 |
+| Vulkore 项目 | Adreno 840 成功，但用自定义 runtime（非 ggml-vulkan），关键洞察 dispatch-bound | ggml-vulkan 框架级不适配，非 API 本身 |
+| ARM 官方 / TFLite | OpenCL 比 OpenGL 快 2x，Adreno 原生 FP16 + constant memory | OpenCL 是 Adreno 官方推荐路径 |
+| Paddle Lite | 全 Adreno 代际 OpenCL 支持 | OpenCL 跨代稳定 |
+| llama.cpp `OPENCL.md` | Adreno 740/750/830/840/X1 均标注 "Support" | 两台设备均在官方支持列表 |
+| stable-diffusion-cpp-python PyPI | "Currently, it only supports Adreno GPUs" | 社区已验证 OpenCL on Adreno 生图可行 |
+
+**结论**：互联网上 ggml-vulkan on Adreno **零成功案例**；OpenCL on Adreno 有多个独立成功案例和官方支持。OpenCL 是 Adreno GPU 的正确路径。
+
+#### 三条决策修正（Vulkan 理由复盘）
+
+| 原始理由（§428-434） | 互联网 + 代码证据 | 修正 |
+|---|---|---|
+| "OpenCL 是二等公民（厂商投入远小于 Vulkan）" | ARM 官方推荐 OpenCL；TFLite/Paddle Lite/llama.cpp 均用 OpenCL on Adreno | **错误**。OpenCL 是 Adreno 的一等公民 |
+| "llama.cpp 社区 Android Vulkan 验证充分" | 唯一社区案例遇到完全相同的 ErrorUnknown | **错误**。无成功案例 |
+| "OpenCL hang = 驱动问题，永久弃用" | 根因实为 txt2img 同步阻塞 mqt_v_native → ANR（commit f54e273 已修复）；`GGML_OPENCL_ADRENO_XMEM_GEMM` 环境变量从未设过 | **误判**。hang 非驱动，是架构缺陷；xmem GEMM 路径从未被激活 |
+
+#### 引擎代码层发现：ggml-opencl Adreno 专用优化
+
+vendored stable-diffusion.cpp 的 ggml-opencl 后端（18928 行）包含完整的 Adreno 专用优化：
+
+1. **代际检测**：`ADRENO_GPU_GEN` 枚举（A7X: 730/740/750, A8X: 830/840, X1E），`get_adreno_gpu_gen()` 设备名匹配
+2. **Adreno 专用 xmem GEMM**：`kernel_adreno_xmem_pack_src_f32` → `kernel_adreno_xmem_prepack_weight_f16` → `kernel_gemm_xmem_f16_f32_os8` → `kernel_adreno_xmem_store_dst_f32`（外部内存零拷贝管线）
+3. **noshuffle 量化内核**：Q4_0/Q4_1/Q5_0/Q5_1/Q4_K/Q5_K/Q6_K/IQ4_NL 全覆盖
+4. **阈值门控**：`use_adreno_kernels()` 在 512×512 以上激活（旧编译器 128×128）
+5. **环境变量激活**：`GGML_OPENCL_ADRENO_XMEM_GEMM=1` —— **上次测试从未设过**
+
+#### 编译资产确认
+
+| 资产 | 位置 | 状态 |
+|---|---|---|
+| Khronos OpenCL 头文件（19 个） | `.tmp/opencl/OpenCL-Headers-main/CL/` | 完整 |
+| libOpenCL.so（Android arm64 stub, 163KB） | `.tmp/opencl/libOpenCL.so` | 可用 |
+| llama.cpp OpenCL 文档 | `.tmp/llmcpp/llama.cpp-master/docs/backend/OPENCL.md` | 完整构建指南 |
+| PocketPal 已编译 OpenCL 库 | `librnllama_*_opencl.so`（build intermediates） | 证明构建链可行 |
+
+CMake 选项链：
+- `option(SD_OPENCL "sd: opencl backend" OFF)` → `set(GGML_OPENCL ON)`
+- `option(GGML_OPENCL_USE_ADRENO_KERNELS ... ON)` —— **默认 ON**
+- `option(GGML_OPENCL_EMBED_KERNELS ... ON)` —— **默认 ON**（Python3 编译期嵌入 .cl → .h）
+
+#### 四阶段方案
+
+| 阶段 | 目标 | 动作 | 验证标准 |
+|---|---|---|---|
+| Phase 0: CPU 保底 | SD3.5 + Z-Image 跑通 | manifest backend → 'CPU' | 真机出图 |
+| Phase 1: OpenCL 重测 | 公正验证 OpenCL on Adreno | CMakeLists SD_OPENCL ON + JNI setenv XMEM_GEMM=1 + manifest backend → 'OpenCL' | SDXL Turbo 出图 + SD3.5 出图 |
+| Phase 2: 性能榨干 | dispatch/带宽优化 | kernel binary cache + 权重预打包 + workgroup 调优 | 步耗对比 CPU 基线 |
+| Phase 3: Vulkan 长期观察 | 待上游修复 | 编译资产保留 dormant，跟踪 ggml-vulkan 上游 mobile 优化 | 一行 SD_VULKAN ON 可重启用 |
+
+#### 本轮代码变更清单
+
+| 文件 | 变更 | 单点决策 |
+|---|---|---|
+| `docs/POCKETPAL_IMAGE_GEN_UPGRADE_PLAN.md` | 追加 §6.16 | 文档先行 |
+| `android/app/src/main/jni/CMakeLists.txt` | SD_VULKAN OFF + SD_OPENCL ON + OpenCL 补链（headers + lib cache） | 编译链切换 |
+| `android/app/src/main/jni/thirdparty/OpenCL-Headers/` | 复制 CL/ + libOpenCL.so | 编译资产落地 |
+| `android/app/src/main/cpp/ImageGenJNI.cpp` | setenv GGML_OPENCL_ADRENO_XMEM_GEMM=1 + GGML_OPENCL_KERNEL_CACHE_DIR | 运行时激活 |
+| `src/utils/imageGenManifest.ts` | backend 'Vulkan' → 'CPU' + 类型加 'OpenCL' | 安全默认 |
+
+**manifest backend 切换路径**：`'CPU'`（当前安全默认）→ `'OpenCL'`（Phase 1 一行切）→ `'Vulkan'`（Phase 3 一行切）。Vulkan 编译资产 dormant 保留，不删除。
+
+**安全网**：异步化修复（commit f54e273）已在位——120s 干净失败机制可公正判定 OpenCL 是否 hang。若 hang，manifest 一行回 'CPU'，零代码风险。

@@ -31,11 +31,12 @@ set(SD_WEBP OFF CACHE BOOL "" FORCE)
 set(SD_WEBM OFF CACHE BOOL "" FORCE)
 set(SD_CUDA OFF CACHE BOOL "" FORCE)
 set(SD_METAL OFF CACHE BOOL "" FORCE)
-# P2 单后端：arm64-v8a 启用 Vulkan（6.12 长链打穿），OpenCL 因 Adreno 采样 hang 永久弃用。
-# 编译期与运行时单后端一致（无 fallback）。运行时 hang 由 JS 侧 120s 干净失败覆盖。
+# P2 单后端（6.16 修正）：arm64-v8a 启用 OpenCL（Adreno 专用内核 + xmem GEMM）。
+# Vulkan 编译资产保留 dormant（if SD_VULKAN 守卫），一行可重启用。
+# 决策依据：互联网调研 ggml-vulkan on Adreno 零成功案例；OpenCL 多个独立成功案例 + ARM 官方推荐。
 if (ANDROID_ABI STREQUAL "arm64-v8a")
-    set(SD_VULKAN ON CACHE BOOL "" FORCE)
-    set(SD_OPENCL OFF CACHE BOOL "" FORCE)
+    set(SD_VULKAN OFF CACHE BOOL "" FORCE)
+    set(SD_OPENCL ON CACHE BOOL "" FORCE)
 else()
     set(SD_VULKAN OFF CACHE BOOL "" FORCE)
     set(SD_OPENCL OFF CACHE BOOL "" FORCE)
@@ -71,6 +72,23 @@ if (SD_VULKAN AND ANDROID)
     include_directories("${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/Vulkan-Hpp")
     # ④ host shader-gen toolchain（绕过 detect_host_compiler）
     set(GGML_VULKAN_SHADERS_GEN_TOOLCHAIN "${CMAKE_CURRENT_SOURCE_DIR}/cmake/host-toolchain.cmake" CACHE FILEPATH "" FORCE)
+endif()
+
+# ── OpenCL 补链（6.16）：Khronos OpenCL-Headers + libOpenCL.so stub ──
+# FindOpenCL.cmake 预设：vendored 头文件 + arm64 stub 库 → find_package(OpenCL REQUIRED) 短路通过。
+# GGML_OPENCL_USE_ADRENO_KERNELS 默认 ON（ggml/CMakeLists.txt）；
+# GGML_OPENCL_EMBED_KERNELS 默认 ON（Python3 编译期嵌入 .cl → .h）。
+if (SD_OPENCL AND ANDROID)
+    set(_pp_opencl_inc "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/OpenCL-Headers")
+    set(_pp_opencl_lib "${_pp_opencl_inc}/libOpenCL.so")
+    if (NOT EXISTS "${_pp_opencl_inc}/CL/cl.h")
+        message(FATAL_ERROR "OpenCL headers missing. Copy Khronos OpenCL-Headers CL/ into thirdparty/OpenCL-Headers/CL/")
+    endif()
+    if (NOT EXISTS "${_pp_opencl_lib}")
+        message(FATAL_ERROR "libOpenCL.so missing. Copy Android arm64 stub into thirdparty/OpenCL-Headers/libOpenCL.so")
+    endif()
+    set(OpenCL_INCLUDE_DIR "${_pp_opencl_inc}" CACHE PATH "" FORCE)
+    set(OpenCL_LIBRARY "${_pp_opencl_lib}" CACHE FILEPATH "" FORCE)
 endif()
 
 set(SD_BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)

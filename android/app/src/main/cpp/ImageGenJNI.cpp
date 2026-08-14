@@ -245,6 +245,12 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
   // stderr 探针实锤：崩在 matmul_q4_k_f32_f16acc_aligned_l——Adreno 740 虚报 shaderFloat16，
   // f16acc matmul pipeline 创建必败（ErrorUnknown）。禁 fp16 回退 f32acc 变体。
   setenv("GGML_VK_DISABLE_F16", "1", 0);
+  // OpenCL Adreno 专用激活（6.16 回归方案）：
+  // GGML_OPENCL_ADRENO_XMEM_GEMM=1 启用外部内存零拷贝 GEMM 管线（上次测试从未设过）。
+  // GGML_OPENCL_KERNEL_CACHE_DIR 缓存编译后的内核二进制（避免重复编译开销）。
+  // 无害：OpenCL 非编译后端时被引擎忽略。
+  setenv("GGML_OPENCL_ADRENO_XMEM_GEMM", "1", 0);
+  setenv("GGML_OPENCL_KERNEL_CACHE_DIR", "/data/data/com.pocketpal/files/cl-cache", 0);
   dbg_log("==== loadModel begin ====");
   dbg_mem("loadModel entry");
   JStr model(env, modelPath);
