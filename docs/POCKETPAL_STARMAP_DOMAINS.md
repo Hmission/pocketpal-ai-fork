@@ -15,7 +15,7 @@
 | `src/screens/ImageGenScreen/components/ResultPreview.tsx` | 结果区 + 进度 overlay + 操作条 + 全屏 |
 | `src/screens/ImageGenScreen/components/HistoryStrip.tsx` | 历史横条 + 多选管理 |
 | `src/screens/ImageGenScreen/components/ComposerPanel.tsx` | 创作区 + 提示词限长 + 高级参数 |
-| `src/screens/ImageGenScreen/hooks/useToast.ts` / `usePulse.ts` | toast / 呼吸脉冲动效 |
+| `src/screens/ImageGenScreen/hooks/useToast.ts` / `useWaveDots.ts` | toast / 三点波浪生成动效 |
 | `src/screens/ImageGenScreen/constants.ts` / `styles.ts` | 域内常量 / 样式 |
 | `src/store/imageGenStore.ts` | 生图单通道状态机（SD/Z-Image + DreamLite 收编） |
 | `src/store/engineMutex.ts` | 引擎互斥协调器（chat↔image，回调注入无循环依赖） |

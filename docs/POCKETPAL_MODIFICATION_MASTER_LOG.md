@@ -273,6 +273,23 @@ Start-Process -FilePath "F:\Cursor\OneTakeMVP\.tmp\scrcpy\scrcpy-win64-v4.1\scrc
 
 ---
 
+## 16. UI 交互优化四波 + 复查收口（2026-08-14）
+
+### 16.1 四波落地（5 次提交）
+- 8499a72（W1 抽屉与导航）：SessionSearchBar 新对话行双按钮（+生图入口 drawer-imagegen-button）；SessionListItem 常驻 ... 按钮与长按同一菜单（单一事实源），新增「基于此会话新建」（duplicateSession 派生）；HeaderLeft 三级导航后退（useNavigationState index>0 且非聊天根级→goBack）。
+- b79e884（W2 聊天体验）：modelDisplayNames 中文简称注册表 + isChatSelectable LLM 过滤（弹窗/换模型子菜单共用）；助手气泡 assistantBubbleBackground 语义点缀色 token（深浅双模式）+ 文本左右缩进同用户规格；长按菜单定稿（+从此处删除）；engineReady 就绪门控（busy 时轮询 200ms/8s + 用户可见横幅，无静默重试）。
+- 82d6c7c（W3 生图页）：操作条定稿三按钮（保存/再次生成/删除，编辑唯一入口=ComposerPanel 底部）；DreamLite 置顶默认选中+胶囊快速加载按钮；genOverlay 黑色直角→浅色圆角+三点波浪动效（useWaveDots 替换 usePulse）；新建 docs/POCKETPAL_IMAGEGEN_UI_SPEC.md。
+- 5fedcd8（W4 全局弹窗）：ConfirmDialog 命令式确认体系（confirmDialog Promise API + ConfirmDialogHost 根挂载 App.tsx:320）；替换抽屉/HeaderRight/ImageGenScreen/ModelCard 共 8 处确认路径；新建 docs/POCKETPAL_UI_INTERACTION_SPEC.md。
+- fd9e578（审计补缺）：engineReady 单测 6 例；ChatPalModelPickerSheet 冒烟 2 例（LLM 过滤+中文简称）；既有 fixture modelType 同步。
+
+### 16.2 复查断链收口（谛听审计 → 啄木鸟执行）
+- ChatView「从此处删除」确认 Alert.alert→confirmDialog（SPEC §4 定稿）；ChatPalModelPickerSheet Pal 模型切换确认同改——弹窗设计语言全收口。
+- 补「从此处删除」确认流测试（确认→removeMessagesFromId / 取消→不动）。
+- ImageGenJNI.cpp 08-14 Vulkan 异常穿越 JNI 修复（try/catch 显式失败替代 abort 闪崩，+30/-3）随波提交；build_*.log 加入 .gitignore。
+- 星图域清单 usePulse→useWaveDots 同步；本波为 16.1 五提交的弹窗收口 + 文档同步，单一事实源见两份 SPEC。
+
+---
+
 ## 15. 品牌改名 SOP：完整改动清单（未来再改名复用）
 
 > 当前品牌：**小黄鸡 / Pocket Chick**（2026-08-13）。本清单经两次改名（口袋八哥→小黄鸡）实战校准。

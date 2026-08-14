@@ -12,6 +12,9 @@
 #include <chrono>
 #include <cstdio>
 #include <cstdarg>
+#include <cstdlib>
+#include <unistd.h>
+#include <fcntl.h>
 
 #include <android/log.h>
 
@@ -26,6 +29,22 @@ sd_ctx_t* g_ctx = nullptr;
 
 // Cached model path (new_sd_ctx needs it each time)
 std::string g_model_path;
+
+// stderr 重定向取证：ggml-vulkan 关键诊断（失败 pipeline 名/设备信息）走 std::cerr，
+// 而 Android app 进程 stderr 默认被丢弃不进 logcat。dup2 到 AIOS 目录落盘（取证探针，非兜底）。
+void redirect_stderr_once() {
+  static const bool done = []() {
+    const int fd = open("/sdcard/Documents/AIOS/imagegen_stderr.log",
+                        O_WRONLY | O_CREAT | O_APPEND, 0644);
+    if (fd >= 0) {
+      dup2(fd, STDERR_FILENO);
+      close(fd);
+      return true;
+    }
+    return false;
+  }();
+  (void)done;
+}
 
 // JavaVM + cached jclass/jmethodID for RN event emission
 JavaVM* g_jvm = nullptr;
@@ -212,6 +231,20 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
   std::lock_guard<std::mutex> lock(g_mutex);
   env->GetJavaVM(&g_jvm);
   cacheJniRefs(env);  // cache jclass + jmethodID once (fix weak-ref overflow)
+  redirect_stderr_once();  // 先于引擎初始化：捕获 ggml-vulkan cerr 诊断
+  // Adreno 高级 shader 特性治理（08-14 三连崩取证：createComputePipeline ErrorUnknown）：
+  // 驱动声称支持 coopmat/int-dot/bf16 但 pipeline 创建必失败。用 ggml 官方运行时开关
+  // 禁用（ggml-vulkan.cpp getenv 门控），回退基础 pipeline。单点决策非兜底链：
+  // 移除 setenv 即可重新启用（overwriter=0，外部预设优先）。
+  setenv("GGML_VK_DISABLE_COOPMAT", "1", 0);
+  setenv("GGML_VK_DISABLE_COOPMAT2", "1", 0);
+  setenv("GGML_VK_DISABLE_COOPMAT2_DECODE_VECTOR", "1", 0);
+  setenv("GGML_VK_DISABLE_INTEGER_DOT_PRODUCT", "1", 0);
+  setenv("GGML_VK_DISABLE_BFLOAT16", "1", 0);
+  setenv("GGML_VK_DISABLE_DOT2", "1", 0);
+  // stderr 探针实锤：崩在 matmul_q4_k_f32_f16acc_aligned_l——Adreno 740 虚报 shaderFloat16，
+  // f16acc matmul pipeline 创建必败（ErrorUnknown）。禁 fp16 回退 f32acc 变体。
+  setenv("GGML_VK_DISABLE_F16", "1", 0);
   dbg_log("==== loadModel begin ====");
   dbg_mem("loadModel entry");
   JStr model(env, modelPath);
@@ -271,7 +304,16 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
   dbg_mem("before new_sd_ctx");
   dbg_log("new_sd_ctx begin backend=%s n_threads=%u", params.backend,
           params.n_threads);
-  g_ctx = new_sd_ctx(&params);
+  try {
+    g_ctx = new_sd_ctx(&params);
+  } catch (const std::exception& e) {
+    // Vulkan-Hpp/ggml 异常不得穿越 JNI 边界（abort 闪崩）→ 显式失败
+    dbg_log("new_sd_ctx EXCEPTION: %s", e.what());
+    g_ctx = nullptr;
+  } catch (...) {
+    dbg_log("new_sd_ctx EXCEPTION: unknown");
+    g_ctx = nullptr;
+  }
   dbg_log("new_sd_ctx ret=%p", (void*)g_ctx);
   dbg_mem("after new_sd_ctx");
 
@@ -346,8 +388,26 @@ Java_com_pocketpal_ImageGenModule_nativeTxt2img(
   int numImages = 0;
   dbg_mem("before generate_image");
   dbg_log("generate_image begin");
-  const bool ok = generate_image(g_ctx, &gen, &images, &numImages);
-  dbg_log("generate_image ret=%d numImages=%d", (int)ok, numImages);
+  bool ok = false;
+  try {
+    ok = generate_image(g_ctx, &gen, &images, &numImages);
+    dbg_log("generate_image ret=%d numImages=%d", (int)ok, numImages);
+  } catch (const std::exception& e) {
+    // 异常取证（08-14 三连崩实锤：CLIP/LLM 文本编码器 Vulkan graph 抛异常穿越 JNI → abort）。
+    // vk::SystemError 的 what() 带具体 Vulkan 错误码——落盘显式报错替代闪崩（锋利）。
+    dbg_log("generate_image EXCEPTION: %s", e.what());
+    env->ReleaseStringUTFChars(prompt, promptStr);
+    env->ReleaseStringUTFChars(negativePrompt, negStr);
+    env->ReleaseStringUTFChars(outPath, outStr);
+    return env->NewStringUTF(
+        (std::string("ERR_EXCEPTION:") + e.what()).c_str());
+  } catch (...) {
+    dbg_log("generate_image EXCEPTION: unknown");
+    env->ReleaseStringUTFChars(prompt, promptStr);
+    env->ReleaseStringUTFChars(negativePrompt, negStr);
+    env->ReleaseStringUTFChars(outPath, outStr);
+    return env->NewStringUTF("ERR_EXCEPTION:unknown");
+  }
   dbg_mem("after generate_image");
 
   env->ReleaseStringUTFChars(prompt, promptStr);

@@ -41,6 +41,8 @@ local.properties
 node_modules/
 npm-debug.log
 yarn-error.log
+# 根目录临时构建日志（构建取证用，不入库）
+build_*.log
 package-lock.json
 .yarn
 
