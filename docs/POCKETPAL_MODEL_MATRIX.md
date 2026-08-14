@@ -47,6 +47,13 @@
 
 ## 5. 真机现状（2026-08-14 清理后）
 
+## 5.1 LLM 与生图隔离（2026-08-14 新增）
+
+- **聊天模型列表只显示 LLM**：`modelType === LLM` 且文件名不在 `IMAGE_GEN_MODEL_FILES`（imageGenManifest 导出的生图 main+companions 文件集合）；`scanLocalModels` 不把生图文件注册为 LLM，`isChatSelectable` 兜底存量。
+- **生图模型只在生图页下拉显示**（manifest 驱动，与 LLM 列表完全隔离）。
+- 新增生图模型：main/companions 文件名必须进 `BUILTIN_MANIFESTS`（自动进过滤集）。
+- 装机核对时：models/ 下生图文件（sd35_medium 等）**不会**出现在聊天模型列表属正常。
+
 ## 6. 装机 SOP（备用机黄金标准核对 · 2026-08-14 定稿）
 
 > 以备用机（做过完整部署）为黄金标准逐项核对，新机装机后必须与本清单完全一致。

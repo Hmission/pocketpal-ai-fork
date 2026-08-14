@@ -82,3 +82,14 @@
 
 - 模型简称一律经 `modelDisplayNames` 注册表（弹窗/子菜单/徽章/顶栏共用单一事实源）。
 - 新色值必须登记本文档 §1 并走 theme token；深浅色双模式必须同时验证。
+
+## 8. 模型选择器过滤规则（2026-08-14）
+
+- 聊天模型选择（ChatPalModelPickerSheet 模型 tab / 长按换模型子菜单）只显示**可聊天的 LLM**：
+  `modelType === LLM` **且** 文件名不在 `IMAGE_GEN_MODEL_FILES`（imageGenManifest 导出的生图文件集合）。
+- 生图模型（SD3.5 / Z-Image / DreamLite 等 manifest 文件）**永不出现**在聊天选择列表；
+  生图模型入口固定在生图页模型下拉（manifest 驱动）。
+- 扫描注册层同步隔离：`scanLocalModels` 不把生图文件注册为 LLM（新装机干净），
+  `isChatSelectable` 兜底存量数据（DB/预设已注册残留）。
+- 若新增生图模型，必须把其 main + companions 文件名加入 `BUILTIN_MANIFESTS`（自动进入过滤集），
+  设备端 `*.manifest.json` 扩展模型的过滤待动态化（当前无设备端扩展）。
