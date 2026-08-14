@@ -2,7 +2,7 @@ import * as React from 'react';
 import {runInAction} from 'mobx';
 
 import {textMessage, user} from '../../../../jest/fixtures';
-import {render, fireEvent} from '../../../../jest/test-utils';
+import {render, fireEvent, waitFor} from '../../../../jest/test-utils';
 import {l10n} from '../../../locales';
 import {MessageType, AgentStep} from '../../../utils/types';
 import {chatSessionStore, modelStore} from '../../../store';
@@ -11,8 +11,20 @@ import {ChatView} from '../ChatView';
 
 jest.useFakeTimers();
 
+// 全局确认弹窗 mock：测试环境无 ConfirmDialogHost，默认拒绝，用例内按需放行
+jest.mock('../../ui/ConfirmDialog', () => ({
+  confirmDialog: jest.fn().mockResolvedValue(false),
+}));
+
+import {confirmDialog} from '../../ui/ConfirmDialog';
+
 jest.mock('../../ChatEmptyPlaceholder', () => ({
   ChatEmptyPlaceholder: jest.fn(() => null),
+}));
+
+// HeaderLeft 依赖 navigator 状态（三级导航后退）；screen 级测试直接渲染无 navigator，mock 隔离
+jest.mock('../../HeaderLeft', () => ({
+  HeaderLeft: () => null,
 }));
 
 const author = {id: 'assistant-id'};
@@ -248,6 +260,71 @@ describe('ChatView — AssistantTurn integration', () => {
 describe('ChatView — Copy menu item label is present in l10n', () => {
   it('exposes a Copy menu label (sanity for menuItems)', () => {
     expect(l10n.en.components.chatView.menuItems.copy).toBeTruthy();
+  });
+});
+
+describe('ChatView — 从此处删除确认流（ConfirmDialog）', () => {
+  const openMenu = (
+    content: string,
+  ): {
+    root: any;
+    getByText: (t: string) => any;
+  } => {
+    const turn = makeAssistantTurn([{content}], 't1', 1);
+    const rendered = render(
+      <ChatView messages={[turn]} onSendPress={jest.fn()} user={user} />,
+      {withNavigation: true, withBottomSheetProvider: true},
+    );
+    const longPressables = rendered.UNSAFE_root.findAll(
+      (n: any) => n.props && typeof n.props.onLongPress === 'function',
+    );
+    const target = longPressables.find((node: any) => {
+      const findText = (n: any): boolean => {
+        if (!n) return false;
+        if (typeof n.children === 'string') return n.children.includes(content);
+        if (typeof n.props?.children === 'string')
+          return n.props.children.includes(content);
+        if (Array.isArray(n.children)) return n.children.some(findText);
+        if (n.children) return findText(n.children);
+        return false;
+      };
+      return findText(node);
+    });
+    fireEvent(target!, 'longPress', {nativeEvent: {pageX: 1, pageY: 1}});
+    return rendered;
+  };
+
+  it('确认：点击「从此处删除」弹出 ConfirmDialog，确认后调用 removeMessagesFromId', async () => {
+    (confirmDialog as jest.Mock).mockResolvedValue(true);
+    const {getByText} = openMenu('delete me please');
+
+    fireEvent.press(
+      getByText(l10n.en.components.chatView.menuItems.deleteFromHere),
+    );
+
+    expect(confirmDialog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: l10n.en.components.chatView.menuItems.deleteFromHereTitle,
+        destructive: true,
+      }),
+    );
+    await waitFor(() => {
+      expect(chatSessionStore.removeMessagesFromId).toHaveBeenCalledWith('t1');
+    });
+  });
+
+  it('取消：确认框拒绝时不执行删除', async () => {
+    (confirmDialog as jest.Mock).mockResolvedValue(false);
+    const {getByText} = openMenu('keep me please');
+
+    fireEvent.press(
+      getByText(l10n.en.components.chatView.menuItems.deleteFromHere),
+    );
+
+    await waitFor(() => {
+      expect(confirmDialog).toHaveBeenCalled();
+    });
+    expect(chatSessionStore.removeMessagesFromId).not.toHaveBeenCalled();
   });
 });
 

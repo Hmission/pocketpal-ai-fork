@@ -7,6 +7,11 @@ import {render} from '../../../../jest/test-utils';
 
 jest.useFakeTimers();
 
+// HeaderLeft 依赖 navigator 状态（三级导航后退）；screen 级测试直接渲染无 navigator，mock 隔离
+jest.mock('../../HeaderLeft', () => ({
+  HeaderLeft: () => null,
+}));
+
 jest.mock('../../ChatEmptyPlaceholder', () => ({
   ChatEmptyPlaceholder: jest.fn(() => null),
 }));

@@ -1,12 +1,19 @@
 import React from 'react';
 import {render, fireEvent, waitFor} from '@testing-library/react-native';
-import {Alert, Keyboard} from 'react-native';
+import {Keyboard} from 'react-native';
 
 import {ChatPalModelPickerSheet} from '../ChatPalModelPickerSheet';
 import {modelStore, chatSessionStore} from '../../../store';
 import {user} from '../../../../jest/fixtures';
 import {UserContext, L10nContext} from '../../../utils';
 import {l10n} from '../../../locales';
+
+// 确认弹窗已切换全局 ConfirmDialog 体系（测试环境 mock：默认拒绝，用例内按需放行）
+jest.mock('../../ui/ConfirmDialog', () => ({
+  confirmDialog: jest.fn().mockResolvedValue(false),
+}));
+
+import {confirmDialog} from '../../ui/ConfirmDialog';
 
 // Mock stores
 jest.mock('../../../store', () => ({
@@ -96,8 +103,7 @@ jest.mock('@gorhom/bottom-sheet', () => {
   };
 });
 
-// Mock Alert
-jest.spyOn(Alert, 'alert');
+// 测试环境 mock 已由 jest.mock 提供；Keyboard 事件订阅需返回带 remove 的对象
 
 // Mock Keyboard
 const mockKeyboardDismiss = jest.fn();
@@ -298,17 +304,20 @@ describe('ChatPalModelPickerSheet', () => {
     fireEvent.press(palItem);
 
     await waitFor(() => {
-      expect(Alert.alert).toHaveBeenCalledWith(
-        l10n.en.components.chatPalModelPickerSheet.confirmationTitle,
-        expect.stringContaining('Test Model 2'),
-        expect.arrayContaining([
-          expect.objectContaining({
-            text: l10n.en.components.chatPalModelPickerSheet.keepButton,
-          }),
-          expect.objectContaining({
-            text: l10n.en.components.chatPalModelPickerSheet.switchButton,
-          }),
-        ]),
+      expect(confirmDialog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: l10n.en.components.chatPalModelPickerSheet.confirmationTitle,
+          message: expect.stringContaining('Test Model 2'),
+        }),
+      );
+    });
+
+    // 确认后切换模型
+    (confirmDialog as jest.Mock).mockResolvedValueOnce(true);
+    fireEvent.press(palItem);
+    await waitFor(() => {
+      expect(modelStore.selectModel).toHaveBeenCalledWith(
+        expect.objectContaining({id: 'model2'}),
       );
     });
   });

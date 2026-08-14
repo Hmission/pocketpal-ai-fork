@@ -1,5 +1,5 @@
 import React, {useRef, useContext, useEffect} from 'react';
-import {Alert, Dimensions, View, Pressable, Keyboard} from 'react-native';
+import {Dimensions, View, Pressable, Keyboard} from 'react-native';
 import {observer} from 'mobx-react';
 import {Text} from 'react-native-paper';
 import BottomSheet, {
@@ -20,6 +20,7 @@ import {
 import {t} from '../../locales';
 import type {Pal} from '../../types/pal';
 import {CloseIcon, SettingsIcon} from '../../assets/icons';
+import {confirmDialog} from '../ui/ConfirmDialog';
 import {SkillsDisplay} from '../SkillsDisplay';
 
 type Tab = 'models' | 'pals';
@@ -171,24 +172,21 @@ export const ChatPalModelPickerSheet = observer(
             m => m.id === pal.defaultModel?.id,
           );
           if (palDefaultModel) {
-            Alert.alert(
-              l10n.components.chatPalModelPickerSheet.confirmationTitle,
-              t(l10n.components.chatPalModelPickerSheet.modelSwitchMessage, {
-                modelName: palDefaultModel.name,
-              }),
-              [
+            // 模型切换确认：统一弹窗设计语言（ConfirmDialog 体系）
+            const ok = await confirmDialog({
+              title: l10n.components.chatPalModelPickerSheet.confirmationTitle,
+              message: t(
+                l10n.components.chatPalModelPickerSheet.modelSwitchMessage,
                 {
-                  text: l10n.components.chatPalModelPickerSheet.keepButton,
-                  style: 'cancel',
+                  modelName: palDefaultModel.name,
                 },
-                {
-                  text: l10n.components.chatPalModelPickerSheet.switchButton,
-                  onPress: () => {
-                    modelStore.selectModel(palDefaultModel);
-                  },
-                },
-              ],
-            );
+              ),
+              confirmText: l10n.components.chatPalModelPickerSheet.switchButton,
+              cancelText: l10n.components.chatPalModelPickerSheet.keepButton,
+            });
+            if (ok) {
+              modelStore.selectModel(palDefaultModel);
+            }
           }
         }
         onPalSelect?.(pal?.id);

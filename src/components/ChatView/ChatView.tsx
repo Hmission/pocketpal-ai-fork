@@ -1,6 +1,5 @@
 import * as React from 'react';
 import {
-  Alert,
   FlatList,
   FlatListProps,
   InteractionManager,
@@ -95,6 +94,7 @@ import {
   getModelDisplayName,
   isChatSelectable,
 } from '../../utils/modelDisplayNames';
+import {confirmDialog} from '../ui/ConfirmDialog';
 
 type MenuItem = {
   label: string;
@@ -666,26 +666,19 @@ export const ChatView = observer(
       setSelectedMessage(null);
     }, []);
 
-    // 从此处删除：移除该消息及其后的所有消息（重来/断舍离，二次确认）
+    // 从此处删除：移除该消息及其后的所有消息（重来/断舍离，统一弹窗设计语言）
     const handleDeleteFromHere = React.useCallback(
-      (message: MessageType.Any) => {
-        Alert.alert(
-          l10n.components.chatView.menuItems.deleteFromHereTitle,
-          l10n.components.chatView.menuItems.deleteFromHereMessage,
-          [
-            {
-              text: l10n.common.cancel,
-              style: 'cancel',
-            },
-            {
-              text: l10n.common.delete,
-              style: 'destructive',
-              onPress: () => {
-                chatSessionStore.removeMessagesFromId(message.id);
-              },
-            },
-          ],
-        );
+      async (message: MessageType.Any) => {
+        const ok = await confirmDialog({
+          title: l10n.components.chatView.menuItems.deleteFromHereTitle,
+          message: l10n.components.chatView.menuItems.deleteFromHereMessage,
+          confirmText: l10n.common.delete,
+          cancelText: l10n.common.cancel,
+          destructive: true,
+        });
+        if (ok) {
+          chatSessionStore.removeMessagesFromId(message.id);
+        }
       },
       [l10n],
     );

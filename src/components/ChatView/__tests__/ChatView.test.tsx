@@ -17,6 +17,11 @@ import {chatSessionStore, modelStore} from '../../../store';
 import {registerDefaultTalents} from '../../../services/talents';
 import DeviceInfo from 'react-native-device-info';
 
+// HeaderLeft 依赖 navigator 状态（三级导航后退）；screen 级测试直接渲染无 navigator，mock 隔离
+jest.mock('../../HeaderLeft', () => ({
+  HeaderLeft: () => null,
+}));
+
 // talentRegistry (src/services/talents) is the real singleton in Jest; register
 // the built-in engines so render_html (recommendedContextTokens=4096) drives the
 // pal-load hint.
