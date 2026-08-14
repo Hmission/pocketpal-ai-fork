@@ -194,7 +194,7 @@ describe('modelSettings', () => {
     it('returns errors for multiple out-of-range values', () => {
       const invalidSettings = {
         temperature: -1, // min is 0
-        top_k: 0, // min is 1
+        top_k: -1, // min is 0（0 = 禁用，合法）
         top_p: 2, // max is 1
       };
 

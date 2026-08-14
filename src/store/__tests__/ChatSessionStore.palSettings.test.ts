@@ -140,8 +140,8 @@ describe('ChatSessionStore - Pal Settings', () => {
       );
 
       expect(result.temperature).toBe(0.3); // From session settings
-      expect(result.top_p).toBe(0.95); // From session settings (default value)
-      expect(result.top_k).toBe(40); // From session settings (default value)
+      expect(result.top_p).toBe(0.8); // From session settings (default value)
+      expect(result.top_k).toBe(0); // From session settings (default value)
       expect(result.n_predict).toBe(200); // From session settings
     });
   });

@@ -28,8 +28,8 @@ export const defaultCompletionParams: CompletionParams = {
   prompt: '',
   n_predict: -1, // The maximum number of tokens to predict when generating text. -1 = unlimited (until EOS).
   temperature: 0.7, // The randomness of the generated text.
-  top_k: 40, // Limit the next token selection to the K most probable tokens.
-  top_p: 0.95, // Limit the next token selection to a subset of tokens with a cumulative probability above a threshold P.
+  top_k: 0, // 禁用 top_k（Qwen3/MiniCPM 官方推荐：走 top_p/min_p 采样系，不叠加 top_k）
+  top_p: 0.8, // Qwen3 官方推荐 0.8（原 0.95 过宽，中文长文易散）
   min_p: 0.05, //The minimum probability for a token to be considered, relative to the probability of the most likely token.
   xtc_threshold: 0.1, // Sets a minimum probability threshold for tokens to be removed.
   xtc_probability: 0.0, // Sets the chance for token removal (checked once on sampler start)

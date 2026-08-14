@@ -40,7 +40,8 @@ export const COMPLETION_PARAMS_METADATA: Partial<
     defaultValue: defaultCompletionParams.temperature,
   },
   top_k: {
-    validation: {type: 'numeric', min: 1, max: 128, required: true},
+    // 0 = 禁用（Qwen3/MiniCPM 推荐采样系，默认已禁用）
+    validation: {type: 'numeric', min: 0, max: 128, required: true},
     defaultValue: defaultCompletionParams.top_k,
   },
   top_p: {

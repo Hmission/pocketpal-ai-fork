@@ -11,7 +11,6 @@ describe('UIStore', () => {
     uiStore.setAutoNavigateToChat(true);
     uiStore.setDisplayMemUsage(false);
     uiStore.setValue('modelsScreen', 'filters', []);
-    uiStore.setLanguage('en');
   });
 
   it('should initialize with default values', () => {
@@ -59,8 +58,8 @@ describe('UIStore', () => {
   });
 
   describe('language', () => {
-    it('should default to en', () => {
-      expect(uiStore.language).toBe('en');
+    it('should default to zh (Chinese)', () => {
+      expect(uiStore.language).toBe('zh');
     });
 
     it('should set language correctly', () => {
