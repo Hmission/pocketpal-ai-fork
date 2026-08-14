@@ -46,14 +46,18 @@ export const createStyles = (theme: MD3Theme) =>
       gap: 10,
       paddingVertical: 10,
     },
-    // 生图快捷入口：最小触区 44x44（无障碍规范）
+    // 生图快捷入口：无底框文字按钮（与「+ 新对话」对称），最小触区 44px（padding 补偿）
     newChatImageGenButton: {
-      width: 44,
-      height: 44,
+      flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
-      borderRadius: 22,
-      backgroundColor: theme.colors.surfaceVariant,
+      gap: 6,
+      paddingVertical: 10,
+      paddingHorizontal: 8,
+    },
+    imageGenEntryText: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: theme.colors.primary,
     },
     newChatText: {
       fontSize: 14,

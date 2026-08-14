@@ -60,7 +60,11 @@ export const SessionSearchBar: React.FC<SessionSearchBarProps> = ({
           testID="drawer-imagegen-button"
           accessibilityLabel={l10n.components.sidebarContent.imageGenEntry}
           hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-          <CameraIcon stroke={theme.colors.primary} width={22} height={22} />
+          {/* 图标 20x20 与「+ 新对话」PlusIcon(22) 水平对齐 */}
+          <CameraIcon stroke={theme.colors.primary} width={20} height={20} />
+          <Text style={styles.imageGenEntryText}>
+            {l10n.components.sidebarContent.imageGenEntry}
+          </Text>
         </TouchableOpacity>
       </View>
       <Divider style={styles.topDivider} />

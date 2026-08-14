@@ -29,7 +29,7 @@ const fallbackName = (raw: string): string =>
     .trim();
 
 export function getModelDisplayName(
-  model: Pick<Model, 'name' | 'filename'>,
+  model: Partial<Pick<Model, 'name' | 'filename'>>,
 ): string {
   const raw = model.name || model.filename || '';
   for (const rule of DISPLAY_NAME_RULES) {

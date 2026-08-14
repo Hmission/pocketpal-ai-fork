@@ -13,6 +13,7 @@ import {
 import {PalSheet} from '../../components/PalsSheets';
 
 import {useChatSession} from '../../hooks';
+import {useTheme} from '../../hooks';
 import {usePendingMessage} from '../../hooks/useDeepLinking';
 import {Pal} from '../../types/pal';
 
@@ -27,7 +28,8 @@ import {hasVideoCapability} from '../../utils/pal-capabilities';
 
 import {L10nContext} from '../../utils';
 import {resolveReasoningCapability} from '../../utils/reasoningCapability';
-import {MessageType} from '../../utils/types';
+import {MessageType, Theme} from '../../utils/types';
+import {getModelDisplayName} from '../../utils/modelDisplayNames';
 import {ErrorState} from '../../utils/errors';
 import {user, assistant} from '../../utils/chat';
 import {useChatScheduler} from '../../hooks/useChatScheduler';
@@ -41,13 +43,15 @@ const renderBubble = ({
   message,
   nextMessageInGroup,
   scale,
+  theme,
 }: {
   child: ReactNode;
   message: MessageType.Any;
   nextMessageInGroup: boolean;
   scale?: any;
+  theme: Theme;
 }) => {
-  // 模型归属标签：每轮会话显示发出该消息的模型简称
+  // 模型归属徽章：每轮会话显示发出该消息的模型中文简称（brandAccent 小字）
   const modelName =
     message.author.id !== user.id
       ? (message.metadata as {modelName?: string} | undefined)?.modelName
@@ -56,13 +60,15 @@ const renderBubble = ({
     <View>
       {modelName ? (
         <Text
+          testID="assistant-model-badge"
           style={{
-            fontSize: 9,
-            color: '#888',
-            marginLeft: 10,
-            marginBottom: 2,
+            fontSize: 11,
+            fontWeight: '600',
+            color: theme.colors.brandAccent,
+            marginLeft: 12,
+            marginBottom: 4,
           }}>
-          {modelName.length > 14 ? `${modelName.slice(0, 14)}…` : modelName}
+          {getModelDisplayName({name: modelName})}
         </Text>
       ) : null}
       <Bubble
@@ -76,6 +82,7 @@ const renderBubble = ({
 };
 
 export const ChatScreen: React.FC = observer(() => {
+  const theme = useTheme();
   const currentMessageInfo = useRef<{
     createdAt: number;
     id: string;
@@ -291,7 +298,7 @@ export const ChatScreen: React.FC = observer(() => {
     <>
       <ChatView
         headerAccessory={<ActiveTaskBanner />}
-        renderBubble={renderBubble}
+        renderBubble={args => renderBubble({...args, theme})}
         messages={chatSessionStore.currentSessionMessages}
         activePal={activePal}
         onSendPress={wrappedSendPress}

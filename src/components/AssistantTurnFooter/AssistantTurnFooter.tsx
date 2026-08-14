@@ -64,31 +64,30 @@ export const AssistantTurnFooter: React.FC<AssistantTurnFooterProps> = observer(
 
     const componentStyles = styles({theme});
 
-    // Build timing string from whichever parts are available. Each part
-    // is independent; missing parts are omitted from the joined string.
-    const timingParts: string[] = [];
+    // Build timing parts: {value, suffix} 拆分数字与标签，数字用品牌色强调
+    const timingParts: Array<{value: string; suffix: string}> = [];
+    const pushTiming = (tplKey: string, value: string) => {
+      const full = t(tplKey, {value});
+      timingParts.push({value, suffix: full.replace(value, '')});
+    };
     if (timings?.predicted_per_token_ms != null) {
-      timingParts.push(
-        t(l10n.components.bubble.msPerToken, {
-          value: timings.predicted_per_token_ms.toFixed(),
-        }),
+      pushTiming(
+        l10n.components.bubble.msPerToken,
+        timings.predicted_per_token_ms.toFixed(),
       );
     }
     if (timings?.predicted_per_second != null) {
-      timingParts.push(
-        t(l10n.components.bubble.tokensPerSec, {
-          value: timings.predicted_per_second.toFixed(2),
-        }),
+      pushTiming(
+        l10n.components.bubble.tokensPerSec,
+        timings.predicted_per_second.toFixed(2),
       );
     }
     if (timings?.time_to_first_token_ms != null) {
-      timingParts.push(
-        t(l10n.components.bubble.ttft, {
-          value: timings.time_to_first_token_ms,
-        }),
+      pushTiming(
+        l10n.components.bubble.ttft,
+        String(timings.time_to_first_token_ms),
       );
     }
-    const fullTimingsString = timingParts.join(', ');
 
     const copyToClipboard = () => {
       if (message.type !== 'text' && message.type !== 'assistant_turn') {
@@ -110,9 +109,16 @@ export const AssistantTurnFooter: React.FC<AssistantTurnFooterProps> = observer(
             />
           </TouchableOpacity>
         )}
-        {timings && fullTimingsString ? (
+        {timings && timingParts.length > 0 ? (
           <Text style={componentStyles.timing} testID="footer-timing">
-            {fullTimingsString}
+            {timingParts.map((part, i) => (
+              <Text key={i}>
+                {/* 数字用品牌色强调，标签用辅助灰（文本/数字颜色区分） */}
+                <Text style={componentStyles.timingValue}>{part.value}</Text>
+                <Text style={componentStyles.timingSuffix}>{part.suffix}</Text>
+                {i < timingParts.length - 1 ? ', ' : ''}
+              </Text>
+            ))}
           </Text>
         ) : null}
         {interrupted ? (

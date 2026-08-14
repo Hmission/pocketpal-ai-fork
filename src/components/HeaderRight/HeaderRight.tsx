@@ -37,15 +37,30 @@ import {ChatGenerationSettingsSheet} from '..';
 export const HeaderRight: React.FC = observer(() => {
   const theme = useTheme();
   const [menuVisible, setMenuVisible] = React.useState(false);
+  // 菜单序列号：每次打开递增，作为 Menu key 强制重建，消除受控竞态残留
+  const [menuSeq, setMenuSeq] = React.useState(0);
   const [renameModalVisible, setRenameModalVisible] = React.useState(false);
   const [chatGenerationSettingsVisible, setChatGenerationSettingsVisible] =
     React.useState(false);
+
+  const menuOpenRef = React.useRef(false);
+  menuOpenRef.current = menuVisible;
 
   const openMenu = () => {
     if (Keyboard.isVisible()) {
       Keyboard.dismiss();
     }
-    setMenuVisible(true);
+    if (menuOpenRef.current) {
+      // 竞态防护：菜单已开 → 先关（等 dismiss 动画完成），rAF 后再重开
+      setMenuVisible(false);
+      requestAnimationFrame(() => {
+        setMenuSeq(s => s + 1);
+        setMenuVisible(true);
+      });
+    } else {
+      setMenuSeq(s => s + 1);
+      setMenuVisible(true);
+    }
   };
   const closeMenu = () => setMenuVisible(false);
   const l10n = useContext(L10nContext);
@@ -147,6 +162,7 @@ export const HeaderRight: React.FC = observer(() => {
         }}
       />
       <Menu
+        key={`header-right-menu-${menuSeq}`}
         visible={menuVisible}
         onDismiss={closeMenu}
         anchorPosition="bottom"

@@ -30,6 +30,11 @@ export const SidebarContent: React.FC<DrawerContentComponentProps> = observer(
   props => {
     const [menuVisible, setMenuVisible] = useState<string | null>(null);
     const [menuPosition, setMenuPosition] = useState({x: 0, y: 0});
+    // 菜单序列号：每次打开递增，作为 Menu key 强制重建，消除受控竞态残留
+    const [menuSeq, setMenuSeq] = useState(0);
+    // 打开中会话镜像（render 期同步，供 openMenu 判断竞态）
+    const menuOpenRef = React.useRef<string | null>(null);
+    menuOpenRef.current = menuVisible;
     const [sessionToRename, setSessionToRename] =
       useState<SessionMetaData | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
@@ -65,8 +70,20 @@ export const SidebarContent: React.FC<DrawerContentComponentProps> = observer(
 
     const openMenu = React.useCallback((sessionId: string, event: any) => {
       const {nativeEvent} = event;
-      setMenuPosition({x: nativeEvent.pageX, y: nativeEvent.pageY});
-      setMenuVisible(sessionId);
+      const pos = {x: nativeEvent.pageX, y: nativeEvent.pageY};
+      if (menuOpenRef.current !== null) {
+        // 竞态防护：已有菜单打开 → 先关（等 dismiss 动画完成），rAF 后再开新菜单
+        setMenuVisible(null);
+        requestAnimationFrame(() => {
+          setMenuPosition(pos);
+          setMenuSeq(s => s + 1);
+          setMenuVisible(sessionId);
+        });
+      } else {
+        setMenuPosition(pos);
+        setMenuSeq(s => s + 1);
+        setMenuVisible(sessionId);
+      }
     }, []);
 
     const closeMenu = React.useCallback(() => {
@@ -244,6 +261,7 @@ export const SidebarContent: React.FC<DrawerContentComponentProps> = observer(
             onLongPress={handleSessionLongPress}
             menuVisible={menuVisible}
             menuPosition={menuPosition}
+            menuSeq={menuSeq}
             onMenuDismiss={closeMenu}
             onPressRename={handlePressRename}
             onPressDelete={onPressDelete}
@@ -261,6 +279,7 @@ export const SidebarContent: React.FC<DrawerContentComponentProps> = observer(
         handleSessionLongPress,
         menuVisible,
         menuPosition,
+        menuSeq,
         closeMenu,
         handlePressRename,
         onPressDelete,

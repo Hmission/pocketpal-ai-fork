@@ -1,7 +1,6 @@
 import React from 'react';
-import {Alert} from 'react-native';
 
-import {render, fireEvent} from '../../../../jest/test-utils';
+import {render, fireEvent, waitFor} from '../../../../jest/test-utils';
 
 import {HeaderRight} from '../HeaderRight';
 
@@ -10,6 +9,13 @@ import {defaultCompletionSettings} from '../../../store/ChatSessionStore';
 import {L10nContext} from '../../../utils';
 import {modelsList} from '../../../../jest/fixtures/models';
 import {l10n} from '../../../locales';
+
+// 确认弹窗已切换全局 ConfirmDialog 体系（测试环境 mock：默认拒绝，用例内按需放行）
+jest.mock('../../ui/ConfirmDialog', () => ({
+  confirmDialog: jest.fn().mockResolvedValue(false),
+}));
+
+import {confirmDialog} from '../../ui/ConfirmDialog';
 
 jest.mock('../../UsageStats', () => ({
   UsageStats: jest.fn(() => {
@@ -95,7 +101,7 @@ describe('HeaderRight', () => {
         // Set up the mock model store
         modelStore.models = [modelsList[0]];
         modelStore.activeModelId = modelsList[0].id;
-        jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
+        (confirmDialog as jest.Mock).mockResolvedValue(false);
       });
 
       afterEach(() => {
@@ -133,6 +139,17 @@ describe('HeaderRight', () => {
         expect(getByTestId('chat-generation-settings-sheet')).toBeTruthy();
       });
 
+      it('rapid re-tap on menu button keeps menu functional (race guard)', async () => {
+        const {getByTestId, findByText} = renderWithI18n(<HeaderRight />);
+        const menuButton = getByTestId('menu-button');
+        // 连点两次：受控竞态防护（先关后开 rAF）下菜单仍可正常打开
+        fireEvent.press(menuButton);
+        fireEvent.press(menuButton);
+        expect(
+          await findByText(l10n.en.components.headerRight.generationSettings),
+        ).toBeTruthy();
+      });
+
       it('handles delete action with confirmation', async () => {
         const {getByTestId, findByText} = renderWithI18n(<HeaderRight />);
         const menuButton = getByTestId('menu-button');
@@ -141,32 +158,25 @@ describe('HeaderRight', () => {
         const deleteButton = await findByText('Delete');
         fireEvent.press(deleteButton);
 
-        // Verify Alert was shown with correct options
-        expect(Alert.alert).toHaveBeenCalledWith(
-          'Delete Chat',
-          'Are you sure you want to delete this chat?',
-          expect.arrayContaining([
-            expect.objectContaining({text: 'Cancel'}),
-            expect.objectContaining({
-              text: 'Delete',
-              style: 'destructive',
-              onPress: expect.any(Function),
-            }),
-          ]),
+        // 统一弹窗体系：confirmDialog 被调用（destructive 语义）
+        expect(confirmDialog).toHaveBeenCalledWith(
+          expect.objectContaining({
+            title: l10n.en.components.headerRight.deleteChatTitle,
+            destructive: true,
+          }),
         );
 
-        // Get the delete callback and call it
-        const alertCall = (Alert.alert as jest.Mock).mock.calls[0];
-        const deleteCallback = alertCall[2].find(
-          (button: any) => button.text === 'Delete',
-        ).onPress;
-        deleteCallback();
-
-        // Verify the delete actions were called
-        expect(chatSessionStore.resetActiveSession).toHaveBeenCalled();
-        expect(chatSessionStore.deleteSession).toHaveBeenCalledWith(
-          'test-session',
-        );
+        // 确认后执行删除：重新打开菜单再点删除（confirmDialog 已放行）
+        (confirmDialog as jest.Mock).mockResolvedValue(true);
+        fireEvent.press(getByTestId('menu-button'));
+        const deleteButtonAgain = await findByText('Delete');
+        fireEvent.press(deleteButtonAgain);
+        await waitFor(() => {
+          expect(chatSessionStore.resetActiveSession).toHaveBeenCalled();
+          expect(chatSessionStore.deleteSession).toHaveBeenCalledWith(
+            'test-session',
+          );
+        });
       });
 
       it('handles duplicate action', async () => {

@@ -30,7 +30,8 @@ export const HeaderLeft: React.FC = () => {
         testID="header-back-button"
         accessibilityLabel="Go back"
         onPress={() => navigation.goBack()}>
-        <ArrowLeftMdIcon stroke={theme.colors.primary} />
+        {/* 图标 20x20 与 headerTitle 文本基线对齐（触区仍 44x44，见 styles） */}
+        <ArrowLeftMdIcon stroke={theme.colors.primary} width={20} height={20} />
       </TouchableOpacity>
     );
   }
@@ -41,7 +42,7 @@ export const HeaderLeft: React.FC = () => {
       testID="menu-button"
       accessibilityLabel="Open drawer"
       onPress={() => navigation.openDrawer()}>
-      <MenuIcon stroke={theme.colors.primary} />
+      <MenuIcon stroke={theme.colors.primary} width={20} height={20} />
     </TouchableOpacity>
   );
 };

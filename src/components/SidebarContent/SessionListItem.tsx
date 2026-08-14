@@ -23,6 +23,8 @@ interface SessionListItemProps {
   onLongPress: (sessionId: string, event: any) => void;
   menuVisible: string | null;
   menuPosition: {x: number; y: number};
+  /** 菜单序列号（每次打开递增）：Menu key 强制重建，消除受控竞态残留 */
+  menuSeq: number;
   onMenuDismiss: () => void;
   onPressRename: (session: SessionMetaData) => void;
   onPressDelete: (sessionId: string) => void;
@@ -48,6 +50,8 @@ export const SessionListItem = React.memo<SessionListItemProps>(
     onLongPress,
     menuVisible,
     menuPosition,
+    /** 菜单序列号（每次打开递增）：作为 Menu key 强制重建，消除受控竞态残留 */
+    menuSeq,
     onMenuDismiss,
     onPressRename,
     onPressDelete,
@@ -113,6 +117,7 @@ export const SessionListItem = React.memo<SessionListItemProps>(
         )}
         {!isSelectionMode && (
           <Menu
+            key={`${session.id}-${menuSeq}`}
             visible={menuVisible === session.id}
             onDismiss={onMenuDismiss}
             anchor={menuPosition}

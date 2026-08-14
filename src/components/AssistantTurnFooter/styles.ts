@@ -7,12 +7,23 @@ export const styles = ({theme}: {theme: Theme}) =>
     container: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingBottom: 12,
-      gap: 5,
+      // 固定高度：复制 icon(16) 与 timing 文本(10) 统一基线，不随内容跳动
+      height: 24,
+      gap: 6,
+      marginTop: 4,
     },
     timing: {
       color: theme.colors.textSecondary,
       fontSize: 10,
+    },
+    // 性能数字：品牌色强调（小黄鸡暖黄）
+    timingValue: {
+      color: theme.colors.brandAccent,
+      fontWeight: '600',
+    },
+    // 标签：辅助灰，与数字区分
+    timingSuffix: {
+      color: theme.colors.textSecondary,
     },
     interruptedStatus: {
       color: theme.colors.error,
