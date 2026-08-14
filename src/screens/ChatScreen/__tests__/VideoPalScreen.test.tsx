@@ -16,6 +16,11 @@ import {LlamaContext} from 'llama.rn';
 import {ModelOrigin} from '../../../utils/types';
 import {mockLlamaContextParams} from '../../../../jest/fixtures/models';
 
+// HeaderLeft 依赖 navigator 状态（三级导航后退）；screen 级测试无 navigator，mock 隔离
+jest.mock('../../../components/HeaderLeft', () => ({
+  HeaderLeft: () => null,
+}));
+
 const render = (ui: React.ReactElement, options: any = {}) =>
   baseRender(ui, {
     withNavigation: true,

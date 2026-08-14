@@ -23,11 +23,9 @@ import {
   assembleMessages,
   resolveSystemMessages,
 } from '../utils/systemPromptResolver';
-import {
-  buildMemoryFragment,
-  extractAndSaveMemories,
-} from '../services/aiosMemory';
+import {extractAndSaveMemories} from '../services/aiosMemory';
 import {assembleContext} from '../services/aiosMemory/contextAssembler';
+import {awaitEngineReady, engineIsBusy} from '../utils/engineReady';
 import {appendConversation} from '../services/aiosMemory/conversationLog';
 import {compactAndFlush} from '../services/aiosMemory/compaction';
 import {maybeClosingSummary, selfCheck} from '../services/aiosMemory/rituals';
@@ -151,7 +149,8 @@ const prepareCompletion = async ({
   // AIOS 动态上下文组装: SOUL+AGENTS+记忆 + 召回相关历史片段
   const assembled = await assembleContext(message.text, chatMessages.length);
   const recalledFragment = assembled.recalledFragments.length
-    ? '\n【召回的历史片段】(参考，别全部复述):\n' + assembled.recalledFragments.join('\n---\n')
+    ? '\n【召回的历史片段】(参考，别全部复述):\n' +
+      assembled.recalledFragments.join('\n---\n')
     : '';
   const effectiveSystem = assembled.systemPrompt
     ? [{role: 'system' as const, content: assembled.systemPrompt}]
@@ -561,6 +560,24 @@ export const useChatSession = (
       return;
     }
 
+    // 就绪门控：上一条还在收尾（推理/流式/停止清理）时等待引擎就绪，
+    // 避免新请求撞 busy context。等待状态用户可见，超时显式提示不静默。
+    if (engineIsBusy()) {
+      uiStore.setChatWarning({
+        code: 'unknown',
+        message: l10n.chat.enginePreparing,
+        context: 'chat',
+        recoverable: true,
+        severity: 'warning',
+      });
+      const ready = await awaitEngineReady();
+      uiStore.clearChatWarning();
+      if (!ready) {
+        await addSystemMessage(l10n.chat.engineBusyTimeout);
+        return;
+      }
+    }
+
     const imageUris = message.imageUris;
     const hasImages = !!(imageUris && imageUris.length > 0);
 
@@ -598,7 +615,7 @@ export const useChatSession = (
     );
     const pal = activeSession?.activePalId
       ? palStore.pals.find(p => p.id === activeSession.activePalId)
-      : palStore.getAiosPal() ?? null;
+      : (palStore.getAiosPal() ?? null);
 
     const systemMessages = resolveSystemMessages({
       pal,

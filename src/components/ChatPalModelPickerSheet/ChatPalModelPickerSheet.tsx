@@ -13,6 +13,10 @@ import {createStyles} from './styles';
 import {modelStore, palStore, chatSessionStore} from '../../store';
 import {CustomBackdrop} from '../Sheet/CustomBackdrop';
 import {getModelSkills, L10nContext, Model} from '../../utils';
+import {
+  getModelDisplayName,
+  isChatSelectable,
+} from '../../utils/modelDisplayNames';
 import {t} from '../../locales';
 import type {Pal} from '../../types/pal';
 import {CloseIcon, SettingsIcon} from '../../assets/icons';
@@ -239,8 +243,18 @@ export const ChatPalModelPickerSheet = observer(
                   styles.itemTitle,
                   isActiveModel && styles.activeItemTitle,
                 ]}>
-                {model.name}
+                {getModelDisplayName(model)}
               </Text>
+              {getModelDisplayName(model) !== model.name && (
+                <Text
+                  style={[
+                    styles.itemSubtitle,
+                    isActiveModel && styles.activeItemSubtitle,
+                  ]}
+                  numberOfLines={1}>
+                  {model.name}
+                </Text>
+              )}
               {modelSkills && <ObservedSkillsDisplay model={model} />}
             </View>
           </Pressable>
@@ -331,7 +345,9 @@ export const ChatPalModelPickerSheet = observer(
           <BottomSheetScrollView
             contentContainerStyle={{paddingBottom: chatInputHeight + 66}}>
             {item.id === 'models'
-              ? modelStore.availableModels.map(renderModelItem)
+              ? modelStore.availableModels
+                  .filter(isChatSelectable)
+                  .map(renderModelItem)
               : [renderDisablePalItem(), ...palStore.pals.map(renderPalItem)]}
           </BottomSheetScrollView>
         </View>

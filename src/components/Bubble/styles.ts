@@ -15,10 +15,10 @@ export const styles = ({
 }) => {
   return StyleSheet.create({
     contentContainer: {
-      // assistant 输出卡片化：surfaceVariant 背景（与用户卡片对称）
+      // assistant 输出卡片化：语义点缀色背景（低饱和暖蓝，深浅双模式）
       backgroundColor: currentUserIsAuthor
         ? theme.colors.authorBubbleBackground
-        : theme.colors.surfaceVariant,
+        : theme.colors.assistantBubbleBackground,
       borderBottomLeftRadius:
         currentUserIsAuthor || roundBorder
           ? theme.borders.messageBorderRadius

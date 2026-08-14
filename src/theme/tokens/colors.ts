@@ -113,6 +113,9 @@ export const lightColors: TokenColors = {
 
   // Messages
   authorBubbleBackground: '#f2f2f2',
+  // 助手气泡语义点缀色（低饱和暖蓝，深浅双模式；与品牌小鸡暖色系互补）
+  assistantBubbleBackground: '#E9F0FB',
+  onAssistantBubble: '#16324F',
   receivedMessageDocumentIcon: LIGHT_PRIMARY,
   sentMessageDocumentIcon: LIGHT_ON_SURFACE,
   userAvatarImageBackground: 'transparent',
@@ -251,6 +254,9 @@ export const darkColors: TokenColors = {
 
   // Messages
   authorBubbleBackground: '#212121',
+  // 助手气泡语义点缀色（暗色模式）
+  assistantBubbleBackground: '#20344B',
+  onAssistantBubble: '#D8E5F5',
   receivedMessageDocumentIcon: DARK_PRIMARY,
   sentMessageDocumentIcon: DARK_ON_SURFACE,
   userAvatarImageBackground: 'transparent',

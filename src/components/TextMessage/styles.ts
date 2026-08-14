@@ -38,10 +38,8 @@ export const styles = ({
         : theme.fonts.receivedMessageBodyTextStyle),
     },
     textContainer: {
-      marginHorizontal:
-        user?.id === message.author.id
-          ? theme.insets.messageInsetsHorizontal
-          : 0,
+      // 左右缩进：助手消息与用户消息同规格（≈2 字符当量），文本不贴气泡边缘
+      marginHorizontal: theme.insets.messageInsetsHorizontal,
       marginVertical: theme.insets.messageInsetsVertical,
     },
     imageContainer: {

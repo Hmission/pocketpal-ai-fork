@@ -1019,7 +1019,10 @@
         "regenerate": "Regenerate",
         "regenerateWith": "Regenerate with",
         "edit": "Edit",
-        "reportContent": "Report Content"
+        "reportContent": "Report Content",
+        "deleteFromHere": "Delete from here",
+        "deleteFromHereTitle": "Delete this message and everything after?",
+        "deleteFromHereMessage": "This message and all following messages will be removed. This cannot be undone."
       }
     },
     "palHeaderRight": {
@@ -1178,6 +1181,8 @@
   "chat": {
     "conversationReset": "Conversation reset!",
     "modelNotLoaded": "Model not loaded. Please initialize the model.",
+    "enginePreparing": "Model is preparing, please wait…",
+    "engineBusyTimeout": "Model is busy. Please try again in a moment.",
     "completionFailed": "Completion failed: ",
     "toolCallTruncated": "Tool call cut off — the model likely ran out of room. Try a larger context or a smaller request.",
     "loadingModel": "Loading model ...",

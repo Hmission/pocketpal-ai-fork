@@ -1,5 +1,6 @@
 import * as React from 'react';
 import {
+  Alert,
   FlatList,
   FlatListProps,
   InteractionManager,
@@ -88,7 +89,12 @@ import {
   GridIcon,
   PencilLineIcon,
   RefreshIcon,
+  TrashIcon,
 } from '../../assets/icons';
+import {
+  getModelDisplayName,
+  isChatSelectable,
+} from '../../utils/modelDisplayNames';
 
 type MenuItem = {
   label: string;
@@ -660,6 +666,30 @@ export const ChatView = observer(
       setSelectedMessage(null);
     }, []);
 
+    // 从此处删除：移除该消息及其后的所有消息（重来/断舍离，二次确认）
+    const handleDeleteFromHere = React.useCallback(
+      (message: MessageType.Any) => {
+        Alert.alert(
+          l10n.components.chatView.menuItems.deleteFromHereTitle,
+          l10n.components.chatView.menuItems.deleteFromHereMessage,
+          [
+            {
+              text: l10n.common.cancel,
+              style: 'cancel',
+            },
+            {
+              text: l10n.common.delete,
+              style: 'destructive',
+              onPress: () => {
+                chatSessionStore.removeMessagesFromId(message.id);
+              },
+            },
+          ],
+        );
+      },
+      [l10n],
+    );
+
     const keyExtractor = React.useCallback(
       ({id}: MessageType.DerivedAny) => id,
       [],
@@ -672,6 +702,7 @@ export const ChatView = observer(
       regenerateWith: regenerateWithLabel,
       edit: editLabel,
       reportContent: reportContentLabel,
+      deleteFromHere: deleteFromHereLabel,
     } = l10n.components.chatView.menuItems;
 
     const menuItems = React.useMemo((): MenuItem[] => {
@@ -685,7 +716,10 @@ export const ChatView = observer(
 
       const isAuthor = selectedMessage.author.id === user.id;
       const hasActiveModel = modelStore.activeModelId !== undefined;
-      const models = modelStore.availableModels || [];
+      // 换模型重新生成：仅 LLM（与模型选择弹窗同一过滤规则）
+      const models = (modelStore.availableModels || []).filter(
+        isChatSelectable,
+      );
 
       const baseItems: MenuItem[] = [
         {
@@ -715,7 +749,7 @@ export const ChatView = observer(
           icon: () => <GridIcon stroke={theme.colors.primary} />,
           disabled: false,
           submenu: models.map(model => ({
-            label: model.name,
+            label: getModelDisplayName(model),
             width: Math.min(300, size.width),
             onPress: () => {
               handleTryAgainWith(model.id, selectedMessage);
@@ -747,6 +781,17 @@ export const ChatView = observer(
         disabled: false,
       });
 
+      // 从此处删除：用户/助手消息均可（移除该条及之后，二次确认）
+      baseItems.push({
+        label: deleteFromHereLabel,
+        onPress: () => {
+          handleDeleteFromHere(selectedMessage);
+          handleMenuDismiss();
+        },
+        icon: () => <TrashIcon stroke={theme.colors.error} />,
+        disabled: false,
+      });
+
       return baseItems;
     }, [
       selectedMessage,
@@ -755,14 +800,17 @@ export const ChatView = observer(
       handleTryAgain,
       handleTryAgainWith,
       handleEdit,
+      handleDeleteFromHere,
       handleMenuDismiss,
       size.width,
       theme.colors.primary,
+      theme.colors.error,
       copyLabel,
       regenerateLabel,
       regenerateWithLabel,
       editLabel,
       reportContentLabel,
+      deleteFromHereLabel,
     ]);
 
     // ============ RENDER FUNCTIONS ============

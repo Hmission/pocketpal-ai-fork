@@ -309,6 +309,10 @@ export interface SemanticColors {
 
   // Message specific
   authorBubbleBackground: string;
+  /** 助手气泡语义点缀色（低饱和暖蓝，深浅双模式） */
+  assistantBubbleBackground: string;
+  /** 助手气泡上的文本色 */
+  onAssistantBubble: string;
   receivedMessageDocumentIcon: string;
   sentMessageDocumentIcon: string;
   userAvatarImageBackground: string;

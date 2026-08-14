@@ -55,6 +55,9 @@ class MockPalStore {
 
   getAllPals = jest.fn(() => this.pals);
 
+  // AIOS 人设 pal（无则 undefined，与真实 PalStore.getAiosPal 同签名）
+  getAiosPal = jest.fn(() => undefined);
+
   // Capability-based methods
   getVideoPals = jest.fn(() =>
     this.pals.filter(p => p.capabilities?.video === true),

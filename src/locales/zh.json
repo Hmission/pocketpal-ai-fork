@@ -1001,7 +1001,10 @@
         "regenerate": "重新生成",
         "regenerateWith": "重新生成（重选模型）",
         "edit": "编辑",
-        "reportContent": "举报内容"
+        "reportContent": "举报内容",
+        "deleteFromHere": "从此处删除",
+        "deleteFromHereTitle": "删除此条及之后的消息？",
+        "deleteFromHereMessage": "该消息与其后的所有消息将被移除，无法恢复。"
       }
     },
     "palHeaderRight": {
@@ -1178,6 +1181,8 @@
   "chat": {
     "conversationReset": "对话已重置！",
     "modelNotLoaded": "模型未加载，请初始化模型。",
+    "enginePreparing": "模型准备中，请稍候…",
+    "engineBusyTimeout": "模型繁忙，请稍后重试。",
     "completionFailed": "生成失败: ",
     "loadingModel": "加载模型中...",
     "typeYourMessage": "输入消息",

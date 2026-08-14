@@ -18,6 +18,11 @@ import {mockLlamaContextParams} from '../../../../jest/fixtures/models';
 import {buildReasoningPayload} from '../../../api/openai';
 import {ModelOrigin} from '../../../utils/types';
 
+// HeaderLeft 依赖 navigator 状态（三级导航后退）；screen 级测试直接渲染无 navigator，mock 隔离
+jest.mock('../../../components/HeaderLeft', () => ({
+  HeaderLeft: () => null,
+}));
+
 const render = (ui: React.ReactElement, options: any = {}) =>
   baseRender(ui, {withBottomSheetProvider: true, ...options});
 

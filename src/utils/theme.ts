@@ -154,7 +154,7 @@ export const buildTheme = ({
         ...fontStyles.medium,
       },
       receivedMessageBodyTextStyle: {
-        color: tokens.colors.onPrimary,
+        color: tokens.colors.onAssistantBubble,
         fontSize: 16,
         lineHeight: 24,
         ...fontStyles.medium,
@@ -166,13 +166,13 @@ export const buildTheme = ({
         ...fontStyles.medium,
       },
       receivedMessageLinkDescriptionTextStyle: {
-        color: tokens.colors.onPrimary,
+        color: tokens.colors.onAssistantBubble,
         fontSize: 14,
         lineHeight: 20,
         ...fontStyles.regular,
       },
       receivedMessageLinkTitleTextStyle: {
-        color: tokens.colors.onPrimary,
+        color: tokens.colors.onAssistantBubble,
         fontSize: 16,
         lineHeight: 22,
         ...fontStyles.extraBold,

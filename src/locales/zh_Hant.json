@@ -150,6 +150,8 @@
   "chat": {
     "conversationReset": "對話已重置！",
     "modelNotLoaded": "模型尚未載入。請先初始化模型。",
+    "enginePreparing": "模型準備中，請稍候…",
+    "engineBusyTimeout": "模型繁忙，請稍後重試。",
     "completionFailed": "完成失敗： ",
     "loadingModel": "正在載入模型…",
     "typeYourMessage": "在此輸入您的訊息",
@@ -691,7 +693,10 @@
         "copy": "複製",
         "regenerate": "重新生成",
         "regenerateWith": "使用...重新生成",
-        "reportContent": "報告內容"
+        "reportContent": "報告內容",
+        "deleteFromHere": "從此處刪除",
+        "deleteFromHereTitle": "刪除此條及之後的訊息？",
+        "deleteFromHereMessage": "此訊息與之後的所有訊息將被移除，無法復原。"
       }
     },
     "lookiePalSheet": {
