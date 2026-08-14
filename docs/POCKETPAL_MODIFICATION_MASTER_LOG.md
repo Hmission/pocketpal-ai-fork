@@ -629,3 +629,51 @@ Start-Process -FilePath "F:\Cursor\OneTakeMVP\.tmp\scrcpy\scrcpy-win64-v4.1\scrc
 - **背景**：08-14 真机审计发现 0.6B 遗留 + SDXL fp16 6.9GB 超红线——立清单定门禁，杜绝乱推送。
 - **勘误**：早前版本误将并行窗口的「安装 DeepSeek Hermes」登记为本仓违规推送——实际为**别仓任务，与本仓无关**，已撤回登记；本清单只管 f:\pp 仓装机推送。
 - 推送门禁：清单外一律拒绝；删除/新增必须大王钦定先更清单。
+
+---
+
+## 18. 窗口闭环记录（2026-08-14 · task-ddf Tab 解耦拆分 + 拆分后新问题全修复）
+
+### 18.1 主线：Tab 解耦拆分方案执行（11 项 UI 优化 → 6 波落地）
+
+| 波次 | 交付 | 提交 |
+|---|---|---|
+| W1 | 聊天页 UI 设计规范 CHAT_UI_SPEC + 品牌色 brandAccent token 三处同步 | fd9937f |
+| W2 | 六模块：HeaderLeft 对齐 / 画图入口 / 菜单竞态根治 / 配色 / 模型徽章简称 / footer 统一 | 7549582 |
+| 测试 | HeaderRight 既有 Alert 债务修复 + 连点竞态用例（9/9 绿） | 同上 |
+
+- **菜单竞态根治模式**（可复用）：受控 Menu 连点失效 = visible 切换与 Modal dismiss 动画竞态；根治 = menuOpenRef 镜像状态 + 先关后开 rAF + menuSeq 递增作 Menu key 强制重建。
+
+### 18.2 拆分暴露的新问题 → 全修复闭环（按时间序）
+
+| # | 问题 | 根因 | 修复 | 提交 |
+|---|---|---|---|---|
+| 1 | 新装机欢迎页仍是默认视觉 | illustrations.ts 未品牌化 | git mv → .tsx + 小黄鸡 PNG 渲染 | 4d84097 |
+| 2 | 默认语言英文 | UIStore._language='en' | 默认 'zh' + 测试同步 | 4d84097 |
+| 3 | 默认采样参数不符 | top_p 0.95/top_k 40 | top_p 0.8（Qwen3 官方）+ top_k 0 禁用 | 4d84097 |
+| 4 | 模型选型失控（生图 4 个 LLM 2 个） | 执行未守选型铁律 | MODEL_MATRIX 唯一事实源 + 推送门禁 | c28f68e |
+| 5 | DeepSeek Hermes 误登记 | 跨窗口越权判断 | 勘误撤回 + 管辖边界 §4.5 | fe423ce |
+| 6 | 淘汰模型未删 | 等批准拖延 | 立即 adb rm（SDXL 6.9GB + 0.6B） | bca0e90 |
+| 7 | DreamLite unet_masked 缺失 | 换机后 dreamlite 目录从未推送 | 补推 3 件 | 42ce9e1 |
+| 8 | 装机 SOP 定稿 | 无核对基线 | 备用机黄金标准 14+3 清单 | e04ec55 |
+| 9 | EACCES 13 模型读不了 | HyperOS 缺「所有文件访问」授权 | 系统 UI 专用页授予（appops set 无效） | 5f81412 |
+| 10 | 权限弹窗每次误弹 | RN check 对特殊权限不可靠 | 回滚弹窗机制（不弹无用窗） | d73e6f9 |
+| 11 | DreamLite: Failed to load model | **TE 三件漏推**（te_q8/te_fp16/data） | 补推 TE + 装机清单修正（6 件必推） | d26127e |
+| 12 | Vulkan ctx null ×18 | SM8850 Adreno 默认驱动建 ctx 失败 | 失败回退 CPU（备用机不受影响） | d26127e |
+
+### 18.3 装机 SOP 关键修正（双机验证）
+
+- **授权方式**：`am start -a android.settings.MANAGE_APP_ALL_FILES_ACCESS_PERMISSION -d package:com.pocketpalai` → 系统页点「授予」；**`appops set` 显示 allow 但 PackageManager 层不生效，弃用**。
+- **dreamlite 必推 6 件**（含 TE）：unet_masked + vae_decoder + vae_encoder + te_q8.gguf + te_fp16.onnx(+data)。
+- 验证链路：输入 prompt 出图（TE 编码 seq= → 4 步 → PNG saved），非仅加载成功。
+
+### 18.4 双机对照结论（备用机 2304FPN6DC vs 新机 25102RKBEC）
+
+- 系统/App/appops/gids/文件 owner 全一致；差异仅在授权时间与 TE 文件是否推送。
+- `/proc/<pid>/root` 读文件测试为**假阴性**（shell 借 mount namespace 无权限），不可用于权限判断。
+- adb 模拟点击前先查 `mCurrentFocus`（安全中心/微信抢焦点会吞点击）。
+
+### 18.5 本窗口提交全链（10 提交，代码 100% 已入库）
+
+fd9937f → 7549582 → 4d84097 → c28f68e → fe423ce → bca0e90 → 42ce9e1 → e04ec55 → ecacb91 → d73e6f9 → 5f81412 → d26127e（12 条，含 1 次回滚 1 次勘误）
+

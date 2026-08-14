@@ -51,11 +51,16 @@ $adb = "C:\Users\90897\AppData\Local\Android\Sdk\platform-tools\adb.exe"
 - 成功标准：`Success`
 - HyperOS 限制：可能需手机端手动点击"USB安装"确认，否则超时取消
 
-### Step 4: 授权存储访问
+### Step 4: 授权存储访问（Android 11+ 必须）
+
 ```powershell
-& $adb shell appops set com.pocketpalai MANAGE_EXTERNAL_STORAGE allow
+# 拉起系统「所有文件访问」专用授权页（应用详情权限页不显示此项）
+$adb = "C:\Users\90897\AppData\Local\Android\Sdk\platform-tools\adb.exe"
+& $adb shell am start -a android.settings.MANAGE_APP_ALL_FILES_ACCESS_PERMISSION -d package:com.pocketpalai
+# 手机端点「授予管理所有文件的权限」→ 重启 App 生效
 ```
-- 成功标准：无报错输出
+- 成功标准：App 能加载模型（RNLlama/DreamLite 日志无 EACCES），模型列表可见
+- **弃用 `appops set com.pocketpalai MANAGE_EXTERNAL_STORAGE allow`**：状态显示 allow 但 PackageManager 层不生效，App 实际仍被拒（08-14 双机验证）
 - 作用：允许 App 访问 `/sdcard/Documents/AIOS/` 共享目录
 
 ### Step 5: 启动应用
