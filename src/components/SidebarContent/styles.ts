@@ -36,8 +36,24 @@ export const createStyles = (theme: MD3Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: 10,
-      paddingVertical: 12,
+      paddingVertical: 2,
       paddingHorizontal: 2,
+    },
+    newChatButton: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingVertical: 10,
+    },
+    // 生图快捷入口：最小触区 44x44（无障碍规范）
+    newChatImageGenButton: {
+      width: 44,
+      height: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 22,
+      backgroundColor: theme.colors.surfaceVariant,
     },
     newChatText: {
       fontSize: 14,
@@ -108,6 +124,14 @@ export const createStyles = (theme: MD3Theme) =>
     },
     sessionTouchable: {
       flex: 1,
+    },
+    // 行尾 ... 按钮：常驻入口，最小触区 40x40
+    sessionMoreButton: {
+      width: 40,
+      height: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 4,
     },
     // Selection mode styles
     selectionModeHeader: {

@@ -957,6 +957,8 @@
       "deleteChatTitle": "删除聊天",
       "deleteChatMessage": "确定要删除这个聊天记录吗？",
       "select": "选择",
+      "forkSession": "基于此会话新建",
+      "imageGenEntry": "生图",
       "nSelected": "已选择 {{count}} 项",
       "selectAll": "全选",
       "deselectAll": "取消全选",

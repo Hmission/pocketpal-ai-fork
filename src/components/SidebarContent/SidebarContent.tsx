@@ -85,6 +85,28 @@ export const SidebarContent: React.FC<DrawerContentComponentProps> = observer(
       props.navigation.navigate(ROUTES.CHAT);
     }, [props.navigation]);
 
+    const handleImageGen = React.useCallback(() => {
+      props.navigation.navigate(ROUTES.IMAGE_GEN);
+    }, [props.navigation]);
+
+    // 基于当前会话新建（派生）：先激活原会话确保消息已载入，再复制（新会话自动激活）
+    const handlePressFork = React.useCallback(
+      async (session: SessionMetaData) => {
+        closeMenu();
+        try {
+          await chatSessionStore.setActiveSession(session.id);
+          await chatSessionStore.duplicateSession(session.id);
+          props.navigation.navigate(ROUTES.CHAT);
+        } catch {
+          Alert.alert(
+            l10n.common.error,
+            l10n.components.sidebarContent.exportError,
+          );
+        }
+      },
+      [closeMenu, props.navigation, l10n],
+    );
+
     const handleOpenSettings = React.useCallback(() => {
       props.navigation.navigate(ROUTES.SETTINGS);
     }, [props.navigation]);
@@ -240,6 +262,7 @@ export const SidebarContent: React.FC<DrawerContentComponentProps> = observer(
             onPressDelete={onPressDelete}
             onPressExport={handlePressExport}
             onPressSelect={handlePressSelect}
+            onPressFork={handlePressFork}
             isSelectionMode={chatSessionStore.isSelectionMode}
             isSelected={isSelected}
             onToggleSelection={handleToggleSelection}
@@ -256,6 +279,7 @@ export const SidebarContent: React.FC<DrawerContentComponentProps> = observer(
         onPressDelete,
         handlePressExport,
         handlePressSelect,
+        handlePressFork,
         handleToggleSelection,
       ],
     );
@@ -299,6 +323,7 @@ export const SidebarContent: React.FC<DrawerContentComponentProps> = observer(
                 searchQuery={searchQuery}
                 onSearchChange={setSearchQuery}
                 onNewChat={handleNewChat}
+                onImageGen={handleImageGen}
               />
               <SectionList
                 sections={sections}

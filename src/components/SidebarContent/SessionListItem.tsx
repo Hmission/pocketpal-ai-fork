@@ -6,7 +6,13 @@ import {useTheme} from '../../hooks';
 import {createStyles} from './styles';
 import {SessionMetaData} from '../../store';
 import {Menu, Checkbox} from '..';
-import {EditIcon, ShareIcon, TrashIcon} from '../../assets/icons';
+import {
+  DotsVerticalIcon,
+  DuplicateIcon,
+  EditIcon,
+  ShareIcon,
+  TrashIcon,
+} from '../../assets/icons';
 import {L10nContext} from '../../utils';
 import {Divider} from 'react-native-paper';
 
@@ -22,13 +28,16 @@ interface SessionListItemProps {
   onPressDelete: (sessionId: string) => void;
   onPressExport: (sessionId: string) => void;
   onPressSelect: (sessionId: string) => void;
+  /** 基于此会话新建（派生） */
+  onPressFork: (session: SessionMetaData) => void;
   isSelectionMode: boolean;
   isSelected: boolean;
   onToggleSelection: (sessionId: string) => void;
 }
 
 /**
- * SessionListItem — 单会话行 + 长按菜单（重命名/导出/删除/多选）。
+ * SessionListItem — 单会话行 + 行尾常驻 ... 菜单（选择模式下隐藏）。
+ * ... 点击与长按弹出同一菜单（单一事实源）：重命名/基于此会话新建/导出/删除/选择。
  * memo 化：仅 props 变化重渲，日期分组列表滚动流畅。
  */
 export const SessionListItem = React.memo<SessionListItemProps>(
@@ -44,6 +53,7 @@ export const SessionListItem = React.memo<SessionListItemProps>(
     onPressDelete,
     onPressExport,
     onPressSelect,
+    onPressFork,
     isSelectionMode,
     isSelected,
     onToggleSelection,
@@ -64,6 +74,11 @@ export const SessionListItem = React.memo<SessionListItemProps>(
       if (!isSelectionMode) {
         onLongPress(session.id, event);
       }
+    };
+
+    // ... 按钮：与长按共用同一菜单（锚点=按钮位置）
+    const handleMorePress = (event: any) => {
+      onLongPress(session.id, event);
     };
 
     return (
@@ -88,6 +103,15 @@ export const SessionListItem = React.memo<SessionListItemProps>(
           />
         </TouchableOpacity>
         {!isSelectionMode && (
+          <TouchableOpacity
+            style={styles.sessionMoreButton}
+            onPress={handleMorePress}
+            testID={`session-more-${session.id}`}
+            hitSlop={{top: 6, bottom: 6, left: 6, right: 6}}>
+            <DotsVerticalIcon stroke={theme.colors.onSurfaceVariant} />
+          </TouchableOpacity>
+        )}
+        {!isSelectionMode && (
           <Menu
             visible={menuVisible === session.id}
             onDismiss={onMenuDismiss}
@@ -102,6 +126,16 @@ export const SessionListItem = React.memo<SessionListItemProps>(
               }}
               label={l10n.common.rename}
               leadingIcon={() => <EditIcon stroke={theme.colors.primary} />}
+            />
+            <Menu.Item
+              onPress={() => {
+                onPressFork(session);
+                onMenuDismiss();
+              }}
+              label={l10n.components.sidebarContent.forkSession}
+              leadingIcon={() => (
+                <DuplicateIcon stroke={theme.colors.primary} />
+              )}
             />
             <Menu.Item
               onPress={() => {

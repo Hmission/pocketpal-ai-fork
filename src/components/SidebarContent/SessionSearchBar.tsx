@@ -4,23 +4,26 @@ import {Divider} from 'react-native-paper';
 
 import {useTheme} from '../../hooks';
 import {createStyles} from './styles';
-import {PlusIcon, SearchIcon} from '../../assets/icons';
+import {CameraIcon, PlusIcon, SearchIcon} from '../../assets/icons';
 import {L10nContext} from '../../utils';
 
 interface SessionSearchBarProps {
   searchQuery: string;
   onSearchChange: (q: string) => void;
   onNewChat: () => void;
+  /** 进入生图页（新对话行右侧快捷入口） */
+  onImageGen: () => void;
 }
 
 /**
- * SessionSearchBar — 顶部固定区：会话搜索框 + 「+ 新对话」行。
- * testID（session-search-input/new-chat-button）不变。
+ * SessionSearchBar — 顶部固定区：会话搜索框 + 双按钮行（+ 新对话 ｜ 生图入口）。
+ * testID（session-search-input/new-chat-button）不变；生图按钮=drawer-imagegen-button。
  */
 export const SessionSearchBar: React.FC<SessionSearchBarProps> = ({
   searchQuery,
   onSearchChange,
   onNewChat,
+  onImageGen,
 }) => {
   const theme = useTheme();
   const styles = createStyles(theme);
@@ -41,15 +44,25 @@ export const SessionSearchBar: React.FC<SessionSearchBarProps> = ({
           autoCorrect={false}
         />
       </View>
-      <TouchableOpacity
-        style={styles.newChatRow}
-        onPress={onNewChat}
-        testID="new-chat-button">
-        <PlusIcon stroke={theme.colors.primary} width={22} height={22} />
-        <Text style={styles.newChatText}>
-          {l10n.components.sidebarContent.newChat}
-        </Text>
-      </TouchableOpacity>
+      <View style={styles.newChatRow}>
+        <TouchableOpacity
+          style={styles.newChatButton}
+          onPress={onNewChat}
+          testID="new-chat-button">
+          <PlusIcon stroke={theme.colors.primary} width={22} height={22} />
+          <Text style={styles.newChatText}>
+            {l10n.components.sidebarContent.newChat}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.newChatImageGenButton}
+          onPress={onImageGen}
+          testID="drawer-imagegen-button"
+          accessibilityLabel={l10n.components.sidebarContent.imageGenEntry}
+          hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+          <CameraIcon stroke={theme.colors.primary} width={22} height={22} />
+        </TouchableOpacity>
+      </View>
       <Divider style={styles.topDivider} />
     </View>
   );

@@ -1,15 +1,36 @@
 import React from 'react';
 import {TouchableOpacity} from 'react-native';
 import {DrawerNavigationProp} from '@react-navigation/drawer';
-import {useNavigation} from '@react-navigation/native';
+import {useNavigation, useRoute} from '@react-navigation/native';
 
 import {styles} from './styles';
-import {MenuIcon} from '../../assets/icons';
+import {ArrowLeftMdIcon, MenuIcon} from '../../assets/icons';
 import {useTheme} from '../../hooks';
+import {ROUTES} from '../../utils/navigationConstants';
 
+/**
+ * HeaderLeft — 三级导航后退逻辑：
+ * 可后退且当前非聊天根级 → 渲染后退箭头（goBack 回上一级）；
+ * 否则渲染汉堡（openDrawer）。聊天页 headerShown:false 自行处理，不受影响。
+ */
 export const HeaderLeft: React.FC = () => {
   const theme = useTheme();
   const navigation = useNavigation<DrawerNavigationProp<any>>();
+  const route = useRoute();
+
+  const canGoBack = navigation.canGoBack() && route.name !== ROUTES.CHAT;
+
+  if (canGoBack) {
+    return (
+      <TouchableOpacity
+        style={[styles.menuIcon]}
+        testID="header-back-button"
+        accessibilityLabel="Go back"
+        onPress={() => navigation.goBack()}>
+        <ArrowLeftMdIcon stroke={theme.colors.primary} />
+      </TouchableOpacity>
+    );
+  }
 
   return (
     <TouchableOpacity
