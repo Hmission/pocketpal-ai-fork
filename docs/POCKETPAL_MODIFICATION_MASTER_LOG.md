@@ -625,6 +625,7 @@ Start-Process -FilePath "F:\Cursor\OneTakeMVP\.tmp\scrcpy\scrcpy-win64-v4.1\scrc
 
 - **LLM 入选 7 件**：Qwen3.5-2B Q8_0(+mmproj)、Qwen3.5-4B Q4_K_M、LFM2.5-2.6B/8B-A1B、Ministral-3-3B、MiniCPM5-1B 管家。
 - **生图入选 3 件**：DreamLite（主线主力）+ SD3.5 + Z-Image-Turbo。
-- **淘汰/禁止推送**：SDXL Turbo（对照完成）、Qwen3.5-0.6B（未选型）、DeepSeek Hermes（未选型，并行窗口安装已叫停）、Qwen3.5-9B（电脑端弹药勿动）。
-- **背景**：08-14 真机审计发现并行窗口擅装未选型模型（DeepSeek Hermes）+ 0.6B 遗留 + SDXL fp16 6.9GB 超红线——立清单定门禁，杜绝乱推送。
+- **淘汰/禁止推送**：SDXL Turbo（对照完成）、Qwen3.5-0.6B（未选型）、Qwen3.5-9B（电脑端弹药勿动）。
+- **背景**：08-14 真机审计发现 0.6B 遗留 + SDXL fp16 6.9GB 超红线——立清单定门禁，杜绝乱推送。
+- **勘误**：早前版本误将并行窗口的「安装 DeepSeek Hermes」登记为本仓违规推送——实际为**别仓任务，与本仓无关**，已撤回登记；本清单只管 f:\pp 仓装机推送。
 - 推送门禁：清单外一律拒绝；删除/新增必须大王钦定先更清单。
