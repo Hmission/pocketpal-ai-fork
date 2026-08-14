@@ -561,7 +561,10 @@
       "permissionMessage": "需要存储权限才能将文件保存到下载文件夹。",
       "permissionDenied": "存储权限被拒绝",
       "permissionDeniedMessage": "没有存储权限，导出功能将被禁用。",
-      "continue": "继续"
+      "continue": "继续",
+      "allFilesAccessTitle": "需要「所有文件访问」权限",
+      "allFilesAccessMessage": "小黄鸡需要读取共享模型目录（AIOS 模型库），请在设置中开启「所有文件访问」。",
+      "allFilesAccessAction": "去开启"
     },
     "thinkingBubble": {
       "reasoning": "思考"
@@ -988,12 +991,7 @@
         "total": "总计: ",
         "usage": "使用率: "
       },
-      "byteSizes": [
-        "字节",
-        "KB",
-        "MB",
-        "GB"
-      ]
+      "byteSizes": ["字节", "KB", "MB", "GB"]
     },
     "chatView": {
       "menuItems": {
