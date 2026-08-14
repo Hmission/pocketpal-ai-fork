@@ -19,7 +19,6 @@ import {
 
 import {ttsStore, uiStore, modelStore} from './src/store';
 import {ensureAiosDirs, ensureWorkspaceFiles} from './src/utils/paths';
-import {ensureAllFilesAccess} from './src/utils/androidPermission';
 import {promptWriter} from './src/services/promptWriter';
 import {recommendNCtx} from './src/utils/engineGuard';
 import DeviceInfo from 'react-native-device-info';
@@ -281,8 +280,6 @@ const App = observer(() => {
 
   // Initialize AIOS shared storage dirs + scan models on startup.
   React.useEffect(() => {
-    // Android 11+：未授予「所有文件访问」时 FUSE 拒读 AIOS 目录（EACCES 13），先检测引导
-    ensureAllFilesAccess();
     ensureAiosDirs()
       .then(() => ensureWorkspaceFiles())
       .then(() => {

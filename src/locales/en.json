@@ -568,10 +568,7 @@
       "permissionMessage": "We need permission to save your export into the Download folder.",
       "permissionDenied": "Permission Denied",
       "permissionDeniedMessage": "Without storage permission, the export feature will be disabled.",
-      "continue": "Continue",
-      "allFilesAccessTitle": "All files access required",
-      "allFilesAccessMessage": "Pocket Chick needs to read the shared model folder (AIOS models). Please enable \"All files access\" in Settings.",
-      "allFilesAccessAction": "Open Settings"
+      "continue": "Continue"
     },
     "thinkingBubble": {
       "reasoning": "Reasoning"

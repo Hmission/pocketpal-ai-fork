@@ -543,10 +543,7 @@
       "permissionMessage": "我們需要儲存到下載資料夾的授權。",
       "permissionDenied": "授權被拒絕",
       "permissionDeniedMessage": "沒有儲存權限，匯出功能將會被停用。",
-      "continue": "繼續",
-      "allFilesAccessTitle": "需要「所有檔案存取」權限",
-      "allFilesAccessMessage": "小黃雞需要讀取共享模型目錄（AIOS 模型庫），請在設定中開啟「所有檔案存取」。",
-      "allFilesAccessAction": "去開啟"
+      "continue": "繼續"
     },
     "modelErrorReportSheet": {
       "memoryInfo": "記憶體",
