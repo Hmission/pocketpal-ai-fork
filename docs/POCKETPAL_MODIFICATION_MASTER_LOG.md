@@ -616,3 +616,15 @@ Start-Process -FilePath "F:\Cursor\OneTakeMVP\.tmp\scrcpy\scrcpy-win64-v4.1\scrc
 - 生图域禁止反向引用聊天域；Screen 禁止直连 dreamLiteEngine（单通道经 imageGenStore）。
 - 引擎互斥一律经 engineMutex；taskRouter 只判不执。
 - 抽屉只承载会话能力；功能入口进设置页入口中心；生图入口固定在聊天页头部（imagegen-button）。
+
+---
+
+## 17. 模型选型唯一事实源（2026-08-14 大王钦定定稿）
+
+**新文档**：[POCKETPAL_MODEL_MATRIX.md](POCKETPAL_MODEL_MATRIX.md)——装机/推送唯一准入口令。
+
+- **LLM 入选 7 件**：Qwen3.5-2B Q8_0(+mmproj)、Qwen3.5-4B Q4_K_M、LFM2.5-2.6B/8B-A1B、Ministral-3-3B、MiniCPM5-1B 管家。
+- **生图入选 3 件**：DreamLite（主线主力）+ SD3.5 + Z-Image-Turbo。
+- **淘汰/禁止推送**：SDXL Turbo（对照完成）、Qwen3.5-0.6B（未选型）、DeepSeek Hermes（未选型，并行窗口安装已叫停）、Qwen3.5-9B（电脑端弹药勿动）。
+- **背景**：08-14 真机审计发现并行窗口擅装未选型模型（DeepSeek Hermes）+ 0.6B 遗留 + SDXL fp16 6.9GB 超红线——立清单定门禁，杜绝乱推送。
+- 推送门禁：清单外一律拒绝；删除/新增必须大王钦定先更清单。
