@@ -685,3 +685,14 @@ fd9937f → 7549582 → 4d84097 → c28f68e → fe423ce → bca0e90 → 42ce9e1 
 - **验证**：新机重启后模型 tab 显示面壁 MiniCPM/通义千问 2B/4B/LFM/Ministral 全部 LLM（type=llm 诊断确认）。双机同 APK。
 - **踩坑备注**：clean 全量构建后 onnxruntime AAR 缓存丢失（ninja missing libonnxruntime.so）——手动下载 1.28.0 AAR 解压到 `node_modules/onnxruntime-react-native/android/build/` + 删 .cxx 强制重配；gradle bundle/merge/package 缓存链（bundle 字节码大小不变会跳过下游 task，改 JS 后需确认 APK 时间戳）。
 
+### 18.7 生图模型屏蔽 + 构建链根治（2026-08-14 晚）
+
+- **需求**：LLM 模型选择列表屏蔽非 LLM 模型（生图 gguf 误入列表）。
+- **实现**（双层）：
+  1. `imageGenManifest.ts` 导出 `IMAGE_GEN_MODEL_FILES`（BUILTIN_MANIFESTS 的 main + companions 全量文件名）；
+  2. `scanLocalModels` Pass 1 跳过生图文件（新装机不注册为 LLM）；
+  3. `isChatSelectable` 排除生图文件名（存量数据兜底，防 DB/预设已注册残留）。
+- **测试**：Picker filter 测试 +1（生图模型屏蔽断言，14 绿）；ModelStore 212 绿。
+- **验证**：新机模型 tab 仅显示 6 个 LLM（MiniCPM/Qwen2B/4B/LFM2.6B/8B/Ministral），sd35/z_image/zimage_llm 消失。
+- **构建链根治**：onnxruntime `latest.integration` 动态版本 → 锁 `1.28.0`（patches/onnxruntime-react-native+1.24.3.patch 追加 hunk，postinstall 自动 apply）——动态版本曾导致 extractLibs 解压 1.28.0/1.29.0 并存漂移；AAR 恢复步骤 + APK 时间戳验证习惯写入装机 SOP 故障排除。
+

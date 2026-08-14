@@ -9,6 +9,7 @@
  *  - 简称仅中文显示；无注册命中时回落「去量化后缀的族名」，不硬造翻译。
  */
 import {Model, ModelType} from './types';
+import {IMAGE_GEN_MODEL_FILES} from './imageGenManifest';
 
 // 已知模型 → 中文简称（顺序敏感：具体版本规则在前，族兜底在后）
 const DISPLAY_NAME_RULES: Array<{pattern: RegExp; short: string}> = [
@@ -43,7 +44,13 @@ export function getModelDisplayName(
 /**
  * 聊天可选性：仅 LLM。projection（多模态嵌入）/vision 等非 LLM 模型
  * 聊天引擎不加载，选择器/子菜单一律不显示（不兜底、不置灰）。
+ * 生图模型（manifest 声明的 main/companions 文件）同样排除。
  */
-export function isChatSelectable(model: Pick<Model, 'modelType'>): boolean {
-  return model.modelType === ModelType.LLM;
+export function isChatSelectable(
+  model: Pick<Model, 'modelType' | 'filename'>,
+): boolean {
+  return (
+    model.modelType === ModelType.LLM &&
+    (model.filename ? !IMAGE_GEN_MODEL_FILES.has(model.filename) : true)
+  );
 }

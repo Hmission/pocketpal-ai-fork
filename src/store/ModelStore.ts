@@ -93,6 +93,7 @@ import {resolveModelCaps} from '../utils/modelCaps';
 import type {CapabilityEnv, ModelCapabilityView} from '../utils/modelCaps';
 import {t} from '../locales';
 import {resolveUseMmap} from '../utils/memorySettings';
+import {IMAGE_GEN_MODEL_FILES} from '../utils/imageGenManifest';
 import {
   createContextInitParams,
   createDefaultContextInitParams,
@@ -2527,10 +2528,14 @@ class ModelStore {
         return existing;
       };
 
-      // Pass 1: 注册 LLM 模型（跳过 mmproj）
+      // Pass 1: 注册 LLM 模型（跳过 mmproj 与生图模型文件）
       for (const file of ggufFiles) {
         const filename = file.name as string;
         if (MMProjRegex.test(filename)) {
+          continue;
+        }
+        // 生图模型（manifest 声明）不注册为 LLM，避免污染聊天模型列表
+        if (IMAGE_GEN_MODEL_FILES.has(filename)) {
           continue;
         }
         const fullPath = file.path as string;

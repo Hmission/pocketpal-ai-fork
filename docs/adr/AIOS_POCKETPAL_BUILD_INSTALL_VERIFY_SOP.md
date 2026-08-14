@@ -108,6 +108,9 @@ $adb = "C:\Users\90897\AppData\Local\Android\Sdk\platform-tools\adb.exe"
 - **INSTALL_FAILED**：检查手机存储空间 / HyperOS USB 安装开关
 - **tsc 报错**：工作区外文件用"复制到 .tmp→SearchReplace→复制回 F:\pp"工作流
 - **Gradle OOM**：`org.gradle.jvmargs=-Xmx4G` in gradle.properties
+- **onnxruntime AAR 缓存丢失**（clean 后 ninja 报 missing libonnxruntime.so）：下载 `onnxruntime-android-1.28.0.aar`（Maven Central）→ 解压到 `node_modules/onnxruntime-react-native/android/build/onnxruntime-android-1.28.0.aar/`（含 jni/arm64-v8a/）→ 删 `android/.cxx` 强制 CMake 重新 GLOB → 重新构建。版本已锁 1.28.0（patches/onnxruntime-react-native+1.24.3.patch，postinstall 自动 apply）——动态版本曾导致 extractLibs 解压 1.28.0/1.29.0 并存漂移
+- **改 JS 后 APK 未更新**（bundle 字节码大小不变 → merge/package up-to-date 跳过）：构建后必查 APK 时间戳（`Get-Item app-prod-debug.apk | Select LastWriteTime`）；未变则删 `app/build/generated/assets` + `intermediates/assets` 重跑，仍不变 → `--rerun-tasks` 强制 bundle
+- **gradlew.bat 间歇性「拒绝访问」**：单独命令重跑即可，勿与长命令串联
 
 ## 参考链路
 - SSOT: [AIOS_POCKETPAL_SPEC_V3_SSOT](./AIOS_POCKETPAL_SPEC_V3_SSOT.md)
