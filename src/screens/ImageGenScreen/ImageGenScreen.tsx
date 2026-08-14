@@ -12,7 +12,7 @@
  * 各 Panel 只读 props 渲染；store 状态经 observer 自动联动。
  */
 import * as React from 'react';
-import {View, ScrollView, Alert} from 'react-native';
+import {View, ScrollView} from 'react-native';
 import {KeyboardAwareScrollView} from 'react-native-keyboard-controller';
 import {observer} from 'mobx-react-lite';
 import {runInAction} from 'mobx';
@@ -34,6 +34,7 @@ import {ModelPickerPanel} from './components/ModelPickerPanel';
 import {ResultPreview} from './components/ResultPreview';
 import {HistoryStrip} from './components/HistoryStrip';
 import {ComposerPanel} from './components/ComposerPanel';
+import {confirmDialog} from '../../components/ui/ConfirmDialog';
 
 export const ImageGenScreen: React.FC = observer(() => {
   const theme = useTheme();
@@ -191,18 +192,19 @@ export const ImageGenScreen: React.FC = observer(() => {
     await imageGenStore.unloadModel();
   };
 
-  // 行内按钮：加载 / 卸载（卸载二次确认）
-  const handleRowAction = (entry: ModelEntry) => {
+  // 行内按钮：加载 / 卸载（卸载二次确认，统一弹窗设计语言）
+  const handleRowAction = async (entry: ModelEntry) => {
     setSelectedId(entry.manifest.id);
     if (isRowLoaded(entry)) {
-      Alert.alert(
-        '卸载模型',
-        `确定卸载「${entry.manifest.label}」吗？内存将被释放。`,
-        [
-          {text: '取消', style: 'cancel'},
-          {text: '卸载', style: 'destructive', onPress: () => doUnload(entry)},
-        ],
-      );
+      const ok = await confirmDialog({
+        title: '卸载模型',
+        message: `确定卸载「${entry.manifest.label}」吗？内存将被释放。`,
+        confirmText: '卸载',
+        destructive: true,
+      });
+      if (ok) {
+        doUnload(entry);
+      }
       return;
     }
     // 点加载才开始动作：折叠面板 + 面板内出现加载中提示

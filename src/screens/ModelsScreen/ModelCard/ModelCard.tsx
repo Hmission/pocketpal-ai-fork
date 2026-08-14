@@ -30,6 +30,7 @@ import {ProjectionModelSelector, MemoryRequirement} from '../../../components';
 import {useTheme, useMemoryCheck, useStorageCheck} from '../../../hooks';
 
 import {createStyles} from './styles';
+import {confirmDialog} from '../../../components/ui/ConfirmDialog';
 
 import {uiStore, modelStore, serverStore} from '../../../store';
 import {t} from '../../../locales';
@@ -153,7 +154,7 @@ export const ModelCard: React.FC<ModelCardProps> = observer(
       }
     }, [isDownloaded, isRemoteModel, model]);
 
-    const handleDelete = useCallback(() => {
+    const handleDelete = useCallback(async () => {
       if (model.isDownloaded) {
         // Special handling for projection models
         if (model.modelType === ModelType.PROJECTION) {
@@ -186,46 +187,39 @@ export const ModelCard: React.FC<ModelCardProps> = observer(
           }
 
           // Show projection-specific confirmation dialog
-          Alert.alert(
-            l10n.models.multimodal.deleteProjectionTitle,
-            l10n.models.multimodal.deleteProjectionMessage,
-            [
-              {text: l10n.common.cancel, style: 'cancel'},
-              {
-                text: l10n.common.delete,
-                style: 'destructive',
-                onPress: async () => {
-                  try {
-                    await modelStore.deleteModel(model);
-                  } catch (error) {
-                    console.error('Failed to delete projection model:', error);
-                    Alert.alert(
-                      l10n.models.multimodal.cannotDeleteTitle,
-                      error instanceof Error
-                        ? error.message
-                        : 'Unknown error occurred',
-                      [{text: l10n.common.ok, style: 'default'}],
-                    );
-                  }
-                },
-              },
-            ],
-          );
+          const okProjection = await confirmDialog({
+            title: l10n.models.multimodal.deleteProjectionTitle,
+            message: l10n.models.multimodal.deleteProjectionMessage,
+            confirmText: l10n.common.delete,
+            cancelText: l10n.common.cancel,
+            destructive: true,
+          });
+          if (okProjection) {
+            try {
+              await modelStore.deleteModel(model);
+            } catch (error) {
+              console.error('Failed to delete projection model:', error);
+              Alert.alert(
+                l10n.models.multimodal.cannotDeleteTitle,
+                error instanceof Error
+                  ? error.message
+                  : 'Unknown error occurred',
+                [{text: l10n.common.ok, style: 'default'}],
+              );
+            }
+          }
         } else {
           // Standard model deletion
-          Alert.alert(
-            l10n.models.modelCard.alerts.deleteTitle,
-            l10n.models.modelCard.alerts.deleteMessage,
-            [
-              {text: l10n.common.cancel, style: 'cancel'},
-              {
-                text: l10n.common.delete,
-                onPress: async () => {
-                  await modelStore.deleteModel(model);
-                },
-              },
-            ],
-          );
+          const okDelete = await confirmDialog({
+            title: l10n.models.modelCard.alerts.deleteTitle,
+            message: l10n.models.modelCard.alerts.deleteMessage,
+            confirmText: l10n.common.delete,
+            cancelText: l10n.common.cancel,
+            destructive: true,
+          });
+          if (okDelete) {
+            await modelStore.deleteModel(model);
+          }
         }
       }
     }, [model, l10n]);
@@ -239,19 +233,17 @@ export const ModelCard: React.FC<ModelCardProps> = observer(
       }
     }, [model.hfUrl]);
 
-    const handleRemove = useCallback(() => {
-      Alert.alert(
-        l10n.models.modelCard.alerts.removeTitle,
-        l10n.models.modelCard.alerts.removeMessage,
-        [
-          {text: l10n.common.cancel, style: 'cancel'},
-          {
-            text: l10n.models.modelCard.buttons.remove,
-            style: 'destructive',
-            onPress: () => modelStore.removeModelFromList(model),
-          },
-        ],
-      );
+    const handleRemove = useCallback(async () => {
+      const ok = await confirmDialog({
+        title: l10n.models.modelCard.alerts.removeTitle,
+        message: l10n.models.modelCard.alerts.removeMessage,
+        confirmText: l10n.models.modelCard.buttons.remove,
+        cancelText: l10n.common.cancel,
+        destructive: true,
+      });
+      if (ok) {
+        modelStore.removeModelFromList(model);
+      }
     }, [model, l10n]);
 
     const handleWarningPress = () => {
@@ -341,35 +333,31 @@ export const ModelCard: React.FC<ModelCardProps> = observer(
       setIsExpanded(!isExpanded);
     }, [isExpanded]);
 
-    const handleRemoteDelete = useCallback(() => {
+    const handleRemoteDelete = useCallback(async () => {
       if (!model.serverId || !model.remoteModelId) {
         return;
       }
       const sName = model.serverName || 'Remote';
-      Alert.alert(
-        l10n.common.delete,
-        t(l10n.settings.removeRemoteModel, {
+      const ok = await confirmDialog({
+        title: l10n.common.delete,
+        message: t(l10n.settings.removeRemoteModel, {
           modelName: model.name,
           serverName: sName,
         }),
-        [
-          {text: l10n.common.cancel, style: 'cancel'},
-          {
-            text: l10n.common.delete,
-            style: 'destructive',
-            onPress: () => {
-              if (isActiveModel) {
-                modelStore.manualReleaseContext();
-              }
-              serverStore.removeUserSelectedModel(
-                model.serverId!,
-                model.remoteModelId!,
-              );
-              serverStore.removeServerIfOrphaned(model.serverId!);
-            },
-          },
-        ],
-      );
+        confirmText: l10n.common.delete,
+        cancelText: l10n.common.cancel,
+        destructive: true,
+      });
+      if (ok) {
+        if (isActiveModel) {
+          modelStore.manualReleaseContext();
+        }
+        serverStore.removeUserSelectedModel(
+          model.serverId!,
+          model.remoteModelId!,
+        );
+        serverStore.removeServerIfOrphaned(model.serverId!);
+      }
     }, [model, l10n, isActiveModel]);
 
     const renderActionButtons = () => {

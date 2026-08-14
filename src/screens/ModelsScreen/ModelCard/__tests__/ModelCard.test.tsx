@@ -18,7 +18,13 @@ import {routerModelsBody} from '../../../../../jest/fixtures/remoteModelList';
 // Unmock useMemoryCheck for memory warning tests
 jest.unmock('../../../../hooks/useMemoryCheck');
 
+// 确认弹窗已切换到全局 ConfirmDialog 体系（测试环境 mock：默认拒绝，用例内按需放行）
+jest.mock('../../../../components/ui/ConfirmDialog', () => ({
+  confirmDialog: jest.fn().mockResolvedValue(false),
+}));
+
 import {ModelCard} from '../ModelCard';
+import {confirmDialog} from '../../../../components/ui/ConfirmDialog';
 
 import {downloadManager} from '../../../../services/downloads';
 
@@ -211,30 +217,28 @@ describe('ModelCard', () => {
       const deleteButton = getByTestId('delete-button');
       fireEvent.press(deleteButton);
 
-      expect(Alert.alert).toHaveBeenCalledWith(
-        expect.stringContaining('Delete'),
-        expect.stringContaining('delete'),
-        expect.arrayContaining([
-          expect.objectContaining({text: 'Cancel'}),
-          expect.objectContaining({text: 'Delete'}),
-        ]),
-      );
+      await waitFor(() => {
+        expect(confirmDialog).toHaveBeenCalledWith(
+          expect.objectContaining({
+            title: expect.stringContaining('Delete'),
+            message: expect.stringContaining('delete'),
+            destructive: true,
+          }),
+        );
+      });
     });
 
     it('handles delete confirmation for regular models', async () => {
-      (Alert.alert as jest.Mock).mockImplementation(
-        (title, message, buttons) => {
-          // Simulate pressing "Delete" button
-          buttons[1].onPress();
-        },
-      );
+      (confirmDialog as jest.Mock).mockResolvedValueOnce(true);
 
       const {getByTestId} = customRender(<ModelCard model={downloadedModel} />);
 
       const deleteButton = getByTestId('delete-button');
       fireEvent.press(deleteButton);
 
-      expect(modelStore.deleteModel).toHaveBeenCalledWith(downloadedModel);
+      await waitFor(() => {
+        expect(modelStore.deleteModel).toHaveBeenCalledWith(downloadedModel);
+      });
     });
 
     it('shows special confirmation for projection models', async () => {
@@ -248,14 +252,15 @@ describe('ModelCard', () => {
       const deleteButton = getByTestId('delete-button');
       fireEvent.press(deleteButton);
 
-      expect(Alert.alert).toHaveBeenCalledWith(
-        expect.stringContaining('Delete'),
-        expect.stringContaining('projection'),
-        expect.arrayContaining([
-          expect.objectContaining({text: 'Cancel'}),
-          expect.objectContaining({text: 'Delete'}),
-        ]),
-      );
+      await waitFor(() => {
+        expect(confirmDialog).toHaveBeenCalledWith(
+          expect.objectContaining({
+            title: expect.stringContaining('Delete'),
+            message: expect.stringContaining('projection'),
+            destructive: true,
+          }),
+        );
+      });
     });
   });
 
@@ -593,8 +598,6 @@ describe('ModelCard', () => {
     });
 
     it('shows delete confirmation dialog for remote models', async () => {
-      jest.spyOn(Alert, 'alert').mockImplementation();
-
       const {getByTestId} = customRender(
         <ModelCard
           model={remoteModel}
@@ -605,26 +608,18 @@ describe('ModelCard', () => {
       const deleteButton = getByTestId('delete-button');
       fireEvent.press(deleteButton);
 
-      expect(Alert.alert).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.stringContaining(remoteModel.name),
-        expect.arrayContaining([
-          expect.objectContaining({style: 'cancel'}),
-          expect.objectContaining({style: 'destructive'}),
-        ]),
-      );
+      await waitFor(() => {
+        expect(confirmDialog).toHaveBeenCalledWith(
+          expect.objectContaining({
+            message: expect.stringContaining(remoteModel.name),
+            destructive: true,
+          }),
+        );
+      });
     });
 
     it('calls removeUserSelectedModel on delete confirmation', async () => {
-      (Alert.alert as jest.Mock) = jest
-        .fn()
-        .mockImplementation((title, message, buttons) => {
-          // Simulate pressing the destructive "Delete" button
-          const destructiveButton = buttons.find(
-            (b: any) => b.style === 'destructive',
-          );
-          destructiveButton?.onPress();
-        });
+      (confirmDialog as jest.Mock).mockResolvedValueOnce(true);
 
       const {getByTestId} = customRender(
         <ModelCard
@@ -636,10 +631,12 @@ describe('ModelCard', () => {
       const deleteButton = getByTestId('delete-button');
       fireEvent.press(deleteButton);
 
-      expect(serverStore.removeUserSelectedModel).toHaveBeenCalledWith(
-        remoteModel.serverId,
-        remoteModel.remoteModelId,
-      );
+      await waitFor(() => {
+        expect(serverStore.removeUserSelectedModel).toHaveBeenCalledWith(
+          remoteModel.serverId,
+          remoteModel.remoteModelId,
+        );
+      });
       expect(serverStore.removeServerIfOrphaned).toHaveBeenCalledWith(
         remoteModel.serverId,
       );

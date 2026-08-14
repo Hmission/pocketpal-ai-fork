@@ -17,6 +17,7 @@ import {
 } from '../../assets/icons';
 
 import {Menu} from '../Menu';
+import {confirmDialog} from '../ui/ConfirmDialog';
 import {styles} from './styles';
 
 import {chatSessionStore, modelStore, uiStore} from '../../store';
@@ -65,27 +66,19 @@ export const HeaderRight: React.FC = observer(() => {
     closeMenu();
   };
 
-  const onPressDelete = () => {
+  const onPressDelete = async () => {
     if (session?.id) {
-      Alert.alert(
-        l10n.components.headerRight.deleteChatTitle,
-        l10n.components.headerRight.deleteChatMessage,
-        [
-          {
-            text: l10n.common.cancel,
-            style: 'cancel',
-          },
-          {
-            text: l10n.common.delete,
-            style: 'destructive',
-            onPress: async () => {
-              chatSessionStore.resetActiveSession();
-              await chatSessionStore.deleteSession(session.id);
-              closeMenu();
-            },
-          },
-        ],
-      );
+      const ok = await confirmDialog({
+        title: l10n.components.headerRight.deleteChatTitle,
+        message: l10n.components.headerRight.deleteChatMessage,
+        confirmText: l10n.common.delete,
+        cancelText: l10n.common.cancel,
+        destructive: true,
+      });
+      if (ok) {
+        chatSessionStore.resetActiveSession();
+        await chatSessionStore.deleteSession(session.id);
+      }
     }
     closeMenu();
   };

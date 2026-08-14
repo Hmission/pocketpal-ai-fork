@@ -42,6 +42,7 @@ import {
   HubRunSheetHost,
 } from './src/components';
 import {MarkdownProvider} from './src/components/MarkdownView';
+import {ConfirmDialogHost} from './src/components/ui/ConfirmDialog';
 import {AutomationBridge, BenchmarkRunnerScreen} from './src/__automation__';
 import {
   ChatScreen,
@@ -316,6 +317,7 @@ const App = observer(() => {
                     <TTSSetupSheet />
                     <DownloadOverlay />
                     <HubRunSheetHost />
+                    <ConfirmDialogHost />
                   </BottomSheetModalProvider>
                 </NavigationContainer>
               </MarkdownProvider>
