@@ -2514,11 +2514,14 @@ class ModelStore {
           if (!oldOk) {
             existing.fullPath = fullPath;
           }
-          if (
-            MMProjRegex.test(filename) &&
-            existing.modelType !== ModelType.PROJECTION
-          ) {
-            existing.modelType = ModelType.PROJECTION;
+          if (MMProjRegex.test(filename)) {
+            if (existing.modelType !== ModelType.PROJECTION) {
+              existing.modelType = ModelType.PROJECTION;
+            }
+          } else if (existing.modelType === undefined) {
+            // 已有同名本地模型（WatermelonDB/预设加载）未标注类型时补 LLM，
+            // 否则 isChatSelectable(modelType===LLM) 过滤后聊天列表为空
+            existing.modelType = ModelType.LLM;
           }
         });
         return existing;
@@ -2636,7 +2639,9 @@ class ModelStore {
       fullPath: localFilePath,
       isLocal: true, // Kept for backward compatibility
       origin: ModelOrigin.LOCAL,
-      ...(isMmproj ? {modelType: ModelType.PROJECTION} : {}),
+      // 本地扫描的 gguf 默认为 LLM（聊天可选用）；mmproj 为 PROJECTION。
+      // 不设会 undefined → isChatSelectable(modelType===LLM) 过滤后列表空
+      modelType: isMmproj ? ModelType.PROJECTION : ModelType.LLM,
       defaultChatTemplate: {...defaultSettings.chatTemplate},
       chatTemplate: {...defaultSettings.chatTemplate},
       defaultStopWords: [...(defaultSettings?.completionParams?.stop || [])],

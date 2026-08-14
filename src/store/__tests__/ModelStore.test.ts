@@ -1016,6 +1016,8 @@ describe('ModelStore', () => {
           origin: ModelOrigin.LOCAL,
           fullPath: localPath,
           isDownloaded: true,
+          // 本地扫描 gguf 默认 LLM（聊天可选用，isChatSelectable 依赖）
+          modelType: ModelType.LLM,
         }),
       );
     });

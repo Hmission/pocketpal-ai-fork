@@ -677,3 +677,11 @@ Start-Process -FilePath "F:\Cursor\OneTakeMVP\.tmp\scrcpy\scrcpy-win64-v4.1\scrc
 
 fd9937f → 7549582 → 4d84097 → c28f68e → fe423ce → bca0e90 → 42ce9e1 → e04ec55 → ecacb91 → d73e6f9 → 5f81412 → d26127e（12 条，含 1 次回滚 1 次勘误）
 
+### 18.6 追加修复：新机聊天页读不到 LLM 模型（2026-08-14 晚）
+
+- **现象**：新机聊天页「选模型」→ 模型 tab 列表空（Pal tab 有内容）；备用机同现「模型未加载」。
+- **根因（诊断日志实锤）**：`scanLocalModels` 的 **adoptExisting 路径**命中已有同名模型（WatermelonDB/预设加载的模型）直接跳过 `addLocalModel`——只补 PROJECTION 类型，**非 mmproj 模型 modelType 保持 undefined** → `isChatSelectable(modelType === LLM)` 过滤后列表为空。（9 个 LLM 全部 type=undefined，仅 mmproj=projection）
+- **修复**：`adoptExisting` 中非 mmproj 且 modelType===undefined 时补 `ModelType.LLM`；`addLocalModel` 同步默认 LLM。测试补 modelType 断言（212 绿）。
+- **验证**：新机重启后模型 tab 显示面壁 MiniCPM/通义千问 2B/4B/LFM/Ministral 全部 LLM（type=llm 诊断确认）。双机同 APK。
+- **踩坑备注**：clean 全量构建后 onnxruntime AAR 缓存丢失（ninja missing libonnxruntime.so）——手动下载 1.28.0 AAR 解压到 `node_modules/onnxruntime-react-native/android/build/` + 删 .cxx 强制重配；gradle bundle/merge/package 缓存链（bundle 字节码大小不变会跳过下游 task，改 JS 后需确认 APK 时间戳）。
+
