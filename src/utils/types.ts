@@ -313,6 +313,10 @@ export interface SemanticColors {
   assistantBubbleBackground: string;
   /** 助手气泡上的文本色 */
   onAssistantBubble: string;
+  /** 品牌点缀色（小黄鸡暖黄）：性能数字/模型徽章等强调信息用 */
+  brandAccent: string;
+  /** 品牌点缀色上的文本色 */
+  onBrandAccent: string;
   receivedMessageDocumentIcon: string;
   sentMessageDocumentIcon: string;
   userAvatarImageBackground: string;

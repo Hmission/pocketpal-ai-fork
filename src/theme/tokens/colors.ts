@@ -116,6 +116,9 @@ export const lightColors: TokenColors = {
   // 助手气泡语义点缀色（低饱和暖蓝，深浅双模式；与品牌小鸡暖色系互补）
   assistantBubbleBackground: '#E9F0FB',
   onAssistantBubble: '#16324F',
+  // 品牌点缀色（小黄鸡暖黄）：性能数字/模型徽章等强调信息用，深浅双模式
+  brandAccent: '#FFB300',
+  onBrandAccent: '#3D2E00',
   receivedMessageDocumentIcon: LIGHT_PRIMARY,
   sentMessageDocumentIcon: LIGHT_ON_SURFACE,
   userAvatarImageBackground: 'transparent',
@@ -257,6 +260,9 @@ export const darkColors: TokenColors = {
   // 助手气泡语义点缀色（暗色模式）
   assistantBubbleBackground: '#20344B',
   onAssistantBubble: '#D8E5F5',
+  // 品牌点缀色（暗色模式：更柔和的金黄，保证深底对比度）
+  brandAccent: '#FFC54D',
+  onBrandAccent: '#332700',
   receivedMessageDocumentIcon: DARK_PRIMARY,
   sentMessageDocumentIcon: DARK_ON_SURFACE,
   userAvatarImageBackground: 'transparent',
