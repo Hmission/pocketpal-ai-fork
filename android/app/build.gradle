@@ -85,6 +85,12 @@ android {
         pickFirst "lib/arm64-v8a/libworklets.so"
         pickFirst "lib/x86_64/libworklets.so"
         pickFirst "lib/armeabi-v7a/libworklets.so"
+        // 6.16 OpenCL 补链：排除编译期 stub（仅链接期用），运行时用设备系统 OpenCL 库
+        // （Qualcomm 驱动 /vendor/lib64/libOpenCL.so）；打包 stub 会导致 SoLoader dlopen 失败
+        // （stub 依赖 libcutils.so 不在 APK 中）。
+        jniLibs {
+            excludes += ['**/libOpenCL.so']
+        }
     }
     ndkVersion rootProject.ext.ndkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion

@@ -753,3 +753,39 @@ CMake 选项链：
 **manifest backend 切换路径**：`'CPU'`（当前安全默认）→ `'OpenCL'`（Phase 1 一行切）→ `'Vulkan'`（Phase 3 一行切）。Vulkan 编译资产 dormant 保留，不删除。
 
 **安全网**：异步化修复（commit f54e273）已在位——120s 干净失败机制可公正判定 OpenCL 是否 hang。若 hang，manifest 一行回 'CPU'，零代码风险。
+
+### 6.17 Phase 0/1 真机实测数据与结论（2026-08-15，红米 K90 双后端对比）
+
+#### Phase 0：CPU 后端实测（manifest='CPU'）
+
+**结果：不可实际使用**——SD3.5 512²/10 步，CPU 600% 满载持续 **126 分钟+ 未完成**，零产出（aios_images/ 为空）。
+
+- 模型加载（含 convert）：241s + 170s（两次），条件编码 488.7s，采样 126min+ 未完成
+- 结论：CPU 后端仅适合 SDXL Turbo（4 步）/ DreamLite（秒级），SD3.5/Z-Image 需 GPU 加速
+- 附带发现：`split prompt "" to 0 tokens`——首次测试 prompt 为空（UI 显示有字但 state 未同步，ComputerUse 剪贴板粘贴后点击时序问题）
+
+#### Phase 1：OpenCL 后端实测（manifest='OpenCL'，xmem GEMM 激活）
+
+**结果：成功出图！** SD3.5 512²/10 步，全链路 **644.69s（10.7 分钟）**：
+
+| 阶段 | 耗时 | 对比 CPU |
+|---|---|---|
+| 采样 | **320.62s（5.3 分钟）** | CPU 126min+ 未完成 |
+| 全链路 | **644.69s（10.7 分钟）** | 提速 11 倍+ |
+
+关键证据：
+- `new_sd_ctx OK`（OpenCL）vs 同设备 Vulkan `new_sd_ctx FAILED / ErrorDeviceLost`（多次失败）
+- OpenCL 设备识别：`QUALCOMM Adreno(TM) 840 (OpenCL 3.0)`，backend OpenCL 注册成功
+- 输出：`gen_1786749463683_418683116.png`（512×512），相册 8→9
+
+#### 本轮代码修正（实测驱动）
+
+| 文件 | 修正 | 原因 |
+|---|---|---|
+| `android/app/build.gradle` | packagingOptions 排除 libOpenCL.so | 编译期 stub 被误打包进 APK → SoLoader dlopen 失败（依赖 libcutils.so） |
+| `src/store/imageGenStore.ts` | 超时窗口：CPU/OpenCL 600s，Vulkan 120s | CPU 实测 2h+ 远超 120s/600s；OpenCL 首次含 kernel 编译需放宽 |
+| `src/utils/imageGenManifest.ts` | backend 'CPU' → 'OpenCL' | CPU 实测不可用，OpenCL 实测成功 |
+
+#### 结论
+
+**OpenCL × Adreno 840 实证可用**——互联网调研方向正确（OpenCL 是 Adreno 正确路径），xmem GEMM 激活后采样 5.3 分钟（可接受）。下一步：Z-Image 同法验证 + Phase 2 性能榨干（kernel cache 已设，权重预打包待测）。

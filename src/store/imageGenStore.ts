@@ -51,6 +51,8 @@ class ImageGenStore {
   history: GeneratedImage[] = [];
   /** 聊天意图路由带入的待生成提示词（M6 豆包化） */
   pendingPrompt: string | null = null;
+  /** 聊天图片卡片「编辑图片」带入的待编辑源图 URI（2026-08 闭环扩展） */
+  pendingEditSource: string | null = null;
   /** 模型加载中 */
   loading = false;
   /** 加载开始时间戳 */
@@ -71,6 +73,8 @@ class ImageGenStore {
   genStartedAt = 0;
   /** 输出目录（App 私有 filesDir 下） */
   private outDir = '';
+  /** 当前引擎后端（manifest 透传：'CPU' | 'OpenCL' | 'Vulkan'；空走引擎默认 CPU） */
+  backend: string | null = null;
 
   constructor() {
     makeAutoObservable(this);
@@ -106,10 +110,14 @@ class ImageGenStore {
       const s = await ImageGen.getGenSnapshot();
       // 干净失败：生成中 120s 无引擎事件（心跳停）→ 判定 native 采样 hang。
       // 锋利哲学：明确报错+停任务，不静默回退不重试（无兑底）。
+      // 6.16 修正：CPU 后端全链路含 VAE 解码（无心跳阶段），120s 会误判；
+      // OpenCL 首次运行含 kernel 编译（无事件期）同样需放宽。
+      // CPU/OpenCL 用 600s（10 分钟），仅 Vulkan 保持 120s 快速兜底。
+      const timeoutMs = this.backend === 'Vulkan' ? 120_000 : 600_000;
       if (
         this.generating &&
         this.lastEventAt > 0 &&
-        Date.now() - this.lastEventAt > 120_000
+        Date.now() - this.lastEventAt > timeoutMs
       ) {
         runInAction(() => {
           this.generating = false;
@@ -267,6 +275,8 @@ class ImageGenStore {
       runInAction(() => {
         this.modelLoaded = ok;
         this.loadedModelId = ok ? (id ?? null) : null;
+        // 6.16：保存 backend 供超时窗口动态调整（CPU 后端 VAE 解码慢，需放宽）
+        this.backend = ok ? (extras.backend ?? 'CPU') : null;
         this.loading = false;
         this.error = ok ? null : '模型加载失败';
       });
