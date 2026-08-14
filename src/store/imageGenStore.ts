@@ -257,7 +257,13 @@ class ImageGenStore {
     this.syncPoll();
     engineStatus.setPhase('image', 'loading', '加载生图引擎…');
     try {
-      const ok = await ImageGen.loadModel(modelPath, extras);
+      let ok = await ImageGen.loadModel(modelPath, extras);
+      // 真机适配：部分 Adreno 驱动（如 SM8850 默认驱动）Vulkan 创建 sd_ctx 失败（ctx null），
+      // 回退 CPU 重试一次；备用机（SM8550）Vulkan 正常不受影响。
+      if (!ok && extras.backend === 'Vulkan') {
+        console.warn('[ImageGen] Vulkan 后端加载失败，回退 CPU 重试');
+        ok = await ImageGen.loadModel(modelPath, {...extras, backend: 'CPU'});
+      }
       runInAction(() => {
         this.modelLoaded = ok;
         this.loadedModelId = ok ? (id ?? null) : null;

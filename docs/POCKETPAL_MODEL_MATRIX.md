@@ -72,16 +72,19 @@
 | zimage_llm.gguf | 2.50 GB | 生图 Z-Image TE |
 | ae.safetensors | 0.34 GB | 生图 Z-Image VAE |
 
-### 6.2 dreamlite/ 必须 3 个文件（零 TE 基线）
+### 6.2 dreamlite/ 必须 6 个文件（含 TE，真实文本条件）
 
 | 文件 | 大小 | 说明 |
 |---|---|---|
 | unet_masked.onnx | 1.56 GB | UNet（fp32，带 attention_mask） |
 | vae_decoder.onnx | 4.9 MB | VAE 解码 |
 | vae_encoder.onnx | 4.9 MB | VAE 编码（编辑路径） |
+| te_q8.gguf | 1.83 GB | TE tokenizer（vocab，llama.rn 加载） |
+| te_fp16.onnx (+te_fp16.onnx.data) | 3.44 GB | TE fp16 ONNX（真实文本条件 hidden_states） |
 
-> 引擎按 prompt 非空才调 loadTE（`if (prompt)`），零 TE 基线 3 文件即可完整工作。
-> **TE 可选升级件**（真实文本条件）：`te_q8.gguf`(1.71GB tokenizer) + `te_fp16.onnx`(+`te_fp16.onnx.data` 3.4GB)——**备用机也无此件**，仅当启用真实文本条件时推送，推后需同步更新本清单。
+> **TE 必推**：用户输入 prompt 出图时引擎按 `if (prompt) loadTE()` 加载 TE——缺 te_q8.gguf 报 `unable to load model: te_q8.gguf` → UI 显示「DreamLite: Failed to load model」。
+> 08-14 新机曾因只推 3 件漏 TE 而报错，补推后完整出图（TE 编码 seq=67 → 4 步 → PNG）。
+> 电脑端源：`.tmp/dreamlite/te/te_q8.gguf` + `.tmp/dreamlite/onnx/te_fp16.onnx(.data)`。
 
 ### 6.3 目录结构（App 首次运行自建，无需推送）
 
