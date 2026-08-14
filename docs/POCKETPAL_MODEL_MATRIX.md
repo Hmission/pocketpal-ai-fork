@@ -93,6 +93,11 @@
 2. **不得凭记忆/凭部分文件猜测**——以备用机 ls 输出为唯一对照基线。
 3. 补推顺序：LLM 五件套 → 生图 SD3.5/Z-Image → DreamLite 三件套 → 终验双目录 ls。
 4. 装机后打开生图页验证 DreamLite 可加载（不再报 File doesn't exist）。
+5. **Android 11+ 存储授权（EACCES 13 根因）**：换机后必须给 App 授予「所有文件访问」（MANAGE_EXTERNAL_STORAGE），否则 App 读 /sdcard/Documents/AIOS 报 system error number 13，模型列表空、出图失败。
+   - **正确授予方式（双机验证有效）**：`adb shell am start -a android.settings.MANAGE_APP_ALL_FILES_ACCESS_PERMISSION -d package:com.pocketpalai` → 点「授予管理所有文件的权限」。
+   - HyperOS 应用详情权限页不显示此权限项，勿用 `appops set`（状态显示 allow 但 PackageManager 层未生效）；授予后 App 重启即生效（RNLlama/DreamLite 加载日志可证）。
+   - 备用机 08-14 10:48 授权、新机 08-14 16:14 授权后均恢复正常读取。
+6. 双机对照结论（2026-08-14）：两机系统/App/appops/gids 全一致；差异仅在授权时间；**/proc/pid/root 读文件测试为假阴性（shell 借 mount namespace 无权限），不可用作判断**。
 
 
 
