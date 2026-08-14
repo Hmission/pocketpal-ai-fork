@@ -48,5 +48,5 @@
 ## 5. 真机现状（2026-08-14 清理后）
 
 - **LLM 已装 7 件**：Qwen3.5-2B Q8_0(+mmproj) / 4B Q4_K_M / LFM2.5-2.6B / LFM2.5-8B-A1B / Ministral-3-3B / MiniCPM5-1B 管家 ✓（全部入选清单）
-- **生图已装**：SD3.5 四件套 ✓ + Z-Image 三件套 ✓ + DreamLite 内置 ✓
+- **生图已装**：SD3.5 四件套 ✓ + Z-Image 三件套 ✓ + **DreamLite 端侧 ONNX 三件套**（`AIOS/dreamlite/`：unet_masked.onnx 1.56GB + vae_decoder + vae_encoder，08-14 补推）✓
 - **已清理（08-14 执行）**：`sd_xl_turbo_1.0_fp16.safetensors`（淘汰 SDXL，-6.9GB）+ `qwen3_06b_q8_0.gguf`（未选型 0.6B，-0.64GB）——真机目录现仅剩入选清单文件 ✓
