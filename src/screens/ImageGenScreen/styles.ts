@@ -28,7 +28,27 @@ export const createStyles = (theme: any) =>
       fontWeight: '600',
       color: theme.colors.onSurface,
     },
+    // 胶囊内文本区（点击展开下拉）
+    modelChipMain: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 8,
+    },
     modelChipStatus: {fontSize: 12, color: theme.colors.primary},
+    // 模型胶囊内快速加载按钮（未加载时显示，不展开下拉）
+    chipLoadBtn: {
+      paddingHorizontal: 12,
+      paddingVertical: 5,
+      borderRadius: 999,
+      backgroundColor: theme.colors.primary,
+    },
+    chipLoadText: {
+      fontSize: 12,
+      color: theme.colors.onPrimary,
+      fontWeight: '600',
+    },
     dropPanel: {
       marginTop: 6,
       backgroundColor: theme.colors.surface,
@@ -119,34 +139,39 @@ export const createStyles = (theme: any) =>
     uploadFabText: {fontSize: 12, color: '#fff', fontWeight: '600'},
     genOverlay: {
       ...StyleSheet.absoluteFillObject,
-      backgroundColor: 'rgba(8,10,18,0.97)', // 出图：空白页盖住预览区（正在生成新图）
+      // 浅色圆角（与卡片设计语言统一；助手气泡点缀色 + 95% 不透明）：出图盖住预览区
+      backgroundColor: theme.colors.assistantBubbleBackground + 'F2',
+      borderRadius: 8,
       alignItems: 'center',
       justifyContent: 'center',
       padding: 16,
       gap: 8,
     },
     genOverlayEdit: {
-      backgroundColor: 'rgba(8,10,18,0.6)', // 编辑：半透明叠在当前图上，图可见
+      // 编辑态：更低不透明度，底图可见
+      backgroundColor: theme.colors.assistantBubbleBackground + 'A6',
     },
-    genOrb: {
-      width: 56,
-      height: 56,
-      borderRadius: 28,
-      borderWidth: 2,
-      borderColor: theme.colors.primary,
-      backgroundColor: 'rgba(255,255,255,0.06)',
+    // 三点波浪动效容器/圆点
+    genDotsRow: {
+      flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
+      gap: 8,
+      height: 32,
     },
-    genOrbText: {fontSize: 22, color: theme.colors.primary},
+    genDot: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+      backgroundColor: theme.colors.primary,
+    },
     genOverlayTitle: {
       fontSize: 14,
-      color: '#fff',
+      color: theme.colors.onSurface,
       fontWeight: '600',
       marginTop: 4,
     },
-    overlayText: {fontSize: 11, color: '#fff'},
-    overlayStage: {fontSize: 10, color: '#fff'},
+    overlayText: {fontSize: 11, color: theme.colors.onSurfaceVariant},
+    overlayStage: {fontSize: 10, color: theme.colors.onSurfaceVariant},
     actionRow: {flexDirection: 'row', gap: 8},
     actionBtn: {
       flex: 1,
@@ -297,7 +322,7 @@ export const createStyles = (theme: any) =>
     progressTrack: {
       height: 8,
       borderRadius: 4,
-      backgroundColor: 'rgba(255,255,255,0.3)',
+      backgroundColor: 'rgba(0,0,0,0.08)',
       overflow: 'hidden',
     },
     progressTrackW70: {width: '70%'},

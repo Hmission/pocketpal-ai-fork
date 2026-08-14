@@ -29,7 +29,7 @@ import {
 import {createStyles} from './styles';
 import {DREAMLITE_MANIFEST, RATIOS, ModelEntry} from './constants';
 import {useToast} from './hooks/useToast';
-import {usePulse} from './hooks/usePulse';
+import {useWaveDots} from './hooks/useWaveDots';
 import {ModelPickerPanel} from './components/ModelPickerPanel';
 import {ResultPreview} from './components/ResultPreview';
 import {HistoryStrip} from './components/HistoryStrip';
@@ -69,8 +69,8 @@ export const ImageGenScreen: React.FC = observer(() => {
   const [taskKind, setTaskKind] = React.useState<'gen' | 'edit' | null>(null);
 
   const {toast, toastOpacity, showToast} = useToast();
-  // 生成/编辑进行中：脉冲呼吸动效循环
-  const pulse = usePulse(imageGenStore.generating);
+  // 生成/编辑进行中：三点波浪动效
+  const waveDots = useWaveDots(imageGenStore.generating);
 
   // observer 本地读：依赖变化时重新执行计时器（loading/generating 期间每 2s 刷新 now）
   const generating = imageGenStore.generating;
@@ -87,10 +87,11 @@ export const ImageGenScreen: React.FC = observer(() => {
     setScanning(true);
     try {
       const list = await listAvailableModels(AIOS_MODELS_DIR);
-      const withDream = [...list, {manifest: DREAMLITE_MANIFEST, mainPath: ''}];
+      // DreamLite 固定置顶且默认选中（当前唯一完整可用）；实验性模型（SD3.5/Z-Image）排后
+      const withDream = [{manifest: DREAMLITE_MANIFEST, mainPath: ''}, ...list];
       setAvailable(withDream);
-      if (withDream.length > 0 && !selectedId) {
-        setSelectedId(withDream[0].manifest.id);
+      if (!selectedId) {
+        setSelectedId(DREAMLITE_MANIFEST.id);
       }
     } catch (e) {
       console.warn('[ImageGenScreen] scan failed:', e);
@@ -219,6 +220,14 @@ export const ImageGenScreen: React.FC = observer(() => {
       imageGenStore.loadedModelId === entry.manifest.id
     );
   };
+
+  // 胶囊快速加载：直接加载当前选中模型，不展开下拉（默认 DreamLite 一键就绪）
+  const handleQuickLoad = React.useCallback(() => {
+    if (selectedEntry) {
+      loadEntry(selectedEntry);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedEntry]);
 
   // 下拉选中：只选中高亮 + 回填参数。不折叠面板、不加载、不切模式（点卡片只是“看参数”）。
   const handleSelectModel = (entry: ModelEntry) => {
@@ -509,6 +518,7 @@ export const ImageGenScreen: React.FC = observer(() => {
           generating={imageGenStore.generating}
           modelsDir={AIOS_MODELS_DIR}
           onToggleDrop={() => setShowModelDrop(v => !v)}
+          onQuickLoad={handleQuickLoad}
           onSelectModel={handleSelectModel}
           onRowAction={handleRowAction}
           isRowLoaded={isRowLoaded}
@@ -530,11 +540,9 @@ export const ImageGenScreen: React.FC = observer(() => {
           now={now}
           toast={toast}
           toastOpacity={toastOpacity}
-          pulse={pulse}
+          waveDots={waveDots}
           currentImage={currentImage}
           currentItem={currentItem}
-          isDream={isDream}
-          editArming={editArming}
           fullscreen={fullscreen}
           onPageW={setPageW}
           onMomentumEnd={handleMomentumEnd}
@@ -542,7 +550,6 @@ export const ImageGenScreen: React.FC = observer(() => {
           onOpenFullscreen={() => setFullscreen(true)}
           onCloseFullscreen={() => setFullscreen(false)}
           onSave={handleSave}
-          onEditArm={handleEditArm}
           onReroll={handleReroll}
           onDelete={handleDeleteCurrent}
         />

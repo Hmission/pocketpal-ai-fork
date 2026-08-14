@@ -30,6 +30,8 @@ interface ModelPickerPanelProps {
   generating: boolean;
   modelsDir: string;
   onToggleDrop: () => void;
+  /** 胶囊内快速加载当前模型（未加载时显示，不展开下拉） */
+  onQuickLoad: () => void;
   onSelectModel: (entry: ModelEntry) => void;
   onRowAction: (entry: ModelEntry) => void;
   isRowLoaded: (entry: ModelEntry) => boolean;
@@ -55,6 +57,7 @@ export const ModelPickerPanel: React.FC<ModelPickerPanelProps> = ({
   generating,
   modelsDir,
   onToggleDrop,
+  onQuickLoad,
   onSelectModel,
   onRowAction,
   isRowLoaded,
@@ -64,23 +67,35 @@ export const ModelPickerPanel: React.FC<ModelPickerPanelProps> = ({
 
   return (
     <View>
-      <TouchableOpacity style={s.modelChip} onPress={onToggleDrop}>
-        <Text style={s.modelChipText} numberOfLines={1}>
-          {selectedEntry
-            ? `${
-                FAMILY_BADGE[selectedEntry.manifest.family]
-                  ? `[${FAMILY_BADGE[selectedEntry.manifest.family]}] `
-                  : ''
-              }${selectedEntry.manifest.label}`
-            : '选择模型'}
-          {selectedEntry?.manifest.experimental ? (
-            <Text style={s.badgeExp}> [实验性]</Text>
-          ) : null}
-        </Text>
-        <Text style={s.modelChipStatus}>
-          {modelStatus} {showModelDrop ? '▴' : '▾'}
-        </Text>
-      </TouchableOpacity>
+      {/* 模型状态胶囊：左侧文本区展开下拉；未加载时右侧快速加载按钮 */}
+      <View style={s.modelChip}>
+        <TouchableOpacity style={s.modelChipMain} onPress={onToggleDrop}>
+          <Text style={s.modelChipText} numberOfLines={1}>
+            {selectedEntry
+              ? `${
+                  FAMILY_BADGE[selectedEntry.manifest.family]
+                    ? `[${FAMILY_BADGE[selectedEntry.manifest.family]}] `
+                    : ''
+                }${selectedEntry.manifest.label}`
+              : '选择模型'}
+            {selectedEntry?.manifest.experimental ? (
+              <Text style={s.badgeExp}> [实验性]</Text>
+            ) : null}
+          </Text>
+          <Text style={s.modelChipStatus}>
+            {modelStatus} {showModelDrop ? '▴' : '▾'}
+          </Text>
+        </TouchableOpacity>
+        {!loaded && !loading && !scanning ? (
+          <TouchableOpacity
+            style={s.chipLoadBtn}
+            onPress={onQuickLoad}
+            testID="imagegen-quick-load"
+            hitSlop={{top: 6, bottom: 6, left: 6, right: 6}}>
+            <Text style={s.chipLoadText}>加载</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
 
       {/* 模型锚定下拉：悬浮盖住下方 + 点外收起 */}
       {showModelDrop && (

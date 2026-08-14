@@ -32,12 +32,11 @@ interface ResultPreviewProps {
   now: number;
   toast: string | null;
   toastOpacity: Animated.Value;
-  pulse: Animated.Value;
+  /** 三点波浪动效（useWaveDots） */
+  waveDots: Animated.Value[];
   /** 当前预览图（编辑目标/操作条主体） */
   currentImage: string | null;
   currentItem: GeneratedImage | null;
-  isDream: boolean;
-  editArming: boolean;
   fullscreen: boolean;
   onPageW: (w: number) => void;
   onMomentumEnd: (e: {nativeEvent: {contentOffset: {x: number}}}) => void;
@@ -45,7 +44,6 @@ interface ResultPreviewProps {
   onOpenFullscreen: () => void;
   onCloseFullscreen: () => void;
   onSave: () => void;
-  onEditArm: () => void;
   onReroll: () => void;
   onDelete: () => void;
 }
@@ -70,11 +68,9 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
   now,
   toast,
   toastOpacity,
-  pulse,
+  waveDots,
   currentImage,
   currentItem,
-  isDream,
-  editArming,
   fullscreen,
   onPageW,
   onMomentumEnd,
@@ -82,36 +78,40 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
   onOpenFullscreen,
   onCloseFullscreen,
   onSave,
-  onEditArm,
   onReroll,
   onDelete,
 }) => {
   const theme = useTheme();
   const s = createStyles(theme);
 
-  // 生成/编辑动效 overlay：出图=空白页盖住预览区（正在生成新图）；编辑=半透明叠在当前图上（正在编辑此图）
+  // 生成/编辑动效 overlay：浅色圆角（与卡片设计语言统一）；出图=盖住预览区；编辑=半透明叠在当前图上（图可见）
   const genOverlay = generating ? (
     <View style={[s.genOverlay, taskKind === 'edit' ? s.genOverlayEdit : null]}>
-      <Animated.View
-        style={[
-          s.genOrb,
-          {
-            opacity: pulse.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0.35, 0.95],
-            }),
-            transform: [
+      {/* 三点波浪呼吸（替代旧圆形 orb 缩放） */}
+      <View style={s.genDotsRow}>
+        {waveDots.map((dot, i) => (
+          <Animated.View
+            key={i}
+            style={[
+              s.genDot,
               {
-                scale: pulse.interpolate({
+                transform: [
+                  {
+                    translateY: dot.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0, -8],
+                    }),
+                  },
+                ],
+                opacity: dot.interpolate({
                   inputRange: [0, 1],
-                  outputRange: [0.92, 1.15],
+                  outputRange: [0.45, 1],
                 }),
               },
-            ],
-          },
-        ]}>
-        <Text style={s.genOrbText}>✦</Text>
-      </Animated.View>
+            ]}
+          />
+        ))}
+      </View>
       <Text style={s.genOverlayTitle}>
         {taskKind === 'edit' ? '正在编辑此图…' : '正在生成新图…'}
       </Text>
@@ -201,21 +201,13 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
         </View>
         {currentImage && (
           <>
+            {/* 操作条定稿三按钮：保存/再次生成/删除；编辑唯一入口=ComposerPanel 底部 */}
             <View style={s.actionRow}>
               <TouchableOpacity
                 style={[s.actionBtn, s.actionSave]}
                 onPress={onSave}>
                 <Text style={s.actionTextLight}>保存</Text>
               </TouchableOpacity>
-              {isDream && (
-                <TouchableOpacity
-                  style={[s.actionBtn, s.actionEdit]}
-                  onPress={onEditArm}>
-                  <Text style={s.actionTextLight}>
-                    {editArming ? '执行编辑' : '编辑'}
-                  </Text>
-                </TouchableOpacity>
-              )}
               <TouchableOpacity
                 style={[s.actionBtn, s.actionReuse]}
                 onPress={onReroll}>

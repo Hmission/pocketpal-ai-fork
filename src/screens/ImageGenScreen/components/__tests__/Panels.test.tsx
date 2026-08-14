@@ -157,6 +157,7 @@ describe('ModelPickerPanel', () => {
     generating: false,
     modelsDir: '/sdcard/Documents/AIOS/models',
     onToggleDrop: jest.fn(),
+    onQuickLoad: jest.fn(),
     onSelectModel: jest.fn(),
     onRowAction: jest.fn(),
     isRowLoaded: jest.fn(() => false),
@@ -167,11 +168,21 @@ describe('ModelPickerPanel', () => {
     expect(getByText(/DreamLite Mobile/)).toBeTruthy();
   });
 
+  it('未加载时胶囊显示快速加载按钮并触发 onQuickLoad', () => {
+    const onQuickLoad = jest.fn();
+    const {getByTestId} = wrap(
+      <ModelPickerPanel {...baseProps} onQuickLoad={onQuickLoad} />,
+    );
+    fireEvent.press(getByTestId('imagegen-quick-load'));
+    expect(onQuickLoad).toHaveBeenCalled();
+  });
+
   it('点胶囊展开下拉面板并渲染行内加载按钮', () => {
-    const {getByText} = wrap(
+    const {getAllByText, getByText} = wrap(
       <ModelPickerPanel {...baseProps} showModelDrop={true} />,
     );
-    expect(getByText('加载')).toBeTruthy();
+    // 胶囊快速加载 + 下拉行内加载按钮
+    expect(getAllByText('加载').length).toBeGreaterThanOrEqual(2);
     expect(getByText(/统一文生图/)).toBeTruthy();
   });
 });
@@ -192,11 +203,13 @@ describe('ResultPreview', () => {
     now: Date.now(),
     toast: null,
     toastOpacity: new Animated.Value(0),
-    pulse: new Animated.Value(0),
+    waveDots: [
+      new Animated.Value(0),
+      new Animated.Value(0),
+      new Animated.Value(0),
+    ],
     currentImage: null,
     currentItem: null,
-    isDream: true,
-    editArming: false,
     fullscreen: false,
     onPageW: jest.fn(),
     onMomentumEnd: jest.fn(),
@@ -204,7 +217,6 @@ describe('ResultPreview', () => {
     onOpenFullscreen: jest.fn(),
     onCloseFullscreen: jest.fn(),
     onSave: jest.fn(),
-    onEditArm: jest.fn(),
     onReroll: jest.fn(),
     onDelete: jest.fn(),
   };
@@ -216,8 +228,8 @@ describe('ResultPreview', () => {
     expect(queryByText('删除')).toBeNull();
   });
 
-  it('有当前图时渲染操作条（保存/编辑/再次生成/删除）', () => {
-    const {getByText} = wrap(
+  it('有当前图时渲染操作条定稿三按钮（保存/再次生成/删除，编辑不在此处）', () => {
+    const {getByText, queryByText} = wrap(
       <ResultPreview
         {...baseProps}
         currentImage={historyItem.uri}
@@ -225,9 +237,10 @@ describe('ResultPreview', () => {
       />,
     );
     expect(getByText('保存')).toBeTruthy();
-    expect(getByText('编辑')).toBeTruthy();
     expect(getByText('再次生成')).toBeTruthy();
     expect(getByText('删除')).toBeTruthy();
+    // 编辑唯一入口=ComposerPanel 底部，操作条不再有编辑按钮
+    expect(queryByText('编辑')).toBeNull();
   });
 
   it('生成中渲染进度 overlay', () => {
