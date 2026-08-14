@@ -108,34 +108,44 @@ class ImageGenModule(reactContext: ReactApplicationContext) :
     }
   }
 
+  /**
+   * 生成必须异步（08-14 闪崩根治）：曾同步阻塞 mqt_v_native 整个生成周期（分钟级），
+   * 同线程的 getGenSnapshot 被排队堵死 → 120s 干净失败从未触发，并引发 ANR 栈转储路径
+   * ART 空指针闪崩（SIGSEGV @ DumpJavaStack，设备取证实锤）。
+   * 异步后 RN 模块消息队列不阻塞：快照轮询与 hang 判定真正生效。
+   * 注意：ReadableMap 不可跨线程读，参数须在调用线程提前提取。
+   */
   @ReactMethod
   fun txt2img(params: ReadableMap, promise: Promise) {
-    try {
-      val outPath = params.getString("outPath") ?: ""
-      if (outPath.isEmpty()) {
-        promise.reject("BAD_ARGS", "outPath required")
-        return
-      }
-      val result = nativeTxt2img(
-        params.getString("prompt") ?: "",
-        params.getString("negativePrompt") ?: "",
-        params.getDouble("seed").toLong(),
-        params.getInt("steps"),
-        params.getDouble("cfg"),
-        params.getInt("width"),
-        params.getInt("height"),
-        params.getString("loraPath") ?: "",
-        params.getDouble("loraMultiplier"),
-        outPath,
-      )
-      if (result.startsWith("ERR_")) {
-        promise.reject(result, result)
-      } else {
-        promise.resolve(result)
-      }
-    } catch (e: Throwable) {
-      promise.reject("GEN_FAILED", e.message)
+    val outPath = params.getString("outPath") ?: ""
+    if (outPath.isEmpty()) {
+      promise.reject("BAD_ARGS", "outPath required")
+      return
     }
+    val prompt = params.getString("prompt") ?: ""
+    val negativePrompt = params.getString("negativePrompt") ?: ""
+    val seed = params.getDouble("seed").toLong()
+    val steps = params.getInt("steps")
+    val cfg = params.getDouble("cfg")
+    val width = params.getInt("width")
+    val height = params.getInt("height")
+    val loraPath = params.getString("loraPath") ?: ""
+    val loraMultiplier = params.getDouble("loraMultiplier")
+    Thread {
+      try {
+        val result = nativeTxt2img(
+          prompt, negativePrompt, seed, steps, cfg, width, height,
+          loraPath, loraMultiplier, outPath,
+        )
+        if (result.startsWith("ERR_")) {
+          promise.reject(result, result)
+        } else {
+          promise.resolve(result)
+        }
+      } catch (e: Throwable) {
+        promise.reject("GEN_FAILED", e.message)
+      }
+    }.start()
   }
 
   /**
