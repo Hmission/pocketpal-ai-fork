@@ -1,5 +1,5 @@
 import React from 'react';
-import {Animated, ScrollView} from 'react-native';
+import {Animated, FlatList} from 'react-native';
 import {fireEvent} from '@testing-library/react-native';
 
 import {render} from '../../../../../jest/test-utils';
@@ -189,11 +189,13 @@ describe('ModelPickerPanel', () => {
 
 describe('ResultPreview', () => {
   const baseProps = {
-    previewRef: React.createRef<ScrollView>(),
+    previewRef: React.createRef<FlatList<GeneratedImage>>(),
     pageW: 320,
     editSource: null,
     history: [historyItem],
     generating: false,
+    bootedRef: React.createRef<boolean>() as React.MutableRefObject<boolean>,
+    onListReady: jest.fn(),
     taskKind: null as 'gen' | 'edit' | null,
     progress: 0,
     progressText: '',

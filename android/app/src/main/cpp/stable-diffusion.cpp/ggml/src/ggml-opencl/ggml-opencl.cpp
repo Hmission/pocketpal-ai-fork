@@ -591,6 +591,7 @@ struct ggml_backend_opencl_context {
     cl_kernel kernel_convert_block_q8_0, kernel_restore_block_q8_0, kernel_restore_block_q8_0_trans;
     cl_kernel kernel_convert_block_q6_K_noshuffle, kernel_restore_block_q6_K_noshuffle;
     cl_kernel kernel_convert_bf16_to_f16, kernel_convert_f16_to_bf16;
+    cl_kernel kernel_convert_bf16_to_f32; // 6.18: bf16 设备存储改为 f32（防 fp16 精度崩坏）
     cl_kernel kernel_mul_mat_q4_0_f32_8x_flat;
     cl_kernel kernel_convert_block_q4_0_noshuffle;
     cl_kernel kernel_restore_block_q4_0_noshuffle;
@@ -1207,6 +1208,7 @@ static void load_cl_kernels(ggml_backend_opencl_context *backend_ctx) {
         CL_CHECK((backend_ctx->kernel_restore_block_iq4_nl_noshuffle = clCreateKernel(backend_ctx->program_cvt, "kernel_restore_block_iq4_nl_noshuffle", &err), err));
         CL_CHECK((backend_ctx->kernel_convert_bf16_to_f16 = clCreateKernel(backend_ctx->program_cvt, "kernel_convert_bf16_to_f16", &err), err));
         CL_CHECK((backend_ctx->kernel_convert_f16_to_bf16 = clCreateKernel(backend_ctx->program_cvt, "kernel_convert_f16_to_bf16", &err), err));
+        CL_CHECK((backend_ctx->kernel_convert_bf16_to_f32 = clCreateKernel(backend_ctx->program_cvt, "kernel_convert_bf16_to_f32", &err), err));
         GGML_LOG_CONT(".");
     }
 
@@ -5021,6 +5023,12 @@ static ggml_status ggml_backend_opencl_graph_compute(ggml_backend_t backend, ggm
 // The optimized gemm and gemv kernels are used for large matrices without batch.
 // tensor is the quantized weights matrix.
 inline bool use_adreno_kernels(const ggml_backend_opencl_context *backend_ctx, const ggml_tensor *tensor) {
+    // 6.18 白图排查：Adreno 专用 GEMM/GEMV 内核用 fp16 累积（dequant 转 half + half16 acc），
+    // MMDiT 深度网络下累积精度崩坏 → latent 全 NaN。
+    // GGML_OPENCL_DISABLE_ADRENO_KERNELS=1 强制走通用 fp32 路径（fp32 累加器）验证正确性。
+    if (getenv("GGML_OPENCL_DISABLE_ADRENO_KERNELS") != nullptr) {
+        return false;
+    }
     int64_t threshold_ne0 = 512;
     int64_t threshold_ne1 = 512;
     if (!backend_ctx->adreno_cl_compiler_version.newer_than_or_same(E031, 38, 11, 0) &&
@@ -7162,7 +7170,9 @@ static void ggml_backend_opencl_buffer_set_tensor(ggml_backend_buffer_t buffer, 
     }
 #endif // GGML_OPENCL_SOA_Q
 
-    // convert bf16 to f16 and store as f16 in device buffer
+    // 6.18: convert bf16 to f32 and store as f32 in device buffer
+    // （原 bf16→f16 降级存储：fp16 动态范围不足 → MMDiT 数值崩坏 → latent 全 NaN；
+    //  bf16→f32 左移 16 位零精度损失，设备元素从 2 字节变 4 字节，偏移按 f32 计算）
     if (tensor->type == GGML_TYPE_BF16) {
         GGML_ASSERT(offset % sizeof(ggml_fp16_t) == 0 && size % sizeof(ggml_fp16_t) == 0
             && "Offset and size must be multiples of 2 for bf16 tensors");
@@ -7171,14 +7181,18 @@ static void ggml_backend_opencl_buffer_set_tensor(ggml_backend_buffer_t buffer, 
         GGML_ASSERT(extra);
 
         cl_ulong n_elements = size / sizeof(ggml_fp16_t);
-        cl_ulong off_dst = (extra->offset + offset) / sizeof(ggml_fp16_t);
+        // 6.18 修正：extra->offset 是设备 f32 字节（ggml-alloc 已按 ×2 累加），
+        // 主机 offset 是 bf16 字节（2 字节/元素）。
+        // 正确：设备 f32 元素索引 = extra->offset/4 + (view_offs+offset)/2
+        cl_ulong off_dst = extra->offset / sizeof(float)
+                         + (tensor->view_offs + offset) / sizeof(ggml_fp16_t);
 
         cl_int err;
         cl_mem data_device = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
             size, const_cast<void *>(data), &err);
         CL_CHECK(err);
 
-        cl_kernel kernel = backend_ctx->kernel_convert_bf16_to_f16;
+        cl_kernel kernel = backend_ctx->kernel_convert_bf16_to_f32;
         CL_CHECK(clSetKernelArg(kernel, 0, sizeof(cl_mem), &data_device));
         CL_CHECK(clSetKernelArg(kernel, 1, sizeof(cl_mem), &extra->data_device));
         CL_CHECK(clSetKernelArg(kernel, 2, sizeof(cl_ulong), &off_dst));
@@ -8183,30 +8197,23 @@ static void ggml_backend_opencl_buffer_get_tensor(ggml_backend_buffer_t buffer, 
         ggml_tensor_extra_cl * extra = (ggml_tensor_extra_cl *) tensor->extra;
         GGML_ASSERT(extra);
 
+        // 6.18: 设备 f32 → 主机 bf16（读 f32 原始字节后 CPU 取高 16 位）
         cl_ulong n_elements = size / sizeof(ggml_fp16_t);
-        cl_ulong off_src = (extra->offset + tensor->view_offs + offset) / sizeof(ggml_fp16_t);
+        // 6.18 修正：设备 f32 字节偏移 = extra->offset(设备字节，已含 ×2 分配)
+        //                  + (view_offs+offset)(主机 bf16 字节) × 2
+        cl_ulong off_src = extra->offset + (tensor->view_offs + offset) * 2;
 
-        cl_int err;
-        cl_mem data_device = clCreateBuffer(context, CL_MEM_READ_WRITE, size, NULL, &err);
-        CL_CHECK(err);
-
-        cl_kernel kernel = backend_ctx->kernel_convert_f16_to_bf16;
-        CL_CHECK(clSetKernelArg(kernel, 0, sizeof(cl_mem), &extra->data_device));
-        CL_CHECK(clSetKernelArg(kernel, 1, sizeof(cl_ulong), &off_src));
-        CL_CHECK(clSetKernelArg(kernel, 2, sizeof(cl_mem), &data_device));
-        CL_CHECK(clSetKernelArg(kernel, 3, sizeof(cl_ulong), &n_elements));
-
-        size_t global_work_size[] = { (size_t)CEIL_DIV(n_elements, 64)*64, 1, 1 };
-        size_t local_work_size[] = { 64, 1, 1 };
-
-        cl_event evt;
-        CL_CHECK(clEnqueueNDRangeKernel(queue, kernel, 3, NULL, global_work_size, local_work_size, 0, NULL, &evt));
-        CL_CHECK(clWaitForEvents(1, &evt));
-        CL_CHECK(clReleaseEvent(evt));
-
+        std::vector<float> tmp(static_cast<size_t>(n_elements));
         CL_CHECK(clEnqueueReadBuffer(
-            queue, data_device, CL_TRUE, 0, size, data, 0, NULL, NULL));
-        CL_CHECK(clReleaseMemObject(data_device));
+            queue, extra->data_device, CL_TRUE, off_src,
+            n_elements * sizeof(float), tmp.data(), 0, NULL, NULL));
+
+        uint16_t* dst16 = (uint16_t*)data;
+        for (cl_ulong i = 0; i < n_elements; ++i) {
+            uint32_t bits;
+            memcpy(&bits, &tmp[i], sizeof(bits));
+            dst16[i] = (uint16_t)(bits >> 16);
+        }
 
         return;
     }
@@ -8265,7 +8272,6 @@ static const char * ggml_backend_opencl_buffer_type_get_name(ggml_backend_buffer
 static ggml_backend_buffer_t ggml_backend_opencl_buffer_type_alloc_buffer(ggml_backend_buffer_type_t buffer_type, size_t size) {
     ggml_backend_opencl_context *backend_ctx = ggml_cl_init(buffer_type->device);
     load_cl_kernels(backend_ctx);
-
     // clCreateBuffer returns -61 for size 0
     size = std::max(size, (size_t)1);
 
@@ -8306,12 +8312,21 @@ static bool ggml_backend_opencl_buffer_type_supports_backend(ggml_backend_buffer
     UNUSED(buft);
 }
 
+// 6.18: bf16 设备存储为 f32（4 字节/元素），分配大小须翻倍；否则缓冲区溢出损坏相邻张量
+static size_t ggml_backend_opencl_buffer_type_get_alloc_size(ggml_backend_buffer_type_t buft, const ggml_tensor * tensor) {
+    GGML_UNUSED(buft);
+    if (tensor->type == GGML_TYPE_BF16) {
+        return ggml_nbytes(tensor) * 2;
+    }
+    return ggml_nbytes(tensor);
+}
+
 static ggml_backend_buffer_type_i ggml_backend_opencl_buffer_type_interface = {
     /* .get_name         = */ ggml_backend_opencl_buffer_type_get_name,
     /* .alloc_buffer     = */ ggml_backend_opencl_buffer_type_alloc_buffer,
     /* .get_alignment    = */ ggml_backend_opencl_buffer_type_get_alignment,
     /* .get_max_size     = */ ggml_backend_opencl_buffer_type_get_max_size,
-    /* .get_alloc_size   = */ NULL,
+    /* .get_alloc_size   = */ ggml_backend_opencl_buffer_type_get_alloc_size,
     /* .is_host          = */ NULL,
 };
 
@@ -8700,8 +8715,10 @@ static void ggml_cl_copy_to_contiguous(ggml_backend_t backend, const ggml_tensor
             kernel = backend_ctx->kernel_cpy_f32_f32;
             break;
         case GGML_TYPE_F16:
-        case GGML_TYPE_BF16: // stored as f16 on device
             kernel = backend_ctx->kernel_cpy_f16_f16;
+            break;
+        case GGML_TYPE_BF16: // stored as f32 on device (6.18: 防 fp16 精度崩坏)
+            kernel = backend_ctx->kernel_cpy_f32_f32;
             break;
         default:
             GGML_ASSERT(false && "not implemented");
@@ -11687,6 +11704,10 @@ static bool ggml_cl_can_use_adreno_xmem_gemm_f16_f32(
         src1->type != GGML_TYPE_F32 || dst->type != GGML_TYPE_F32) {
         return false;
     }
+    // 6.18: bf16 设备存储已改为 f32，xmem 管线按 f16 布局读取会错乱 → 显式排除
+    if (src0->type == GGML_TYPE_BF16) {
+        return false;
+    }
     if (!ggml_is_contiguous(src0) || !ggml_is_contiguous(src1) || !ggml_is_contiguous(dst)) {
         return false;
     }
@@ -13764,8 +13785,8 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
     GGML_ASSERT(dst);
     GGML_ASSERT(dst->extra);
 
-    // bf16 is stored as f16 on device
-    const enum ggml_type src0t = (src0->type == GGML_TYPE_BF16) ? GGML_TYPE_F16 : src0->type;
+    // bf16 is stored as f32 on device (6.18: 原 f16 降级存储导致 MMDiT NaN)
+    const enum ggml_type src0t = (src0->type == GGML_TYPE_BF16) ? GGML_TYPE_F32 : src0->type;
     const enum ggml_type src1t = src1->type;
 
     ggml_backend_opencl_context *backend_ctx = (ggml_backend_opencl_context *)backend->context;
@@ -13774,9 +13795,9 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
     ggml_tensor_extra_cl * extra1 = (ggml_tensor_extra_cl *)src1->extra;
     ggml_tensor_extra_cl * extrad = (ggml_tensor_extra_cl *)dst->extra;
 
-    cl_ulong offset0 = extra0->offset + src0->view_offs;
-    cl_ulong offset1 = extra1->offset + src1->view_offs;
-    cl_ulong offsetd = extrad->offset + dst->view_offs;
+    cl_ulong offset0 = extra0->offset + (src0->type == GGML_TYPE_BF16 ? src0->view_offs * 2 : src0->view_offs);
+    cl_ulong offset1 = extra1->offset + (src1->type == GGML_TYPE_BF16 ? src1->view_offs * 2 : src1->view_offs);
+    cl_ulong offsetd = extrad->offset + (dst->type == GGML_TYPE_BF16 ? dst->view_offs * 2 : dst->view_offs);
 
 #ifdef GGML_OPENCL_SOA_Q
     ggml_tensor_extra_cl_q4_0 * extra0_q4_0 = (ggml_tensor_extra_cl_q4_0 *)src0->extra;
@@ -17311,8 +17332,17 @@ static void ggml_cl_cpy(ggml_backend_t backend, const ggml_tensor * src0, const 
     ggml_tensor_extra_cl * extra0 = (ggml_tensor_extra_cl *)src0->extra;
     ggml_tensor_extra_cl * extra1 = (ggml_tensor_extra_cl *)src1->extra;
 
-    cl_ulong offset0 = extra0->offset + src0->view_offs;
-    cl_ulong offset1 = extra1->offset + src1->view_offs;
+    cl_ulong offset0 = extra0->offset + (src0->type == GGML_TYPE_BF16 ? src0->view_offs * 2 : src0->view_offs);
+    cl_ulong offset1 = extra1->offset + (src1->type == GGML_TYPE_BF16 ? src1->view_offs * 2 : src1->view_offs);
+    // 6.18: bf16 设备按 f32 存储，strides 需 ×2（主机 bf16 字节 → 设备 f32 字节）
+    const cl_ulong d_nb00 = src0->type == GGML_TYPE_BF16 ? nb00 * 2 : nb00;
+    const cl_ulong d_nb01 = src0->type == GGML_TYPE_BF16 ? nb01 * 2 : nb01;
+    const cl_ulong d_nb02 = src0->type == GGML_TYPE_BF16 ? nb02 * 2 : nb02;
+    const cl_ulong d_nb03 = src0->type == GGML_TYPE_BF16 ? nb03 * 2 : nb03;
+    const cl_ulong d_nb10 = src1->type == GGML_TYPE_BF16 ? nb10 * 2 : nb10;
+    const cl_ulong d_nb11 = src1->type == GGML_TYPE_BF16 ? nb11 * 2 : nb11;
+    const cl_ulong d_nb12 = src1->type == GGML_TYPE_BF16 ? nb12 * 2 : nb12;
+    const cl_ulong d_nb13 = src1->type == GGML_TYPE_BF16 ? nb13 * 2 : nb13;
 
     cl_kernel kernel;
 
@@ -17363,18 +17393,18 @@ static void ggml_cl_cpy(ggml_backend_t backend, const ggml_tensor * src0, const 
     CL_CHECK(clSetKernelArg(kernel,  5, sizeof(int),      &ne01));
     CL_CHECK(clSetKernelArg(kernel,  6, sizeof(int),      &ne02));
     CL_CHECK(clSetKernelArg(kernel,  7, sizeof(int),      &ne03));
-    CL_CHECK(clSetKernelArg(kernel,  8, sizeof(cl_ulong), &nb00));
-    CL_CHECK(clSetKernelArg(kernel,  9, sizeof(cl_ulong), &nb01));
-    CL_CHECK(clSetKernelArg(kernel, 10, sizeof(cl_ulong), &nb02));
-    CL_CHECK(clSetKernelArg(kernel, 11, sizeof(cl_ulong), &nb03));
+    CL_CHECK(clSetKernelArg(kernel,  8, sizeof(cl_ulong), &d_nb00));
+    CL_CHECK(clSetKernelArg(kernel,  9, sizeof(cl_ulong), &d_nb01));
+    CL_CHECK(clSetKernelArg(kernel, 10, sizeof(cl_ulong), &d_nb02));
+    CL_CHECK(clSetKernelArg(kernel, 11, sizeof(cl_ulong), &d_nb03));
     CL_CHECK(clSetKernelArg(kernel, 12, sizeof(int),      &ne10));
     CL_CHECK(clSetKernelArg(kernel, 13, sizeof(int),      &ne11));
     CL_CHECK(clSetKernelArg(kernel, 14, sizeof(int),      &ne12));
     CL_CHECK(clSetKernelArg(kernel, 15, sizeof(int),      &ne13));
-    CL_CHECK(clSetKernelArg(kernel, 16, sizeof(cl_ulong), &nb10));
-    CL_CHECK(clSetKernelArg(kernel, 17, sizeof(cl_ulong), &nb11));
-    CL_CHECK(clSetKernelArg(kernel, 18, sizeof(cl_ulong), &nb12));
-    CL_CHECK(clSetKernelArg(kernel, 19, sizeof(cl_ulong), &nb13));
+    CL_CHECK(clSetKernelArg(kernel, 16, sizeof(cl_ulong), &d_nb10));
+    CL_CHECK(clSetKernelArg(kernel, 17, sizeof(cl_ulong), &d_nb11));
+    CL_CHECK(clSetKernelArg(kernel, 18, sizeof(cl_ulong), &d_nb12));
+    CL_CHECK(clSetKernelArg(kernel, 19, sizeof(cl_ulong), &d_nb13));
 
     if (kernel == backend_ctx->kernel_cpy_f32_f32_pack) {
         const int maxwg = (int)backend_ctx->get_kernel_workgroup_size(kernel);

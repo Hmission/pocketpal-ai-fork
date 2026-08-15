@@ -11,6 +11,11 @@ class ChatSessionRepository {
     return false; // Mock: no migration needed
   }
 
+  // Wait for SQLite adapter init (cold-start race guard)
+  async ensureReady() {
+    return undefined; // Mock: always ready
+  }
+
   // Get all sessions grouped by date
   async getAllSessions() {
     return []; // Mock: return empty array

@@ -85,7 +85,9 @@ export const HistoryStrip: React.FC<HistoryStripProps> = ({
           style={[s.button, s.buttonDanger]}
           disabled={toDelete.length === 0}
           onPress={onConfirmDelete}>
-          <Text style={s.buttonText}>删除选中 ({toDelete.length})</Text>
+          <Text style={[s.buttonText, s.buttonTextOnDanger]}>
+            删除选中 ({toDelete.length})
+          </Text>
         </TouchableOpacity>
       )}
     </View>

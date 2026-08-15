@@ -75,4 +75,19 @@ export const styles = ({
       width: '100%',
       height: '80%',
     },
+    imagePreviewSaveButton: {
+      position: 'absolute',
+      bottom: 56,
+      alignSelf: 'center',
+      paddingHorizontal: 28,
+      paddingVertical: 10,
+      borderRadius: 24,
+      backgroundColor: theme.colors.primary,
+      zIndex: 1,
+    },
+    imagePreviewSaveText: {
+      color: theme.colors.onPrimary,
+      fontSize: 15,
+      fontWeight: '600',
+    },
   });

@@ -195,9 +195,9 @@ export const ComposerPanel: React.FC<ComposerPanelProps> = ({
               disabled={generating || (editArming && !editRgb)}
               onPress={onEditArm}>
               {generating && taskKind === 'edit' ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator size="small" color={theme.colors.onInfo} />
               ) : (
-                <Text style={s.buttonText}>
+                <Text style={[s.buttonText, s.buttonTextOnInfo]}>
                   {editArming ? '执行编辑' : '编辑'}
                 </Text>
               )}
@@ -207,7 +207,10 @@ export const ComposerPanel: React.FC<ComposerPanelProps> = ({
               disabled={generating}
               onPress={onGenerate}>
               {generating && taskKind === 'gen' ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator
+                  size="small"
+                  color={theme.colors.onPrimary}
+                />
               ) : (
                 <Text style={s.buttonText}>出图</Text>
               )}
@@ -221,7 +224,7 @@ export const ComposerPanel: React.FC<ComposerPanelProps> = ({
           disabled={generating || !loaded}
           onPress={onGenerate}>
           {generating ? (
-            <ActivityIndicator size="small" color="#fff" />
+            <ActivityIndicator size="small" color={theme.colors.onPrimary} />
           ) : (
             <Text style={s.buttonText}>出图</Text>
           )}

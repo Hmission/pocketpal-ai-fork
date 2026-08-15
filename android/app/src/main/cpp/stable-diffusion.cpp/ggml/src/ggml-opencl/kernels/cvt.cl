@@ -135,6 +135,24 @@ kernel void kernel_convert_bf16_to_f16(
 }
 
 //------------------------------------------------------------------------------
+// bf16 to f32 (6.18: store bf16 as f32 on device; shift-left 16 keeps full
+// bf16 exponent range, avoiding fp16 precision collapse -> MMDiT NaN)
+//------------------------------------------------------------------------------
+kernel void kernel_convert_bf16_to_f32(
+    global const ushort * src,
+    global float * dst,
+    ulong off_dst,
+    ulong n
+) {
+    uint i = get_global_id(0);
+    if (i >= n) {
+        return;
+    }
+
+    dst[i + off_dst] = as_float((uint) src[i] << 16);
+}
+
+//------------------------------------------------------------------------------
 // f16 to bf16
 //------------------------------------------------------------------------------
 kernel void kernel_convert_f16_to_bf16(

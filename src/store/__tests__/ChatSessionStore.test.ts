@@ -95,6 +95,96 @@ describe('chatSessionStore', () => {
       expect(chatSessionStore.sessions).toEqual([]);
       expect(chatSessionRepository.getAllSessions).toHaveBeenCalled();
     });
+
+    it('awaits SQLite adapter readiness before querying (cold-start race guard)', async () => {
+      const ensureReady = jest
+        .spyOn(chatSessionRepository, 'ensureReady')
+        .mockResolvedValue(undefined);
+      const getAllSessions = jest.spyOn(
+        chatSessionRepository,
+        'getAllSessions',
+      );
+      getAllSessions.mockResolvedValue([]);
+
+      await chatSessionStore.loadSessionList();
+
+      // ensureReady 必须先于首次查询（DB 未打开时 JSI 查询偶发失败）
+      expect(ensureReady.mock.invocationCallOrder[0]).toBeLessThan(
+        getAllSessions.mock.invocationCallOrder[0],
+      );
+      // 不清除 spy 身份：测试文件顶部已全局 spyOn repository 方法，
+      // mockRestore 会破坏后续用例的 mock 状态
+      ensureReady.mockReset();
+    });
+
+    it('serializes concurrent loadSessionList calls (init + drawer mount race)', async () => {
+      (chatSessionRepository.getAllSessions as jest.Mock).mockResolvedValue(
+        [],
+      );
+
+      // 并发调用：不 await 第一个，直接发起第二个
+      const first = chatSessionStore.loadSessionList();
+      const second = chatSessionStore.loadSessionList();
+      await Promise.all([first, second]);
+
+      // 串行化闸门：并发调用共享同一次加载，只查询一次 DB
+      expect(chatSessionRepository.getAllSessions).toHaveBeenCalledTimes(1);
+    });
+
+    it('preserves already-hydrated messages across repeated loadSessionList', async () => {
+      const mockSession = {
+        id: '1',
+        title: 'Session 1',
+        date: new Date().toISOString(),
+      };
+      const mockSessionData = {
+        session: mockSession,
+        completionSettings: {
+          getSettings: () => ({...defaultCompletionSettings}),
+        },
+      };
+      (chatSessionRepository.getAllSessions as jest.Mock).mockResolvedValue([
+        mockSession,
+      ]);
+      (
+        chatSessionRepository.getSessionMetadataWithSettings as jest.Mock
+      ).mockResolvedValue(mockSessionData);
+      // 消息水合在首次 loadSessionList 的恢复会话流程中触发（setActiveSession →
+      // getSessionById），必须先于首次加载注入
+      (chatSessionRepository.getSessionById as jest.Mock).mockResolvedValue({
+        session: mockSession,
+        messages: [
+          {
+            toMessageObject: () => ({
+              id: 'm1',
+              type: 'text',
+              text: 'hydrated',
+              author: {id: 'u1'},
+              createdAt: Date.now(),
+            }),
+          },
+        ],
+        completionSettings: {
+          getSettings: () => ({...defaultCompletionSettings}),
+        },
+      });
+
+      // 首次加载：会话成为 active 且消息水合
+      await chatSessionStore.loadSessionList();
+      expect(chatSessionStore.sessions[0].messagesLoaded).toBe(true);
+      expect(
+        (chatSessionStore.sessions[0].messages[0] as MessageType.Text).text,
+      ).toBe('hydrated');
+
+      // 抽屉 mount 再次触发：幂等合并必须保留已水合消息
+      await chatSessionStore.loadSessionList();
+
+      expect(chatSessionStore.sessions[0].messagesLoaded).toBe(true);
+      expect(
+        (chatSessionStore.sessions[0].messages[0] as MessageType.Text).text,
+      ).toBe('hydrated');
+      expect(chatSessionStore.activeSessionId).toBe('1');
+    });
   });
 
   describe('deleteSession', () => {
@@ -905,7 +995,7 @@ describe('chatSessionStore', () => {
         chatSessionRepository.saveGlobalCompletionSettings as jest.Mock
       ).mockResolvedValue(undefined);
 
-      await chatSessionStore.createNewSession('New Session');
+      await chatSessionStore.createNewSession('New Session', [], customSettings);
 
       expect(chatSessionRepository.createSession).toHaveBeenCalledWith(
         'New Session',
@@ -917,8 +1007,9 @@ describe('chatSessionStore', () => {
       expect(chatSessionStore.sessions[0].completionSettings).toEqual(
         customSettings,
       );
+      // 参数化后 createNewSession 不读写 newChatCompletionSettings（全局默认设置）
       expect(chatSessionStore.newChatCompletionSettings).toEqual(
-        defaultCompletionSettings,
+        customSettings,
       );
     });
   });

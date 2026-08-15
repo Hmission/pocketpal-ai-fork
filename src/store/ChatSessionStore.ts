@@ -266,8 +266,26 @@ class ChatSessionStore {
     return this.agentUiState.status === 'generating_tool_call';
   }
 
+  // 串行化闸门：冷启动时 init() 与抽屉 mount 会并发调用 loadSessionList，
+  // 后完成的覆盖先完成的 sessions（新对象无消息）→ 消息列表空。
+  // 复用进行中的加载，保证同一次结果；完成后自动复位。
+  private sessionListLoadPromise: Promise<void> | null = null;
+
   async loadSessionList(): Promise<void> {
+    if (this.sessionListLoadPromise) {
+      return this.sessionListLoadPromise;
+    }
+    this.sessionListLoadPromise = this.performLoadSessionList().finally(() => {
+      this.sessionListLoadPromise = null;
+    });
+    return this.sessionListLoadPromise;
+  }
+
+  private async performLoadSessionList(): Promise<void> {
     try {
+      // 冷启动窗口：SQLite adapter 未打开时 JSI 查询偶发失败（会话列表/消息水合不全）
+      await chatSessionRepository.ensureReady();
+
       const sessions = await chatSessionRepository.getAllSessions();
 
       // Convert to SessionMetaData format
@@ -309,7 +327,15 @@ class ChatSessionStore {
       }
 
       runInAction(() => {
-        this.sessions = sessionMetadata;
+        // 幂等合并：已加载消息的会话保留 messages/messagesLoaded，
+        // 重复 loadSessionList（抽屉每次 mount 都触发）不清空已水合消息。
+        const existingById = new Map(this.sessions.map(s => [s.id, s]));
+        this.sessions = sessionMetadata.map(meta => {
+          const old = existingById.get(meta.id);
+          return old && old.messagesLoaded
+            ? {...meta, messages: old.messages, messagesLoaded: true}
+            : meta;
+        });
       });
 
       // 恢复上次会话：启动直接回到最近对话，不再每次新会话

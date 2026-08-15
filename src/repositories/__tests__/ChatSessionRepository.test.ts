@@ -1,23 +1,14 @@
 import {chatSessionRepository} from '../ChatSessionRepository';
+import {mockDatabase} from '../../../__mocks__/database';
 
-// Mock the database
+// 真实实现（setup.ts 全局 mock 拦截了默认 import，用 requireActual 拿真实单例）
+const realRepository = jest.requireActual(
+  '../ChatSessionRepository',
+) as typeof import('../ChatSessionRepository');
+
+// Mock the database（与 jest/setup.ts 同源 mockDatabase，保证 spy 与真实实现同一对象）
 jest.mock('../../database', () => ({
-  database: {
-    write: jest.fn().mockImplementation(async callback => {
-      await callback();
-    }),
-    collections: {
-      get: jest.fn().mockReturnValue({
-        create: jest.fn(),
-        find: jest.fn(),
-        query: jest.fn().mockReturnValue({
-          where: jest.fn().mockReturnThis(),
-          sortBy: jest.fn().mockReturnThis(),
-          fetch: jest.fn().mockResolvedValue([]),
-        }),
-      }),
-    },
-  },
+  database: mockDatabase,
 }));
 
 // Mock RNFS
@@ -74,6 +65,60 @@ describe('ChatSessionRepository', () => {
   });
 
   describe('Batch Operations', () => {
+    describe('updateMessage imageUris persistence', () => {
+      it('persists imageUris into metadata.imageUris (chat image-task hydration)', async () => {
+        const updateMock = jest
+          .fn()
+          .mockImplementation((updater: (record: any) => void) => {
+            const rec = {metadata: '{}'};
+            updater(rec);
+            return rec;
+          });
+        const findMock = jest.fn().mockResolvedValue({update: updateMock});
+        const getSpy = jest
+          .spyOn(mockDatabase.collections, 'get')
+          .mockReturnValue({find: findMock} as any);
+
+        await realRepository.chatSessionRepository.updateMessage('msg-1', {
+          text: '🎨 已为你生成：一只小猫',
+          imageUris: ['file:///data/aios_images/dreamlite_1.png'],
+        });
+
+        expect(updateMock).toHaveBeenCalled();
+        // 写盘 metadata 必须含 imageUris（水合后恢复图片显示）
+        const rec = updateMock.mock.results[0].value;
+        expect(rec.text).toBe('🎨 已为你生成：一只小猫');
+        expect(JSON.parse(rec.metadata).imageUris).toEqual([
+          'file:///data/aios_images/dreamlite_1.png',
+        ]);
+        getSpy.mockRestore();
+      });
+
+      it('merge keeps existing metadata fields when writing imageUris', async () => {
+        const updateMock = jest
+          .fn()
+          .mockImplementation((updater: (record: any) => void) => {
+            const rec = {metadata: '{"imageTask":true}'};
+            updater(rec);
+            return rec;
+          });
+        const findMock = jest.fn().mockResolvedValue({update: updateMock});
+        const getSpy = jest
+          .spyOn(mockDatabase.collections, 'get')
+          .mockReturnValue({find: findMock} as any);
+
+        await realRepository.chatSessionRepository.updateMessage('msg-1', {
+          imageUris: ['file:///x.png'],
+        });
+
+        const rec = updateMock.mock.results[0].value;
+        const parsed = JSON.parse(rec.metadata);
+        expect(parsed.imageUris).toEqual(['file:///x.png']);
+        expect(parsed.imageTask).toBe(true);
+        getSpy.mockRestore();
+      });
+    });
+
     describe('deleteSessions', () => {
       it('should have deleteSessions method', () => {
         expect(typeof chatSessionRepository.deleteSessions).toBe('function');

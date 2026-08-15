@@ -93,7 +93,7 @@ export async function releaseTE(): Promise<void> {
  * 旧 te_int8.onnx 因 per-tensor 动态激活量化毁坏 Qwen3 离群通道（kept 区 cos 0.17-0.56 → 糊图）弃用；
  * 不做静默降级：fp16 加载失败直接报错（产品哲学：不兜底不补丁）。tokenizer 仍用 llama.rn 加载 te_q8.gguf。 */
 export async function loadTE(): Promise<void> {
-  if (teCtx) {
+  if (teCtx && teOrt) {
     return;
   }
   // vocab_only:true —— 只加载词表、跳过 1.83GB 权重张量（tokenizer 不需要权重），内存从 GB 级降到几十 MB，加载秒级
@@ -131,12 +131,26 @@ const GEN_TEMPLATE =
   'quantity, text, spatial relationships of the objects and background:<|im_end|>\n' +
   '<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n';
 
+// 生成串行队列（2026-08 糊图根因修复）：并发触发（连点/双发/再来一张抢跑）时
+// 排队执行——DreamLite 的 TE 是「加载→编码→即释放」结构，两次生成并发会互相
+// 踩踏（后发者拿到已释放/未就绪的 TE → 编码静默失败 → 零条件去噪 = 纯色糊图）。
+// 队列保证同一时刻只有一次生成在跑，TE 生命周期严格串行。
+let genQueue: Promise<unknown> = Promise.resolve();
+function enqueueGen<T>(fn: () => Promise<T>): Promise<T> {
+  const run = genQueue.then(fn, fn);
+  genQueue = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  return run;
+}
+
 // 官方 pipeline_dreamlite_mobile.py prompt_template_encode_edit（纯文本近似：去 vision 占位 token，
 // 桌面实测模板前缀恰好 64 token，与官方 edit_start_idx=64 对齐）
 const EDIT_TEMPLATE =
   '<|im_start|>system\nDescribe the key features of the input image (color, shape, size, ' +
-  'texture, objects, background), then explain how the user\'s text instruction should alter ' +
-  'or modify the image. Generate a new image that meets the user\'s requirements while maintaining ' +
+  "texture, objects, background), then explain how the user's text instruction should alter " +
+  "or modify the image. Generate a new image that meets the user's requirements while maintaining " +
   'consistency with the original input where appropriate.<|im_end|>\n<|im_start|>user\n' +
   '{}<|im_end|>\n<|im_start|>assistant\n';
 const EDIT_DROP_IDX = 64;
@@ -184,7 +198,14 @@ export async function encodePrompt(
         out[i * TE_DIM + d] = hs[(dropIdx + i) * TE_DIM + d];
       }
     }
-    console.log('[DreamLite] TE(ORT) encoded seq=', seq, 'kept=', len, 'mode=', mode);
+    console.log(
+      '[DreamLite] TE(ORT) encoded seq=',
+      seq,
+      'kept=',
+      len,
+      'mode=',
+      mode,
+    );
     return {enc: out, mask};
   } catch (e) {
     console.log('[DreamLite] TE encode fail', (e as any)?.message);
@@ -258,7 +279,12 @@ function zlibStored(d: Uint8Array): Uint8Array {
     }
   }
   const ad = adler32(d);
-  blocks.push((ad >>> 24) & 0xff, (ad >>> 16) & 0xff, (ad >>> 8) & 0xff, ad & 0xff);
+  blocks.push(
+    (ad >>> 24) & 0xff,
+    (ad >>> 16) & 0xff,
+    (ad >>> 8) & 0xff,
+    ad & 0xff,
+  );
   return new Uint8Array(blocks);
 }
 const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
@@ -268,7 +294,11 @@ function toBase64(d: Uint8Array): string {
     const a = d[i];
     const b = i + 1 < d.length ? d[i + 1] : 0;
     const c = i + 2 < d.length ? d[i + 2] : 0;
-    s += B64[a >> 2] + B64[((a & 3) << 4) | (b >> 4)] + (i + 1 < d.length ? B64[((b & 15) << 2) | (c >> 6)] : '=') + (i + 2 < d.length ? B64[c & 63] : '=');
+    s +=
+      B64[a >> 2] +
+      B64[((a & 3) << 4) | (b >> 4)] +
+      (i + 1 < d.length ? B64[((b & 15) << 2) | (c >> 6)] : '=') +
+      (i + 2 < d.length ? B64[c & 63] : '=');
   }
   return s;
 }
@@ -286,7 +316,12 @@ export function encodePng(rgb: Uint8Array, w: number, h: number): Uint8Array {
   ihdr[9] = 2; // RGB
   const idat = zlibStored(raw);
   const sig = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-  const parts = [sig, chunk('IHDR', ihdr), chunk('IDAT', idat), chunk('IEND', new Uint8Array(0))];
+  const parts = [
+    sig,
+    chunk('IHDR', ihdr),
+    chunk('IDAT', idat),
+    chunk('IEND', new Uint8Array(0)),
+  ];
   const total = parts.reduce((s, p) => s + p.length, 0);
   const out = new Uint8Array(total);
   let o = 0;
@@ -328,16 +363,23 @@ async function denoise(
       for (let x = 0; x < latW; x++) {
         for (let c = 0; c < 4; c++) {
           const src = (c * latH + y) * latW + x;
-          inp[((c * latH + y) * latW * 2) + x] = latents[src];
-          inp[((c * latH + y) * latW * 2) + latW + x] = cond[src];
+          inp[(c * latH + y) * latW * 2 + x] = latents[src];
+          inp[(c * latH + y) * latW * 2 + latW + x] = cond[src];
         }
       }
     }
     const feeds = {
       sample: new ort.Tensor('float32', inp, [1, 4, latH, latW * 2]),
       timestep: new ort.Tensor('float32', [t], [1]),
-      encoder_hidden_states: new ort.Tensor('float32', enc, [1, MAX_SEQ, TE_DIM]),
-      encoder_attention_mask: new ort.Tensor('int64', mask64 as any, [1, MAX_SEQ]),
+      encoder_hidden_states: new ort.Tensor('float32', enc, [
+        1,
+        MAX_SEQ,
+        TE_DIM,
+      ]),
+      encoder_attention_mask: new ort.Tensor('int64', mask64 as any, [
+        1,
+        MAX_SEQ,
+      ]),
       time_ids: new ort.Tensor('float32', tid, [1, 2]),
     };
     const res = await unet!.run(feeds);
@@ -351,7 +393,7 @@ async function denoise(
       for (let x = 0; x < latW; x++) {
         for (let c = 0; c < 4; c++) {
           const dst = (c * latH + y) * latW + x;
-          const srcNp = ((c * latH + y) * latW * 2) + x;
+          const srcNp = (c * latH + y) * latW * 2 + x;
           next[dst] = latents[dst] + d * np[srcNp];
         }
       }
@@ -377,7 +419,8 @@ async function saveRgb(
 ): Promise<string> {
   // VAE ONNX 输出为 NCHW [1,3,H,W]，需转 HWC(RGB 交错)，否则灰图/9宫格
   const hw = width * height;
-  const to8 = (v: number) => Math.max(0, Math.min(255, Math.round((v * 0.5 + 0.5) * 255)));
+  const to8 = (v: number) =>
+    Math.max(0, Math.min(255, Math.round((v * 0.5 + 0.5) * 255)));
   const rgb = new Uint8Array(hw * 3);
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
@@ -394,38 +437,43 @@ async function saveRgb(
   return `file://${out}`;
 }
 
-/** 文生图：有 TE 用真实 prompt 条件，无 TE 回退零填充基线 */
-export async function generateDreamLite(
+/** 文生图：有 TE 用真实 prompt 条件；TE 编码失败显式报错（不静默降级零条件=糊图）。
+ * 整个流程（TE 加载→编码→释放→去噪→保存）经 genQueue 串行化。 */
+export function generateDreamLite(
   width = 1024,
   height = 1024,
   steps = 4,
   prompt?: string,
   onStep?: (step: number, steps: number) => void,
 ): Promise<string> {
-  if (!unet || !vae) {
-    throw new Error('DreamLite not loaded');
-  }
-  let enc: Float32Array | null = null;
-  let mask: Float32Array | null = null;
-  if (prompt) {
-    await loadTE();
-    const r = await encodePrompt(prompt);
-    await releaseTE(); // 编码完即释放 TE（await 等待 native 归还内存），降低与 UNet 同驻的内存峰值
-    if (r) {
+  return enqueueGen(async () => {
+    if (!unet || !vae) {
+      throw new Error('DreamLite not loaded');
+    }
+    let enc: Float32Array | null = null;
+    let mask: Float32Array | null = null;
+    if (prompt) {
+      await loadTE();
+      const r = await encodePrompt(prompt);
+      await releaseTE(); // 编码完即释放 TE（await 等待 native 归还内存），降低与 UNet 同驻的内存峰值
+      if (!r) {
+        // 锋利：TE 编码失败不做零条件降级（输出=纯色糊图），显式失败让上层出错误卡
+        throw new Error('TE 编码失败，未生成图片，请重试');
+      }
       enc = r.enc;
       mask = r.mask;
     }
-  }
-  const img = await denoise(
-    new Float32Array(4 * (height / 8) * (width / 8)),
-    width,
-    height,
-    steps,
-    enc ?? undefined,
-    onStep,
-    mask ?? undefined,
-  );
-  return saveRgb(img, width, height);
+    const img = await denoise(
+      new Float32Array(4 * (height / 8) * (width / 8)),
+      width,
+      height,
+      steps,
+      enc ?? undefined,
+      onStep,
+      mask ?? undefined,
+    );
+    return saveRgb(img, width, height);
+  });
 }
 
 /** 原生解码上传图片→归一化 RGB（按较大边压缩到 size） */
@@ -442,8 +490,9 @@ export async function decodeImageToRgb(
 }
 
 /** 图像编辑：源图 RGB[-1,1] → VAE encode 作条件 → 4 步去噪。
- * prompt 为编辑指令（官方 diptych 语义），可选；无 prompt 时退化为纯图像条件重绘。 */
-export async function editDreamLite(
+ * prompt 为编辑指令（官方 diptych 语义），可选；无 prompt 时退化为纯图像条件重绘。
+ * 经 genQueue 串行化（与文生图互斥，TE 生命周期不踩踏）。 */
+export function editDreamLite(
   sourceRgb: Float32Array,
   width = 1024,
   height = 1024,
@@ -451,28 +500,31 @@ export async function editDreamLite(
   onStep?: (step: number, steps: number) => void,
   prompt?: string,
 ): Promise<string> {
-  if (!unet || !vae || !vaeEnc) {
-    throw new Error('DreamLite not loaded');
-  }
-  const eres = await vaeEnc.run({
-    image: new ort.Tensor('float32', sourceRgb, [1, 3, height, width]),
-  });
-  const cond = eres.latents.data as Float32Array;
-  console.log('[DreamLite] source encoded, cond len', cond.length);
-  // 编辑文本条件（官方 [Edit]: diptych 模板，drop 64）；编码完即释放 TE
-  let enc: Float32Array | undefined;
-  let mask: Float32Array | undefined;
-  if (prompt && prompt.trim()) {
-    await loadTE();
-    const r = await encodePrompt(prompt.trim(), MAX_SEQ, 'edit');
-    await releaseTE();
-    if (r) {
+  return enqueueGen(async () => {
+    if (!unet || !vae || !vaeEnc) {
+      throw new Error('DreamLite not loaded');
+    }
+    const eres = await vaeEnc.run({
+      image: new ort.Tensor('float32', sourceRgb, [1, 3, height, width]),
+    });
+    const cond = eres.latents.data as Float32Array;
+    console.log('[DreamLite] source encoded, cond len', cond.length);
+    // 编辑文本条件（官方 [Edit]: diptych 模板，drop 64）；编码完即释放 TE
+    let enc: Float32Array | undefined;
+    let mask: Float32Array | undefined;
+    if (prompt && prompt.trim()) {
+      await loadTE();
+      const r = await encodePrompt(prompt.trim(), MAX_SEQ, 'edit');
+      await releaseTE();
+      if (!r) {
+        throw new Error('TE 编码失败，未生成图片，请重试');
+      }
       enc = r.enc;
       mask = r.mask;
     }
-  }
-  const img = await denoise(cond, width, height, steps, enc, onStep, mask);
-  return saveRgb(img, width, height);
+    const img = await denoise(cond, width, height, steps, enc, onStep, mask);
+    return saveRgb(img, width, height);
+  });
 }
 
 function gauss(): number {

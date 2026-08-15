@@ -1,5 +1,7 @@
 import {StyleSheet} from 'react-native';
 
+import {withOpacity} from '../../utils/colorUtils';
+
 export const createStyles = (theme: any) =>
   StyleSheet.create({
     container: {flex: 1, backgroundColor: theme.colors.background},
@@ -90,10 +92,14 @@ export const createStyles = (theme: any) =>
     rowActionBtnUnload: {
       backgroundColor: 'transparent',
       borderWidth: 1,
-      borderColor: '#c62828',
+      borderColor: theme.colors.danger,
     },
-    rowActionText: {fontSize: 12, color: '#fff', fontWeight: '600'},
-    rowActionTextUnload: {color: '#c62828'},
+    rowActionText: {
+      fontSize: 12,
+      color: theme.colors.onPrimary,
+      fontWeight: '600',
+    },
+    rowActionTextUnload: {color: theme.colors.danger},
     resultWrap: {position: 'relative'},
     preview: {width: '100%', aspectRatio: 1, borderRadius: 8},
     // 0 页编辑槽：上传大按钮 / 待编辑图预览 + 重新上传
@@ -131,12 +137,16 @@ export const createStyles = (theme: any) =>
     uploadFab: {
       position: 'absolute',
       bottom: 10,
-      backgroundColor: 'rgba(21,101,192,0.9)',
+      backgroundColor: withOpacity(theme.colors.info, 0.9),
       borderRadius: 6,
       paddingHorizontal: 12,
       paddingVertical: 6,
     },
-    uploadFabText: {fontSize: 12, color: '#fff', fontWeight: '600'},
+    uploadFabText: {
+      fontSize: 12,
+      color: theme.colors.onInfo,
+      fontWeight: '600',
+    },
     genOverlay: {
       ...StyleSheet.absoluteFillObject,
       // 浅色圆角（与卡片设计语言统一；助手气泡点缀色 + 95% 不透明）：出图盖住预览区
@@ -181,18 +191,36 @@ export const createStyles = (theme: any) =>
       backgroundColor: theme.colors.surfaceVariant,
     },
     actionText: {fontSize: 12, color: theme.colors.onSurface},
-    actionTextLight: {fontSize: 12, color: '#fff', fontWeight: '600'},
-    actionDanger: {color: theme.colors.error},
-    // 语义彩色点缀
-    actionSave: {backgroundColor: '#2e7d32'},
-    actionEdit: {backgroundColor: '#1565c0'},
-    actionReuse: {backgroundColor: '#ef6c00'},
-    actionDelete: {backgroundColor: '#c62828'},
-    badgeSd3: {color: '#8e24aa', fontWeight: '700'},
-    badgeZ: {color: '#00838f', fontWeight: '700'},
-    badgeDream: {color: '#d81b60', fontWeight: '700'},
-    // 实验性徽章：琥珀警示色（模型可能不可用，与操作按钮橙区分）
-    badgeExp: {color: '#f57c00', fontWeight: '700', fontSize: 11},
+    // 语义彩色点缀（DESIGN_SPEC §1.3：bg/onX 成对使用）
+    actionSave: {backgroundColor: theme.colors.success},
+    actionTextOnSuccess: {
+      fontSize: 12,
+      color: theme.colors.onSuccess,
+      fontWeight: '600',
+    },
+    actionEdit: {backgroundColor: theme.colors.info},
+    actionTextOnInfo: {
+      fontSize: 12,
+      color: theme.colors.onInfo,
+      fontWeight: '600',
+    },
+    actionReuse: {backgroundColor: theme.colors.warning},
+    actionTextOnWarning: {
+      fontSize: 12,
+      color: theme.colors.onWarning,
+      fontWeight: '600',
+    },
+    actionDelete: {backgroundColor: theme.colors.danger},
+    actionTextOnDanger: {
+      fontSize: 12,
+      color: theme.colors.onDanger,
+      fontWeight: '600',
+    },
+    badgeSd3: {color: theme.colors.badgeSd35, fontWeight: '700'},
+    badgeZ: {color: theme.colors.badgeZImage, fontWeight: '700'},
+    badgeDream: {color: theme.colors.badgeDreamlite, fontWeight: '700'},
+    // 实验性徽章：警示色（模型可能不可用，与操作按钮橙区分）
+    badgeExp: {color: theme.colors.warning, fontWeight: '700', fontSize: 11},
     dropOverlay: {
       ...StyleSheet.absoluteFillObject,
       zIndex: 50,
@@ -235,7 +263,11 @@ export const createStyles = (theme: any) =>
       alignItems: 'center',
     },
     historyHeaderActions: {flexDirection: 'row', alignItems: 'center', gap: 14},
-    uploadText: {fontSize: 12, color: '#1565c0', fontWeight: '600'},
+    uploadText: {
+      fontSize: 12,
+      color: theme.colors.info,
+      fontWeight: '600',
+    },
     manageText: {fontSize: 12, color: theme.colors.primary},
     historyItem: {marginRight: 8, position: 'relative'},
     historyThumb: {width: 72, height: 72, borderRadius: 8},
@@ -243,12 +275,16 @@ export const createStyles = (theme: any) =>
       position: 'absolute',
       bottom: 2,
       right: 2,
-      backgroundColor: 'rgba(21,101,192,0.9)',
+      backgroundColor: withOpacity(theme.colors.info, 0.9),
       borderRadius: 4,
       paddingHorizontal: 4,
       paddingVertical: 1,
     },
-    historyKindText: {fontSize: 9, color: '#fff', fontWeight: '600'},
+    historyKindText: {
+      fontSize: 9,
+      color: theme.colors.onInfo,
+      fontWeight: '600',
+    },
     historySel: {
       position: 'absolute',
       top: 0,
@@ -268,12 +304,18 @@ export const createStyles = (theme: any) =>
       alignItems: 'center',
     },
     buttonRow: {flexDirection: 'row', gap: 10},
-    buttonEdit: {flex: 1, backgroundColor: '#1565c0'},
+    buttonEdit: {flex: 1, backgroundColor: theme.colors.info},
     buttonGen: {flex: 1},
     buttonSecondary: {backgroundColor: theme.colors.surfaceVariant},
     buttonDanger: {backgroundColor: theme.colors.error},
     buttonDisabled: {backgroundColor: theme.colors.surfaceVariant},
-    buttonText: {color: '#fff', fontSize: 14, fontWeight: '600'},
+    buttonText: {
+      color: theme.colors.onPrimary,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    buttonTextOnInfo: {color: theme.colors.onInfo},
+    buttonTextOnDanger: {color: theme.colors.onError},
     error: {fontSize: 12, color: theme.colors.error},
     input: {
       borderWidth: 1,
@@ -322,7 +364,7 @@ export const createStyles = (theme: any) =>
     progressTrack: {
       height: 8,
       borderRadius: 4,
-      backgroundColor: 'rgba(0,0,0,0.08)',
+      backgroundColor: withOpacity(theme.colors.shadow, 0.08),
       overflow: 'hidden',
     },
     progressTrackW70: {width: '70%'},

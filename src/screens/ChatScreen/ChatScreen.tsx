@@ -10,12 +10,10 @@ import {
   ErrorSnackbar,
   ModelErrorReportSheet,
 } from '../../components';
-import {PalSheet} from '../../components/PalsSheets';
 
 import {useChatSession} from '../../hooks';
 import {useTheme} from '../../hooks';
 import {usePendingMessage} from '../../hooks/useDeepLinking';
-import {Pal} from '../../types/pal';
 
 import {
   modelStore,
@@ -34,6 +32,7 @@ import {ErrorState} from '../../utils/errors';
 import {user, assistant} from '../../utils/chat';
 import {useChatScheduler} from '../../hooks/useChatScheduler';
 import {ActiveTaskBanner} from '../../components/ActiveTaskBanner/ActiveTaskBanner';
+import {ImageTaskActions} from '../../components/ImageTaskActions/ImageTaskActions';
 import {promptWriter} from '../../services/promptWriter';
 
 import {VideoPalScreen} from './VideoPalScreen';
@@ -62,11 +61,11 @@ const renderBubble = ({
         <Text
           testID="assistant-model-badge"
           style={{
-            fontSize: 11,
+            ...theme.typography.captionS,
             fontWeight: '600',
             color: theme.colors.brandAccent,
-            marginLeft: 12,
-            marginBottom: 4,
+            marginLeft: theme.spacing.sm,
+            marginBottom: theme.spacing.xs,
           }}>
           {getModelDisplayName({name: modelName})}
         </Text>
@@ -77,6 +76,11 @@ const renderBubble = ({
         nextMessageInGroup={nextMessageInGroup}
         scale={scale}
       />
+      {/* 生图任务卡片动作条（再来一张/编辑图片/重试）：仅 imageTask 卡片渲染，
+          驻留引擎秒级复用，走 runImageTaskCard / pendingEditSource 单链路 */}
+      {(message as MessageType.Text).metadata?.imageTask ? (
+        <ImageTaskActions message={message as MessageType.Text} />
+      ) : null}
     </View>
   );
 };
@@ -96,9 +100,6 @@ export const ChatScreen: React.FC = observer(() => {
     : undefined;
   const isVideoPal = activePal && hasVideoCapability(activePal);
 
-  // State for pal sheet
-  const [isPalSheetVisible, setIsPalSheetVisible] = useState(false);
-
   // State for model error report sheet
   const [isErrorReportVisible, setIsErrorReportVisible] = useState(false);
   const [errorToReport, setErrorToReport] = useState<ErrorState | null>(null);
@@ -117,15 +118,6 @@ export const ChatScreen: React.FC = observer(() => {
 
   // Handle deep linking for message prefill
   const {pendingMessage, clearPendingMessage} = usePendingMessage();
-
-  // Callback handler for opening pal sheet
-  const handleOpenPalSheet = React.useCallback((_pal: Pal) => {
-    setIsPalSheetVisible(true);
-  }, []);
-
-  const handleClosePalSheet = React.useCallback(() => {
-    setIsPalSheetVisible(false);
-  }, []);
 
   // Handlers for model error report
   const handleReportModelError = React.useCallback(() => {
@@ -303,12 +295,12 @@ export const ChatScreen: React.FC = observer(() => {
         activePal={activePal}
         onSendPress={wrappedSendPress}
         onStopPress={handleStopPress}
-        onPalSettingsSelect={handleOpenPalSheet}
         user={user}
         isStopVisible={modelStore.inferencing}
         isStreaming={modelStore.isStreaming}
         sendButtonVisibilityMode="always"
-        showImageUpload={true}
+        // [已裁剪·恢复点 2026-08] 图片上传入口：大王裁定不需要。
+        // 恢复加号按钮只需加回 showImageUpload={true}（组件能力完整保留）。
         isVisionEnabled={visionEnabled}
         initialInputText={pendingMessage || undefined}
         onInitialTextConsumed={clearPendingMessage}
@@ -349,13 +341,6 @@ export const ChatScreen: React.FC = observer(() => {
         onClose={handleCloseErrorReport}
         error={errorToReport}
       />
-      {activePal && (
-        <PalSheet
-          isVisible={isPalSheetVisible}
-          onClose={handleClosePalSheet}
-          pal={activePal}
-        />
-      )}
     </>
   );
 });

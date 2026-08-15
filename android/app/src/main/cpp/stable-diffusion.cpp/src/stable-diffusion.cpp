@@ -2809,6 +2809,20 @@ public:
             if (cond_out.empty()) {
                 return {};
             }
+            // 6.18 白图定位：模型输出 NaN 检查（step 0 即定位到模型 vs 引导）
+            if (step <= 1) {
+                const float* p = cond_out.data();
+                const int64_t cn = cond_out.numel();
+                size_t cn_nan = 0;
+                float cn_mn = p[0], cn_mx = p[0];
+                for (int64_t i = 0; i < cn; ++i) {
+                    float v = p[i];
+                    if (std::isnan(v) || std::isinf(v)) { cn_nan++; continue; }
+                    cn_mn = std::min(cn_mn, v); cn_mx = std::max(cn_mx, v);
+                }
+                LOG_INFO("step %d cond_out stats: numel=%lld min=%.4f max=%.4f nan/inf=%zu",
+                         step, (long long)cn, cn_mn, cn_mx, cn_nan);
+            }
 
             if (!uncond.empty()) {
                 if (!step_cache.is_step_skipped()) {
@@ -2871,6 +2885,35 @@ public:
             }
 
             denoised = guided.pred * c_out + x * c_skip;
+            // 6.18 白图定位：guided.pred NaN 检查（区分模型 NaN vs 引导 NaN）
+            if (step <= 1) {
+                const float* gp = guided.pred.data();
+                const int64_t gn = guided.pred.numel();
+                size_t gn_nan = 0;
+                float gn_mn = gp[0], gn_mx = gp[0];
+                for (int64_t i = 0; i < gn; ++i) {
+                    float v = gp[i];
+                    if (std::isnan(v) || std::isinf(v)) { gn_nan++; continue; }
+                    gn_mn = std::min(gn_mn, v); gn_mx = std::max(gn_mx, v);
+                }
+                LOG_INFO("step %d guided.pred stats: numel=%lld min=%.4f max=%.4f nan/inf=%zu  c_out=%.6f c_skip=%.6f",
+                         step, (long long)gn, gn_mn, gn_mx, gn_nan, c_out, c_skip);
+            }
+            // 6.18 白图定位：per-step latent 统计（第 1/2/3 步 + 最后 1 步），定位 NaN 起点
+            if (step <= 3 || step == static_cast<int>(steps) - 1) {
+                const float* d = denoised.data();
+                const int64_t n = denoised.numel();
+                float mn = d[0], mx = d[0], sm = 0.f;
+                size_t nan_cnt = 0;
+                for (int64_t i = 0; i < n; ++i) {
+                    float v = d[i];
+                    if (std::isnan(v) || std::isinf(v)) { nan_cnt++; continue; }
+                    mn = std::min(mn, v); mx = std::max(mx, v); sm += v;
+                }
+                size_t valid = static_cast<size_t>(n) - nan_cnt;
+                LOG_INFO("step %d denoised stats: numel=%lld min=%.4f max=%.4f mean=%.4f nan/inf=%zu",
+                         step, (long long)n, mn, mx, valid ? sm / (float)valid : 0.f, nan_cnt);
+            }
             sd::guidance::GuiderOutput output;
             output.pred = denoised;
             if (needs_uncond_denoised) {
@@ -5285,6 +5328,33 @@ static std::optional<ImageGenerationEmbeds> prepare_image_generation_embeds(sd_c
 
     int64_t t1 = ggml_time_ms();
     LOG_INFO("get_learned_condition completed, taking %.2fs", (t1 - prepare_start_ms) * 1.0f / 1000);
+    // 6.18 白图定位：CLIP 文本编码输出 NaN 检查（排除 conditioning 源头问题）
+    if (!cond.c_crossattn.empty()) {
+        const float* ca = cond.c_crossattn.data();
+        const int64_t cn = cond.c_crossattn.numel();
+        size_t ca_nan = 0;
+        float ca_mn = ca[0], ca_mx = ca[0];
+        for (int64_t i = 0; i < cn; ++i) {
+            float v = ca[i];
+            if (std::isnan(v) || std::isinf(v)) { ca_nan++; continue; }
+            ca_mn = std::min(ca_mn, v); ca_mx = std::max(ca_mx, v);
+        }
+        LOG_INFO("cond.c_crossattn stats: numel=%lld min=%.4f max=%.4f nan/inf=%zu",
+                 (long long)cn, ca_mn, ca_mx, ca_nan);
+    }
+    if (!cond.c_vector.empty()) {
+        const float* cv = cond.c_vector.data();
+        const int64_t vn = cond.c_vector.numel();
+        size_t cv_nan = 0;
+        float cv_mn = cv[0], cv_mx = cv[0];
+        for (int64_t i = 0; i < vn; ++i) {
+            float v = cv[i];
+            if (std::isnan(v) || std::isinf(v)) { cv_nan++; continue; }
+            cv_mn = std::min(cv_mn, v); cv_mx = std::max(cv_mx, v);
+        }
+        LOG_INFO("cond.c_vector stats: numel=%lld min=%.4f max=%.4f nan/inf=%zu",
+                 (long long)vn, cv_mn, cv_mx, cv_nan);
+    }
 
     ImageGenerationEmbeds embeds;
     embeds.img_uncond = std::move(img_uncond);
@@ -5673,6 +5743,26 @@ SD_API bool generate_image(sd_ctx_t* sd_ctx,
         sd_ctx->sd->sampler_rng->manual_seed(cur_seed);
         sd::Tensor<float> noise = sd::randn_like<float>(latents.init_latent, sd_ctx->sd->rng);
 
+        // 6.18 白图诊断：采样前检查 init_latent 与 noise 是否有 NaN（定位 NaN 源头）
+        {
+            auto print_stats = [](const char* name, const sd::Tensor<float>& t) {
+                const float* d = t.data();
+                const int64_t n = t.numel();
+                float mn = d[0], mx = d[0], sm = 0.f;
+                size_t nan_cnt = 0;
+                for (int64_t i = 0; i < n; ++i) {
+                    float v = d[i];
+                    if (std::isnan(v) || std::isinf(v)) { nan_cnt++; continue; }
+                    mn = std::min(mn, v); mx = std::max(mx, v); sm += v;
+                }
+                size_t valid = static_cast<size_t>(n) - nan_cnt;
+                LOG_INFO("%s stats: numel=%lld min=%.4f max=%.4f mean=%.4f nan/inf=%zu",
+                         name, (long long)n, mn, mx, valid > 0 ? sm / (float)valid : 0.f, nan_cnt);
+            };
+            print_stats("init_latent", latents.init_latent);
+            print_stats("noise", noise);
+        }
+
         sd::Tensor<float> x_0 = sd_ctx->sd->sample(sd_ctx->sd->diffusion_model,
                                                    true,
                                                    latents.init_latent,
@@ -5700,6 +5790,23 @@ SD_API bool generate_image(sd_ctx_t* sd_ctx,
         int64_t sampling_end  = ggml_time_ms();
         if (!x_0.empty()) {
             LOG_INFO("sampling completed, taking %.2fs", (sampling_end - sampling_start) * 1.0f / 1000);
+            // 6.18 白图诊断：打印采样 latent 统计（min/max/mean/NaN 计数）
+            {
+                const float* lat_data = x_0.data();
+                float min_v = lat_data[0], max_v = lat_data[0], sum_v = 0.f;
+                size_t nan_cnt = 0;
+                const int64_t n = x_0.numel();
+                for (int64_t i = 0; i < n; ++i) {
+                    float v = lat_data[i];
+                    if (std::isnan(v) || std::isinf(v)) { nan_cnt++; continue; }
+                    min_v = std::min(min_v, v);
+                    max_v = std::max(max_v, v);
+                    sum_v += v;
+                }
+                size_t valid = static_cast<size_t>(n) - nan_cnt;
+                LOG_INFO("latent stats: numel=%lld min=%.4f max=%.4f mean=%.4f nan/inf=%zu",
+                         (long long)n, min_v, max_v, valid > 0 ? sum_v / (float)valid : 0.f, nan_cnt);
+            }
             final_latents.push_back(std::move(x_0));
             continue;
         }

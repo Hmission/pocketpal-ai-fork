@@ -4,9 +4,11 @@ import {
   View,
   Text,
   Image,
-  ScrollView,
+  FlatList,
   Animated,
   Modal,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
 } from 'react-native';
 
 import {useTheme} from '../../../hooks';
@@ -14,8 +16,8 @@ import {createStyles} from '../styles';
 import {GeneratedImage} from '../../../store/imageGenStore';
 
 interface ResultPreviewProps {
-  /** 横向分页 ScrollView ref（编排层持有，用于 scrollTo） */
-  previewRef: React.RefObject<ScrollView | null>;
+  /** 横向分页 FlatList ref（编排层持有，用于 scrollToOffset） */
+  previewRef: React.RefObject<FlatList<GeneratedImage> | null>;
   /** 分页宽度（onLayout 测量） */
   pageW: number;
   /** 0 页编辑槽来源图路径 */
@@ -23,6 +25,10 @@ interface ResultPreviewProps {
   /** 生成历史（≥1 页） */
   history: GeneratedImage[];
   generating: boolean;
+  /** 首屏已定位（编排层持有 bootedRef，页面切换保留状态） */
+  bootedRef: React.MutableRefObject<boolean>;
+  /** 是否已消费启动定位（FlatList 挂载后编排层 scrollToOffset 用） */
+  onListReady: () => void;
   taskKind: 'gen' | 'edit' | null;
   progress: number;
   progressText: string;
@@ -59,6 +65,8 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
   editSource,
   history,
   generating,
+  bootedRef,
+  onListReady,
   taskKind,
   progress,
   progressText,
@@ -136,57 +144,83 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
     </View>
   ) : null;
 
+  /** FlatList 懒加载分页：只挂载可视页附近（windowSize），避免 50 张全尺寸大图
+   *  同时解码导致渲染管线堵塞（HWUI 解码过载 → 全页图片空白）。 */
+  const renderItem = ({item}: {item: GeneratedImage}) => (
+    <TouchableOpacity onPress={onOpenFullscreen}>
+      <Image
+        source={{uri: item.uri}}
+        style={[s.preview, {width: pageW}]}
+        resizeMode="contain"
+      />
+    </TouchableOpacity>
+  );
+
+  const onMomentum = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (bootedRef.current) {
+      onMomentumEnd(e);
+    }
+  };
+
   return (
     <>
       <View style={s.card}>
         <View
           style={s.resultWrap}
           onLayout={e => onPageW(e.nativeEvent.layout.width)}>
-          <ScrollView
-            ref={previewRef}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onMomentumScrollEnd={onMomentumEnd}>
-            {/* 0 页：编辑槽（无图=上传大按钮；有图=待编辑图预览+重新上传） */}
-            <View style={[s.editSlot, pageW ? {width: pageW} : null]}>
-              {editSource ? (
-                <>
-                  <Image
-                    source={{
-                      uri: editSource.startsWith('file://')
-                        ? editSource
-                        : `file://${editSource}`,
-                    }}
-                    style={s.editSlotImg}
-                    resizeMode="contain"
-                  />
-                  <TouchableOpacity
-                    style={s.uploadFab}
-                    onPress={onPickEditImage}>
-                    <Text style={s.uploadFabText}>重新上传</Text>
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <TouchableOpacity style={s.uploadBig} onPress={onPickEditImage}>
-                  <Text style={s.uploadBigIcon}>＋</Text>
-                  <Text style={s.uploadBigText}>上传本地图片</Text>
-                  <Text style={s.uploadBigHint}>
-                    从手机相册选图，输入指令进行 AI 编辑
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
-            {history.map(h => (
-              <TouchableOpacity key={h.uri} onPress={onOpenFullscreen}>
-                <Image
-                  source={{uri: h.uri}}
-                  style={[s.preview, pageW ? {width: pageW} : null]}
-                  resizeMode="contain"
-                />
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          {pageW > 0 ? (
+            <FlatList
+              ref={previewRef}
+              data={history}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={item => item.uri}
+              getItemLayout={(_, index) => ({
+                length: pageW,
+                offset: pageW * (index + 1), // 0 页 = 编辑槽 header
+                index,
+              })}
+              initialNumToRender={2}
+              maxToRenderPerBatch={2}
+              windowSize={5}
+              onLayout={() => onListReady()}
+              onMomentumScrollEnd={onMomentum}
+              ListHeaderComponent={
+                <View style={[s.editSlot, {width: pageW}]}>
+                  {editSource ? (
+                    <>
+                      <Image
+                        source={{
+                          uri: editSource.startsWith('file://')
+                            ? editSource
+                            : `file://${editSource}`,
+                        }}
+                        style={s.editSlotImg}
+                        resizeMode="contain"
+                      />
+                      <TouchableOpacity
+                        style={s.uploadFab}
+                        onPress={onPickEditImage}>
+                        <Text style={s.uploadFabText}>重新上传</Text>
+                      </TouchableOpacity>
+                    </>
+                  ) : (
+                    <TouchableOpacity
+                      style={s.uploadBig}
+                      onPress={onPickEditImage}>
+                      <Text style={s.uploadBigIcon}>＋</Text>
+                      <Text style={s.uploadBigText}>上传本地图片</Text>
+                      <Text style={s.uploadBigHint}>
+                        从手机相册选图，输入指令进行 AI 编辑
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              }
+              renderItem={renderItem}
+            />
+          ) : null}
           {genOverlay}
           {/* 轻量滚动信息条：保存/编辑等操作的即时反馈，不打断操作 */}
           {toast ? (
@@ -206,17 +240,17 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
               <TouchableOpacity
                 style={[s.actionBtn, s.actionSave]}
                 onPress={onSave}>
-                <Text style={s.actionTextLight}>保存</Text>
+                <Text style={s.actionTextOnSuccess}>保存</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[s.actionBtn, s.actionReuse]}
                 onPress={onReroll}>
-                <Text style={s.actionTextLight}>再次生成</Text>
+                <Text style={s.actionTextOnWarning}>再次生成</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[s.actionBtn, s.actionDelete]}
                 onPress={onDelete}>
-                <Text style={s.actionTextLight}>删除</Text>
+                <Text style={s.actionTextOnDanger}>删除</Text>
               </TouchableOpacity>
             </View>
             {currentItem ? (

@@ -6,6 +6,7 @@ import {
   Image,
   TouchableOpacity,
   Modal,
+  Alert,
 } from 'react-native';
 import {IconButton} from 'react-native-paper';
 
@@ -25,8 +26,10 @@ import {AgentStep, MessageType} from '../../utils/types';
 import {
   excludeDerivedMessageProps,
   getUserName,
+  L10nContext,
   UserContext,
 } from '../../utils';
+import {imageGenStore} from '../../store/imageGenStore';
 
 export interface TextMessageTopLevelProps {
   /** @see {@link LinkPreviewProps.onPreviewDataFetched} */
@@ -81,12 +84,14 @@ export const TextMessage = ({
       : '';
   const theme = useTheme();
   const user = React.useContext(UserContext);
+  const l10n = React.useContext(L10nContext);
   const [previewData, setPreviewData] = React.useState(
     'previewData' in message ? message.previewData : undefined,
   );
   const [selectedImageIndex, setSelectedImageIndex] = React.useState<
     number | null
   >(null);
+  const [isSaving, setIsSaving] = React.useState(false);
 
   const {
     descriptionText,
@@ -100,6 +105,8 @@ export const TextMessage = ({
     imagePreviewModal,
     imagePreviewCloseButton,
     imagePreviewContent,
+    imagePreviewSaveButton,
+    imagePreviewSaveText,
   } = styles({
     message,
     theme,
@@ -204,6 +211,23 @@ export const TextMessage = ({
       return null;
     }
 
+    const previewUri = imageUris[selectedImageIndex];
+
+    // 保存到手机（MediaStore → Pictures/AIOS）：单状态机防重复点击
+    const handleSaveToPhone = async () => {
+      if (isSaving || !previewUri) {
+        return;
+      }
+      setIsSaving(true);
+      const ok = await imageGenStore.saveToAlbum(previewUri);
+      setIsSaving(false);
+      if (ok) {
+        Alert.alert(l10n.components.textMessage.savedToAlbum);
+      } else {
+        Alert.alert(l10n.components.textMessage.saveFailed);
+      }
+    };
+
     return (
       <Modal
         visible={selectedImageIndex !== null}
@@ -219,10 +243,19 @@ export const TextMessage = ({
             onPress={() => setSelectedImageIndex(null)}
           />
           <Image
-            source={{uri: imageUris[selectedImageIndex]}}
+            source={{uri: previewUri}}
             style={imagePreviewContent}
             resizeMode="contain"
           />
+          <TouchableOpacity
+            style={imagePreviewSaveButton}
+            onPress={handleSaveToPhone}
+            disabled={isSaving}
+            testID="image-preview-save-button">
+            <Text style={imagePreviewSaveText}>
+              {isSaving ? '…' : l10n.components.textMessage.saveToPhone}
+            </Text>
+          </TouchableOpacity>
         </View>
       </Modal>
     );

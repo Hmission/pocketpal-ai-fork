@@ -12,13 +12,13 @@
  * 各 Panel 只读 props 渲染；store 状态经 observer 自动联动。
  */
 import * as React from 'react';
-import {View, ScrollView} from 'react-native';
+import {View, FlatList} from 'react-native';
 import {KeyboardAwareScrollView} from 'react-native-keyboard-controller';
 import {observer} from 'mobx-react-lite';
 import {runInAction} from 'mobx';
 import {launchImageLibrary} from 'react-native-image-picker';
 
-import {imageGenStore} from '../../store/imageGenStore';
+import {imageGenStore, GeneratedImage} from '../../store/imageGenStore';
 import {useTheme} from '../../hooks';
 import {AIOS_MODELS_DIR} from '../../utils/paths';
 import {
@@ -56,7 +56,13 @@ export const ImageGenScreen: React.FC = observer(() => {
   const [toDelete, setToDelete] = React.useState<string[]>([]);
   // 预览区分页索引（单状态机）：0=编辑槽（上传/编辑），≥1=历史第 i-1 张
   const [previewIndex, setPreviewIndex] = React.useState(0);
-  const previewRef = React.useRef<ScrollView>(null);
+  // 同步镜像 ref：FlatList onLayout 回调闭包需要读到最新索引（state 异步更新会拿到旧值）
+  const previewIndexRef = React.useRef(0);
+  const setPreviewIndexSync = React.useCallback((v: number) => {
+    previewIndexRef.current = v;
+    setPreviewIndex(v);
+  }, []);
+  const previewRef = React.useRef<FlatList<GeneratedImage> | null>(null);
   const bootedRef = React.useRef(false);
   const [ratio, setRatio] = React.useState('1:1');
   const dreamW = RATIOS[ratio]?.[0] ?? 1024;
@@ -116,8 +122,8 @@ export const ImageGenScreen: React.FC = observer(() => {
       return;
     }
     bootedRef.current = true;
-    setPreviewIndex(1);
-    previewRef.current?.scrollTo({x: pageW, animated: false});
+    setPreviewIndexSync(1);
+    previewRef.current?.scrollToOffset({offset: pageW, animated: false});
     syncFromParams(imageGenStore.history[0]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imageGenStore.history.length, pageW]);
@@ -129,6 +135,19 @@ export const ImageGenScreen: React.FC = observer(() => {
         imageGenStore.pendingPrompt = null;
       });
     }
+  }, []);
+
+  // 聊天图片卡片「编辑图片」深链（2026-08）：消费 pendingEditSource →
+  // 解码源图入编辑槽 + 进入编辑预备态（与相册上传同一入口函数）。
+  React.useEffect(() => {
+    if (imageGenStore.pendingEditSource) {
+      const uri = imageGenStore.pendingEditSource;
+      runInAction(() => {
+        imageGenStore.pendingEditSource = null;
+      });
+      ingestEditSource(uri, '聊天图片已锁定');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   React.useEffect(() => {
@@ -228,7 +247,6 @@ export const ImageGenScreen: React.FC = observer(() => {
     if (selectedEntry) {
       loadEntry(selectedEntry);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedEntry]);
 
   // 下拉选中：只选中高亮 + 回填参数。不折叠面板、不加载、不切模式（点卡片只是“看参数”）。
@@ -240,8 +258,8 @@ export const ImageGenScreen: React.FC = observer(() => {
   const scrollToPreview = (idx: number, animated = true) => {
     bootedRef.current = true;
     setEditArming(false); // 导航即退出编辑预备态（目标图已变）
-    setPreviewIndex(idx);
-    previewRef.current?.scrollTo({x: idx * pageW, animated});
+    setPreviewIndexSync(idx);
+    previewRef.current?.scrollToOffset({offset: idx * pageW, animated});
   };
 
   // 回填该历史图的提示词/参数（预览翻页与历史缩略图点击共用）
@@ -274,8 +292,65 @@ export const ImageGenScreen: React.FC = observer(() => {
     }
   };
 
+  // FlatList（重新）挂载完成（onLayout，布局已就绪，scrollToOffset 必然生效）：
+  //  - 未定位过（bootedRef false）：有历史则启动定位到最新图（页 1）；无历史停在编辑槽
+  //  - 已定位过：恢复当前 previewIndex 页（避免切 Tab 回来回到 0 页）
+  const handleListReady = React.useCallback(() => {
+    const idx = previewIndexRef.current;
+    if (!bootedRef.current) {
+      if (imageGenStore.history.length > 0 && pageW > 0) {
+        bootedRef.current = true;
+        previewIndexRef.current = 1;
+        setPreviewIndex(1);
+        syncFromParams(imageGenStore.history[0]);
+        previewRef.current?.scrollToOffset({offset: pageW, animated: false});
+      }
+      return;
+    }
+    if (idx >= 1 && pageW > 0) {
+      previewRef.current?.scrollToOffset({
+        offset: idx * pageW,
+        animated: false,
+      });
+    }
+  }, [pageW, imageGenStore.history.length]);
+
   const handleReroll = () => {
     handleGenerate(); // 同参数再次生成
+  };
+
+  // 编辑源图入槽（单一入口：相册上传 / 聊天图片卡片「编辑图片」深链共用）：
+  // 解码 RGB → 入历史横条 → 定位 0 页编辑槽 → 进入编辑预备态。
+  const ingestEditSource = async (rawUri: string, toastPrefix = '已选图') => {
+    const path = rawUri.replace('file://', '');
+    setEditSource(path);
+    // 按较大边压缩到支持尺寸
+    const sq = Math.min(dreamW, dreamH);
+    try {
+      const rgb = await imageGenStore.decodeEditImage(path, sq);
+      setEditRgb(rgb);
+      // 源图入历史横栏（可点选查看/编辑），并在 0 页编辑槽显示
+      imageGenStore.pushHistory({
+        uri: `file://${path}`,
+        prompt: '',
+        seed: Date.now() % 1e9,
+        ts: Date.now(),
+        width: sq,
+        height: sq,
+        family: 'dreamlite',
+        kind: 'upload',
+      });
+      setPrompt(''); // 新源图无历史提示词，清空输入区
+      scrollToPreview(0);
+      setEditArming(true); // 入槽即进入编辑预备：目标=刚入槽的图
+      showToast(
+        `${toastPrefix}（压缩至 ${sq}×${sq}），输入编辑指令后点「执行编辑」`,
+      );
+    } catch (e) {
+      runInAction(() => {
+        imageGenStore.error = `解码图片: ${(e as any)?.message ?? e}`;
+      });
+    }
   };
 
   const handlePickEditImage = async () => {
@@ -287,33 +362,7 @@ export const ImageGenScreen: React.FC = observer(() => {
     if (!p) {
       return;
     }
-    const path = p.replace('file://', '');
-    setEditSource(path);
-    // 按较大边压缩到支持尺寸
-    const sq = Math.min(dreamW, dreamH);
-    try {
-      const rgb = await imageGenStore.decodeEditImage(path, sq);
-      setEditRgb(rgb);
-      // 上传图入历史横栏（可点选查看/编辑），并在 0 页编辑槽显示
-      imageGenStore.pushHistory({
-        uri: `file://${path}`,
-        prompt: '',
-        seed: Date.now() % 1e9,
-        ts: Date.now(),
-        width: sq,
-        height: sq,
-        family: 'dreamlite',
-        kind: 'upload',
-      });
-      setPrompt(''); // 新上传图无历史提示词，清空输入区
-      scrollToPreview(0);
-      setEditArming(true); // 上传即进入编辑预备：目标=刚上传的图
-      showToast(`已选图（压缩至 ${sq}×${sq}），输入编辑指令后点「执行编辑」`);
-    } catch (e) {
-      runInAction(() => {
-        imageGenStore.error = `解码图片: ${(e as any)?.message ?? e}`;
-      });
-    }
+    await ingestEditSource(p);
   };
 
   // 编辑按钮（预备→执行单按钮）：浏览态点按=锁定当前预览图进入编辑预备；
@@ -474,7 +523,7 @@ export const ImageGenScreen: React.FC = observer(() => {
     }
     const idx = Math.round(e.nativeEvent.contentOffset.x / pageW);
     setEditArming(false); // 手动翻页退出编辑预备态（目标图已变）
-    setPreviewIndex(idx);
+    setPreviewIndexSync(idx);
     if (idx >= 1) {
       const item = imageGenStore.history[idx - 1];
       if (item) {
@@ -533,6 +582,8 @@ export const ImageGenScreen: React.FC = observer(() => {
           editSource={editSource}
           history={imageGenStore.history}
           generating={imageGenStore.generating}
+          bootedRef={bootedRef}
+          onListReady={handleListReady}
           taskKind={taskKind}
           progress={imageGenStore.progress}
           progressText={imageGenStore.progressText}

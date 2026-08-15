@@ -8,11 +8,20 @@
  * 数据源唯一：engineStatus（promptWriter / imageGenStore 写入）。
  */
 import * as React from 'react';
-import {View, Text, StyleSheet, ActivityIndicator, TouchableOpacity} from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  TouchableOpacity,
+} from 'react-native';
 import {observer} from 'mobx-react';
 import {useNavigation} from '@react-navigation/native';
 import {engineStatus, EngineKind} from '../../store/engineStatus';
 import {ROUTES} from '../../utils/navigationConstants';
+import {useTheme} from '../../hooks';
+import type {Theme} from '../../utils/types';
+import {withOpacity} from '../../utils/colorUtils';
 
 const ENGINE_NAME: Record<EngineKind, string> = {
   prompter: '管家模型',
@@ -22,6 +31,8 @@ const ENGINE_NAME: Record<EngineKind, string> = {
 
 export const ActiveTaskBanner: React.FC = observer(() => {
   const navigation = useNavigation();
+  const theme = useTheme();
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
   const busy = engineStatus.busy;
   if (!busy) {
     return null;
@@ -38,7 +49,7 @@ export const ActiveTaskBanner: React.FC = observer(() => {
         {isError ? (
           <Text style={styles.icon}>⚠️</Text>
         ) : indeterminate ? (
-          <ActivityIndicator size="small" color="#6750A4" />
+          <ActivityIndicator size="small" color={theme.colors.domain.tools} />
         ) : (
           <Text style={styles.icon}>⚙️</Text>
         )}
@@ -47,7 +58,7 @@ export const ActiveTaskBanner: React.FC = observer(() => {
         </Text>
         <Text style={styles.stage} numberOfLines={1}>
           {isError
-            ? st.error ?? '出错'
+            ? (st.error ?? '出错')
             : st.stage ||
               (st.phase === 'loading'
                 ? '加载中…'
@@ -81,67 +92,69 @@ export const ActiveTaskBanner: React.FC = observer(() => {
   );
 });
 
-const styles = StyleSheet.create({
-  wrap: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: '#EDE7F6',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#D1C4E9',
-  },
-  wrapError: {
-    backgroundColor: '#FDECEA',
-    borderBottomColor: '#F5C6C0',
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  icon: {
-    fontSize: 12,
-  },
-  title: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#3c3c43',
-  },
-  stage: {
-    flex: 1,
-    fontSize: 11,
-    color: '#666',
-  },
-  pct: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#6750A4',
-  },
-  track: {
-    marginTop: 4,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: '#D1C4E9',
-    overflow: 'hidden',
-  },
-  fill: {
-    height: '100%',
-    backgroundColor: '#6750A4',
-  },
-  actions: {
-    marginTop: 6,
-    flexDirection: 'row',
-    gap: 12,
-  },
-  btn: {
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 6,
-    backgroundColor: '#fff',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#ccc',
-  },
-  btnText: {
-    fontSize: 11,
-    color: '#6750A4',
-  },
-});
+// 域色：工具域（DESIGN_SPEC §1.2，收编原紫色系硬编码）
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    wrap: {
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xs,
+      backgroundColor: withOpacity(theme.colors.domain.tools, 0.1),
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: withOpacity(theme.colors.domain.tools, 0.25),
+    },
+    wrapError: {
+      backgroundColor: withOpacity(theme.colors.danger, 0.1),
+      borderBottomColor: withOpacity(theme.colors.danger, 0.25),
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.xs,
+    },
+    icon: {
+      fontSize: 12,
+    },
+    title: {
+      ...theme.typography.captionM,
+      fontWeight: '600',
+      color: theme.colors.onSurface,
+    },
+    stage: {
+      flex: 1,
+      ...theme.typography.captionS,
+      color: theme.colors.onSurfaceVariant,
+    },
+    pct: {
+      ...theme.typography.captionS,
+      fontWeight: '600',
+      color: theme.colors.domain.tools,
+    },
+    track: {
+      marginTop: theme.spacing.xs,
+      height: 3,
+      borderRadius: theme.radius.xxs,
+      backgroundColor: withOpacity(theme.colors.domain.tools, 0.25),
+      overflow: 'hidden',
+    },
+    fill: {
+      height: '100%',
+      backgroundColor: theme.colors.domain.tools,
+    },
+    actions: {
+      marginTop: theme.spacing.xs,
+      flexDirection: 'row',
+      gap: theme.spacing.sm,
+    },
+    btn: {
+      paddingHorizontal: theme.spacing.s,
+      paddingVertical: theme.spacing.xxs + 1,
+      borderRadius: theme.spacing.xs,
+      backgroundColor: theme.colors.surface,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
+    },
+    btnText: {
+      ...theme.typography.captionS,
+      color: theme.colors.domain.tools,
+    },
+  });

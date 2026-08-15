@@ -126,7 +126,10 @@ class ImageGenModule(reactContext: ReactApplicationContext) :
     val negativePrompt = params.getString("negativePrompt") ?: ""
     val seed = params.getDouble("seed").toLong()
     val steps = params.getInt("steps")
-    val cfg = params.getDouble("cfg")
+    // 6.18 白图根因：cfg 键缺失时 getDouble 静默返回 0.0 → SD3.5 CFG 路径数值发散 (latent 全 NaN)。
+    // hasKey 防御 + 默认 2.0（RN 桥接偶发丢键，steps 同步打印验证）。
+    val cfg = if (params.hasKey("cfg")) params.getDouble("cfg") else 2.0
+    android.util.Log.i("ImageGen", "txt2img params: steps=$steps cfg=$cfg width=${params.getInt("width")} height=${params.getInt("height")} cfgHasKey=${params.hasKey("cfg")}")
     val width = params.getInt("width")
     val height = params.getInt("height")
     val loraPath = params.getString("loraPath") ?: ""

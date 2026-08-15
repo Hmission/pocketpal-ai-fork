@@ -176,6 +176,21 @@ class ChatSessionRepository {
     return sessions as unknown as ChatSession[];
   }
 
+  // 等待 SQLite adapter 初始化完成（冷启动竞态根治）。WatermelonDB 的
+  // JSI 查询不等待 `_initPromise`——数据库尚未打开时直接下发，偶发失败
+  // 导致会话列表/消息水合不全（真机复现：冷启动后列表 9/12、0/12 波动）。
+  private readyPromise: Promise<unknown> | null = null;
+  ensureReady(): Promise<unknown> {
+    if (!this.readyPromise) {
+      const adapter = database.adapter as any;
+      const pending =
+        adapter?.underlyingAdapter?.initializingPromise ??
+        adapter?.initializingPromise;
+      this.readyPromise = Promise.resolve(pending);
+    }
+    return this.readyPromise;
+  }
+
   // Get a single session with its messages and settings
   async getSessionById(id: string): Promise<{
     session: ChatSession;
@@ -525,6 +540,18 @@ class ChatSessionRepository {
             record.metadata = JSON.stringify({
               ...existingMetadata,
               ...update.metadata,
+            });
+          }
+          // Persist imageUris into metadata.imageUris (same asymmetry as
+          // addMessage): the in-memory shape keeps it top-level on the
+          // Text row; on disk it lives under metadata. Without this, chat
+          // image-task cards lose their generated image after hydration
+          // (re-entering the chat shows no image).
+          if ('imageUris' in update && update.imageUris !== undefined) {
+            const existingMetadata = JSON.parse(record.metadata || '{}');
+            record.metadata = JSON.stringify({
+              ...existingMetadata,
+              imageUris: update.imageUris,
             });
           }
           // Lift top-level `steps` (in-memory shape) back into
