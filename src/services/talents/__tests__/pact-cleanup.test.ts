@@ -142,14 +142,18 @@ describe('PACT cleanup: deriveToolSchemas()', () => {
     expect(talentRegistry.getAll()).toHaveLength(0);
 
     const schemas = deriveToolSchemas();
-    expect(schemas).toHaveLength(5);
+    // 默认注册集已随记忆/设备控制工具扩展（2026-08）
+    expect(schemas).toHaveLength(8);
 
     const names = schemas.map(s => s.function.name).sort();
     expect(names).toEqual([
       'calculate',
       'datetime',
+      'device_control',
+      'note_save',
       'read_url',
       'render_html',
+      'search_memory',
       'web_search',
     ]);
   });
@@ -175,7 +179,8 @@ describe('PACT cleanup: deriveToolSchemas()', () => {
       tool_choice: 'auto' as const,
       jinja: true,
     };
-    expect(completionSettings.tools).toHaveLength(5);
+    // 默认注册集已随记忆/设备控制工具扩展（2026-08）
+    expect(completionSettings.tools).toHaveLength(8);
     expect(completionSettings.tools[0].type).toBe('function');
   });
 });

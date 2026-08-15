@@ -107,6 +107,10 @@ e2e/specs/visual-capture/TASK-*.spec.ts
 # screenshot inventories). Live in the dev-team repo and are sometimes
 # synced into the worktree for local reference; never committed here.
 workflows/
+# Internal docs (AIOS junction/specialist info, not published in the public repo)
+docs/internal/
+# Qoder/IDE agent configs (internal MCP/specialist info, not published)
+.qoder/
 # === AIOS PocketPal 浜屽紑杩藉姞 ===
 # Temp edit workspace (cross-workspace SearchReplace relay)
 .tmp/
@@ -133,4 +137,19 @@ scripts/agent/
 /ui*.txt
 /log*.txt
 /monitor*.ps1
+# 真机截图 / 生图取证 / 临时脚本（根目录散落，不入库）
+/gen_*
+/obs_*
+/shot*
+/r[0-9]_*
+/drawer_search*
+/search?.txt
+/search?_*.txt
+/parse_ui.py
+/search_ui.py
+/visible_check.*
+/imagegen_*.log
+/k90_*
+/scrcpy*
+/红米K90*
 __pycache__/

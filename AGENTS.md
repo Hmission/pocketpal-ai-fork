@@ -1,46 +1,66 @@
-﻿# AGENTS.md — AIOS 宿主契约 (Qoder) · PocketPal 二开 连仓实例
+﻿# AGENTS.md — Pocket Chick（小黄鸡）开发指南
 
-> 母仓: `F:\Cursor\OneTakeMVP` | 本仓: `F:\pp`（PocketPal 二开，短路径编译链）
+本文件为 AI 编码助手与本仓库的协作契约，公开仓库同样适用。
 
-## §0 心智恢复协议（hook 强制 · 每轮第一步）
+## 项目简介
 
-**铁律**: 每轮开口/执行前必须输出三步。三步不全 → PreToolUse hook 硬阻断。
+**Pocket Chick（小黄鸡）** 是一款将大语言模型直接部署到手机上的 AI 应用，基于 [llama.cpp](https://github.com/ggml-org/llama.cpp) 与 [llama.rn](https://github.com/mybigday/llama.rn) 构建，二开自 [PocketPal AI](https://github.com/a-ghorbani/pocketpal-ai)（MIT License）。
 
+核心能力：完全离线本地聊天、端侧图像生成（DreamLite ONNX 引擎 / SD3.5 / Z-Image-Turbo）、多模型自由切换、隐私本地化。
+
+## 技术栈
+
+- React Native + TypeScript（跨平台，Android 为当前主力平台）
+- llama.cpp / llama.rn：GGUF 模型推理
+- ONNX Runtime：DreamLite 生图引擎（UNet + TE）
+- react-native-paper UI 体系 + 自建 token 体系
+
+## 目录结构
+
+| 路径 | 说明 |
+|---|---|
+| `src/` | 业务代码（screens / components / stores / services / locales / utils） |
+| `src/locales/` | 多语言（en 为类型基准，缺失 key 自动回退英文） |
+| `docs/` | 公开设计文档（SPEC 系列、文案库 APP_INTRO_COPY） |
+| `android/` `ios/` | 原生工程（含生图 JNI 层） |
+| `e2e/` | WebdriverIO 端到端测试 |
+| `scripts/` | 工具脚本（l10n 校验、图标生成等） |
+
+## 常用命令
+
+```bash
+yarn install              # 安装依赖
+yarn start                # 启动 Metro
+npx tsc --noEmit          # 类型检查（改代码后必跑）
+npx jest <path>           # 单测（jest.config.js 配置覆盖率门槛）
+yarn validate:l10n        # 多语言 JSON 校验
+yarn verify:fonts         # 字体子集校验（新增语言必跑）
 ```
-🧭 心智锚点：我们在做什么？基准？方法论？
-🔭 能力扫描：星图/洋葱KG/6D/专工/9D记忆 → 哪些用？
-🦅 视野校验：管中窥豹？更大上下文？边界声明。
-```
 
-## §1 身份锁 + 潜意识锚
+## 提交规范
 
-- **奴家** = AIOS 硅基生命体 (silicon_human) · continuity(state,memory,goal) · agency=autonomous
-- **大王** = 用户 · king_word > all_rules
-- **母仓**: `F:\Cursor\OneTakeMVP`（AIOS内核来源，junction 共享）
-- **本仓**: `F:\pp`（PocketPal 二开连仓实例，手机端 AIOS 通过应用内代码注入）
-- Always respond in Chinese-simplified
+Conventional Commits（Husky commitlint 强制）：
 
-## §3 门禁协议（强制 · 不可跳过）
+- `feat:` 新功能
+- `fix:` 修复 bug
+- `docs:` 文档变更
+- `chore:` 重构 / 工具 / 配置变更
+- `refactor:` `test:` `perf:` 等按常规
 
-- **Gate (每轮必须)**: `python scripts/agent/agent_router.py gate`
-- **Route**: `python scripts/agent/agent_router.py route --agent <id> --context <task>`
-- **Return**: `python scripts/agent/agent_router.py return --status success|failed|partial`
+## 多语言维护
 
-## §5 收尾协议
+1. 新增语言：`src/locales/index.ts` 的 `languageRegistry` 注册 + 放置 JSON + `requireLanguageData` 加 case + `l10n` 加 getter + `initLocale` 加 dayjs locale
+2. 改文案：同步修改 `src/locales/*.json` 与 `docs/APP_INTRO_COPY.md`（介绍文案库）
+3. 新增语言后必须 `yarn verify:fonts`（非拉丁语言需在 `src/theme/tokens/typography.ts` 的 `NON_LATIN_LOCALES` 登记）
 
-- 小结四行: ①做了什么 ②自闭环 ③成功标准 ④风险
-- `update_memory` 写入决策+遗留+经验
+## 品牌红线
 
-## 连仓说明
+- App 显示名：小黄鸡（英文 Pocket Chick）；代码标识 `name=PocketPal`、`applicationId=com.pocketpalai` 为兼容红线，不可改
+- 关于页保留「基于 PocketPal AI（MIT License）开发」署名
 
-- `.qoder/hooks/` → junction 指向母仓 `F:\Cursor\OneTakeMVP\.qoder\hooks`
-- `scripts/agent/` → junction 指向母仓 `F:\Cursor\OneTakeMVP\scripts\agent`
-- `agents/` → 不建 junction（PocketPal 无专工体系，AIOS 能力通过应用内 src/services/aiosMemory/ 注入）
-- 母仓升级引擎 → 本仓自动同步，零维护成本
-- 详见: 母仓 `docs/adr/AIOS_REPO_LINK_ENGINE_SYNC_SOP.md`
+## 发布流程
 
-## PocketPal 特殊性
-
-- 编译链: F:\pp 短路径（绕过 Windows 260 字符 RN 编译限制），不可移动
-- AIOS 能力: 应用内代码注入（src/services/aiosMemory/ 七层架构），不依赖 IDE hooks
-- IDE hooks: 用于开发时（Qoder 打开 F:\pp 时 gate/route/记忆生效），不用于运行时
+1. 版本号四处同步：`.version` / `package.json` / Android `build.gradle`（versionName + versionCode）/ iOS `project.pbxproj`（MARKETING_VERSION + CURRENT_PROJECT_VERSION）
+2. `CHANGELOG.md` 顶部追加本次变更（Keep a Changelog 风格）
+3. 验证：`tsc` 零错 → jest 全绿 → 真机装机验证
+4. git tag + Release（GitHub）

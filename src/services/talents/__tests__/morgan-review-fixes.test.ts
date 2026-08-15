@@ -32,7 +32,8 @@ describe('deriveToolSchemas strict-subset filtering', () => {
 
   it('returns all schemas when talentNames is undefined', () => {
     const schemas = deriveToolSchemas();
-    expect(schemas).toHaveLength(5);
+    // 默认注册集已随记忆/设备控制工具扩展（2026-08）
+    expect(schemas).toHaveLength(8);
   });
 
   it('includes the internet-search talents in the full set', () => {
