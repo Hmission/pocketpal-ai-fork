@@ -5,7 +5,7 @@ type: index
 status: active
 version: "1.0"
 created: "2026-08-15"
-updated: "2026-08-15"
+updated: "2026-08-16"
 relates: [DOC_GOVERNANCE_SPEC, DOC_MANAGEMENT, CURSOR_DOC_USAGE, POCKETPAL_DESIGN_SPEC]
 ---
 
@@ -13,7 +13,7 @@ relates: [DOC_GOVERNANCE_SPEC, DOC_MANAGEMENT, CURSOR_DOC_USAGE, POCKETPAL_DESIG
 
 # 文档索引（INDEX）
 
-**状态**：active | **版本**：1.0 | **更新**：2026-08-15
+**状态**：active | **版本**：1.0 | **更新**：2026-08-16
 
 > 全仓权威导航。第一读链：本索引 → 模块文档 → `relates` 扩散。新增文档必须在本文件登记。
 
@@ -47,7 +47,8 @@ relates: [DOC_GOVERNANCE_SPEC, DOC_MANAGEMENT, CURSOR_DOC_USAGE, POCKETPAL_DESIG
 | --- | --- | --- |
 | [ADR-0001-ui-ssot-single-source](./adr/ADR-0001-ui-ssot-single-source.md) | accepted | UI 规范单源：DESIGN_SPEC 升格为 SSOT |
 | [ADR-0002-imagegen-header-right](./adr/ADR-0002-imagegen-header-right.md) | accepted | 生图页模型选择器挂 AppBar headerRight（D1） |
-| [ADR-0003-bubble-footer-unification](./adr/ADR-0003-bubble-footer-unification.md) | proposed | 气泡一体化：footer 收进卡片（B1 决策） |
+| [ADR-0003-bubble-footer-unification](./adr/ADR-0003-bubble-footer-unification.md) | accepted | 气泡一体化：footer 收进卡片（B1 决策） |
+| [ADR-0004-model-storage-layered](./adr/ADR-0004-model-storage-layered.md) | accepted | 模型存储双轨：规范默认目录 + 用户自定义目录（B15） |
 
 ## 四、SOP 库（module: sop，操作手册）
 
