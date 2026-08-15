@@ -16,6 +16,33 @@ describe('taskRouter', () => {
       const r = routeTask('draw a cute cat image');
       expect(r.task).toBe('image');
     });
+    // v2.1 边界补齐（2026-08-16）：长描述/标点/照片措辞/句界截断
+    it('v2.1 长描述含逗号句号：命中且主体截断到句界（真实用户例句）', () => {
+      const r = routeTask(
+        '画一张美女在河里洗澡的照片，超写实风格。长发在水里浣洗，玲珑有致的身材。',
+      );
+      expect(r.task).toBe('image');
+      expect(r.payload).toBe('美女在河里洗澡的照片，超写实风格');
+    });
+    it('v2.1 超 40 字符无标点长描述仍命中（长度放宽 40→80）', () => {
+      const r = routeTask(
+        '画一只金毛犬在公园草坪上追逐飞盘阳光很好天空很蓝草地上还有一只柯基犬在打滚旁边坐着一个小男孩正在吃冰淇淋',
+      );
+      expect(r.task).toBe('image');
+      expect(r.payload.length).toBeGreaterThan(40);
+    });
+    it('v2.1 「画…照片」措辞命中（照片补入目标词）', () => {
+      const r = routeTask('画一张美女在河边洗澡的照片');
+      expect(r.task).toBe('image');
+    });
+    it('v2.1 「生成一张照片」命中（生成+张/幅量词+照片分支）', () => {
+      expect(routeTask('生成一张照片').task).toBe('image');
+    });
+    it('v2.1 句界截断：不吞「。帮我写首诗」后续句', () => {
+      const r = routeTask('画一只猫。帮我写首诗');
+      expect(r.task).toBe('image');
+      expect(r.payload).toBe('一只猫');
+    });
   });
 
   describe('write 任务', () => {
@@ -24,6 +51,12 @@ describe('taskRouter', () => {
     });
     it('命中「写文章」', () => {
       expect(routeTask('帮我写一篇介绍人工智能的文章').task).toBe('write');
+    });
+    it('v2.1 防误伤：含「照片」的写作句（写+文章）不判生图', () => {
+      expect(routeTask('帮我写一篇关于照片的文章').task).toBe('write');
+    });
+    it('v2.1 防误伤：「生成一篇…文章」无张/幅量词不判生图，落闲聊', () => {
+      expect(routeTask('帮我生成一篇关于照片的文章').task).toBe('chitchat');
     });
   });
 
