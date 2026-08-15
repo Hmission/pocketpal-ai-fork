@@ -43,7 +43,9 @@ export function getModelDisplayName(
 
 /** 参数量提取：name/filename 中的「4B / 1B / 2.6B」→ 大写 B 统一 */
 const extractParamSize = (raw: string): string => {
-  const m = raw.match(/(\d+(?:\.\d+)?)\s*b\b/i);
+  // 不能要求 \b 单词边界：minicpm5_1b_heretic 中 1b 后跟 _（同为 \w）会失配，
+  // 落入下方 fam 兜底把系列号 5 当参数量显示成 5B。改为仅排除数字/字母后续。
+  const m = raw.match(/(\d+(?:\.\d+)?)\s*b(?![\da-z])/i);
   if (m) {
     const num = parseFloat(m[1]);
     // 去掉无意义的小数（2.0B → 2B），保留真实小数（2.6B）

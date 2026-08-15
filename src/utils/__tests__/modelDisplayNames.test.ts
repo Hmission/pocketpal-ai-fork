@@ -52,6 +52,13 @@ describe('modelDisplayNames', () => {
     it('MiniCPM 家族后缀数字即参数量（无 b 后缀）', () => {
       expect(getModelParamTag(model('MiniCPM4-Q4_K_M'))).toBe('（4B_Q4）');
     });
+
+    it('真机管家文件名下划线分隔：minicpm5_1b → 1B 而非系列号 5B', () => {
+      // 回归锁定：1b 后跟 _ 时 \b 边界失配会落入 fam 兜底误显示 5B
+      expect(getModelParamTag(model('minicpm5_1b_heretic_q4km'))).toBe(
+        '（1B_Q4）',
+      );
+    });
   });
 
   describe('getModelDisplayNameWithParams', () => {
@@ -67,6 +74,12 @@ describe('modelDisplayNames', () => {
       );
       expect(getModelDisplayNameWithParams(model('MiniCPM4'))).toBe(
         '面壁 MiniCPM（4B）',
+      );
+    });
+
+    it('真机管家文件名完整显示：面壁 MiniCPM（1B_Q4）', () => {
+      expect(getModelDisplayNameWithParams(model('minicpm5_1b_heretic_q4km'))).toBe(
+        '面壁 MiniCPM（1B_Q4）',
       );
     });
   });
