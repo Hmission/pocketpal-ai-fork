@@ -85,7 +85,7 @@ export const createStyles = (theme: Theme) =>
       alignItems: 'center',
       paddingVertical: 12,
       paddingHorizontal: 12,
-      backgroundColor: theme.colors.surfaceVariant + '20',
+      backgroundColor: theme.colors.surface + '20',
       borderRadius: 8,
       borderLeftWidth: 3,
       borderLeftColor: 'transparent',
@@ -180,7 +180,7 @@ export const createStyles = (theme: Theme) =>
     projectionModelItem: {
       paddingVertical: 8,
       paddingHorizontal: 12,
-      backgroundColor: theme.colors.surfaceVariant + '20',
+      backgroundColor: theme.colors.surface + '20',
       borderRadius: 8,
       marginBottom: 8,
     },

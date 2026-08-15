@@ -419,6 +419,7 @@ export const ImageGenScreen: React.FC = observer(() => {
     }
     setTaskKind('edit'); // 编辑动效：叠在当前图上
     const sq = Math.min(dreamW, dreamH);
+    const startTs = Date.now();
     const uri = await imageGenStore.editDreamLiteEntry(
       editRgb,
       sq,
@@ -442,6 +443,8 @@ export const ImageGenScreen: React.FC = observer(() => {
       steps: parseInt(steps, 10) || 4,
       family: 'dreamlite',
       kind: 'generated',
+      durationMs: Date.now() - startTs,
+      modelLabel: selectedEntry?.manifest.label ?? 'DreamLite',
     });
     // 新图在 history[0] → 预览页 1
     scrollToPreview(1);
@@ -455,6 +458,7 @@ export const ImageGenScreen: React.FC = observer(() => {
     setEditArming(false); // 出图退出编辑预备态
     if (isDream) {
       setTaskKind('gen'); // 出图动效：预览区空白页
+      const startTs = Date.now();
       const uri = await imageGenStore.generateDreamLiteEntry(
         dreamW,
         dreamH,
@@ -475,6 +479,8 @@ export const ImageGenScreen: React.FC = observer(() => {
         steps: parseInt(steps, 10) || 4,
         family: 'dreamlite',
         kind: 'generated',
+        durationMs: Date.now() - startTs,
+        modelLabel: selectedEntry?.manifest.label ?? 'DreamLite',
       });
       // 新图在 history[0] → 预览页 1
       scrollToPreview(1);
@@ -491,6 +497,7 @@ export const ImageGenScreen: React.FC = observer(() => {
       negativePrompt: negativePrompt.trim(),
       loraPath: m?.lora ? `${AIOS_MODELS_DIR}/${m.lora}` : undefined,
       loraMultiplier: m?.loraMultiplier,
+      modelLabel: m?.label,
     });
     setTaskKind(null);
     if (uri) {

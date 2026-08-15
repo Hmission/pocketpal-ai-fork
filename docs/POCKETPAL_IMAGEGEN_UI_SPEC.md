@@ -17,6 +17,7 @@ relates: [POCKETPAL_DESIGN_SPEC, ADR-0002-imagegen-header-right]
 > 任何生图页 UI 迭代必须先更新本文档再改代码，杜绝「改过没记录」。
 > 版本：v1（2026-08-14，W3 定稿）| 代码实现：src/screens/ImageGenScreen/
 > 版本：v2（2026-08-15，B2 批次：散点字号/圆角 token 化，styles.ts 字面量清零）
+> 版本：v2.1（2026-08-15，预览卡信息条定稿：seed 行从卡片下方移除，改为预览图顶部 overlay「模型 · 耗时 · 分辨率」；顶栏右缘对齐内容区右边距）
 > 上位规范：POCKETPAL_DESIGN_SPEC.md（UI 域 SSOT）
 
 ## 1. 页面结构（单列三区 + 顶部模型胶囊）

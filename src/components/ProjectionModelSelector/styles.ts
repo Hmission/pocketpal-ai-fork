@@ -49,7 +49,7 @@ export const createStyles = (theme: Theme) =>
       alignItems: 'center',
       paddingVertical: 12,
       paddingHorizontal: 12,
-      backgroundColor: theme.colors.surfaceVariant + '20', // Very subtle background
+      backgroundColor: theme.colors.surface + '20', // Very subtle background
       borderRadius: 8,
       borderLeftWidth: 3,
       borderLeftColor: 'transparent',

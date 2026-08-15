@@ -3,6 +3,7 @@ import {TouchableOpacity, View} from 'react-native';
 import {Drawer} from 'react-native-paper';
 
 import {useTheme} from '../../hooks';
+import {withOpacity} from '../../utils/colorUtils';
 import {createStyles} from './styles';
 import {SessionMetaData} from '../../store';
 import {Menu, Checkbox} from '..';
@@ -104,6 +105,16 @@ export const SessionListItem = React.memo<SessionListItemProps>(
             active={isActive}
             label={session.title}
             style={styles.sessionDrawerItem}
+            theme={
+              isActive
+                ? {
+                    // 灰色治理（DESIGN_SPEC §1.8）：选中态改域彩 12% 底，不再用 surfaceVariant
+                    colors: {
+                      secondaryContainer: withOpacity(theme.colors.primary, 0.12),
+                    },
+                  }
+                : undefined
+            }
           />
         </TouchableOpacity>
         {!isSelectionMode && (

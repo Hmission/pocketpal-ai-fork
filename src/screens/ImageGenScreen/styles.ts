@@ -69,7 +69,7 @@ export const createStyles = (theme: any) =>
       paddingVertical: 10,
       paddingHorizontal: 10,
       borderRadius: theme.radius[theme.shapeRoles.inputSmall],
-      backgroundColor: theme.colors.surfaceVariant,
+      backgroundColor: theme.colors.surface,
       flexDirection: 'row',
       alignItems: 'center',
     },
@@ -107,7 +107,7 @@ export const createStyles = (theme: any) =>
     editSlot: {
       aspectRatio: 1,
       borderRadius: theme.radius.s,
-      backgroundColor: theme.colors.surfaceVariant,
+      backgroundColor: theme.colors.surface,
       alignItems: 'center',
       justifyContent: 'center',
       position: 'relative',
@@ -189,7 +189,7 @@ export const createStyles = (theme: any) =>
       alignItems: 'center',
       paddingVertical: 8,
       borderRadius: theme.radius.s,
-      backgroundColor: theme.colors.surfaceVariant,
+      backgroundColor: theme.colors.surface,
     },
     actionText: {...theme.typography.uiS, color: theme.colors.onSurface},
     // 语义彩色点缀（DESIGN_SPEC §1.3：bg/onX 成对使用）
@@ -223,12 +223,12 @@ export const createStyles = (theme: any) =>
     // 实验性徽章：警示色（模型可能不可用，与操作按钮橙区分）
     badgeExp: {color: theme.colors.warning, fontWeight: '700', ...theme.typography.captionS},
     // D1 顶栏触发胶囊（挂在 IMAGE_GEN headerRight；生图域色 12% 透明底）
-    // B5（DESIGN_SPEC §8 Gap Ledger）：headerRight 触发组右侧留 8dp 边距，不贴屏幕缘
+    // B5（DESIGN_SPEC §8 Gap Ledger）：headerRight 右缘对齐内容区右边距（16dp）
     triggerWrap: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
-      marginRight: 8,
+      marginRight: 16,
     },
     triggerPill: {
       flexDirection: 'row',
@@ -283,7 +283,22 @@ export const createStyles = (theme: any) =>
       shadowRadius: 10,
       shadowOffset: {width: 0, height: 6},
     },
-    watermark: {...theme.typography.captionS, color: theme.colors.onSurfaceVariant},
+    // 信息条：压在预览图顶部（半透明黑底白字，模型 · 耗时 · 分辨率）
+    infoOverlay: {
+      position: 'absolute',
+      top: 8,
+      left: 8,
+      right: 8,
+      backgroundColor: 'rgba(0, 0, 0, 0.55)',
+      borderRadius: theme.radius.s,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      alignItems: 'center',
+    },
+    infoOverlayText: {
+      color: '#fff',
+      ...theme.typography.captionS,
+    },
     toastBar: {
       position: 'absolute',
       top: 8,
@@ -344,9 +359,9 @@ export const createStyles = (theme: any) =>
     buttonRow: {flexDirection: 'row', gap: 10},
     buttonEdit: {flex: 1, backgroundColor: theme.colors.info},
     buttonGen: {flex: 1},
-    buttonSecondary: {backgroundColor: theme.colors.surfaceVariant},
+    buttonSecondary: {backgroundColor: theme.colors.surface,},
     buttonDanger: {backgroundColor: theme.colors.error},
-    buttonDisabled: {backgroundColor: theme.colors.surfaceVariant},
+    buttonDisabled: {backgroundColor: theme.colors.surface,},
     buttonText: {
       color: theme.colors.onPrimary,
       ...theme.typography.uiM,
@@ -388,7 +403,7 @@ export const createStyles = (theme: any) =>
       paddingHorizontal: 12,
       paddingVertical: 6,
       borderRadius: theme.radius.s,
-      backgroundColor: theme.colors.surfaceVariant,
+      backgroundColor: theme.colors.surface,
       alignItems: 'center',
     },
     sizeBtnSelected: {borderWidth: 1, borderColor: theme.colors.primary},

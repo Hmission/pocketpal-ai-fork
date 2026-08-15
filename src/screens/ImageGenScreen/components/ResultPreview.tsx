@@ -147,13 +147,37 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
   /** FlatList 懒加载分页：只挂载可视页附近（windowSize），避免 50 张全尺寸大图
    *  同时解码导致渲染管线堵塞（HWUI 解码过载 → 全页图片空白）。 */
   const renderItem = ({item}: {item: GeneratedImage}) => (
-    <TouchableOpacity onPress={onOpenFullscreen}>
-      <Image
-        source={{uri: item.uri}}
-        style={[s.preview, {width: pageW}]}
-        resizeMode="contain"
-      />
-    </TouchableOpacity>
+    <View style={{width: pageW}}>
+      <TouchableOpacity onPress={onOpenFullscreen}>
+        <Image
+          source={{uri: item.uri}}
+          style={[s.preview, {width: pageW}]}
+          resizeMode="contain"
+        />
+      </TouchableOpacity>
+      {/* 信息条压在预览图顶部：模型 · 耗时 · 分辨率（DESIGN_SPEC B1 同波定稿） */}
+      {item.kind !== 'upload' ? (
+        <View style={s.infoOverlay} pointerEvents="none">
+          <Text style={s.infoOverlayText} numberOfLines={1}>
+            {[
+              item.modelLabel,
+              item.durationMs != null
+                ? `${(item.durationMs / 1000).toFixed(1)}s`
+                : null,
+              `${item.width}×${item.height}`,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          </Text>
+        </View>
+      ) : (
+        <View style={s.infoOverlay} pointerEvents="none">
+          <Text style={s.infoOverlayText} numberOfLines={1}>
+            {`上传图 · ${item.width}×${item.height}`}
+          </Text>
+        </View>
+      )}
+    </View>
   );
 
   const onMomentum = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -253,13 +277,6 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
                 <Text style={s.actionTextOnDanger}>删除</Text>
               </TouchableOpacity>
             </View>
-            {currentItem ? (
-              <Text style={s.watermark} numberOfLines={1}>
-                {currentItem.kind === 'upload'
-                  ? `上传 · ${currentItem.width}×${currentItem.height}`
-                  : `seed ${currentItem.seed} · ${currentItem.width}×${currentItem.height}`}
-              </Text>
-            ) : null}
           </>
         )}
       </View>

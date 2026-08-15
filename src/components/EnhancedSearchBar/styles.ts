@@ -54,7 +54,7 @@ export const createStyles = (theme: Theme) =>
       width: 40,
       height: 40,
       borderRadius: 20,
-      backgroundColor: theme.colors.surfaceVariant,
+      backgroundColor: theme.colors.surface,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.colors.outline,
       alignItems: 'center',
@@ -84,7 +84,7 @@ export const createStyles = (theme: Theme) =>
     filterDropdownButton: {
       flexDirection: 'row',
       alignItems: 'center',
-      // backgroundColor: theme.colors.surfaceVariant,
+      // backgroundColor: theme.colors.surface,
       borderRadius: 20,
       paddingHorizontal: 12,
       paddingVertical: 6,
@@ -105,7 +105,7 @@ export const createStyles = (theme: Theme) =>
       fontWeight: '600',
     },
     expandedFiltersContainer: {
-      backgroundColor: theme.colors.surfaceVariant,
+      backgroundColor: theme.colors.surface,
       borderRadius: 12,
       padding: 16,
       marginTop: 8,

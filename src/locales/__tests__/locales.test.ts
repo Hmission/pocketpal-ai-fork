@@ -20,6 +20,8 @@ const EXPECTED_SECTIONS = [
   'generation',
   'models',
   'completionParams',
+  'completionParamsLabels',
+  'completionParamControls',
   'about',
   'feedback',
   'components',

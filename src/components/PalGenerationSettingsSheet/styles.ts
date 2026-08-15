@@ -35,7 +35,7 @@ export const createStyles = (theme: Theme) =>
       alignItems: 'center',
       paddingHorizontal: 16,
       paddingVertical: 8,
-      backgroundColor: theme.colors.surfaceVariant,
+      backgroundColor: theme.colors.surface,
       borderRadius: 8,
       marginBottom: 16,
     },

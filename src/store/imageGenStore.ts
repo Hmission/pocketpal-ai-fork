@@ -34,6 +34,9 @@ export interface GeneratedImage {
   family?: string;
   /** 来源：生图结果 or 用户上传（用于编辑的本地图） */
   kind?: 'generated' | 'upload';
+  /** 生成耗时（ms）与模型标签：预览卡顶部信息条展示 */
+  durationMs?: number;
+  modelLabel?: string;
 }
 
 class ImageGenStore {
@@ -331,6 +334,7 @@ class ImageGenStore {
       negativePrompt?: string;
       loraPath?: string;
       loraMultiplier?: number;
+      modelLabel?: string;
     } = {},
   ): Promise<string | null> {
     if (!this.modelLoaded) {
@@ -387,6 +391,8 @@ class ImageGenStore {
           ts: Date.now(),
           width: opts.width ?? 512,
           height: opts.height ?? 512,
+          durationMs: Date.now() - this.genStartedAt,
+          modelLabel: opts.modelLabel,
         });
         if (this.history.length > 50) {
           this.history = this.history.slice(0, 50);

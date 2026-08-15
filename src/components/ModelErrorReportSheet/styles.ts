@@ -11,7 +11,7 @@ export const createStyles = (theme: Theme) =>
     privacyNote: {
       color: theme.colors.onSurfaceVariant,
       lineHeight: 18,
-      backgroundColor: theme.colors.surfaceVariant,
+      backgroundColor: theme.colors.surface,
       padding: 10,
       borderRadius: 8,
     },
@@ -68,7 +68,7 @@ export const createStyles = (theme: Theme) =>
       color: theme.colors.onSurface,
       fontSize: 11,
       fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-      backgroundColor: theme.colors.surfaceVariant,
+      backgroundColor: theme.colors.surface,
       padding: 8,
       borderRadius: 4,
     },

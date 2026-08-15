@@ -81,15 +81,7 @@ export const SettingsScreen: React.FC = () => {
           {l10n.components.sidebarContent.groupAios}
         </Text>
         <Surface radius="l" elevation={0} style={styles.card}>
-          <Row
-            testID="settings-item-pals"
-            title={menuItems.pals}
-            Icon={PalIcon}
-            color={theme.colors.brandAccent}
-            styles={styles}
-            chevronColor={theme.colors.onSurfaceVariant}
-            onPress={navigateTo(ROUTES.PALS)}
-          />
+          {/* 伙伴入口已裁剪（2026-08-15）：功能暂不启用，如需恢复见 git 历史 */}
           <Row
             testID="settings-item-models"
             title={menuItems.models}

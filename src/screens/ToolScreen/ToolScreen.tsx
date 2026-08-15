@@ -256,7 +256,7 @@ const createStyles = (theme: Theme) =>
     infoBar: {
       paddingHorizontal: theme.spacing.m,
       paddingVertical: theme.spacing.s,
-      backgroundColor: theme.colors.surfaceVariant,
+      backgroundColor: theme.colors.surface,
     },
     infoText: {
       ...theme.typography.captionM,
@@ -268,7 +268,7 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.onSurfaceVariant,
       paddingHorizontal: theme.spacing.m,
       paddingVertical: theme.spacing.s,
-      backgroundColor: theme.colors.surfaceVariant,
+      backgroundColor: theme.colors.surface,
     },
     historyItem: {
       padding: theme.spacing.sm,

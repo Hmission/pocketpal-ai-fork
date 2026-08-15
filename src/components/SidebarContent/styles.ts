@@ -1,8 +1,8 @@
 import {StyleSheet} from 'react-native';
 
-import {MD3Theme} from 'react-native-paper';
+import {Theme} from '../../utils/types';
 
-export const createStyles = (theme: MD3Theme) =>
+export const createStyles = (theme: Theme) =>
   StyleSheet.create({
     sidebarContainer: {
       flex: 1,
@@ -23,8 +23,11 @@ export const createStyles = (theme: MD3Theme) =>
       alignItems: 'center',
       gap: 8,
       paddingHorizontal: 10,
-      borderRadius: 10,
-      backgroundColor: theme.colors.surfaceVariant,
+      // 灰色治理（DESIGN_SPEC §1.8）：搜索框不再用 surfaceVariant，改 surface + 描边
+      borderRadius: theme.radius[theme.shapeRoles.inputSmall],
+      backgroundColor: theme.colors.surface,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.outline,
     },
     searchInput: {
       flex: 1,

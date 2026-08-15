@@ -272,7 +272,7 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       paddingHorizontal: theme.spacing.sm,
       paddingVertical: theme.spacing.s,
-      backgroundColor: theme.colors.surfaceVariant,
+      backgroundColor: theme.colors.surface,
     },
     searchInput: {
       flex: 1,

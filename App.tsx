@@ -134,15 +134,6 @@ const AppDrawer: React.FC = () => {
         }}
       />
       <Drawer.Screen
-        name={ROUTES.PALS}
-        component={gestureHandlerRootHOC(PalsScreen)}
-        options={{
-          headerRight: () => <PalHeaderRight />,
-          headerStyle: styles.headerWithoutDivider,
-          title: currentL10n.screenTitles.pals,
-        }}
-      />
-      <Drawer.Screen
         name={ROUTES.MODELS}
         component={gestureHandlerRootHOC(ModelsScreen)}
         options={{

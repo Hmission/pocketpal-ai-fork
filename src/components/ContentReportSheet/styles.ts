@@ -17,7 +17,7 @@ export const createStyles = (theme: Theme) =>
     infoNote: {
       color: theme.colors.onSurfaceVariant,
       lineHeight: 20,
-      backgroundColor: theme.colors.surfaceVariant,
+      backgroundColor: theme.colors.surface,
       padding: 12,
       borderRadius: 8,
     },

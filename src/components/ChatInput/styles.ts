@@ -188,7 +188,7 @@ export const createStyles = ({
       width: 80,
       height: 80,
       borderRadius: theme.radius.s,
-      backgroundColor: theme.colors.surfaceVariant,
+      backgroundColor: theme.colors.surface,
     },
     removeImageButton: {
       position: 'absolute',

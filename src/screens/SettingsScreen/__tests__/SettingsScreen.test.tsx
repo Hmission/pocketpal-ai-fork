@@ -48,7 +48,6 @@ describe('SettingsScreen entry hub', () => {
   it('renders all feature entries', () => {
     const {getByText} = render(<TestNavigator />);
 
-    expect(getByText('Pals')).toBeTruthy();
     expect(getByText('Models')).toBeTruthy();
     expect(getByText('Memory')).toBeTruthy();
     expect(getByText('Knowledge')).toBeTruthy();

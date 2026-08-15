@@ -266,7 +266,7 @@ const createStyles = (theme: Theme) =>
       justifyContent: 'space-between',
       paddingHorizontal: theme.spacing.m,
       paddingVertical: theme.spacing.s,
-      backgroundColor: theme.colors.surfaceVariant,
+      backgroundColor: theme.colors.surface,
     },
     infoText: {
       ...theme.typography.captionM,
@@ -286,7 +286,8 @@ const createStyles = (theme: Theme) =>
     typeText: {
       ...theme.typography.titleS,
       fontWeight: 'bold',
-      color: theme.colors.onPrimary,
+      // 徽章字：与语义彩色底成对（绿底白字），不再用 onPrimary（浅色下为深色）
+      color: theme.colors.onSuccess,
     },
     empty: {
       flex: 1,
