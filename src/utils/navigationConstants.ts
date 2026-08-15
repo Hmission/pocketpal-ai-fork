@@ -13,6 +13,7 @@ export const ROUTES = {
   WORKSPACE: 'Workspace',
   TOOL: 'Tool',
   IMAGE_GEN: 'ImageGen',
+  MODEL_DIRS: 'ModelDirs',
 
   // Dev tools route. Only available in debug mode.
   DEV_TOOLS: 'Dev Tools',

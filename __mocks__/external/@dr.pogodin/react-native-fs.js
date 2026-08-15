@@ -45,6 +45,8 @@ let documentDirectoryPath = '/path/to/documents';
 export const DocumentDirectoryPath = documentDirectoryPath;
 export const LibraryDirectoryPath = '/path/to/library';
 export const MainBundlePath = '/path/to/bundle';
+export const ExternalDirectoryPath = '/path/to/external';
+export const ExternalStorageDirectoryPath = '/path/to/storage';
 
 // Allow tests to override the path
 export const __setDocumentDirectoryPath = path => {
@@ -76,6 +78,8 @@ const RNFS = {
   DocumentDirectoryPath,
   LibraryDirectoryPath,
   MainBundlePath,
+  ExternalDirectoryPath,
+  ExternalStorageDirectoryPath,
   copyFile,
   __resetMockState,
   __setDocumentDirectoryPath,

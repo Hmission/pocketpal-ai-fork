@@ -5,6 +5,7 @@ export * from './GenerationSettingsScreen';
 export * from './ImageGenScreen';
 export * from './KnowledgeScreen';
 export * from './MemoryScreen';
+export * from './ModelDirsScreen';
 export * from './ModelsScreen';
 export * from './PalsScreen';
 export * from './SettingsScreen';

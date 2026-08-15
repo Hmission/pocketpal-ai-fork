@@ -5,7 +5,8 @@ import {v4 as uuidv4} from 'uuid';
 import 'react-native-get-random-values';
 import {makePersistable} from 'mobx-persist-store';
 import * as RNFS from '@dr.pogodin/react-native-fs';
-import {AIOS_MODELS_DIR} from '../utils/paths';
+import {AIOS_MODELS_DIR, DEFAULT_MODELS_DIR} from '../utils/paths';
+import {getAllModelDirs} from '../utils/modelDirs';
 import {engineMutex} from './engineMutex';
 import {chatEngineGuard} from '../utils/engineGuard';
 import {MMProjRegex} from '../utils/multimodalPatterns';
@@ -1044,8 +1045,8 @@ class ModelStore {
       // Old path (deprecated, for backwards compatibility)
       const oldPath = `${RNFS.DocumentDirectoryPath}/models/preset/${author}/${model.filename}`;
 
-      // New path structure includes repository name
-      const newPath = `${RNFS.DocumentDirectoryPath}/models/preset/${author}/${repo}/${model.filename}`;
+      // New path: B15 双轨默认规范目录（ADR-0004），零权限、Play 合规
+      const newPath = `${DEFAULT_MODELS_DIR}/preset/${author}/${repo}/${model.filename}`;
 
       // Check if file exists at very old path first (for backwards compatibility)
       try {
@@ -1082,8 +1083,8 @@ class ModelStore {
       // Old path structure (for backwards compatibility)
       const oldPath = `${RNFS.DocumentDirectoryPath}/models/hf/${author}/${model.filename}`;
 
-      // New path structure includes repository name
-      const newPath = `${RNFS.DocumentDirectoryPath}/models/hf/${author}/${repo}/${model.filename}`;
+      // New path: B15 双轨默认规范目录（ADR-0004），零权限、Play 合规
+      const newPath = `${DEFAULT_MODELS_DIR}/hf/${author}/${repo}/${model.filename}`;
 
       // Check if file exists at old path (backwards compatibility)
       // This handles: existing downloads, models after reset, models after app update
@@ -2479,20 +2480,40 @@ class ModelStore {
 
 
   /**
-   * Scan the AIOS shared models directory for .gguf files.
+   * Scan model dirs for .gguf files (B15 双轨：默认目录 ∪ 自定义目录，去重按文件名).
    * Auto-registers models not yet in the store.
    * Called on app startup after ensureAiosDirs().
    */
   scanLocalModels = async () => {
     try {
-      const dir = AIOS_MODELS_DIR;
-      if (!(await RNFS.exists(dir))) {
-        return;
+      // B15（ADR-0004）：扫描范围 = 默认规范目录 ∪ 自定义目录列表；
+      // 同名文件仅保留第一个（默认目录优先），后续目录视为重复。
+      const dirs = await getAllModelDirs();
+      const filesByDir: {dir: string; files: RNFS.ReadDirResItemT[]}[] = [];
+      for (const dir of dirs) {
+        try {
+          if (!(await RNFS.exists(dir))) {
+            continue;
+          }
+          const files = await RNFS.readDir(dir);
+          filesByDir.push({dir, files});
+        } catch (e) {
+          // 单个目录读不到（权限/缺失）不阻断整体扫描
+          console.warn(`[ModelStore] scan dir skipped: ${dir}`, e);
+        }
       }
-      const files = await RNFS.readDir(dir);
-      const ggufFiles = files.filter(f =>
-        (f.name as string).toLowerCase().endsWith('.gguf'),
-      );
+      const ggufFiles = filesByDir
+        .flatMap(({files}) => files)
+        .filter(f => (f.name as string).toLowerCase().endsWith('.gguf'));
+      const seenNames = new Set<string>();
+      const uniqueGgufFiles = ggufFiles.filter(f => {
+        const name = f.name as string;
+        if (seenNames.has(name)) {
+          return false;
+        }
+        seenNames.add(name);
+        return true;
+      });
       const isRegistered = (fullPath: string) =>
         this.models.some(
           m =>
@@ -2529,7 +2550,7 @@ class ModelStore {
       };
 
       // Pass 1: 注册 LLM 模型（跳过 mmproj 与生图模型文件）
-      for (const file of ggufFiles) {
+      for (const file of uniqueGgufFiles) {
         const filename = file.name as string;
         if (MMProjRegex.test(filename)) {
           continue;
@@ -2548,7 +2569,7 @@ class ModelStore {
       }
 
       // Pass 2: 注册 mmproj 视觉模块并自动配对到同基座 LLM
-      for (const file of ggufFiles) {
+      for (const file of uniqueGgufFiles) {
         const filename = file.name as string;
         if (!MMProjRegex.test(filename)) {
           continue;

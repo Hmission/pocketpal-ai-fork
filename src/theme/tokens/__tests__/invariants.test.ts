@@ -160,6 +160,8 @@ describe('design-token grep invariants', () => {
       'components/ChatPalModelPickerSheet',
       'components/SuggestedPromptsRow',
       'components/ChatGenerationSettingsSheet',
+      // B15 模型目录管理页（ADR-0004 双轨）：token 表面消费
+      'screens/ModelDirsScreen',
     ];
     const files = listFiles(SRC).filter(f => {
       const rel = path.relative(SRC, f).replace(/\\/g, '/');

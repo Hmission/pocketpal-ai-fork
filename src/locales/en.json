@@ -991,7 +991,8 @@
         "workspace": "Workspace",
         "tool": "Tools",
         "imageGen": "Image Gen",
-        "generationSettings": "Generation Settings"
+        "generationSettings": "Generation Settings",
+        "modelDirs": "Model Folders"
       },
       "searchPlaceholder": "Search chats",
       "newChat": "New chat",
@@ -1032,7 +1033,12 @@
         "total": "Total: ",
         "usage": "Usage: "
       },
-      "byteSizes": ["Bytes", "KB", "MB", "GB"]
+      "byteSizes": [
+        "Bytes",
+        "KB",
+        "MB",
+        "GB"
+      ]
     },
     "chatView": {
       "menuItems": {
@@ -1051,6 +1057,16 @@
       "importPals": "Import pals",
       "importSuccess": "Successfully imported {{count}} pal(s).",
       "importError": "Failed to import pals. Please check the file format."
+    },
+    "modelDirs": {
+      "defaultDirLabel": "Default folder",
+      "defaultDirHint": "Models downloaded from Hugging Face are saved here. No permission needed.",
+      "customDirsLabel": "Custom folders",
+      "customDirsHint": "Folders scanned for local models. The AIOS shared folder is registered by default.",
+      "addDirButton": "Add folder",
+      "invalidDir": "Folder not found or not readable",
+      "removeConfirm": "Remove this folder from scanning?",
+      "defaultBadge": "Default"
     }
   },
   "palsScreen": {
@@ -1197,7 +1213,8 @@
     "benchmark": "Benchmark",
     "settings": "Settings",
     "appInfo": "App Info",
-    "testCompletion": "Test Completion"
+    "testCompletion": "Test Completion",
+    "modelDirs": "Model Folders"
   },
   "chat": {
     "conversationReset": "Conversation reset!",

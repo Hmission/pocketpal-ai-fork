@@ -17,6 +17,15 @@ export const AIOS_MEMORIES_DIR = `${AIOS_ROOT}/memories`;
 export const AIOS_CONFIG_DIR = `${AIOS_ROOT}/config`;
 export const AIOS_DB_DIR = `${AIOS_ROOT}/database`;
 
+// B15 双轨模型目录（ADR-0004）：
+// - DEFAULT_MODELS_DIR：规范默认下载目录（getExternalFilesDir/models），
+//   零权限、Play 合规；HF 等平台下载的模型落此处。覆盖安装保留，卸载时系统清理。
+// - AIOS_MODELS_DIR：默认注册为第一个自定义目录（共享存储，卸载不丢模型）。
+export const DEFAULT_MODELS_DIR =
+  Platform.OS === 'android'
+    ? `${RNFS.ExternalDirectoryPath}/models`
+    : `${RNFS.DocumentDirectoryPath}/models`;
+
 // Workspace 文件系统（寄宿者注入的落盘形态）
 export const AIOS_WORKSPACE_DIR = `${AIOS_ROOT}/workspace`;
 export const AIOS_CONVERSATIONS_DIR = `${AIOS_WORKSPACE_DIR}/conversations`;

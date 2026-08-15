@@ -973,7 +973,8 @@
         "workspace": "智能体",
         "tool": "工具配置",
         "imageGen": "生图",
-        "generationSettings": "生成设置"
+        "generationSettings": "生成设置",
+        "modelDirs": "模型目录"
       },
       "searchPlaceholder": "搜索对话",
       "newChat": "新对话",
@@ -1014,7 +1015,12 @@
         "total": "总计: ",
         "usage": "使用率: "
       },
-      "byteSizes": ["字节", "KB", "MB", "GB"]
+      "byteSizes": [
+        "字节",
+        "KB",
+        "MB",
+        "GB"
+      ]
     },
     "chatView": {
       "menuItems": {
@@ -1051,6 +1057,16 @@
     "toolMetrics": {
       "tokens": "{{count}} 个 token",
       "elapsed": "{{seconds}}秒"
+    },
+    "modelDirs": {
+      "defaultDirLabel": "默认目录",
+      "defaultDirHint": "从 Hugging Face 下载的模型保存在这里，无需任何权限。",
+      "customDirsLabel": "自定义目录",
+      "customDirsHint": "扫描本地模型的目录。AIOS 共享目录已默认注册。",
+      "addDirButton": "添加目录",
+      "invalidDir": "目录不存在或不可读",
+      "removeConfirm": "从扫描中移除该目录？",
+      "defaultBadge": "默认"
     }
   },
   "palsScreen": {
@@ -1197,7 +1213,8 @@
     "benchmark": "基准测试",
     "settings": "设置",
     "appInfo": "关于",
-    "testCompletion": "测试完成"
+    "testCompletion": "测试完成",
+    "modelDirs": "模型目录"
   },
   "chat": {
     "conversationReset": "对话已重置！",

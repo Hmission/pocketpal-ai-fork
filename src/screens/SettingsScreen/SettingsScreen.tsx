@@ -12,6 +12,7 @@ import {
   AppInfoIcon,
   AtomIcon,
   BenchmarkIcon,
+  BrowserIcon,
   ChevronRightIcon,
   CodeIcon,
   EditBoxIcon,
@@ -90,6 +91,15 @@ export const SettingsScreen: React.FC = () => {
             styles={styles}
             chevronColor={theme.colors.onSurfaceVariant}
             onPress={navigateTo(ROUTES.MODELS)}
+          />
+          <Row
+            testID="settings-item-model-dirs"
+            title={menuItems.modelDirs}
+            Icon={BrowserIcon}
+            color={theme.colors.tertiary}
+            styles={styles}
+            chevronColor={theme.colors.onSurfaceVariant}
+            onPress={navigateTo(ROUTES.MODEL_DIRS)}
           />
           <Row
             testID="settings-item-memory"

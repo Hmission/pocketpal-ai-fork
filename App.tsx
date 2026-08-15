@@ -64,6 +64,7 @@ import {
   WorkspaceScreen,
   ToolScreen,
   ImageGenScreen,
+  ModelDirsScreen,
 
   // Dev tools screen. Only available in debug mode.
   DevToolsScreen,
@@ -147,6 +148,14 @@ const AppDrawer: React.FC = () => {
           headerRight: () => <ModelsHeaderRight />,
           headerStyle: styles.headerWithoutDivider,
           title: currentL10n.screenTitles.models,
+        }}
+      />
+      <Drawer.Screen
+        name={ROUTES.MODEL_DIRS}
+        component={gestureHandlerRootHOC(ModelDirsScreen)}
+        options={{
+          headerStyle: styles.headerWithoutDivider,
+          title: currentL10n.screenTitles.modelDirs,
         }}
       />
       <Drawer.Screen
