@@ -27,12 +27,15 @@ interface ImageTaskMeta {
   imageTask?: boolean;
   imageTaskFailed?: boolean;
   imagePrompt?: string;
+  /** 管家增强后的英文 SD 提示词（决策可见 v2.1：成功卡小字展示「管家优化为」） */
+  imageEnhancedPrompt?: string;
 }
 
 export const ImageTaskActions: React.FC<{message: MessageType.Text}> = observer(
   ({message}) => {
     const theme = useTheme();
     const navigation = useNavigation();
+    const [enhancedExpanded, setEnhancedExpanded] = React.useState(false);
 
     const meta = (message.metadata ?? {}) as ImageTaskMeta;
     const imageUris = message.imageUris;
@@ -44,6 +47,7 @@ export const ImageTaskActions: React.FC<{message: MessageType.Text}> = observer(
     }
 
     const prompt = meta.imagePrompt ?? '';
+    const enhanced = meta.imageEnhancedPrompt;
     const busy = imageGenStore.generating || imageGenStore.loading;
 
     const chip = (label: string, testID: string, onPress: () => void) => (
@@ -85,25 +89,53 @@ export const ImageTaskActions: React.FC<{message: MessageType.Text}> = observer(
     };
 
     return (
-      <View style={styles.row} testID="image-task-actions">
-        {succeeded && chip('再来一张', 'image-task-rerun', handleRerun)}
-        {succeeded && chip('编辑图片', 'image-task-edit', handleEdit)}
-        {failed && chip('重试', 'image-task-retry', handleRerun)}
+      <View style={styles.wrap} testID="image-task-actions">
+        {/* 决策可见（v2.1）：管家增强提示词小字展示，点击展开/收起全文 */}
+        {succeeded && enhanced && (
+          <TouchableOpacity
+            testID="image-enhanced-prompt"
+            onPress={() => setEnhancedExpanded(v => !v)}
+            style={styles.enhancedWrap}>
+            <Text
+              style={styles.enhancedText(theme)}
+              numberOfLines={enhancedExpanded ? undefined : 2}>
+              ✨ 管家优化为：{enhanced}
+            </Text>
+          </TouchableOpacity>
+        )}
+        <View style={styles.row}>
+          {succeeded && chip('再来一张', 'image-task-rerun', handleRerun)}
+          {succeeded && chip('编辑图片', 'image-task-edit', handleEdit)}
+          {failed && chip('重试', 'image-task-retry', handleRerun)}
+        </View>
       </View>
     );
   },
 );
 
 const styles: {
+  wrap: ViewStyle;
+  enhancedWrap: ViewStyle;
+  enhancedText: (theme: Theme) => TextStyle;
   row: ViewStyle;
   chip: (theme: Theme) => ViewStyle;
   chipText: (theme: Theme) => TextStyle;
 } = {
+  wrap: {
+    marginTop: 6,
+    marginLeft: 12,
+  },
+  enhancedWrap: {
+    marginBottom: 6,
+  },
+  enhancedText: theme => ({
+    ...theme.typography.captionM,
+    color: theme.colors.textSecondary,
+    lineHeight: 16,
+  }),
   row: {
     flexDirection: 'row',
     gap: 8,
-    marginTop: 6,
-    marginLeft: 12,
   },
   chip: theme => ({
     paddingHorizontal: theme.spacing.sm,

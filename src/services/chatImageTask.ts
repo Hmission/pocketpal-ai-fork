@@ -20,19 +20,23 @@ import {MessageType} from '../utils/types';
 export interface InlineImageResult {
   uri: string | null;
   error: string | null;
+  /** 管家增强后的英文 SD 提示词（未增强/失败为 null，供任务卡「管家优化为」展示） */
+  enhanced: string | null;
 }
 
 export async function runInlineImageTask(
   prompt: string,
 ): Promise<InlineImageResult> {
   // 0. 提示词增强：管家模型就绪时，把中文描述扩写成英文 SD 提示词（提质）。
-  //    失败/未就绪不阻断出图，回退原始 prompt。
+  //    失败/未就绪不阻断出图，回退原始 prompt；enhanced 带回供卡片展示（决策可见）。
   let sdPrompt = prompt;
+  let enhanced: string | null = null;
   try {
     if (promptWriter.isLoaded) {
-      const enhanced = await promptWriter.writePrompt(prompt);
-      if (enhanced) {
-        sdPrompt = enhanced;
+      const out = await promptWriter.writePrompt(prompt);
+      if (out) {
+        sdPrompt = out;
+        enhanced = out;
       }
     }
   } catch {
@@ -48,9 +52,9 @@ export async function runInlineImageTask(
     sdPrompt,
   );
   if (!uri) {
-    return {uri: null, error: imageGenStore.error ?? '出图失败'};
+    return {uri: null, error: imageGenStore.error ?? '出图失败', enhanced: null};
   }
-  return {uri, error: null};
+  return {uri, error: null, enhanced};
 }
 
 /**
@@ -66,11 +70,12 @@ export async function runImageTaskCard(prompt: string): Promise<void> {
   // finally 复位（含失败/异常路径），其余引擎任务仍走横幅。
   imageGenStore.setChatInlineGenerating(true);
   try {
+    // 决策可见（v2.1）：占位卡文案分步——识别意图 → 管家优化提示词 → 出图（动效由 ImageTaskProgress）。
     const cardMsg = {
       id: `imgtask-${Date.now()}`,
       author: assistant,
       createdAt: Date.now(),
-      text: `🎨 正在准备生成「${prompt}」…`,
+      text: `🎨 已识别为生图任务，管家优化提示词中…`,
       type: 'text',
       metadata: {imageTask: true, imagePrompt: prompt, modelName: '生图引擎'},
     } as MessageType.Text;
@@ -84,9 +89,15 @@ export async function runImageTaskCard(prompt: string): Promise<void> {
 
     const result = await runInlineImageTask(prompt);
     if (result.uri) {
+      // 管家增强提示词写入 metadata（与原文不同才写），渲染侧小字展示「管家优化为」
+      const metadata =
+        result.enhanced && result.enhanced !== prompt
+          ? {imageEnhancedPrompt: result.enhanced}
+          : {};
       await chatSessionStore.updateMessage(cardId, sessionId, {
         text: `🎨 已为你生成：${prompt}`,
         imageUris: [result.uri],
+        metadata,
       });
     } else {
       await chatSessionStore.updateMessage(cardId, sessionId, {
