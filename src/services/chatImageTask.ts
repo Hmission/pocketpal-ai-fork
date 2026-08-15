@@ -62,32 +62,39 @@ export async function runInlineImageTask(
  * 复用路径（再来一张/重试）命中已加载引擎时秒级出图。
  */
 export async function runImageTaskCard(prompt: string): Promise<void> {
-  const cardMsg = {
-    id: `imgtask-${Date.now()}`,
-    author: assistant,
-    createdAt: Date.now(),
-    text: `🎨 正在准备生成「${prompt}」…`,
-    type: 'text',
-    metadata: {imageTask: true, imagePrompt: prompt, modelName: '生图引擎'},
-  } as MessageType.Text;
-  await chatSessionStore.addMessageToCurrentSession(cardMsg);
-  const sessionId = chatSessionStore.activeSessionId;
-  if (!sessionId) {
-    return;
-  }
-  // DB 可能覆写消息 id → 插入后读回真实 id，保证后续 update 命中
-  const cardId = chatSessionStore.currentSessionMessages[0]?.id ?? cardMsg.id;
+  // 聊天内联生图进行中：顶部横幅让位于卡片内嵌动效（ImageTaskProgress），
+  // finally 复位（含失败/异常路径），其余引擎任务仍走横幅。
+  imageGenStore.setChatInlineGenerating(true);
+  try {
+    const cardMsg = {
+      id: `imgtask-${Date.now()}`,
+      author: assistant,
+      createdAt: Date.now(),
+      text: `🎨 正在准备生成「${prompt}」…`,
+      type: 'text',
+      metadata: {imageTask: true, imagePrompt: prompt, modelName: '生图引擎'},
+    } as MessageType.Text;
+    await chatSessionStore.addMessageToCurrentSession(cardMsg);
+    const sessionId = chatSessionStore.activeSessionId;
+    if (!sessionId) {
+      return;
+    }
+    // DB 可能覆写消息 id → 插入后读回真实 id，保证后续 update 命中
+    const cardId = chatSessionStore.currentSessionMessages[0]?.id ?? cardMsg.id;
 
-  const result = await runInlineImageTask(prompt);
-  if (result.uri) {
-    await chatSessionStore.updateMessage(cardId, sessionId, {
-      text: `🎨 已为你生成：${prompt}`,
-      imageUris: [result.uri],
-    });
-  } else {
-    await chatSessionStore.updateMessage(cardId, sessionId, {
-      text: `⚠️ 生图未完成：${result.error ?? '未知错误'}`,
-      metadata: {imageTaskFailed: true},
-    });
+    const result = await runInlineImageTask(prompt);
+    if (result.uri) {
+      await chatSessionStore.updateMessage(cardId, sessionId, {
+        text: `🎨 已为你生成：${prompt}`,
+        imageUris: [result.uri],
+      });
+    } else {
+      await chatSessionStore.updateMessage(cardId, sessionId, {
+        text: `⚠️ 生图未完成：${result.error ?? '未知错误'}`,
+        metadata: {imageTaskFailed: true},
+      });
+    }
+  } finally {
+    imageGenStore.setChatInlineGenerating(false);
   }
 }

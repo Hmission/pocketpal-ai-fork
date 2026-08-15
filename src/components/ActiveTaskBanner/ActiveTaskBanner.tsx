@@ -18,6 +18,7 @@ import {
 import {observer} from 'mobx-react';
 import {useNavigation} from '@react-navigation/native';
 import {engineStatus, EngineKind} from '../../store/engineStatus';
+import {imageGenStore} from '../../store/imageGenStore';
 import {ROUTES} from '../../utils/navigationConstants';
 import {useTheme} from '../../hooks';
 import type {Theme} from '../../utils/types';
@@ -34,6 +35,12 @@ export const ActiveTaskBanner: React.FC = observer(() => {
   const theme = useTheme();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
   const busy = engineStatus.busy;
+  // 聊天内联生图：顶部横幅隐藏——生成动效已在任务卡片内全程可见（
+  // ImageTaskProgress），避免「卡片动效 + 横幅」双提示；
+  // 其它引擎任务（加载大模型/生图页出图等）仍走横幅。
+  if (busy === 'image' && imageGenStore.chatInlineGenerating) {
+    return null;
+  }
   if (!busy) {
     return null;
   }

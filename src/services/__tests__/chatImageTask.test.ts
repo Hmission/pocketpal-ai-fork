@@ -10,6 +10,7 @@ jest.mock('../../store/imageGenStore', () => ({
     dreamliteLoaded: true,
     error: null,
     generateDreamLiteEntry: jest.fn(),
+    setChatInlineGenerating: jest.fn(),
   },
 }));
 jest.mock('../../services/promptWriter', () => ({
@@ -72,5 +73,23 @@ describe('runImageTaskCard', () => {
     await runImageTaskCard('一条龙');
 
     expect(mockGenerate).toHaveBeenCalledWith(1024, 1024, 4, '一条龙');
+  });
+
+  it('聊天内联生图标志：开始置 true，结束（含失败）finally 复位 false', async () => {
+    mockGenerate.mockResolvedValue('file:///tmp/gen_3.png');
+    const setFlag = imageGenStore.setChatInlineGenerating as jest.Mock;
+
+    await runImageTaskCard('一只猫');
+
+    expect(setFlag).toHaveBeenNthCalledWith(1, true);
+    expect(setFlag).toHaveBeenLastCalledWith(false);
+
+    // 失败路径同样复位
+    setFlag.mockClear();
+    mockGenerate.mockResolvedValue(null);
+    (imageGenStore as any).error = '引擎过热';
+    await runImageTaskCard('一条狗');
+    expect(setFlag).toHaveBeenNthCalledWith(1, true);
+    expect(setFlag).toHaveBeenLastCalledWith(false);
   });
 });

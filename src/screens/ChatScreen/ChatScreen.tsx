@@ -33,6 +33,7 @@ import {user, assistant} from '../../utils/chat';
 import {useChatScheduler} from '../../hooks/useChatScheduler';
 import {ActiveTaskBanner} from '../../components/ActiveTaskBanner/ActiveTaskBanner';
 import {ImageTaskActions} from '../../components/ImageTaskActions/ImageTaskActions';
+import {ImageTaskProgress} from '../../components/ImageTaskProgress/ImageTaskProgress';
 import {TextMessage} from '../../components/TextMessage';
 import {promptWriter} from '../../services/promptWriter';
 
@@ -81,7 +82,7 @@ const renderBubble = ({
   );
 };
 
-// 生图任务卡片动作条（再来一张/编辑图片/重试）：收进气泡内部动作槽
+// 生图任务卡片（生成中动效 / 再来一张·编辑图片·重试动作条）：收进气泡内部动作槽
 // （ADR-0003 同构，不再悬浮卡片外）；驻留引擎秒级复用，走
 // runImageTaskCard / pendingEditSource 单链路。
 const renderTextMessage = (
@@ -89,9 +90,16 @@ const renderTextMessage = (
   messageWidth: number,
   showName: boolean,
 ) => {
-  const hasTask = Boolean(
-    (message.metadata as {imageTask?: unknown} | undefined)?.imageTask,
-  );
+  const meta = (message.metadata ?? {}) as {
+    imageTask?: boolean;
+    imageTaskFailed?: boolean;
+  };
+  const imageUris = (message as {imageUris?: string[]}).imageUris;
+  const hasTask = !!meta.imageTask;
+  // 生成中占位卡（未回写图片/失败标记）→ 内嵌生成动效（三点波浪+进度+耗时）；
+  // 回写成功/失败后 → 动作条（再来一张/编辑图片/重试）
+  const generating =
+    hasTask && !meta.imageTaskFailed && !(imageUris && imageUris.length > 0);
   return (
     <TextMessage
       // ChatView 插槽传 Text；TextMessage 只消费 text/metadata/author，
@@ -101,7 +109,11 @@ const renderTextMessage = (
       showName={showName}
       actions={
         hasTask ? (
-          <ImageTaskActions message={message as MessageType.Text} />
+          generating ? (
+            <ImageTaskProgress />
+          ) : (
+            <ImageTaskActions message={message as MessageType.Text} />
+          )
         ) : undefined
       }
     />

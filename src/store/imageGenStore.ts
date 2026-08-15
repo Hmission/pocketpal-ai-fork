@@ -56,6 +56,8 @@ class ImageGenStore {
   pendingPrompt: string | null = null;
   /** 聊天图片卡片「编辑图片」带入的待编辑源图 URI（2026-08 闭环扩展） */
   pendingEditSource: string | null = null;
+  /** 聊天内联生图任务进行中（ActiveTaskBanner 借此在聊天生图时隐藏顶部横幅） */
+  chatInlineGenerating = false;
   /** 模型加载中 */
   loading = false;
   /** 加载开始时间戳 */
@@ -96,6 +98,13 @@ class ImageGenStore {
       }
     });
   }
+
+  /** 聊天内联生图标志（runImageTaskCard 单链路设置/复位；仅渲染层消费） */
+  setChatInlineGenerating = (v: boolean) => {
+    runInAction(() => {
+      this.chatInlineGenerating = v;
+    });
+  };
 
   /** 进度快照轮询定时器（推拉反转：1Hz 单通道 pull，替代事件风暴） */
   private pollTimer: ReturnType<typeof setInterval> | null = null;

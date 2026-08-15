@@ -107,6 +107,7 @@ export const TextMessage = ({
     textContainer,
     imageContainer,
     imageThumbnail,
+    imageThumbnailWide,
     imageContent,
     imagePreviewModal,
     imagePreviewCloseButton,
@@ -192,20 +193,27 @@ export const TextMessage = ({
     );
   };
 
-  // Render image thumbnails
+  // Render image thumbnails（单图撑满卡片宽度；多图保持缩略图网格）
   const renderImages = () => {
     if (!hasImages) {
       return null;
     }
+    const single = imageUris.length === 1;
 
     return (
       <View style={imageContainer}>
         {imageUris.map((uri: string, index: number) => (
           <TouchableOpacity
             key={index}
-            style={imageThumbnail}
+            testID={`image-thumbnail-${index}`}
+            style={[imageThumbnail, single && imageThumbnailWide]}
             onPress={() => setSelectedImageIndex(index)}>
-            <Image source={{uri}} style={imageContent} resizeMode="cover" />
+            <Image
+              source={{uri}}
+              testID={`image-content-${index}`}
+              style={imageContent}
+              resizeMode={single ? 'contain' : 'cover'}
+            />
           </TouchableOpacity>
         ))}
       </View>

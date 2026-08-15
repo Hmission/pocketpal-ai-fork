@@ -63,6 +63,12 @@ export const styles = ({
       overflow: 'hidden',
       backgroundColor: theme.colors.surfaceVariant,
     },
+    // 单图撑满卡片宽度（生图任务卡等）：方图框 + contain，与生图页预览同视觉；
+    // 多图仍走上方 80×80 缩略图网格。
+    imageThumbnailWide: {
+      width: '100%',
+      aspectRatio: 1,
+    },
     imageContent: {
       width: '100%',
       height: '100%',
