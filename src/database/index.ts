@@ -17,6 +17,9 @@ const adapter = new SQLiteAdapter({
   schema,
   migrations,
   dbName: 'pocketpalai',
+  // 注：JSI 模式下 SQLite 固定落应用私有目录（files/pocketpalai.db），
+  // 不支持 dbLocation。卸载不丢由快照机制保证（见 utils/paths.ts
+  // exportDbSnapshot / restoreDbSnapshot，B14）。
   jsi: true, // enable JSI for better performance if available
   onSetUpError: error => {
     console.error('Database setup error:', error);

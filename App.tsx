@@ -1,5 +1,5 @@
 import * as React from 'react';
-import {Appearance, Dimensions, StyleSheet, View} from 'react-native';
+import {Appearance, AppState, Dimensions, StyleSheet, View} from 'react-native';
 
 import {observer} from 'mobx-react';
 import {isHydrated} from 'mobx-persist-store';
@@ -18,7 +18,13 @@ import {
 } from 'react-native-gesture-handler';
 
 import {ttsStore, uiStore, modelStore} from './src/store';
-import {ensureAiosDirs, ensureWorkspaceFiles} from './src/utils/paths';
+import {
+  ensureAiosDirs,
+  ensureWorkspaceFiles,
+  migrateLegacyDbToShared,
+  restoreDbSnapshot,
+  exportDbSnapshot,
+} from './src/utils/paths';
 import {ensureStorageAccess} from './src/utils/androidPermission';
 import {promptWriter} from './src/services/promptWriter';
 import {recommendNCtx} from './src/utils/engineGuard';
@@ -280,6 +286,8 @@ const App = observer(() => {
           return;
         }
         return ensureAiosDirs()
+          .then(() => restoreDbSnapshot())
+          .then(() => migrateLegacyDbToShared())
           .then(() => ensureWorkspaceFiles())
           .then(() => {
             initIndex();
@@ -300,6 +308,16 @@ const App = observer(() => {
           })
           .catch(() => {});
       });
+  }, []);
+
+  // B14：进后台/退出时导出聊天记录快照到共享存储（卸载重装不丢）。
+  React.useEffect(() => {
+    const sub = AppState.addEventListener('change', state => {
+      if (state === 'background' || state === 'inactive') {
+        exportDbSnapshot().catch(() => {});
+      }
+    });
+    return () => sub.remove();
   }, []);
 
   return (

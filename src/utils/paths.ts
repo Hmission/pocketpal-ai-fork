@@ -87,6 +87,73 @@ export async function ensureAiosDirs(): Promise<void> {
 }
 
 /**
+ * B14 聊天记录快照机制（2026-08-15 事故修复）：
+ * WatermelonDB JSI 的 SQLite 固定落应用私有目录（files/pocketpalai.db），
+ * 卸载即删。快照方案：App 进后台时把私有库导出到共享存储
+ * （/sdcard/Documents/AIOS/database/），启动时若私有库缺失（卸载重装）
+ * 则从共享快照恢复。与模型目录同一持久化策略：仅用户主动清数据才丢。
+ */
+const PRIVATE_DB = `${RNFS.DocumentDirectoryPath}/pocketpalai.db`;
+const SHARED_DB = `${AIOS_DB_DIR}/pocketpalai.db`;
+
+async function copyDbWithSidecars(src: string, dst: string): Promise<void> {
+  if (!(await RNFS.exists(src))) {
+    return;
+  }
+  await RNFS.copyFile(src, dst);
+  for (const ext of ['-wal', '-shm']) {
+    const s = `${src}${ext}`;
+    if (await RNFS.exists(s)) {
+      try {
+        await RNFS.copyFile(s, `${dst}${ext}`);
+      } catch {
+        // 伴生文件缺失不影响主库
+      }
+    }
+  }
+}
+
+/** 启动时：共享快照存在且私有库缺失 → 恢复（卸载重装找回聊天记录）。 */
+export async function restoreDbSnapshot(): Promise<void> {
+  try {
+    if (!(await RNFS.exists(SHARED_DB)) || (await RNFS.exists(PRIVATE_DB))) {
+      return;
+    }
+    await copyDbWithSidecars(SHARED_DB, PRIVATE_DB);
+    console.log('[paths] restored db from shared snapshot');
+  } catch (e) {
+    console.warn('[paths] restoreDbSnapshot failed:', e);
+  }
+}
+
+/** 进后台/退出时：私有库 → 共享快照（卸载重装不丢）。 */
+export async function exportDbSnapshot(): Promise<void> {
+  try {
+    if (!(await RNFS.exists(PRIVATE_DB))) {
+      return;
+    }
+    await copyDbWithSidecars(PRIVATE_DB, SHARED_DB);
+  } catch (e) {
+    console.warn('[paths] exportDbSnapshot failed:', e);
+  }
+}
+
+/**
+ * 兼容旧版：私有库存在且共享无 → 导出一次（首次升级落快照）。
+ * 启动链在 restoreDbSnapshot 后调用。
+ */
+export async function migrateLegacyDbToShared(): Promise<void> {
+  try {
+    if (await RNFS.exists(SHARED_DB)) {
+      return;
+    }
+    await exportDbSnapshot();
+  } catch (e) {
+    console.warn('[paths] migrateLegacyDbToShared failed:', e);
+  }
+}
+
+/**
  * \u786e\u4fdd Workspace \u9ed8\u8ba4\u6587\u4ef6\u5b58\u5728\u3002\u9996\u6b21\u542f\u52a8\u65f6\u521d\u59cb\u5316\u3002
  * \u5df2\u5b58\u5728\u7684\u6587\u4ef6\u4e0d\u8986\u76d6\uff08\u7528\u6237\u7f16\u8f91\u8fc7\u7684\u4fdd\u7559\uff09\u3002
  */
