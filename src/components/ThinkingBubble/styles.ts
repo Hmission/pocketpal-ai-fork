@@ -26,7 +26,7 @@ export const createStyles = (theme: Theme) => {
       // collapsed state, the expanded card is rare; the original 16
       // bloated the layout for the common collapsed case.
       marginVertical: 6,
-      borderRadius: 20,
+      borderRadius: theme.radius.l,
       overflow: 'hidden',
       backgroundColor: bubbleBackground,
       borderWidth: 1,
@@ -84,7 +84,7 @@ export const createStyles = (theme: Theme) => {
       height: 28,
       alignItems: 'center',
       justifyContent: 'center',
-      borderRadius: 14,
+      borderRadius: theme.radius.m,
       backgroundColor: theme.colors.thinkingBubbleChevronBackground,
       borderWidth: 1,
       borderColor: theme.colors.thinkingBubbleChevronBorder,
@@ -92,7 +92,7 @@ export const createStyles = (theme: Theme) => {
     collapsedChevronContainer: {
       width: 20,
       height: 20,
-      borderRadius: 10,
+      borderRadius: theme.radius.s,
     },
     contentContainer: {
       paddingHorizontal: 16,

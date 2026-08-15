@@ -13,7 +13,7 @@ export const createStyles = (theme: ReturnType<typeof useTheme>) =>
       maxWidth: 260,
       paddingHorizontal: 12,
       paddingVertical: 6,
-      borderRadius: 16,
+      borderRadius: theme.radius.ml,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.colors.outline,
       // Opaque so chips read cleanly over content scrolling beneath them.

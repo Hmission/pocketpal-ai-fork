@@ -1,8 +1,22 @@
+---
+doc_id: POCKETPAL_CHAT_UI_SPEC
+module: root
+type: spec
+status: active
+version: "2.0"
+created: "2026-08-14"
+updated: "2026-08-15"
+relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-footer-unification]
+---
+
+<!-- D-FORMAT:v3 -->
+
 # PocketPal 聊天页 UI 设计规范（CHAT_UI_SPEC）
 
 > 单一事实源：聊天页/抽屉的配色层次、卡片结构、菜单弹出规范与文本可读性定稿。
-> 任何聊天页 UI 迭代必须先更新本文档再改代码。版本：v1（2026-08-14，聊天页+抽屉重设计定稿）
+> 任何聊天页 UI 迭代必须先更新本文档再改代码。版本：v1（2026-08-14，聊天页+抽屉重设计定稿）；v2（2026-08-15，气泡一体化 + 灰色分层落地，ADR-0003 已实施）
 > 并列文档：POCKETPAL_IMAGEGEN_UI_SPEC.md（生图页）/ POCKETPAL_UI_INTERACTION_SPEC.md（全局交互）
+> 上位规范：POCKETPAL_DESIGN_SPEC.md（UI 域 SSOT）
 
 ## 1. 配色体系（三层视觉层次）
 
@@ -111,3 +125,33 @@
 | chat-model-picker-chip | 顶栏模型选择入口 chip |
 | playbutton-<messageId> | AI 卡片下方朗读按钮 |
 | image-preview-save-button | 图片放大预览「保存到手机」按钮 |
+
+## 11. 气泡一体化与灰色分层（v2 定稿，2026-08-15）
+
+> 依据：DESIGN_SPEC §4c.1（气泡一体化结构图）+ §1.8（一灰一职清单）+ ADR-0003。
+> 代码载体：Message.tsx（footer 收进最后一个内容块气泡内）/ Bubble/styles.ts / ChatHeader / SessionStatusBar / ChatInput / GreetingBubble。
+
+### 11.1 气泡一体化（footer 收进卡片）
+
+- footer（朗读 ▶ / 复制 / timing）渲染在**气泡卡片内部**（同底色 assistantBubbleBackground），不再悬浮卡片下方。
+- 结构：`气泡卡片(文本 + footer[高 24，底部 padding s8])`；朗读/复制 icon 用 textSecondary，timing 数字 brandAccent 不变。
+- 多 step turn：footer 只出现在最后一个内容块的卡片内（turn 级唯一）。
+- 图片/文件/用户消息不渲染 footer。
+
+### 11.2 灰色分层（一灰一职）
+
+| 组件 | v1 灰色用法 | v2 定稿 |
+|---|---|---|
+| 顶栏模型 chip | surfaceVariant | 域彩 12% 底 + primary 文字（withOpacity(primary, 0.12)） |
+| SessionStatusBar | surfaceVariant | surface + hairline 分隔（降背景） |
+| ChatInput 编辑栏 | surfaceVariant | surface + outline 描边 |
+| GreetingBubble | surfaceVariant | surface + accent 左缘 |
+| softCapBanner | surfaceVariant | **保留**（信息带唯一保留位） |
+| 用户气泡 | authorBubbleBackground | 保持（与 surfaceVariant 用途区隔） |
+
+## 变更日志
+
+| 日期 | 版本 | 变更 |
+|------|------|------|
+| 2026-08-14 | 1.0 | 聊天页+抽屉重设计定稿 |
+| 2026-08-15 | 2.0 | 气泡一体化（footer 收进卡片，ADR-0003）+ 灰色分层落地（§11）；legacy fonts/radius 双轨收口同波执行 |

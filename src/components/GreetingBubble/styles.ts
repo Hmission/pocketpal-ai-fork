@@ -1,18 +1,23 @@
 import {StyleSheet} from 'react-native';
 
-export const createStyles = (colors: {
-  background: string;
-  border: string;
-  text: string;
-  accent: string;
-}) =>
+import {Theme} from '../../utils/types';
+
+export const createStyles = (
+  colors: {
+    background: string;
+    border: string;
+    text: string;
+    accent: string;
+  },
+  theme: Theme,
+) =>
   StyleSheet.create({
     container: {
       marginVertical: 8,
       marginHorizontal: 12,
       paddingVertical: 12,
       paddingHorizontal: 14,
-      borderRadius: 12,
+      borderRadius: theme.radius.m,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: colors.border,
       borderLeftWidth: 3,

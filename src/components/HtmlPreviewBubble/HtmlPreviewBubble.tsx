@@ -149,13 +149,16 @@ export const HtmlPreviewBubble: React.FC<HtmlPreviewBubbleProps> = ({
 
   const styles = useMemo(
     () =>
-      createStyles({
-        background: theme.colors.surface,
-        border: theme.colors.outline,
-        text: theme.colors.onSurface,
-        headerBg: theme.colors.surfaceVariant,
-        modalOverlay: theme.colors.background,
-      }),
+      createStyles(
+        {
+          background: theme.colors.surface,
+          border: theme.colors.outline,
+          text: theme.colors.onSurface,
+          headerBg: theme.colors.surfaceVariant,
+          modalOverlay: theme.colors.background,
+        },
+        theme,
+      ),
     [theme],
   );
 

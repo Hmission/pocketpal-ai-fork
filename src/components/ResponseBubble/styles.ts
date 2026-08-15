@@ -1,6 +1,8 @@
 import {StyleSheet, Platform} from 'react-native';
 
-export const createStyles = () => {
+import {Theme} from '../../utils/types';
+
+export const createStyles = (theme: Theme) => {
   // Colors
   const bubbleBackground = 'rgba(0, 0, 0, 0.7)';
   const bubbleBorderColor = 'rgba(255, 255, 255, 0.2)';
@@ -21,7 +23,7 @@ export const createStyles = () => {
       }),
     },
     container: {
-      borderRadius: 16,
+      borderRadius: theme.radius.ml,
       overflow: 'hidden',
       backgroundColor: bubbleBackground,
       borderWidth: 1,

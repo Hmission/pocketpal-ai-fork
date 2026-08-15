@@ -1,5 +1,6 @@
 import * as React from 'react';
 import {
+  Animated,
   View,
   FlatList,
   Text,
@@ -19,10 +20,62 @@ import {
   AiosMemory,
 } from '../../services/aiosMemory';
 import {AIOS_MEMORIES_DIR} from '../../utils/paths';
-import {useTheme} from '../../hooks';
+import {useTheme, useStaggerEntry} from '../../hooks';
 import type {Theme} from '../../utils/types';
 import {IconTile} from '../../components/ui';
+import {L10nContext} from '../../utils';
 import {HeartIcon} from '../../assets/icons';
+
+// 记忆行错峰入场（DESIGN_SPEC §5：一次性、不循环；JS driver）
+const StaggeredMemoryRow = ({
+  index,
+  item,
+  styles,
+  typeColor,
+  onEdit,
+  onDelete,
+}: {
+  index: number;
+  item: AiosMemory;
+  styles: any;
+  typeColor: (type: string) => string;
+  onEdit: (item: AiosMemory) => void;
+  onDelete: (id: string) => void;
+}) => {
+  const l10n = React.useContext(L10nContext);
+  const entry = useStaggerEntry(index);
+  return (
+    <Animated.View style={entry}>
+      <List.Item
+        title={item.content}
+        description={`${item.type} · ${new Date(item.ts).toLocaleString()}`}
+        left={() => (
+          <View
+            style={[styles.typeBadge, {backgroundColor: typeColor(item.type)}]}>
+            <Text style={styles.typeText}>{item.type[0].toUpperCase()}</Text>
+          </View>
+        )}
+        right={() => (
+          <View style={{flexDirection: 'row'}}>
+            <IconButton
+              icon="pencil-outline"
+              size={20}
+              accessibilityLabel={l10n.components.chatView.menuItems.edit}
+              onPress={() => onEdit(item)}
+            />
+            <IconButton
+              icon="delete-outline"
+              size={20}
+              accessibilityLabel={l10n.common.delete}
+              onPress={() => onDelete(item.id)}
+            />
+          </View>
+        )}
+        style={styles.listItem}
+      />
+    </Animated.View>
+  );
+};
 
 export function MemoryScreen({navigation}: any) {
   const theme = useTheme();
@@ -108,31 +161,14 @@ export function MemoryScreen({navigation}: any) {
     }
   };
 
-  const renderItem = ({item}: {item: AiosMemory}) => (
-    <List.Item
-      title={item.content}
-      description={`${item.type} · ${new Date(item.ts).toLocaleString()}`}
-      left={() => (
-        <View
-          style={[styles.typeBadge, {backgroundColor: typeColor(item.type)}]}>
-          <Text style={styles.typeText}>{item.type[0].toUpperCase()}</Text>
-        </View>
-      )}
-      right={() => (
-        <View style={{flexDirection: 'row'}}>
-          <IconButton
-            icon="pencil-outline"
-            size={20}
-            onPress={() => handleEdit(item)}
-          />
-          <IconButton
-            icon="delete-outline"
-            size={20}
-            onPress={() => handleDelete(item.id)}
-          />
-        </View>
-      )}
-      style={styles.listItem}
+  const renderItem = ({item, index}: {item: AiosMemory; index: number}) => (
+    <StaggeredMemoryRow
+      index={index}
+      item={item}
+      styles={styles}
+      typeColor={typeColor}
+      onEdit={handleEdit}
+      onDelete={handleDelete}
     />
   );
 

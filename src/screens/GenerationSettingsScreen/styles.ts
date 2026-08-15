@@ -17,7 +17,8 @@ export const createStyles = (theme: Theme) =>
     },
     card: {
       marginVertical: 8,
-      borderRadius: 12,
+      // 形状角色：内容卡片 l(20)（DESIGN_SPEC §4）
+      borderRadius: theme.radius.l,
       backgroundColor: theme.colors.background,
     },
     settingItemContainer: {

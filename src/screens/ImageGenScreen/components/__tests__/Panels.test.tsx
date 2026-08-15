@@ -8,7 +8,7 @@ import {L10nContext} from '../../../../utils';
 
 import {HistoryStrip} from '../HistoryStrip';
 import {ComposerPanel} from '../ComposerPanel';
-import {ModelPickerPanel} from '../ModelPickerPanel';
+import {ModelPickerTrigger, ModelPickerDropdown} from '../ModelPickerPanel';
 import {ResultPreview} from '../ResultPreview';
 import {DREAMLITE_MANIFEST, ModelEntry} from '../../constants';
 import {GeneratedImage} from '../../../../store/imageGenStore';
@@ -140,50 +140,73 @@ describe('ComposerPanel', () => {
   });
 });
 
-describe('ModelPickerPanel', () => {
+describe('ModelPickerTrigger（D1 顶栏胶囊）', () => {
+  const baseProps = {
+    selectedEntry: entry,
+    loaded: false,
+    loading: false,
+    scanning: false,
+    showModelDrop: false,
+    onToggleDrop: jest.fn(),
+    onQuickLoad: jest.fn(),
+  };
+
+  it('顶栏胶囊显示模型族徽章与标签', () => {
+    const {getByText} = wrap(<ModelPickerTrigger {...baseProps} />);
+    expect(getByText(/DreamLite Mobile/)).toBeTruthy();
+  });
+
+  it('未加载时显示快速加载按钮并触发 onQuickLoad', () => {
+    const onQuickLoad = jest.fn();
+    const {getByTestId} = wrap(
+      <ModelPickerTrigger {...baseProps} onQuickLoad={onQuickLoad} />,
+    );
+    fireEvent.press(getByTestId('imagegen-quick-load'));
+    expect(onQuickLoad).toHaveBeenCalled();
+  });
+
+  it('点胶囊触发 onToggleDrop', () => {
+    const onToggleDrop = jest.fn();
+    const {getByTestId} = wrap(
+      <ModelPickerTrigger {...baseProps} onToggleDrop={onToggleDrop} />,
+    );
+    fireEvent.press(getByTestId('imagegen-model-trigger'));
+    expect(onToggleDrop).toHaveBeenCalled();
+  });
+});
+
+describe('ModelPickerDropdown（D1 屏级下拉）', () => {
   const baseProps = {
     available: [entry],
-    selectedEntry: entry,
     selectedId: 'dreamlite',
     scanning: false,
     loading: false,
     loaded: false,
     isDream: true,
     showModelDrop: false,
-    modelStatus: '未加载',
     now: Date.now(),
     loadingStartedAt: 0,
     stage: '',
     generating: false,
     modelsDir: '/sdcard/Documents/AIOS/models',
     onToggleDrop: jest.fn(),
-    onQuickLoad: jest.fn(),
     onSelectModel: jest.fn(),
     onRowAction: jest.fn(),
     isRowLoaded: jest.fn(() => false),
   };
 
-  it('胶囊显示模型族徽章与标签', () => {
-    const {getByText} = wrap(<ModelPickerPanel {...baseProps} />);
+  it('showModelDrop=false 时不渲染任何内容', () => {
+    const {queryByText} = wrap(<ModelPickerDropdown {...baseProps} />);
+    expect(queryByText(/DreamLite Mobile/)).toBeNull();
+  });
+
+  it('展开时渲染模型行 + 行内加载按钮 + 说明', () => {
+    const {getByText, getAllByText} = wrap(
+      <ModelPickerDropdown {...baseProps} showModelDrop={true} />,
+    );
     expect(getByText(/DreamLite Mobile/)).toBeTruthy();
-  });
-
-  it('未加载时胶囊显示快速加载按钮并触发 onQuickLoad', () => {
-    const onQuickLoad = jest.fn();
-    const {getByTestId} = wrap(
-      <ModelPickerPanel {...baseProps} onQuickLoad={onQuickLoad} />,
-    );
-    fireEvent.press(getByTestId('imagegen-quick-load'));
-    expect(onQuickLoad).toHaveBeenCalled();
-  });
-
-  it('点胶囊展开下拉面板并渲染行内加载按钮', () => {
-    const {getAllByText, getByText} = wrap(
-      <ModelPickerPanel {...baseProps} showModelDrop={true} />,
-    );
-    // 胶囊快速加载 + 下拉行内加载按钮
-    expect(getAllByText('加载').length).toBeGreaterThanOrEqual(2);
     expect(getByText(/统一文生图/)).toBeTruthy();
+    expect(getAllByText('加载').length).toBeGreaterThanOrEqual(1);
   });
 });
 

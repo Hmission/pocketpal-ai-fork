@@ -34,7 +34,7 @@ export const createStyles = ({theme}: {theme: Theme}) =>
       backgroundColor: theme.colors.primary,
       width: 35,
       height: 35,
-      borderRadius: 20,
+      borderRadius: theme.radius.l,
       justifyContent: 'center',
       alignItems: 'center',
       shadowColor: '#000',

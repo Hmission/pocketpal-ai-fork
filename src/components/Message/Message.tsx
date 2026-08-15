@@ -175,8 +175,17 @@ export const Message = observer(
       );
     }
 
-    const renderBubbleContainer = () => {
-      const child = renderMessage();
+    const renderBubbleContainer = (withFooter: boolean) => {
+      // 气泡一体化（DESIGN_SPEC §4c.1 / ADR-0003）：footer（朗读/复制/timing）
+      // 作为 child 的一部分收进气泡卡片内（同底色），不再悬浮在卡片下方。
+      const child = withFooter ? (
+        <>
+          {renderMessage()}
+          {showAssistantFooter ? <AssistantTurnFooter message={message} /> : null}
+        </>
+      ) : (
+        renderMessage()
+      );
 
       return oneOf(
         renderBubble,
@@ -273,18 +282,25 @@ export const Message = observer(
       const wrapTextBlock = (
         keySuffix: string,
         stepFragment: (typeof steps)[number],
+        withFooter = false,
       ) => {
         const showNameForBlock = showName && !nameShown;
+        // 气泡一体化：仅最后一个内容块承载 turn 级 footer（收进卡片内）
         const child = (
-          <TextMessage
-            enableAnimation={enableAnimation}
-            message={turn}
-            messageWidth={messageWidth}
-            onPreviewDataFetched={onPreviewDataFetched}
-            showName={showNameForBlock}
-            usePreviewData={usePreviewData}
-            step={stepFragment}
-          />
+          <>
+            <TextMessage
+              enableAnimation={enableAnimation}
+              message={turn}
+              messageWidth={messageWidth}
+              onPreviewDataFetched={onPreviewDataFetched}
+              showName={showNameForBlock}
+              usePreviewData={usePreviewData}
+              step={stepFragment}
+            />
+            {withFooter && showAssistantFooter ? (
+              <AssistantTurnFooter message={message} />
+            ) : null}
+          </>
         );
         const wrapped = oneOf(
           renderBubble,
@@ -337,6 +353,14 @@ export const Message = observer(
         </View>
       );
 
+      // 最后一个有内容的 step 承载 turn 级 footer（气泡一体化）
+      let lastContentStepIdx = -1;
+      steps.forEach((step, stepIdx) => {
+        if (step.content !== undefined && step.content.length > 0) {
+          lastContentStepIdx = stepIdx;
+        }
+      });
+
       steps.forEach((step, stepIdx) => {
         // Reasoning and content render as separate blocks, reasoning
         // first (matches model emission order). Each block is skipped
@@ -365,7 +389,13 @@ export const Message = observer(
         }
 
         if (hasContent) {
-          blocks.push(wrapTextBlock(`step-${stepIdx}-text`, step));
+          blocks.push(
+            wrapTextBlock(
+              `step-${stepIdx}-text`,
+              step,
+              stepIdx === lastContentStepIdx,
+            ),
+          );
           isFirstBlock = false;
         }
 
@@ -392,9 +422,9 @@ export const Message = observer(
     // AssistantTurn renders N visual blocks within one FlatList row.
     // The single Pressable + Avatar + StatusIcon wrapping is preserved
     // so long-press stays turn-level and the avatar shows once per turn.
-    // AssistantTurnFooter is attached in the outer JSX (not inside
-    // renderMessage) so each assistant row gets exactly one footer
-    // regardless of step count; user-authored rows render none.
+    // 气泡一体化（ADR-0003）：AssistantTurnFooter 已收进最后一个内容块的
+    // 气泡卡片内（renderAssistantTurn/wrapTextBlock），不再在行级外部渲染；
+    // 用户消息与图片/文件消息不渲染 footer。
     const showAssistantFooter =
       !currentUserIsAuthor &&
       (message.type === 'assistant_turn' || message.type === 'text');
@@ -404,15 +434,9 @@ export const Message = observer(
     // MarkdownView's own `maxWidth` cap.
     const innerContent =
       message.type === 'assistant_turn' ? (
-        <View style={{width: messageWidth}}>
-          {renderAssistantTurn()}
-          {showAssistantFooter && <AssistantTurnFooter message={message} />}
-        </View>
+        <View style={{width: messageWidth}}>{renderAssistantTurn()}</View>
       ) : (
-        <>
-          {renderBubbleContainer()}
-          {showAssistantFooter && <AssistantTurnFooter message={message} />}
-        </>
+        renderBubbleContainer(message.type === 'text')
       );
 
     return (

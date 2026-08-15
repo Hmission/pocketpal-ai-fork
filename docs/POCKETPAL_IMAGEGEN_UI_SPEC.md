@@ -1,8 +1,23 @@
+---
+doc_id: POCKETPAL_IMAGEGEN_UI_SPEC
+module: root
+type: spec
+status: active
+version: "2.0"
+created: "2026-08-14"
+updated: "2026-08-15"
+relates: [POCKETPAL_DESIGN_SPEC, ADR-0002-imagegen-header-right]
+---
+
+<!-- D-FORMAT:v3 -->
+
 # PocketPal 生图页 UI 设计规范（IMAGEGEN_UI_SPEC）
 
 > 单一事实源：生图页（ImageGenScreen）的布局、按钮组成、状态机视觉与交互定稿。
 > 任何生图页 UI 迭代必须先更新本文档再改代码，杜绝「改过没记录」。
 > 版本：v1（2026-08-14，W3 定稿）| 代码实现：src/screens/ImageGenScreen/
+> 版本：v2（2026-08-15，B2 批次：散点字号/圆角 token 化，styles.ts 字面量清零）
+> 上位规范：POCKETPAL_DESIGN_SPEC.md（UI 域 SSOT）
 
 ## 1. 页面结构（单列三区 + 顶部模型胶囊）
 

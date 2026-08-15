@@ -1,3 +1,16 @@
+---
+doc_id: getting_started
+module: root
+type: howto
+status: active
+version: "1.0"
+created: "2026-08-14"
+updated: "2026-08-15"
+relates: []
+---
+
+<!-- D-FORMAT:v3 -->
+
 # Getting Started
 
 Note: Part of this guide is outdated. It will be updated soon.

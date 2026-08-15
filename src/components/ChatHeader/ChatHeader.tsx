@@ -15,6 +15,7 @@ import {chatSessionStore, modelStore} from '../../store';
 import {HeaderLeft} from '../HeaderLeft';
 import {SessionStatusBar} from '../SessionStatusBar';
 import {getModelDisplayName} from '../../utils/modelDisplayNames';
+import {withOpacity} from '../../utils/colorUtils';
 
 export const ChatHeader: React.FC<{onModelPickerPress?: () => void}> = observer(
   ({onModelPickerPress}) => {
@@ -61,13 +62,14 @@ export const ChatHeader: React.FC<{onModelPickerPress?: () => void}> = observer(
                 style={{
                   paddingHorizontal: theme.spacing.s,
                   paddingVertical: theme.spacing.xs,
-                  borderRadius: theme.radius.m,
-                  backgroundColor: theme.colors.surfaceVariant,
+                  borderRadius: theme.radius[theme.shapeRoles.pill],
+                  // 灰色治理（DESIGN_SPEC §1.8）：模型 chip 从 surfaceVariant 改为域彩 12% 底
+                  backgroundColor: withOpacity(theme.colors.primary, 0.12),
                 }}>
                 <Text
                   style={{
                     ...theme.typography.captionS,
-                    color: theme.colors.onSurface,
+                    color: theme.colors.primary,
                   }}>
                   {modelShort} ⌄
                 </Text>

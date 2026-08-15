@@ -17,6 +17,7 @@ import {KeyboardAwareScrollView} from 'react-native-keyboard-controller';
 import {observer} from 'mobx-react-lite';
 import {runInAction} from 'mobx';
 import {launchImageLibrary} from 'react-native-image-picker';
+import {useNavigation} from '@react-navigation/native';
 
 import {imageGenStore, GeneratedImage} from '../../store/imageGenStore';
 import {useTheme} from '../../hooks';
@@ -30,7 +31,10 @@ import {createStyles} from './styles';
 import {DREAMLITE_MANIFEST, RATIOS, ModelEntry} from './constants';
 import {useToast} from './hooks/useToast';
 import {useWaveDots} from './hooks/useWaveDots';
-import {ModelPickerPanel} from './components/ModelPickerPanel';
+import {
+  ModelPickerTrigger,
+  ModelPickerDropdown,
+} from './components/ModelPickerPanel';
 import {ResultPreview} from './components/ResultPreview';
 import {HistoryStrip} from './components/HistoryStrip';
 import {ComposerPanel} from './components/ComposerPanel';
@@ -39,6 +43,7 @@ import {confirmDialog} from '../../components/ui/ConfirmDialog';
 export const ImageGenScreen: React.FC = observer(() => {
   const theme = useTheme();
   const s = createStyles(theme);
+  const navigation = useNavigation();
 
   const [available, setAvailable] = React.useState<ModelEntry[]>([]);
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
@@ -170,6 +175,9 @@ export const ImageGenScreen: React.FC = observer(() => {
   const loaded = isDream
     ? imageGenStore.dreamliteLoaded
     : imageGenStore.modelLoaded;
+  // 局部捕获 store 属性（observer 重渲染时刷新；exhaustive-deps 只认组件作用域量）
+  const genLoading = imageGenStore.loading;
+  const historyLen = imageGenStore.history.length;
 
   // 预览分页派生（单状态机）：0 页 = 编辑槽（上传图）；≥1 = 历史图。
   // 编辑目标 = 当前预览区显示的图（0 页=editSource，历史页=currentImage），由「编辑」按钮锁定。
@@ -298,7 +306,7 @@ export const ImageGenScreen: React.FC = observer(() => {
   const handleListReady = React.useCallback(() => {
     const idx = previewIndexRef.current;
     if (!bootedRef.current) {
-      if (imageGenStore.history.length > 0 && pageW > 0) {
+      if (historyLen > 0 && pageW > 0) {
         bootedRef.current = true;
         previewIndexRef.current = 1;
         setPreviewIndex(1);
@@ -313,7 +321,7 @@ export const ImageGenScreen: React.FC = observer(() => {
         animated: false,
       });
     }
-  }, [pageW, imageGenStore.history.length]);
+  }, [pageW, historyLen]);
 
   const handleReroll = () => {
     handleGenerate(); // 同参数再次生成
@@ -508,12 +516,6 @@ export const ImageGenScreen: React.FC = observer(() => {
     setManageMode(false);
   };
 
-  const modelStatus = imageGenStore.loading
-    ? '加载中…'
-    : loaded
-      ? '已就绪'
-      : '未加载';
-
   // 预览横向翻页：手动导航视为完成启动定位，历史页回填参数
   const handleMomentumEnd = (e: {
     nativeEvent: {contentOffset: {x: number}};
@@ -549,32 +551,34 @@ export const ImageGenScreen: React.FC = observer(() => {
     scrollToPreview(0, false);
   };
 
+  // D1：模型触发胶囊挂到 AppBar headerRight（回收内容区顶部空间，预览顶到顶栏）
+  React.useEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <ModelPickerTrigger
+          selectedEntry={selectedEntry}
+          loaded={loaded}
+          loading={genLoading}
+          scanning={scanning}
+          showModelDrop={showModelDrop}
+          onToggleDrop={() => setShowModelDrop(v => !v)}
+          onQuickLoad={handleQuickLoad}
+        />
+      ),
+    });
+  }, [
+    navigation,
+    selectedEntry,
+    loaded,
+    genLoading,
+    scanning,
+    showModelDrop,
+    handleQuickLoad,
+  ]);
+
   return (
     <View style={s.container}>
       <KeyboardAwareScrollView contentContainerStyle={s.content}>
-        {/* 顶部：模型状态胶囊 + 锚定下拉 */}
-        <ModelPickerPanel
-          available={available}
-          selectedEntry={selectedEntry}
-          selectedId={selectedId}
-          scanning={scanning}
-          loading={imageGenStore.loading}
-          loaded={loaded}
-          isDream={isDream}
-          showModelDrop={showModelDrop}
-          modelStatus={modelStatus}
-          now={now}
-          loadingStartedAt={imageGenStore.loadingStartedAt}
-          stage={imageGenStore.stage}
-          generating={imageGenStore.generating}
-          modelsDir={AIOS_MODELS_DIR}
-          onToggleDrop={() => setShowModelDrop(v => !v)}
-          onQuickLoad={handleQuickLoad}
-          onSelectModel={handleSelectModel}
-          onRowAction={handleRowAction}
-          isRowLoaded={isRowLoaded}
-        />
-
         {/* ① 结果区 */}
         <ResultPreview
           previewRef={previewRef}
@@ -655,6 +659,26 @@ export const ImageGenScreen: React.FC = observer(() => {
           onGenerate={handleGenerate}
         />
       </KeyboardAwareScrollView>
+
+      {/* D1：屏级模型下拉 overlay（scrim 起于 AppBar 下沿，点外收起） */}
+      <ModelPickerDropdown
+        available={available}
+        selectedId={selectedId}
+        scanning={scanning}
+        loading={imageGenStore.loading}
+        loaded={loaded}
+        isDream={isDream}
+        showModelDrop={showModelDrop}
+        now={now}
+        loadingStartedAt={imageGenStore.loadingStartedAt}
+        stage={imageGenStore.stage}
+        generating={imageGenStore.generating}
+        modelsDir={AIOS_MODELS_DIR}
+        onToggleDrop={() => setShowModelDrop(v => !v)}
+        onSelectModel={handleSelectModel}
+        onRowAction={handleRowAction}
+        isRowLoaded={isRowLoaded}
+      />
     </View>
   );
 });

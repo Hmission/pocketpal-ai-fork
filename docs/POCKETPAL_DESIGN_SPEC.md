@@ -1,11 +1,41 @@
+---
+doc_id: POCKETPAL_DESIGN_SPEC
+module: root
+type: ssot
+status: active
+version: "3.0"
+created: "2026-08-14"
+updated: "2026-08-15"
+relates: [POCKETPAL_CHAT_UI_SPEC, POCKETPAL_IMAGEGEN_UI_SPEC, POCKETPAL_UI_INTERACTION_SPEC, POCKETPAL_ICON_SPEC, ADR-0001-ui-ssot-single-source, ADR-0002-imagegen-header-right, ADR-0003-bubble-footer-unification, UI_GATE_VERIFICATION_SOP]
+supersedes: []
+---
+
+<!-- D-FORMAT:v3 -->
+
+<!-- 文档管理：机制见 docs/DOC_MANAGEMENT.md；AI 用法见 docs/CURSOR_DOC_USAGE.md。
+更新时：1) 更新 frontmatter 的 updated/version；2) 同步 type/status/relates 与文末「关联文档」；
+3) 若取代/被取代则填 supersedes/superseded_by；
+4) SSOT 文档须在「关联」章节指向相关 ADR 与 SOP；
+5) 在 docs/INDEX.md 中登记。-->
+
 # PocketPal 设计语言总纲（DESIGN_SPEC）——「暖巢 WarmNest」
 
-> 单一事实源：全 App 色彩 / 排版 / 图标 / 形状材质 / 动效 / 性能预算六大维度的定稿。
-> 任何 UI 视觉迭代必须先更新本文档再改代码。版本：v2（2026-08-15，Phase 2 规范治理获批：形状语言角色化 + 色彩 60-30-10 应用规范 + 子页统一模板 + 适度动效目录）
-> 并列文档：POCKETPAL_CHAT_UI_SPEC.md（聊天页）/ POCKETPAL_IMAGEGEN_UI_SPEC.md（生图页）/ POCKETPAL_UI_INTERACTION_SPEC.md（全局交互）
+**状态**：active | **版本**：3.0 | **更新**：2026-08-15
+
+> **定位**：全 App UI 设计语言唯一真相源（UI 域 SSOT）——色彩 / 排版 / 间距栅格 / 图标 / 形状材质 / 阴影层级 / 组件状态 / 动效 / 文案 / 可访问性 / 性能预算十一大维度定稿，以及遗留债务治理批次（Gap Ledger）。
+> **配套**：相关 ADR 见 `docs/adr/ADR-0001-*` 起；操作手册见 `docs/sop/UI_GATE_VERIFICATION_SOP.md`。
+>
+> 任何 UI 视觉迭代必须先更新本文档再改代码。版本：v3（2026-08-15，全面治理定稿：补齐间距栅格 / 阴影层级 / 组件状态 / 中性色分层 / 可访问性 / 文案六维度；遗留债务全部进入治理批次，批次验收清零，不再登记无批次债务）
+> 并列文档：POCKETPAL_CHAT_UI_SPEC.md（聊天页）/ POCKETPAL_IMAGEGEN_UI_SPEC.md（生图页）/ POCKETPAL_UI_INTERACTION_SPEC.md（全局交互）/ POCKETPAL_ICON_SPEC.md（图标）
 > 代码落点：`src/theme/tokens/`（token 单一事实源）+ `src/components/ui/`（DS 组件）
 
-## 0. 设计原则
+## 一、定位与边界
+
+- **负责**：全 App 视觉语言单一事实源——token 体系（颜色/排版/间距/圆角/描边）、DS 组件（IconTile/ListItem/PressableScale/ConfirmDialog）、各屏视觉规范（聊天/生图/设置子页）的权威定义与治理批次。
+- **不负责**：交互行为与导航层级（UI_INTERACTION_SPEC）；图标资产绘制（ICON_SPEC）；文案库内容（APP_INTRO_COPY）；引擎/推理链路（llama.cpp / ONNX JNI，UI 改造禁区）。
+- **上下游**：被 CHAT/IMAGEGEN/INTERACTION/ICON 四并行 SPEC 引用；被 src/theme/tokens 与 src/components/ui 实现；ADR 提供关键决策证据；SOP 提供验证执行手册。
+
+## 二、核心原则 / 公理
 
 **品牌暖黄为魂、功能域彩色为脉、大圆角卡片为体、克制弹簧为动、性能预算为门。**
 
@@ -15,6 +45,7 @@
 - 不兜底、不补丁：不做降级开关、不加 if 分支兼容旧视觉；token 一步到位。
 - UI 为推理让路：内存账本被模型占据（文本槽 ~3GB + 生图槽 ~3.5GB），UI 层每帧 JS 开销必须可忽略。
 - testID 零变更；三份既有交互 SPEC 定稿不推翻；零新依赖。
+- **不留债务（v3）**：任何「未完成项」必须挂入 §8 治理批次（含批次号 / 验收标准 / 前置条件），不允许无批次挂账；批次内未完成前不展开同一区域的新视觉特性（锋利原则：要么完整做，要么登记批次，不拆半成品）。
 
 ## 1. 色彩体系
 
@@ -79,6 +110,34 @@ badgeSd35 #8E24AA / #CE93D8；badgeZImage #00838F / #4DD0E1；badgeDreamlite #D8
 
 **子页 AppBar 域彩 tint**（沿用 B3）：子页顶栏背景 = surface，返回箭头/标题旁点缀用该页域色（IconTile 或小徽章），headerRight 操作图标用域色。正文一律 onSurface，不用域色做正文。
 
+### 1.8 中性色分层与灰色治理（v3 新增，解决「大量浅灰、灰无层次」）
+
+**问题**：surfaceVariant（#e4e4e6）被 5+ 处不同层级功能共用（模型 chip / 状态条 / 软上限横幅 / 编辑栏 / 问候卡），用户气泡 #f2f2f2 同属灰阶 → 灰色泛滥无分工。
+
+**规则：一灰一职**。每个中性 token 只承担一个层级职责：
+
+| 层级 | token | light | dark | 职责 | 禁用作 |
+|---|---|---|---|---|---|
+| 页面底 | background | #ffffff | #000000 | 全局/聊天/生图根背景 | 卡片与容器底 |
+| 页面面 | surface | #F9FAFB | #0E0E0E | 子页背景、分组卡底 | 悬浮层（用 surfaceElevated） |
+| 次级表面 | surfaceVariant | #e4e4e6 | #646466 | **仅「信息带」**：状态条/横幅/编辑栏/搜索底 | 内容卡片、气泡、chip 底 |
+| 容器 | surfaceContainer* | 派生 | 派生 | 卡片内高亮区/按压反馈 | 页面级背景 |
+| 用户消息 | authorBubbleBackground | #f2f2f2 | #212121 | 仅用户气泡 | 其他任何容器 |
+| 助手消息 | assistantBubbleBackground | #E9F0FB | #20344B | 仅助手气泡 | 其他任何容器 |
+| 浮层 | surfaceElevated | rgba(255,255,255,0.96) | rgba(30,30,32,0.96) | 下拉面板/Sheet/弹层 | 静态卡片 |
+
+**聊天页灰色用途清单（治理目标，B1 批次落地）**：
+| 现用元素 | 现用 token（问题） | 治理去向（B1 批次） |
+|---|---|---|
+| 顶栏模型 chip | surfaceVariant | 域彩 12% 透明底 + 域色文字（与生图页 trigger 同语） |
+| SessionStatusBar 状态条 | surfaceVariant | 降为 surface + 顶部 hairline 分隔；信息带语义改由「文字+彩色圆点」承担 |
+| softCapBanner 软上限横幅 | surfaceVariant | 保留信息带职责（surfaceVariant 唯一保留位），验证一灰一职 |
+| ChatInput 编辑栏 | surfaceVariant | surface + 边框 |
+| GreetingBubble 问候卡 | surfaceVariant | surface 或域彩 12%（随 CHAT_UI_SPEC v2 定稿） |
+| 用户气泡 | authorBubbleBackground #f2f2f2 | 保持（语义定稿），与 surfaceVariant 用途区隔后不再撞灰 |
+
+**新增灰规则**：新中性色必须先登记本表再使用；surfaceVariant 严禁用于内容卡片/气泡/chip 底。
+
 ## 2. 排版体系
 
 ### 2.1 token 全表（theme.typography.*）
@@ -104,6 +163,29 @@ badgeSd35 #8E24AA / #CE93D8；badgeZImage #00838F / #4DD0E1；badgeDreamlite #D8
 
 ### 2.3 大标题规范
 页面级大标题用 displayS + 域彩色点缀（IconTile 或标题旁徽章）；滚动时不吸附、不动画（性能优先）。
+
+### 2.4 间距与栅格（v3 新增，解决「组件间距无规则」）
+
+**spacing token 全表**（与 `src/theme/tokens/spacing.ts` 一致）：
+| token | 值 | 典型用途 |
+|---|---|---|
+| none | 0 | 无间距 |
+| xxs | 2 | 徽章内 padding 垂直 |
+| xs | 4 | chip 内 padding、小图标间距 |
+| s | 8 | 紧凑间距（icon 与文本、行内元素） |
+| sm | 12 | 卡片内次级间距、行间 |
+| m | 16 | **页面边距 / 卡片内 padding / 分组间距（默认节奏）** |
+| ml | 20 | 段落间距、大卡片内距 |
+| l | 24 | 区块间距、输入区 padding |
+| xl | 32 | 大区块分隔、空态留白 |
+| xxl | 40 | 空态/页尾大留白 |
+
+**栅格规则**：
+- 基准节奏 = 4pt（spacing.xs 为最小增量）；所有间距必须落在 token 表内，禁裸数字。
+- 页面级：内容区左右边距 m(16)；多分组页面分组间距 m(16)。
+- 卡片级：卡片内 padding m(16)、卡片内行间 sm(12)、图标与文本间距 s(8)。
+- 行组件：列表行高 56（触区内 44 文本行）；行内 IconTile 40×40。
+- 文本行高一律取 typography token 的 lineHeight，不单独设置行距。
 
 ## 3. 图标体系（IconTile，文本裸露治理核心）
 
@@ -131,7 +213,8 @@ badgeSd35 #8E24AA / #CE93D8；badgeZImage #00838F / #4DD0E1；badgeDreamlite #D8
 - 同屏同角色同值；同级容器不混用矩形与圆角。
 - 卡片内嵌元素半径递减：card `l`(20) → 内输入框 `s`(8) / 内 chip `full`。
 - 唯一允许 `none`(0) 矩形的场景：分隔线（Divider）、全幅媒体图、表格细线。其余容器一律取圆角角色。
-- 形状角色锁：新增 `tokens/__tests__/shape-roles` invariant，同角色组件必须取同一 radius token（C1 落地）。
+- 形状角色锁：`tokens/__tests__/shape-roles` invariant，同角色组件必须取同一 radius token（C1 落地）。
+- **消息气泡角色**（v3 明确）：气泡 = 内容卡片角色（radius.l=20，相邻消息组尾角收紧规则见 CHAT_UI_SPEC v2）；气泡内嵌元素（图片/代码块）递减取 s(8)。
 
 **光影分层**（HarmonyOS 材质层 + 柔光玻璃路线）：卡片 surface + Android elevation 2（列表卡）/ 4（悬浮层）；悬浮面板 surfaceElevated + elevation 4 + scrim。**零 blur、零新依赖**。ConfirmDialog / Sheet / 模型胶囊统一走 surfaceElevated + 大圆角。
 
@@ -154,6 +237,47 @@ ScrollView
 **统一项**：分组卡片间距 spacing.m、卡片内 padding spacing.m、行高 56、分组标题与卡片间距 spacing.s。Paper `List`/`Card` 在子页一律替换为 DS `Surface` + `IconTile` 行。
 **入场**：分组错峰 `useStaggerEntry`（一次性，§5）。
 
+## 4c. 组件状态与结构规范（v3 新增，解决「卡片割裂、组件状态无统一」）
+
+### 4c.1 消息气泡一体化（聊天页，B1 批次落地）
+**现状问题**：气泡卡片（浅蓝/浅灰）与下方 footer 按钮行（朗读 ▶ / 复制 / timing）分离渲染，视觉割裂；CHAT_UI_SPEC §2 图示为「footer 在卡片内」——实现落后于规范。
+
+**定稿结构**：
+```
+┌──────────────────────────────────────┐
+│ 模型徽章（brandAccent 小字）          │ ← 仅助手；气泡外，左对齐
+├──────────────────────────────────────┤
+│ 气泡卡片（assistantBubbleBackground） │
+│  radius.l(20)，内 padding m          │
+│  ├─ 正文（Markdown）                 │
+│  └─ footer（卡片内底部）             │
+│     ▶朗读 · 复制icon · 12ms/token    │ ← height 24，与正文同底色
+└──────────────────────────────────────┘
+```
+- footer 收进气泡卡片内（同底色、底部 padding s），朗读/复制 icon 用 onSurfaceVariant（灰降级为文字级），timing 数字 brandAccent 不变。
+- 用户气泡：authorBubbleBackground，无 footer。
+- 图片/文件/HTML 预览等媒体卡片：媒体区取 radius.l，内嵌操作条收进卡片底（同波治理）。
+
+### 4c.2 按钮状态机（全局）
+| 状态 | 表现 |
+|---|---|
+| default | primary 实底（radius.full 胶囊）/ 次级 outlined（radius.ml）/ 危险 danger 实底 |
+| pressed | PressableScale 弹簧 0.97（JS driver，§5） |
+| disabled | surfaceDisabled 底 + onSurfaceDisabled 文本，禁透明度叠两层 |
+| loading | 保留文字 + 行内 ActivityIndicator（按钮尺寸不变） |
+- 按钮文本：uiM(14)/uiS(12)；高度 ≥44（紧凑场景 ≥36 + hitSlop 补足 44）。
+
+### 4c.3 chip / 胶囊状态机
+| 状态 | 表现 |
+|---|---|
+| default | 域彩 12% 透明底 + 域色/onSurface 文本，radius.full |
+| active | 域彩实色底 + onPrimary 文本（选中） |
+| disabled | surfaceDisabled 底 + onSurfaceDisabled 文本 |
+- 模型选择胶囊（生图页 trigger / 聊天页模型 chip）统一走此规范。
+
+### 4c.4 输入框
+容器 radius.ml(16)（对齐既有 `borders.inputBorderRadius=16`），内部输入本体 radius.s(8)；聚焦态 border 用 primary（1.5px = stroke.md）；错误态 danger 边框 + errorContainer 底。
+
 ## 5. 动效体系（铁律内克制版）
 
 | 动效 | 实现 | 生命周期 | 红线 |
@@ -166,6 +290,17 @@ ScrollView
 | chevron 旋转 | 既有 | 展开瞬间 | 已有 |
 
 铁律：`Animated.loop` 一律 useNativeDriver:false（07a47ed 收口）；一次性短动画允许 native；不引入 Lottie/reanimated 新用法；新动效一律「一次性 + JS driver」为默认，仅在 `useStaggerEntry`/`PressableScale` 既有模式内推广，**不新增动画基础设施**（G4）。
+
+### 5.x 阴影与层级（v3 新增，解决「层次靠颜色不靠深度」）
+| 层级 | elevation（Android） | iOS shadow | 用途 |
+|---|---|---|---|
+| 0 | 0 | 无 | 页面背景/信息带 |
+| 1 | 1 | opacity 0.05 / radius 4 / y 1 | 输入区悬浮条 |
+| 2 | 2 | opacity 0.08 / radius 8 / y 2 | 列表卡/分组卡/气泡卡 |
+| 4 | 4 | opacity 0.12 / radius 12 / y 4 | 悬浮面板/下拉/Sheet |
+| 8 | 8 | opacity 0.16 / radius 16 / y 8 | Modal/弹窗（ConfirmDialog 等） |
+- 阴影仅用于「抬升」语义：可交互浮层/卡片，**禁用于静态信息带与纯文本区**。
+- 一律走 Android elevation（RN 内置），禁 blur/新依赖。
 
 ## 6. 性能门禁（G1-G5，最高优先级）
 
@@ -184,20 +319,65 @@ ScrollView
 - invariants.test.ts 的 token 消费白名单随每波迁移同步扩（`screens/*` 新消费者按波加入 allow-list）。
 - 每波改动过五关门禁：tsc 零错 / jest 改动套件绿 / Gradle 构建 / 装机 / 性能走查。
 - 既有 Paper 屏（Models/Settings/Pals）不强制换 DS 组件，但颜色/字号一律取 token。
+- 治理批次执行顺序见 §8；批次内改动必须先更新对应并行 SPEC 再改代码。
 
-## 8. 已登记债务（锋利原则：要么完整做，要么登记，不拆半成品）
+## 8. Gap Ledger（遗留债务治理批次：债务清零计划，不留无批次债务）
 
-- **legacy fonts 双轨（部分收口）**：`fontStyles` 导出已删除、ChatInput 迁移到
-  `FONT_FAMILIES`（B6 双轨收口第一步，零视觉回归，jest 覆盖）。剩余双轨为
-  utils/theme.ts MD3 `fonts` 块/自定义 TextStyle vs `theme.typography.*`：
-  消费者含聊天定稿消息样式（TextMessage 的 sentMessageBodyTextStyle 族、
-  ChatInput inputTextStyle）——安全删除需先对聊天视觉再定稿（CHAT_UI_SPEC v2）。
-  前置条件：聊天消息排版重定稿 + 值映射表验证零回归。
-- **生图页 styles.ts 散点数字字号**（12/13/11 等）未 token 化：
-  IMAGEGEN_UI_SPEC 已定稿，排版升级需随生图页下一波视觉迭代同改。
-- **媒体覆盖层保留黑底白字**（ImageGen styles 的 toastBar/fullscreen/historySel）：
-  黑底上的白字属媒体覆盖语义，非主题表面，豁免硬编码禁令并在代码内注释说明。
-- **聊天消息层原始 borderRadius**（gifted-chat 派生组件：ImageMessage/FileMessage/
-  GreetingBubble/LoadingBubble/HtmlPreviewBubble/ChatView 等含 50+ 处 `borderRadius: 1/2/4/8`）：
-  属 CHAT_UI_SPEC 红线区，不在 shape-roles grep 强制内；形状 token 化随聊天视觉再定稿（CHAT_UI_SPEC v2）
-  同波清除。shapeRoles role→token 映射已锁定（§4），新代码一律取 `radius[shapeRoles.<role>]`。
+**规则**：所有已知未完成项挂入下表；新发现的未完成项必须先补录本表（含验收）再谈实现；批次验收 = 五关门禁 + 深浅双模式真机走查；批次完成后对应并行 SPEC 同步升版记录。
+
+| 批次 | 内容 | 前置条件 | 验收标准 | 状态 |
+|---|---|---|---|---|
+| B1 | **聊天视觉再定稿**（CHAT_UI_SPEC v2）：① 气泡一体化（footer 收进卡片，§4c.1）② 灰色分层落地（§1.8 清单：模型 chip 域彩化、状态条降 surface、编辑栏 surface+边框等）③ 50+ 处原始 borderRadius 清除（ImageMessage/FileMessage/GreetingBubble/LoadingBubble/HtmlPreviewBubble/ChatView 等 → radius[shapeRoles.*]）④ legacy fonts 双轨收口（fontStyles 剩余消费者：TextMessage sentMessageBodyTextStyle 族、ChatInput inputTextStyle → theme.typography.*） | 本文档 v3 定稿（已就绪） | 聊天页深浅双模式走查零视觉回归 + tsc/jest/Gradle/装机全绿 + invariants 覆盖新 token 消费者 | ✅ 已完成（2026-08-15，ADR-0003 accepted，CHAT_UI_SPEC v2） |
+| B2 | **生图页散点字号 token 化**：styles.ts 中 12/13/11 等裸 fontSize → theme.typography（captionS/captionM/uiS 等） | IMAGEGEN_UI_SPEC 已定稿 | 生图页视觉零回归 + token-consumer 白名单更新 | ✅ 已完成（2026-08-15，IMAGEGEN_UI_SPEC v2） |
+| B3 | **子页模板收尾**：Memory/Tool 行容器 Surface 化（自定义操作行：Switch/编辑删除）+ GenerationSettings Paper Card → DS Surface 结构换装（Card.Title/Content 重组）+ 六子页错峰入场补全（§4b 统一） | 既有 §4b 模板 | 六子页与模板逐项对照无偏差 | ✅ 已完成（D2 已落地 + 2026-08-15 复核；Switch/List 属 §7 允许范围） |
+| B4 | **可访问性落地**（§9）：对比度校验（brandAccent 徽章/文字级强调全查）、触区 44 审查（IconButton/icon 按钮 hitSlop）、content-desc 语义补全（图标按钮无文字场景） | §9 定稿 | 无障碍清单走查表全绿 | ✅ 已完成（2026-08-15，accessibilityLabel + hitSlop） |
+| B5 | **生图页顶栏边距修正**：headerRight 触发组（胶囊+加载按钮）加右侧 margin（8~12dp），消除贴边（真机证据：加载按钮 bounds 右缘=1080 贴屏幕边） | 无 | 真机截图：触发组与屏幕右缘间距 ≥8dp | ✅ 已完成（2026-08-15，marginRight 8dp） |
+
+**批次间依赖**：B1 前置最大（聊天域，含 §8 旧债务 4 项中的 2 项），完成后旧债务全部清零；新债务一律按本表规则补录（批次号 + 验收 + 前置），不允许无批次挂账。
+
+## 9. 可访问性（v3 新增）
+
+- **对比度**：正文/图标 ≥4.5:1（WCAG AA），大字/辅助文本 ≥3:1；品牌黄（#F5A623）只做强调与按钮底，不做正文色；深色模式同样校验。
+- **触区**：可交互元素命中区 ≥44×44dp（视觉小于 44 的用 hitSlop 补足）；列表行高 56 已含。
+- **字号**：随系统 fontScale 适配，不锁死绝对 fontSize（token 为基准，允许系统缩放）；非拉丁语言字体回退按既有 NON_LATIN_LOCALES 机制。
+- **语义标签**：纯图标按钮（复制/朗读/删除等）必须提供 content-desc/accessibilityLabel；列表行组合标签（如「2026-08-15, 对话日志」）保持可读。
+- **焦点/朗读**：Modal/Sheet 打开时焦点管理不跳出；长文本消息可朗读（TTS 既有）。
+
+## 10. 文案规范（v3 新增）
+
+- **语言**：界面文案中文为主（l10n 多语言，en 为类型基准，缺失 key 自动回退英文）；标点一律全角（中文语境）。
+- **长度**：按钮 ≤6 字；chip/徽章 ≤8 字；标题 ≤12 字；辅助说明 ≤30 字（超出换行需重新措辞）。
+- **错误信息结构**：发生了什么 + 用户可做什么（如「模型未加载，请初始化模型。」）；禁止裸技术报错（错误码可作辅助显示）。
+- **一致性**：同一动作全 App 同一措辞（保存/再次生成/删除/加载/卸载）；新文案必须同步 `docs/APP_INTRO_COPY.md` 与 `src/locales/*.json`。
+- **品牌词**：App 显示名「小黄鸡」（英文 Pocket Chick）；代码标识 name=PocketPal / applicationId=com.pocketpalai 为兼容红线不可改；关于页保留「基于 PocketPal AI（MIT License）开发」署名。
+
+## 11. testID 登记（v3 汇总锚点）
+
+| testID | 位置 | 状态 |
+|---|---|---|
+| imagegen-model-trigger / imagegen-quick-load | 生图页顶栏胶囊/加载按钮（D1） | 既有 |
+| chat-model-picker-chip | 聊天页顶栏模型入口 | 既有 |
+| assistant-model-badge / footer-timing / assistant-turn-footer | 助手气泡徽章/性能行/footer | 既有 |
+| ui-list-item | DS ListItem 行 | 既有 |
+
+> 新增/变更 testID 必须同步本表；testID 零变更红线不变。
+
+## 变更日志
+
+| 日期 | 版本 | 变更 |
+|------|------|------|
+| 2026-08-14 | 2.0 | Phase 2 规范治理：形状角色表 + 60-30-10 色彩应用 + 子页模板 + 动效目录 |
+| 2026-08-15 | 3.0 | 全面治理：补齐间距栅格/阴影层级/组件状态/中性色分层/可访问性/文案六维度；债务全部进入治理批次（Gap Ledger）；升格为 UI 域 SSOT（frontmatter 规范） |
+
+## 关联文档
+
+- [聊天页 UI 规范](./POCKETPAL_CHAT_UI_SPEC.md)（spec）
+- [生图页 UI 规范](./POCKETPAL_IMAGEGEN_UI_SPEC.md)（spec）
+- [全局交互定稿](./POCKETPAL_UI_INTERACTION_SPEC.md)（spec）
+- [图标规范](./POCKETPAL_ICON_SPEC.md)（spec）
+- [ADR-0001 UI 规范单源](./adr/ADR-0001-ui-ssot-single-source.md)（adr）
+- [ADR-0002 生图顶栏重构](./adr/ADR-0002-imagegen-header-right.md)（adr）
+- [ADR-0003 气泡一体化](./adr/ADR-0003-bubble-footer-unification.md)（adr）
+- [UI 五关门禁执行手册](./sop/UI_GATE_VERIFICATION_SOP.md)（sop）
+- [文档治理总规范](./DOC_GOVERNANCE_SPEC.md)（root）
+- [文档索引](./INDEX.md)（root）

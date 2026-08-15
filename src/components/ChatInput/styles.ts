@@ -71,7 +71,8 @@ export const createStyles = ({
       flexShrink: 1,
     },
     input: {
-      ...theme.fonts.inputTextStyle,
+      // legacy fonts 双轨收口（DESIGN_SPEC §8 B1）：输入文本改用 theme.typography.bodyM
+      ...theme.typography.bodyM,
       color: theme.colors.inverseOnSurface,
       flex: 1,
       maxHeight: 150,
@@ -121,13 +122,14 @@ export const createStyles = ({
       top: 0,
       left: 0,
       right: 0,
-      backgroundColor: theme.colors.surfaceVariant,
+      // 灰色治理（DESIGN_SPEC §1.8）：编辑栏降为 surface + 描边，不再占用 surfaceVariant
+      backgroundColor: theme.colors.surface,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
       paddingHorizontal: 12,
-      borderTopLeftRadius: 12,
-      borderTopRightRadius: 12,
+      borderTopLeftRadius: theme.radius.ml,
+      borderTopRightRadius: theme.radius.ml,
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.outlineVariant,
       zIndex: 10, // Ensure edit bar stays above other elements
@@ -185,7 +187,7 @@ export const createStyles = ({
     previewImage: {
       width: 80,
       height: 80,
-      borderRadius: 8,
+      borderRadius: theme.radius.s,
       backgroundColor: theme.colors.surfaceVariant,
     },
     removeImageButton: {
@@ -195,7 +197,7 @@ export const createStyles = ({
       margin: 0,
       padding: 0,
       backgroundColor: theme.colors.surface,
-      borderRadius: 8,
+      borderRadius: theme.radius.s,
       width: 25,
       height: 25,
     },

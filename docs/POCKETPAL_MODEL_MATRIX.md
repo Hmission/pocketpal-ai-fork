@@ -1,3 +1,16 @@
+---
+doc_id: POCKETPAL_MODEL_MATRIX
+module: root
+type: spec
+status: active
+version: "1.0"
+created: "2026-08-14"
+updated: "2026-08-15"
+relates: [POCKETPAL_DESIGN_SPEC]
+---
+
+<!-- D-FORMAT:v3 -->
+
 # PocketPal 模型选型唯一事实源（MODEL_MATRIX）
 
 > **本清单是装机/推送的唯一准入口令**：只允许推送「入选清单」内的模型文件。

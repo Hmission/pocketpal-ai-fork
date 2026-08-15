@@ -1,10 +1,13 @@
 import {StyleSheet} from 'react-native';
 
-export const styles = StyleSheet.create({
+import {Theme} from '../../utils/types';
+
+export const createStyles = (theme: Theme) =>
+  StyleSheet.create({
   container: {
     flexDirection: 'row',
     padding: 8,
-    borderRadius: 16,
+    borderRadius: theme.radius.ml,
     alignSelf: 'flex-start',
     marginVertical: 8,
     marginHorizontal: 12,

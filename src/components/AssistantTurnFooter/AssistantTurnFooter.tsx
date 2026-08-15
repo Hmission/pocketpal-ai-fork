@@ -105,7 +105,11 @@ export const AssistantTurnFooter: React.FC<AssistantTurnFooterProps> = observer(
       <View style={componentStyles.container} testID="assistant-turn-footer">
         <PlayButton message={message} />
         {copyable && (
-          <TouchableOpacity onPress={copyToClipboard} testID="footer-copy">
+          <TouchableOpacity
+            onPress={copyToClipboard}
+            testID="footer-copy"
+            accessibilityLabel={l10n.components.chatView.menuItems.copy}
+            hitSlop={{top: 14, bottom: 14, left: 14, right: 14}}>
             <CopyIcon
               stroke={theme.colors.textSecondary}
               width={16}

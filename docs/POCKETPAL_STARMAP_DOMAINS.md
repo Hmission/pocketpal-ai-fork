@@ -1,3 +1,16 @@
+---
+doc_id: POCKETPAL_STARMAP_DOMAINS
+module: root
+type: spec
+status: active
+version: "2.0"
+created: "2026-08-15"
+updated: "2026-08-15"
+relates: [POCKETPAL_DESIGN_SPEC, DOC_GOVERNANCE_SPEC]
+---
+
+<!-- D-FORMAT:v3 -->
+
 # PocketPal 星图域清单（STARMAP_DOMAINS）
 
 > 本仓域边界的声明式清单（与 imageGenManifest 哲学一致：声明式、不侵入母仓）。
@@ -9,7 +22,7 @@
 | 域 | 代码根 | 职责 | 域色 token |
 |---|---|---|---|
 | chat（聊天） | src/screens/ChatScreen, src/components/{ChatView,ChatInput,ChatHeader,Bubble,Message 家族} | 会话 UI、气泡渲染、输入卡、调度 hook（useChatScheduler） | domain.chat |
-| imageGen（生图） | src/screens/ImageGenScreen（编排+ModelPickerPanel/ResultPreview/HistoryStrip/ComposerPanel）, src/store/imageGenStore, src/services/imageGen* | 端侧生图单通道（load/unload/generate/edit/decode 全收编 store） | domain.imageGen |
+| imageGen（生图） | src/screens/ImageGenScreen（编排+ModelPickerTrigger/ModelPickerDropdown/ResultPreview/HistoryStrip/ComposerPanel）, src/store/imageGenStore, src/services/imageGen* | 端侧生图单通道（load/unload/generate/edit/decode 全收编 store）；模型选择胶囊挂 AppBar headerRight（D1 重构） | domain.imageGen |
 | models（模型） | src/screens/ModelsScreen, src/services, modelDisplayNames.ts | 模型列表/下载/设置/远程搜索 | —（列表域） |
 | pals（伙伴） | src/screens/PalsScreen | 伙伴卡片/档案 | — |
 | memory（记忆） | src/screens/MemoryScreen | AIOS 记忆管理 | domain.memory |
@@ -18,7 +31,7 @@
 | tools（工具） | src/screens/ToolScreen, src/components/ActiveTaskBanner | AIOS 工具配置与活动任务横幅 | domain.tools |
 | settings（设置） | src/screens/SettingsScreen（入口中心）, GenerationSettingsScreen, BenchmarkScreen, AboutScreen, DevToolsScreen | 纯入口中心 + 二级设置页 | — |
 | onboarding（引导） | src/screens/OnboardingScreens | 首启引导（DS token 首个消费者） | — |
-| theme/DS（设计系统） | src/theme/tokens, src/utils/theme.ts, src/components/ui | 设计 token 单一事实源 + DS 组件库 | 见 DESIGN_SPEC |
+| theme/DS（设计系统） | src/theme/tokens, src/utils/theme.ts, src/components/ui（含 ListItem）, src/hooks/useStaggerEntry | 设计 token 单一事实源 + DS 组件库 + shapeRoles 角色映射 + 错峰入场 hook | 见 DESIGN_SPEC |
 | 导航壳 | App.tsx, src/components/SidebarContent | Drawer+Stack 嵌套、抽屉会话中心 | — |
 
 ## 引擎层（UI 改造禁区）
@@ -32,3 +45,4 @@
 
 - usePulse.ts 已删除，生图进度动效现为 useWaveDots.ts（三点波浪，IMAGEGEN_UI_SPEC §4）。
 - 抽屉不再承载功能导航：纯会话中心（搜索+新对话+日期分组列表+底部设置 footer）；功能入口全在设置页入口中心。
+- Phase 2（WarmNest v2）：生图页模型选择器已拆为 Trigger（headerRight 胶囊）+ Dropdown（屏级 overlay，absoluteFill 只盖 AppBar 下方内容区）；六子页（GenerationSettings/About/Memory/Knowledge/Workspace/Tool）统一错峰入场（useStaggerEntry）；Knowledge/Workspace 列表行用 DS ListItem（IconTile+PressableScale）；形状语言角色化由 tokens/shapeRoles 单源（见 DESIGN_SPEC §4）。

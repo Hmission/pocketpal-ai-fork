@@ -6,12 +6,12 @@ import {
   StyleSheet,
   Alert,
   Platform,
+  Animated,
 } from 'react-native';
 import {
   Appbar,
   Button,
   TextInput,
-  List,
   Divider,
   IconButton,
 } from 'react-native-paper';
@@ -24,9 +24,9 @@ import {
   AIOS_MEMORY_FILE,
   AIOS_WORKSPACE_DIR,
 } from '../../utils/paths';
-import {useTheme} from '../../hooks';
+import {useTheme, useStaggerEntry} from '../../hooks';
 import type {Theme} from '../../utils/types';
-import {IconTile} from '../../components/ui';
+import {IconTile, ListItem} from '../../components/ui';
 import {EditBoxIcon} from '../../assets/icons';
 
 const FILES = [
@@ -39,6 +39,8 @@ const FILES = [
 export function WorkspaceScreen({navigation}: any) {
   const theme = useTheme();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
+  // 文件列表分组错峰入场（DESIGN_SPEC §5：一次性、不循环）
+  const staggerList = useStaggerEntry(0);
   const [selectedFile, setSelectedFile] = React.useState<string | null>(null);
   const [content, setContent] = React.useState('');
   const [original, setOriginal] = React.useState('');
@@ -173,17 +175,17 @@ export function WorkspaceScreen({navigation}: any) {
         </View>
       ) : (
         <ScrollView>
-          <List.Section>
-            <List.Subheader>{AIOS_WORKSPACE_DIR}</List.Subheader>
+          {/* 子页统一模板（DESIGN_SPEC §4b）：分组标题 + ListItem 行 */}
+          <Animated.View style={staggerList}>
+            <Text style={styles.sectionTitle}>{AIOS_WORKSPACE_DIR}</Text>
             {FILES.map(f => (
               <React.Fragment key={f.path}>
-                <List.Item
+                <ListItem
                   title={f.label}
-                  description={f.path.split('/').pop()}
-                  left={props => (
-                    <List.Icon {...props} icon="file-document-outline" />
-                  )}
-                  right={() => (
+                  subtitle={f.path.split('/').pop()}
+                  Icon={EditBoxIcon}
+                  color={theme.colors.domain.workspace}
+                  right={
                     <View style={{flexDirection: 'row'}}>
                       <IconButton
                         icon="download-outline"
@@ -196,13 +198,13 @@ export function WorkspaceScreen({navigation}: any) {
                         onPress={() => handleImport(f.path)}
                       />
                     </View>
-                  )}
+                  }
                   onPress={() => loadFile(f.path)}
                 />
                 <Divider />
               </React.Fragment>
             ))}
-          </List.Section>
+          </Animated.View>
         </ScrollView>
       )}
     </View>
@@ -216,6 +218,13 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: theme.spacing.s,
+    },
+    sectionTitle: {
+      ...theme.typography.captionM,
+      color: theme.colors.onSurfaceVariant,
+      paddingHorizontal: theme.spacing.m,
+      paddingBottom: theme.spacing.s,
+      paddingTop: theme.spacing.m,
     },
     appbarTitle: {
       ...theme.typography.titleM,

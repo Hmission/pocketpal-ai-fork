@@ -1,3 +1,16 @@
+---
+doc_id: POCKETPAL_ICON_SPEC
+module: root
+type: spec
+status: active
+version: "1.0"
+created: "2026-08-14"
+updated: "2026-08-15"
+relates: [POCKETPAL_DESIGN_SPEC]
+---
+
+<!-- D-FORMAT:v3 -->
+
 # POCKETPAL 图标规范（单一事实源）
 
 > 最后更新：2026-08-14 · 全库归一化落盘

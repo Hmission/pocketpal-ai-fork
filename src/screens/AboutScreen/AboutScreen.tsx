@@ -1,5 +1,5 @@
 import React, {useContext} from 'react';
-import {View, ScrollView, TouchableOpacity, Alert} from 'react-native';
+import {Animated, View, ScrollView, TouchableOpacity, Alert} from 'react-native';
 
 import DeviceInfo from 'react-native-device-info';
 import Clipboard from '@react-native-clipboard/clipboard';
@@ -9,7 +9,7 @@ import {BuildInfo} from 'llama.rn';
 
 import {CopyIcon} from '../../assets/icons';
 
-import {useTheme} from '../../hooks';
+import {useTheme, useStaggerEntry} from '../../hooks';
 import {createStyles} from './styles';
 import {L10nContext} from '../../utils';
 
@@ -18,6 +18,8 @@ export const AboutScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const styles = createStyles(theme, insets);
   const l10n = useContext(L10nContext);
+  // 页面入场（DESIGN_SPEC §5：一次性、不循环；JS driver）
+  const entry = useStaggerEntry(0);
 
   const [appInfo, setAppInfo] = React.useState({
     version: '',
@@ -45,6 +47,7 @@ export const AboutScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.container}>
+        <Animated.View style={entry}>
         <View style={styles.card}>
           <View style={styles.header}>
             <View style={styles.headerContent}>
@@ -91,6 +94,7 @@ export const AboutScreen: React.FC = () => {
             </View>
           </View>
         </View>
+        </Animated.View>
       </ScrollView>
     </SafeAreaView>
   );

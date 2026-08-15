@@ -1,3 +1,16 @@
+---
+doc_id: APP_INTRO_COPY
+module: root
+type: copy
+status: active
+version: "1.0"
+created: "2026-08-14"
+updated: "2026-08-15"
+relates: []
+---
+
+<!-- D-FORMAT:v3 -->
+
 # 小黄鸡（Pocket Chick）App 介绍文案库
 
 > **状态**：进行中 | **维护**：AIOS | **最后更新**：2026-08-15

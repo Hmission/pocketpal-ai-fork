@@ -1,5 +1,7 @@
 import {StyleSheet} from 'react-native';
 
+import {Theme} from '../../utils/types';
+
 // Plain object (not via StyleSheet.create) because react-syntax-highlighter's
 // customStyle is merged with Object.assign — a numeric StyleSheet id won't
 // flatten the upstream white PreTag fallback. See MarkdownView for the why.
@@ -7,13 +9,16 @@ export const codeHighlighterPreOverride = {
   backgroundColor: 'transparent',
 } as const;
 
-export const createStyles = (colors: {
-  background: string;
-  border: string;
-  text: string;
-  headerBg: string;
-  modalOverlay: string;
-}) =>
+export const createStyles = (
+  colors: {
+    background: string;
+    border: string;
+    text: string;
+    headerBg: string;
+    modalOverlay: string;
+  },
+  theme: Theme,
+) =>
   StyleSheet.create({
     container: {
       // alignSelf: 'stretch' makes the bubble fill the cross-axis of its
@@ -28,7 +33,7 @@ export const createStyles = (colors: {
       alignSelf: 'stretch',
       marginVertical: 8,
       marginHorizontal: 12,
-      borderRadius: 12,
+      borderRadius: theme.radius.m,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: colors.border,
       backgroundColor: colors.background,

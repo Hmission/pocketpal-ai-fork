@@ -30,20 +30,17 @@ export const styles = ({
         user?.id === message.author.id
           ? `${String(theme.colors.sentMessageDocumentIcon)}33`
           : `${String(theme.colors.receivedMessageDocumentIcon)}33`,
-      borderRadius: 21,
+      borderRadius: theme.radius[theme.shapeRoles.circle],
       height: 42,
       justifyContent: 'center',
       width: 42,
     },
     name: {
-      ...(user?.id === message.author.id
-        ? theme.fonts.sentMessageBodyTextStyle
-        : theme.fonts.receivedMessageBodyTextStyle),
+      // legacy fonts 双轨收口（DESIGN_SPEC §8 B1）
+      ...theme.typography.bodyM,
     },
     size: {
-      ...(user?.id === message.author.id
-        ? theme.fonts.sentMessageCaptionTextStyle
-        : theme.fonts.receivedMessageCaptionTextStyle),
+      ...theme.typography.captionM,
       marginTop: 4,
     },
     textContainer: {

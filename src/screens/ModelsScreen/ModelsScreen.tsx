@@ -1,5 +1,12 @@
 import React, {useState, useContext, useEffect} from 'react';
-import {FlatList, RefreshControl, Platform, Alert, View, Text} from 'react-native';
+import {
+  FlatList,
+  RefreshControl,
+  Platform,
+  Alert,
+  View,
+  Text,
+} from 'react-native';
 
 import {reaction, computed} from 'mobx';
 import {v4 as uuidv4} from 'uuid';
@@ -395,13 +402,41 @@ export const ModelsScreen: React.FC = observer(() => {
       )}
 
       {/* AIOS scan status + mmproj pairing + memory estimate */}
-      <View style={{paddingHorizontal: 16, paddingVertical: 6, backgroundColor: '#f5f5f5'}}>
-        <Text style={{fontSize: 11, color: '#888'}}>
-          AIOS 扫描: {modelStore.models.filter(m => m.isLocal).length} 个本地模型
-          {modelStore.lastScanTime ? ` · 最后扫描 ${new Date(modelStore.lastScanTime).toLocaleTimeString()}` : ''}
-          {' · mmproj 配对 '}{modelStore.models.filter(m => m.supportsMultimodal && m.isDownloaded && m.defaultProjectionModel).length}
-          {'/'}{modelStore.models.filter(m => m.supportsMultimodal && m.isDownloaded).length}
-          {' · 已加载 '}{modelStore.activeModel ? modelStore.activeModel.name.slice(0, 16) : '无'}
+      <View
+        style={{
+          paddingHorizontal: theme.spacing.m,
+          paddingVertical: theme.spacing.xs,
+          backgroundColor: theme.colors.surfaceVariant,
+        }}>
+        <Text
+          style={{
+            ...theme.typography.captionS,
+            color: theme.colors.onSurfaceVariant,
+          }}>
+          AIOS 扫描: {modelStore.models.filter(m => m.isLocal).length}{' '}
+          个本地模型
+          {modelStore.lastScanTime
+            ? ` · 最后扫描 ${new Date(modelStore.lastScanTime).toLocaleTimeString()}`
+            : ''}
+          {' · mmproj 配对 '}
+          {
+            modelStore.models.filter(
+              m =>
+                m.supportsMultimodal &&
+                m.isDownloaded &&
+                m.defaultProjectionModel,
+            ).length
+          }
+          {'/'}
+          {
+            modelStore.models.filter(
+              m => m.supportsMultimodal && m.isDownloaded,
+            ).length
+          }
+          {' · 已加载 '}
+          {modelStore.activeModel
+            ? modelStore.activeModel.name.slice(0, 16)
+            : '无'}
         </Text>
       </View>
       <FlatList

@@ -1,6 +1,6 @@
 import * as React from 'react';
-import {View, FlatList, Text, StyleSheet, TouchableOpacity} from 'react-native';
-import {Appbar, List, Divider, TextInput, Button} from 'react-native-paper';
+import {Animated, View, FlatList, Text, StyleSheet, TouchableOpacity} from 'react-native';
+import {Appbar, Divider, TextInput, Button} from 'react-native-paper';
 import * as RNFS from '@dr.pogodin/react-native-fs';
 
 import {
@@ -13,12 +13,46 @@ import {
   readSummary,
 } from '../../services/aiosMemory/compaction';
 import {AIOS_MEMORY_FILE} from '../../utils/paths';
-import {useTheme} from '../../hooks';
+import {useTheme, useStaggerEntry} from '../../hooks';
 import type {Theme} from '../../utils/types';
-import {IconTile} from '../../components/ui';
-import {GridIcon} from '../../assets/icons';
+import {IconTile, ListItem} from '../../components/ui';
+import {
+  GridIcon,
+  MessageCircleMdIcon,
+  PencilLineIcon,
+} from '../../assets/icons';
 
 type Tab = 'conversations' | 'summaries' | 'longterm';
+
+// 列表行错峰入场（DESIGN_SPEC §5：一次性、不循环；JS driver）
+const StaggeredListItem = ({
+  index,
+  title,
+  subtitle,
+  Icon,
+  color,
+  onPress,
+}: {
+  index: number;
+  title: string;
+  subtitle: string;
+  Icon: React.ComponentType<any>;
+  color: string;
+  onPress: () => void;
+}) => {
+  const entry = useStaggerEntry(index);
+  return (
+    <Animated.View style={entry}>
+      <ListItem
+        title={title}
+        subtitle={subtitle}
+        Icon={Icon}
+        color={color}
+        onPress={onPress}
+      />
+    </Animated.View>
+  );
+};
 
 export function KnowledgeScreen({navigation}: any) {
   const theme = useTheme();
@@ -175,13 +209,13 @@ export function KnowledgeScreen({navigation}: any) {
       ) : tab === 'conversations' ? (
         <FlatList
           data={dates}
-          renderItem={({item}) => (
-            <List.Item
+          renderItem={({item, index}) => (
+            <StaggeredListItem
+              index={index}
               title={item}
-              description="对话日志"
-              left={props => (
-                <List.Icon {...props} icon="file-document-outline" />
-              )}
+              subtitle="对话日志"
+              Icon={MessageCircleMdIcon}
+              color={theme.colors.domain.knowledge}
               onPress={() => loadDate(item)}
             />
           )}
@@ -196,11 +230,13 @@ export function KnowledgeScreen({navigation}: any) {
       ) : tab === 'summaries' ? (
         <FlatList
           data={summaryDates}
-          renderItem={({item}) => (
-            <List.Item
+          renderItem={({item, index}) => (
+            <StaggeredListItem
+              index={index}
               title={item}
-              description="对话摘要"
-              left={props => <List.Icon {...props} icon="note-text-outline" />}
+              subtitle="对话摘要"
+              Icon={PencilLineIcon}
+              color={theme.colors.domain.knowledge}
               onPress={() => loadSummary(item)}
             />
           )}

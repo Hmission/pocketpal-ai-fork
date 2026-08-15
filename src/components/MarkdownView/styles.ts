@@ -29,7 +29,7 @@ export const createTagsStyles = (theme: Theme) => ({
     fontFamily: 'Courier', // Change the font for code snippets
     backgroundColor: theme.colors.surface, // Custom background for code blocks
     padding: 4,
-    borderRadius: 4,
+    borderRadius: theme.radius.xs,
     color: theme.colors.onSurface, // Color for code text
     fontSize: 12,
     whiteSpace: 'pre' as const,
@@ -37,7 +37,7 @@ export const createTagsStyles = (theme: Theme) => ({
   pre: {
     backgroundColor: theme.colors.surface, // Background for pre blocks
     padding: 8,
-    borderRadius: 6,
+    borderRadius: theme.radius.s,
     marginVertical: 8,
     color: theme.colors.onPrimaryContainer,
     fontFamily: 'Courier',
@@ -82,7 +82,7 @@ export const createStyles = (theme: Theme) =>
     codeHighlighterScrollContent: {
       backgroundColor: theme.colors.surface,
       padding: 8,
-      borderRadius: 6,
+      borderRadius: theme.radius.s,
       marginTop: 4,
     },
   });

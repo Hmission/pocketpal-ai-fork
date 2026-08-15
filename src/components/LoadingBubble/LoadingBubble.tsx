@@ -3,7 +3,7 @@ import React, {useEffect, useRef} from 'react';
 
 import {useTheme} from '../../hooks';
 
-import {styles} from './styles';
+import {createStyles} from './styles';
 
 import {Theme} from '../../utils/types';
 
@@ -13,6 +13,7 @@ interface LoadingDotProps {
 }
 
 const LoadingDot: React.FC<LoadingDotProps> = ({delay, theme}) => {
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
   const opacity = useRef(new Animated.Value(0.3)).current;
 
   useEffect(() => {
@@ -52,6 +53,7 @@ const LoadingDot: React.FC<LoadingDotProps> = ({delay, theme}) => {
 
 export const LoadingBubble: React.FC = () => {
   const theme = useTheme();
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
 
   return (
     <View

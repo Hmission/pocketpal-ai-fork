@@ -8,6 +8,7 @@ import {CompletionParams} from './completionTypes';
 import {PreviewData} from '@flyerhq/react-native-link-preview';
 import {MD3Colors, MD3Typescale} from 'react-native-paper/lib/typescript/types';
 import type {TokenRadius, TokenStroke, TokenTypography} from '../theme/tokens';
+import type {ShapeRole} from '../theme/tokens/radius';
 import {SkillKey} from '.';
 import type {TalentResult} from '../services/talents/types';
 import type {ReasoningCapability} from './reasoningCapability';
@@ -458,6 +459,8 @@ export interface Theme extends MD3Theme {
   typography: TokenTypography;
   radius: TokenRadius;
   stroke: TokenStroke;
+  // 形状角色→radius token 映射（DESIGN_SPEC §4），radius[shapeRoles.card] 等
+  shapeRoles: Record<ShapeRole, keyof TokenRadius>;
 }
 
 export interface User {

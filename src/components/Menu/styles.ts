@@ -9,7 +9,7 @@ export const createStyles = (theme: Theme) =>
       shadowRadius: 70,
       shadowOffset: {width: 0, height: 0},
       elevation: 5,
-      borderRadius: 12,
+      borderRadius: theme.radius.m,
       maxWidth: '90%',
     },
     menuWithSubmenu: {
@@ -19,7 +19,7 @@ export const createStyles = (theme: Theme) =>
     content: {
       paddingVertical: 0,
       backgroundColor: theme.colors.menuBackground,
-      borderRadius: 12,
+      borderRadius: theme.radius.m,
       // overflow: 'hidden', This removes shadow
       marginRight: 10,
     },

@@ -1,5 +1,6 @@
 import React, {useState, useEffect, useRef, useContext} from 'react';
 import {
+  Animated,
   View,
   Platform,
   TouchableWithoutFeedback,
@@ -45,7 +46,7 @@ import {
   InputSlider,
 } from '../../components';
 
-import {useTheme} from '../../hooks';
+import {useTheme, useStaggerEntry} from '../../hooks';
 
 import {createStyles} from './styles';
 
@@ -78,6 +79,12 @@ import {
 // OpenCL documentation URL (not localized)
 const OPENCL_DOCS_URL =
   'https://github.com/ggml-org/llama.cpp/blob/master/docs/backend/OPENCL.md#model-preparation';
+
+// 设置分组卡片错峰入场（DESIGN_SPEC §5：一次性、不循环；JS driver）
+const StaggeredCard = ({index, children}: {index: number; children: any}) => {
+  const entry = useStaggerEntry(index, 60);
+  return <Animated.View style={entry}>{children}</Animated.View>;
+};
 
 export const GenerationSettingsScreen: React.FC = observer(() => {
   const l10n = useContext(L10nContext);
@@ -308,6 +315,7 @@ export const GenerationSettingsScreen: React.FC = observer(() => {
           contentContainerStyle={styles.container}
           keyboardShouldPersistTaps="handled">
           {/* Model Initialization Settings */}
+          <StaggeredCard index={0}>
           <Card elevation={0} style={styles.card}>
             <Card.Title title={l10n.settings.modelInitializationSettings} />
             <Card.Content>
@@ -758,8 +766,10 @@ export const GenerationSettingsScreen: React.FC = observer(() => {
               </List.Accordion>
             </Card.Content>
           </Card>
+          </StaggeredCard>
 
           {/* Memory Settings */}
+          <StaggeredCard index={1}>
           <Card elevation={0} style={styles.card}>
             <Card.Title title={l10n.settings.memorySettings} />
             <Card.Content>
@@ -839,8 +849,10 @@ export const GenerationSettingsScreen: React.FC = observer(() => {
               </Text>
             </Card.Content>
           </Card>
+          </StaggeredCard>
 
           {/* Model Loading Settings */}
+          <StaggeredCard index={2}>
           <Card elevation={0} style={styles.card}>
             <Card.Title title={l10n.settings.modelLoadingSettings} />
             <Card.Content>
@@ -886,8 +898,10 @@ export const GenerationSettingsScreen: React.FC = observer(() => {
               </View>
             </Card.Content>
           </Card>
+          </StaggeredCard>
 
           {/* UI Settings */}
+          <StaggeredCard index={3}>
           <Card elevation={0} style={styles.card}>
             <Card.Title title={l10n.settings.appSettings} />
             <Card.Content>
@@ -1022,8 +1036,10 @@ export const GenerationSettingsScreen: React.FC = observer(() => {
               </View>
             </Card.Content>
           </Card>
+          </StaggeredCard>
 
           {/* Internet Search */}
+          <StaggeredCard index={4}>
           <Card elevation={0} style={styles.card} testID="internet-search-card">
             <Card.Title title={l10n.settings.internetSearch.title} />
             <Card.Content>
@@ -1185,8 +1201,10 @@ export const GenerationSettingsScreen: React.FC = observer(() => {
               </View>
             </Card.Content>
           </Card>
+          </StaggeredCard>
 
           {/* API Settings */}
+          <StaggeredCard index={5}>
           <Card elevation={0} style={styles.card}>
             <Card.Title title={l10n.settings.apiSettingsTitle} />
             <Card.Content>
@@ -1234,9 +1252,11 @@ export const GenerationSettingsScreen: React.FC = observer(() => {
               </View>
             </Card.Content>
           </Card>
+          </StaggeredCard>
 
           {/* Cache & Storage Settings - iOS only (for Shortcuts) */}
           {Platform.OS === 'ios' && (
+            <StaggeredCard index={6}>
             <Card elevation={0} style={styles.card}>
               <Card.Title title={l10n.settings.cacheStorageTitle} />
               <Card.Content>
@@ -1330,9 +1350,11 @@ export const GenerationSettingsScreen: React.FC = observer(() => {
                 </View>
               </Card.Content>
             </Card>
+            </StaggeredCard>
           )}
 
           {/* Export Options */}
+          <StaggeredCard index={7}>
           <Card elevation={0} style={styles.card}>
             <Card.Title title={l10n.settings.exportOptions} />
             <Card.Content>
@@ -1374,6 +1396,7 @@ export const GenerationSettingsScreen: React.FC = observer(() => {
               </View>
             </Card.Content>
           </Card>
+          </StaggeredCard>
         </ScrollView>
       </TouchableWithoutFeedback>
       <HFTokenSheet

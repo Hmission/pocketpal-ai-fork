@@ -4,7 +4,7 @@ export const createTableStyles = (theme: Theme) => ({
   tableOuter: {
     borderWidth: 1,
     borderColor: theme.colors.outline,
-    borderRadius: 4,
+    borderRadius: theme.radius.xs,
     marginVertical: 8,
     overflow: 'hidden' as const,
   },

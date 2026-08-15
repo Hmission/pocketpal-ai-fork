@@ -142,6 +142,24 @@ describe('design-token grep invariants', () => {
       'screens/BenchmarkScreen',
       // 聊天发送按钮品牌化（圆形 primary + radius.full）
       'components/SendButton',
+      // C2 色彩审计：AIOS 扫描状态栏内联样式 token 化（surfaceVariant/captionS）
+      'screens/ModelsScreen',
+      // B1 聊天视觉再定稿（DESIGN_SPEC §8 Gap Ledger B1）：气泡一体化 footer 收进卡片 +
+      // 灰色分层 + 聊天消息层 borderRadius/legacy fonts 双轨收口 → radius/typography token。
+      'components/TextMessage',
+      'components/FileMessage',
+      'components/ImageMessage',
+      'components/ChatInput',
+      'components/ChatView',
+      'components/LoadingBubble',
+      'components/ResponseBubble',
+      'components/ThinkingBubble',
+      'components/HtmlPreviewBubble',
+      'components/GreetingBubble',
+      'components/Menu',
+      'components/ChatPalModelPickerSheet',
+      'components/SuggestedPromptsRow',
+      'components/ChatGenerationSettingsSheet',
     ];
     const files = listFiles(SRC).filter(f => {
       const rel = path.relative(SRC, f).replace(/\\/g, '/');

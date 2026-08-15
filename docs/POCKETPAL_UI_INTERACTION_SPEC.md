@@ -1,8 +1,22 @@
+---
+doc_id: POCKETPAL_UI_INTERACTION_SPEC
+module: root
+type: spec
+status: active
+version: "1.0"
+created: "2026-08-14"
+updated: "2026-08-15"
+relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_CHAT_UI_SPEC]
+---
+
+<!-- D-FORMAT:v3 -->
+
 # PocketPal 全局交互定稿规范（UI_INTERACTION_SPEC）
 
 > 单一事实源：抽屉/导航层级/弹窗体系/消息长按菜单的交互定稿。
 > 任何交互迭代必须先更新本文档再改代码。版本：v1（2026-08-14，11 项 UI 优化定稿）
 > 并列文档：POCKETPAL_IMAGEGEN_UI_SPEC.md（生图页）
+> 上位规范：POCKETPAL_DESIGN_SPEC.md（UI 域 SSOT）
 
 ## 1. 抽屉（会话中心，唯一主入口）
 

@@ -24,6 +24,8 @@ export type {IconTileProps, IconTileSize} from './IconTile';
 
 export {PressableScale} from './PressableScale';
 export type {PressableScaleProps} from './PressableScale';
+export {ListItem} from './ListItem';
+export type {ListItemProps} from './ListItem';
 
 export {Stepper} from './Stepper';
 export type {StepperProps} from './Stepper';

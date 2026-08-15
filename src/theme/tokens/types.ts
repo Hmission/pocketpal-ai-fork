@@ -5,6 +5,8 @@
  */
 import {TextStyle} from 'react-native';
 
+import type {ShapeRole} from './radius';
+
 export type Mode = 'light' | 'dark';
 
 /**
@@ -255,4 +257,6 @@ export interface Tokens {
   spacing: TokenSpacing;
   radius: TokenRadius;
   stroke: TokenStroke;
+  // shapeRoles 角色→radius 映射（DESIGN_SPEC §4 形状语言），供 theme.shapeRoles 暴露
+  shapeRoles: Record<ShapeRole, keyof TokenRadius>;
 }

@@ -33,9 +33,8 @@ export const styles = ({
         : theme.fonts.receivedMessageLinkTitleTextStyle),
     },
     text: {
-      ...(user?.id === message.author.id
-        ? theme.fonts.sentMessageBodyTextStyle
-        : theme.fonts.receivedMessageBodyTextStyle),
+      // legacy fonts 双轨收口（DESIGN_SPEC §8 B1）：消息正文改用 theme.typography.bodyM
+      ...theme.typography.bodyM,
     },
     textContainer: {
       // 左右缩进：助手消息与用户消息同规格（≈2 字符当量），文本不贴气泡边缘
@@ -51,7 +50,7 @@ export const styles = ({
     imageThumbnail: {
       width: 80,
       height: 80,
-      borderRadius: 8,
+      borderRadius: theme.radius.s,
       overflow: 'hidden',
       backgroundColor: theme.colors.surfaceVariant,
     },
@@ -81,7 +80,7 @@ export const styles = ({
       alignSelf: 'center',
       paddingHorizontal: 28,
       paddingVertical: 10,
-      borderRadius: 24,
+      borderRadius: theme.radius[theme.shapeRoles.pill],
       backgroundColor: theme.colors.primary,
       zIndex: 1,
     },

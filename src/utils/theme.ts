@@ -225,6 +225,7 @@ export const buildTheme = ({
       default: 16,
     },
     radius: tokens.radius,
+    shapeRoles: tokens.shapeRoles,
     stroke: tokens.stroke,
     typography: localeTypography,
     icons: {},

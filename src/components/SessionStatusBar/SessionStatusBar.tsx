@@ -123,7 +123,9 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       paddingHorizontal: theme.spacing.sm,
       paddingVertical: theme.spacing.xxs,
-      backgroundColor: theme.colors.surfaceVariant,
+      // 灰色治理（DESIGN_SPEC §1.8）：状态条降为 surface + hairline 分隔，
+      // surfaceVariant 让位给 softCapBanner 唯一信息带职责
+      backgroundColor: theme.colors.surface,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.colors.border,
       flexWrap: 'wrap',

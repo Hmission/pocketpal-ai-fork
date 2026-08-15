@@ -1,3 +1,17 @@
+---
+doc_id: POCKETPAL_IMAGE_GEN_UPGRADE_PLAN
+module: root
+type: planning
+status: superseded
+version: "1.0"
+created: "2026-08-12"
+updated: "2026-08-15"
+relates: [POCKETPAL_IMAGEGEN_UI_SPEC]
+superseded_by: POCKETPAL_IMAGEGEN_UI_SPEC
+---
+
+<!-- D-FORMAT:v3 -->
+
 # PocketPal 生图链路升级方案（P5.3）
 
 > 状态：P0+P1 完成 ✅ | P2 代码层完成（OpenCL 待真机环境） | 维护：啄木鸟专工 | 2026-08-12

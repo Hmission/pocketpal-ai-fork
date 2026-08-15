@@ -21,12 +21,17 @@ export const GreetingBubble: React.FC<GreetingBubbleProps> = ({text}) => {
 
   const styles = useMemo(
     () =>
-      createStyles({
-        background: theme.colors.surfaceVariant,
-        border: theme.colors.outline,
-        text: theme.colors.onSurfaceVariant,
-        accent: theme.colors.primary,
-      }),
+      createStyles(
+        {
+          // 灰色治理（DESIGN_SPEC §1.8）：问候卡降为 surface + accent 左缘，
+          // 不再占用 surfaceVariant 信息带职责
+          background: theme.colors.surface,
+          border: theme.colors.outline,
+          text: theme.colors.onSurfaceVariant,
+          accent: theme.colors.primary,
+        },
+        theme,
+      ),
     [theme],
   );
 

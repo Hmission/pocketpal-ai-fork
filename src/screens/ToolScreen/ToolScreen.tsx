@@ -1,15 +1,61 @@
 ﻿import * as React from 'react';
-import {View, FlatList, Text, StyleSheet} from 'react-native';
+import {Animated, View, FlatList, Text, StyleSheet} from 'react-native';
 import {Appbar, List, Divider, Switch} from 'react-native-paper';
 import {deriveToolSchemas} from '../../services/talents';
 import {palStore, chatSessionStore} from '../../store';
 import type {ToolDefinition} from '../../services/talents/types';
 import {toJS} from 'mobx';
-import {useTheme} from '../../hooks';
+import {useTheme, useStaggerEntry} from '../../hooks';
 import type {Theme} from '../../utils/types';
 import {withOpacity} from '../../utils/colorUtils';
 import {IconTile} from '../../components/ui';
 import {AtomIcon} from '../../assets/icons';
+
+// 工具行错峰入场（DESIGN_SPEC §5：一次性、不循环；JS driver）
+const StaggeredToolRow = ({
+  index,
+  item,
+  enabled,
+  isPhase2,
+  styles,
+  onToggle,
+}: {
+  index: number;
+  item: ToolDefinition;
+  enabled: boolean;
+  isPhase2: boolean;
+  styles: any;
+  onToggle: (name: string, enable: boolean) => void;
+}) => {
+  const entry = useStaggerEntry(index);
+  const name = item.function.name;
+  return (
+    <Animated.View style={entry}>
+      <List.Item
+        title={
+          <View style={styles.titleRow}>
+            <Text style={styles.titleText}>{name}</Text>
+            {isPhase2 && <Text style={styles.phase2Badge}>Phase 2 未实现</Text>}
+          </View>
+        }
+        description={item.function.description?.slice(0, 80)}
+        left={props => (
+          <List.Icon
+            {...props}
+            icon={enabled ? 'check-circle' : 'circle-outline'}
+          />
+        )}
+        right={() => (
+          <Switch
+            value={enabled}
+            disabled={isPhase2}
+            onValueChange={v => onToggle(name, v)}
+          />
+        )}
+      />
+    </Animated.View>
+  );
+};
 
 export function ToolScreen({navigation}: any) {
   const theme = useTheme();
@@ -86,34 +132,20 @@ export function ToolScreen({navigation}: any) {
     setEnabledTalents(new Set(updatedTalents.map(t => t.name)));
   };
 
-  const renderItem = ({item}: {item: ToolDefinition}) => {
+  const renderItem = ({item, index}: {item: ToolDefinition; index: number}) => {
     const name = item.function.name;
     const enabled = enabledTalents.has(name);
     // device_control is a Phase 2 skeleton — surface the gap instead of
     // letting users toggle a tool whose execute() always errors out.
     const isPhase2 = name === 'device_control';
     return (
-      <List.Item
-        title={
-          <View style={styles.titleRow}>
-            <Text style={styles.titleText}>{name}</Text>
-            {isPhase2 && <Text style={styles.phase2Badge}>Phase 2 未实现</Text>}
-          </View>
-        }
-        description={item.function.description?.slice(0, 80)}
-        left={props => (
-          <List.Icon
-            {...props}
-            icon={enabled ? 'check-circle' : 'circle-outline'}
-          />
-        )}
-        right={() => (
-          <Switch
-            value={enabled}
-            disabled={isPhase2}
-            onValueChange={v => toggleTalent(name, v)}
-          />
-        )}
+      <StaggeredToolRow
+        index={index}
+        item={item}
+        enabled={enabled}
+        isPhase2={isPhase2}
+        styles={styles}
+        onToggle={toggleTalent}
       />
     );
   };

@@ -12,7 +12,7 @@ export const createStyles = (theme: Theme) =>
     content: {
       paddingVertical: 0,
       backgroundColor: theme.colors.menuBackground,
-      borderRadius: 12,
+      borderRadius: theme.radius.m,
       //overflow: 'hidden', This removes shadow
     },
   });

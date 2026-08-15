@@ -166,8 +166,8 @@ export const createStyles = (theme: Theme) =>
       borderColor: theme.colors.error,
     },
     errorNetwork: {
-      backgroundColor: theme.colors.errorContainer || '#FFF9C4',
-      borderColor: theme.colors.error || '#FBC02D',
+      backgroundColor: theme.colors.errorContainer,
+      borderColor: theme.colors.error,
     },
     errorAppCheck: {
       backgroundColor: theme.colors.errorContainer,

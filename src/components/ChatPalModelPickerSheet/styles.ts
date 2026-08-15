@@ -32,7 +32,7 @@ export const createStyles = ({theme}: {theme: Theme}) =>
       paddingVertical: 8,
       paddingHorizontal: 16,
       marginRight: 8,
-      borderRadius: 8,
+      borderRadius: theme.radius.s,
     },
     activeTab: {
       backgroundColor: theme.colors.primaryContainer,

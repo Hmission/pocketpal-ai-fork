@@ -1,6 +1,9 @@
 import {StyleSheet} from 'react-native';
 
-export const styles = StyleSheet.create({
+import {Theme} from '../../utils/types';
+
+export const createStyles = (theme: Theme) =>
+  StyleSheet.create({
   scrollviewContainer: {
     padding: 16,
   },
@@ -36,7 +39,7 @@ export const styles = StyleSheet.create({
   settingsSourceContainer: {
     marginBottom: 16,
     paddingHorizontal: 12,
-    borderRadius: 8,
+    borderRadius: theme.radius.s,
   },
   settingsSourceTitle: {
     marginBottom: 8,

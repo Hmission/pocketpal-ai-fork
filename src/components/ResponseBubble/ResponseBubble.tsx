@@ -13,6 +13,7 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import MaskedView from '@react-native-masked-view/masked-view';
 import {createStyles} from './styles';
+import {useTheme} from '../../hooks';
 
 // Enable LayoutAnimation for Android
 if (
@@ -32,7 +33,8 @@ interface ResponseBubbleProps {
 }
 
 export const ResponseBubble: React.FC<ResponseBubbleProps> = ({children}) => {
-  const styles = createStyles();
+  const theme = useTheme();
+  const styles = createStyles(theme);
 
   const [bubbleState, setBubbleState] = useState<BubbleState>(
     BubbleState.EXPANDED,

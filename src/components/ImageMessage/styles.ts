@@ -22,7 +22,8 @@ const styles = ({
       width: messageWidth,
     },
     minimizedImage: {
-      borderRadius: 15,
+      // 与气泡圆角同值（15）保持一致（DESIGN_SPEC §8 B1：radius token 化）
+      borderRadius: theme.borders.messageBorderRadius,
       height: 64,
       marginLeft: theme.insets.messageInsetsVertical,
       marginRight: 16,
@@ -38,14 +39,11 @@ const styles = ({
       flexDirection: 'row',
     },
     nameText: {
-      ...(user?.id === message.author.id
-        ? theme.fonts.sentMessageBodyTextStyle
-        : theme.fonts.receivedMessageBodyTextStyle),
+      // legacy fonts 双轨收口（DESIGN_SPEC §8 B1）
+      ...theme.typography.bodyM,
     },
     sizeText: {
-      ...(user?.id === message.author.id
-        ? theme.fonts.sentMessageCaptionTextStyle
-        : theme.fonts.receivedMessageCaptionTextStyle),
+      ...theme.typography.captionM,
       marginTop: 4,
     },
     textContainer: {
