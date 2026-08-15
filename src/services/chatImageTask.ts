@@ -109,3 +109,88 @@ export async function runImageTaskCard(prompt: string): Promise<void> {
     imageGenStore.setChatInlineGenerating(false);
   }
 }
+
+/**
+ * runInlineEditTask — 纯执行：聊天内图片编辑（P5 豆包式闭环）。
+ * 解码源图 → DreamLite 编辑单通道（VAE Encoder 编码源图为条件，中文指令直用——
+ * diptych 语义文本条件，不经过管家英文扩写）。
+ */
+async function runInlineEditTask(
+  sourceUri: string,
+  instruction: string,
+): Promise<InlineImageResult> {
+  const sq = 1024; // DreamLite 编辑输出 1024×1024（生图页同款）
+  try {
+    const rgb = await imageGenStore.decodeEditImage(
+      sourceUri.replace('file://', ''),
+      sq,
+    );
+    const uri = await imageGenStore.editDreamLiteEntry(rgb, sq, sq, 4, instruction);
+    if (!uri) {
+      return {uri: null, error: imageGenStore.error ?? '编辑失败', enhanced: null};
+    }
+    return {uri, error: null, enhanced: null};
+  } catch (e) {
+    return {uri: null, error: (e as Error)?.message ?? '编辑失败', enhanced: null};
+  }
+}
+
+/**
+ * runEditImageTaskCard — 聊天内编辑任务卡闭环（P5，单链路：
+ * scheduler 编辑分支 / 编辑结果卡「继续编辑」/ 失败卡「重试」共用）：
+ * 插编辑任务卡（editTask）→ 编码源图→编辑→回写结果。
+ *   成功：imageUris=[uri]，metadata.editSourceUri/editInstruction 留作继续编辑锚点
+ *   失败：文本卡片 + metadata.editTaskFailed（渲染侧出「重试」动作）
+ */
+export async function runEditImageTaskCard(
+  sourceUri: string,
+  instruction: string,
+): Promise<void> {
+  imageGenStore.setChatInlineGenerating(true);
+  try {
+    const cardMsg = {
+      id: `edittask-${Date.now()}`,
+      author: assistant,
+      createdAt: Date.now(),
+      text: `🖼️ 已识别为编辑任务，编码源图中…`,
+      type: 'text',
+      metadata: {
+        editTask: true,
+        editSourceUri: sourceUri,
+        editInstruction: instruction,
+        modelName: '生图引擎',
+      },
+    } as MessageType.Text;
+    await chatSessionStore.addMessageToCurrentSession(cardMsg);
+    const sessionId = chatSessionStore.activeSessionId;
+    if (!sessionId) {
+      return;
+    }
+    const cardId = chatSessionStore.currentSessionMessages[0]?.id ?? cardMsg.id;
+
+    const result = await runInlineEditTask(sourceUri, instruction);
+    if (result.uri) {
+      await chatSessionStore.updateMessage(cardId, sessionId, {
+        text: `🖼️ 已为你编辑：${instruction}`,
+        imageUris: [result.uri],
+        metadata: {
+          editTask: true,
+          editSourceUri: sourceUri,
+          editInstruction: instruction,
+        },
+      });
+    } else {
+      await chatSessionStore.updateMessage(cardId, sessionId, {
+        text: `⚠️ 编辑未完成：${result.error ?? '未知错误'}`,
+        metadata: {
+          editTask: true,
+          editTaskFailed: true,
+          editSourceUri: sourceUri,
+          editInstruction: instruction,
+        },
+      });
+    }
+  } finally {
+    imageGenStore.setChatInlineGenerating(false);
+  }
+}

@@ -36,6 +36,7 @@ import {ImageTaskActions} from '../../components/ImageTaskActions/ImageTaskActio
 import {ImageTaskProgress} from '../../components/ImageTaskProgress/ImageTaskProgress';
 import {TextMessage} from '../../components/TextMessage';
 import {promptWriter} from '../../services/promptWriter';
+import {imageGenStore} from '../../store/imageGenStore';
 
 import {VideoPalScreen} from './VideoPalScreen';
 
@@ -93,13 +94,18 @@ const renderTextMessage = (
   const meta = (message.metadata ?? {}) as {
     imageTask?: boolean;
     imageTaskFailed?: boolean;
+    editTask?: boolean;
+    editTaskFailed?: boolean;
   };
   const imageUris = (message as {imageUris?: string[]}).imageUris;
-  const hasTask = !!meta.imageTask;
+  // 生图任务卡（imageTask）/ 编辑任务卡（editTask，P5）共用动作槽
+  const hasTask = !!meta.imageTask || !!meta.editTask;
   // 生成中占位卡（未回写图片/失败标记）→ 内嵌生成动效（三点波浪+进度+耗时）；
-  // 回写成功/失败后 → 动作条（再来一张/编辑图片/重试）
+  // 回写成功/失败后 → 动作条（再来一张/编辑图片/继续编辑/重试）
   const generating =
-    hasTask && !meta.imageTaskFailed && !(imageUris && imageUris.length > 0);
+    hasTask &&
+    !(meta.imageTaskFailed || meta.editTaskFailed) &&
+    !(imageUris && imageUris.length > 0);
   return (
     <TextMessage
       // ChatView 插槽传 Text；TextMessage 只消费 text/metadata/author，
@@ -138,6 +144,21 @@ export const ChatScreen: React.FC = observer(() => {
   // State for model error report sheet
   const [isErrorReportVisible, setIsErrorReportVisible] = useState(false);
   const [errorToReport, setErrorToReport] = useState<ErrorState | null>(null);
+
+  // P5 编辑源图（豆包式）：三入口下沉输入框——任务卡「编辑图片」经
+  // imageGenStore.pendingEditSource 交接；快捷行/全屏查看器经 onEditSourceChange 直连
+  const [editSourceUri, setEditSourceUri] = useState<string | null>(null);
+
+  // 任务卡「编辑图片」改道：pendingEditSource（原跳生图页深链）→ 聊天内下沉输入框
+  React.useEffect(() => {
+    if (imageGenStore.pendingEditSource) {
+      const uri = imageGenStore.pendingEditSource;
+      runInAction(() => {
+        imageGenStore.pendingEditSource = null;
+      });
+      setEditSourceUri(uri);
+    }
+  }, [imageGenStore.pendingEditSource]);
 
   const {handleSendPress, handleStopPress} = useChatSession(
     currentMessageInfo,
@@ -332,6 +353,8 @@ export const ChatScreen: React.FC = observer(() => {
         onSendPress={wrappedSendPress}
         onStopPress={handleStopPress}
         user={user}
+        editSourceUri={editSourceUri}
+        onEditSourceChange={setEditSourceUri}
         isStopVisible={modelStore.inferencing}
         isStreaming={modelStore.isStreaming}
         sendButtonVisibilityMode="always"

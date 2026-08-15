@@ -2,7 +2,7 @@ import React from 'react';
 
 import {chatSessionStore, modelStore} from '../store';
 import {routeTask, TaskKind} from '../store/taskRouter';
-import {runImageTaskCard} from '../services/chatImageTask';
+import {runImageTaskCard, runEditImageTaskCard} from '../services/chatImageTask';
 import {findModelForTask} from '../store/modelCapabilityRegistry';
 import {engineStatus} from '../store/engineStatus';
 import {promptWriter, isPrompterModelName} from '../services/promptWriter';
@@ -37,8 +37,42 @@ export const useChatScheduler = (
   handleSendPress: (message: MessageType.PartialText) => void | Promise<void>,
 ) => {
   return React.useCallback(
-    async (message: MessageType.PartialText) => {
+    async (
+      message: MessageType.PartialText,
+      editSourceUri?: string | null,
+    ) => {
       const text = message.text.trim();
+
+      // 编辑闭环（P5 豆包式）：显式编辑源图（图片编辑按钮/全屏查看器/任务卡下沉）
+      // + 文本指令 → 聊天内编辑任务卡，零跳转；编辑意图=显式按钮动作，不走关键词路由。
+      if (editSourceUri) {
+        if (!text) {
+          // 空指令：轻提示补描述（防其他入口绕过 ChatInput 拦截）
+          await chatSessionStore.addMessageToCurrentSession({
+            id: `sys-${Date.now()}`,
+            author: assistant,
+            createdAt: Date.now(),
+            text: '💡 请描述想修改哪里，例如：把背景改成海边',
+            type: 'text',
+            metadata: {system: true},
+          } as MessageType.Text);
+          return;
+        }
+        await chatSessionStore.addMessageToCurrentSession({
+          id: `u-${Date.now()}`,
+          author: user,
+          createdAt: Date.now(),
+          text,
+          type: 'text',
+          imageUris: [editSourceUri],
+        } as MessageType.Text);
+        if (!chatSessionStore.activeSessionId) {
+          return;
+        }
+        await runEditImageTaskCard(editSourceUri, text);
+        return;
+      }
+
       const signal = routeTask(text);
       console.info(
         `[Scheduler] task=${signal.task} engine=${modelStore.engine ? 'chat' : 'none'} butler=${promptWriter.isLoaded ? 'ready' : 'off'}`,

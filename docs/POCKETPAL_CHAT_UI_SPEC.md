@@ -3,7 +3,7 @@ doc_id: POCKETPAL_CHAT_UI_SPEC
 module: root
 type: spec
 status: active
-version: "2.0"
+version: "2.2"
 created: "2026-08-14"
 updated: "2026-08-16"
 relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-footer-unification]
@@ -170,6 +170,48 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 - 多图（≥2）：保持 80×80 缩略图网格（cover），flexWrap 布局不变。
 - 新增 testID：`image-thumbnail-<index>` / `image-content-<index>`。
 
+## 13. 输入框快捷操作行 + 图片编辑闭环（v2.2 定稿，2026-08-16）
+
+> 依据：AIOS_MODEL_SCHEDULING_SPEC §11（P5 聊天内编辑闭环）。
+> 代码载体：ChatInput / ChatView / ChatScreen / ImageTaskActions / ImageTaskProgress / chatImageTask。
+> 豆包式交互：图片下沉输入框 + 自然语言指令 → 聊天内出编辑结果，零跳转。
+
+### 13.1 输入框快捷操作行（常驻一行小按钮）
+
+- 输入框上方一行胶囊按钮（气泡内动作槽同构，ADR-0003）：
+  `[图像生成]`（image-quick-gen）`[图片编辑]`（image-quick-edit）。
+- 图像生成：聚焦输入框，placeholder 提示「描述你想画的内容…」（不强制上传，走意图路由）。
+- 图片编辑：弹底部菜单（相册 / 拍照，复用 launchImageLibrary / 相机）→ 选图**下沉输入框**（缩略图 + × 取消）。
+- 生成/加载进行中（imageGenStore busy）两按钮禁用防连点。
+
+### 13.2 编辑模式（输入框下沉态）
+
+- ChatView 持有 `editSourceUri`（编辑源图）单一状态，与视觉问答 `imageUris` 完全隔离。
+- 编辑源图存在时输入框 placeholder 变更为「想修改哪里？例如：把背景改成海边」，缩略图可 × 取消。
+- 文本为空点发送 → 轻提示补指令；文本非空 → 走 `runEditImageTaskCard` 编辑闭环。
+
+### 13.3 全屏查看器编辑按钮
+
+- 图片全屏预览（ImageView）底部操作区增加 `[编辑此图片]`（image-viewer-edit-button）：
+  当前图下沉输入框 + 关闭查看器（保存按钮保留，`image-preview-save-button` 既有）。
+
+### 13.4 编辑任务卡片（editTask）
+
+- 编辑任务卡与生图任务卡同构（metadata.editTask + editSourceUri + editInstruction）：
+  分步文案「已识别为编辑任务 → 编码源图 → 编辑中」→ 回写结果图。
+- 动作条：成功卡 `[继续编辑此图] [再来一张]`（递归闭环，豆包同款）；失败卡 `[重试]`。
+- 管家增强提示词展示：文生图成功卡下方小字「✨ 管家优化为：…」（metadata.imageEnhancedPrompt，可点击展开全文）；
+  编辑卡展示中文指令原文（编辑 instruction 为 diptych 语义文本条件，不经过英文扩写）。
+
+### 13.5 testID 登记（新增）
+
+| testID | 位置 |
+|---|---|
+| image-quick-gen | 输入框快捷行「图像生成」按钮 |
+| image-quick-edit | 输入框快捷行「图片编辑」按钮 |
+| image-viewer-edit-button | 全屏预览「编辑此图片」按钮 |
+| image-task-edit（既有） | 生图任务卡「编辑图片」→ 改道下沉输入框 |
+
 ## 变更日志
 
 | 日期 | 版本 | 变更 |
@@ -177,3 +219,4 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 | 2026-08-14 | 1.0 | 聊天页+抽屉重设计定稿 |
 | 2026-08-15 | 2.0 | 气泡一体化（footer 收进卡片，ADR-0003）+ 灰色分层落地（§11）；legacy fonts/radius 双轨收口同波执行 |
 | 2026-08-16 | 2.1 | 生图任务卡片生成动效 + 图片撑满（§12，MASTER_LOG §20） |
+| 2026-08-16 | 2.2 | 输入框快捷操作行 + 图片编辑闭环（§13，AIOS SPEC §11 P5）；任务卡「编辑图片」改道下沉输入框 |

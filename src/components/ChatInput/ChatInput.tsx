@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import {launchCamera, launchImageLibrary} from 'react-native-image-picker';
 import {useCameraPermission} from 'react-native-vision-camera';
+import Voice from '@react-native-voice/voice';
 import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
 
 import {observer} from 'mobx-react';
@@ -18,14 +19,21 @@ import {IconButton, Text} from 'react-native-paper';
 
 import {hasVideoCapability} from '../../utils/pal-capabilities';
 
-import {VideoRecorderIcon, PlusIcon, AtomIcon} from '../../assets/icons';
+import {
+  VideoRecorderIcon,
+  PlusIcon,
+  AtomIcon,
+  MicIcon,
+  StopIcon,
+} from '../../assets/icons';
 
 import {useTheme} from '../../hooks';
 
-import {createStyles} from './styles';
+import {createStyles, quickChip, quickChipText} from './styles';
 
 import {chatSessionStore, modelStore, palStore} from '../../store';
 import {promptWriter} from '../../services/promptWriter';
+import {imageGenStore} from '../../store/imageGenStore';
 
 import {MessageType} from '../../utils/types';
 import {L10nContext, UserContext} from '../../utils';
@@ -37,8 +45,12 @@ export interface ChatInputTopLevelProps {
   /** Whether the AI is currently streaming tokens */
   isStreaming?: boolean;
   /** Will be called on {@link SendButton} tap. Has {@link MessageType.PartialText} which can
-   * be transformed to {@link MessageType.Text} and added to the messages list. */
-  onSendPress: (message: MessageType.PartialText) => void;
+   * be transformed to {@link MessageType.Text} and added to the messages list.
+   * 第二参数 editSourceUri（P5）：编辑模式发送时交接编辑源图给 scheduler。 */
+  onSendPress: (
+    message: MessageType.PartialText,
+    editSourceUri?: string | null,
+  ) => void;
   onStopPress?: () => void;
   onCancelEdit?: () => void;
   onPalBtnPress?: () => void;
@@ -76,6 +88,10 @@ export interface ChatInputTopLevelProps {
   reasoningEffort?: string;
   /** Callback to cycle the graded effort state (off -> values -> off) */
   onEffortCycle?: () => void;
+  /** 编辑源图（P5 豆包式闭环）：外部受控——图片编辑按钮/全屏查看器/任务卡下沉输入框 */
+  editSourceUri?: string | null;
+  /** 编辑源图变更（× 取消传 null） */
+  onEditSourceChange?: (uri: string | null) => void;
 }
 
 export interface ChatInputAdditionalProps {
@@ -139,6 +155,8 @@ export const ChatInput = observer(
     effortValues = [],
     reasoningEffort,
     onEffortCycle,
+    editSourceUri,
+    onEditSourceChange,
   }: ChatInputProps) => {
     const l10n = React.useContext(L10nContext);
     const theme = useTheme();
@@ -168,10 +186,19 @@ export const ChatInput = observer(
     const selectedImages = defaultImages ?? internalSelectedImages;
     const setSelectedImages =
       onDefaultImagesChange ?? setInternalSelectedImages;
+    // 编辑源图（P5 豆包式）：优先单图下沉输入框，与视觉问答多图完全隔离
+    const displayImages = editSourceUri ? [editSourceUri] : selectedImages;
     // State for image upload menu
     const [showImageUploadMenu, setShowImageUploadMenu] = React.useState(false);
     // State for showing "model not loaded" helper text
     const [showModelWarning, setShowModelWarning] = React.useState(false);
+    // 语音输入（设备级 STT）：服务可用时输入为空→麦克风按钮，录音中转文字填入输入框
+    const [isVoiceSupported, setIsVoiceSupported] = React.useState(false);
+    const [isListening, setIsListening] = React.useState(false);
+    // 编辑源图状态（P5）：外部受控；发送/取消后由 ChatView 复位
+    const [genHint, setGenHint] = React.useState(false); // 「图像生成」引导态：placeholder 提示描述画什么
+    const [showEditPickerMenu, setShowEditPickerMenu] = React.useState(false);
+    const [showEditHint, setShowEditHint] = React.useState(false); // 编辑空指令轻提示
     const isEditMode = chatSessionStore.isEditMode;
 
     const styles = createStyles({theme, isEditMode});
@@ -205,6 +232,9 @@ export const ChatInput = observer(
     }, [isEditMode, editBarHeight, onCancelEdit]);
 
     const handleChangeText = (newText: string) => {
+      if (newText) {
+        setGenHint(false); // 一打字即退出「图像生成」引导态
+      }
       if (isVideoCapable && onPromptTextChange) {
         onPromptTextChange(newText);
       } else {
@@ -213,8 +243,90 @@ export const ChatInput = observer(
       }
     };
 
+    // 语音识别事件回调需要最新 handleChangeText（识别结果/实时 partial 填入输入框），
+    // 用 ref 持有避免 useEffect 重复绑定（事件处理器只在挂载时绑定一次）。
+    const handleChangeTextRef = React.useRef(handleChangeText);
+    handleChangeTextRef.current = handleChangeText;
+
+    // 设备级语音识别（STT，与模型是否多模态无关）：检查系统识别服务可用性，
+    // 绑定事件；卸载时销毁识别器释放麦克风。
+    React.useEffect(() => {
+      let mounted = true;
+      Voice.isAvailable()
+        .then(available => {
+          if (mounted) {
+            setIsVoiceSupported(!!available);
+          }
+        })
+        .catch(() => {
+          if (mounted) {
+            setIsVoiceSupported(false);
+          }
+        });
+
+      Voice.onSpeechStart = () => {
+        if (mounted) {
+          setIsListening(true);
+        }
+      };
+      Voice.onSpeechEnd = () => {
+        if (mounted) {
+          setIsListening(false);
+        }
+      };
+      Voice.onSpeechResults = e => {
+        if (mounted && e?.value?.[0]) {
+          handleChangeTextRef.current(e.value[0]);
+        }
+      };
+      Voice.onSpeechPartialResults = e => {
+        if (mounted && e?.value?.[0]) {
+          handleChangeTextRef.current(e.value[0]);
+        }
+      };
+      Voice.onSpeechError = () => {
+        if (mounted) {
+          setIsListening(false);
+        }
+      };
+      return () => {
+        mounted = false;
+        Voice.destroy().catch(() => {});
+      };
+    }, []);
+
+    // 语音按钮：录音中点击=停止（保留已识别文字）；空闲点击=开始识别
+    const handleVoiceToggle = () => {
+      if (isListening) {
+        Voice.stop().catch(() => {});
+        setIsListening(false);
+        return;
+      }
+      Voice.start(undefined, {
+        EXTRA_LANGUAGE_MODEL: 'LANGUAGE_MODEL_FREE_FORM',
+        EXTRA_PARTIAL_RESULTS: true,
+      }).catch(() => setIsListening(false));
+    };
+
     const handleSend = () => {
       const trimmedValue = value.trim();
+      // 编辑模式（P5）：显式编辑源图 + 文本指令 → 发送带 imageUris，scheduler 走编辑闭环；空指令轻提示
+      if (editSourceUri) {
+        if (!trimmedValue) {
+          setShowEditHint(true);
+          setTimeout(() => setShowEditHint(false), 3000);
+          return;
+        }
+        onSendPress({
+          text: trimmedValue,
+          type: 'text',
+          imageUris: [editSourceUri],
+        });
+        setText('');
+        setGenHint(false);
+        onEditSourceChange?.(null);
+        return;
+      }
       if (trimmedValue) {
         // Check if model is loaded before sending
         if (!hasActiveModel) {
@@ -333,6 +445,54 @@ export const ChatInput = observer(
       setSelectedImages(newImages);
     };
 
+    // 快捷操作行：图片编辑选图（相册/拍照）→ 下沉输入框（P5 豆包式，单选）
+    const handleQuickEditPick = async (source: 'camera' | 'gallery') => {
+      try {
+        if (source === 'camera') {
+          if (!hasPermission) {
+            const permissionResult = await requestPermission();
+            if (!permissionResult) {
+              Alert.alert(
+                l10n.camera.permissionTitle,
+                l10n.camera.permissionMessage,
+              );
+              setShowEditPickerMenu(false);
+              return;
+            }
+          }
+          modelStore.disableAutoRelease('camera-photo');
+          const result = await launchCamera({mediaType: 'photo', quality: 0.8});
+          if (result.assets && result.assets.length > 0 && result.assets[0].uri) {
+            onEditSourceChange?.(result.assets[0].uri);
+          }
+        } else {
+          modelStore.disableAutoRelease('image-gallery');
+          const result = await launchImageLibrary({
+            mediaType: 'photo',
+            selectionLimit: 1,
+            quality: 0.8,
+          });
+          if (result.assets && result.assets.length > 0 && result.assets[0].uri) {
+            onEditSourceChange?.(result.assets[0].uri);
+          }
+        }
+        setShowEditPickerMenu(false);
+      } catch (error) {
+        console.error('Error picking edit image:', error);
+        Alert.alert(
+          l10n.errors.galleryErrorTitle,
+          l10n.errors.galleryErrorMessage,
+        );
+      } finally {
+        modelStore.enableAutoRelease(
+          source === 'camera' ? 'camera-photo' : 'image-gallery',
+        );
+      }
+    };
+
+    // 引擎忙碌（加载/生成中）时快捷行禁用，防连点
+    const busy = imageGenStore.loading || imageGenStore.generating;
+
     const handleCancel = () => {
       setText('');
       onCancelEdit?.();
@@ -344,6 +504,15 @@ export const ChatInput = observer(
       user &&
       !isVideoCapable && // Hide send button for video-capable pals
       (sendButtonVisibilityMode === 'always' || value.trim());
+    // 语音输入按钮：输入为空且系统识别服务可用时顶替发送钮；一打字即变回发送
+    const showVoiceButton =
+      isVoiceSupported &&
+      user &&
+      !isVideoCapable &&
+      !isCameraActive &&
+      !isStreaming &&
+      !isStopVisible &&
+      !value.trim().length;
     const isSendButtonEnabled = value.trim().length > 0 && hasActiveModel;
     const sendButtonOpacity = isSendButtonEnabled ? 1 : 0.4;
 
@@ -388,8 +557,48 @@ export const ChatInput = observer(
             </Animated.View>
           )}
 
-          {/* Image Preview Section */}
-          {selectedImages.length > 0 && (
+          {/* 快捷操作行（P5 豆包式）：图像生成引导 / 图片编辑选图下沉输入框 */}
+          <View style={styles.quickRow}>
+            <TouchableOpacity
+              testID="image-quick-gen"
+              style={[quickChip(theme), {opacity: busy ? 0.4 : 1}]}
+              disabled={busy}
+              onPress={() => {
+                inputRef.current?.focus();
+                setGenHint(true);
+              }}>
+              <Text style={quickChipText(theme)}>🎨 图像生成</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              testID="image-quick-edit"
+              style={[quickChip(theme), {opacity: busy ? 0.4 : 1}]}
+              disabled={busy}
+              onPress={() => setShowEditPickerMenu(true)}>
+              <Text style={quickChipText(theme)}>🖼️ 图片编辑</Text>
+            </TouchableOpacity>
+            {/* 选图菜单按需挂载（点击后才渲染，避免空 Menu 常驻） */}
+            {showEditPickerMenu && (
+              <Menu
+                visible={showEditPickerMenu}
+                onDismiss={() => setShowEditPickerMenu(false)}
+                anchorPosition="top"
+                anchor={<View />}>
+                <Menu.Item
+                  label={l10n.camera?.takePhoto || '拍照'}
+                  icon="camera"
+                  onPress={() => handleQuickEditPick('camera')}
+                />
+                <Menu.Item
+                  label={l10n.common?.gallery || '相册'}
+                  icon="image"
+                  onPress={() => handleQuickEditPick('gallery')}
+                />
+              </Menu>
+            )}
+          </View>
+
+          {/* Image Preview Section：编辑源图（P5）优先单图下沉，其余走视觉问答多图 */}
+          {displayImages.length > 0 && (
             <View
               style={[
                 styles.imagePreviewContainer,
@@ -399,13 +608,13 @@ export const ChatInput = observer(
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.imageScrollContent}>
-                {selectedImages.map((uri, index) => (
+                {displayImages.map((uri, index) => (
                   <View key={`${uri}-${index}`} style={styles.imageContainer}>
                     <Image
                       source={{uri}}
                       style={styles.previewImage}
                       accessibilityLabel={`Image preview ${index + 1} of ${
-                        selectedImages.length
+                        displayImages.length
                       }`}
                     />
                     <IconButton
@@ -413,7 +622,11 @@ export const ChatInput = observer(
                       size={20}
                       iconColor={theme.colors.error}
                       style={styles.removeImageButton}
-                      onPress={() => handleRemoveImage(index)}
+                      onPress={() =>
+                        editSourceUri
+                          ? onEditSourceChange?.(null)
+                          : handleRemoveImage(index)
+                      }
                       accessibilityLabel={`Remove image ${index + 1}`}
                     />
                   </View>
@@ -448,9 +661,13 @@ export const ChatInput = observer(
               ref={inputRef}
               multiline
               placeholder={
-                isVideoCapable
-                  ? l10n.video.promptPlaceholder
-                  : l10n.components.chatInput.inputPlaceholder
+                editSourceUri
+                  ? '想修改哪里？例如：把背景改成海边'
+                  : genHint
+                    ? '描述你想画的内容…'
+                    : isVideoCapable
+                      ? l10n.video.promptPlaceholder
+                      : l10n.components.chatInput.inputPlaceholder
               }
               placeholderTextColor={onSurfaceColorVariant}
               underlineColorAndroid="transparent"
@@ -468,7 +685,7 @@ export const ChatInput = observer(
               editable={
                 isVideoCapable
                   ? !isStreaming && !isCameraActive
-                  : textInputProps?.editable !== false
+                  : !isListening && textInputProps?.editable !== false
               }
               testID="chat-input"
               accessibilityLabel="Message input"
@@ -575,16 +792,20 @@ export const ChatInput = observer(
 
             {/* Right Controls */}
             <View style={styles.rightControls}>
-              {/* Helper text for model not loaded */}
-              {showModelWarning && !hasActiveModel && (
+              {/* Helper text for model not loaded / 编辑空指令提示 */}
+              {(showModelWarning && !hasActiveModel) ||
+              (showEditHint && !!editSourceUri) ? (
                 <View style={styles.helperTextContainer}>
                   <Text variant="bodySmall" style={styles.helperText}>
-                    {l10n.chat.cannotSendWithoutModel}
+                    {showModelWarning && !hasActiveModel
+                      ? l10n.chat.cannotSendWithoutModel
+                      : '请描述想修改哪里，例如：把背景改成海边'}
                   </Text>
                 </View>
-              )}
+              ) : null}
 
-              {/* Send/Stop Button */}
+              {/* Send/Stop/Voice Button：空输入且语音可用→麦克风；录音中→红色停止；
+                  有文字→发送（一打字即切换） */}
               {isStopVisible ? (
                 <StopButton color={onSurfaceColor} onPress={onStopPress} />
               ) : isVideoCapable && !isCameraActive ? (
@@ -608,6 +829,44 @@ export const ChatInput = observer(
                   <Text style={styles.compactButtonText}>
                     {l10n.video.startCamera}
                   </Text>
+                </TouchableOpacity>
+              ) : isListening ? (
+                <TouchableOpacity
+                  testID="voice-stop-button"
+                  style={[
+                    styles.voiceButton,
+                    {backgroundColor: theme.colors.error},
+                  ]}
+                  onPress={handleVoiceToggle}
+                  accessibilityLabel={
+                    l10n.components.chatInput.voiceInput.stopListening
+                  }
+                  accessibilityRole="button">
+                  <StopIcon
+                    width={18}
+                    height={18}
+                    stroke="#FFFFFF"
+                    strokeWidth={2}
+                  />
+                </TouchableOpacity>
+              ) : showVoiceButton ? (
+                <TouchableOpacity
+                  testID="voice-input-button"
+                  style={[
+                    styles.voiceButton,
+                    {backgroundColor: theme.colors.primary},
+                  ]}
+                  onPress={handleVoiceToggle}
+                  accessibilityLabel={
+                    l10n.components.chatInput.voiceInput.startListening
+                  }
+                  accessibilityRole="button">
+                  <MicIcon
+                    width={18}
+                    height={18}
+                    stroke={theme.colors.onPrimary}
+                    strokeWidth={2}
+                  />
                 </TouchableOpacity>
               ) : (
                 isSendButtonVisible && (

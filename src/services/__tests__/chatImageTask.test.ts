@@ -1,16 +1,18 @@
 import {chatSessionStore} from '../../store';
 import {imageGenStore} from '../../store/imageGenStore';
 import {promptWriter} from '../promptWriter';
-import {runImageTaskCard} from '../chatImageTask';
+import {runImageTaskCard, runEditImageTaskCard} from '../chatImageTask';
 
 // DreamLite 单通道（大王裁定 2026-08：聊天闭环只走唯一跑通模型）：
-// generateDreamLiteEntry 内部自保加载，驻留时秒级出图
+// generateDreamLiteEntry / editDreamLiteEntry 内部自保加载，驻留时秒级出图
 jest.mock('../../store/imageGenStore', () => ({
   imageGenStore: {
     modelLoaded: true,
     dreamliteLoaded: true,
     error: null,
     generateDreamLiteEntry: jest.fn(),
+    editDreamLiteEntry: jest.fn(),
+    decodeEditImage: jest.fn(),
     setChatInlineGenerating: jest.fn(),
   },
 }));
@@ -20,12 +22,16 @@ jest.mock('../../services/promptWriter', () => ({
 }));
 
 const mockGenerate = imageGenStore.generateDreamLiteEntry as jest.Mock;
+const mockEdit = imageGenStore.editDreamLiteEntry as jest.Mock;
+const mockDecode = imageGenStore.decodeEditImage as jest.Mock;
 const mockWritePrompt = promptWriter.writePrompt as jest.Mock;
 
 describe('runImageTaskCard', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGenerate.mockReset();
+    mockEdit.mockReset();
+    mockDecode.mockReset();
     mockWritePrompt.mockReset();
     (imageGenStore as any).error = null;
     (promptWriter as any).isLoaded = false;
@@ -134,5 +140,65 @@ describe('runImageTaskCard', () => {
     await runImageTaskCard('一条狗');
     expect(setFlag).toHaveBeenNthCalledWith(1, true);
     expect(setFlag).toHaveBeenLastCalledWith(false);
+  });
+});
+
+describe('runEditImageTaskCard（P5 聊天内编辑闭环）', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockEdit.mockReset();
+    mockDecode.mockReset();
+    (imageGenStore as any).error = null;
+  });
+
+  it('编辑成功：解码源图→DreamLite 编辑（1024²·4 步·中文指令直用）→回写结果图', async () => {
+    mockDecode.mockResolvedValue(new Float32Array(4 * 1024 * 1024));
+    mockEdit.mockResolvedValue('file:///tmp/edit_1.png');
+
+    await runEditImageTaskCard('file:///tmp/src.png', '把背景改成海边');
+
+    expect(mockDecode).toHaveBeenCalledWith('/tmp/src.png', 1024);
+    expect(mockEdit).toHaveBeenCalledWith(
+      expect.any(Float32Array),
+      1024,
+      1024,
+      4,
+      '把背景改成海边',
+    );
+    // 编辑指令不经过管家英文扩写（diptych 语义文本条件）
+    expect(mockWritePrompt).not.toHaveBeenCalled();
+    expect(chatSessionStore.updateMessage).toHaveBeenCalledWith(
+      expect.anything(),
+      'session-1',
+      expect.objectContaining({
+        text: expect.stringContaining('已为你编辑'),
+        imageUris: ['file:///tmp/edit_1.png'],
+        metadata: expect.objectContaining({
+          editTask: true,
+          editSourceUri: 'file:///tmp/src.png',
+          editInstruction: '把背景改成海边',
+        }),
+      }),
+    );
+  });
+
+  it('编辑失败：回写失败文案 + editTaskFailed（渲染侧出「重试」动作）', async () => {
+    mockDecode.mockResolvedValue(new Float32Array(4 * 1024 * 1024));
+    mockEdit.mockResolvedValue(null);
+    (imageGenStore as any).error = '源图解码失败';
+
+    await runEditImageTaskCard('file:///tmp/src.png', '把背景改成海边');
+
+    expect(chatSessionStore.updateMessage).toHaveBeenCalledWith(
+      expect.anything(),
+      'session-1',
+      expect.objectContaining({
+        text: expect.stringContaining('源图解码失败'),
+        metadata: expect.objectContaining({
+          editTask: true,
+          editTaskFailed: true,
+        }),
+      }),
+    );
   });
 });

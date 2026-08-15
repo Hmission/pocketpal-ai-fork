@@ -15,13 +15,14 @@ import * as React from 'react';
 import {Text, TouchableOpacity, View, ViewStyle, TextStyle} from 'react-native';
 import {observer} from 'mobx-react';
 import {runInAction} from 'mobx';
-import {useNavigation} from '@react-navigation/native';
 
 import {useTheme} from '../../hooks';
 import {imageGenStore} from '../../store/imageGenStore';
-import {runImageTaskCard} from '../../services/chatImageTask';
+import {
+  runImageTaskCard,
+  runEditImageTaskCard,
+} from '../../services/chatImageTask';
 import {MessageType, Theme} from '../../utils/types';
-import {ROUTES} from '../../utils/navigationConstants';
 
 interface ImageTaskMeta {
   imageTask?: boolean;
@@ -29,18 +30,22 @@ interface ImageTaskMeta {
   imagePrompt?: string;
   /** 管家增强后的英文 SD 提示词（决策可见 v2.1：成功卡小字展示「管家优化为」） */
   imageEnhancedPrompt?: string;
+  /** 编辑任务卡（P5）：源图与指令留作「继续编辑/重试」锚点 */
+  editTask?: boolean;
+  editTaskFailed?: boolean;
+  editSourceUri?: string;
+  editInstruction?: string;
 }
 
 export const ImageTaskActions: React.FC<{message: MessageType.Text}> = observer(
   ({message}) => {
     const theme = useTheme();
-    const navigation = useNavigation();
     const [enhancedExpanded, setEnhancedExpanded] = React.useState(false);
 
     const meta = (message.metadata ?? {}) as ImageTaskMeta;
     const imageUris = message.imageUris;
     const succeeded = !!imageUris && imageUris.length > 0;
-    const failed = !!meta.imageTaskFailed;
+    const failed = !!meta.imageTaskFailed || !!meta.editTaskFailed;
     // 占位卡（生成中）两态均未回写 → 不出动作条
     if (!succeeded && !failed) {
       return null;
@@ -69,6 +74,18 @@ export const ImageTaskActions: React.FC<{message: MessageType.Text}> = observer(
     );
 
     const handleRerun = () => {
+      // 编辑卡重试：同一源图+指令重跑；生图卡重试：同一提示词再生成
+      if (meta.editTask) {
+        const src = meta.editSourceUri;
+        const ins = meta.editInstruction;
+        if (!src || !ins) {
+          return;
+        }
+        runEditImageTaskCard(src, ins).catch(e =>
+          console.error('[EditTask] rerun failed:', e),
+        );
+        return;
+      }
       if (!prompt) {
         return;
       }
@@ -77,6 +94,8 @@ export const ImageTaskActions: React.FC<{message: MessageType.Text}> = observer(
       );
     };
 
+    // P5 改道：任务卡「编辑图片」不再跳生图页——pendingEditSource 交接，
+    // ChatScreen 消费后下沉输入框（聊天内编辑闭环，生图页编辑模式保留作深度工具）
     const handleEdit = () => {
       const uri = imageUris?.[0];
       if (!uri) {
@@ -85,7 +104,17 @@ export const ImageTaskActions: React.FC<{message: MessageType.Text}> = observer(
       runInAction(() => {
         imageGenStore.pendingEditSource = uri;
       });
-      navigation.navigate(ROUTES.IMAGE_GEN as never);
+    };
+
+    // 编辑结果卡「继续编辑此图」（P5 递归闭环，豆包同款）：结果图下沉输入框再编辑
+    const handleContinueEdit = () => {
+      const uri = imageUris?.[0];
+      if (!uri) {
+        return;
+      }
+      runInAction(() => {
+        imageGenStore.pendingEditSource = uri;
+      });
     };
 
     return (
@@ -104,8 +133,15 @@ export const ImageTaskActions: React.FC<{message: MessageType.Text}> = observer(
           </TouchableOpacity>
         )}
         <View style={styles.row}>
-          {succeeded && chip('再来一张', 'image-task-rerun', handleRerun)}
-          {succeeded && chip('编辑图片', 'image-task-edit', handleEdit)}
+          {succeeded &&
+            meta.editTask &&
+            chip('继续编辑此图', 'image-task-edit', handleContinueEdit)}
+          {succeeded &&
+            !meta.editTask &&
+            chip('再来一张', 'image-task-rerun', handleRerun)}
+          {succeeded &&
+            !meta.editTask &&
+            chip('编辑图片', 'image-task-edit', handleEdit)}
           {failed && chip('重试', 'image-task-retry', handleRerun)}
         </View>
       </View>

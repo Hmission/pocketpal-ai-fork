@@ -2,14 +2,19 @@ import {act, renderHook} from '@testing-library/react-native';
 
 import {useChatScheduler} from '../useChatScheduler';
 import {chatSessionStore, modelStore} from '../../store';
-import {runImageTaskCard} from '../../services/chatImageTask';
+import {
+  runImageTaskCard,
+  runEditImageTaskCard,
+} from '../../services/chatImageTask';
 import {findModelForTask} from '../../store/modelCapabilityRegistry';
 import {promptWriter} from '../../services/promptWriter';
 import {awaitEngineReady} from '../../utils/engineReady';
 import {MessageType} from '../../utils/types';
+import {user, assistant} from '../../utils/chat';
 
 jest.mock('../../services/chatImageTask', () => ({
   runImageTaskCard: jest.fn(),
+  runEditImageTaskCard: jest.fn(),
 }));
 jest.mock('../../services/promptWriter', () => ({
   promptWriter: {
@@ -29,6 +34,7 @@ jest.mock('../../utils/engineReady', () => ({
 }));
 
 const mockRunCard = runImageTaskCard as jest.Mock;
+const mockRunEditCard = runEditImageTaskCard as jest.Mock;
 const mockFind = findModelForTask as jest.Mock;
 const mockPromptChat = promptWriter.chat as jest.Mock;
 const mockAwaitReady = awaitEngineReady as jest.Mock;
@@ -46,6 +52,7 @@ describe('useChatScheduler', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockRunCard.mockReset();
+    mockRunEditCard.mockReset();
     mockFind.mockReset();
     mockAwaitReady.mockResolvedValue(true);
     (modelStore.selectModel as jest.Mock).mockReset();
@@ -65,6 +72,46 @@ describe('useChatScheduler', () => {
     // 用户消息由 scheduler 插入；任务卡片插入/回写归 runImageTaskCard（单链路）
     expect(chatSessionStore.addMessageToCurrentSession).toHaveBeenCalledTimes(
       1,
+    );
+    expect(handleSendPress).not.toHaveBeenCalled();
+  });
+
+  it('P5 编辑源图+指令：插用户消息（带图）→ 委托 runEditImageTaskCard，不触发生图路由', async () => {
+    const {wrapped, handleSendPress} = setup();
+
+    await act(async () => {
+      await wrapped(msg('把背景改成海边'), 'file:///src.png');
+    });
+
+    expect(mockRunEditCard).toHaveBeenCalledWith(
+      'file:///src.png',
+      '把背景改成海边',
+    );
+    expect(mockRunCard).not.toHaveBeenCalled();
+    // 用户消息（含编辑源图）由 scheduler 插入
+    expect(chatSessionStore.addMessageToCurrentSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        author: user,
+        text: '把背景改成海边',
+        imageUris: ['file:///src.png'],
+      }),
+    );
+    expect(handleSendPress).not.toHaveBeenCalled();
+  });
+
+  it('P5 编辑源图但空指令：系统轻提示补描述，不跑编辑', async () => {
+    const {wrapped, handleSendPress} = setup();
+
+    await act(async () => {
+      await wrapped(msg(''), 'file:///src.png');
+    });
+
+    expect(mockRunEditCard).not.toHaveBeenCalled();
+    expect(chatSessionStore.addMessageToCurrentSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: {system: true},
+        text: expect.stringContaining('想修改哪里'),
+      }),
     );
     expect(handleSendPress).not.toHaveBeenCalled();
   });

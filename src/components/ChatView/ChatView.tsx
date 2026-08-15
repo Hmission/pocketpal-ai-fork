@@ -9,6 +9,7 @@ import {
   StatusBarProps,
   View,
   TouchableOpacity,
+  Text,
   Keyboard,
 } from 'react-native';
 
@@ -244,6 +245,8 @@ export const ChatView = observer(
     timeFormat,
     usePreviewData = true,
     user,
+    editSourceUri,
+    onEditSourceChange,
   }: ChatProps) => {
     // ============ THEME & LOCALIZATION ============
     const l10n = React.useContext(L10nContext);
@@ -255,6 +258,9 @@ export const ChatView = observer(
     // ============ REFS ============
     const animationRef = React.useRef(false);
     const list = React.useRef<FlatList<MessageType.DerivedAny>>(null);
+    // 编辑源图（P5）：ref 避免 wrappedOnSendPress 重绑定，发送时读最新值
+    const editSourceUriRef = React.useRef<string | null>(editSourceUri ?? null);
+    editSourceUriRef.current = editSourceUri ?? null;
 
     // ============ COMPONENT STATE ============
     // Input state
@@ -521,14 +527,21 @@ export const ChatView = observer(
         if (chatSessionStore.isEditMode) {
           await chatSessionStore.commitEdit();
         }
-        onSendPress(message);
+        const editUri = editSourceUriRef.current;
+        if (editUri) {
+          // P5 编辑发送：编辑源图交接给 scheduler（第二参数），发送后清空下沉态
+          onSendPress(message, editUri);
+          onEditSourceChange?.(null);
+        } else {
+          onSendPress(message);
+        }
         setInputText('');
         if (chatSessionStore.activeSessionId) {
           chatSessionStore.clearDraft(chatSessionStore.activeSessionId);
         }
         Keyboard.dismiss();
       },
-      [onSendPress],
+      [onSendPress, onEditSourceChange],
     );
 
     const handleCancelEdit = React.useCallback(() => {
@@ -1203,6 +1216,8 @@ export const ChatView = observer(
                   isVisionEnabled,
                   defaultImages: inputImages,
                   onDefaultImagesChange: setInputImages,
+                  editSourceUri,
+                  onEditSourceChange,
                   textInputProps: {
                     ...textInputProps,
                     // Only override value and onChangeText if not using promptText
@@ -1252,12 +1267,26 @@ export const ChatView = observer(
             )}
           </Reanimated.View>
 
-          {/* Image viewer */}
+          {/* Image viewer：P5 全屏查看器底部加「编辑此图片」——当前图下沉输入框 */}
           <ImageView
             imageIndex={imageViewIndex}
             images={gallery}
             onRequestClose={handleRequestClose}
             visible={isImageViewVisible}
+            Footer={({image}) => (
+              <TouchableOpacity
+                testID="image-viewer-edit-button"
+                style={styles.viewerEditButton}
+                onPress={() => {
+                  const uri = (image as {uri?: string}).uri;
+                  if (uri) {
+                    onEditSourceChange?.(uri);
+                  }
+                  handleRequestClose();
+                }}>
+                <Text style={styles.viewerEditText}>✏️ 编辑此图片</Text>
+              </TouchableOpacity>
+            )}
           />
 
           {/* Context menu */}
