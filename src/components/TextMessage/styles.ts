@@ -47,6 +47,15 @@ export const styles = ({
       flexWrap: 'wrap',
       gap: 8,
     },
+    // 气泡内动作槽（ADR-0003 同构）：hairline 分隔，动作胶囊贴卡片底部
+    actionsSlot: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.colors.outline,
+      opacity: 0.9,
+      marginHorizontal: theme.insets.messageInsetsHorizontal,
+      paddingTop: 8,
+      paddingBottom: 4,
+    },
     imageThumbnail: {
       width: 80,
       height: 80,

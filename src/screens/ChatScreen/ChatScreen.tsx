@@ -33,6 +33,7 @@ import {user, assistant} from '../../utils/chat';
 import {useChatScheduler} from '../../hooks/useChatScheduler';
 import {ActiveTaskBanner} from '../../components/ActiveTaskBanner/ActiveTaskBanner';
 import {ImageTaskActions} from '../../components/ImageTaskActions/ImageTaskActions';
+import {TextMessage} from '../../components/TextMessage';
 import {promptWriter} from '../../services/promptWriter';
 
 import {VideoPalScreen} from './VideoPalScreen';
@@ -76,12 +77,34 @@ const renderBubble = ({
         nextMessageInGroup={nextMessageInGroup}
         scale={scale}
       />
-      {/* 生图任务卡片动作条（再来一张/编辑图片/重试）：仅 imageTask 卡片渲染，
-          驻留引擎秒级复用，走 runImageTaskCard / pendingEditSource 单链路 */}
-      {(message as MessageType.Text).metadata?.imageTask ? (
-        <ImageTaskActions message={message as MessageType.Text} />
-      ) : null}
     </View>
+  );
+};
+
+// 生图任务卡片动作条（再来一张/编辑图片/重试）：收进气泡内部动作槽
+// （ADR-0003 同构，不再悬浮卡片外）；驻留引擎秒级复用，走
+// runImageTaskCard / pendingEditSource 单链路。
+const renderTextMessage = (
+  message: MessageType.Text,
+  messageWidth: number,
+  showName: boolean,
+) => {
+  const hasTask = Boolean(
+    (message.metadata as {imageTask?: unknown} | undefined)?.imageTask,
+  );
+  return (
+    <TextMessage
+      // ChatView 插槽传 Text；TextMessage 只消费 text/metadata/author，
+      // derived 字段运行时不需要，cast 到 DerivedText 通过类型检查
+      message={message as MessageType.DerivedText}
+      messageWidth={messageWidth}
+      showName={showName}
+      actions={
+        hasTask ? (
+          <ImageTaskActions message={message as MessageType.Text} />
+        ) : undefined
+      }
+    />
   );
 };
 
@@ -291,6 +314,7 @@ export const ChatScreen: React.FC = observer(() => {
       <ChatView
         headerAccessory={<ActiveTaskBanner />}
         renderBubble={args => renderBubble({...args, theme})}
+        renderTextMessage={renderTextMessage}
         messages={chatSessionStore.currentSessionMessages}
         activePal={activePal}
         onSendPress={wrappedSendPress}

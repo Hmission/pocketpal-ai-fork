@@ -10,6 +10,8 @@ import {SafeAreaProvider, SafeAreaView} from 'react-native-safe-area-context';
 import {WebView} from 'react-native-webview';
 import {useIsFocused} from '@react-navigation/native';
 import Clipboard from '@react-native-clipboard/clipboard';
+
+import {withOpacity} from '../../utils/colorUtils';
 import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
 import CodeHighlighter from 'react-native-code-highlighter';
 import {atomOneDark} from 'react-syntax-highlighter/dist/esm/styles/hljs';
@@ -154,7 +156,8 @@ export const HtmlPreviewBubble: React.FC<HtmlPreviewBubbleProps> = ({
           background: theme.colors.surface,
           border: theme.colors.outline,
           text: theme.colors.onSurface,
-          headerBg: theme.colors.surfaceVariant,
+          // 暖色治理：头部浅灰底 → 域彩 6% 暖调（B6 漏网清理 + 品牌暖色系）
+          headerBg: withOpacity(theme.colors.primary, 0.06),
           modalOverlay: theme.colors.background,
         },
         theme,

@@ -224,6 +224,8 @@ export const createStyles = (theme: any) =>
     badgeExp: {color: theme.colors.warning, fontWeight: '700', ...theme.typography.captionS},
     // D1 顶栏触发胶囊（挂在 IMAGE_GEN headerRight；生图域色 12% 透明底）
     // B5（DESIGN_SPEC §8 Gap Ledger）：headerRight 右缘对齐内容区右边距（16dp）
+    // B8 形状纪律：加载按钮=动作 → 圆角矩形（与下方操作按钮同族），直角锚定右缘，
+    // 消除双胶囊并排的视觉右伸感；模型选择器=选择器 → 保持胶囊。
     triggerWrap: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -250,7 +252,8 @@ export const createStyles = (theme: any) =>
     triggerLoadBtn: {
       paddingHorizontal: 10,
       paddingVertical: 3,
-      borderRadius: theme.radius.full,
+      // B8 形状纪律：动作=圆角矩形（radius.s），不再用胶囊
+      borderRadius: theme.radius[theme.shapeRoles.inputSmall],
       backgroundColor: theme.colors.primary,
     },
     triggerLoadText: {

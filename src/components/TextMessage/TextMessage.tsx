@@ -42,6 +42,11 @@ export interface TextMessageTopLevelProps {
   }) => void;
   /** Enables link (URL) preview */
   usePreviewData?: boolean;
+  /**
+   * 气泡内动作槽（生图任务动作条等，ADR-0003 同构）：收进卡片底部，
+   * 带顶部 hairline 分隔，动作胶囊不再悬浮卡片外。
+   */
+  actions?: React.ReactNode;
 }
 
 export interface TextMessageProps extends TextMessageTopLevelProps {
@@ -72,6 +77,7 @@ export const TextMessage = ({
   showName,
   usePreviewData,
   step,
+  actions,
 }: TextMessageProps) => {
   // For AssistantTurn rendering, the per-step `content` is the
   // authoritative source. For legacy `Text` messages, fall back to
@@ -107,6 +113,7 @@ export const TextMessage = ({
     imagePreviewContent,
     imagePreviewSaveButton,
     imagePreviewSaveText,
+    actionsSlot,
   } = styles({
     message,
     theme,
@@ -316,6 +323,9 @@ export const TextMessage = ({
 
       {/* Image preview modal — legacy Text path only. */}
       {!step && renderImagePreview()}
+
+      {/* 气泡内动作槽：生图任务动作条收进卡片底部（ADR-0003 同构） */}
+      {actions ? <View style={actionsSlot}>{actions}</View> : null}
     </>
   );
 };

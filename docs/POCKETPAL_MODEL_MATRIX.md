@@ -69,6 +69,20 @@ relates: [POCKETPAL_DESIGN_SPEC]
 
 ## 6. 装机 SOP（备用机黄金标准核对 · 2026-08-14 定稿）
 
+> **电脑端模型源（2026-08-15 定稿）**：装机/补推模型文件的唯一电脑端源 = `F:\Cursor\OneTakeMVP\models\pocketpal_hf\`（HF 缓存目录，`author__repo` 结构）。
+>
+> | 模型 | 源路径 |
+> |---|---|
+> | Qwen3.5-2B + mmproj-2B | `HauhauCS__Qwen3.5-2B-Uncensored-HauhauCS-Aggressive\` |
+> | Qwen3.5-4B + mmproj-4B | `HauhauCS__Qwen3.5-4B-Uncensored-HauhauCS-Aggressive\` |
+> | LFM2.5-2.6B | `LiquidAI__LFM2.5-2.6B-GGUF\LFM2.5-2.6B-Q4_K_M.gguf` |
+> | LFM2.5-8B-A1B | `LiquidAI__LFM2.5-8B-A1B-GGUF\LFM2.5-8B-A1B-Q4_K_M.gguf` |
+> | 小雾 3B（Ministral-3-3B） | `unsloth__Ministral-3-3B-Instruct-2512-GGUF\Ministral-3-3B-Instruct-2512-Q4_K_M.gguf` |
+> | MiniCPM5-1B 管家 | `f:\pp\.tmp\models_sd\minicpm5_1b_heretic_q4km.gguf` |
+>
+> 源文件大小与 §6.1 逐字节一致（2026-08-15 双机补推已核对）；推送后以真机 `ls -la` 复验。
+> 2026-08-15 实录：小米13 曾缺 LFM×2 + 小雾 3B，已从该源 USB 补推，双机对齐。
+
 > 以备用机（做过完整部署）为黄金标准逐项核对，新机装机后必须与本清单完全一致。
 
 **核对命令**：`adb shell "ls -la /sdcard/Documents/AIOS/models/"` + `adb shell "ls -la /sdcard/Documents/AIOS/dreamlite/"`
