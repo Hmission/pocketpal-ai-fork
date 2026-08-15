@@ -2,7 +2,7 @@ import React, {useContext} from 'react';
 import {Alert, Keyboard, View} from 'react-native';
 
 import {observer} from 'mobx-react';
-import {Icon, IconButton, useTheme} from 'react-native-paper';
+import {IconButton, useTheme} from 'react-native-paper';
 
 import {
   // ClockFastForwardIcon,
@@ -10,7 +10,6 @@ import {
   DuplicateIcon,
   EditBoxIcon,
   EditIcon,
-  GridIcon,
   SettingsIcon,
   ShareIcon,
   TrashIcon,
@@ -20,10 +19,9 @@ import {Menu} from '../Menu';
 import {confirmDialog} from '../ui/ConfirmDialog';
 import {styles} from './styles';
 
-import {chatSessionStore, modelStore, uiStore} from '../../store';
+import {chatSessionStore, uiStore} from '../../store';
 
 import {L10nContext} from '../../utils';
-import {Model, ModelOrigin} from '../../utils/types';
 import {t} from '../../locales';
 import {importChatSessions} from '../../utils/importUtils';
 import {
@@ -65,16 +63,9 @@ export const HeaderRight: React.FC = observer(() => {
   const closeMenu = () => setMenuVisible(false);
   const l10n = useContext(L10nContext);
 
-  const models = modelStore.availableModels;
-  const activeModelId = modelStore.activeModelId;
   const session = chatSessionStore.sessions.find(
     s => s.id === chatSessionStore.activeSessionId,
   );
-
-  const onSelectModel = (model: Model) => {
-    modelStore.selectModel(model);
-    closeMenu();
-  };
 
   const onPressGenerationSettings = () => {
     setChatGenerationSettingsVisible(true);
@@ -178,35 +169,6 @@ export const HeaderRight: React.FC = observer(() => {
           onPress={onPressGenerationSettings}
           label={l10n.components.headerRight.generationSettings}
           leadingIcon={() => <SettingsIcon stroke={theme.colors.primary} />}
-        />
-        <Menu.Item
-          disabled={models.length === 0}
-          submenu={models.map(model => (
-            <Menu.Item
-              label={
-                model.origin === ModelOrigin.REMOTE
-                  ? `${model.name} (${model.serverName})`
-                  : model.name
-              }
-              onPress={() => onSelectModel(model)}
-              key={model.id}
-              selectable
-              selected={model.id === activeModelId}
-              leadingIcon={
-                model.origin === ModelOrigin.REMOTE
-                  ? () => (
-                      <Icon
-                        source="cloud-outline"
-                        size={16}
-                        color={theme.colors.secondary}
-                      />
-                    )
-                  : undefined
-              }
-            />
-          ))}
-          label={l10n.components.headerRight.model}
-          leadingIcon={() => <GridIcon stroke={theme.colors.primary} />}
         />
         {session?.id && (
           <>

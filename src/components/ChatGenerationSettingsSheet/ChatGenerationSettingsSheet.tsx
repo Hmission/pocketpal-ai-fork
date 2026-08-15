@@ -335,11 +335,11 @@ export const ChatGenerationSettingsSheet = ({
               buttons={[
                 {
                   value: 'pal',
-                  label: `Pal (${activePal.name})`,
+                  label: `${l10n.completionParamControls.palPrefix} (${activePal.name})`,
                 },
                 {
                   value: 'custom',
-                  label: 'Custom',
+                  label: l10n.completionParamControls.custom,
                 },
               ]}
               density="medium"

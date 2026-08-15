@@ -461,6 +461,16 @@
   "about": {
     "screenTitle": "Informacje o aplikacji",
     "description": "Aplikacja, która umożliwia działanie modeli językowych bezpośrednio na Twoim telefonie. Opiera się na bibliotekach llama.cpp i llama.rn.",
+    "body": "W przeciwieństwie do chatbotów chmurowych, modele Pocket Chick działają w całości na Twoim urządzeniu — bez serwerów, bez internetu i bez przekazywania rozmów osobom trzecim. Każde pytanie i każda odpowiedź pozostają tylko w Twoim telefonie.",
+    "featuresTitle": "Funkcje",
+    "features": [
+      "W pełni offline — działa bez sieci",
+      "Obsługa wielu modeli open source — swobodnie pobieraj, przełączaj i usuwaj",
+      "Generowanie obrazów na urządzeniu — Twoje prace nigdy nie opuszczają telefonu",
+      "Lekki start — gotowy do użycia od razu"
+    ],
+    "openSourceBody": "Projekt oparty jest na PocketPal AI (licencja MIT) i podąża za otwartym, przejrzystym duchem open source. Zapraszamy do kontrybucji i rozwoju pochodnych.",
+    "basedOn": "Opracowano na bazie PocketPal AI (MIT License)",
     "supportProject": "Wesprzyj Projekt",
     "supportProjectDescription": "Jeśli podoba Ci się korzystanie z PocketPal AI, rozważ wsparcie projektu poprzez:",
     "githubButton": "Gwiazdkę na GitHub",

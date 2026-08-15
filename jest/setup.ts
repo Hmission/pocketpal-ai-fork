@@ -96,10 +96,19 @@ jest.mock('../src/specs/NativeHardwareInfo', () => ({
 }));
 
 jest.mock('react-native-safe-area-context', () => {
+  const actual = jest.requireActual('react-native-safe-area-context');
+  const React = require('react');
   const inset = {top: 0, right: 0, bottom: 0, left: 0};
   return {
-    ...jest.requireActual('react-native-safe-area-context'),
-    SafeAreaProvider: jest.fn(({children}) => children),
+    ...actual,
+    // 用 context 原生 Provider 注入 insets（无渲染节点，快照稳定），
+    // 让真实 SafeAreaInsetsContext.Consumer（@react-navigation/stack
+    // StackView 依赖）拿到非 null insets——CardStack 计算 header 高度会
+    // 读 insets.top，缺失时崩溃
+    SafeAreaProvider: jest.fn(({children}) => {
+      const Ctx = actual.SafeAreaInsetsContext;
+      return React.createElement(Ctx.Provider, {value: inset}, children);
+    }),
     SafeAreaConsumer: jest.fn(({children}) => children(inset)),
     useSafeAreaInsets: jest.fn(() => inset),
     useSafeAreaFrame: jest.fn(() => ({x: 0, y: 0, width: 390, height: 844})),
@@ -123,6 +132,13 @@ jest.mock('../src/store', () => {
     searchProviderStore: mockSearchProviderStore,
     defaultCompletionSettings: mockDefaultCompletionSettings,
   };
+});
+
+// errors.ts 直接 import '../src/store/UIStore'（绕开 store 索引），
+// 不 mock 会拿到真实 UIStore（默认语言 zh）→ 测试断言 en 文案失败
+jest.mock('../src/store/UIStore', () => {
+  const m = require('../__mocks__/stores/uiStore');
+  return {UIStore: m.UIStore, uiStore: m.mockUiStore};
 });
 
 jest.mock('../src/hooks/useTheme', () => {

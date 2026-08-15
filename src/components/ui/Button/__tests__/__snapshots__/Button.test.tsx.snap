@@ -946,7 +946,7 @@ exports[`Button — snapshot matrix baseline (variant x size x {default,disabled
       [
         {
           "alignItems": "center",
-          "backgroundColor": "#333333",
+          "backgroundColor": "#F5A623",
           "borderRadius": 12,
           "flexDirection": "row",
           "justifyContent": "center",
@@ -961,7 +961,7 @@ exports[`Button — snapshot matrix baseline (variant x size x {default,disabled
     <Text
       style={
         {
-          "color": "#FFFFFF",
+          "color": "#3D2E00",
           "fontFamily": "Inter-Medium",
           "fontSize": 14,
           "fontWeight": "500",
@@ -1021,7 +1021,7 @@ exports[`Button — snapshot matrix baseline (variant x size x {default,disabled
       [
         {
           "alignItems": "center",
-          "backgroundColor": "#333333",
+          "backgroundColor": "#F5A623",
           "borderRadius": 12,
           "flexDirection": "row",
           "justifyContent": "center",
@@ -1036,7 +1036,7 @@ exports[`Button — snapshot matrix baseline (variant x size x {default,disabled
     <Text
       style={
         {
-          "color": "#FFFFFF",
+          "color": "#3D2E00",
           "fontFamily": "Inter-Medium",
           "fontSize": 14,
           "fontWeight": "500",
@@ -1246,7 +1246,7 @@ exports[`Button — snapshot matrix baseline (variant x size x {default,disabled
       [
         {
           "alignItems": "center",
-          "backgroundColor": "#333333",
+          "backgroundColor": "#F5A623",
           "borderRadius": 8,
           "flexDirection": "row",
           "justifyContent": "center",
@@ -1261,7 +1261,7 @@ exports[`Button — snapshot matrix baseline (variant x size x {default,disabled
     <Text
       style={
         {
-          "color": "#FFFFFF",
+          "color": "#3D2E00",
           "fontFamily": "Inter-Medium",
           "fontSize": 14,
           "fontWeight": "500",
@@ -1321,7 +1321,7 @@ exports[`Button — snapshot matrix baseline (variant x size x {default,disabled
       [
         {
           "alignItems": "center",
-          "backgroundColor": "#333333",
+          "backgroundColor": "#F5A623",
           "borderRadius": 8,
           "flexDirection": "row",
           "justifyContent": "center",
@@ -1336,7 +1336,7 @@ exports[`Button — snapshot matrix baseline (variant x size x {default,disabled
     <Text
       style={
         {
-          "color": "#FFFFFF",
+          "color": "#3D2E00",
           "fontFamily": "Inter-Medium",
           "fontSize": 14,
           "fontWeight": "500",
@@ -1546,7 +1546,7 @@ exports[`Button — snapshot matrix baseline (variant x size x {default,disabled
       [
         {
           "alignItems": "center",
-          "backgroundColor": "#333333",
+          "backgroundColor": "#F5A623",
           "borderRadius": 8,
           "flexDirection": "row",
           "justifyContent": "center",
@@ -1561,7 +1561,7 @@ exports[`Button — snapshot matrix baseline (variant x size x {default,disabled
     <Text
       style={
         {
-          "color": "#FFFFFF",
+          "color": "#3D2E00",
           "fontFamily": "Inter-Medium",
           "fontSize": 12,
           "fontWeight": "500",
@@ -1621,7 +1621,7 @@ exports[`Button — snapshot matrix baseline (variant x size x {default,disabled
       [
         {
           "alignItems": "center",
-          "backgroundColor": "#333333",
+          "backgroundColor": "#F5A623",
           "borderRadius": 8,
           "flexDirection": "row",
           "justifyContent": "center",
@@ -1636,7 +1636,7 @@ exports[`Button — snapshot matrix baseline (variant x size x {default,disabled
     <Text
       style={
         {
-          "color": "#FFFFFF",
+          "color": "#3D2E00",
           "fontFamily": "Inter-Medium",
           "fontSize": 12,
           "fontWeight": "500",
@@ -2761,7 +2761,7 @@ exports[`Button — snapshot matrix baseline (variant x size x {default,disabled
     <Text
       style={
         {
-          "color": "#333333",
+          "color": "#F5A623",
           "fontFamily": "Inter-Medium",
           "fontSize": 14,
           "fontWeight": "500",
@@ -2836,7 +2836,7 @@ exports[`Button — snapshot matrix baseline (variant x size x {default,disabled
     <Text
       style={
         {
-          "color": "#333333",
+          "color": "#F5A623",
           "fontFamily": "Inter-Medium",
           "fontSize": 14,
           "fontWeight": "500",
@@ -3061,7 +3061,7 @@ exports[`Button — snapshot matrix baseline (variant x size x {default,disabled
     <Text
       style={
         {
-          "color": "#333333",
+          "color": "#F5A623",
           "fontFamily": "Inter-Medium",
           "fontSize": 14,
           "fontWeight": "500",
@@ -3136,7 +3136,7 @@ exports[`Button — snapshot matrix baseline (variant x size x {default,disabled
     <Text
       style={
         {
-          "color": "#333333",
+          "color": "#F5A623",
           "fontFamily": "Inter-Medium",
           "fontSize": 14,
           "fontWeight": "500",
@@ -3361,7 +3361,7 @@ exports[`Button — snapshot matrix baseline (variant x size x {default,disabled
     <Text
       style={
         {
-          "color": "#333333",
+          "color": "#F5A623",
           "fontFamily": "Inter-Medium",
           "fontSize": 12,
           "fontWeight": "500",
@@ -3436,7 +3436,7 @@ exports[`Button — snapshot matrix baseline (variant x size x {default,disabled
     <Text
       style={
         {
-          "color": "#333333",
+          "color": "#F5A623",
           "fontFamily": "Inter-Medium",
           "fontSize": 12,
           "fontWeight": "500",
@@ -3646,7 +3646,7 @@ exports[`Button — snapshot matrix non-Latin font-fallback canary (canaryVarian
       [
         {
           "alignItems": "center",
-          "backgroundColor": "#333333",
+          "backgroundColor": "#F5A623",
           "borderRadius": 8,
           "flexDirection": "row",
           "justifyContent": "center",
@@ -3661,7 +3661,7 @@ exports[`Button — snapshot matrix non-Latin font-fallback canary (canaryVarian
     <Text
       style={
         {
-          "color": "#FFFFFF",
+          "color": "#3D2E00",
           "fontFamily": "Inter-Medium",
           "fontSize": 12,
           "fontWeight": "500",

@@ -28,7 +28,7 @@
  *     TokenRadius / TokenStroke.
  *   - No `x1Theme`, no `AppTheme.X1` export from theme module.
  */
-import {buildTheme, darkTheme, fontStyles, lightTheme} from '../theme';
+import {buildTheme, darkTheme, lightTheme} from '../theme';
 import {radius, spacing, stroke, typography} from '../../theme/tokens';
 
 describe('Theme builder — legacy surface preservation', () => {
@@ -149,17 +149,13 @@ describe('Theme builder — legacy surface preservation', () => {
     });
   });
 
-  describe('legacy `fontStyles` Inter weight map (preserved for ChatInput)', () => {
-    // `src/components/ChatInput/styles.ts:4,145,152,157,162` imports
-    // this export. Removing or renaming any weight breaks that consumer.
-    it('exports the full Inter weight map', () => {
-      expect(fontStyles.regular).toEqual({fontFamily: 'Inter-Regular'});
-      expect(fontStyles.medium).toEqual({fontFamily: 'Inter-Medium'});
-      expect(fontStyles.bold).toEqual({fontFamily: 'Inter-Bold'});
-      expect(fontStyles.thin).toEqual({fontFamily: 'Inter-Thin'});
-      expect(fontStyles.light).toEqual({fontFamily: 'Inter-Light'});
-      expect(fontStyles.semibold).toEqual({fontFamily: 'Inter-SemiBold'});
-      expect(fontStyles.extraBold).toEqual({fontFamily: 'Inter-ExtraBold'});
+  describe('legacy Inter weight map closed to a module-private (B6 dual-track closure)', () => {
+    // `fontStyles` is no longer exported; ChatInput now sources families from
+    // `FONT_FAMILIES` (theme/tokens). The MD3 `fonts` typescale must still be
+    // built from Inter so there is no visual regression.
+    it('MD3 fonts default family is Inter-Regular', () => {
+      const defaultFont = (lightTheme.fonts as any).default;
+      expect(defaultFont.fontFamily).toBe('Inter-Regular');
     });
   });
 });

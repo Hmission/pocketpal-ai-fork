@@ -38,6 +38,11 @@ class MockModelStore {
   availableMemoryCeiling: number | undefined = 5 * 1e9; // 5GB ceiling
   largestSuccessfulLoad: number | undefined = 4 * 1e9; // 4GB largest successful load
 
+  // 启动扫描（App.tsx 启动链路调用）；mock 下无本地模型目录，直接完成
+  scanLocalModels = async () => {
+    return undefined;
+  };
+
   refreshDownloadStatuses: jest.Mock;
   addLocalModel: jest.Mock;
   removeModelByFullPath: jest.Mock;

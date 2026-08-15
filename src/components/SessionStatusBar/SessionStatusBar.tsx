@@ -6,6 +6,8 @@ import {engineStatus} from '../../store/engineStatus';
 import {getLastWriteTime} from '../../services/aiosMemory/conversationLog';
 import {getLastRecallInfo} from '../../services/aiosMemory/contextAssembler';
 import {getLastSentiment} from '../../services/aiosMemory/rituals';
+import {useTheme} from '../../hooks';
+import type {Theme} from '../../utils/types';
 
 /**
  * Session Status Bar — shows context usage, disk status, recall preview,
@@ -18,12 +20,16 @@ import {getLastSentiment} from '../../services/aiosMemory/rituals';
  * - 模型加载状态 + 内存占用
  */
 export const SessionStatusBar = observer(() => {
+  const theme = useTheme();
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
   const [expanded, setExpanded] = React.useState(false);
 
   const nCtx = modelStore.activeContextSettings?.n_ctx;
   const snapshot = chatSessionStore.lastCompletionResult;
   const usedTokens = snapshot?.used ?? 0;
-  const contextPct = nCtx ? Math.min(100, Math.round((usedTokens / nCtx) * 100)) : 0;
+  const contextPct = nCtx
+    ? Math.min(100, Math.round((usedTokens / nCtx) * 100))
+    : 0;
   const contextFull = snapshot?.contextFull ?? false;
 
   const lastWrite = getLastWriteTime();
@@ -82,7 +88,9 @@ export const SessionStatusBar = observer(() => {
       {/* M7 情绪指示 */}
       <Text style={styles.separator}>|</Text>
       <View style={styles.section}>
-        <Text style={[styles.value, {color: sentimentColor}]}>{sentiment.label}</Text>
+        <Text style={[styles.value, {color: sentimentColor}]}>
+          {sentiment.label}
+        </Text>
       </View>
 
       {/* 引擎全景（prompter/chat/image 调度状态） */}
@@ -108,53 +116,54 @@ export const SessionStatusBar = observer(() => {
   );
 });
 
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 3,
-    backgroundColor: '#f0f0f0',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#ddd',
-    flexWrap: 'wrap',
-  },
-  section: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  label: {
-    fontSize: 10,
-    color: '#888',
-  },
-  value: {
-    fontSize: 10,
-    color: '#555',
-    fontWeight: '500',
-  },
-  separator: {
-    color: '#ccc',
-    marginHorizontal: 6,
-    fontSize: 10,
-  },
-  recallPreview: {
-    width: '100%',
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    backgroundColor: '#e8e8e8',
-    borderRadius: 4,
-    marginTop: 2,
-    gap: 2,
-  },
-  recallText: {
-    fontSize: 9,
-    color: '#666',
-    lineHeight: 14,
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    container: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xxs,
+      backgroundColor: theme.colors.surfaceVariant,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.colors.border,
+      flexWrap: 'wrap',
+    },
+    section: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.xxs,
+    },
+    dot: {
+      width: 6,
+      height: 6,
+      borderRadius: theme.radius.xs,
+    },
+    label: {
+      ...theme.typography.captionS,
+      color: theme.colors.onSurfaceVariant,
+    },
+    value: {
+      ...theme.typography.captionS,
+      color: theme.colors.onSurface,
+      fontWeight: '500',
+    },
+    separator: {
+      color: theme.colors.outlineVariant,
+      marginHorizontal: theme.spacing.xs,
+      ...theme.typography.captionS,
+    },
+    recallPreview: {
+      width: '100%',
+      paddingVertical: theme.spacing.xs,
+      paddingHorizontal: theme.spacing.s,
+      backgroundColor: theme.colors.surfaceContainerHighest,
+      borderRadius: theme.radius.xs,
+      marginTop: theme.spacing.xxs,
+      gap: theme.spacing.xxs,
+    },
+    recallText: {
+      ...theme.typography.captionS,
+      color: theme.colors.onSurfaceVariant,
+      lineHeight: 14,
+    },
+  });

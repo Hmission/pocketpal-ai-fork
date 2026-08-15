@@ -32,11 +32,16 @@ export const CompletionSettings: React.FC<Props> = ({
   const styles = createStyles(theme);
   const l10n = React.useContext(L10nContext);
 
+  const paramLabel = (name: string) =>
+    (l10n.completionParamsLabels as Record<string, string> | undefined)?.[
+      name
+    ] ?? name.toUpperCase().replace(/_/g, ' ');
+
   const renderSlider = ({name, step = 0.01}: {name: string; step?: number}) => (
     <View style={styles.settingItem}>
       <InputSlider
         testID={`${name}-slider`}
-        label={name.toUpperCase().replace('_', ' ')}
+        label={paramLabel(name)}
         labelVariant="labelSmall"
         description={l10n.completionParams[name]}
         value={settings[name]}
@@ -63,7 +68,7 @@ export const CompletionSettings: React.FC<Props> = ({
     return (
       <View style={styles.settingItem}>
         <Text variant="labelSmall" style={styles.settingLabel}>
-          {String(name).toUpperCase().replace('_', ' ')}
+          {paramLabel(String(name))}
         </Text>
         <Text style={styles.description}>
           {l10n.completionParams[String(name)]}
@@ -84,8 +89,8 @@ export const CompletionSettings: React.FC<Props> = ({
   };
 
   const renderSwitch = (name: string) => {
-    // Convert snake_case to UPPER CASE with spaces for display
-    const displayName = name.toUpperCase().replace(/_/g, ' ');
+    // Display label from l10n (falls back to UPPER CASE name)
+    const displayName = paramLabel(name);
 
     return (
       <View style={styles.settingItem}>
@@ -110,7 +115,7 @@ export const CompletionSettings: React.FC<Props> = ({
 
     return (
       <View style={styles.settingItem}>
-        <Text style={styles.settingLabel}>Mirostat</Text>
+        <Text style={styles.settingLabel}>{paramLabel('mirostat')}</Text>
         {description && <Text style={styles.description}>{description}</Text>}
         <SegmentedButtons
           value={(settings.mirostat ?? 0).toString()}
@@ -123,7 +128,7 @@ export const CompletionSettings: React.FC<Props> = ({
           buttons={[
             {
               value: '0',
-              label: 'Off',
+              label: l10n.completionParamControls.off,
             },
             {
               value: '1',
@@ -152,7 +157,7 @@ export const CompletionSettings: React.FC<Props> = ({
     return (
       <View style={styles.settingItem}>
         <Text variant="labelSmall" style={styles.settingLabel}>
-          N PREDICT
+          {paramLabel('n_predict')}
         </Text>
         <Text style={styles.description}>
           {l10n.completionParams.n_predict}
@@ -169,12 +174,12 @@ export const CompletionSettings: React.FC<Props> = ({
           buttons={[
             {
               value: 'unlimited',
-              label: 'Unlimited',
+              label: l10n.completionParamControls.unlimited,
               testID: 'n_predict-unlimited-btn',
             },
             {
               value: 'custom',
-              label: 'Custom',
+              label: l10n.completionParamControls.custom,
               testID: 'n_predict-custom-btn',
             },
           ]}

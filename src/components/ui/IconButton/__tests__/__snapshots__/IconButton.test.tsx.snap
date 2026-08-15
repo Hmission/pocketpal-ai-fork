@@ -46,7 +46,7 @@ exports[`IconButton — snapshot matrix baseline (variant x size x {default,disa
       [
         {
           "alignItems": "center",
-          "backgroundColor": "#DEE0E6",
+          "backgroundColor": "#FDEBC8",
           "borderRadius": 12,
           "justifyContent": "center",
           "padding": 8,
@@ -109,7 +109,7 @@ exports[`IconButton — snapshot matrix baseline (variant x size x {default,disa
       [
         {
           "alignItems": "center",
-          "backgroundColor": "#DEE0E6",
+          "backgroundColor": "#FDEBC8",
           "borderRadius": 12,
           "justifyContent": "center",
           "padding": 8,
@@ -298,7 +298,7 @@ exports[`IconButton — snapshot matrix baseline (variant x size x {default,disa
       [
         {
           "alignItems": "center",
-          "backgroundColor": "#DEE0E6",
+          "backgroundColor": "#FDEBC8",
           "borderRadius": 8,
           "justifyContent": "center",
           "padding": 4,
@@ -361,7 +361,7 @@ exports[`IconButton — snapshot matrix baseline (variant x size x {default,disa
       [
         {
           "alignItems": "center",
-          "backgroundColor": "#DEE0E6",
+          "backgroundColor": "#FDEBC8",
           "borderRadius": 8,
           "justifyContent": "center",
           "padding": 4,
@@ -550,7 +550,7 @@ exports[`IconButton — snapshot matrix baseline (variant x size x {default,disa
       [
         {
           "alignItems": "center",
-          "backgroundColor": "#DEE0E6",
+          "backgroundColor": "#FDEBC8",
           "borderRadius": 8,
           "justifyContent": "center",
           "padding": 4,
@@ -613,7 +613,7 @@ exports[`IconButton — snapshot matrix baseline (variant x size x {default,disa
       [
         {
           "alignItems": "center",
-          "backgroundColor": "#DEE0E6",
+          "backgroundColor": "#FDEBC8",
           "borderRadius": 8,
           "justifyContent": "center",
           "padding": 4,

@@ -18,25 +18,20 @@ import {IconButton, Text} from 'react-native-paper';
 
 import {hasVideoCapability} from '../../utils/pal-capabilities';
 
-import {
-  ChevronUpIcon,
-  VideoRecorderIcon,
-  PlusIcon,
-  AtomIcon,
-} from '../../assets/icons';
+import {VideoRecorderIcon, PlusIcon, AtomIcon} from '../../assets/icons';
 
 import {useTheme} from '../../hooks';
 
 import {createStyles} from './styles';
 
-import {chatSessionStore, modelStore, palStore, uiStore} from '../../store';
+import {chatSessionStore, modelStore, palStore} from '../../store';
 import {promptWriter} from '../../services/promptWriter';
 
 import {MessageType} from '../../utils/types';
 import {L10nContext, UserContext} from '../../utils';
 import {t} from '../../locales';
 
-import {SendButton, StopButton, Menu, VoiceChip} from '..';
+import {SendButton, StopButton, Menu} from '..';
 
 export interface ChatInputTopLevelProps {
   /** Whether the AI is currently streaming tokens */
@@ -123,11 +118,11 @@ export const ChatInput = observer(
     onSendPress,
     onStopPress,
     onCancelEdit,
-    onPalBtnPress,
+    // [已裁剪 2026-08] onPalBtnPress / isPickerVisible 仅供 ^ Pal 选择器使用，
+    // 按钮已裁剪，接口保留作恢复点（不再解构）。
     isStopVisible,
     sendButtonVisibilityMode,
     textInputProps,
-    isPickerVisible,
     inputBackgroundColor,
     isCameraActive = false,
     onStartCamera,
@@ -150,15 +145,19 @@ export const ChatInput = observer(
     const user = React.useContext(UserContext);
     const inputRef = React.useRef<TextInput>(null);
     const editBarHeight = React.useRef(new Animated.Value(0)).current;
-    const iconRotation = React.useRef(new Animated.Value(0)).current;
     const activePalId = chatSessionStore.activePalId;
     const currentActivePal = palStore.pals.find(pal => pal.id === activePalId);
 
     // Camera permission hook from react-native-vision-camera
     const {hasPermission, requestPermission} = useCameraPermission();
 
-    // 可发送判定：chat 模型已激活，或常驻管家就绪（chitchat 兜底/生图闭环可处理）
-    const hasActiveModel = !!modelStore.activeModelId || promptWriter.isLoaded;
+    // 可发送判定：chat 模型已激活，或常驻管家就绪，或存在可懒切换恢复的
+    // 已下载模型（生图挤占 chat 槽后 activeModelId 可能残留/清空，调度由
+    // useChatScheduler 受控：加载完成+引擎就绪后才真正送消息）。
+    const hasActiveModel =
+      !!modelStore.activeModelId ||
+      promptWriter.isLoaded ||
+      !!modelStore.lastUsedModel;
 
     // Use `defaultValue` if provided
     const [text, setText] = React.useState(textInputProps?.defaultValue ?? '');
@@ -204,14 +203,6 @@ export const ChatInput = observer(
         onCancelEdit?.();
       }
     }, [isEditMode, editBarHeight, onCancelEdit]);
-
-    React.useEffect(() => {
-      Animated.spring(iconRotation, {
-        toValue: isPickerVisible ? 1 : 0,
-        useNativeDriver: true,
-        friction: 8,
-      }).start();
-    }, [isPickerVisible, iconRotation]);
 
     const handleChangeText = (newText: string) => {
       if (isVideoCapable && onPromptTextChange) {
@@ -355,11 +346,6 @@ export const ChatInput = observer(
       (sendButtonVisibilityMode === 'always' || value.trim());
     const isSendButtonEnabled = value.trim().length > 0 && hasActiveModel;
     const sendButtonOpacity = isSendButtonEnabled ? 1 : 0.4;
-
-    const rotateInterpolate = iconRotation.interpolate({
-      inputRange: [0, 1],
-      outputRange: ['0deg', '180deg'],
-    });
 
     const onSurfaceColor = currentActivePal?.color?.[0] || theme.colors.text;
     const onSurfaceColorVariant = onSurfaceColor + '55'; // for disabled state or placeholder text
@@ -527,54 +513,9 @@ export const ChatInput = observer(
                 </Menu>
               )}
 
-              {/* Pal Selector */}
-              <View style={styles.palSelector}>
-                <TouchableOpacity
-                  style={[
-                    styles.palBtn,
-                    {
-                      backgroundColor:
-                        uiStore.colorScheme === 'dark'
-                          ? theme.colors.inverseOnSurface
-                          : theme.colors.inverseSurface,
-                    },
-                    currentActivePal?.color && {
-                      backgroundColor: currentActivePal?.color?.[0],
-                    },
-                  ]}
-                  onPress={onPalBtnPress}
-                  accessibilityLabel="Select Pal"
-                  accessibilityRole="button">
-                  <Animated.View
-                    style={{
-                      transform: [{rotate: rotateInterpolate}],
-                    }}>
-                    <ChevronUpIcon stroke={inputBackgroundColor} />
-                  </Animated.View>
-                </TouchableOpacity>
-
-                {/* Pal Name Display */}
-                {currentActivePal?.name && hasActiveModel && (
-                  <Text
-                    style={[
-                      styles.palNameCompact,
-                      {
-                        color: onSurfaceColor,
-                      },
-                    ]}>
-                    Pal:{' '}
-                    <Text
-                      style={[
-                        styles.palNameValueCompact,
-                        {
-                          color: onSurfaceColor,
-                        },
-                      ]}>
-                      {currentActivePal?.name}
-                    </Text>
-                  </Text>
-                )}
-              </View>
+              {/* [已裁剪·恢复点 2026-08] Pal 选择器（^ ChevronUpIcon + Pal 名）：
+                  大王裁定不需要（智能体/模型选择已不需要此入口，头部 ⌄ chip
+                  仍可开 ChatPalModelPickerSheet）。恢复见 git 历史 palSelector 块。 */}
 
               {/* Thinking Toggle Button. Graded models (axis-2) cycle
                   off -> low -> medium -> high; effortless models toggle
@@ -642,11 +583,6 @@ export const ChatInput = observer(
                   </Text>
                 </View>
               )}
-
-              {/* Voice chip (TTS) — always present so users can stop
-                  audio independently of text generation. Self-gates:
-                  returns null when TTS is unavailable. */}
-              <VoiceChip />
 
               {/* Send/Stop Button */}
               {isStopVisible ? (

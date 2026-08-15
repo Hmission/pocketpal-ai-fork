@@ -17,4 +17,6 @@ export const radius: TokenRadius = {
   l: 20,
   xl: 32,
   xxl: 40,
+  // 胶囊（pill 按钮/徽章/模型胶囊；DESIGN_SPEC §4）
+  full: 999,
 };

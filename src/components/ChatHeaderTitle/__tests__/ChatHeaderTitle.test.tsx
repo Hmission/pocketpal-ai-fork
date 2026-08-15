@@ -3,7 +3,7 @@ import {render} from '../../../../jest/test-utils';
 import {ChatHeaderTitle} from '../ChatHeaderTitle';
 import {chatSessionStore, modelStore} from '../../../store';
 import {runInAction} from 'mobx';
-import {basicModel, downloadedModel} from '../../../../jest/fixtures/models';
+import {basicModel} from '../../../../jest/fixtures/models';
 
 describe('ChatHeaderTitle', () => {
   beforeEach(() => {
@@ -37,33 +37,26 @@ describe('ChatHeaderTitle', () => {
     expect(getByText('Test Session')).toBeTruthy();
   });
 
-  it('renders model name when active model exists', () => {
+  it('renders session title only — model name moved to header picker chip', () => {
     runInAction(() => {
       modelStore.models = [basicModel];
       modelStore.setActiveModel(basicModel.id);
+      Object.assign(chatSessionStore, {
+        activeSessionId: '123',
+        sessions: [
+          {
+            id: '123',
+            title: 'Test Session',
+            date: new Date().toISOString(),
+            messages: [],
+          },
+        ],
+      });
     });
 
-    const {getByText} = render(<ChatHeaderTitle />);
-    expect(getByText('basic model')).toBeTruthy();
-  });
-
-  it('updates when active model changes', () => {
-    // Initial model
-    runInAction(() => {
-      modelStore.models = [basicModel];
-      modelStore.setActiveModel(basicModel.id);
-    });
-
-    const {getByText, rerender} = render(<ChatHeaderTitle />);
-    expect(getByText('basic model')).toBeTruthy();
-
-    // Change model
-    runInAction(() => {
-      modelStore.models = [downloadedModel];
-      modelStore.setActiveModel(downloadedModel.id);
-    });
-
-    rerender(<ChatHeaderTitle />);
-    expect(getByText('downloaded model')).toBeTruthy();
+    const {getByText, queryByText} = render(<ChatHeaderTitle />);
+    expect(getByText('Test Session')).toBeTruthy();
+    // 模型名已由 ChatHeader 的 chat-model-picker-chip 展示，标题不再重复显示
+    expect(queryByText('basic model')).toBeNull();
   });
 });

@@ -134,6 +134,34 @@ export interface TokenColors {
   iconModelTypeVision: string;
   iconModelTypeAudio: string;
 
+  // 语义状态色（DESIGN_SPEC §1.3：收编生图四色按钮等散落硬编码）
+  success: string;
+  onSuccess: string;
+  warning: string;
+  onWarning: string;
+  danger: string;
+  onDanger: string;
+  info: string;
+  onInfo: string;
+
+  // 模型族徽章色（DESIGN_SPEC §1.4）
+  badgeSd35: string;
+  badgeZImage: string;
+  badgeDreamlite: string;
+
+  // 悬浮层表面（半透明+阴影分层，禁 blur；DESIGN_SPEC §1.5）
+  surfaceElevated: string;
+
+  // 功能域彩色（一域一色，HarmonyOS Vivid Colour 思路；DESIGN_SPEC §1.2）
+  domain: {
+    chat: string;
+    imageGen: string;
+    memory: string;
+    knowledge: string;
+    workspace: string;
+    tools: string;
+  };
+
   // Accent — peach pill / recommended-tier highlight (canonical Figma
   // `Color/Accent/Peach`; see `accent.peach` consumers in onboarding).
   // `accent.greenStrong` powers the download progress-bar fill.
@@ -162,6 +190,7 @@ export interface TypographyStyle {
  * in the theme builder via `typographyForLocale()`.
  */
 export interface TokenTypography {
+  displayS: TypographyStyle;
   bodyM: TypographyStyle;
   bodyS: TypographyStyle;
   uiM: TypographyStyle;
@@ -175,6 +204,7 @@ export interface TokenTypography {
   styledXs: TypographyStyle;
   codeM: TypographyStyle;
   codeS: TypographyStyle;
+  numericM: TypographyStyle;
 }
 
 export interface TokenSpacing {
@@ -203,6 +233,8 @@ export interface TokenRadius {
   l: 20;
   xl: 32;
   xxl: 40;
+  // 胶囊（pill 按钮/徽章/模型胶囊；DESIGN_SPEC §4）
+  full: 999;
 }
 
 // Key names mirror canonical Figma `Stroke/*` (xs/sm/md/lg).

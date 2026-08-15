@@ -76,7 +76,7 @@ exports[`BottomNavBar — snapshot matrix baseline (variant x size x {default,di
       <Text
         style={
           {
-            "color": "#333333",
+            "color": "#F5A623",
             "fontFamily": "Inter-Regular",
             "fontSize": 11,
             "fontWeight": "400",
@@ -287,7 +287,7 @@ exports[`BottomNavBar — snapshot matrix baseline (variant x size x {default,di
       <Text
         style={
           {
-            "color": "#333333",
+            "color": "#F5A623",
             "fontFamily": "Inter-Regular",
             "fontSize": 11,
             "fontWeight": "400",
@@ -498,7 +498,7 @@ exports[`BottomNavBar — snapshot matrix baseline (variant x size x {default,di
       <Text
         style={
           {
-            "color": "#333333",
+            "color": "#F5A623",
             "fontFamily": "Inter-Regular",
             "fontSize": 11,
             "fontWeight": "400",
@@ -709,7 +709,7 @@ exports[`BottomNavBar — snapshot matrix baseline (variant x size x {default,di
       <Text
         style={
           {
-            "color": "#333333",
+            "color": "#F5A623",
             "fontFamily": "Inter-Regular",
             "fontSize": 11,
             "fontWeight": "400",
@@ -920,7 +920,7 @@ exports[`BottomNavBar — snapshot matrix non-Latin font-fallback canary (canary
       <Text
         style={
           {
-            "color": "#333333",
+            "color": "#F5A623",
             "fontFamily": "Inter-Regular",
             "fontSize": 11,
             "fontWeight": "400",

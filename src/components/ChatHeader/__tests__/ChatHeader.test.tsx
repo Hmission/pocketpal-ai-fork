@@ -1,21 +1,7 @@
 import React from 'react';
-import {fireEvent} from '@testing-library/react-native';
 import {render} from '../../../../jest/test-utils';
 import {ChatHeader} from '../ChatHeader';
-import {ROUTES} from '../../../utils/navigationConstants';
 import {chatSessionStore} from '../../../store';
-
-const mockNavigate = jest.fn();
-
-// ChatHeader now carries the Image Gen entry button, which navigates via
-// useNavigation. Provide a stable navigation mock.
-jest.mock('@react-navigation/native', () => {
-  const actual = jest.requireActual('@react-navigation/native');
-  return {
-    ...actual,
-    useNavigation: () => ({navigate: mockNavigate}),
-  };
-});
 
 // Mock the child components
 jest.mock('../../HeaderLeft', () => ({
@@ -87,11 +73,6 @@ describe('ChatHeader', () => {
     });
   });
 
-  it('navigates to Image Gen screen when the image gen button is pressed', () => {
-    const {getByTestId} = render(<ChatHeader />);
-
-    fireEvent.press(getByTestId('imagegen-button'));
-
-    expect(mockNavigate).toHaveBeenCalledWith(ROUTES.IMAGE_GEN);
-  });
+  // [已裁剪 2026-08] 头部生图入口（imagegen-button）用例随按钮一并删除：
+  // 生图入口收敛至抽屉 drawer-imagegen-button，恢复时同步恢复本用例。
 });

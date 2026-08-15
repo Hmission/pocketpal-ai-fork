@@ -25,7 +25,11 @@ import {withOpacity, stateLayerOpacity} from '../../utils/colorUtils';
 import {TokenColors} from './types';
 
 // Light base colors (verbatim from src/utils/theme.ts:111-147).
-const LIGHT_PRIMARY = '#333333';
+// B1（DESIGN_SPEC §1.1）：primary 升级为品牌暖黄；原灰黑降级为 INK ——
+// 仅承担中性表面派生（outline/surfaceContainer*）与图标/头像等非交互职责，
+// 避免 5% 透明度的黄色 outline 在浅色模式下不可见。
+const LIGHT_PRIMARY = '#F5A623';
+const LIGHT_INK = '#333333';
 const LIGHT_SECONDARY = '#1E4DF6';
 const LIGHT_TERTIARY = '#7880FF';
 const LIGHT_ERROR = '#FF653F';
@@ -36,11 +40,11 @@ const LIGHT_ON_SURFACE = '#333333';
 const LIGHT_INVERSE_ON_SURFACE = '#fcfcfc';
 
 export const lightColors: TokenColors = {
-  // MD3 base palette (light)
+  // MD3 base palette (light) — primary 为品牌暖黄（B1）
   primary: LIGHT_PRIMARY,
-  onPrimary: '#FFFFFF',
-  primaryContainer: '#DEE0E6',
-  onPrimaryContainer: '#2D2F33',
+  onPrimary: '#3D2E00',
+  primaryContainer: '#FDEBC8',
+  onPrimaryContainer: '#4A3500',
   secondary: LIGHT_SECONDARY,
   onSecondary: '#FFFFFF',
   secondaryContainer: '#E0E0E0',
@@ -59,7 +63,7 @@ export const lightColors: TokenColors = {
   onSurface: LIGHT_ON_SURFACE,
   surfaceVariant: '#e4e4e6',
   onSurfaceVariant: '#646466',
-  outline: withOpacity(LIGHT_PRIMARY, 0.05),
+  outline: withOpacity(LIGHT_INK, 0.05),
   outlineVariant: '#a1a1a1',
   mutedLight: '#e5e3e1',
   // Figma `Color/Secondary/Default` — the secondary surface used by
@@ -76,13 +80,13 @@ export const lightColors: TokenColors = {
   scrim: 'rgba(0, 0, 0, 0.25)',
   backdrop: 'rgba(51, 51, 51, 0.6)',
 
-  // Semantic surface variants (light derives via primary-tint math)
-  surfaceContainerHighest: withOpacity(LIGHT_PRIMARY, 0.05),
-  surfaceContainerHigh: withOpacity(LIGHT_PRIMARY, 0.03),
-  surfaceContainer: withOpacity(LIGHT_PRIMARY, 0.02),
-  surfaceContainerLow: withOpacity(LIGHT_PRIMARY, 0.01),
+  // Semantic surface variants (light derives via neutral-ink tint math)
+  surfaceContainerHighest: withOpacity(LIGHT_INK, 0.05),
+  surfaceContainerHigh: withOpacity(LIGHT_INK, 0.03),
+  surfaceContainer: withOpacity(LIGHT_INK, 0.02),
+  surfaceContainerLow: withOpacity(LIGHT_INK, 0.01),
   surfaceContainerLowest: LIGHT_SURFACE,
-  surfaceDim: withOpacity(LIGHT_PRIMARY, 0.06),
+  surfaceDim: withOpacity(LIGHT_INK, 0.06),
   surfaceBright: LIGHT_SURFACE,
 
   // Text
@@ -105,8 +109,8 @@ export const lightColors: TokenColors = {
   // Menu
   menuBackground: LIGHT_SURFACE,
   menuBackgroundDimmed: withOpacity(LIGHT_SURFACE, 0.9),
-  menuBackgroundActive: withOpacity(LIGHT_PRIMARY, 0.08),
-  menuSeparator: withOpacity(LIGHT_PRIMARY, 0.5),
+  menuBackgroundActive: withOpacity(LIGHT_INK, 0.08),
+  menuSeparator: withOpacity(LIGHT_INK, 0.5),
   menuGroupSeparator: withOpacity('#000000', 0.08),
   menuText: LIGHT_ON_SURFACE,
   menuDangerText: LIGHT_ERROR,
@@ -119,11 +123,11 @@ export const lightColors: TokenColors = {
   // 品牌点缀色（小黄鸡暖黄）：性能数字/模型徽章等强调信息用，深浅双模式
   brandAccent: '#FFB300',
   onBrandAccent: '#3D2E00',
-  receivedMessageDocumentIcon: LIGHT_PRIMARY,
+  receivedMessageDocumentIcon: LIGHT_INK,
   sentMessageDocumentIcon: LIGHT_ON_SURFACE,
   userAvatarImageBackground: 'transparent',
   userAvatarNameColors: [
-    LIGHT_PRIMARY,
+    LIGHT_INK,
     LIGHT_SECONDARY,
     LIGHT_TERTIARY,
     LIGHT_ERROR,
@@ -158,6 +162,34 @@ export const lightColors: TokenColors = {
   iconModelTypeVision: '#9810fa',
   iconModelTypeAudio: '#f97316',
 
+  // 语义状态色（DESIGN_SPEC §1.3，浅深双 binding）
+  success: '#2E7D32',
+  onSuccess: '#FFFFFF',
+  warning: '#EF6C00',
+  onWarning: '#FFFFFF',
+  danger: '#C62828',
+  onDanger: '#FFFFFF',
+  info: '#1565C0',
+  onInfo: '#FFFFFF',
+
+  // 模型族徽章色（DESIGN_SPEC §1.4）
+  badgeSd35: '#8E24AA',
+  badgeZImage: '#00838F',
+  badgeDreamlite: '#D81B60',
+
+  // 悬浮层表面：半透明+阴影分层（禁 blur；DESIGN_SPEC §1.5）
+  surfaceElevated: 'rgba(255, 255, 255, 0.96)',
+
+  // 功能域彩色（一域一色；浅色模式实色，DESIGN_SPEC §1.2）
+  domain: {
+    chat: '#1E4DF6',
+    imageGen: '#D81B60',
+    memory: '#00838F',
+    knowledge: '#2E7D32',
+    workspace: '#EF6C00',
+    tools: '#6750A4',
+  },
+
   // Accent — peach pill background (canonical Figma `Color/Accent/Peach`).
   accent: {
     peach: '#FCE7CF',
@@ -166,10 +198,10 @@ export const lightColors: TokenColors = {
   },
 };
 
-// Dark base values from canonical Figma. Where the canonical dark binding
-// differs visibly from the current dark Theme value, the current value
-// wins to avoid visual regression (tracked as a designer follow-up).
-const DARK_PRIMARY = '#DADDE6';
+// Dark base values from canonical Figma. B1：primary 升级为品牌暖黄；
+// 原浅灰降级为 INK，承担中性派生职责。
+const DARK_PRIMARY = '#FFC54D';
+const DARK_INK = '#DADDE6';
 const DARK_SECONDARY = '#95ABE6';
 const DARK_TERTIARY = '#80E6E4';
 const DARK_ERROR = '#FF653F';
@@ -180,11 +212,11 @@ const DARK_ON_SURFACE = '#E2E2E2';
 const DARK_INVERSE_ON_SURFACE = '#333333';
 
 export const darkColors: TokenColors = {
-  // MD3 base palette (dark) — verbatim from canonical Figma
+  // MD3 base palette (dark) — primary 为品牌暖黄（B1）
   primary: DARK_PRIMARY,
-  onPrimary: '#44464C',
-  primaryContainer: '#5B5E66',
-  onPrimaryContainer: '#DEE0E6',
+  onPrimary: '#332700',
+  primaryContainer: '#5C4400',
+  onPrimaryContainer: '#FFE29A',
   secondary: DARK_SECONDARY,
   onSecondary: '#11214C',
   secondaryContainer: '#424242',
@@ -213,7 +245,7 @@ export const darkColors: TokenColors = {
   onSurfaceDisabled: withOpacity('#e5e5e6', 0.38),
   inverseSurface: '#e5e5e6',
   inverseOnSurface: DARK_INVERSE_ON_SURFACE,
-  inversePrimary: '#5B5E66',
+  inversePrimary: '#5C4400',
   inverseSecondary: LIGHT_SECONDARY, // md3BaseColors.secondary used in current code
   shadow: '#ffffff',
   scrim: 'rgba(0, 0, 0, 0.25)',
@@ -249,8 +281,8 @@ export const darkColors: TokenColors = {
   // Menu
   menuBackground: '#2a2a2a',
   menuBackgroundDimmed: withOpacity(DARK_SURFACE, 0.9),
-  menuBackgroundActive: withOpacity(DARK_PRIMARY, 0.08),
-  menuSeparator: withOpacity(DARK_PRIMARY, 0.5),
+  menuBackgroundActive: withOpacity(DARK_INK, 0.08),
+  menuSeparator: withOpacity(DARK_INK, 0.5),
   menuGroupSeparator: withOpacity('#FFFFFF', 0.08),
   menuText: DARK_ON_SURFACE,
   menuDangerText: DARK_ERROR,
@@ -263,15 +295,10 @@ export const darkColors: TokenColors = {
   // 品牌点缀色（暗色模式：更柔和的金黄，保证深底对比度）
   brandAccent: '#FFC54D',
   onBrandAccent: '#332700',
-  receivedMessageDocumentIcon: DARK_PRIMARY,
+  receivedMessageDocumentIcon: DARK_INK,
   sentMessageDocumentIcon: DARK_ON_SURFACE,
   userAvatarImageBackground: 'transparent',
-  userAvatarNameColors: [
-    DARK_PRIMARY,
-    DARK_SECONDARY,
-    DARK_TERTIARY,
-    DARK_ERROR,
-  ],
+  userAvatarNameColors: [DARK_INK, DARK_SECONDARY, DARK_TERTIARY, DARK_ERROR],
   searchBarBackground: 'rgba(28, 28, 30, 0.92)',
 
   // Thinking bubble
@@ -301,6 +328,34 @@ export const darkColors: TokenColors = {
   iconModelTypeText: '#93c5fd',
   iconModelTypeVision: '#c4b5fd',
   iconModelTypeAudio: '#fdba74',
+
+  // 语义状态色（暗色模式：提亮变体保深底对比度）
+  success: '#6BC67E',
+  onSuccess: '#0B2E10',
+  warning: '#FFB74D',
+  onWarning: '#3E2600',
+  danger: '#F28B82',
+  onDanger: '#3B0906',
+  info: '#90CAF9',
+  onInfo: '#0D2744',
+
+  // 模型族徽章色（暗色模式）
+  badgeSd35: '#CE93D8',
+  badgeZImage: '#4DD0E1',
+  badgeDreamlite: '#F48FB1',
+
+  // 悬浮层表面：半透明+阴影分层（禁 blur）
+  surfaceElevated: 'rgba(30, 30, 32, 0.96)',
+
+  // 功能域彩色（暗色模式：提亮变体）
+  domain: {
+    chat: '#7B9AF7',
+    imageGen: '#F48FB1',
+    memory: '#4DD0E1',
+    knowledge: '#81C784',
+    workspace: '#FFB74D',
+    tools: '#B39DDB',
+  },
 
   // Accent — peach pill background (dark binding from canonical Figma).
   accent: {

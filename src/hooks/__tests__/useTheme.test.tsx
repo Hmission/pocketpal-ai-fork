@@ -6,6 +6,9 @@ import {observer} from 'mobx-react';
 
 jest.unmock('../useTheme');
 jest.unmock('../../store');
+// 反制 jest/setup.ts 对 store/UIStore 的全局 mock：
+// 本套件需要真实 uiStore（colorScheme/setColorScheme 响应性）
+jest.unmock('../../store/UIStore');
 import {useTheme} from '../useTheme';
 
 import {uiStore} from '../../store';

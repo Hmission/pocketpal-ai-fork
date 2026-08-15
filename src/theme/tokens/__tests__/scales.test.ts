@@ -87,13 +87,14 @@ describe('design-token scales — single scale per dimension', () => {
       'l',
       'xl',
       'xxl',
+      'full',
     ] as const;
 
     it('exposes exactly the canonical scale keys (no radius-xs alias)', () => {
       expect(Object.keys(radius).sort()).toEqual([...expectedKeys].sort());
     });
 
-    it('values match the canonical scale (0/2/4/8/12/16/20/32/40)', () => {
+    it('values match the canonical scale (0/2/4/8/12/16/20/32/40 + full pill)', () => {
       expect(radius).toEqual({
         none: 0,
         xxs: 2,
@@ -104,6 +105,8 @@ describe('design-token scales — single scale per dimension', () => {
         l: 20,
         xl: 32,
         xxl: 40,
+        // 胶囊档（DESIGN_SPEC §4）：pill 按钮/徽章/模型胶囊
+        full: 999,
       });
     });
 

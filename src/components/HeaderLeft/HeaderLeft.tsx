@@ -30,8 +30,9 @@ export const HeaderLeft: React.FC = () => {
         testID="header-back-button"
         accessibilityLabel="Go back"
         onPress={() => navigation.goBack()}>
-        {/* 图标 20x20 与 headerTitle 文本基线对齐（触区仍 44x44，见 styles） */}
-        <ArrowLeftMdIcon stroke={theme.colors.primary} width={20} height={20} />
+        {/* 图标 20x20 与 headerTitle 文本基线对齐（触区仍 44x44，见 styles）。
+            箭头是填充形图标，颜色经 fill 传入（svgr .svgrrc 将 #333333 映射为 props.fill） */}
+        <ArrowLeftMdIcon fill={theme.colors.primary} width={20} height={20} />
       </TouchableOpacity>
     );
   }

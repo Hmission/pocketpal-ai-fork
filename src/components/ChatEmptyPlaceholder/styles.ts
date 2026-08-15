@@ -7,19 +7,20 @@ export const createStyles = ({theme}: {theme: Theme}) =>
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      paddingHorizontal: 32,
+      paddingHorizontal: theme.spacing.xl,
       gap: theme.spacing.default,
     },
     title: {
       color: theme.colors.onSurface,
       textAlign: 'center',
-      marginBottom: 8,
-      ...theme.fonts.titleMedium,
+      marginBottom: theme.spacing.s,
+      // 页面大标题（DESIGN_SPEC §2.3 displayS）
+      ...theme.typography.displayS,
     },
     description: {
       color: theme.colors.onSurfaceVariant,
       textAlign: 'center',
-      ...theme.fonts.bodyMedium,
+      ...theme.typography.bodyM,
     },
     button: {
       minWidth: 200,
@@ -27,6 +28,6 @@ export const createStyles = ({theme}: {theme: Theme}) =>
     logo: {
       width: 112,
       height: 112,
-      borderRadius: 30,
+      borderRadius: theme.radius.xl,
     },
   });

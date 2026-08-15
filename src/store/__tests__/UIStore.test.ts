@@ -1,3 +1,6 @@
+// 反制 jest/setup.ts 对 store/UIStore 的全局 mock：本套件测试真实 store 行为
+jest.unmock('../UIStore');
+
 import {UIStore, uiStore} from '../UIStore';
 import {l10n, supportedLanguages} from '../../locales';
 

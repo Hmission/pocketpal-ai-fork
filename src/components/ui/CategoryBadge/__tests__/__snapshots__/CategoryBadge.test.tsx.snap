@@ -193,7 +193,7 @@ exports[`CategoryBadge — snapshot matrix baseline (variant x size x {default,d
       [
         {
           "alignSelf": "flex-start",
-          "backgroundColor": "#DEE0E6",
+          "backgroundColor": "#FDEBC8",
           "borderRadius": 2,
           "paddingHorizontal": 8,
           "paddingVertical": 2,
@@ -206,7 +206,7 @@ exports[`CategoryBadge — snapshot matrix baseline (variant x size x {default,d
     <Text
       style={
         {
-          "color": "#2D2F33",
+          "color": "#4A3500",
           "fontFamily": "Inter-Regular",
           "fontSize": 12,
           "fontWeight": "400",
@@ -237,7 +237,7 @@ exports[`CategoryBadge — snapshot matrix baseline (variant x size x {default,d
       [
         {
           "alignSelf": "flex-start",
-          "backgroundColor": "#DEE0E6",
+          "backgroundColor": "#FDEBC8",
           "borderRadius": 2,
           "paddingHorizontal": 8,
           "paddingVertical": 2,
@@ -250,7 +250,7 @@ exports[`CategoryBadge — snapshot matrix baseline (variant x size x {default,d
     <Text
       style={
         {
-          "color": "#2D2F33",
+          "color": "#4A3500",
           "fontFamily": "Inter-Regular",
           "fontSize": 12,
           "fontWeight": "400",
@@ -281,7 +281,7 @@ exports[`CategoryBadge — snapshot matrix baseline (variant x size x {default,d
       [
         {
           "alignSelf": "flex-start",
-          "backgroundColor": "#DEE0E6",
+          "backgroundColor": "#FDEBC8",
           "borderRadius": 2,
           "paddingHorizontal": 4,
           "paddingVertical": 2,
@@ -294,7 +294,7 @@ exports[`CategoryBadge — snapshot matrix baseline (variant x size x {default,d
     <Text
       style={
         {
-          "color": "#2D2F33",
+          "color": "#4A3500",
           "fontFamily": "Inter-Regular",
           "fontSize": 11,
           "fontWeight": "400",
@@ -325,7 +325,7 @@ exports[`CategoryBadge — snapshot matrix baseline (variant x size x {default,d
       [
         {
           "alignSelf": "flex-start",
-          "backgroundColor": "#DEE0E6",
+          "backgroundColor": "#FDEBC8",
           "borderRadius": 2,
           "paddingHorizontal": 4,
           "paddingVertical": 2,
@@ -338,7 +338,7 @@ exports[`CategoryBadge — snapshot matrix baseline (variant x size x {default,d
     <Text
       style={
         {
-          "color": "#2D2F33",
+          "color": "#4A3500",
           "fontFamily": "Inter-Regular",
           "fontSize": 11,
           "fontWeight": "400",

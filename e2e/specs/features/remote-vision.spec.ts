@@ -1,21 +1,11 @@
 /**
  * Remote Vision Capability Feature Tests
  *
- * Exercises the llama.cpp GET /props capability-discovery path end to end:
- * a remote server that reports `modalities.vision` enables the chat image
- * attachment affordance; a server that does not keeps it disabled. This is the
- * user-visible surface of the /props -> ServerStore.remoteCaps ->
- * resolveRemoteCaps -> ChatInput isVisionEnabled chain.
- *
- * Capabilities are discovered per model, on model activation, so the assertion
- * is valid against a multi-model router too: selecting a vision model enables
- * attach, selecting a text-only sibling on the same server disables it again.
- *
- * The attach button is always rendered (ChatScreen showImageUpload={true}); only
- * its enabled state flips with the discovered capability, so isEnabled() on the
- * "Add image" button is the assertion. (Sending an actual image needs the native
- * gallery picker, which is not automatable here; that path is covered by the
- * committed visual capture.)
+ * [已裁剪 2026-08] 聊天输入栏「Add image」加号入口已按大王裁定删除
+ * （ChatScreen 不再传 showImageUpload={true}）。本套件断言语义随之反转：
+ * 验证裁剪生效——任何远程 vision 能力下加号按钮都不再渲染。
+ * /props 能力发现链路（ServerStore.remoteCaps -> resolveRemoteCaps）保留，
+ * 恢复入口时（加回 showImageUpload={true}）同步恢复原 enabled 断言。
  *
  * Prerequisites:
  *   - REMOTE_VISION_URL points at a llama.cpp server whose GET /props reports
@@ -160,17 +150,16 @@ describe('Remote Vision Capability', () => {
     await chatPage.waitForReady();
     await browser.pause(3000);
 
-    // Open the model picker. The empty-state "Select Model" button only shows
-    // when no model is active; the "Select Pal" button in the input bar is
-    // always present and toggles the picker, so it works whether or not a model
-    // is already active (e.g. after a previous test activated one).
-    const palBtn = browser.$('~Select Pal');
-    const palVisible = await palBtn
+    // Open the model picker. [2026-08] 输入栏 ^ Select Pal 按钮已裁剪，
+    // 改从头部模型 chip（chat-model-picker-chip）打开同一 Sheet；
+    // chip 无模型时显示「选模型」，同样可点。
+    const chip = browser.$(Selectors.chat.modelPickerChip);
+    const chipVisible = await chip
       .waitForDisplayed({timeout: 10000})
       .then(() => true)
       .catch(() => false);
-    if (palVisible) {
-      await palBtn.click();
+    if (chipVisible) {
+      await chip.click();
     } else {
       const selectModelBtn = browser.$(byPartialText('Select Model'));
       await selectModelBtn.waitForDisplayed({timeout: 10000});
@@ -204,18 +193,20 @@ describe('Remote Vision Capability', () => {
     await browser.$(Selectors.chat.input).waitForDisplayed({timeout: 10000});
   }
 
-  it('enables the image-attach button for a vision-capable remote server', async () => {
+  it('no longer renders the image-attach button for a vision-capable remote server (2026-08 trim)', async () => {
     await addRemoteModel(VISION_URL, VISION_HINT);
     await activateInChat(VISION_HINT);
 
     const addImage = browser.$(ADD_IMAGE_BUTTON);
-    await addImage.waitForExist({timeout: 10000});
-    const enabled = await addImage.isEnabled();
-    console.log(`vision server -> Add image button enabled=${enabled}`);
-    expect(enabled).toBe(true);
+    const exists = await addImage
+      .waitForExist({timeout: 3000})
+      .then(() => true)
+      .catch(() => false);
+    console.log(`vision server -> Add image button exists=${exists}`);
+    expect(exists).toBe(false);
   });
 
-  it('keeps the image-attach button disabled for a non-vision remote server', async function (this: Mocha.Context) {
+  it('no longer renders the image-attach button for a non-vision remote server (2026-08 trim)', async function (this: Mocha.Context) {
     if (!NONVISION_URL) {
       console.log('REMOTE_NONVISION_URL unset — skipping non-vision case');
       this.skip();
@@ -225,9 +216,11 @@ describe('Remote Vision Capability', () => {
     await activateInChat(NONVISION_HINT);
 
     const addImage = browser.$(ADD_IMAGE_BUTTON);
-    await addImage.waitForExist({timeout: 10000});
-    const enabled = await addImage.isEnabled();
-    console.log(`non-vision server -> Add image button enabled=${enabled}`);
-    expect(enabled).toBe(false);
+    const exists = await addImage
+      .waitForExist({timeout: 3000})
+      .then(() => true)
+      .catch(() => false);
+    console.log(`non-vision server -> Add image button exists=${exists}`);
+    expect(exists).toBe(false);
   });
 });

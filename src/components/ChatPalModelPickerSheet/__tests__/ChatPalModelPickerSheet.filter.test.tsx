@@ -67,15 +67,17 @@ describe('ChatPalModelPickerSheet LLM 过滤与中文简称（冒烟）', () => 
     expect(queryByText('sd35_medium_q4_k_m.gguf')).toBeNull();
   });
 
-  it('命中注册表的 LLM 显示中文简称，原名副标题小字', () => {
-    const {getByText} = render(
+  it('命中注册表的 LLM 显示中文简称+参数标签，不显示原文件名', () => {
+    const {getByText, queryByText} = render(
       <ChatPalModelPickerSheet
         isVisible
         chatInputHeight={0}
         onClose={jest.fn()}
       />,
     );
-    expect(getByText('通义千问 4B')).toBeTruthy();
-    expect(getByText('Qwen3.5-4B-Uncensored-Q4_K_M')).toBeTruthy();
+    // 新条目格式：中文简称（参数量_量化档）
+    expect(getByText('通义千问 4B（4B_Q4）')).toBeTruthy();
+    // 原始文件名不再展示
+    expect(queryByText('Qwen3.5-4B-Uncensored-Q4_K_M')).toBeNull();
   });
 });

@@ -46,6 +46,33 @@ export const createStyles = (theme: Theme, insets: EdgeInsets) =>
       marginBottom: theme.spacing.default,
       lineHeight: 24,
     },
+    bodyText: {
+      color: theme.colors.onSurfaceVariant,
+      marginBottom: theme.spacing.default,
+      lineHeight: 24,
+    },
+    featuresTitle: {
+      color: theme.colors.onSurface,
+      fontWeight: '600',
+      marginBottom: theme.spacing.default / 2,
+    },
+    featureItem: {
+      color: theme.colors.onSurfaceVariant,
+      lineHeight: 24,
+      marginBottom: theme.spacing.default / 4,
+    },
+    openSourceText: {
+      color: theme.colors.onSurfaceVariant,
+      marginTop: theme.spacing.default,
+      lineHeight: 20,
+      opacity: 0.85,
+    },
+    basedOnText: {
+      ...theme.fonts.bodySmall,
+      color: theme.colors.onSurfaceVariant,
+      marginTop: theme.spacing.default / 2,
+      opacity: 0.7,
+    },
     versionContainer: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -71,87 +98,5 @@ export const createStyles = (theme: Theme, insets: EdgeInsets) =>
       color: theme.colors.onSurfaceVariant,
       marginTop: theme.spacing.default / 2,
       opacity: 0.7,
-    },
-    section: {
-      padding: theme.spacing.default * 2,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.colors.surfaceVariant,
-    },
-    sectionTitle: {
-      ...theme.fonts.titleMedium,
-      color: theme.colors.onSurface,
-      marginBottom: theme.spacing.default,
-    },
-    actionButton: {
-      borderWidth: 1,
-      borderColor: theme.colors.surfaceVariant,
-    },
-    orText: {
-      ...theme.fonts.bodyMedium,
-      color: theme.colors.onSurfaceVariant,
-      textAlign: 'center',
-      marginVertical: theme.spacing.default,
-      opacity: 0.7,
-    },
-    supportButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.colors.primary,
-      padding: theme.spacing.default,
-      borderRadius: theme.borders.default,
-      gap: theme.spacing.default / 2,
-      shadowColor: theme.colors.primary,
-      shadowOffset: {
-        width: 0,
-        height: 2,
-      },
-      shadowOpacity: 0.2,
-      shadowRadius: 4,
-      elevation: 2,
-    },
-    supportButtonText: {
-      ...theme.fonts.titleMedium,
-      color: theme.colors.onPrimary,
-      letterSpacing: 0.5,
-    },
-    feedbackButtonContent: {
-      flexDirection: 'row-reverse',
-    },
-    feedbackForm: {
-      padding: theme.spacing.default,
-    },
-    field: {
-      marginBottom: theme.spacing.default,
-    },
-    label: {
-      ...theme.fonts.labelMedium,
-      color: theme.colors.onSurface,
-      marginBottom: theme.spacing.default / 2,
-    },
-    segmentedButtons: {
-      marginTop: theme.spacing.default / 2,
-    },
-    submitButton: {
-      marginTop: theme.spacing.default,
-    },
-    secondaryButtons: {
-      flexDirection: 'row',
-    },
-    legalRow: {
-      flexDirection: 'row',
-      justifyContent: 'center',
-      alignItems: 'center',
-      paddingVertical: theme.spacing.default * 1.5,
-      gap: theme.spacing.default / 2,
-    },
-    legalLink: {
-      ...theme.fonts.bodySmall,
-      color: theme.colors.onSurfaceVariant,
-    },
-    legalSeparator: {
-      ...theme.fonts.bodySmall,
-      color: theme.colors.onSurfaceVariant,
-      opacity: 0.5,
     },
   });

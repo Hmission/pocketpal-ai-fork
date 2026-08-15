@@ -41,6 +41,67 @@ export function getModelDisplayName(
   return fallbackName(raw) || raw;
 }
 
+/** 参数量提取：name/filename 中的「4B / 1B / 2.6B」→ 大写 B 统一 */
+const extractParamSize = (raw: string): string => {
+  const m = raw.match(/(\d+(?:\.\d+)?)\s*b\b/i);
+  if (m) {
+    const num = parseFloat(m[1]);
+    // 去掉无意义的小数（2.0B → 2B），保留真实小数（2.6B）
+    const label = Number.isInteger(num) ? String(num) : m[1];
+    return `${label}B`;
+  }
+  // 家族后缀数字即参数量（MiniCPM4 → 4B；无显式 b 后缀）
+  const fam = raw.match(/minicpm\s*[-_.]?(\d+)/i);
+  if (fam) {
+    return `${fam[1]}B`;
+  }
+  return '';
+};
+
+/** 量化档提取：Q4_K_M → Q4；F16 → F16；I1_XXS → I1 */
+const extractQuant = (raw: string): string => {
+  const q = raw.match(/[-_.](Q\d{1,2})/i);
+  if (q) {
+    return q[1].toUpperCase();
+  }
+  const f = raw.match(/[-_.](F\d{1,2})/i);
+  if (f) {
+    return f[1].toUpperCase();
+  }
+  const i = raw.match(/[-_.](I\d{1,2})/i);
+  if (i) {
+    return i[1].toUpperCase();
+  }
+  return '';
+};
+
+/**
+ * 参数标签：从 name/filename 提取「（参数量_量化档）」，如「（4B_Q4）」。
+ * 任一项缺失时降级为仅保留命中项；全无命中返回空串。
+ */
+export function getModelParamTag(
+  model: Partial<Pick<Model, 'name' | 'filename'>>,
+): string {
+  const raw = model.name || model.filename || '';
+  const size = extractParamSize(raw);
+  const quant = extractQuant(raw);
+  if (!size && !quant) {
+    return '';
+  }
+  const tag = [size, quant].filter(Boolean).join('_');
+  return `（${tag}）`;
+}
+
+/**
+ * 模型条目完整显示：中文简称 + 参数标签，如「面壁 MiniCPM（4B_Q4）」。
+ * 模型选择器条目显示单一事实源（不再展示原始文件名）。
+ */
+export function getModelDisplayNameWithParams(
+  model: Partial<Pick<Model, 'name' | 'filename'>>,
+): string {
+  return `${getModelDisplayName(model)}${getModelParamTag(model)}`;
+}
+
 /**
  * 聊天可选性：仅 LLM。projection（多模态嵌入）/vision 等非 LLM 模型
  * 聊天引擎不加载，选择器/子菜单一律不显示（不兜底、不置灰）。

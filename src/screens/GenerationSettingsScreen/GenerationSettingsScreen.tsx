@@ -342,7 +342,7 @@ export const GenerationSettingsScreen: React.FC = observer(() => {
                         value: option.id,
                         label: option.label,
                         labelStyle: {
-                          fontSize: 10,
+                          ...theme.typography.captionS,
                         },
                         testID: `device-option-${option.id}`,
                       }))}
@@ -1016,9 +1016,7 @@ export const GenerationSettingsScreen: React.FC = observer(() => {
                   <Switch
                     testID="self-check-switch"
                     value={uiStore.selfCheckEnabled}
-                    onValueChange={value =>
-                      uiStore.setSelfCheckEnabled(value)
-                    }
+                    onValueChange={value => uiStore.setSelfCheckEnabled(value)}
                   />
                 </View>
               </View>

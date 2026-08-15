@@ -71,6 +71,9 @@ export const ConfirmDialogHost: React.FC = () => {
 
   const destructive = pending?.opts.destructive ?? false;
   const confirmColor = destructive ? theme.colors.error : theme.colors.primary;
+  const onConfirmColor = destructive
+    ? theme.colors.onError
+    : theme.colors.onPrimary;
 
   return (
     <Modal
@@ -91,14 +94,15 @@ export const ConfirmDialogHost: React.FC = () => {
         <View
           style={{
             width: '100%',
-            backgroundColor: theme.colors.surface,
-            borderRadius: 12,
-            padding: 20,
-            gap: 12,
+            backgroundColor: theme.colors.surfaceElevated,
+            borderRadius: theme.radius.ml,
+            padding: theme.spacing.ml,
+            gap: theme.spacing.sm,
+            elevation: 4,
           }}>
           <Text
             style={{
-              fontSize: 16,
+              ...theme.typography.titleS,
               fontWeight: '600',
               color: theme.colors.onSurface,
             }}>
@@ -106,26 +110,35 @@ export const ConfirmDialogHost: React.FC = () => {
           </Text>
           <Text
             style={{
-              fontSize: 14,
+              ...theme.typography.bodyS,
               lineHeight: 20,
               color: theme.colors.onSurfaceVariant,
             }}>
             {pending?.opts.message}
           </Text>
-          <View style={{flexDirection: 'row', gap: 10, marginTop: 4}}>
+          <View
+            style={{
+              flexDirection: 'row',
+              gap: theme.spacing.s,
+              marginTop: theme.spacing.xs,
+            }}>
             <TouchableOpacity
               style={{
                 flex: 1,
                 height: 44,
-                borderRadius: 8,
-                borderWidth: 1,
+                borderRadius: theme.radius.s,
+                borderWidth: theme.stroke.sm,
                 borderColor: theme.colors.outline,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
               onPress={() => close(false)}
               testID="confirm-dialog-cancel">
-              <Text style={{fontSize: 14, color: theme.colors.onSurface}}>
+              <Text
+                style={{
+                  ...theme.typography.uiM,
+                  color: theme.colors.onSurface,
+                }}>
                 {pending?.opts.cancelText ?? '取消'}
               </Text>
             </TouchableOpacity>
@@ -133,7 +146,7 @@ export const ConfirmDialogHost: React.FC = () => {
               style={{
                 flex: 1,
                 height: 44,
-                borderRadius: 8,
+                borderRadius: theme.radius.s,
                 backgroundColor: confirmColor,
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -142,8 +155,8 @@ export const ConfirmDialogHost: React.FC = () => {
               testID="confirm-dialog-confirm">
               <Text
                 style={{
-                  fontSize: 14,
-                  color: theme.colors.onPrimary,
+                  ...theme.typography.uiM,
+                  color: onConfirmColor,
                   fontWeight: '600',
                 }}>
                 {pending?.opts.confirmText ?? '确认'}

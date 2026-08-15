@@ -17,11 +17,12 @@ import {type AvailableLanguage} from '../locales';
 // some time). The builder takes a `Mode` from the tokens module directly.
 
 /**
- * Legacy Inter weight map. Preserved verbatim — `ChatInput/styles.ts`
- * still imports `fontStyles` directly; the export will be removed in a
- * later cleanup phase once consumers migrate to `theme.typography.*`.
+ * Legacy Inter weight map. Module-private since the B6 dual-track closure:
+ * `ChatInput/styles.ts` now sources families from `FONT_FAMILIES`
+ * (theme/tokens), so this export is gone. Kept internally only to build the
+ * MD3 `fonts` typescale verbatim (no visual regression).
  */
-export const fontStyles = {
+const fontStyles = {
   regular: {fontFamily: 'Inter-Regular'},
   medium: {fontFamily: 'Inter-Medium'},
   bold: {fontFamily: 'Inter-Bold'},

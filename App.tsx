@@ -109,6 +109,10 @@ const AppDrawer: React.FC = () => {
 
   return (
     <Drawer.Navigator
+      // 层级返回：Drawer 默认 backBehavior='initialRoute' 会使 goBack 直接
+      // 回到初始路由（聊天根），破坏「设置→子页→一层层返回」的心智模型。
+      // 'history' 让 goBack 按访问历史逐层回退（用户既有可用行为）。
+      backBehavior="history"
       screenOptions={{
         headerLeft: () => <HeaderLeft />,
         headerStatusBarHeight: insets.top,
@@ -185,16 +189,14 @@ const AppDrawer: React.FC = () => {
         name={ROUTES.MEMORY}
         component={gestureHandlerRootHOC(MemoryScreen)}
         options={{
-          headerStyle: styles.headerWithoutDivider,
-          title: currentL10n.components.sidebarContent.menuItems.memory,
+          headerShown: false,
         }}
       />
       <Drawer.Screen
         name={ROUTES.KNOWLEDGE}
         component={gestureHandlerRootHOC(KnowledgeScreen)}
         options={{
-          headerStyle: styles.headerWithoutDivider,
-          title: currentL10n.components.sidebarContent.menuItems.knowledge,
+          headerShown: false,
         }}
       />
 
@@ -202,16 +204,14 @@ const AppDrawer: React.FC = () => {
         name={ROUTES.WORKSPACE}
         component={gestureHandlerRootHOC(WorkspaceScreen)}
         options={{
-          headerStyle: styles.headerWithoutDivider,
-          title: currentL10n.components.sidebarContent.menuItems.workspace,
+          headerShown: false,
         }}
       />
       <Drawer.Screen
         name={ROUTES.TOOL}
         component={gestureHandlerRootHOC(ToolScreen)}
         options={{
-          headerStyle: styles.headerWithoutDivider,
-          title: currentL10n.components.sidebarContent.menuItems.tool,
+          headerShown: false,
         }}
       />
 

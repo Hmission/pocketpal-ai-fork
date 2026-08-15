@@ -68,24 +68,24 @@ export const createStyles = (theme: Theme) =>
       paddingHorizontal: 8,
     },
     resultValue: {
-      fontSize: 16,
+      // 数字强调（DESIGN_SPEC §2.1 numericM：等宽字体，基准数据专用）
+      ...theme.typography.numericM,
       color: theme.colors.onSurface,
-      fontWeight: '500',
-      marginBottom: 2,
+      marginBottom: theme.spacing.xxs,
     },
     resultUnit: {
-      fontSize: 13,
+      ...theme.typography.bodyS,
       color: theme.colors.onSurfaceVariant,
       fontWeight: 'normal',
     },
     resultLabel: {
-      fontSize: 11,
+      ...theme.typography.captionS,
       color: theme.colors.onSurfaceVariant,
-      marginBottom: 1,
+      marginBottom: theme.spacing.xxs,
       letterSpacing: 0.1,
     },
     resultStd: {
-      fontSize: 10,
+      ...theme.typography.captionS,
       color: theme.colors.onSurfaceVariant,
     },
     deleteButton: {
@@ -101,7 +101,7 @@ export const createStyles = (theme: Theme) =>
       borderColor: theme.colors.surfaceVariant,
     },
     timestamp: {
-      fontSize: 11,
+      ...theme.typography.captionS,
       color: theme.colors.onSurfaceVariant,
     },
     submitButton: {

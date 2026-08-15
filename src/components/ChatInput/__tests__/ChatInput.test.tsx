@@ -309,11 +309,13 @@ describe('input', () => {
     expect(plusButton.props.accessibilityState.disabled).toBe(false);
   });
 
-  it('shows pal selector button', () => {
+  it('does not render pal selector (^) after 2026-08 trim', () => {
+    // [已裁剪 2026-08] ^ Pal 选择器按钮已删除（大王裁定）；
+    // 恢复 palSelector 块时同步恢复原“点击回调”用例。
     expect.assertions(1);
     const onSendPress = jest.fn();
     const onPalBtnPress = jest.fn();
-    const {getByLabelText} = render(
+    const {queryByLabelText} = render(
       <UserContext.Provider value={user}>
         <ChatInput
           {...{
@@ -325,9 +327,7 @@ describe('input', () => {
       </UserContext.Provider>,
     );
 
-    const palButton = getByLabelText('Select Pal');
-    fireEvent.press(palButton);
-    expect(onPalBtnPress).toHaveBeenCalledTimes(1);
+    expect(queryByLabelText('Select Pal')).toBeNull();
   });
 
   it('shows video button for video pal type', async () => {

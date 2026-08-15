@@ -27,6 +27,18 @@ import {l10n} from '../../locales';
 import {assistant} from '../../utils/chat';
 import {ModelOrigin} from '../../utils/types';
 
+// AIOS 组装层（contextAssembler）属集成链路：本套件聚焦 pal/model 提示词
+// 传递，mock 为空返回以走 effectiveSystem 的 fallback 分支
+// （assembleContext.systemPrompt 为空时回退到 resolveSystemMessages）。
+jest.mock('../../services/aiosMemory/contextAssembler', () => ({
+  assembleContext: jest.fn(async () => ({
+    systemPrompt: '',
+    recalledFragments: [],
+    recallCount: 0,
+    dirtyEnvironment: false,
+  })),
+}));
+
 const mockAssistant = {
   id: 'h3o3lc5xj',
 };
@@ -43,6 +55,12 @@ beforeEach(() => {
   // Reset model state
   modelStore.models = modelsList as any;
   modelStore.activeModelId = undefined;
+  // 重置忙碌标志：handleSendPress 就绪门控（engineIsBusy → awaitEngineReady）
+  // 会把残留的 inferencing/isGenerating 视为引擎忙碌并等待 8s
+  modelStore.inferencing = false;
+  modelStore.isStreaming = false;
+  chatSessionStore.isGenerating = false;
+  chatSessionStore.isStopping = false;
 
   // Fresh mocked context each test
   modelStore.context = new LlamaContext(mockLlamaContextParams);

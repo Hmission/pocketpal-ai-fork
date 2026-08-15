@@ -165,8 +165,6 @@ export interface ChatProps extends ChatTopLevelProps {
   onEndReached?: () => Promise<void>;
   /** The currently active pal */
   activePal?: Pal;
-  /** Called when pal sheet should be opened */
-  onPalSettingsSelect?: (pal: Pal) => void;
   /** Show user names for received messages. Useful for a group chat. Will be
    * shown only on text messages. */
   showUserNames?: boolean;
@@ -225,7 +223,6 @@ export const ChatView = observer(
     onMessageLongPress: externalOnMessageLongPress,
     onMessagePress,
     activePal,
-    onPalSettingsSelect,
     onPreviewDataFetched,
     onSendPress,
     onStopPress,
@@ -269,7 +266,6 @@ export const ChatView = observer(
     const [_selectedModel, setSelectedModel] = React.useState<string | null>(
       null,
     );
-    const [_selectedPal, setSelectedPal] = React.useState<string | undefined>();
 
     // Image viewer state
     const [isImageViewVisible, setIsImageViewVisible] = React.useState(false);
@@ -1123,14 +1119,9 @@ export const ChatView = observer(
       ],
     );
 
-    // ============ PAL/MODEL PICKER HANDLERS ============
+    // ============ MODEL PICKER HANDLER ============
     const handleModelSelect = React.useCallback((model: string) => {
       setSelectedModel(model);
-      setIsPickerVisible(false);
-    }, []);
-
-    const handlePalSelect = React.useCallback((pal: string | undefined) => {
-      setSelectedPal(pal);
       setIsPickerVisible(false);
     }, []);
 
@@ -1256,8 +1247,6 @@ export const ChatView = observer(
                 isVisible={isPickerVisible}
                 onClose={() => setIsPickerVisible(false)}
                 onModelSelect={handleModelSelect}
-                onPalSelect={handlePalSelect}
-                onPalSettingsSelect={onPalSettingsSelect}
                 chatInputHeight={chatInputHeight.height}
               />
             )}

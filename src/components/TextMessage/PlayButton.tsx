@@ -5,17 +5,10 @@ import {observer} from 'mobx-react';
 import {useTheme} from '../../hooks';
 import {modelStore, ttsStore} from '../../store';
 import {L10nContext} from '../../utils';
-import {assistant, derivedText} from '../../utils/chat';
+import {derivedText} from '../../utils/chat';
+import {isSpeakableMessage} from '../../utils/speakable';
 import {PlayIcon, StopIcon} from '../../assets/icons';
 import type {MessageType} from '../../utils/types';
-
-const countWords = (text: string): number => {
-  const trimmed = text.trim();
-  if (trimmed.length === 0) {
-    return 0;
-  }
-  return trimmed.split(/\s+/).length;
-};
 
 interface PlayButtonProps {
   message: MessageType.Any;
@@ -35,18 +28,12 @@ export const PlayButton: React.FC<PlayButtonProps> = observer(({message}) => {
     return null;
   }
 
-  if (message.type !== 'text' && message.type !== 'assistant_turn') {
-    return null;
-  }
-
-  if (message.author?.id !== assistant.id) {
+  // 可朗读性单一事实源（speakable.ts）：type/author/imageTask/词数
+  if (!isSpeakableMessage(message)) {
     return null;
   }
 
   const speakableText = derivedText(message);
-  if (countWords(speakableText) <= 1) {
-    return null;
-  }
 
   // For legacy `text`: completionResult is set once streaming finishes.
   // For `assistant_turn`: streaming is over when the runner has stopped

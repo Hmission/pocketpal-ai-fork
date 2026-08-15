@@ -454,6 +454,32 @@
       "resolveError": "无法加载模型详情，请检查您的网络连接并重试。"
     }
   },
+  "completionParamsLabels": {
+    "n_predict": "预测长度",
+    "include_thinking_in_context": "上下文包含思考",
+    "temperature": "温度",
+    "top_k": "Top K",
+    "top_p": "Top P",
+    "min_p": "Min P",
+    "xtc_threshold": "XTC 阈值",
+    "xtc_probability": "XTC 概率",
+    "typical_p": "Typical P",
+    "penalty_last_n": "惩罚窗口",
+    "penalty_repeat": "重复惩罚",
+    "penalty_freq": "频率惩罚",
+    "penalty_present": "存在惩罚",
+    "mirostat": "Mirostat",
+    "mirostat_tau": "Mirostat Tau",
+    "mirostat_eta": "Mirostat Eta",
+    "seed": "随机种子",
+    "jinja": "Jinja 模板"
+  },
+  "completionParamControls": {
+    "off": "关闭",
+    "unlimited": "无限制",
+    "custom": "自定义",
+    "palPrefix": "伙伴"
+  },
   "completionParams": {
     "include_thinking_in_context": "在发送给模型的上下文中包含 AI 的思考/推理部分，禁用此选项可以节省上下文空间；但可能会影响性能。",
     "jinja": "启用 Jinja 模板进行聊天格式化。启用时，使用基于 Jinja 的聊天模板处理以提高与现代模型的兼容性。",
@@ -487,6 +513,16 @@
   "about": {
     "screenTitle": "关于",
     "description": "一款将大语言模型直接部署到您手机上的 App，基于 llama.cpp 与 llama.rn 构建。",
+    "body": "与传统“联网问答”不同，小黄鸡的模型运行在您的设备本地——不需要服务器，不需要联网，更不需要把对话上传给任何第三方。您的每一次提问、每一段对话，都只留在您自己的手机里。",
+    "featuresTitle": "特性",
+    "features": [
+      "完全离线运行，无网络也能使用",
+      "支持多种开源大模型，自由下载、切换与卸载",
+      "端侧本地生图，创作全程不离开设备",
+      "轻量启动，即开即用"
+    ],
+    "openSourceBody": "本项目基于 PocketPal AI（MIT License）开发，遵循开放、透明的开源精神，欢迎贡献与二次开发。",
+    "basedOn": "基于 PocketPal AI（MIT License）开发",
     "supportProject": "支持项目",
     "supportProjectDescription": "如果您喜欢使用 PocketPal AI，请考虑通过以下方式支持项目：",
     "githubButton": "在 GitHub 上点个 Star",
@@ -684,20 +720,6 @@
     "fileMessage": {
       "fileButtonAccessibilityLabel": "文件"
     },
-    "chatPalModelPickerSheet": {
-      "modelsTab": "模型",
-      "palsTab": "Pal",
-      "noPal": "没有 Pal",
-      "disablePal": "禁用当前 Pal",
-      "noDescription": "没有描述",
-      "assistantType": "Pal",
-      "roleplayType": "角色扮演",
-      "videoType": "视频",
-      "confirmationTitle": "确认",
-      "modelSwitchMessage": "此 Pal 具有不同的默认模型 ({{modelName}})，要切换到 Pal 的默认模型吗？",
-      "keepButton": "保持",
-      "switchButton": "切换"
-    },
     "downloadErrorDialog": {
       "downloadFailedTitle": "下载失败",
       "downloadFailedMessage": "模型下载失败: {{message}}",
@@ -729,7 +751,6 @@
       "deleteChatTitle": "删除聊天",
       "deleteChatMessage": "确定要删除这个聊天记录吗？",
       "generationSettings": "生成设置",
-      "model": "模型",
       "duplicateChatHistory": "复制聊天历史",
       "makeChatTemporary": "使聊天临时",
       "export": "导出/导入",
@@ -737,6 +758,11 @@
       "exportAllSessions": "导出所有会话",
       "exportChatSession": "导出聊天会话",
       "importSessions": "导入会话"
+    },
+    "textMessage": {
+      "saveToPhone": "保存到手机",
+      "savedToAlbum": "已保存到相册",
+      "saveFailed": "保存失败，请重试"
     },
     "hfTokenSheet": {
       "title": "Hugging Face 令牌",

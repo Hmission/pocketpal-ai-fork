@@ -394,7 +394,7 @@ exports[`Label — snapshot matrix baseline (variant x size x {default,disabled}
         {
           "alignItems": "center",
           "alignSelf": "flex-start",
-          "backgroundColor": "#DEE0E6",
+          "backgroundColor": "#FDEBC8",
           "borderRadius": 4,
           "flexDirection": "row",
           "gap": 2,
@@ -409,7 +409,7 @@ exports[`Label — snapshot matrix baseline (variant x size x {default,disabled}
     <Text
       style={
         {
-          "color": "#2D2F33",
+          "color": "#4A3500",
           "fontFamily": "Inter-Regular",
           "fontSize": 12,
           "fontWeight": "400",
@@ -441,7 +441,7 @@ exports[`Label — snapshot matrix baseline (variant x size x {default,disabled}
         {
           "alignItems": "center",
           "alignSelf": "flex-start",
-          "backgroundColor": "#DEE0E6",
+          "backgroundColor": "#FDEBC8",
           "borderRadius": 4,
           "flexDirection": "row",
           "gap": 2,
@@ -456,7 +456,7 @@ exports[`Label — snapshot matrix baseline (variant x size x {default,disabled}
     <Text
       style={
         {
-          "color": "#2D2F33",
+          "color": "#4A3500",
           "fontFamily": "Inter-Regular",
           "fontSize": 12,
           "fontWeight": "400",
@@ -488,7 +488,7 @@ exports[`Label — snapshot matrix baseline (variant x size x {default,disabled}
         {
           "alignItems": "center",
           "alignSelf": "flex-start",
-          "backgroundColor": "#DEE0E6",
+          "backgroundColor": "#FDEBC8",
           "borderRadius": 4,
           "flexDirection": "row",
           "gap": 2,
@@ -503,7 +503,7 @@ exports[`Label — snapshot matrix baseline (variant x size x {default,disabled}
     <Text
       style={
         {
-          "color": "#2D2F33",
+          "color": "#4A3500",
           "fontFamily": "Inter-Regular",
           "fontSize": 11,
           "fontWeight": "400",
@@ -535,7 +535,7 @@ exports[`Label — snapshot matrix baseline (variant x size x {default,disabled}
         {
           "alignItems": "center",
           "alignSelf": "flex-start",
-          "backgroundColor": "#DEE0E6",
+          "backgroundColor": "#FDEBC8",
           "borderRadius": 4,
           "flexDirection": "row",
           "gap": 2,
@@ -550,7 +550,7 @@ exports[`Label — snapshot matrix baseline (variant x size x {default,disabled}
     <Text
       style={
         {
-          "color": "#2D2F33",
+          "color": "#4A3500",
           "fontFamily": "Inter-Regular",
           "fontSize": 11,
           "fontWeight": "400",

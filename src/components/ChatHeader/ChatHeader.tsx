@@ -1,9 +1,6 @@
 import React from 'react';
 import {Platform, View, TouchableOpacity, Text} from 'react-native';
 import {observer} from 'mobx-react';
-import {IconButton} from 'react-native-paper';
-import {DrawerNavigationProp} from '@react-navigation/drawer';
-import {useNavigation} from '@react-navigation/native';
 
 import {createStyles} from './styles';
 import {HeaderRight} from '../HeaderRight';
@@ -17,14 +14,11 @@ import {useTheme} from '../../hooks';
 import {chatSessionStore, modelStore} from '../../store';
 import {HeaderLeft} from '../HeaderLeft';
 import {SessionStatusBar} from '../SessionStatusBar';
-import {CameraIcon} from '../../assets/icons';
 import {getModelDisplayName} from '../../utils/modelDisplayNames';
-import {ROUTES} from '../../utils/navigationConstants';
 
 export const ChatHeader: React.FC<{onModelPickerPress?: () => void}> = observer(
   ({onModelPickerPress}) => {
     const theme = useTheme();
-    const navigation = useNavigation<DrawerNavigationProp<any>>();
 
     const insets = useSafeAreaInsets();
     const layout = useSafeAreaFrame();
@@ -58,33 +52,30 @@ export const ChatHeader: React.FC<{onModelPickerPress?: () => void}> = observer(
             <ChatHeaderTitle />
           </View>
           <View style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
-            {/* 模型切换下拉入口：直接出选择器，不跳转模型页 */}
+            {/* 模型切换下拉入口：直接出选择器，不跳转模型页
+                testID=chat-model-picker-chip：e2e 打开 Pal/模型 Sheet 的唯一定位 */}
             {onModelPickerPress && (
               <TouchableOpacity
+                testID="chat-model-picker-chip"
                 onPress={onModelPickerPress}
                 style={{
-                  paddingHorizontal: 8,
-                  paddingVertical: 4,
-                  borderRadius: 12,
+                  paddingHorizontal: theme.spacing.s,
+                  paddingVertical: theme.spacing.xs,
+                  borderRadius: theme.radius.m,
                   backgroundColor: theme.colors.surfaceVariant,
                 }}>
-                <Text style={{fontSize: 11, color: theme.colors.onSurface}}>
+                <Text
+                  style={{
+                    ...theme.typography.captionS,
+                    color: theme.colors.onSurface,
+                  }}>
                   {modelShort} ⌄
                 </Text>
               </TouchableOpacity>
             )}
-            {/* 生图入口：抽屉已改为聊天记录中心，生图从头部进入 */}
-            <IconButton
-              icon={() => (
-                <CameraIcon
-                  width={24}
-                  height={24}
-                  stroke={theme.colors.primary}
-                />
-              )}
-              testID="imagegen-button"
-              onPress={() => navigation.navigate(ROUTES.IMAGE_GEN)}
-            />
+            {/* [已裁剪 2026-08] 头部生图入口（CameraIcon imagegen-button）：
+                大王裁定收敛至抽屉 drawer-imagegen-button 唯一入口，聊天内生图
+                走输入框意图闭环（useChatScheduler）。恢复见 git 历史。 */}
             <HeaderRight />
           </View>
         </View>

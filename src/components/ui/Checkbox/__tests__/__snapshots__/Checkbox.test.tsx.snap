@@ -52,7 +52,7 @@ exports[`Checkbox — snapshot matrix baseline (variant x size x {default,disabl
       }
       accessible={true}
       collapsable={false}
-      color="#333333"
+      color="#F5A623"
       focusable={true}
       onBlur={[Function]}
       onClick={[Function]}
@@ -92,7 +92,7 @@ exports[`Checkbox — snapshot matrix baseline (variant x size x {default,disabl
           style={
             [
               {
-                "color": "#333333",
+                "color": "#F5A623",
                 "fontSize": 24,
               },
               [
@@ -177,7 +177,7 @@ exports[`Checkbox — snapshot matrix baseline (variant x size x {default,disabl
       }
       accessible={true}
       collapsable={false}
-      color="#333333"
+      color="#F5A623"
       focusable={true}
       onBlur={[Function]}
       onClick={[Function]}
@@ -217,7 +217,7 @@ exports[`Checkbox — snapshot matrix baseline (variant x size x {default,disabl
           style={
             [
               {
-                "color": "#333333",
+                "color": "#F5A623",
                 "fontSize": 24,
               },
               [
@@ -302,7 +302,7 @@ exports[`Checkbox — snapshot matrix baseline (variant x size x {default,disabl
       }
       accessible={true}
       collapsable={false}
-      color="#333333"
+      color="#F5A623"
       focusable={true}
       onBlur={[Function]}
       onClick={[Function]}
@@ -342,7 +342,7 @@ exports[`Checkbox — snapshot matrix baseline (variant x size x {default,disabl
           style={
             [
               {
-                "color": "#333333",
+                "color": "#F5A623",
                 "fontSize": 24,
               },
               [
@@ -427,7 +427,7 @@ exports[`Checkbox — snapshot matrix baseline (variant x size x {default,disabl
       }
       accessible={true}
       collapsable={false}
-      color="#333333"
+      color="#F5A623"
       focusable={true}
       onBlur={[Function]}
       onClick={[Function]}
@@ -467,7 +467,7 @@ exports[`Checkbox — snapshot matrix baseline (variant x size x {default,disabl
           style={
             [
               {
-                "color": "#333333",
+                "color": "#F5A623",
                 "fontSize": 24,
               },
               [
@@ -552,7 +552,7 @@ exports[`Checkbox — snapshot matrix baseline (variant x size x {default,disabl
       }
       accessible={true}
       collapsable={false}
-      color="#333333"
+      color="#F5A623"
       focusable={true}
       onBlur={[Function]}
       onClick={[Function]}
@@ -677,7 +677,7 @@ exports[`Checkbox — snapshot matrix baseline (variant x size x {default,disabl
       }
       accessible={true}
       collapsable={false}
-      color="#333333"
+      color="#F5A623"
       focusable={true}
       onBlur={[Function]}
       onClick={[Function]}
@@ -802,7 +802,7 @@ exports[`Checkbox — snapshot matrix baseline (variant x size x {default,disabl
       }
       accessible={true}
       collapsable={false}
-      color="#333333"
+      color="#F5A623"
       focusable={true}
       onBlur={[Function]}
       onClick={[Function]}
@@ -927,7 +927,7 @@ exports[`Checkbox — snapshot matrix baseline (variant x size x {default,disabl
       }
       accessible={true}
       collapsable={false}
-      color="#333333"
+      color="#F5A623"
       focusable={true}
       onBlur={[Function]}
       onClick={[Function]}
@@ -1052,7 +1052,7 @@ exports[`Checkbox — snapshot matrix non-Latin font-fallback canary (canaryVari
       }
       accessible={true}
       collapsable={false}
-      color="#333333"
+      color="#F5A623"
       focusable={true}
       onBlur={[Function]}
       onClick={[Function]}
@@ -1092,7 +1092,7 @@ exports[`Checkbox — snapshot matrix non-Latin font-fallback canary (canaryVari
           style={
             [
               {
-                "color": "#333333",
+                "color": "#F5A623",
                 "fontSize": 24,
               },
               [

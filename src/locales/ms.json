@@ -487,6 +487,16 @@
   "about": {
     "screenTitle": "Maklumat Aplikasi",
     "description": "Aplikasi yang membawa model bahasa terus ke telefon anda. Dibina di atas llama.cpp dan llama.rn.",
+    "body": "Berbeza dengan chatbot berasaskan awan, model Pocket Chick berjalan sepenuhnya pada peranti anda — tanpa pelayan, tanpa internet, dan tanpa menghantar perbualan kepada pihak ketiga. Setiap soalan dan setiap jawapan kekal dalam telefon anda.",
+    "featuresTitle": "Ciri-ciri",
+    "features": [
+      "Berfungsi sepenuhnya di luar talian — tanpa rangkaian pun boleh digunakan",
+      "Menyokong pelbagai model sumber terbuka — muat turun, tukar dan alih keluar dengan bebas",
+      "Penjanaan imej pada peranti — karya anda tidak pernah meninggalkan telefon",
+      "Ringan dan sedia digunakan"
+    ],
+    "openSourceBody": "Projek ini dibina berdasarkan PocketPal AI (Lesen MIT) dan mengikuti semangat sumber terbuka yang terbuka dan telus. Sumbangan dan pembangunan terbitan dialu-alukan.",
+    "basedOn": "Dibangunkan berdasarkan PocketPal AI (Lesen MIT)",
     "supportProject": "Sokong Projek Ini",
     "supportProjectDescription": "Jika anda menikmati menggunakan PocketPal AI, pertimbangkan untuk menyokong projek ini dengan:",
     "githubButton": "Beri Bintang di GitHub",

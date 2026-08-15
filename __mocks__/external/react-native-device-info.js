@@ -6,7 +6,8 @@ export default {
   getModel: jest.fn(() => 'iPhone 12'),
   getSystemVersion: jest.fn(() => '14.5'),
   getFreeDiskStorage: jest.fn(() => deviceInfo.freeDiskStorage),
-  getTotalMemory: jest.fn(() => deviceInfo.totalMemory),
+  // 真实 API 为异步 Promise（App.tsx 启动链路 getTotalMemory().then(...)）
+  getTotalMemory: jest.fn(async () => deviceInfo.totalMemory),
   getUsedMemory: jest.fn(() => deviceInfo.usedMemory),
   getVersion: jest.fn(() => deviceInfo.version),
   getBuildNumber: jest.fn(() => deviceInfo.buildNumber),

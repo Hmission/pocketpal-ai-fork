@@ -19,6 +19,12 @@ export type {CardProps, CardListProps} from './Card';
 export {Chip} from './Chip';
 export type {ChipProps} from './Chip';
 
+export {IconTile} from './IconTile';
+export type {IconTileProps, IconTileSize} from './IconTile';
+
+export {PressableScale} from './PressableScale';
+export type {PressableScaleProps} from './PressableScale';
+
 export {Stepper} from './Stepper';
 export type {StepperProps} from './Stepper';
 

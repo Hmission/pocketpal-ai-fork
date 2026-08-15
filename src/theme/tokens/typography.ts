@@ -29,6 +29,9 @@ import {TokenTypography, TypographyStyle} from './types';
 export const FONT_FAMILIES = {
   INTER_REGULAR: 'Inter-Regular',
   INTER_MEDIUM: 'Inter-Medium',
+  // Legacy-compat weight kept for ChatInput's pal-name emphasis during the
+  // fontStyles dual-track closure (B6). Bundled asset: Inter-SemiBold.ttf.
+  INTER_SEMIBOLD: 'Inter-SemiBold',
   FRAUNCES_REGULAR: 'Fraunces-Regular',
   FRAUNCES_MEDIUM: 'Fraunces-Medium',
   FRAUNCES_ITALIC: 'Fraunces-Italic',
@@ -83,6 +86,14 @@ const isNonLatinLocale = (locale: AvailableLanguage): boolean =>
  * migrate per screen.
  */
 export const typography: TokenTypography = {
+  // 页面大标题（Inter，DESIGN_SPEC §2.1 displayS）
+  displayS: {
+    fontFamily: FONT_FAMILIES.INTER_MEDIUM,
+    fontSize: 28,
+    lineHeight: 34,
+    fontWeight: '500',
+  },
+
   // Body (Inter)
   bodyM: {
     fontFamily: FONT_FAMILIES.INTER_REGULAR,
@@ -179,6 +190,14 @@ export const typography: TokenTypography = {
     fontSize: 12,
     lineHeight: 16,
     fontWeight: '400',
+  },
+
+  // 数字强调（JetBrains Mono Medium：timing/生图参数/统计；DESIGN_SPEC §2.1 numericM）
+  numericM: {
+    fontFamily: FONT_FAMILIES.JETBRAINS_MONO_MEDIUM,
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '500',
   },
 };
 

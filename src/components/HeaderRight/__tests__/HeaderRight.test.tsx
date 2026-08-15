@@ -4,10 +4,9 @@ import {render, fireEvent, waitFor} from '../../../../jest/test-utils';
 
 import {HeaderRight} from '../HeaderRight';
 
-import {chatSessionStore, modelStore, uiStore} from '../../../store';
+import {chatSessionStore, uiStore} from '../../../store';
 import {defaultCompletionSettings} from '../../../store/ChatSessionStore';
 import {L10nContext} from '../../../utils';
-import {modelsList} from '../../../../jest/fixtures/models';
 import {l10n} from '../../../locales';
 
 // 确认弹窗已切换全局 ConfirmDialog 体系（测试环境 mock：默认拒绝，用例内按需放行）
@@ -98,9 +97,6 @@ describe('HeaderRight', () => {
           },
         ];
         chatSessionStore.activeSessionId = 'test-session';
-        // Set up the mock model store
-        modelStore.models = [modelsList[0]];
-        modelStore.activeModelId = modelsList[0].id;
         (confirmDialog as jest.Mock).mockResolvedValue(false);
       });
 
@@ -115,9 +111,6 @@ describe('HeaderRight', () => {
 
         expect(
           await findByText(l10n.en.components.headerRight.generationSettings),
-        ).toBeTruthy();
-        expect(
-          await findByText(l10n.en.components.headerRight.model),
         ).toBeTruthy();
         expect(
           await findByText(l10n.en.components.headerRight.duplicateChatHistory),

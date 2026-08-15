@@ -67,7 +67,6 @@ export * from './ToolMetricsFooter';
 export * from './ToolUsedChip';
 export * from './UsageStats';
 export * from './VideoPalEmptyPlaceholder';
-export * from './VoiceChip';
 export * from './VisionDownloadSheet';
 export * from './WebSearchResultCard';
 

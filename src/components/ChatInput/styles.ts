@@ -1,7 +1,7 @@
 import {StyleSheet} from 'react-native';
 
 import {Theme} from '../../utils/types';
-import {fontStyles} from '../../utils/theme';
+import {FONT_FAMILIES} from '../../theme/tokens';
 
 export const createStyles = ({
   theme,
@@ -147,24 +147,24 @@ export const createStyles = ({
       marginTop: isEditMode ? 28 : 0,
     },
     palNameWrapper: {
-      ...fontStyles.regular,
+      fontFamily: FONT_FAMILIES.INTER_REGULAR,
       color: theme.colors.inverseOnSurface,
       fontSize: 12,
     },
     palName: {
       fontSize: 12,
       color: theme.colors.inverseOnSurface,
-      ...fontStyles.semibold,
+      fontFamily: FONT_FAMILIES.INTER_SEMIBOLD,
     },
     // New compact pal name styles for control bar
     palNameCompact: {
       fontSize: 10,
-      ...fontStyles.regular,
+      fontFamily: FONT_FAMILIES.INTER_REGULAR,
       color: theme.colors.inverseOnSurface,
     },
     palNameValueCompact: {
       fontSize: 10,
-      ...fontStyles.semibold,
+      fontFamily: FONT_FAMILIES.INTER_SEMIBOLD,
       color: theme.colors.inverseOnSurface,
     },
     // Image preview styles

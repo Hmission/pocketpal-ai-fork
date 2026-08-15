@@ -5,6 +5,7 @@ import {
   HTMLContentModel,
   HTMLElementModel,
 } from 'react-native-render-html';
+import {useTheme} from '../../hooks';
 
 /**
  * ImgRenderer — markdown 图片渲染（![]() / <img>）。
@@ -13,6 +14,7 @@ import {
  */
 const ImgRenderer: CustomBlockRenderer = ({tnode}) => {
   const {width} = useWindowDimensions();
+  const theme = useTheme();
   const src = tnode.attributes?.src;
   if (!src) {
     return null;
@@ -24,9 +26,9 @@ const ImgRenderer: CustomBlockRenderer = ({tnode}) => {
       style={{
         width: imgWidth,
         aspectRatio: 1.6,
-        borderRadius: 8,
-        marginVertical: 6,
-        backgroundColor: '#00000010',
+        borderRadius: theme.radius.s,
+        marginVertical: theme.spacing.xs,
+        backgroundColor: theme.colors.surfaceContainerHighest,
       }}
       resizeMode="cover"
       accessibilityLabel={tnode.attributes?.alt ?? 'markdown image'}

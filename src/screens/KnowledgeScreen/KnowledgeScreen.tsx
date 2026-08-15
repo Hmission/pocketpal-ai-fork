@@ -1,6 +1,6 @@
 import * as React from 'react';
 import {View, FlatList, Text, StyleSheet, TouchableOpacity} from 'react-native';
-import {Appbar, List, Divider, TextInput, Button, RadioButton} from 'react-native-paper';
+import {Appbar, List, Divider, TextInput, Button} from 'react-native-paper';
 import * as RNFS from '@dr.pogodin/react-native-fs';
 
 import {
@@ -8,16 +8,25 @@ import {
   readConversationLog,
 } from '../../services/aiosMemory/conversationLog';
 import {searchMemory} from '../../services/aiosMemory';
-import {listSummaryDates, readSummary} from '../../services/aiosMemory/compaction';
+import {
+  listSummaryDates,
+  readSummary,
+} from '../../services/aiosMemory/compaction';
 import {AIOS_MEMORY_FILE} from '../../utils/paths';
+import {useTheme} from '../../hooks';
+import type {Theme} from '../../utils/types';
+import {IconTile} from '../../components/ui';
+import {GridIcon} from '../../assets/icons';
 
 type Tab = 'conversations' | 'summaries' | 'longterm';
 
 export function KnowledgeScreen({navigation}: any) {
+  const theme = useTheme();
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
   const [tab, setTab] = React.useState<Tab>('conversations');
   const [dates, setDates] = React.useState<string[]>([]);
   const [summaryDates, setSummaryDates] = React.useState<string[]>([]);
-  const [selectedDate, setSelectedDate] = React.useState<string | null>(null);
+  const [_selectedDate, setSelectedDate] = React.useState<string | null>(null);
   const [content, setContent] = React.useState('');
   const [query, setQuery] = React.useState('');
   const [searchResults, setSearchResults] = React.useState<string[]>([]);
@@ -80,7 +89,18 @@ export function KnowledgeScreen({navigation}: any) {
     <View style={styles.container}>
       <Appbar.Header>
         <Appbar.BackAction onPress={() => navigation.goBack()} />
-        <Appbar.Content title="知识库" />
+        <Appbar.Content
+          title={
+            <View style={styles.appbarTitleRow}>
+              <IconTile
+                icon={GridIcon}
+                color={theme.colors.domain.knowledge}
+                size="s"
+              />
+              <Text style={styles.appbarTitle}>知识库</Text>
+            </View>
+          }
+        />
       </Appbar.Header>
 
       {/* Search bar */}
@@ -102,21 +122,29 @@ export function KnowledgeScreen({navigation}: any) {
         <TouchableOpacity
           style={[styles.tab, tab === 'conversations' && styles.tabActive]}
           onPress={() => setTab('conversations')}>
-          <Text style={tab === 'conversations' ? styles.tabTextActive : styles.tabText}>
+          <Text
+            style={
+              tab === 'conversations' ? styles.tabTextActive : styles.tabText
+            }>
             对话日志
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, tab === 'summaries' && styles.tabActive]}
           onPress={() => setTab('summaries')}>
-          <Text style={tab === 'summaries' ? styles.tabTextActive : styles.tabText}>
+          <Text
+            style={tab === 'summaries' ? styles.tabTextActive : styles.tabText}>
             摘要
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, tab === 'longterm' && styles.tabActive]}
-          onPress={() => { setTab('longterm'); loadLongTermMemory(); }}>
-          <Text style={tab === 'longterm' ? styles.tabTextActive : styles.tabText}>
+          onPress={() => {
+            setTab('longterm');
+            loadLongTermMemory();
+          }}>
+          <Text
+            style={tab === 'longterm' ? styles.tabTextActive : styles.tabText}>
             长期记忆
           </Text>
         </TouchableOpacity>
@@ -151,7 +179,9 @@ export function KnowledgeScreen({navigation}: any) {
             <List.Item
               title={item}
               description="对话日志"
-              left={props => <List.Icon {...props} icon="file-document-outline" />}
+              left={props => (
+                <List.Icon {...props} icon="file-document-outline" />
+              )}
               onPress={() => loadDate(item)}
             />
           )}
@@ -178,7 +208,9 @@ export function KnowledgeScreen({navigation}: any) {
           ItemSeparatorComponent={Divider}
           ListEmptyComponent={
             <Text style={styles.empty}>
-              {summaryDates.length === 0 ? '暂无摘要。对话超过阈值后自动生成摘要。' : ''}
+              {summaryDates.length === 0
+                ? '暂无摘要。对话超过阈值后自动生成摘要。'
+                : ''}
             </Text>
           }
         />
@@ -187,35 +219,67 @@ export function KnowledgeScreen({navigation}: any) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {flex: 1, backgroundColor: '#fff'},
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: '#f5f5f5',
-  },
-  searchInput: {flex: 1, marginRight: 8, backgroundColor: '#fff'},
-  tabBar: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  tabActive: {
-    borderBottomWidth: 2,
-    borderBottomColor: '#6200ee',
-  },
-  tabText: {fontSize: 13, color: '#888'},
-  tabTextActive: {fontSize: 13, color: '#6200ee', fontWeight: 'bold'},
-  resultItem: {padding: 12},
-  resultText: {fontSize: 13, color: '#333'},
-  contentContainer: {padding: 16},
-  contentText: {fontSize: 14, color: '#333', lineHeight: 22},
-  empty: {textAlign: 'center', color: '#999', padding: 40},
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    container: {flex: 1, backgroundColor: theme.colors.surface},
+    appbarTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.s,
+    },
+    appbarTitle: {
+      ...theme.typography.titleM,
+      color: theme.colors.onSurface,
+    },
+    searchBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.s,
+      backgroundColor: theme.colors.surfaceVariant,
+    },
+    searchInput: {
+      flex: 1,
+      marginRight: theme.spacing.s,
+      backgroundColor: theme.colors.surface,
+    },
+    tabBar: {
+      flexDirection: 'row',
+      borderBottomWidth: theme.stroke.sm,
+      borderBottomColor: theme.colors.border,
+    },
+    tab: {
+      flex: 1,
+      paddingVertical: theme.spacing.s,
+      alignItems: 'center',
+    },
+    tabActive: {
+      borderBottomWidth: theme.stroke.md,
+      borderBottomColor: theme.colors.domain.knowledge,
+    },
+    tabText: {
+      ...theme.typography.bodyS,
+      color: theme.colors.onSurfaceVariant,
+    },
+    tabTextActive: {
+      ...theme.typography.bodyS,
+      color: theme.colors.domain.knowledge,
+      fontWeight: 'bold',
+    },
+    resultItem: {padding: theme.spacing.sm},
+    resultText: {
+      ...theme.typography.bodyS,
+      color: theme.colors.onSurface,
+    },
+    contentContainer: {padding: theme.spacing.m},
+    contentText: {
+      ...theme.typography.bodyS,
+      lineHeight: 22,
+      color: theme.colors.onSurface,
+    },
+    empty: {
+      textAlign: 'center',
+      color: theme.colors.outlineVariant,
+      padding: theme.spacing.xxl,
+    },
+  });

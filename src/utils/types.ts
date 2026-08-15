@@ -353,6 +353,34 @@ export interface SemanticColors {
   iconModelTypeVision: string;
   iconModelTypeAudio: string;
 
+  // 语义状态色（DESIGN_SPEC §1.3）
+  success: string;
+  onSuccess: string;
+  warning: string;
+  onWarning: string;
+  danger: string;
+  onDanger: string;
+  info: string;
+  onInfo: string;
+
+  // 模型族徽章色（DESIGN_SPEC §1.4）
+  badgeSd35: string;
+  badgeZImage: string;
+  badgeDreamlite: string;
+
+  // 悬浮层表面（半透明+阴影分层，禁 blur；DESIGN_SPEC §1.5）
+  surfaceElevated: string;
+
+  // 功能域彩色（一域一色；DESIGN_SPEC §1.2）
+  domain: {
+    chat: string;
+    imageGen: string;
+    memory: string;
+    knowledge: string;
+    workspace: string;
+    tools: string;
+  };
+
   // Accent — peach pill / Recommended-tier card highlight; greenStrong
   // powers the download progress-bar fill.
   accent: {

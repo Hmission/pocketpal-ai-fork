@@ -454,6 +454,32 @@
       "vision": "Vision"
     }
   },
+  "completionParamsLabels": {
+    "n_predict": "N Predict",
+    "include_thinking_in_context": "Include Thinking in Context",
+    "temperature": "Temperature",
+    "top_k": "Top K",
+    "top_p": "Top P",
+    "min_p": "Min P",
+    "xtc_threshold": "XTC Threshold",
+    "xtc_probability": "XTC Probability",
+    "typical_p": "Typical P",
+    "penalty_last_n": "Penalty Last N",
+    "penalty_repeat": "Repeat Penalty",
+    "penalty_freq": "Frequency Penalty",
+    "penalty_present": "Presence Penalty",
+    "mirostat": "Mirostat",
+    "mirostat_tau": "Mirostat Tau",
+    "mirostat_eta": "Mirostat Eta",
+    "seed": "Seed",
+    "jinja": "Jinja"
+  },
+  "completionParamControls": {
+    "off": "Off",
+    "unlimited": "Unlimited",
+    "custom": "Custom",
+    "palPrefix": "Pal"
+  },
   "completionParams": {
     "include_thinking_in_context": "Include AI thinking/reasoning parts in the context sent to the model. Disabling this can save context space. It might impact performance.",
     "jinja": "Enable Jinja templating for chat formatting. When enabled, uses Jinja-based chat template processing for better compatibility with modern models.",
@@ -487,6 +513,16 @@
   "about": {
     "screenTitle": "App Info",
     "description": "An app that brings language models directly to your phone. Sits on the shoulders of llama.cpp and llama.rn.",
+    "body": "Unlike cloud-based chatbots, Pocket Chick runs models entirely on your device — no servers, no internet, and no third party ever sees your conversations. Every question and every reply stays on your phone.",
+    "featuresTitle": "Features",
+    "features": [
+      "Fully offline — works without a network",
+      "Supports many open-source models — download, switch, and remove freely",
+      "On-device image generation — your creations never leave your phone",
+      "Lightweight — ready to use instantly"
+    ],
+    "openSourceBody": "This project is built on PocketPal AI (MIT License) and follows the open, transparent spirit of open source. Contributions and derivative works are welcome.",
+    "basedOn": "Built on PocketPal AI (MIT License)",
     "supportProject": "Support the Project",
     "supportProjectDescription": "If you enjoy using PocketPal AI, please consider supporting the project by:",
     "githubButton": "Star on GitHub",
@@ -702,20 +738,6 @@
     "fileMessage": {
       "fileButtonAccessibilityLabel": "File"
     },
-    "chatPalModelPickerSheet": {
-      "modelsTab": "Models",
-      "palsTab": "Pals",
-      "noPal": "No Pal",
-      "disablePal": "Disable active pal",
-      "noDescription": "No description",
-      "assistantType": "Assistant",
-      "roleplayType": "Roleplay",
-      "videoType": "Video",
-      "confirmationTitle": "Confirmation",
-      "modelSwitchMessage": "This pal has a different default model ({{modelName}}). Would you like to switch to the pal's default model?",
-      "keepButton": "Keep",
-      "switchButton": "Switch"
-    },
     "downloadErrorDialog": {
       "downloadFailedTitle": "Download Failed",
       "downloadFailedMessage": "Failed to download model: {{message}}",
@@ -747,7 +769,6 @@
       "deleteChatTitle": "Delete Chat",
       "deleteChatMessage": "Are you sure you want to delete this chat?",
       "generationSettings": "Generation settings",
-      "model": "Model",
       "duplicateChatHistory": "Duplicate chat history",
       "makeChatTemporary": "Make chat temporary",
       "export": "Export/Import",
@@ -755,6 +776,11 @@
       "exportAllSessions": "Export all sessions",
       "exportChatSession": "Export chat session",
       "importSessions": "Import sessions"
+    },
+    "textMessage": {
+      "saveToPhone": "Save to phone",
+      "savedToAlbum": "Saved to gallery",
+      "saveFailed": "Save failed, please retry"
     },
     "hfTokenSheet": {
       "title": "Hugging Face Token",

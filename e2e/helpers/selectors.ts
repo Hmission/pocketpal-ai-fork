@@ -169,6 +169,9 @@ export const Selectors = {
     get input(): string {
       return byTestId('chat-input');
     },
+    get modelPickerChip(): string {
+      return byTestId('chat-model-picker-chip');
+    },
     get sendButton(): string {
       return byTestId('send-button');
     },

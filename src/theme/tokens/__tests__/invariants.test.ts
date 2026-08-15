@@ -120,6 +120,28 @@ describe('design-token grep invariants', () => {
       // onboarding; lives at app-level above the navigator.
       'components/DownloadOverlay',
       'components/DownloadProgressCard',
+      // UI 统一+设计语言升级波（DESIGN_SPEC §7）：AIOS 四屏 + 生图域 +
+      // 状态横幅/状态条/markdown 图片渲染迁移到 token 表面。
+      'screens/ToolScreen',
+      'screens/WorkspaceScreen',
+      'screens/KnowledgeScreen',
+      'screens/MemoryScreen',
+      'screens/ImageGenScreen',
+      'components/ActiveTaskBanner',
+      'components/SessionStatusBar',
+      'components/MarkdownView',
+      // 同波散点字号 token 化（A3）
+      'screens/ChatScreen',
+      'screens/GenerationSettingsScreen',
+      'components/ChatHeader',
+      'components/ImageTaskActions',
+      // B2：设置页入口中心卡片化（IconTile + 分组 Surface）
+      'screens/SettingsScreen',
+      // B4：排版升级（displayS 大标题 / numericM 数字强调）
+      'components/ChatEmptyPlaceholder',
+      'screens/BenchmarkScreen',
+      // 聊天发送按钮品牌化（圆形 primary + radius.full）
+      'components/SendButton',
     ];
     const files = listFiles(SRC).filter(f => {
       const rel = path.relative(SRC, f).replace(/\\/g, '/');

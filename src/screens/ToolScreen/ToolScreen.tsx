@@ -5,8 +5,15 @@ import {deriveToolSchemas} from '../../services/talents';
 import {palStore, chatSessionStore} from '../../store';
 import type {ToolDefinition} from '../../services/talents/types';
 import {toJS} from 'mobx';
+import {useTheme} from '../../hooks';
+import type {Theme} from '../../utils/types';
+import {withOpacity} from '../../utils/colorUtils';
+import {IconTile} from '../../components/ui';
+import {AtomIcon} from '../../assets/icons';
 
 export function ToolScreen({navigation}: any) {
+  const theme = useTheme();
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
   const [tools, setTools] = React.useState<ToolDefinition[]>([]);
   const [enabledTalents, setEnabledTalents] = React.useState<Set<string>>(
     new Set(),
@@ -37,7 +44,9 @@ export function ToolScreen({navigation}: any) {
               history.push({
                 name: outcome.toolName ?? 'unknown',
                 summary: (outcome.responseContent ?? '').slice(0, 80),
-                ts: new Date(msg.createdAt ?? 0).toLocaleTimeString().slice(0, 5),
+                ts: new Date(msg.createdAt ?? 0)
+                  .toLocaleTimeString()
+                  .slice(0, 5),
               });
             }
           }
@@ -64,7 +73,10 @@ export function ToolScreen({navigation}: any) {
       if (currentTalents.some(t => t.name === name)) {
         return; // Already enabled
       }
-      updatedTalents = [...currentTalents, {name, necessity: 'optional' as const}];
+      updatedTalents = [
+        ...currentTalents,
+        {name, necessity: 'optional' as const},
+      ];
     } else {
       updatedTalents = currentTalents.filter(t => t.name !== name);
     }
@@ -90,20 +102,27 @@ export function ToolScreen({navigation}: any) {
         }
         description={item.function.description?.slice(0, 80)}
         left={props => (
-          <List.Icon {...props} icon={enabled ? 'check-circle' : 'circle-outline'} />
+          <List.Icon
+            {...props}
+            icon={enabled ? 'check-circle' : 'circle-outline'}
+          />
         )}
         right={() => (
           <Switch
             value={enabled}
             disabled={isPhase2}
-            onValueChange={(v) => toggleTalent(name, v)}
+            onValueChange={v => toggleTalent(name, v)}
           />
         )}
       />
     );
   };
 
-  const renderHistoryItem = ({item}: {item: {name: string; summary: string; ts: string}}) => (
+  const renderHistoryItem = ({
+    item,
+  }: {
+    item: {name: string; summary: string; ts: string};
+  }) => (
     <View style={styles.historyItem}>
       <View style={styles.historyHeader}>
         <Text style={styles.historyName}>{item.name}</Text>
@@ -119,7 +138,18 @@ export function ToolScreen({navigation}: any) {
     <View style={styles.container}>
       <Appbar.Header>
         <Appbar.BackAction onPress={() => navigation?.goBack()} />
-        <Appbar.Content title="工具配置" />
+        <Appbar.Content
+          title={
+            <View style={styles.appbarTitleRow}>
+              <IconTile
+                icon={AtomIcon}
+                color={theme.colors.domain.tools}
+                size="s"
+              />
+              <Text style={styles.appbarTitle}>工具配置</Text>
+            </View>
+          }
+        />
       </Appbar.Header>
 
       <View style={styles.infoBar}>
@@ -139,7 +169,9 @@ export function ToolScreen({navigation}: any) {
         ListFooterComponent={
           toolHistory.length > 0 ? (
             <View>
-              <Text style={styles.sectionHeader}>工具调用历史 (最近 {toolHistory.length} 次)</Text>
+              <Text style={styles.sectionHeader}>
+                工具调用历史 (最近 {toolHistory.length} 次)
+              </Text>
               <FlatList
                 data={toolHistory}
                 renderItem={renderHistoryItem}
@@ -152,59 +184,83 @@ export function ToolScreen({navigation}: any) {
             <Text style={styles.empty}>暂无工具调用记录</Text>
           )
         }
-        ListEmptyComponent={
-          <Text style={styles.empty}>暂无工具注册</Text>
-        }
+        ListEmptyComponent={<Text style={styles.empty}>暂无工具注册</Text>}
       />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {flex: 1, backgroundColor: '#fff'},
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  titleText: {
-    fontSize: 15,
-    color: '#333',
-    fontWeight: '500',
-  },
-  phase2Badge: {
-    fontSize: 10,
-    color: '#b26a00',
-    backgroundColor: '#fff3e0',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  infoBar: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: '#f5f5f5',
-  },
-  infoText: {fontSize: 12, color: '#666'},
-  sectionHeader: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: '#555',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: '#f0f0f0',
-  },
-  historyItem: {
-    padding: 12,
-  },
-  historyHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  historyName: {fontSize: 13, fontWeight: '500', color: '#333'},
-  historyTime: {fontSize: 11, color: '#999'},
-  historySummary: {fontSize: 12, color: '#666'},
-  empty: {textAlign: 'center', color: '#999', padding: 40},
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    container: {flex: 1, backgroundColor: theme.colors.surface},
+    appbarTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.s,
+    },
+    appbarTitle: {
+      ...theme.typography.titleM,
+      color: theme.colors.onSurface,
+    },
+    titleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.s,
+    },
+    titleText: {
+      ...theme.typography.titleS,
+      color: theme.colors.onSurface,
+    },
+    phase2Badge: {
+      ...theme.typography.captionS,
+      color: theme.colors.warning,
+      backgroundColor: withOpacity(theme.colors.warning, 0.12),
+      paddingHorizontal: theme.spacing.s,
+      paddingVertical: theme.spacing.xxs,
+      borderRadius: theme.radius.xs,
+      overflow: 'hidden',
+    },
+    infoBar: {
+      paddingHorizontal: theme.spacing.m,
+      paddingVertical: theme.spacing.s,
+      backgroundColor: theme.colors.surfaceVariant,
+    },
+    infoText: {
+      ...theme.typography.captionM,
+      color: theme.colors.onSurfaceVariant,
+    },
+    sectionHeader: {
+      ...theme.typography.bodyS,
+      fontWeight: 'bold',
+      color: theme.colors.onSurfaceVariant,
+      paddingHorizontal: theme.spacing.m,
+      paddingVertical: theme.spacing.s,
+      backgroundColor: theme.colors.surfaceVariant,
+    },
+    historyItem: {
+      padding: theme.spacing.sm,
+    },
+    historyHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: theme.spacing.xs,
+    },
+    historyName: {
+      ...theme.typography.bodyS,
+      fontWeight: '500',
+      color: theme.colors.onSurface,
+    },
+    historyTime: {
+      ...theme.typography.captionS,
+      color: theme.colors.outlineVariant,
+    },
+    historySummary: {
+      ...theme.typography.captionM,
+      color: theme.colors.onSurfaceVariant,
+    },
+    empty: {
+      textAlign: 'center',
+      color: theme.colors.outlineVariant,
+      padding: theme.spacing.xxl,
+    },
+  });

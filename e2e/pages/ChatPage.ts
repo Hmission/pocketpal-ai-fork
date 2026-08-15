@@ -10,7 +10,6 @@ import {
   Selectors,
   byTestId,
   byText,
-  byAccessibilityLabel,
   byPartialText,
 } from '../helpers/selectors';
 import {Gestures} from '../helpers/gestures';
@@ -329,12 +328,13 @@ export class ChatPage extends BasePage {
   }
 
   /**
-   * Open the pal/model picker sheet by tapping the pal selector button.
+   * Open the pal/model picker sheet by tapping the header model chip.
+   * [2026-08] 输入栏 ^ Select Pal 按钮已裁剪，Sheet 改从头部模型 chip 打开。
    */
   async openPalPicker(): Promise<void> {
-    const palBtn = browser.$(byAccessibilityLabel('Select Pal'));
-    await palBtn.waitForDisplayed({timeout: 5000});
-    await palBtn.click();
+    const chip = browser.$(byTestId('chat-model-picker-chip'));
+    await chip.waitForDisplayed({timeout: 5000});
+    await chip.click();
     await browser.pause(500);
   }
 

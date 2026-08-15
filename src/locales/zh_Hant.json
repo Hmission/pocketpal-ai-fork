@@ -2,6 +2,16 @@
   "about": {
     "screenTitle": "應用程式資訊",
     "description": "一個能把語言模型直接帶到你手機上的應用程式，基於 llama.cpp 與 llama.rn 構建。",
+    "body": "與傳統「聯網問答」不同，小黃雞的模型運行在您的裝置本地——不需要伺服器，不需要聯網，更不需要把對話上傳給任何第三方。您的每一次提問、每一段對話，都只留在您自己的手機裡。",
+    "featuresTitle": "特性",
+    "features": [
+      "完全離線運行，無網路也能使用",
+      "支援多種開源大模型，自由下載、切換與卸載",
+      "端側本地生圖，創作全程不離開裝置",
+      "輕量啟動，即開即用"
+    ],
+    "openSourceBody": "本專案基於 PocketPal AI（MIT License）開發，遵循開放、透明的開源精神，歡迎貢獻與二次開發。",
+    "basedOn": "基於 PocketPal AI（MIT License）開發",
     "supportProject": "支援此專案",
     "supportProjectDescription": "如果您喜歡使用 PocketPal AI，請考慮透過以下方式支援此專案：",
     "githubButton": "在 GitHub 上點讚",
@@ -249,6 +259,32 @@
     "stop": "停止",
     "noResults": "沒有結果"
   },
+  "completionParamsLabels": {
+    "n_predict": "預測長度",
+    "include_thinking_in_context": "上下文包含思考",
+    "temperature": "溫度",
+    "top_k": "Top K",
+    "top_p": "Top P",
+    "min_p": "Min P",
+    "xtc_threshold": "XTC 閾值",
+    "xtc_probability": "XTC 機率",
+    "typical_p": "Typical P",
+    "penalty_last_n": "懲罰窗口",
+    "penalty_repeat": "重複懲罰",
+    "penalty_freq": "頻率懲罰",
+    "penalty_present": "存在懲罰",
+    "mirostat": "Mirostat",
+    "mirostat_tau": "Mirostat Tau",
+    "mirostat_eta": "Mirostat Eta",
+    "seed": "隨機種子",
+    "jinja": "Jinja 模板"
+  },
+  "completionParamControls": {
+    "off": "關閉",
+    "unlimited": "無限制",
+    "custom": "自訂",
+    "palPrefix": "夥伴"
+  },
   "completionParams": {
     "grammar": "如何在生成文字本時強制執行特定語法規則（快速指南）",
     "stop": "定義將停止文字生成的特定短語",
@@ -424,25 +460,10 @@
         "placeholder": "請描述這個 Pal 的角色、目的或情境…"
       }
     },
-    "chatPalModelPickerSheet": {
-      "palsTab": "Pal",
-      "modelsTab": "模型",
-      "noPal": "沒 Pal",
-      "disablePal": "停用活躍 pal",
-      "noDescription": "未提供描述",
-      "assistantType": "助手",
-      "roleplayType": "角色扮演",
-      "confirmationTitle": "確認",
-      "modelSwitchMessage": "此 pal 的預設模型不同 ({{modelName}})。您是否想切換到 Pal 的預設模型？",
-      "keepButton": "保持",
-      "switchButton": "切換",
-      "videoType": "影片"
-    },
     "headerRight": {
       "deleteChatTitle": "刪除聊天",
       "deleteChatMessage": "您確定要刪除此聊天嗎？",
       "generationSettings": "生成設定",
-      "model": "模型",
       "duplicateChatHistory": "重複聊天紀錄",
       "makeChatTemporary": "把聊天暫存",
       "exportChatSession": "匯出聊天會話",
@@ -450,6 +471,11 @@
       "exportCurrentSession": "匯出目前會話",
       "exportAllSessions": "匯出所有會話",
       "importSessions": "匯入會話"
+    },
+    "textMessage": {
+      "saveToPhone": "儲存到手機",
+      "savedToAlbum": "已儲存到相簿",
+      "saveFailed": "儲存失敗，請重試"
     },
     "modelSettingsSheet": {
       "modelSettings": "模型設定",

@@ -1,5 +1,5 @@
 import {LlamaContext} from 'llama.rn';
-import {renderHook, act} from '@testing-library/react-native';
+import {renderHook, act, waitFor} from '@testing-library/react-native';
 
 import {textMessage} from '../../../jest/fixtures';
 import {sessionFixtures} from '../../../jest/fixtures/chatSessions';
@@ -607,24 +607,33 @@ describe('useChatSession — AssistantTurn integration', () => {
         .fn()
         .mockImplementation(() => completionPromise);
     }
-    modelStore.setInferencing(true);
+    // 注意：不能在这里 setInferencing(true)——handleSendPress 的就绪门控
+    // （engineIsBusy → awaitEngineReady）会把它当作引擎忙碌并等待 8s，
+    // runner 根本不会启动。inferencing 由 handleSendPress 内部设置。
 
     const {result} = renderHook(() =>
       useChatSession({current: null}, textMessage.author, mockAssistant),
     );
     // Fire-and-forget the send so handleStopPress can interrupt it.
     const sendPromise = result.current.handleSendPress(textMessage);
-    // Allow microtasks to run so the engine.completion() call is in
-    // flight before we press stop.
-    await act(async () => {
-      await Promise.resolve();
-    });
+    // 推进 handleSendPress 直到 runner 已启动且 engine.completion 在飞行中。
+    // handleStopPress 已重构：只发 abort 信号，engine.stopCompletion 由
+    // runner 的 abort listener 调用——abort 必须发生在 listener 注册之后。
+    await waitFor(
+      () => expect(modelStore.context?.completion).toHaveBeenCalled(),
+      // AIOS 上下文组装（assembleContext）在 mock 环境走多条异步链，
+      // 需要更长的等待窗口
+      {timeout: 15000},
+    );
 
     await act(async () => {
       await result.current.handleStopPress();
     });
 
-    expect(modelStore.engine?.stopCompletion).toHaveBeenCalled();
+    await waitFor(
+      () => expect(modelStore.engine?.stopCompletion).toHaveBeenCalled(),
+      {timeout: 15000},
+    );
 
     // Resolve the pending completion so the awaiting handleSendPress
     // can finish and we don't leak an open promise.

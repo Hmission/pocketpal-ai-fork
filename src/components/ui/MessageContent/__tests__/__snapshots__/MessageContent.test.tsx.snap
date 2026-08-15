@@ -192,7 +192,7 @@ exports[`MessageContent — snapshot matrix baseline (variant x size x {default,
       [
         {
           "alignSelf": "flex-end",
-          "backgroundColor": "#DEE0E6",
+          "backgroundColor": "#FDEBC8",
           "borderRadius": 16,
           "maxWidth": "85%",
           "paddingHorizontal": 16,
@@ -206,7 +206,7 @@ exports[`MessageContent — snapshot matrix baseline (variant x size x {default,
     <Text
       style={
         {
-          "color": "#2D2F33",
+          "color": "#4A3500",
           "fontFamily": "Inter-Regular",
           "fontSize": 16,
           "fontWeight": "400",
@@ -236,7 +236,7 @@ exports[`MessageContent — snapshot matrix baseline (variant x size x {default,
       [
         {
           "alignSelf": "flex-end",
-          "backgroundColor": "#DEE0E6",
+          "backgroundColor": "#FDEBC8",
           "borderRadius": 16,
           "maxWidth": "85%",
           "paddingHorizontal": 16,
@@ -250,7 +250,7 @@ exports[`MessageContent — snapshot matrix baseline (variant x size x {default,
     <Text
       style={
         {
-          "color": "#2D2F33",
+          "color": "#4A3500",
           "fontFamily": "Inter-Regular",
           "fontSize": 16,
           "fontWeight": "400",
@@ -280,7 +280,7 @@ exports[`MessageContent — snapshot matrix non-Latin font-fallback canary (cana
       [
         {
           "alignSelf": "flex-end",
-          "backgroundColor": "#DEE0E6",
+          "backgroundColor": "#FDEBC8",
           "borderRadius": 16,
           "maxWidth": "85%",
           "paddingHorizontal": 16,
@@ -294,7 +294,7 @@ exports[`MessageContent — snapshot matrix non-Latin font-fallback canary (cana
     <Text
       style={
         {
-          "color": "#2D2F33",
+          "color": "#4A3500",
           "fontFamily": "Inter-Regular",
           "fontSize": 16,
           "fontWeight": "400",

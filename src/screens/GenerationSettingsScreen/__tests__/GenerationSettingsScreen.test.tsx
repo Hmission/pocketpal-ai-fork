@@ -34,10 +34,13 @@ describe('GenerationSettingsScreen', () => {
   });
 
   it('renders settings screen correctly', async () => {
-    const {getByText, getByDisplayValue} = render(<GenerationSettingsScreen />, {
-      withSafeArea: true,
-      withNavigation: true,
-    });
+    const {getByText, getByDisplayValue} = render(
+      <GenerationSettingsScreen />,
+      {
+        withSafeArea: true,
+        withNavigation: true,
+      },
+    );
 
     expect(getByText('Model Initialization Settings')).toBeTruthy();
     expect(getByText('Model Loading Settings')).toBeTruthy();
@@ -71,10 +74,13 @@ describe('GenerationSettingsScreen', () => {
   });
 
   it('displays error for invalid context size input', async () => {
-    const {getByDisplayValue, getByText} = render(<GenerationSettingsScreen />, {
-      withSafeArea: true,
-      withNavigation: true,
-    });
+    const {getByDisplayValue, getByText} = render(
+      <GenerationSettingsScreen />,
+      {
+        withSafeArea: true,
+        withNavigation: true,
+      },
+    );
     const contextSizeInput = getByDisplayValue('2048');
 
     await act(async () => {
@@ -85,10 +91,13 @@ describe('GenerationSettingsScreen', () => {
   });
 
   it('handles outside press correctly and resets input', async () => {
-    const {getByDisplayValue, getByText} = render(<GenerationSettingsScreen />, {
-      withSafeArea: true,
-      withNavigation: true,
-    });
+    const {getByDisplayValue, getByText} = render(
+      <GenerationSettingsScreen />,
+      {
+        withSafeArea: true,
+        withNavigation: true,
+      },
+    );
     const contextSizeInput = getByDisplayValue('2048');
 
     fireEvent.changeText(contextSizeInput, '512');

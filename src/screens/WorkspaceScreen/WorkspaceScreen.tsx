@@ -1,6 +1,20 @@
 import * as React from 'react';
-import {View, ScrollView, Text, StyleSheet, Alert, Platform} from 'react-native';
-import {Appbar, Button, TextInput, List, Divider, IconButton} from 'react-native-paper';
+import {
+  View,
+  ScrollView,
+  Text,
+  StyleSheet,
+  Alert,
+  Platform,
+} from 'react-native';
+import {
+  Appbar,
+  Button,
+  TextInput,
+  List,
+  Divider,
+  IconButton,
+} from 'react-native-paper';
 import * as RNFS from '@dr.pogodin/react-native-fs';
 import {pick, types} from '@react-native-documents/picker';
 import {
@@ -10,6 +24,10 @@ import {
   AIOS_MEMORY_FILE,
   AIOS_WORKSPACE_DIR,
 } from '../../utils/paths';
+import {useTheme} from '../../hooks';
+import type {Theme} from '../../utils/types';
+import {IconTile} from '../../components/ui';
+import {EditBoxIcon} from '../../assets/icons';
 
 const FILES = [
   {label: 'SOUL.md (人设)', path: AIOS_SOUL_FILE},
@@ -19,6 +37,8 @@ const FILES = [
 ];
 
 export function WorkspaceScreen({navigation}: any) {
+  const theme = useTheme();
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
   const [selectedFile, setSelectedFile] = React.useState<string | null>(null);
   const [content, setContent] = React.useState('');
   const [original, setOriginal] = React.useState('');
@@ -56,9 +76,10 @@ export function WorkspaceScreen({navigation}: any) {
   const handleExport = async (filePath: string) => {
     try {
       const fileName = filePath.split('/').pop() || 'workspace_file.md';
-      const exportDir = Platform.OS === 'android'
-        ? `${RNFS.ExternalStorageDirectoryPath}/Download`
-        : RNFS.DocumentDirectoryPath;
+      const exportDir =
+        Platform.OS === 'android'
+          ? `${RNFS.ExternalStorageDirectoryPath}/Download`
+          : RNFS.DocumentDirectoryPath;
       const exportPath = `${exportDir}/${fileName}`;
       await RNFS.copyFile(filePath, exportPath);
       Alert.alert('导出成功', `文件已导出到:\n${exportPath}`);
@@ -91,7 +112,18 @@ export function WorkspaceScreen({navigation}: any) {
     <View style={styles.container}>
       <Appbar.Header>
         <Appbar.BackAction onPress={() => navigation?.goBack()} />
-        <Appbar.Content title="Workspace" />
+        <Appbar.Content
+          title={
+            <View style={styles.appbarTitleRow}>
+              <IconTile
+                icon={EditBoxIcon}
+                color={theme.colors.domain.workspace}
+                size="s"
+              />
+              <Text style={styles.appbarTitle}>智能体</Text>
+            </View>
+          }
+        />
         {selectedFile && (
           <Appbar.Action
             icon="content-save"
@@ -128,12 +160,14 @@ export function WorkspaceScreen({navigation}: any) {
             mode="outlined"
             dense={false}
           />
-          {isDirty && (
-            <Text style={styles.dirtyHint}>未保存变更</Text>
-          )}
+          {isDirty && <Text style={styles.dirtyHint}>未保存变更</Text>}
           <Button
             mode="text"
-            onPress={() => { setSelectedFile(null); setContent(''); setOriginal(''); }}>
+            onPress={() => {
+              setSelectedFile(null);
+              setContent('');
+              setOriginal('');
+            }}>
             返回文件列表
           </Button>
         </View>
@@ -149,7 +183,7 @@ export function WorkspaceScreen({navigation}: any) {
                   left={props => (
                     <List.Icon {...props} icon="file-document-outline" />
                   )}
-                  right={props => (
+                  right={() => (
                     <View style={{flexDirection: 'row'}}>
                       <IconButton
                         icon="download-outline"
@@ -175,15 +209,38 @@ export function WorkspaceScreen({navigation}: any) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {flex: 1, backgroundColor: '#fff'},
-  editorContainer: {flex: 1, padding: 12},
-  filePath: {fontSize: 11, color: '#888', marginBottom: 8},
-  importExportRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 8,
-  },
-  editor: {flex: 1, textAlignVertical: 'top', fontSize: 13},
-  dirtyHint: {color: '#FF9800', fontSize: 11, marginTop: 4, textAlign: 'right'},
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    container: {flex: 1, backgroundColor: theme.colors.surface},
+    appbarTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.s,
+    },
+    appbarTitle: {
+      ...theme.typography.titleM,
+      color: theme.colors.onSurface,
+    },
+    editorContainer: {flex: 1, padding: theme.spacing.sm},
+    filePath: {
+      ...theme.typography.captionS,
+      color: theme.colors.onSurfaceVariant,
+      marginBottom: theme.spacing.s,
+    },
+    importExportRow: {
+      flexDirection: 'row',
+      gap: theme.spacing.s,
+      marginBottom: theme.spacing.s,
+    },
+    editor: {
+      flex: 1,
+      textAlignVertical: 'top',
+      ...theme.typography.bodyS,
+    },
+    dirtyHint: {
+      ...theme.typography.captionS,
+      color: theme.colors.warning,
+      marginTop: theme.spacing.xs,
+      textAlign: 'right',
+    },
+  });

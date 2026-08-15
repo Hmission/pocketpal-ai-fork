@@ -3,17 +3,10 @@ import {render, fireEvent, waitFor} from '@testing-library/react-native';
 import {Keyboard} from 'react-native';
 
 import {ChatPalModelPickerSheet} from '../ChatPalModelPickerSheet';
-import {modelStore, chatSessionStore} from '../../../store';
+import {modelStore} from '../../../store';
 import {user} from '../../../../jest/fixtures';
 import {UserContext, L10nContext} from '../../../utils';
 import {l10n} from '../../../locales';
-
-// 确认弹窗已切换全局 ConfirmDialog 体系（测试环境 mock：默认拒绝，用例内按需放行）
-jest.mock('../../ui/ConfirmDialog', () => ({
-  confirmDialog: jest.fn().mockResolvedValue(false),
-}));
-
-import {confirmDialog} from '../../ui/ConfirmDialog';
 
 // Mock stores
 jest.mock('../../../store', () => ({
@@ -21,20 +14,22 @@ jest.mock('../../../store', () => ({
     availableModels: [
       {
         id: 'model1',
-        name: 'Test Model 1',
+        name: 'MiniCPM4-4B-Q4_K_M',
+        filename: 'MiniCPM4-4B-Q4_K_M.gguf',
         isDownloaded: true,
         supportsMultimodal: false,
         modelType: 'llm',
       },
       {
         id: 'model2',
-        name: 'Test Model 2',
+        name: 'LFM2.5-2.6B-Q4_K_M',
+        filename: 'LFM2.5-2.6B-Q4_K_M.gguf',
         isDownloaded: true,
         supportsMultimodal: true,
         modelType: 'llm',
       },
     ],
-    activeModel: {id: 'model1', name: 'Test Model 1'},
+    activeModel: {id: 'model1', name: 'MiniCPM4-4B-Q4_K_M'},
     activeModelId: 'model1',
     initContext: jest.fn(),
     selectModel: jest.fn(),
@@ -44,26 +39,6 @@ jest.mock('../../../store', () => ({
       state: 'not_needed',
     }),
     getModelVisionPreference: jest.fn().mockReturnValue(true),
-  },
-  palStore: {
-    pals: [
-      {
-        id: 'pal1',
-        name: 'Test Assistant',
-        palType: 'assistant', // Use string literal instead of enum
-        defaultModel: {id: 'model1', name: 'Test Model 1'},
-      },
-      {
-        id: 'pal2',
-        name: 'Test Roleplay',
-        palType: 'roleplay', // Use string literal instead of enum
-        defaultModel: {id: 'model2', name: 'Test Model 2'},
-      },
-    ],
-  },
-  chatSessionStore: {
-    activePalId: 'pal1',
-    setActivePal: jest.fn(),
   },
 }));
 
@@ -75,35 +50,14 @@ jest.mock('@gorhom/bottom-sheet', () => {
     default: mockReact.forwardRef(({children}: any, ref: any) =>
       mockReact.createElement('View', {ref, testID: 'bottom-sheet'}, children),
     ),
-    BottomSheetFlatList: ({data, renderItem}: any) =>
-      mockReact.createElement(
-        'View',
-        {testID: 'bottom-sheet-flatlist'},
-        data?.map((item: any, index: number) =>
-          mockReact.createElement(
-            'View',
-            {key: item.id},
-            renderItem({item, index}),
-          ),
-        ),
-      ),
-    BottomSheetFlatListMethods: {},
     BottomSheetScrollView: ({children}: any) =>
       mockReact.createElement(
         'View',
         {testID: 'bottom-sheet-scrollview'},
         children,
       ),
-    BottomSheetView: ({children}: any) =>
-      mockReact.createElement(
-        'View',
-        {testID: 'bottom-sheet-flatlist'},
-        children,
-      ),
   };
 });
-
-// 测试环境 mock 已由 jest.mock 提供；Keyboard 事件订阅需返回带 remove 的对象
 
 // Mock Keyboard
 const mockKeyboardDismiss = jest.fn();
@@ -121,8 +75,6 @@ const defaultProps = {
   chatInputHeight: 60,
   onClose: jest.fn(),
   onModelSelect: jest.fn(),
-  onPalSelect: jest.fn(),
-  keyboardHeight: 0,
 };
 
 describe('ChatPalModelPickerSheet', () => {
@@ -140,19 +92,36 @@ describe('ChatPalModelPickerSheet', () => {
     );
 
     expect(getByTestId('bottom-sheet')).toBeTruthy();
-    expect(getByTestId('bottom-sheet-flatlist')).toBeTruthy();
+    expect(getByTestId('bottom-sheet-scrollview')).toBeTruthy();
   });
 
-  it('does not render when not visible', () => {
-    const {queryByTestId} = render(
+  it('does not render tab bar (single models list only)', () => {
+    const {queryByText} = render(
       <UserContext.Provider value={user}>
         <L10nContext.Provider value={l10n.en}>
-          <ChatPalModelPickerSheet {...defaultProps} isVisible={false} />
+          <ChatPalModelPickerSheet {...defaultProps} />
         </L10nContext.Provider>
       </UserContext.Provider>,
     );
 
-    expect(queryByTestId('bottom-sheet')).toBeTruthy(); // Component still renders but sheet is closed
+    // 无 tab 头：既无 Models tab 也无 Pals tab 文案（l10n 键已随收敛删除）
+    expect(queryByText('Models')).toBeNull();
+    expect(queryByText('Pals')).toBeNull();
+  });
+
+  it('shows Chinese short name with param tag, no filename subtitle', () => {
+    const {getByText, queryByText} = render(
+      <UserContext.Provider value={user}>
+        <L10nContext.Provider value={l10n.en}>
+          <ChatPalModelPickerSheet {...defaultProps} />
+        </L10nContext.Provider>
+      </UserContext.Provider>,
+    );
+
+    // 面壁 MiniCPM（4B_Q4）格式：中文简称 + 参数标签
+    expect(getByText('面壁 MiniCPM（4B_Q4）')).toBeTruthy();
+    // 原始文件名不再显示
+    expect(queryByText('MiniCPM4-4B-Q4_K_M')).toBeNull();
   });
 
   it('dismisses keyboard when sheet becomes visible', () => {
@@ -164,10 +133,8 @@ describe('ChatPalModelPickerSheet', () => {
       </UserContext.Provider>,
     );
 
-    // Keyboard should not be dismissed when initially not visible
     expect(mockKeyboardDismiss).not.toHaveBeenCalled();
 
-    // Make the sheet visible
     rerender(
       <UserContext.Provider value={user}>
         <L10nContext.Provider value={l10n.en}>
@@ -176,7 +143,6 @@ describe('ChatPalModelPickerSheet', () => {
       </UserContext.Provider>,
     );
 
-    // Keyboard should be dismissed when sheet becomes visible
     expect(mockKeyboardDismiss).toHaveBeenCalledTimes(1);
   });
 
@@ -194,48 +160,11 @@ describe('ChatPalModelPickerSheet', () => {
       </UserContext.Provider>,
     );
 
-    // Simulate keyboard opening
     const keyboardDidShowListener = (Keyboard.addListener as jest.Mock).mock
       .calls[0][1];
     keyboardDidShowListener();
 
-    // Sheet should be closed
     expect(mockOnClose).toHaveBeenCalledTimes(1);
-  });
-
-  it('displays models and pals tabs', () => {
-    const {getByText} = render(
-      <UserContext.Provider value={user}>
-        <L10nContext.Provider value={l10n.en}>
-          <ChatPalModelPickerSheet {...defaultProps} />
-        </L10nContext.Provider>
-      </UserContext.Provider>,
-    );
-
-    expect(
-      getByText(l10n.en.components.chatPalModelPickerSheet.modelsTab),
-    ).toBeTruthy();
-    expect(
-      getByText(l10n.en.components.chatPalModelPickerSheet.palsTab),
-    ).toBeTruthy();
-  });
-
-  it('switches tabs when tab is pressed', () => {
-    const {getByText} = render(
-      <UserContext.Provider value={user}>
-        <L10nContext.Provider value={l10n.en}>
-          <ChatPalModelPickerSheet {...defaultProps} />
-        </L10nContext.Provider>
-      </UserContext.Provider>,
-    );
-
-    const palsTab = getByText(
-      l10n.en.components.chatPalModelPickerSheet.palsTab,
-    );
-    fireEvent.press(palsTab);
-
-    // Tab should be active after press
-    expect(palsTab).toBeTruthy();
   });
 
   it('calls onModelSelect when model is selected', async () => {
@@ -247,8 +176,7 @@ describe('ChatPalModelPickerSheet', () => {
       </UserContext.Provider>,
     );
 
-    // Find and press a model (this would need to be adjusted based on actual rendering)
-    const modelItem = getByText('Test Model 1');
+    const modelItem = getByText('面壁 MiniCPM（4B_Q4）');
     fireEvent.press(modelItem);
 
     await waitFor(() => {
@@ -256,104 +184,5 @@ describe('ChatPalModelPickerSheet', () => {
       expect(defaultProps.onClose).toHaveBeenCalled();
       expect(modelStore.selectModel).toHaveBeenCalled();
     });
-  });
-
-  it('calls onPalSelect when pal is selected', async () => {
-    const {getByText} = render(
-      <UserContext.Provider value={user}>
-        <L10nContext.Provider value={l10n.en}>
-          <ChatPalModelPickerSheet {...defaultProps} />
-        </L10nContext.Provider>
-      </UserContext.Provider>,
-    );
-
-    // Switch to pals tab first
-    const palsTab = getByText(
-      l10n.en.components.chatPalModelPickerSheet.palsTab,
-    );
-    fireEvent.press(palsTab);
-
-    // Find and press a pal
-    const palItem = getByText('Test Assistant');
-    fireEvent.press(palItem);
-
-    await waitFor(() => {
-      expect(chatSessionStore.setActivePal).toHaveBeenCalledWith('pal1');
-      expect(defaultProps.onPalSelect).toHaveBeenCalledWith('pal1');
-      expect(defaultProps.onClose).toHaveBeenCalled();
-    });
-  });
-
-  it('shows model switch confirmation when pal has different default model', async () => {
-    const {getByText} = render(
-      <UserContext.Provider value={user}>
-        <L10nContext.Provider value={l10n.en}>
-          <ChatPalModelPickerSheet {...defaultProps} />
-        </L10nContext.Provider>
-      </UserContext.Provider>,
-    );
-
-    // Switch to pals tab
-    const palsTab = getByText(
-      l10n.en.components.chatPalModelPickerSheet.palsTab,
-    );
-    fireEvent.press(palsTab);
-
-    // Select pal with different default model
-    const palItem = getByText('Test Roleplay');
-    fireEvent.press(palItem);
-
-    await waitFor(() => {
-      expect(confirmDialog).toHaveBeenCalledWith(
-        expect.objectContaining({
-          title: l10n.en.components.chatPalModelPickerSheet.confirmationTitle,
-          message: expect.stringContaining('Test Model 2'),
-        }),
-      );
-    });
-
-    // 确认后切换模型
-    (confirmDialog as jest.Mock).mockResolvedValueOnce(true);
-    fireEvent.press(palItem);
-    await waitFor(() => {
-      expect(modelStore.selectModel).toHaveBeenCalledWith(
-        expect.objectContaining({id: 'model2'}),
-      );
-    });
-  });
-
-  it('calls onClose when sheet is closed', () => {
-    const {getByTestId} = render(
-      <UserContext.Provider value={user}>
-        <L10nContext.Provider value={l10n.en}>
-          <ChatPalModelPickerSheet {...defaultProps} />
-        </L10nContext.Provider>
-      </UserContext.Provider>,
-    );
-
-    // The BottomSheet component should have onClose prop set
-    // Since we're mocking BottomSheet, we can test that onClose is passed correctly
-    // by checking that the component renders without errors and the onClose prop exists
-    expect(getByTestId('bottom-sheet')).toBeTruthy();
-
-    // In a real scenario, the onClose would be called by the BottomSheet component
-    // when the user swipes down or taps the backdrop
-    // For testing purposes, we can verify the component structure is correct
-  });
-
-  it('enables content panning gesture for scrolling', () => {
-    const {getByTestId} = render(
-      <UserContext.Provider value={user}>
-        <L10nContext.Provider value={l10n.en}>
-          <ChatPalModelPickerSheet {...defaultProps} />
-        </L10nContext.Provider>
-      </UserContext.Provider>,
-    );
-
-    // Since BottomSheet is mocked, we verify the component renders correctly
-    // The actual gesture behavior is tested through integration/manual testing
-    expect(getByTestId('bottom-sheet')).toBeTruthy();
-    // Note: The mock BottomSheet doesn't expose props, so this test primarily
-    // ensures no regressions in component rendering
   });
 });

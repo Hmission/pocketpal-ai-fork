@@ -7,7 +7,6 @@ import {
   Alert,
   Modal,
   TextInput,
-  TouchableOpacity,
 } from 'react-native';
 import {Appbar, Button, IconButton, List, Divider} from 'react-native-paper';
 
@@ -20,8 +19,14 @@ import {
   AiosMemory,
 } from '../../services/aiosMemory';
 import {AIOS_MEMORIES_DIR} from '../../utils/paths';
+import {useTheme} from '../../hooks';
+import type {Theme} from '../../utils/types';
+import {IconTile} from '../../components/ui';
+import {HeartIcon} from '../../assets/icons';
 
 export function MemoryScreen({navigation}: any) {
+  const theme = useTheme();
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
   const [memories, setMemories] = React.useState<AiosMemory[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [fileSize, setFileSize] = React.useState(0);
@@ -93,13 +98,13 @@ export function MemoryScreen({navigation}: any) {
   const typeColor = (type: string) => {
     switch (type) {
       case 'fact':
-        return '#4CAF50';
+        return theme.colors.success;
       case 'episode':
-        return '#2196F3';
+        return theme.colors.info;
       case 'insight':
-        return '#FF9800';
+        return theme.colors.warning;
       default:
-        return '#999';
+        return theme.colors.outlineVariant;
     }
   };
 
@@ -108,7 +113,8 @@ export function MemoryScreen({navigation}: any) {
       title={item.content}
       description={`${item.type} · ${new Date(item.ts).toLocaleString()}`}
       left={() => (
-        <View style={[styles.typeBadge, {backgroundColor: typeColor(item.type)}]}>
+        <View
+          style={[styles.typeBadge, {backgroundColor: typeColor(item.type)}]}>
           <Text style={styles.typeText}>{item.type[0].toUpperCase()}</Text>
         </View>
       )}
@@ -131,15 +137,24 @@ export function MemoryScreen({navigation}: any) {
   );
 
   const sizeStr =
-    fileSize > 1024
-      ? `${(fileSize / 1024).toFixed(1)} KB`
-      : `${fileSize} B`;
+    fileSize > 1024 ? `${(fileSize / 1024).toFixed(1)} KB` : `${fileSize} B`;
 
   return (
     <View style={styles.container}>
       <Appbar.Header>
         <Appbar.BackAction onPress={() => navigation.goBack()} />
-        <Appbar.Content title="记忆管理" />
+        <Appbar.Content
+          title={
+            <View style={styles.appbarTitleRow}>
+              <IconTile
+                icon={HeartIcon}
+                color={theme.colors.domain.memory}
+                size="s"
+              />
+              <Text style={styles.appbarTitle}>记忆管理</Text>
+            </View>
+          }
+        />
         <Appbar.Action icon="broom" onPress={handleClearAll} />
       </Appbar.Header>
 
@@ -197,56 +212,90 @@ export function MemoryScreen({navigation}: any) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {flex: 1, backgroundColor: '#fff'},
-  infoBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: '#f5f5f5',
-  },
-  infoText: {fontSize: 12, color: '#666', flex: 1},
-  listItem: {paddingVertical: 4},
-  typeBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    alignSelf: 'center',
-  },
-  typeText: {color: '#fff', fontWeight: 'bold', fontSize: 16},
-  empty: {flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40},
-  emptyText: {color: '#999', textAlign: 'center'},
-  emptyList: {flex: 1},
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
-    width: '100%',
-  },
-  modalTitle: {fontSize: 16, fontWeight: 'bold', marginBottom: 12},
-  modalInput: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 10,
-    fontSize: 14,
-    minHeight: 80,
-    marginBottom: 12,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 8,
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    container: {flex: 1, backgroundColor: theme.colors.surface},
+    appbarTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.s,
+    },
+    appbarTitle: {
+      ...theme.typography.titleM,
+      color: theme.colors.onSurface,
+    },
+    infoBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: theme.spacing.m,
+      paddingVertical: theme.spacing.s,
+      backgroundColor: theme.colors.surfaceVariant,
+    },
+    infoText: {
+      ...theme.typography.captionM,
+      color: theme.colors.onSurfaceVariant,
+      flex: 1,
+    },
+    listItem: {paddingVertical: theme.spacing.xs},
+    typeBadge: {
+      width: 36,
+      height: 36,
+      borderRadius: theme.radius.l,
+      justifyContent: 'center',
+      alignItems: 'center',
+      alignSelf: 'center',
+    },
+    typeText: {
+      ...theme.typography.titleS,
+      fontWeight: 'bold',
+      color: theme.colors.onPrimary,
+    },
+    empty: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: theme.spacing.xxl,
+    },
+    emptyText: {
+      ...theme.typography.bodyS,
+      color: theme.colors.outlineVariant,
+      textAlign: 'center',
+    },
+    emptyList: {flex: 1},
+    modalOverlay: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: theme.colors.backdrop,
+      padding: theme.spacing.ml,
+    },
+    modalContent: {
+      backgroundColor: theme.colors.surfaceElevated,
+      borderRadius: theme.radius.ml,
+      padding: theme.spacing.ml,
+      width: '100%',
+      elevation: 4,
+    },
+    modalTitle: {
+      ...theme.typography.titleS,
+      fontWeight: 'bold',
+      color: theme.colors.onSurface,
+      marginBottom: theme.spacing.sm,
+    },
+    modalInput: {
+      borderWidth: theme.stroke.sm,
+      borderColor: theme.colors.border,
+      borderRadius: theme.radius.s,
+      padding: theme.spacing.s,
+      ...theme.typography.bodyS,
+      color: theme.colors.onSurface,
+      minHeight: 80,
+      marginBottom: theme.spacing.sm,
+    },
+    modalButtons: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      gap: theme.spacing.s,
+    },
+  });

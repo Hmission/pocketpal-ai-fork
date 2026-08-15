@@ -83,13 +83,31 @@
 - 模型简称一律经 `modelDisplayNames` 注册表（弹窗/子菜单/徽章/顶栏共用单一事实源）。
 - 新色值必须登记本文档 §1 并走 theme token；深浅色双模式必须同时验证。
 
-## 8. 模型选择器过滤规则（2026-08-14）
+## 8. 模型选择器（2026-08-14 收敛）
 
-- 聊天模型选择（ChatPalModelPickerSheet 模型 tab / 长按换模型子菜单）只显示**可聊天的 LLM**：
-  `modelType === LLM` **且** 文件名不在 `IMAGE_GEN_MODEL_FILES`（imageGenManifest 导出的生图文件集合）。
-- 生图模型（SD3.5 / Z-Image / DreamLite 等 manifest 文件）**永不出现**在聊天选择列表；
+- 聊天模型选择唯一入口：顶栏 `chat-model-picker-chip` → ChatPalModelPickerSheet（**单列表，无 PAL/模型 tab**）。
+- 条目显示：`getModelDisplayNameWithParams` = 中文简称 + 参数标签，如「面壁 MiniCPM（4B_Q4）」；不显示原始文件名。
+- 三点菜单（HeaderRight）已去「模型」子菜单：生成设置 → 复制/重命名/删除 → 导出/导入。
+- 伙伴切换收敛至设置页 PalsHub，聊天页不再承担 pal 切换职责。
+- 过滤规则：只显示可聊天的 LLM（`modelType === LLM` 且文件名不在 `IMAGE_GEN_MODEL_FILES`）；
   生图模型入口固定在生图页模型下拉（manifest 驱动）。
 - 扫描注册层同步隔离：`scanLocalModels` 不把生图文件注册为 LLM（新装机干净），
   `isChatSelectable` 兜底存量数据（DB/预设已注册残留）。
 - 若新增生图模型，必须把其 main + companions 文件名加入 `BUILTIN_MANIFESTS`（自动进入过滤集），
   设备端 `*.manifest.json` 扩展模型的过滤待动态化（当前无设备端扩展）。
+
+## 9. 语音朗读按钮（2026-08-14 归位）
+
+- 输入栏不再显示语音按钮（VoiceChip 已移除）；自动朗读开关唯一入口：TTS 设置面板（AutoSpeakRow）。
+- 朗读按钮渲染于 AI 回复卡片下方（AssistantTurnFooter 内 PlayButton），
+  显示条件 `ttsStore.isTTSAvailable && isSpeakableMessage(message)`（单一事实源 `utils/speakable.ts`）；
+  生图任务卡片（metadata.imageTask）与词数不足的消息不显示。
+- 中文按字符数判定（≥4），空格语言按词数（>1）。
+
+## 10. testID 登记（新增）
+
+| testID | 位置 |
+|---|---|
+| chat-model-picker-chip | 顶栏模型选择入口 chip |
+| playbutton-<messageId> | AI 卡片下方朗读按钮 |
+| image-preview-save-button | 图片放大预览「保存到手机」按钮 |

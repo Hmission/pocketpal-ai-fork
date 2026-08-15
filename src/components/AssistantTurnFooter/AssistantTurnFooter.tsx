@@ -9,10 +9,11 @@ import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
 import {CopyIcon} from '../../assets/icons';
 import {useTheme} from '../../hooks';
 import {PlayButton} from '../TextMessage/PlayButton';
+import {isSpeakableMessage} from '../../utils/speakable';
 
 import {styles} from './styles';
 
-import {chatSessionStore} from '../../store';
+import {chatSessionStore, ttsStore} from '../../store';
 import {L10nContext} from '../../utils';
 import {derivedText} from '../../utils/chat';
 import {MessageType} from '../../utils/types';
@@ -48,7 +49,10 @@ export const AssistantTurnFooter: React.FC<AssistantTurnFooterProps> = observer(
     const {copyable, timings, interrupted, truncationLikely, completionResult} =
       message.metadata || {};
 
-    if (!timings && !copyable && !interrupted) {
+    // 朗读按钮独立决定 footer 显示：仅可朗读消息（TTS 可用 + 内容判定）
+    // 无 chrome 字段时也渲染 footer，承载 PlayButton。
+    const speakable = ttsStore.isTTSAvailable && isSpeakableMessage(message);
+    if (!timings && !copyable && !interrupted && !speakable) {
       return null;
     }
 

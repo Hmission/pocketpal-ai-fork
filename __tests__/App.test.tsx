@@ -60,7 +60,9 @@ it('mounts the app once UIStore hydration completes', () => {
     __setHydrated(true);
   });
 
-  // Splash gone, post-hydration tree mounted (drawer titles present).
+  // Splash gone, post-hydration tree mounted (drawer footer entry present).
+  // 抽屉已重构为会话中心（SidebarContent），'Models' 入口移入设置页，
+  // 故以底部固定入口 Settings 作为挂载代理。
   expect(result.queryByTestId('hydration-splash')).toBeNull();
-  expect(result.queryByText('Models')).not.toBeNull();
+  expect(result.queryByText('Settings')).not.toBeNull();
 });
