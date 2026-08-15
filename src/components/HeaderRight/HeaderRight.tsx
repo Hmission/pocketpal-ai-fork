@@ -145,7 +145,9 @@ export const HeaderRight: React.FC = observer(() => {
     <View style={styles.headerRightContainer}>
       {uiStore.displayMemUsage && <UsageStats width={40} height={20} />}
       <IconButton
-        icon={() => <EditBoxIcon stroke={theme.colors.primary} />}
+        icon={() => (
+          <EditBoxIcon stroke={theme.colors.primary} width={20} height={20} />
+        )}
         testID="reset-button"
         style={styles.chatBtn}
         onPress={() => {
@@ -159,7 +161,13 @@ export const HeaderRight: React.FC = observer(() => {
         anchorPosition="bottom"
         anchor={
           <IconButton
-            icon={() => <DotsVerticalIcon fill={theme.colors.primary} />}
+            icon={() => (
+              <DotsVerticalIcon
+                fill={theme.colors.primary}
+                width={20}
+                height={20}
+              />
+            )}
             style={styles.menuBtn}
             onPress={openMenu}
             testID="menu-button"
