@@ -9,6 +9,7 @@
  * builder (`useTheme()`) so components remain locale-agnostic.
  */
 import {lightColors, darkColors} from './colors';
+import {iconSize} from './iconSize';
 import {radius, shapeRoles} from './radius';
 import {spacing} from './spacing';
 import {stroke} from './stroke';
@@ -23,6 +24,7 @@ export const lightTokens: Tokens = {
   radius,
   stroke,
   shapeRoles,
+  iconSize,
 };
 
 export const darkTokens: Tokens = {
@@ -32,6 +34,7 @@ export const darkTokens: Tokens = {
   radius,
   stroke,
   shapeRoles,
+  iconSize,
 };
 
 /**
@@ -51,6 +54,7 @@ export type {
   TokenRadius,
   TokenStroke,
   TypographyStyle,
+  TokenIconSize,
 } from './types';
 
 export {
@@ -65,4 +69,5 @@ export {lightColors, darkColors} from './colors';
 export {spacing} from './spacing';
 export {radius, shapeRoles} from './radius';
 export type {ShapeRole} from './radius';
+export {iconSize} from './iconSize';
 export {stroke} from './stroke';

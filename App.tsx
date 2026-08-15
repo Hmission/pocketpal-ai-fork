@@ -19,6 +19,7 @@ import {
 
 import {ttsStore, uiStore, modelStore} from './src/store';
 import {ensureAiosDirs, ensureWorkspaceFiles} from './src/utils/paths';
+import {ensureStorageAccess} from './src/utils/androidPermission';
 import {promptWriter} from './src/services/promptWriter';
 import {recommendNCtx} from './src/utils/engineGuard';
 import DeviceInfo from 'react-native-device-info';
@@ -270,12 +271,20 @@ const App = observer(() => {
   }, []);
 
   // Initialize AIOS shared storage dirs + scan models on startup.
+  // B13（2026-08-15 事故复盘）：先检存储权限再扫描——卸载重装会清空
+  // MANAGE_EXTERNAL_STORAGE appop，未授权时扫描为空且无提示。
   React.useEffect(() => {
-    ensureAiosDirs()
-      .then(() => ensureWorkspaceFiles())
-      .then(() => {
-        initIndex();
-        return modelStore.scanLocalModels();
+    ensureStorageAccess()
+      .then(ok => {
+        if (!ok) {
+          return;
+        }
+        return ensureAiosDirs()
+          .then(() => ensureWorkspaceFiles())
+          .then(() => {
+            initIndex();
+            return modelStore.scanLocalModels();
+          });
       })
       .then(() => {
         // 启动即就绪：常驻管家模型（MiniCPM5-1B）。失败静默不阻断，

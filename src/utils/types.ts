@@ -7,7 +7,12 @@ import {ContextParams, TokenData} from 'llama.rn';
 import {CompletionParams} from './completionTypes';
 import {PreviewData} from '@flyerhq/react-native-link-preview';
 import {MD3Colors, MD3Typescale} from 'react-native-paper/lib/typescript/types';
-import type {TokenRadius, TokenStroke, TokenTypography} from '../theme/tokens';
+import type {
+  TokenRadius,
+  TokenStroke,
+  TokenTypography,
+  TokenIconSize,
+} from '../theme/tokens';
 import type {ShapeRole} from '../theme/tokens/radius';
 import {SkillKey} from '.';
 import type {TalentResult} from '../services/talents/types';
@@ -461,6 +466,8 @@ export interface Theme extends MD3Theme {
   stroke: TokenStroke;
   // 形状角色→radius token 映射（DESIGN_SPEC §4），radius[shapeRoles.card] 等
   shapeRoles: Record<ShapeRole, keyof TokenRadius>;
+  /** 图标尺寸（B10）：经 theme.iconSize.<role> 解析，禁硬编码 */
+  iconSize: TokenIconSize;
 }
 
 export interface User {

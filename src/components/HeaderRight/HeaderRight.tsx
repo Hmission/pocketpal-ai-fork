@@ -2,7 +2,9 @@ import React, {useContext} from 'react';
 import {Alert, Keyboard, View} from 'react-native';
 
 import {observer} from 'mobx-react';
-import {IconButton, useTheme} from 'react-native-paper';
+import {IconButton} from 'react-native-paper';
+
+import {useTheme} from '../../hooks';
 
 import {
   // ClockFastForwardIcon,
@@ -146,7 +148,11 @@ export const HeaderRight: React.FC = observer(() => {
       {uiStore.displayMemUsage && <UsageStats width={40} height={20} />}
       <IconButton
         icon={() => (
-          <EditBoxIcon stroke={theme.colors.primary} width={20} height={20} />
+          <EditBoxIcon
+            stroke={theme.colors.primary}
+            width={theme.iconSize.m}
+            height={theme.iconSize.m}
+          />
         )}
         testID="reset-button"
         style={styles.chatBtn}
@@ -164,8 +170,8 @@ export const HeaderRight: React.FC = observer(() => {
             icon={() => (
               <DotsVerticalIcon
                 fill={theme.colors.primary}
-                width={20}
-                height={20}
+                width={theme.iconSize.m}
+                height={theme.iconSize.m}
               />
             )}
             style={styles.menuBtn}

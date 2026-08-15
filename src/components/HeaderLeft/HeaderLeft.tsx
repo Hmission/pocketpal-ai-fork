@@ -31,8 +31,13 @@ export const HeaderLeft: React.FC = () => {
         accessibilityLabel="Go back"
         onPress={() => navigation.goBack()}>
         {/* 图标 20x20 与 headerTitle 文本基线对齐（触区仍 44x44，见 styles）。
+            尺寸走 B10 iconSize token（theme.iconSize.m）。
             箭头是填充形图标，颜色经 fill 传入（svgr .svgrrc 将 #333333 映射为 props.fill） */}
-        <ArrowLeftMdIcon fill={theme.colors.primary} width={20} height={20} />
+        <ArrowLeftMdIcon
+          fill={theme.colors.primary}
+          width={theme.iconSize.m}
+          height={theme.iconSize.m}
+        />
       </TouchableOpacity>
     );
   }
@@ -43,7 +48,7 @@ export const HeaderLeft: React.FC = () => {
       testID="menu-button"
       accessibilityLabel="Open drawer"
       onPress={() => navigation.openDrawer()}>
-      <MenuIcon stroke={theme.colors.primary} width={20} height={20} />
+      <MenuIcon stroke={theme.colors.primary} width={theme.iconSize.m} height={theme.iconSize.m} />
     </TouchableOpacity>
   );
 };

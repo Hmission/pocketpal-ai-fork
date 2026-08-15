@@ -248,6 +248,18 @@ export interface TokenStroke {
 }
 
 /**
+ * Icon size tokens (B10). Canonical `Icon/*` mapping:
+ * xs(14) / s(16) / m(20 顶栏) / l(24 大触控) / xl(28 强调)。
+ */
+export interface TokenIconSize {
+  xs: number;
+  s: number;
+  m: number;
+  l: number;
+  xl: number;
+}
+
+/**
  * The full set of resolved tokens for a given mode. Mode selection is a
  * binding selection (light vs dark), not a mutation.
  */
@@ -259,4 +271,6 @@ export interface Tokens {
   stroke: TokenStroke;
   // shapeRoles 角色→radius 映射（DESIGN_SPEC §4 形状语言），供 theme.shapeRoles 暴露
   shapeRoles: Record<ShapeRole, keyof TokenRadius>;
+  /** 图标尺寸（B10）：经 theme.iconSize.<role> 解析，禁硬编码 */
+  iconSize: TokenIconSize;
 }
