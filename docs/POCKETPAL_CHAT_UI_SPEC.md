@@ -5,7 +5,7 @@ type: spec
 status: active
 version: "2.0"
 created: "2026-08-14"
-updated: "2026-08-15"
+updated: "2026-08-16"
 relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-footer-unification]
 ---
 
@@ -149,9 +149,31 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 | softCapBanner | surfaceVariant | **保留**（信息带唯一保留位） |
 | 用户气泡 | authorBubbleBackground | 保持（与 surfaceVariant 用途区隔） |
 
+## 12. 生图任务卡片：生成动效 + 图片撑满（v2.1 定稿，2026-08-16）
+
+> 依据：MASTER_LOG §20。代码载体：ImageTaskProgress / ChatScreen renderTextMessage / ActiveTaskBanner / TextMessage。
+
+### 12.1 生成中动效（任务卡片内嵌）
+
+- 聊天内生图（metadata.imageTask）占位卡（未回写 imageUris/失败标记）在气泡内嵌生成动效：
+  三点波浪（复用 ImageGenScreen `useWaveDots`）+ 「正在生成新图…」+ 进度条 +
+  「采样 X%（Ys/步） · Zs」+ 阶段行（▸ stage）。
+- 数据源唯一：imageGenStore 单状态机（loading/generating/progress/progressText/stepTime/stage/genStartedAt），
+  与生图页预览区同源；组件自守卫——引擎空闲（均 false）渲染 null，卡片回写瞬间不闪烁。
+- 顶部横幅让位：聊天内联生图进行中（imageGenStore.chatInlineGenerating）ActiveTaskBanner 隐藏，
+  卡片动效独占提示；其它引擎任务（加载大模型/生图页出图）横幅照常。
+
+### 12.2 图片展示（单图撑满 / 多图网格）
+
+- 单图（imageUris.length === 1）：宽度撑满卡片内容区（width 100% + aspectRatio 1 方框），
+  resizeMode contain 不裁切；点击仍走全屏预览 + 保存到手机。
+- 多图（≥2）：保持 80×80 缩略图网格（cover），flexWrap 布局不变。
+- 新增 testID：`image-thumbnail-<index>` / `image-content-<index>`。
+
 ## 变更日志
 
 | 日期 | 版本 | 变更 |
 |------|------|------|
 | 2026-08-14 | 1.0 | 聊天页+抽屉重设计定稿 |
 | 2026-08-15 | 2.0 | 气泡一体化（footer 收进卡片，ADR-0003）+ 灰色分层落地（§11）；legacy fonts/radius 双轨收口同波执行 |
+| 2026-08-16 | 2.1 | 生图任务卡片生成动效 + 图片撑满（§12，MASTER_LOG §20） |
