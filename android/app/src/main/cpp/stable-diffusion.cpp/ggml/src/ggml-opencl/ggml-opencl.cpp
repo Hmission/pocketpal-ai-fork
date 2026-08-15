@@ -13833,7 +13833,7 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
     cl_kernel kernel;
 
 #ifdef GGML_OPENCL_USE_ADRENO_KERNELS
-    if(src0t == GGML_TYPE_F16 && src1t == GGML_TYPE_F32){
+    if(src0t == GGML_TYPE_F16 && src1t == GGML_TYPE_F32 && use_adreno_kernels(backend_ctx, src0)){
         if (ne01 >= 64 && ne1 >= 32 && ne00 >= 16 && (ne12 % ne02) == 0  &&
             // dst is wrapped with image1d_buffer, the size limit applies, also src0
             (ne0 * ne1 * dst->ne[2] * dst->nb[0] / 4 <= backend_ctx->image_max_buffer_size)) {

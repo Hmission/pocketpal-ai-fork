@@ -2,6 +2,7 @@ import React from 'react';
 import {View, StyleSheet} from 'react-native';
 import {BottomSheetHandleProps} from '@gorhom/bottom-sheet';
 import {useTheme} from '../../hooks';
+import {radius} from '../../theme/tokens';
 
 export const SheetHandle: React.FC<BottomSheetHandleProps> = () => {
   const theme = useTheme();
@@ -24,6 +25,7 @@ const styles = StyleSheet.create({
   indicator: {
     width: 32,
     height: 4,
-    borderRadius: 2,
+    // 形状角色：胶囊 grabber（DESIGN_SPEC §4）
+    borderRadius: radius.full,
   },
 });

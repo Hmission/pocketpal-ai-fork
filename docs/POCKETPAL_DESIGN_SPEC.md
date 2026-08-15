@@ -1,7 +1,7 @@
 # PocketPal 设计语言总纲（DESIGN_SPEC）——「暖巢 WarmNest」
 
 > 单一事实源：全 App 色彩 / 排版 / 图标 / 形状材质 / 动效 / 性能预算六大维度的定稿。
-> 任何 UI 视觉迭代必须先更新本文档再改代码。版本：v1（2026-08-15，UI 统一+设计语言升级方案 v3 获批）
+> 任何 UI 视觉迭代必须先更新本文档再改代码。版本：v2（2026-08-15，Phase 2 规范治理获批：形状语言角色化 + 色彩 60-30-10 应用规范 + 子页统一模板 + 适度动效目录）
 > 并列文档：POCKETPAL_CHAT_UI_SPEC.md（聊天页）/ POCKETPAL_IMAGEGEN_UI_SPEC.md（生图页）/ POCKETPAL_UI_INTERACTION_SPEC.md（全局交互）
 > 代码落点：`src/theme/tokens/`（token 单一事实源）+ `src/components/ui/`（DS 组件）
 
@@ -61,6 +61,24 @@ badgeSd35 #8E24AA / #CE93D8；badgeZImage #00838F / #4DD0E1；badgeDreamlite #D8
 ### 1.6 硬编码色值映射表（A2 清理依据）
 `#fff`→surface、`#f5f5f5`/`#f0f0f0`/`#e8e8e8`→surfaceVariant、`#666`/`#888`→onSurfaceVariant、`#999`→outlineVariant、`#fff3e0`→withOpacity(domain.workspace,0.12)、`#333`文本→onSurface。聊天组件禁硬编码色（CHAT_UI_SPEC §1 既有规则，扩展到全 App）。
 
+### 1.7 色彩应用规范与比例（v2 新增，解决「色彩跳出、无比例」）
+
+**60-30-10 配色比例**（单屏色彩预算，M3 Expressive / 经典平衡法则）：
+- **60% 中性表面**：background / surface / surfaceVariant——主背景与大面积留白，承载可读性。
+- **30% 容器与文本**：卡片 surfaceContainer、正文 onSurface / 次要 onSurfaceVariant——内容载体与字色。
+- **10% 品牌与域彩强调**：primary（CTA/激活）、domain.*（IconTile 底 12% + icon 线条）、semantic（状态）。强调色只出现在「该被注意」处，禁大面积铺品牌黄。
+
+**色彩角色映射**（什么色用在什么地方）：
+| 角色 | token | 用在 | 禁忌 |
+|---|---|---|---|
+| 主交互 | primary / onPrimary | CTA 按钮、选中态、开关激活、返回箭头 | 不做大面积背景 |
+| 域识别 | domain.* | 子页 AppBar tint、IconTile、徽章 | 域色不混用（一屏一域） |
+| 状态 | semantic.* | 成功/警告/删除/信息提示 | 不做装饰 |
+| 文本 | onSurface / onSurfaceVariant / outline | 正文 / 次要 / 分隔 | 不用 primary 做正文 |
+| 表面 | surface / surfaceContainer / surfaceElevated | 背景 / 卡片 / 浮层 | —— |
+
+**子页 AppBar 域彩 tint**（沿用 B3）：子页顶栏背景 = surface，返回箭头/标题旁点缀用该页域色（IconTile 或小徽章），headerRight 操作图标用域色。正文一律 onSurface，不用域色做正文。
+
 ## 2. 排版体系
 
 ### 2.1 token 全表（theme.typography.*）
@@ -94,11 +112,47 @@ badgeSd35 #8E24AA / #CE93D8；badgeZImage #00838F / #4DD0E1；badgeDreamlite #D8
 - 列表行结构（三段式）：IconTile + (标题 bodyM / onSurface + 辅助说明 captionM / onSurfaceVariant) + chevron-right（onSurfaceVariant）。分组用 Surface 卡片包裹（radius.l=20）+ 分组标题 captionM/onSurfaceVariant。
 - 触区 44 不变；图标资产沿用 `src/assets/icons/` Lucide 族，不引入 icon-font。
 
-## 4. 形状与材质
+## 4. 形状语言与材质（v2 规范化，解决「圆角矩形/矩形/圆形无逻辑」）
 
-- radius 新增 `full`(999)（胶囊）；既有档位（xxs~xxl）不变。卡片=radius.l(20)、小元素=radius.m(12)、胶囊按钮/徽章=full。
-- 光影分层（HarmonyOS 材质层思路）：卡片 surface + Android elevation 2（列表卡）/ 4（悬浮层）；悬浮面板 surfaceElevated + elevation 4 + scrim。**零 blur、零新依赖**。
-- ConfirmDialog / Sheet / 模型胶囊统一走 surfaceElevated + 大圆角。
+单一 radius 源 `src/theme/tokens/radius.ts`，**按角色取值、不在组件内自定数字**：
+
+| 角色 | radius | 用途 |
+|---|---|---|
+| 内容卡片 | `l`(20) | 分组 Surface / 结果图卡 / 设置行卡 |
+| 浮层表面 | `xl`(32) | 抽屉 / 底部 sheet / 悬浮下拉面板 |
+| 矩形 | `none`(0) | 仅分隔线 / 全幅媒体 / 表格细线 |
+| 胶囊 | `full`(999) | 主操作按钮 / chip / badge / 模型胶囊 / 圆形容器 |
+| 次级容器 | `ml`(16) | 次级按钮 / 输入框容器 |
+| 小元素 | `s`(8) | 输入框本体 / 小标签 |
+| 图标容器 | `m`(12) 40×40 | IconTile（既有） |
+| 圆形 | `full` | 头像 / FAB / IconTile-s |
+
+**规则**：
+- 同屏同角色同值；同级容器不混用矩形与圆角。
+- 卡片内嵌元素半径递减：card `l`(20) → 内输入框 `s`(8) / 内 chip `full`。
+- 唯一允许 `none`(0) 矩形的场景：分隔线（Divider）、全幅媒体图、表格细线。其余容器一律取圆角角色。
+- 形状角色锁：新增 `tokens/__tests__/shape-roles` invariant，同角色组件必须取同一 radius token（C1 落地）。
+
+**光影分层**（HarmonyOS 材质层 + 柔光玻璃路线）：卡片 surface + Android elevation 2（列表卡）/ 4（悬浮层）；悬浮面板 surfaceElevated + elevation 4 + scrim。**零 blur、零新依赖**。ConfirmDialog / Sheet / 模型胶囊统一走 surfaceElevated + 大圆角。
+
+## 4b. 子页统一模板（v2 新增，解决「子页设计语言不统一」）
+
+设置下所有子页（GenerationSettings / About / Memory / Knowledge / Workspace / Tool）统一走同一模板，以「暖巢 WarmNest」为体：
+
+**标准结构**：
+```
+AppBar（域彩 tint · 返回箭头 + 标题 · headerRight 域彩操作）
+  ↓
+ScrollView
+  ├─ displayS 页面大标题（可选，域色点缀）
+  ├─ section Surface(radius l, elevation 2) 分组卡
+  │    ├─ Row: IconTile + 标题(bodyM) + 辅助(captionM) + chevron
+  │    └─ Row ... （行间 Divider，触区 44）
+  └─ section ... （多分组）
+```
+**行组件**：`PressableScale` 包裹 `IconTile + 标题 + chevron`（三段式，见 §3），分组用 `Surface radius="l"` 卡片包裹 + 分组标题 `captionM/onSurfaceVariant`。
+**统一项**：分组卡片间距 spacing.m、卡片内 padding spacing.m、行高 56、分组标题与卡片间距 spacing.s。Paper `List`/`Card` 在子页一律替换为 DS `Surface` + `IconTile` 行。
+**入场**：分组错峰 `useStaggerEntry`（一次性，§5）。
 
 ## 5. 动效体系（铁律内克制版）
 
@@ -106,10 +160,12 @@ badgeSd35 #8E24AA / #CE93D8；badgeZImage #00838F / #4DD0E1；badgeDreamlite #D8
 |---|---|---|---|
 | 按压反馈 | `ui/PressableScale`：Animated.spring scale 0.97→1 | 按压瞬间（一次性） | JS driver |
 | 列表错峰入场 | 行级 opacity+translateY(8) stagger 30ms | 仅首屏一次性 | 不循环、不重复触发 |
+| 页面进入弹簧 | 子页标题/分组卡 fade+translateY(8) stagger（`useStaggerEntry` 推广到六子页） | mount 一次性 | 不循环；聊天流式路径禁用（G5） |
+| 行高亮过渡 | 列表行 onPressIn 底色过渡到 primaryContainer 6% | 按压瞬间 | 不新增常驻动画 |
 | 三点波浪/呼吸 | 既有 useWaveDots | 生成期间 | 已定稿（IMAGEGEN_UI_SPEC） |
 | chevron 旋转 | 既有 | 展开瞬间 | 已有 |
 
-铁律：`Animated.loop` 一律 useNativeDriver:false（07a47ed 收口）；一次性短动画允许 native；不引入 Lottie/reanimated 新用法。
+铁律：`Animated.loop` 一律 useNativeDriver:false（07a47ed 收口）；一次性短动画允许 native；不引入 Lottie/reanimated 新用法；新动效一律「一次性 + JS driver」为默认，仅在 `useStaggerEntry`/`PressableScale` 既有模式内推广，**不新增动画基础设施**（G4）。
 
 ## 6. 性能门禁（G1-G5，最高优先级）
 
@@ -141,3 +197,7 @@ badgeSd35 #8E24AA / #CE93D8；badgeZImage #00838F / #4DD0E1；badgeDreamlite #D8
   IMAGEGEN_UI_SPEC 已定稿，排版升级需随生图页下一波视觉迭代同改。
 - **媒体覆盖层保留黑底白字**（ImageGen styles 的 toastBar/fullscreen/historySel）：
   黑底上的白字属媒体覆盖语义，非主题表面，豁免硬编码禁令并在代码内注释说明。
+- **聊天消息层原始 borderRadius**（gifted-chat 派生组件：ImageMessage/FileMessage/
+  GreetingBubble/LoadingBubble/HtmlPreviewBubble/ChatView 等含 50+ 处 `borderRadius: 1/2/4/8`）：
+  属 CHAT_UI_SPEC 红线区，不在 shape-roles grep 强制内；形状 token 化随聊天视觉再定稿（CHAT_UI_SPEC v2）
+  同波清除。shapeRoles role→token 映射已锁定（§4），新代码一律取 `radius[shapeRoles.<role>]`。

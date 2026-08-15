@@ -241,7 +241,8 @@ const createStyles = (theme: Theme) =>
     typeBadge: {
       width: 36,
       height: 36,
-      borderRadius: theme.radius.l,
+      // 形状角色：图标容器 m(12)（DESIGN_SPEC §4）
+      borderRadius: theme.radius.m,
       justifyContent: 'center',
       alignItems: 'center',
       alignSelf: 'center',
@@ -272,7 +273,8 @@ const createStyles = (theme: Theme) =>
     },
     modalContent: {
       backgroundColor: theme.colors.surfaceElevated,
-      borderRadius: theme.radius.ml,
+      // 形状角色：浮层表面 xl(32)（DESIGN_SPEC §4）
+      borderRadius: theme.radius.xl,
       padding: theme.spacing.ml,
       width: '100%',
       elevation: 4,

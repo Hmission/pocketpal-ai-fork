@@ -2,6 +2,7 @@ import * as React from 'react';
 import {Image, StyleSheet, Text, View} from 'react-native';
 
 import {MessageType, Theme} from '../../utils/types';
+import {radius} from '../../theme/tokens';
 import {getUserAvatarNameColor, getUserInitials} from '../../utils';
 
 // TDOD: Add model name and the user's name?
@@ -56,7 +57,8 @@ export const Avatar = React.memo(
 const styles = StyleSheet.create({
   avatarBackground: {
     alignItems: 'center',
-    borderRadius: 16,
+    // 形状角色：圆形头像（DESIGN_SPEC §4）
+    borderRadius: radius.full,
     height: 32,
     justifyContent: 'center',
     marginRight: 8,
@@ -64,7 +66,8 @@ const styles = StyleSheet.create({
   },
   image: {
     alignItems: 'center',
-    borderRadius: 16,
+    // 形状角色：圆形头像（DESIGN_SPEC §4）
+    borderRadius: radius.full,
     height: 32,
     justifyContent: 'center',
     marginRight: 8,

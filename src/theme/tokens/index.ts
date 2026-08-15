@@ -61,5 +61,6 @@ export {
 
 export {lightColors, darkColors} from './colors';
 export {spacing} from './spacing';
-export {radius} from './radius';
+export {radius, shapeRoles} from './radius';
+export type {ShapeRole} from './radius';
 export {stroke} from './stroke';

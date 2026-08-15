@@ -13,6 +13,7 @@ import {database} from '../../../../database';
 import {chatSessionRepository} from '../../../../repositories/ChatSessionRepository';
 import {palRepository} from '../../../../repositories/PalRepository';
 import {useNavigation} from '@react-navigation/native';
+import {radius} from '../../../../theme/tokens';
 
 // Define the collections we want to inspect
 const COLLECTIONS = [
@@ -503,7 +504,8 @@ const styles = StyleSheet.create({
   relatedRecord: {
     backgroundColor: '#f0f0f0',
     padding: 8,
-    borderRadius: 4,
+    // 形状角色：小元素 s(8)（DESIGN_SPEC §4；debug-only 静态样式）
+    borderRadius: radius.s,
     marginBottom: 4,
     marginLeft: 8,
   },

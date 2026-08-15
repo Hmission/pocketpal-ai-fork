@@ -217,7 +217,8 @@ const createStyles = (theme: Theme) =>
       backgroundColor: withOpacity(theme.colors.warning, 0.12),
       paddingHorizontal: theme.spacing.s,
       paddingVertical: theme.spacing.xxs,
-      borderRadius: theme.radius.xs,
+      // 形状角色：胶囊 chip/badge（DESIGN_SPEC §4）
+      borderRadius: theme.radius.full,
       overflow: 'hidden',
     },
     infoBar: {
