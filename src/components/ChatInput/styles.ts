@@ -44,9 +44,10 @@ export const createStyles = ({
       justifyContent: 'center',
       height: 36, // 与右侧发送/语音按钮统一高度（2026-08 大王裁定）
       borderRadius: 18,
-      borderWidth: 1,
       paddingHorizontal: 12,
       marginLeft: 8,
+      // 2026-08-16 去描边（与快捷生图/编辑图标钮统一无描边）：状态靠背景填充色表达，
+      // 激活=onSurfaceColor 背景，未激活=透明+灰字；灰色描边冗余（DESIGN_SPEC §1.8 一灰一职）
     },
     thinkingToggleLeftDisabled: {
       backgroundColor: 'transparent',

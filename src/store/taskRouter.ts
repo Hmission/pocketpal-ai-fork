@@ -37,8 +37,21 @@ const WRITE_RE =
 const CODE_RE =
   /(?:写|生成|帮我|修复).{0,8}(?:代码|程序|函数|脚本|正则|sql|接口)|\b(?:write|generate|fix|debug)\b.{0,15}\b(?:code|function|script|regex|sql|api)\b/i;
 
+// 快捷前缀（P5 v2）：输入卡快捷按钮预填「图像生成：/图片编辑：」——显式意图引导。
+// 图像生成→image（payload 剥离前缀）；图片编辑无源图无法编辑，不在此路由（显式链路走 scheduler）。
+const QUICK_PREFIX_RE = /^(图像生成|图片编辑)[:：]\s*/;
+
 export function routeTask(text: string): TaskSignal {
   const t = text.trim();
+
+  // 0) 快捷前缀「图像生成：」：主体=前缀后内容（剥离后为空则不路由）
+  const quick = t.match(QUICK_PREFIX_RE);
+  if (quick && quick[1] === '图像生成') {
+    const payload = t.slice(quick[0].length).trim();
+    if (payload) {
+      return {task: 'image', payload};
+    }
+  }
 
   // 1) 前置画/绘：主体=动词后内容
   const lead = t.match(LEADING_DRAW_RE);

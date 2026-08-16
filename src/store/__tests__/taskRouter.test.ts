@@ -43,6 +43,17 @@ describe('taskRouter', () => {
       expect(r.task).toBe('image');
       expect(r.payload).toBe('一只猫');
     });
+    it('v2.2 快捷前缀「图像生成：」命中且剥离前缀', () => {
+      const r = routeTask('图像生成：一只在河边洗澡的美女');
+      expect(r.task).toBe('image');
+      expect(r.payload).toBe('一只在河边洗澡的美女');
+    });
+    it('v2.2 「图像生成：」后无内容不路由（无主体不生成）', () => {
+      expect(routeTask('图像生成：').task).toBe('chitchat');
+    });
+    it('v2.2 「图片编辑：」无源图不走 image 路由（显式链路走 scheduler）', () => {
+      expect(routeTask('图片编辑：把背景改红').task).toBe('chitchat');
+    });
   });
 
   describe('write 任务', () => {

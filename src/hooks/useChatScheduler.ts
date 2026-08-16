@@ -45,8 +45,9 @@ export const useChatScheduler = (
 
       // 编辑闭环（P5 豆包式）：显式编辑源图（图片编辑按钮/全屏查看器/任务卡下沉）
       // + 文本指令 → 聊天内编辑任务卡，零跳转。编辑意图=显式按钮动作，不走关键词路由；
-      // 空指令已由 ChatInput 拦截（轻提示补描述），此处 text 必非空（无兜底）。
+      // 空指令已由 ChatInput 拦截（轻提示补描述）；预填前缀「图片编辑：」在此剥离（指令纯净）。
       if (editSourceUri) {
+        const instruction = text.replace(/^图片编辑[:：]\s*/, '') || text;
         await chatSessionStore.addMessageToCurrentSession({
           id: `u-${Date.now()}`,
           author: user,
@@ -58,7 +59,7 @@ export const useChatScheduler = (
         if (!chatSessionStore.activeSessionId) {
           return;
         }
-        await runEditImageTaskCard(editSourceUri, text);
+        await runEditImageTaskCard(editSourceUri, instruction);
         return;
       }
 

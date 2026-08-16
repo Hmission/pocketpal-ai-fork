@@ -197,7 +197,6 @@ export const ChatInput = observer(
     const [isVoiceSupported, setIsVoiceSupported] = React.useState(false);
     const [isListening, setIsListening] = React.useState(false);
     // 编辑源图状态（P5）：外部受控；发送/取消后由 ChatView 复位
-    const [genHint, setGenHint] = React.useState(false); // 「图像生成」引导态：placeholder 提示描述画什么
     const [showEditPickerMenu, setShowEditPickerMenu] = React.useState(false);
     const [showEditHint, setShowEditHint] = React.useState(false); // 编辑空指令轻提示
     const isEditMode = chatSessionStore.isEditMode;
@@ -233,9 +232,6 @@ export const ChatInput = observer(
     }, [isEditMode, editBarHeight, onCancelEdit]);
 
     const handleChangeText = (newText: string) => {
-      if (newText) {
-        setGenHint(false); // 一打字即退出「图像生成」引导态
-      }
       if (isVideoCapable && onPromptTextChange) {
         onPromptTextChange(newText);
       } else {
@@ -324,7 +320,6 @@ export const ChatInput = observer(
           imageUris: [editSourceUri],
         });
         setText('');
-        setGenHint(false);
         onEditSourceChange?.(null);
         return;
       }
@@ -446,6 +441,26 @@ export const ChatInput = observer(
       setSelectedImages(newImages);
     };
 
+    // 快捷前缀预填（P5 v2）：点「图像生成/图片编辑」→ 输入框预填「图像生成：/图片编辑：」，
+    // 用户即知当前输入用途；空/已有快捷前缀→直接设（幂等），已有其他内容→前缀前置不丢字。
+    // 注意：value 可能外部受控（ChatView 传 value/onChangeText）——必须走 onChangeText 而非内部 setText。
+    const applyQuickPrefix = (prefix: string) => {
+      const current = value;
+      const trimmed = current.trim();
+      const next =
+        !trimmed || /^(图像生成|图片编辑)[:：]/.test(trimmed)
+          ? prefix
+          : prefix + current;
+      if (isVideoCapable && onPromptTextChange) {
+        onPromptTextChange(next);
+      } else if (textInputProps?.onChangeText) {
+        textInputProps.onChangeText(next);
+      } else {
+        setText(next);
+      }
+      inputRef.current?.focus();
+    };
+
     // 快捷操作行：图片编辑选图（相册/拍照）→ 下沉输入框（P5 豆包式，单选）
     const handleQuickEditPick = async (source: 'camera' | 'gallery') => {
       try {
@@ -465,6 +480,7 @@ export const ChatInput = observer(
           const result = await launchCamera({mediaType: 'photo', quality: 0.8});
           if (result.assets && result.assets.length > 0 && result.assets[0].uri) {
             onEditSourceChange?.(result.assets[0].uri);
+            applyQuickPrefix('图片编辑：');
           }
         } else {
           modelStore.disableAutoRelease('image-gallery');
@@ -475,6 +491,7 @@ export const ChatInput = observer(
           });
           if (result.assets && result.assets.length > 0 && result.assets[0].uri) {
             onEditSourceChange?.(result.assets[0].uri);
+            applyQuickPrefix('图片编辑：');
           }
         }
         setShowEditPickerMenu(false);
@@ -624,11 +641,9 @@ export const ChatInput = observer(
               placeholder={
                 editSourceUri
                   ? '想修改哪里？例如：把背景改成海边'
-                  : genHint
-                    ? '描述你想画的内容…'
-                    : isVideoCapable
-                      ? l10n.video.promptPlaceholder
-                      : l10n.components.chatInput.inputPlaceholder
+                  : isVideoCapable
+                    ? l10n.video.promptPlaceholder
+                    : l10n.components.chatInput.inputPlaceholder
               }
               placeholderTextColor={onSurfaceColorVariant}
               underlineColorAndroid="transparent"
@@ -666,10 +681,7 @@ export const ChatInput = observer(
                 testID="image-quick-gen"
                 style={[styles.quickIconBtn, {opacity: busy ? 0.4 : 1}]}
                 disabled={busy}
-                onPress={() => {
-                  inputRef.current?.focus();
-                  setGenHint(true);
-                }}
+                onPress={() => applyQuickPrefix('图像生成：')}
                 accessibilityLabel="图像生成"
                 accessibilityRole="button">
                 <Icon name="palette" size={20} color={theme.colors.primary} />
@@ -751,7 +763,6 @@ export const ChatInput = observer(
                   style={[
                     styles.thinkingToggleLeft,
                     isThinkingEnabled && {backgroundColor: onSurfaceColor},
-                    {borderColor: onSurfaceColorVariant},
                   ]}
                   onPress={() =>
                     supportsEffort && effortValues.length > 0
