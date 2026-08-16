@@ -176,10 +176,11 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 > 代码载体：ChatInput / ChatView / ChatScreen / ImageTaskActions / ImageTaskProgress / chatImageTask。
 > 豆包式交互：图片下沉输入框 + 自然语言指令 → 聊天内出编辑结果，零跳转。
 
-### 13.1 输入框快捷操作行（常驻一行小按钮）
+### 13.1 快捷生图/编辑入口（下沉 controlBar 图标钮）
 
-- 输入框上方一行胶囊按钮（气泡内动作槽同构，ADR-0003）：
-  `[图像生成]`（image-quick-gen）`[图片编辑]`（image-quick-edit）。
+- 入口位置：输入卡**控制行**（思考胶囊与发送/语音同一行，leftControls 区），两个 36px 图标钮：
+  `[🖌 图像生成]`（image-quick-gen，MaterialCommunityIcons brush）`[🖼 图片编辑]`（image-quick-edit，image-edit-outline）。
+  （2026-08-16 终稿：原独立快捷行改为下沉控制行图标钮——省空间不臃肿，与思考/发送同基准。）
 - 图像生成：聚焦输入框，placeholder 提示「描述你想画的内容…」（不强制上传，走意图路由）。
 - 图片编辑：弹底部菜单（相册 / 拍照，复用 launchImageLibrary / 相机）→ 选图**下沉输入框**（缩略图 + × 取消）。
 - 生成/加载进行中（imageGenStore busy）两按钮禁用防连点。

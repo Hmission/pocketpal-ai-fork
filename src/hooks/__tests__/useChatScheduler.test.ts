@@ -99,23 +99,6 @@ describe('useChatScheduler', () => {
     expect(handleSendPress).not.toHaveBeenCalled();
   });
 
-  it('P5 编辑源图但空指令：系统轻提示补描述，不跑编辑', async () => {
-    const {wrapped, handleSendPress} = setup();
-
-    await act(async () => {
-      await wrapped(msg(''), 'file:///src.png');
-    });
-
-    expect(mockRunEditCard).not.toHaveBeenCalled();
-    expect(chatSessionStore.addMessageToCurrentSession).toHaveBeenCalledWith(
-      expect.objectContaining({
-        metadata: {system: true},
-        text: expect.stringContaining('想修改哪里'),
-      }),
-    );
-    expect(handleSendPress).not.toHaveBeenCalled();
-  });
-
   it('chitchat 且管家就绪且无历史聊天模型：管家直接回答，不触发常规发送', async () => {
     (promptWriter as any).isLoaded = true;
     mockPromptChat.mockResolvedValue('管家回复');

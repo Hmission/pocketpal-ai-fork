@@ -160,6 +160,11 @@ export const ChatScreen: React.FC = observer(() => {
     }
   }, [imageGenStore.pendingEditSource]);
 
+  // 会话切换/新建时清空编辑源图（会话内临时态，防泄漏到下一会话，锋利不臃肿）
+  React.useEffect(() => {
+    setEditSourceUri(null);
+  }, [chatSessionStore.activeSessionId]);
+
   const {handleSendPress, handleStopPress} = useChatSession(
     currentMessageInfo,
     user,

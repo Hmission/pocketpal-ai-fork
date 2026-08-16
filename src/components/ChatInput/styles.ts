@@ -3,22 +3,6 @@ import {StyleSheet} from 'react-native';
 import {Theme} from '../../utils/types';
 import {FONT_FAMILIES} from '../../theme/tokens';
 
-// 快捷操作行样式（P5）：chip 尺寸用常量（测试 mock theme 可能缺 spacing/radius），
-// 颜色走主题 token（与 ImageTaskActions 同构视觉）
-export const quickChip = (theme: Theme) => ({
-  paddingHorizontal: 12,
-  paddingVertical: 5,
-  borderRadius: 999,
-  borderWidth: 1,
-  borderColor: theme.colors.primary,
-  backgroundColor: theme.colors.surface,
-});
-
-export const quickChipText = (theme: Theme) => ({
-  color: theme.colors.primary,
-  fontWeight: '600' as const,
-});
-
 export const createStyles = ({
   theme,
   isEditMode,
@@ -156,12 +140,13 @@ export const createStyles = ({
     editBarButton: {
       margin: 0,
     },
-    // 快捷操作行（P5 豆包式）：图像生成 / 图片编辑
-    quickRow: {
-      flexDirection: 'row',
-      gap: 8,
-      paddingHorizontal: 16,
-      paddingTop: 8,
+    // 快捷生图/编辑图标钮（P5 下沉 controlBar：与语音钮同高基准，触摸友好）
+    quickIconBtn: {
+      width: 36,
+      height: 36,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 18,
     },
     inputRow: {
       flex: 1,

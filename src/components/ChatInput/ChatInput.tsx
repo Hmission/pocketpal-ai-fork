@@ -13,6 +13,7 @@ import {launchCamera, launchImageLibrary} from 'react-native-image-picker';
 import {useCameraPermission} from 'react-native-vision-camera';
 import Voice from '@react-native-voice/voice';
 import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import {observer} from 'mobx-react';
 import {IconButton, Text} from 'react-native-paper';
@@ -29,7 +30,7 @@ import {
 
 import {useTheme} from '../../hooks';
 
-import {createStyles, quickChip, quickChipText} from './styles';
+import {createStyles} from './styles';
 
 import {chatSessionStore, modelStore, palStore} from '../../store';
 import {promptWriter} from '../../services/promptWriter';
@@ -557,46 +558,6 @@ export const ChatInput = observer(
             </Animated.View>
           )}
 
-          {/* 快捷操作行（P5 豆包式）：图像生成引导 / 图片编辑选图下沉输入框 */}
-          <View style={styles.quickRow}>
-            <TouchableOpacity
-              testID="image-quick-gen"
-              style={[quickChip(theme), {opacity: busy ? 0.4 : 1}]}
-              disabled={busy}
-              onPress={() => {
-                inputRef.current?.focus();
-                setGenHint(true);
-              }}>
-              <Text style={quickChipText(theme)}>🎨 图像生成</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              testID="image-quick-edit"
-              style={[quickChip(theme), {opacity: busy ? 0.4 : 1}]}
-              disabled={busy}
-              onPress={() => setShowEditPickerMenu(true)}>
-              <Text style={quickChipText(theme)}>🖼️ 图片编辑</Text>
-            </TouchableOpacity>
-            {/* 选图菜单按需挂载（点击后才渲染，避免空 Menu 常驻） */}
-            {showEditPickerMenu && (
-              <Menu
-                visible={showEditPickerMenu}
-                onDismiss={() => setShowEditPickerMenu(false)}
-                anchorPosition="top"
-                anchor={<View />}>
-                <Menu.Item
-                  label={l10n.camera?.takePhoto || '拍照'}
-                  icon="camera"
-                  onPress={() => handleQuickEditPick('camera')}
-                />
-                <Menu.Item
-                  label={l10n.common?.gallery || '相册'}
-                  icon="image"
-                  onPress={() => handleQuickEditPick('gallery')}
-                />
-              </Menu>
-            )}
-          </View>
-
           {/* Image Preview Section：编辑源图（P5）优先单图下沉，其余走视觉问答多图 */}
           {displayImages.length > 0 && (
             <View
@@ -695,10 +656,56 @@ export const ChatInput = observer(
           {/* Divider between input area and control bar */}
           <View style={styles.inputDivider} />
 
-          {/* Control Bar (Bottom Row) */}
+          {/* Control Bar (Bottom Row)：P5 快捷生图/编辑下沉到本行（思考胶囊旁，图标钮省空间） */}
           <View style={styles.controlBar}>
             {/* Left Controls */}
             <View style={styles.leftControls}>
+              {/* 快捷生图/编辑（P5 豆包式）：图像生成引导 / 图片编辑选图下沉输入框；生成/加载中禁用 */}
+              <TouchableOpacity
+                testID="image-quick-gen"
+                style={[styles.quickIconBtn, {opacity: busy ? 0.4 : 1}]}
+                disabled={busy}
+                onPress={() => {
+                  inputRef.current?.focus();
+                  setGenHint(true);
+                }}
+                accessibilityLabel="图像生成"
+                accessibilityRole="button">
+                <Icon name="brush" size={20} color={onSurfaceColorVariant} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                testID="image-quick-edit"
+                style={[styles.quickIconBtn, {opacity: busy ? 0.4 : 1}]}
+                disabled={busy}
+                onPress={() => setShowEditPickerMenu(true)}
+                accessibilityLabel="图片编辑"
+                accessibilityRole="button">
+                <Icon
+                  name="image-edit-outline"
+                  size={20}
+                  color={onSurfaceColorVariant}
+                />
+              </TouchableOpacity>
+              {/* 选图菜单按需挂载（点击后才渲染，避免空 Menu 常驻） */}
+              {showEditPickerMenu && (
+                <Menu
+                  visible={showEditPickerMenu}
+                  onDismiss={() => setShowEditPickerMenu(false)}
+                  anchorPosition="top"
+                  anchor={<View />}>
+                  <Menu.Item
+                    label={l10n.camera?.takePhoto || '拍照'}
+                    icon="camera"
+                    onPress={() => handleQuickEditPick('camera')}
+                  />
+                  <Menu.Item
+                    label={l10n.common?.gallery || '相册'}
+                    icon="image"
+                    onPress={() => handleQuickEditPick('gallery')}
+                  />
+                </Menu>
+              )}
+
               {/* Plus Button for Image Upload (only for regular chat) */}
               {showImageUpload && !isVideoCapable && (
                 <Menu

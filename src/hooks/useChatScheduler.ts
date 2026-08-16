@@ -44,20 +44,9 @@ export const useChatScheduler = (
       const text = message.text.trim();
 
       // 编辑闭环（P5 豆包式）：显式编辑源图（图片编辑按钮/全屏查看器/任务卡下沉）
-      // + 文本指令 → 聊天内编辑任务卡，零跳转；编辑意图=显式按钮动作，不走关键词路由。
+      // + 文本指令 → 聊天内编辑任务卡，零跳转。编辑意图=显式按钮动作，不走关键词路由；
+      // 空指令已由 ChatInput 拦截（轻提示补描述），此处 text 必非空（无兜底）。
       if (editSourceUri) {
-        if (!text) {
-          // 空指令：轻提示补描述（防其他入口绕过 ChatInput 拦截）
-          await chatSessionStore.addMessageToCurrentSession({
-            id: `sys-${Date.now()}`,
-            author: assistant,
-            createdAt: Date.now(),
-            text: '💡 请描述想修改哪里，例如：把背景改成海边',
-            type: 'text',
-            metadata: {system: true},
-          } as MessageType.Text);
-          return;
-        }
         await chatSessionStore.addMessageToCurrentSession({
           id: `u-${Date.now()}`,
           author: user,
