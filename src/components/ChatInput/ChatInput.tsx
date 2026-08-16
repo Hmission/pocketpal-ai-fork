@@ -660,7 +660,8 @@ export const ChatInput = observer(
           <View style={styles.controlBar}>
             {/* Left Controls */}
             <View style={styles.leftControls}>
-              {/* 快捷生图/编辑（P5 豆包式）：图像生成引导 / 图片编辑选图下沉输入框；生成/加载中禁用 */}
+              {/* 快捷生图/编辑（P5 豆包式）：图像生成引导 / 图片编辑选图下沉输入框；生成/加载中禁用
+                  图标用主题 primary（可用态彩色，非灰）；busy 时才降透明示禁用 */}
               <TouchableOpacity
                 testID="image-quick-gen"
                 style={[styles.quickIconBtn, {opacity: busy ? 0.4 : 1}]}
@@ -671,7 +672,7 @@ export const ChatInput = observer(
                 }}
                 accessibilityLabel="图像生成"
                 accessibilityRole="button">
-                <Icon name="brush" size={20} color={onSurfaceColorVariant} />
+                <Icon name="palette" size={20} color={theme.colors.primary} />
               </TouchableOpacity>
               <TouchableOpacity
                 testID="image-quick-edit"
@@ -683,7 +684,7 @@ export const ChatInput = observer(
                 <Icon
                   name="image-edit-outline"
                   size={20}
-                  color={onSurfaceColorVariant}
+                  color={theme.colors.primary}
                 />
               </TouchableOpacity>
               {/* 选图菜单按需挂载（点击后才渲染，避免空 Menu 常驻） */}

@@ -179,7 +179,8 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 ### 13.1 快捷生图/编辑入口（下沉 controlBar 图标钮）
 
 - 入口位置：输入卡**控制行**（思考胶囊与发送/语音同一行，leftControls 区），两个 36px 图标钮：
-  `[🖌 图像生成]`（image-quick-gen，MaterialCommunityIcons brush）`[🖼 图片编辑]`（image-quick-edit，image-edit-outline）。
+  `[🎨 图像生成]`（image-quick-gen，MaterialCommunityIcons **palette 调色盘**）`[🖼 图片编辑]`（image-quick-edit，image-edit-outline）。
+  图标色=主题 `primary`（可用态彩色，禁用观感来源于灰色 token，已弃用）；生成/加载中（busy）才降 0.4 透明度示禁用。
   （2026-08-16 终稿：原独立快捷行改为下沉控制行图标钮——省空间不臃肿，与思考/发送同基准。）
 - 图像生成：聚焦输入框，placeholder 提示「描述你想画的内容…」（不强制上传，走意图路由）。
 - 图片编辑：弹底部菜单（相册 / 拍照，复用 launchImageLibrary / 相机）→ 选图**下沉输入框**（缩略图 + × 取消）。
