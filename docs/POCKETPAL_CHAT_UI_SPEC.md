@@ -218,11 +218,19 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 | image-viewer-edit-button | 全屏预览「编辑此图片」按钮 |
 | image-task-edit（既有） | 生图任务卡「编辑图片」→ 改道下沉输入框 |
 
+### 13.6 多模态输入边界（产物图不进模型，2026-08-16 崩溃修复）
+
+- **规则**：`convertToChatMessages`（src/utils/chat.ts）仅对**用户主动视觉问答**消息（`metadata.multimodal===true`，由 handleSendPress 标记）转 `image_url` 进多模态输入；
+  **生图/编辑产物图**（metadata.imageTask/editTask）与**编辑指令源图**只作聊天展示，不进模型输入。
+- **根因**：聊天内生图/编辑结果回写带图消息进 history；出图后再发普通消息时，history 全部转 llama.rn 消息，
+  产物图被转 image_url 触发视觉编码路径 → clip 空指针崩溃（真机 SIGSEGV 实证）。
+- **收益**：产物图进模型输入既浪费 token 又必然走视觉编码路径；过滤后产物仅展示，视觉问答功能不受影响。
+- **判定标准**：是否进多模态输入 = `metadata.multimodal === true`（用户主动上传），与消息是否带图无关。
+
 ## 变更日志
 
 | 日期 | 版本 | 变更 |
 |------|------|------|
-| 2026-08-14 | 1.0 | 聊天页+抽屉重设计定稿 |
 | 2026-08-15 | 2.0 | 气泡一体化（footer 收进卡片，ADR-0003）+ 灰色分层落地（§11）；legacy fonts/radius 双轨收口同波执行 |
 | 2026-08-16 | 2.1 | 生图任务卡片生成动效 + 图片撑满（§12，MASTER_LOG §20） |
-| 2026-08-16 | 2.2 | 输入框快捷操作行 + 图片编辑闭环（§13，AIOS SPEC §11 P5）；任务卡「编辑图片」改道下沉输入框 |
+| 2026-08-16 | 2.2 | §13 聊天内闭环：快捷入口下沉 controlBar 图标钮 + 前缀 chip 标签化（原子删除）+ 图片编辑闭环（三入口下沉输入框）+ §13.6 多模态输入边界（产物图不进模型） |
