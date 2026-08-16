@@ -199,6 +199,12 @@ export const ChatInput = observer(
     // 编辑源图状态（P5）：外部受控；发送/取消后由 ChatView 复位
     const [showEditPickerMenu, setShowEditPickerMenu] = React.useState(false);
     const [showEditHint, setShowEditHint] = React.useState(false); // 编辑空指令轻提示
+    // 快捷前缀标签（P5 v3 图标语义）：点「图像生成/图片编辑」→ 输入区顶部显示彩色前缀 chip，
+    // 不可逐字编辑（× 整体删除，破坏一个字符即失效）；发送时拼接成完整文本（路由/编辑剥离），
+    // 模型只收主体。前缀不是输入文本——不占 value，天然绕开受控组件。
+    const [quickPrefix, setQuickPrefix] = React.useState<
+      '图像生成' | '图片编辑' | null
+    >(null);
     const isEditMode = chatSessionStore.isEditMode;
 
     const styles = createStyles({theme, isEditMode});
@@ -230,6 +236,13 @@ export const ChatInput = observer(
         onCancelEdit?.();
       }
     }, [isEditMode, editBarHeight, onCancelEdit]);
+
+    // 外部取消编辑（ChatView editBar × / 缩略图 ×）→ 清「图片编辑」前缀（图像生成前缀不受影响）
+    React.useEffect(() => {
+      if (!editSourceUri) {
+        setQuickPrefix(p => (p === '图片编辑' ? null : p));
+      }
+    }, [editSourceUri]);
 
     const handleChangeText = (newText: string) => {
       if (isVideoCapable && onPromptTextChange) {
@@ -315,11 +328,15 @@ export const ChatInput = observer(
           return;
         }
         onSendPress({
-          text: trimmedValue,
+          text:
+            quickPrefix === '图片编辑'
+              ? `图片编辑：${trimmedValue}`
+              : trimmedValue,
           type: 'text',
           imageUris: [editSourceUri],
         });
         setText('');
+        setQuickPrefix(null);
         onEditSourceChange?.(null);
         return;
       }
@@ -340,11 +357,12 @@ export const ChatInput = observer(
 
         // Include imageUris in the message object
         onSendPress({
-          text: trimmedValue,
+          text: quickPrefix ? `${quickPrefix}：${trimmedValue}` : trimmedValue,
           type: 'text',
           imageUris: selectedImages.length > 0 ? selectedImages : undefined,
         });
         setText('');
+        setQuickPrefix(null);
         // Clear selected images after sending
         setSelectedImages([]);
       }
@@ -441,26 +459,6 @@ export const ChatInput = observer(
       setSelectedImages(newImages);
     };
 
-    // 快捷前缀预填（P5 v2）：点「图像生成/图片编辑」→ 输入框预填「图像生成：/图片编辑：」，
-    // 用户即知当前输入用途；空/已有快捷前缀→直接设（幂等），已有其他内容→前缀前置不丢字。
-    // 注意：value 可能外部受控（ChatView 传 value/onChangeText）——必须走 onChangeText 而非内部 setText。
-    const applyQuickPrefix = (prefix: string) => {
-      const current = value;
-      const trimmed = current.trim();
-      const next =
-        !trimmed || /^(图像生成|图片编辑)[:：]/.test(trimmed)
-          ? prefix
-          : prefix + current;
-      if (isVideoCapable && onPromptTextChange) {
-        onPromptTextChange(next);
-      } else if (textInputProps?.onChangeText) {
-        textInputProps.onChangeText(next);
-      } else {
-        setText(next);
-      }
-      inputRef.current?.focus();
-    };
-
     // 快捷操作行：图片编辑选图（相册/拍照）→ 下沉输入框（P5 豆包式，单选）
     const handleQuickEditPick = async (source: 'camera' | 'gallery') => {
       try {
@@ -480,7 +478,8 @@ export const ChatInput = observer(
           const result = await launchCamera({mediaType: 'photo', quality: 0.8});
           if (result.assets && result.assets.length > 0 && result.assets[0].uri) {
             onEditSourceChange?.(result.assets[0].uri);
-            applyQuickPrefix('图片编辑：');
+            setQuickPrefix('图片编辑');
+            inputRef.current?.focus();
           }
         } else {
           modelStore.disableAutoRelease('image-gallery');
@@ -491,7 +490,8 @@ export const ChatInput = observer(
           });
           if (result.assets && result.assets.length > 0 && result.assets[0].uri) {
             onEditSourceChange?.(result.assets[0].uri);
-            applyQuickPrefix('图片编辑：');
+            setQuickPrefix('图片编辑');
+            inputRef.current?.focus();
           }
         }
         setShowEditPickerMenu(false);
@@ -635,15 +635,31 @@ export const ChatInput = observer(
                 {l10n.palsScreen.prompt}:
               </Text>
             )}
+            {/* 快捷前缀标签（P5 v3 图标语义）：彩色 chip，× 整体删除，不进 value/模型 */}
+            {quickPrefix && (
+              <View style={styles.quickPrefixChip}>
+                <Text style={styles.quickPrefixText}>{quickPrefix}：</Text>
+                <TouchableOpacity
+                  testID="quick-prefix-clear"
+                  onPress={() => setQuickPrefix(null)}
+                  hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}
+                  accessibilityLabel="清除任务前缀"
+                  accessibilityRole="button">
+                  <Icon name="close" size={13} color={theme.colors.surface} />
+                </TouchableOpacity>
+              </View>
+            )}
             <TextInput
               ref={inputRef}
               multiline
               placeholder={
                 editSourceUri
                   ? '想修改哪里？例如：把背景改成海边'
-                  : isVideoCapable
-                    ? l10n.video.promptPlaceholder
-                    : l10n.components.chatInput.inputPlaceholder
+                  : quickPrefix === '图像生成'
+                    ? '描述你想画的内容…'
+                    : isVideoCapable
+                      ? l10n.video.promptPlaceholder
+                      : l10n.components.chatInput.inputPlaceholder
               }
               placeholderTextColor={onSurfaceColorVariant}
               underlineColorAndroid="transparent"
@@ -681,7 +697,11 @@ export const ChatInput = observer(
                 testID="image-quick-gen"
                 style={[styles.quickIconBtn, {opacity: busy ? 0.4 : 1}]}
                 disabled={busy}
-                onPress={() => applyQuickPrefix('图像生成：')}
+                onPress={() => {
+                  setQuickPrefix('图像生成');
+                  onEditSourceChange?.(null); // 退出编辑模式（若有残留源图）
+                  inputRef.current?.focus();
+                }}
                 accessibilityLabel="图像生成"
                 accessibilityRole="button">
                 <Icon name="palette" size={20} color={theme.colors.primary} />

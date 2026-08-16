@@ -144,11 +144,15 @@ export function convertToChatMessages(
         message.author.id === assistant.id ? 'assistant' : 'user';
       const messageText = textMessage.text || '';
 
-      // Multimodal user messages keep their existing shape.
+      // 多模态输入仅限用户主动视觉问答（metadata.multimodal===true，由 handleSendPress 标记）。
+      // 生图/编辑产物图（imageTask/editTask）与编辑指令源图只作聊天展示，不转 image_url：
+      // 产物图进模型输入既浪费 token，又必然触发 llama.rn 视觉编码路径（clip）——
+      // 历史带图后任何普通消息都会视觉编码崩溃（2026-08-16 真机 SIGSEGV 实证）。
       if (
         textMessage.imageUris &&
         textMessage.imageUris.length > 0 &&
-        isMultimodalEnabled
+        isMultimodalEnabled &&
+        textMessage.metadata?.multimodal === true
       ) {
         const contentArray: Array<{
           type: 'text' | 'image_url';

@@ -141,6 +141,23 @@ export const createStyles = ({
     editBarButton: {
       margin: 0,
     },
+    // 快捷前缀标签（P5 v3 图标语义）：primary 彩底 + 白字 + ×；整体删除（不进 value/模型）
+    quickPrefixChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      backgroundColor: theme.colors.primary,
+      borderRadius: 8,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      marginBottom: 6,
+      gap: 6,
+    },
+    quickPrefixText: {
+      color: theme.colors.surface,
+      fontWeight: '600' as const,
+      fontSize: 12,
+    },
     // 快捷生图/编辑图标钮（P5 下沉 controlBar：与语音钮同高基准，触摸友好）
     quickIconBtn: {
       width: 36,

@@ -182,9 +182,10 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
   `[🎨 图像生成]`（image-quick-gen，MaterialCommunityIcons **palette 调色盘**）`[🖼 图片编辑]`（image-quick-edit，image-edit-outline）。
   图标色=主题 `primary`（可用态彩色，禁用观感来源于灰色 token，已弃用）；生成/加载中（busy）才降 0.4 透明度示禁用。
   （2026-08-16 终稿：原独立快捷行改为下沉控制行图标钮——省空间不臃肿，与思考/发送同基准。）
-- 图像生成：点击 → 输入框**预填「图像生成：」**（用户即知输入用途；已有内容则前缀前置不丢字）→ 输入主体发送；
-  routeTask 识别前缀并剥离（payload 纯主体），无主体不路由。
-- 图片编辑：弹底部菜单（相册 / 拍照，复用 launchImageLibrary / 相机）→ 选图**下沉输入框**（缩略图 + × 取消）+ **预填「图片编辑：」**；
+- 图像生成：点击 → 输入区顶部显示**前缀标签 chip**「图像生成：」（primary 彩底白字 + ×，图标语义）：
+  不可逐字编辑（× 整体删除——破坏一个字符即失效）；标签不进输入文本 value，发送时拼接为完整消息；
+  routeTask 识别前缀并剥离（payload 纯主体），模型只收主体，无主体不发送。
+- 图片编辑：弹底部菜单（相册 / 拍照，复用 launchImageLibrary / 相机）→ 选图**下沉输入框**（缩略图 + × 取消）+ **前缀 chip「图片编辑：」**；
   scheduler 编辑分支剥离前缀（指令纯净），用户消息保留原文展示。
 - 生成/加载进行中（imageGenStore busy）两按钮禁用防连点。
 - 思考胶囊（thinking-toggle）无描边框：状态靠背景填充色表达（激活 onSurfaceColor 背景 / 未激活透明+灰字），与快捷图标钮统一无描边（2026-08-16 去描边）。

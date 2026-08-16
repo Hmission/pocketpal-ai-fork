@@ -62,6 +62,7 @@ describe('convertToChatMessages', () => {
         text: 'Look at this image',
         type: 'text',
         imageUris: ['file:///path/to/image1.jpg', 'file:///path/to/image2.jpg'],
+        metadata: {multimodal: true}, // 用户主动视觉问答（handleSendPress 标记）
         createdAt: Date.now(),
       },
       {
@@ -96,6 +97,54 @@ describe('convertToChatMessages', () => {
             image_url: {url: 'file:///path/to/image2.jpg'},
           },
         ],
+      },
+    ] as ChatMessage[]);
+  });
+
+  it('产物图/编辑指令（带图但非视觉问答）不转 image_url，仅纯文本进模型', () => {
+    const messages: MessageType.Text[] = [
+      {
+        id: '1',
+        author: user,
+        text: '图像生成：a red flower',
+        type: 'text',
+        createdAt: Date.now(),
+      },
+      {
+        id: '2',
+        author: assistant,
+        text: '已为你生成',
+        type: 'text',
+        imageUris: ['file:///result.png'],
+        metadata: {imageTask: true}, // 生图产物图：仅展示，不进模型
+        createdAt: Date.now(),
+      },
+      {
+        id: '3',
+        author: user,
+        text: '把背景改成海边',
+        type: 'text',
+        imageUris: ['file:///src.png'],
+        metadata: {}, // 编辑指令源图：不进模型
+        createdAt: Date.now(),
+      },
+    ];
+
+    const result = convertToChatMessages(messages, true);
+    // 全部消息都应保持纯文本，无 image_url
+    expect(JSON.stringify(result)).not.toContain('image_url');
+    expect(result).toEqual([
+      {
+        role: 'user',
+        content: '把背景改成海边',
+      },
+      {
+        role: 'assistant',
+        content: '已为你生成',
+      },
+      {
+        role: 'user',
+        content: '图像生成：a red flower',
       },
     ] as ChatMessage[]);
   });
@@ -155,6 +204,7 @@ describe('convertToChatMessages', () => {
         text: 'Can you analyze this image?',
         type: 'text',
         imageUris: ['file:///path/to/image.jpg'],
+        metadata: {multimodal: true}, // 用户主动视觉问答
         createdAt: Date.now(),
       },
       {
