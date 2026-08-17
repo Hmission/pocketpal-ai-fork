@@ -318,13 +318,10 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
   if (!backend_s.empty()) {
     params.backend = backend_s.c_str();
   }
-  // 6.17 顺序卸载（B1）：Z-Image 6.9GB 权重加载阶段同时驻 GPU 超限（小米13 加载即被杀），
-  // 设 params_backend=disk 让权重 disk 常驻、compute 时按需 stage 到 GPU，压低加载/采样峰值。
-  // 设计见 ONDEVICE_SEQUENTIAL_OFFLOAD_DESIGN.md。
-  if (zimage_model) {
-    static const char* kZImageParamsBackend = "diffusion=disk,te=disk";
-    params.params_backend = kZImageParamsBackend;
-  }
+  // 6.17 顺序卸载探索结论：Z-Image 6.9GB 对小米13（GPU ~2.8G）是硬件上限，
+  // cpu residency + stream_layers + graph-cut 各轮延长存活但仍无法跑通（业界亦不在中低端手机跑 6B DiT）。
+  // 回滚 cpu residency（保护 K90 GPU 常驻速度）；保留 A1/A2（stable-diffusion.cpp 通用顺序卸载 + 强制 tiled）。
+  // 小米13 用 SD3.5/DreamLite；Z-Image 仅高端设备。详见 ONDEVICE_SEQUENTIAL_OFFLOAD_DESIGN.md 第六章。
 
   sd_set_log_callback(sd_log_cb, nullptr);
   sd_set_progress_callback(sd_progress_cb, nullptr);

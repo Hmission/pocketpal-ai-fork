@@ -96,3 +96,55 @@ if (model_mgr != nullptr) {
 ## 五、回滚
 
 release_all 调用点单一（decode_image_outputs 开头），移除即回滚。
+
+---
+
+## 六、小米 13 Z-Image 验证结果与下一步（2026-08-17）
+
+### 6.1 实测结论
+
+- A1/A2/B1/B1' 均已实现并构建。
+- 小米 13 Z-Image **仍在条件编码阶段被杀**（出图后 16-18 秒，尚未到 B1' 释放点）。
+- **根因定位**：小米 13 GPU 可用 VRAM ≈ 2.8GB（SD3.5 2.8GB 权重能跑的极限）。Z-Image 组件：LLM 2.3G（可容）+ **diffusion 3.3G（超上限）**。顺序卸载解决"阶段间闲置"，但**单模块 diffusion 3.3G 仍超小米 13 GPU**。
+
+### 6.2 下一步（B2：stream_layers 分层流式）
+
+- **机制**：diffusion 权重按层分段 stage 到 GPU（每层几百 MB），峰值 < 2.8GB。
+- **前提**（stable-diffusion.cpp L928）：stream_layers 要求 `params_backend_is_cpu(DIFFUSION)`——需把 B1 的 `diffusion=disk` 改为 `diffusion=cpu`，并启用 stream_layers。
+- **待办**：① sd_ctx_params 的 stream_layers 字段设置 ② ImageGenJNI 改 `diffusion=cpu,te=cpu` ③ 小米 13 验证采样峰值。
+- **风险**：cpu residency + 分层流式速度可能慢（每层 CPU↔GPU 拷贝），需实测权衡。
+
+### 6.2.1 B2 已实现（ImageGenJNI.cpp）
+
+```cpp
+if (zimage_model) {
+    params.params_backend = "diffusion=cpu,te=cpu";  // 权重驻 CPU
+    params.max_vram       = "2";                     // 2GB VRAM 预算
+    params.stream_layers  = true;                    // 分层流式
+}
+```
+
+- sd_ctx_params 字段确认：`max_vram`（const char*，GiB 预算）+ `stream_layers`（bool）+ `params_backend`。
+- stream_layers 需 max_vram 配合（stable-diffusion.h L226 注释）+ params_backend=cpu（L928 检查）。
+- 待小米 13 实测验证采样峰值与速度。
+
+### 6.2.2 B2 验证结果与回滚（最终结论）
+
+**小米 13 Z-Image 存活时间递进**（各轮优化）：
+| 配置 | 存活时间 | 死亡阶段 |
+|---|---|---|
+| 无 offload | 18 秒 | 加载 |
+| B1/B1' | 16-18 秒 | 条件编码前 |
+| B2 max_vram=2 | 92 秒 | 条件编码 |
+| B2 max_vram=-1 (auto 5548MB, graph-cut 36 段) | 3.5 分钟 | 条件编码 |
+
+**结论**：Z-Image 6.9GB 对小米 13（GPU ~2.8G）是**硬件上限**——cpu residency + stream_layers + graph-cut 各轮延长存活，但 LLM 编码/采样每阶段仍超。业界也不在中低端手机跑 6B DiT。
+
+**回滚**：移除 ImageGenJNI 的 zimage_model cpu residency/max_vram/stream_layers（保护 K90 GPU 常驻速度，避免拖慢）。**保留 A1/A2**（stable-diffusion.cpp 通用顺序卸载 + Z-Image 强制 tiled，对 K90 是加速/稳定性增益）。
+
+**产品策略**：小米 13 用 SD3.5（~40 分钟）/DreamLite；Z-Image 仅高端设备（manifest note 已标注）。
+
+### 6.3 已验证可用（无需再动）
+
+- K90（Adreno 840）：SD3.5 ~10 分钟、Z-Image ~40 分钟（双禁用）——顺序卸载对 K90 是加速/稳定性增益，不改变可用性。
+- 小米 13：SD3.5 ~40 分钟（tiled VAE）可用；DreamLite 可用。
