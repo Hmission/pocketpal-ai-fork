@@ -222,3 +222,9 @@ K90 max mem alloc size = 2048MB > 1.94GB → 单 buffer 直接分配成功。
 | SD3.5 (2 步) | 小米 13 | 2.8GB | 77.6 分钟（tiled） | ✅ 可用（慢） |
 | Z-Image (8 步) | K90 | 6.9GB | 39.7 分钟 | ✅ 可用 |
 | Z-Image (8 步) | 小米 13 | 6.9GB | — | ❌ 内存不足 |
+
+### 10.4 技术债：排查期环境变量待恢复对照验证
+
+- ImageGenJNI.cpp nativeLoadModel 中 GGML_OPENCL_ADRENO_XMEM_GEMM=0 与 GGML_OPENCL_DISABLE_ADRENO_KERNELS=1 为白图排查期禁用配置（注释："确认后决定禁用或修复"）
+- **最终根因是 RMS_NORM+MUL 融合跳写（与 GEMM 无关）**——这两个禁用可能不再需要，恢复 Adreno 专用内核可能提升性能
+- 待办：对照验证恢复后双设备出图无 NaN 再提交移除
