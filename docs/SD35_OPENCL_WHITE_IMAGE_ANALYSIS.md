@@ -228,3 +228,8 @@ K90 max mem alloc size = 2048MB > 1.94GB → 单 buffer 直接分配成功。
 - ImageGenJNI.cpp nativeLoadModel 中 GGML_OPENCL_ADRENO_XMEM_GEMM=0 与 GGML_OPENCL_DISABLE_ADRENO_KERNELS=1 为白图排查期禁用配置（注释："确认后决定禁用或修复"）
 - **最终根因是 RMS_NORM+MUL 融合跳写（与 GEMM 无关）**——这两个禁用可能不再需要，恢复 Adreno 专用内核可能提升性能
 - 待办：对照验证恢复后双设备出图无 NaN 再提交移除
+
+### 10.5 GPU 分配能力佐证（max mem alloc）
+
+- K90（Adreno 840）：ggml_opencl: max mem alloc size: 2048 MB，512px VAE 解码 1664MB **直接分配成功**
+- 小米 13（Adreno 740）：VAE 解码时 ailed to allocate 1152.00 MiB（当时已占 2.7GB 权重）→ 峰值 GPU 分配能力明显低于 K90 → Z-Image 6.9GB 权重被杀的原因（GPU 等级差异，两台均 16GB RAM）
