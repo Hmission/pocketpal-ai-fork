@@ -374,6 +374,11 @@ namespace sd::backend_fit {
                 return false;
             }
             tiling_params.enabled = true;
+            // 6.16 512px VAE 解码内存修复：decode 的 get_tile_sizes 默认 rel_size=1.0
+            // （factor 分支优先），导致 tile=latent 全尺寸=全图，tiling 无效。
+            // 设 0.5 → tile=latent 一半（512px → 256px 像素 tile，2×2）。
+            tiling_params.rel_size_x = 0.5f;
+            tiling_params.rel_size_y = 0.5f;
             if (tiling_params.tile_size_x <= 0) {
                 tiling_params.tile_size_x = 256;
             }

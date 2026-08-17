@@ -3106,7 +3106,11 @@ public:
         auto latents = first_stage_model->diffusion_to_vae_latents(x);
         first_stage_model->set_temporal_tiling_enabled(vae_tiling_params.temporal_tiling);
         auto decoded = first_stage_model->decode(n_threads, latents, vae_tiling_params, decode_video, circular_x, circular_y);
-        if (decoded.empty() && auto_fit_enabled) {
+        if (decoded.empty()) {
+            // 6.16 512px VAE 解码内存修复：Adreno 740 上 512px VAE 解码 graph 需 1.94GB
+            // buffer，OpenCL 分配失败。失败时自动降级 spatial tiling（256×256 tile，
+            // buffer ~486MB 可分配）。原逻辑受 auto_fit_enabled（默认 false）控制，
+            // 改为无条件重试（仅解码失败才触发，无副作用）。
             bool prefer_temporal_tiling = decode_video && std::dynamic_pointer_cast<LTXVideoVAE>(first_stage_model) != nullptr;
             if (sd::backend_fit::prepare_vae_decode_retry_tiling(vae_tiling_params, prefer_temporal_tiling)) {
                 first_stage_model->free_compute_buffer();

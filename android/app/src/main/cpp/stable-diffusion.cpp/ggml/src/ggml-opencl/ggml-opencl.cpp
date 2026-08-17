@@ -18,6 +18,13 @@
 #include <inttypes.h>
 #include <string.h>
 
+#ifdef __ANDROID__
+#include <android/log.h>
+#define OPENCL_NAN_LOG(...) __android_log_print(ANDROID_LOG_INFO, "ImageGen", __VA_ARGS__)
+#else
+#define OPENCL_NAN_LOG(...) fprintf(stderr, __VA_ARGS__)
+#endif
+
 #include <cstddef>
 #include <cstdint>
 #include <fstream>
@@ -4912,6 +4919,18 @@ static bool ggml_opencl_can_fuse(const struct ggml_cgraph * cgraph, int node_idx
     if (ops.size() == 2 && ops.begin()[0] == GGML_OP_RMS_NORM && ops.begin()[1] == GGML_OP_MUL) {
         const ggml_tensor *rms_norm = cgraph->nodes[node_idx];
         const ggml_tensor *mul      = cgraph->nodes[node_idx+1];
+
+        // 6.18 white-image fix: SD3.5's split_qkv slices the RMS_NORM
+        // output with ggml_view_3d. Fusing RMS_NORM into MUL skips
+        // writing the RMS_NORM intermediate buffer, so the view reads
+        // uninitialized memory -> NaN garbage. If any graph node views
+        // the RMS_NORM output, disable the fusion so RMS_NORM runs on
+        // its own (kernel_rms_norm, which was fixed for Adreno).
+        for (int j = 0; j < cgraph->n_nodes; j++) {
+            if (cgraph->nodes[j]->view_src == rms_norm) {
+                return false;
+            }
+        }
 
         GGML_ASSERT(rms_norm->src[0]->type == GGML_TYPE_F32);
         GGML_ASSERT(rms_norm->type == GGML_TYPE_F32);
@@ -10238,15 +10257,14 @@ static void ggml_cl_rms_norm(ggml_backend_t backend, const ggml_tensor * src0, c
 
     cl_kernel kernel = backend_ctx->kernel_rms_norm;
 
-    // Note, this kernel declares local memory in kernel args and the size
-    // depends on subgroup size.
-    // Note, this requires OpenCL 2.1 and above
-    // For now we use fixed subgroup size to simplify support for OpenCL 2.0.
+    // 6.18 white-image fix: the kernel now does a local-memory tree reduce
+    // (wave-size agnostic), so the local buffer must hold one float per
+    // work-item (nth), NOT nth/subgroup_size. The old nth/sgs sizing
+    // allocated only 1 float on Adreno (64/64) while the kernel wrote
+    // sum[get_sub_group_local_id()] (0..63) -> local memory overflow ->
+    // garbage mean/scale -> NaN output. Keep the subgroup-size query only
+    // for the workgroup size cap below.
     size_t sgs;
-    //CL_CHECK(clGetKernelSubGroupInfo(kernel, dev_ctx->device,
-    //    CL_KERNEL_MAX_SUB_GROUP_SIZE_FOR_NDRANGE,
-    //    sizeof(local_work_size), local_work_size,
-    //    sizeof(size_t), &sgs, NULL));
     if (backend_ctx->gpu_family == ADRENO) {
         sgs = 64;
     } else if (backend_ctx->gpu_family == INTEL) {
@@ -10267,8 +10285,8 @@ static void ggml_cl_rms_norm(ggml_backend_t backend, const ggml_tensor * src0, c
     CL_CHECK(clSetKernelArg(kernel,  9, sizeof(cl_ulong),  &nb02));
     CL_CHECK(clSetKernelArg(kernel, 10, sizeof(cl_ulong),  &nb03));
     CL_CHECK(clSetKernelArg(kernel, 11, sizeof(float),     &eps));
-    // This is local memory - the size depends on subgroup size.
-    CL_CHECK(clSetKernelArg(kernel, 12, sizeof(float)*nth/sgs,  NULL));
+    // Local memory: one float per work-item for the tree reduce.
+    CL_CHECK(clSetKernelArg(kernel, 12, sizeof(float)*nth,  NULL));
 
     backend_ctx->enqueue_ndrange_kernel(kernel, 3, global_work_size, local_work_size, dst);
 }
@@ -10379,7 +10397,9 @@ static void ggml_opencl_op_rms_norm_fused(ggml_backend_t backend, ggml_tensor * 
     CL_CHECK(clSetKernelArg(kernel, 21, sizeof(cl_ulong),      &nb2));
     CL_CHECK(clSetKernelArg(kernel, 22, sizeof(cl_ulong),      &nb3));
     CL_CHECK(clSetKernelArg(kernel, 23, sizeof(float),         &eps));
-    CL_CHECK(clSetKernelArg(kernel, 24, sizeof(float)*sgs,     NULL));
+    // 6.18 white-image fix: kernel_rms_norm_mul also uses a local-memory
+    // tree reduce now, so the buffer must hold nth floats (not sgs).
+    CL_CHECK(clSetKernelArg(kernel, 24, sizeof(float)*nth,     NULL));
 
     backend_ctx->enqueue_ndrange_kernel(kernel, 3, global_work_size, local_work_size, dst);
 }
@@ -11431,13 +11451,12 @@ static void ggml_cl_concat(ggml_backend_t backend, const ggml_tensor * src0, con
     CL_CHECK(clSetKernelArg(kernel, 21, sizeof(cl_ulong), &nb2));
     CL_CHECK(clSetKernelArg(kernel, 22, sizeof(cl_ulong), &nb3));
     CL_CHECK(clSetKernelArg(kernel, 23, sizeof(cl_int),   &dim));
+    CL_CHECK(clSetKernelArg(kernel, 24, sizeof(int),      &ne1));
+    CL_CHECK(clSetKernelArg(kernel, 25, sizeof(int),      &ne2));
+    CL_CHECK(clSetKernelArg(kernel, 26, sizeof(int),      &ne3));
 
     if (concat_pack) {
         // packed kernel needs the dst dims to unflatten its 1-D row index.
-        CL_CHECK(clSetKernelArg(kernel, 24, sizeof(int), &ne1));
-        CL_CHECK(clSetKernelArg(kernel, 25, sizeof(int), &ne2));
-        CL_CHECK(clSetKernelArg(kernel, 26, sizeof(int), &ne3));
-
         const int maxwg = (int)backend_ctx->get_kernel_workgroup_size(kernel);
         const int base  = MIN(64, maxwg);
         const int tpr   = MIN(ne0, base);                 // threads per row
@@ -11449,10 +11468,10 @@ static void ggml_cl_concat(ggml_backend_t backend, const ggml_tensor * src0, con
         size_t local_work_size[]  = {(size_t)lsz, 1, 1};
         backend_ctx->enqueue_ndrange_kernel(kernel, 1, global_work_size, local_work_size, dst);
     } else {
-        size_t global_work_size[] = {(size_t)ne1*nth, (size_t)ne2, (size_t)ne3};
-        size_t local_work_size[] = {(size_t)nth, 1, 1};
-
-        backend_ctx->enqueue_ndrange_kernel(kernel, 3, global_work_size, local_work_size, dst);
+        // 6.18 白图修复：扁平化 1D launch（规避 Adreno group/local 映射 bug）
+        size_t global_work_size[] = {(size_t)ne0 * ne1 * ne2 * ne3, 1, 1};
+        size_t local_work_size[] = {64, 1, 1};
+        backend_ctx->enqueue_ndrange_kernel(kernel, 1, global_work_size, local_work_size, dst);
     }
 }
 
@@ -18953,5 +18972,242 @@ bool ggml_cl_compute_forward(ggml_backend_t backend, struct ggml_tensor * tensor
     }
 
     func(backend, tensor->src[0], tensor->src[1], tensor);
+
+    // 6.18 白图诊断：OpenCL op 级 NaN 检查（env GGML_OPENCL_DEBUG_NAN=1 开启，只报第一个污染源）
+    static const bool s_debug_nan = []() {
+        const char* e = getenv("GGML_OPENCL_DEBUG_NAN");
+        return e != nullptr && e[0] == '1';
+    }();
+    static bool s_nan_reported = false;
+    if (s_debug_nan && !s_nan_reported && tensor->extra != nullptr &&
+        tensor->type == GGML_TYPE_F32) {
+        const enum ggml_op op = tensor->op;
+        if (op == GGML_OP_MUL_MAT || op == GGML_OP_SOFT_MAX || op == GGML_OP_NORM ||
+            op == GGML_OP_RMS_NORM || op == GGML_OP_CONV_2D || op == GGML_OP_ADD ||
+            op == GGML_OP_SUB || op == GGML_OP_MUL || op == GGML_OP_DIV ||
+            op == GGML_OP_SCALE || op == GGML_OP_CONCAT || op == GGML_OP_CONT ||
+            op == GGML_OP_DUP) {
+            const int64_t numel = ggml_nelements(tensor);
+            // 6.18 白图定位：MMDiT 大张量 33M，关键 op 全部放宽阈值覆盖
+            const int64_t limit = 40 * 1024 * 1024;
+            if (numel > 0 && numel <= limit) {
+                ggml_tensor_extra_cl* extra = (ggml_tensor_extra_cl*)tensor->extra;
+                static std::vector<float> s_nan_buf;
+                s_nan_buf.resize((size_t)numel);
+                ggml_backend_opencl_context* backend_ctx = (ggml_backend_opencl_context*)backend->context;
+                cl_int err = clEnqueueReadBuffer(backend_ctx->queue, extra->data_device, CL_TRUE,
+                                                 extra->offset, (size_t)numel * sizeof(float),
+                                                 s_nan_buf.data(), 0, nullptr, nullptr);
+                if (err == CL_SUCCESS) {
+                    size_t nan_cnt = 0, inf_cnt = 0;
+                    float mn = s_nan_buf[0], mx = s_nan_buf[0];
+                    for (int64_t i = 0; i < numel; ++i) {
+                        const float v = s_nan_buf[(size_t)i];
+                        if (std::isnan(v)) { nan_cnt++; continue; }
+                        if (std::isinf(v)) { inf_cnt++; continue; }  // -inf 合法（attention mask）
+                        mn = std::min(mn, v); mx = std::max(mx, v);
+                    }
+                    if (nan_cnt > 0) {
+                        // 6.18 白图定位：MUL_MAT 同时检查 src0/src1（k/q）输入是否已 NaN
+                        size_t s0n = 0, s1n = 0, s0i = 0, s1i = 0;
+                        if (op == GGML_OP_MUL_MAT && src0 && src1) {
+                            auto check_src = [&](const ggml_tensor* st, size_t& cn, size_t& ci) {
+                                if (!st->extra || st->type != GGML_TYPE_F32) return;
+                                const int64_t sn = ggml_nelements(st);
+                                if (sn <= 0 || sn > 40 * 1024 * 1024) return;
+                                ggml_tensor_extra_cl* sx = (ggml_tensor_extra_cl*)st->extra;
+                                static std::vector<float> sbuf;
+                                sbuf.resize((size_t)sn);
+                                cl_int serr = clEnqueueReadBuffer(backend_ctx->queue, sx->data_device, CL_TRUE,
+                                                                  sx->offset + st->view_offs, (size_t)sn * sizeof(float),
+                                                                  sbuf.data(), 0, nullptr, nullptr);
+                                if (serr != CL_SUCCESS) return;
+                                for (int64_t i = 0; i < sn; ++i) {
+                                    if (std::isnan(sbuf[(size_t)i])) cn++;
+                                    else if (std::isinf(sbuf[(size_t)i])) ci++;
+                                }
+                            };
+                            check_src(src0, s0n, s0i);
+                            check_src(src1, s1n, s1i);
+                        }
+                        // 6.18 白图定位：CONCAT 打印实际 offset/nb（kernel 读错位置的证据）
+                        std::string srcinfo;
+                        if (op == GGML_OP_CONCAT) {
+                            auto fmt_src = [&](const ggml_tensor* st) -> std::string {
+                                if (!st || !st->extra) return "null";
+                                ggml_tensor_extra_cl* sx = (ggml_tensor_extra_cl*)st->extra;
+                                char buf[256];
+                                snprintf(buf, sizeof(buf), "off=%llu vo=%llu nb=[%llu,%llu,%llu,%llu]",
+                                         (unsigned long long)sx->offset, (unsigned long long)st->view_offs,
+                                         (unsigned long long)st->nb[0], (unsigned long long)st->nb[1],
+                                         (unsigned long long)st->nb[2], (unsigned long long)st->nb[3]);
+                                return std::string(buf);
+                            };
+                            ggml_tensor_extra_cl* sxd = (ggml_tensor_extra_cl*)tensor->extra;
+                            char dbuf[128];
+                            snprintf(dbuf, sizeof(dbuf), " | dst off=%llu vo=%llu nb=[%llu,%llu,%llu,%llu] ne=[%lld,%lld,%lld,%lld]",
+                                     (unsigned long long)sxd->offset, (unsigned long long)tensor->view_offs,
+                                     (unsigned long long)tensor->nb[0], (unsigned long long)tensor->nb[1],
+                                     (unsigned long long)tensor->nb[2], (unsigned long long)tensor->nb[3],
+                                     (long long)tensor->ne[0], (long long)tensor->ne[1], (long long)tensor->ne[2], (long long)tensor->ne[3]);
+                            srcinfo = std::string(" src0[") + fmt_src(src0) + "] src1[" + fmt_src(src1) + "]" + dbuf;
+                        }
+                        // 6.18 白图定位：CONCAT 打印 NaN 坐标分布（定位读 src0 还是 src1 错位）
+                        std::string nanpat;
+                        if (op == GGML_OP_CONCAT && tensor->extra) {
+                            const int64_t ne0d = tensor->ne[0];
+                            const int64_t ne01s = src0 ? src0->ne[1] : 0;  // context 长度 154
+                            long long cnt_ctx = 0, cnt_x = 0;
+                            long long first_i1 = -1, first_i0 = -1, last_i1 = -1, last_i0 = -1;
+                            for (int64_t i = 0; i < numel; ++i) {
+                                const float v = s_nan_buf[(size_t)i];
+                                if (std::isnan(v)) {
+                                    const int64_t i1 = i / ne0d;  // 行（L 维）
+                                    const int64_t i0 = i % ne0d;  // 列（C 维）
+                                    if (i1 < ne01s) cnt_ctx++; else cnt_x++;
+                                    if (first_i1 < 0) { first_i1 = i1; first_i0 = i0; }
+                                    last_i1 = i1; last_i0 = i0;
+                                }
+                            }
+                            char pbuf[256];
+                            snprintf(pbuf, sizeof(pbuf), " | NaN ctx行=%lld x行=%lld 首=%lld,%lld 末=%lld,%lld src0L=%lld",
+                                     cnt_ctx, cnt_x, first_i1, first_i0, last_i1, last_i0, (long long)ne01s);
+                            nanpat = std::string(pbuf);
+                            // 6.18 白图定位：dst 的 NaN 位置对应的 src0/src1 实际值（判定读错位置 or 未初始化）
+                            auto get_f = [&](const ggml_tensor* st, int64_t i1, int64_t i0) -> float {
+                                if (!st || !st->extra || st->type != GGML_TYPE_F32) return -999.0f;
+                                ggml_tensor_extra_cl* sx = (ggml_tensor_extra_cl*)st->extra;
+                                const int64_t sn = ggml_nelements(st);
+                                if (i1 * st->ne[0] + i0 >= sn) return -888.0f;
+                                float v = -777.0f;
+                                clEnqueueReadBuffer(backend_ctx->queue, sx->data_device, CL_TRUE,
+                                                    sx->offset + st->view_offs + (i1 * st->nb[1] + i0 * st->nb[0]),
+                                                    sizeof(float), &v, 0, nullptr, nullptr);
+                                return v;
+                            };
+                            char xbuf[512];
+                            snprintf(xbuf, sizeof(xbuf),
+                                     " | dst[0][3]=%.4f dst[0][4]=%.4f dst[0][67]=%.4f dst[1][3]=%.4f dst[153][3]=%.4f | src0[0][0]=%.4f src0[0][1]=%.4f src0[0][3]=%.4f src0[0][64]=%.4f src0[0][67]=%.4f src0[1][3]=%.4f | src1[0][3]=%.4f",
+                                     s_nan_buf[3], s_nan_buf[4], s_nan_buf[67], s_nan_buf[1536 + 3], s_nan_buf[153 * 1536 + 3],
+                                     get_f(src0, 0, 0), get_f(src0, 0, 1), get_f(src0, 0, 3), get_f(src0, 0, 64), get_f(src0, 0, 67), get_f(src0, 1, 3), get_f(src1, 0, 3));
+                            // 6.18 白图定位：src0 按 stride 全扫描（kernel 同法）——i0≡3(mod 64) 模式计数
+                            long long stride_nan3 = 0, stride_other = 0, stride_big = 0;
+                            if (src0 && src0->extra && src0->type == GGML_TYPE_F32) {
+                                ggml_tensor_extra_cl* sx0 = (ggml_tensor_extra_cl*)src0->extra;
+                                const int64_t sn0 = ggml_nelements(src0);
+                                const int64_t ne00s = src0->ne[0];
+                                static std::vector<float> srow;
+                                srow.resize(ne00s);
+                                for (int64_t r = 0; r < 4 && r < src0->ne[1]; ++r) {
+                                    clEnqueueReadBuffer(backend_ctx->queue, sx0->data_device, CL_TRUE,
+                                                        sx0->offset + src0->view_offs + r * src0->nb[1],
+                                                        ne00s * sizeof(float), srow.data(), 0, nullptr, nullptr);
+                                    for (int64_t c = 0; c < ne00s; ++c) {
+                                        const float v = srow[(size_t)c];
+                                        if (std::isnan(v) || std::isinf(v) || std::fabs(v) > 1e30f) {
+                                            if (c % 64 == 3) stride_nan3++; else stride_other++;
+                                            if (std::fabs(v) > 1e30f) stride_big++;
+                                        }
+                                    }
+                                }
+                            }
+                            char ybuf[256];
+                            snprintf(ybuf, sizeof(ybuf), " | src0前4行stride扫描: c≡3(mod64)异常=%lld 其他异常=%lld 巨大值=%lld",
+                                     stride_nan3, stride_other, stride_big);
+                            nanpat += std::string(xbuf) + std::string(ybuf);
+                            // 6.18 白图定位：沿 view_src 链扫描 CONT(qkv_cont)/MUL_MAT(qkv Linear) 输出的 0 比例 + c≡3 模式
+                            auto scan_chain = [&](const ggml_tensor* st) -> std::string {
+                                const ggml_tensor* t = st;
+                                std::string out;
+                                for (int hop = 0; hop < 5 && t; ++hop) {
+                                    if (t->op == GGML_OP_CONT || t->op == GGML_OP_MUL_MAT) {
+                                        if (!t->extra || t->type != GGML_TYPE_F32) { t = t->view_src ? t->view_src : (t->src[0] ? t->src[0] : nullptr); continue; }
+                                        ggml_tensor_extra_cl* tx = (ggml_tensor_extra_cl*)t->extra;
+                                        const int64_t tne0 = t->ne[0], tne1 = t->ne[1];
+                                        const int64_t nrows = tne1 < 4 ? tne1 : 4;
+                                        long long zc = 0, c3 = 0, bad = 0;
+                                        static std::vector<float> trow;
+                                        trow.resize(tne0);
+                                        for (int64_t r = 0; r < nrows; ++r) {
+                                            clEnqueueReadBuffer(backend_ctx->queue, tx->data_device, CL_TRUE,
+                                                                tx->offset + t->view_offs + r * t->nb[1],
+                                                                tne0 * sizeof(float), trow.data(), 0, nullptr, nullptr);
+                                            for (int64_t c = 0; c < tne0; ++c) {
+                                                const float v = trow[(size_t)c];
+                                                if (v == 0.0f) zc++;
+                                                if (std::isnan(v) || std::isinf(v) || std::fabs(v) > 1e30f) {
+                                                    bad++;
+                                                    if (c % 64 == 3) c3++;
+                                                }
+                                            }
+                                        }
+                                        char cb[256];
+                                        snprintf(cb, sizeof(cb), " | %s(%s) ne=[%lld,%lld] 前%lld行: 零=%lld(%.0f%%) c≡3异常=%lld 总异常=%lld",
+                                                 ggml_op_name(t->op), t->name, (long long)tne0, (long long)tne1,
+                                                 (long long)nrows, zc, nrows * tne0 > 0 ? 100.0 * zc / (nrows * tne0) : 0.0, c3, bad);
+                                        out += cb;
+                                    }
+                                    t = t->view_src ? t->view_src : (t->src[0] ? t->src[0] : nullptr);
+                                }
+                                return out;
+                            };
+                            nanpat += scan_chain(src0);
+                            // 6.18 白图定位：view 链关键节点对比（拆短日志避免 logcat 截断）
+                            {
+                                auto print_node = [&](const char* tag, const ggml_tensor* t) {
+                                    if (!t) { OPENCL_NAN_LOG("[VCHAIN] %s=null", tag); return; }
+                                    ggml_tensor_extra_cl* vx = t->extra ? (ggml_tensor_extra_cl*)t->extra : nullptr;
+                                    const ggml_tensor* vs = t->view_src;
+                                    OPENCL_NAN_LOG("[VCHAIN] %s op=%s ne=[%lld,%lld,%lld,%lld] off=%llu vo=%llu dev=%p extra=%p vs_op=%s vs_off=%llu vs_vo=%llu",
+                                            tag, ggml_op_name(t->op),
+                                            (long long)t->ne[0], (long long)t->ne[1], (long long)t->ne[2], (long long)t->ne[3],
+                                            vx ? (unsigned long long)vx->offset : 0ull, (unsigned long long)t->view_offs,
+                                            vx ? (void*)vx->data_device : nullptr, (void*)vx,
+                                            vs ? ggml_op_name(vs->op) : "-",
+                                            vs ? (unsigned long long)((ggml_tensor_extra_cl*)vs->extra)->offset : 0ull,
+                                            vs ? (unsigned long long)vs->view_offs : 0ull);
+                                };
+                                // src0 的 view_src 链：src0 -> q(view) -> qkv_cont(CONT)
+                                const ggml_tensor* qv = src0 ? src0->view_src : nullptr;
+                                const ggml_tensor* contv = qv ? qv->view_src : nullptr;
+                                const ggml_tensor* permv = contv ? contv->src[0] : nullptr;
+                                const ggml_tensor* mmv = permv ? permv->src[0] : nullptr;
+                                OPENCL_NAN_LOG("[VCHAIN] src0_extra=%p dev=%p", src0 && src0->extra ? (void*)((ggml_tensor_extra_cl*)src0->extra) : nullptr,
+                                        src0 && src0->extra ? (void*)((ggml_tensor_extra_cl*)src0->extra)->data_device : nullptr);
+                                print_node("q(view)", qv);
+                                print_node("qkv_cont(CONT)", contv);
+                                print_node("permute", permv);
+                                print_node("qkv_lin(MUL_MAT)", mmv);
+                                // 用 qkv_cont 的 extra 读 (0,3) 对比 src0 的 extra 读 (0,3)
+                                if (contv && contv->extra && contv->type == GGML_TYPE_F32) {
+                                    ggml_tensor_extra_cl* cx = (ggml_tensor_extra_cl*)contv->extra;
+                                    float v1 = -1.0f, v2 = -2.0f;
+                                    clEnqueueReadBuffer(backend_ctx->queue, cx->data_device, CL_TRUE,
+                                                        cx->offset + contv->view_offs, sizeof(float), &v1, 0, nullptr, nullptr);
+                                    ggml_tensor_extra_cl* sx0 = (ggml_tensor_extra_cl*)src0->extra;
+                                    clEnqueueReadBuffer(backend_ctx->queue, sx0->data_device, CL_TRUE,
+                                                        sx0->offset + src0->view_offs, sizeof(float), &v2, 0, nullptr, nullptr);
+                                    OPENCL_NAN_LOG("[VCHAIN] 同位置(0,0): cont读=%.4f src0读=%.4f dev相同=%d", v1, v2,
+                                            cx->data_device == sx0->data_device);
+                                }
+                            }
+                        }
+                        OPENCL_NAN_LOG("[OPENCL-NAN] op=%s name=%s numel=%lld nan=%zu inf=%zu min=%.4f max=%.4f "
+                                       "dst_ne=[%lld,%lld,%lld,%lld] src0(op=%s ne=[%lld,%lld,%lld,%lld] t=%d nan=%zu inf=%zu) src1(op=%s ne=[%lld,%lld,%lld,%lld] t=%d nan=%zu inf=%zu)%s%s",
+                                ggml_op_name(op), tensor->name, (long long)numel, nan_cnt, inf_cnt, mn, mx,
+                                (long long)tensor->ne[0], (long long)tensor->ne[1], (long long)tensor->ne[2], (long long)tensor->ne[3],
+                                src0 ? ggml_op_name(src0->op) : "-",
+                                src0 ? (long long)src0->ne[0] : 0, src0 ? (long long)src0->ne[1] : 0, src0 ? (long long)src0->ne[2] : 0, src0 ? (long long)src0->ne[3] : 0,
+                                src0 ? (int)src0->type : -1, s0n, s0i,
+                                src1 ? ggml_op_name(src1->op) : "-",
+                                src1 ? (long long)src1->ne[0] : 0, src1 ? (long long)src1->ne[1] : 0, src1 ? (long long)src1->ne[2] : 0, src1 ? (long long)src1->ne[3] : 0,
+                                src1 ? (int)src1->type : -1, s1n, s1i, srcinfo.c_str(), nanpat.c_str());
+                        s_nan_reported = true;
+                    }
+                }
+            }
+        }
+    }
+
     return true;
 }

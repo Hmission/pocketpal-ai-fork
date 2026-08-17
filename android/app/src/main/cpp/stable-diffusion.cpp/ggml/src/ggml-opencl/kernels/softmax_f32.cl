@@ -78,30 +78,53 @@ kernel void kernel_soft_max(
         slope = pow(base, exp);
     }
 
-    // parallel max
+    // 6.18 white-image root-cause fix: on Adreno a work-group(64) may be split
+    // into multiple waves, so sub_group_reduce only covers part of a row;
+    // a wave full of -inf (attention mask) gets max=-inf -> exp(NaN).
+    // Use local memory + barrier for work-group-wide reduce (wave-size agnostic).
+    #define SOFTMAX_WG_SIZE 64
+    local float shared[SOFTMAX_WG_SIZE];
+    const uint lid = get_local_id(0);
+
+    // parallel max (work-group wide)
     float lmax = psrc2 ? psrc2[i02] : -INFINITY;
-    for (int i00 = get_local_id(0); i00 < ne00; i00 += get_local_size(0)) {
+    for (int i00 = lid; i00 < ne00; i00 += get_local_size(0)) {
         lmax = fmax(lmax, psrc0[i00]*scale + (pmask ? slope*pmask[i00] : 0.0f));
     }
-    float max = sub_group_reduce_max(lmax);
+    shared[lid] = lmax;
+    barrier(CLK_LOCAL_MEM_FENCE);
+    for (int s = SOFTMAX_WG_SIZE/2; s > 0; s >>= 1) {
+        if (lid < s) {
+            shared[lid] = fmax(shared[lid], shared[lid + s]);
+        }
+        barrier(CLK_LOCAL_MEM_FENCE);
+    }
+    const float max = shared[0];
 
-    // parallel sum
+    // parallel sum (work-group wide)
     float lsum = 0.0f;
-    for (int i00 = get_local_id(0); i00 < ne00; i00 += get_local_size(0)) {
+    for (int i00 = lid; i00 < ne00; i00 += get_local_size(0)) {
         float exp_psrc0 = exp((psrc0[i00]*scale + (pmask ? slope*pmask[i00] : 0.0f)) - max);
         lsum += exp_psrc0;
         // Remember the result of exp here. exp is expensive, so we really do not
         // wish to compute it twice.
         pdst[i00] = exp_psrc0;
     }
-
-    float sum = sub_group_reduce_add(lsum);
+    shared[lid] = lsum;
+    barrier(CLK_LOCAL_MEM_FENCE);
+    for (int s = SOFTMAX_WG_SIZE/2; s > 0; s >>= 1) {
+        if (lid < s) {
+            shared[lid] += shared[lid + s];
+        }
+        barrier(CLK_LOCAL_MEM_FENCE);
+    }
+    float sum = shared[0];
 
     if (psrc2) {
         sum += exp(psrc2[i02] - max);
     }
 
-    for (int i00 = get_local_id(0); i00 < ne00; i00 += get_local_size(0)) {
+    for (int i00 = lid; i00 < ne00; i00 += get_local_size(0)) {
         pdst[i00] /= sum;
     }
 }

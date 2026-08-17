@@ -71,7 +71,8 @@ export const BUILTIN_MANIFESTS: ImageGenManifest[] = [
       vae: 'sd35_vae.safetensors',
     },
     // P6 提速：SD3.5 裸跑 20 步过慢（实测 375s+），默认降 10 步求速度
-    // 6.6 实验性标记：真机取证长时出图必被 weak-ref 溢出崩溃杀死（tombstone_04），实质不可用
+    // 6.16 验证期：OpenCL 端侧每步 ~11 分钟（Adreno 740），测试临时降 2 步
+    // 6.16 已闭环：512px VAE tiled 降级修复（1.94GB→416MB）+ K90 直接分配成功，恢复正式参数
     experimental: true,
     defaults: {steps: 10, cfg: 4.5, size: 512, backend: 'OpenCL'},
     note: 'MMDiT，端侧不带 T5；CPU 后端 10 步约 3 分钟',
@@ -85,10 +86,10 @@ export const BUILTIN_MANIFESTS: ImageGenManifest[] = [
       llm: 'zimage_llm.gguf',
       vae: 'ae.safetensors',
     },
-    // 6.6 实验性标记：CPU 后端分钟级 + 长时出图必被 weak-ref 溢出崩溃杀死，实质不可用
+    // 6.16 已跑通：K90（Adreno 840）8 步 512px 全流程 39.7 分钟，LLM 编码 141s + 采样 nan/inf=0 + VAE 1664MB 直接分配
     experimental: true,
     defaults: {steps: 8, cfg: 1, size: 512, backend: 'OpenCL'},
-    note: '无审查，中文优化；CPU 后端 8 步预计数分钟',
+    note: '无审查，中文优化；K90 (Adreno 840) 8 步 512px 约 40 分钟；需 6.9GB 权重，低端 GPU 可能内存不足',
   },
   {
     // P6 DreamLite：统一生图+编辑。UNet 0.39B(MNN)+TinyVAE+TE(Qwen-VL 4bit GGUF)
