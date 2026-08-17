@@ -249,13 +249,8 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
   // GGML_OPENCL_ADRENO_XMEM_GEMM=1 启用外部内存零拷贝 GEMM 管线（上次测试从未设过）。
   // GGML_OPENCL_KERNEL_CACHE_DIR 缓存编译后的内核二进制（避免重复编译开销）。
   // 无害：OpenCL 非编译后端时被引擎忽略。
-  // 6.18 白图排查第 2 轮：采样后 latent 全 NaN（init 干净），xmem GEMM 为头号嫌疑
-  // （bf16 权重 fp16 中间精度溢出）→ 置 0 对照实验，确认后决定禁用或修复。
-  setenv("GGML_OPENCL_ADRENO_XMEM_GEMM", "0", 0);
-  // 6.18 白图排查第 3 轮：Z-Image (Q4_K) 第 1 步也全 NaN → 排除 bf16 存储；
-  // 实锤 Adreno 专用 GEMM 内核 fp16 累积（dequant 转 half + half16 acc）在 MMDiT
-  // 深度网络下精度崩坏 → 禁用走通用 fp32 路径验证。
-  setenv("GGML_OPENCL_DISABLE_ADRENO_KERNELS", "1", 0);
+  // 6.18 白图排查曾置 0/禁用（ADRENO_XMEM_GEMM=0、DISABLE_ADRENO_KERNELS=1），
+  // 但最终根因是 RMS_NORM+MUL 融合跳写（与 GEMM 无关）→ 6.17 恢复默认内核对照验证提速。
   setenv("GGML_OPENCL_KERNEL_CACHE_DIR", "/data/data/com.pocketpal/files/cl-cache", 0);
   dbg_log("==== loadModel begin ====");
   dbg_mem("loadModel entry");
