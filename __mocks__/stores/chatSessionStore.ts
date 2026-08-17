@@ -131,6 +131,12 @@ export const mockChatSessionStore = {
   recordCompletionSnapshot: jest.fn(),
   setBannerDismissed: jest.fn(),
   markPalLoadHintSeen: jest.fn(),
+  // 任务模型选择会话偏好（SPEC §9.3）
+  taskModelChoice: {write: null, code: null} as Record<
+    'write' | 'code',
+    string | null
+  >,
+  setTaskModelChoice: jest.fn(),
 };
 
 Object.defineProperty(mockChatSessionStore, 'isGeneratingToolCall', {

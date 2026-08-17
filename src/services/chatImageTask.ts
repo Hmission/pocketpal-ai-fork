@@ -22,15 +22,18 @@ export interface InlineImageResult {
   error: string | null;
   /** 管家增强后的英文 SD 提示词（未增强/失败为 null，供任务卡「管家优化为」展示） */
   enhanced: string | null;
+  /** 管家就绪但增强失败（显式失败替代静默回退，2026-08-17 P0 净化） */
+  enhancedFailed?: boolean;
 }
 
 export async function runInlineImageTask(
   prompt: string,
 ): Promise<InlineImageResult> {
   // 0. 提示词增强：管家模型就绪时，把中文描述扩写成英文 SD 提示词（提质）。
-  //    失败/未就绪不阻断出图，回退原始 prompt；enhanced 带回供卡片展示（决策可见）。
+  //    未就绪 = 正常态（直接原文，不标记）；就绪但失败 = 显式失败（enhancedFailed，任务卡可见）。
   let sdPrompt = prompt;
   let enhanced: string | null = null;
+  let enhancedFailed = false;
   try {
     if (promptWriter.isLoaded) {
       const out = await promptWriter.writePrompt(prompt);
@@ -39,8 +42,9 @@ export async function runInlineImageTask(
         enhanced = out;
       }
     }
-  } catch {
-    // 增强失败静默回退
+  } catch (e) {
+    console.error('[chatImageTask] 管家提示词增强失败:', e);
+    enhancedFailed = true;
   }
 
   // 1. DreamLite 单通道：内部确保引擎加载（engineMutex 互斥），
@@ -52,32 +56,56 @@ export async function runInlineImageTask(
     sdPrompt,
   );
   if (!uri) {
-    return {uri: null, error: imageGenStore.error ?? '出图失败', enhanced: null};
+    return {
+      uri: null,
+      error: imageGenStore.error ?? '出图失败',
+      enhanced: null,
+      enhancedFailed,
+    };
   }
-  return {uri, error: null, enhanced};
+  return {uri, error: null, enhanced, enhancedFailed};
 }
 
 /**
- * runImageTaskCard — 任务卡片闭环（单链路：scheduler 首次触发 / 「再来一张」/
- * 失败卡「重试」共用）：插卡片→出图→回写卡片。
- *   成功：imageUris=[uri]，metadata.imagePrompt 留作再生成/编辑锚点
- *   失败：文本卡片 + metadata.imageTaskFailed（渲染侧出「重试」动作）
+ * 任务卡片闭环统一 spec（P3 骨架收敛，批次4）：
+ * 生图/编辑两个 Card 入口只差 spec（占位文案/metadata/执行器/回写策略），
+ * 骨架单点维护于 runTaskCardCore。
+ */
+interface ImageTaskCardSpec {
+  cardIdPrefix: string;
+  placeholderText: string;
+  placeholderMetadata: Record<string, unknown>;
+  execute: () => Promise<InlineImageResult>;
+  successUpdate: (result: InlineImageResult) => {
+    text: string;
+    imageUris?: string[];
+    metadata: Record<string, unknown>;
+  };
+  failureUpdate: (error: string | null) => {
+    text: string;
+    metadata: Record<string, unknown>;
+  };
+}
+
+/**
+ * runTaskCardCore — 任务卡片闭环统一骨架（P3 骨架收敛，批次4）：
+ * 进行中横幅让位 → 插占位卡 → 核心执行 → 成功/失败回写（finally 复位标志）。
  * 引擎驻留语义：出图后不卸载（engineMutex 仅在 chat 加载时挤占），
  * 复用路径（再来一张/重试）命中已加载引擎时秒级出图。
  */
-export async function runImageTaskCard(prompt: string): Promise<void> {
+async function runTaskCardCore(spec: ImageTaskCardSpec): Promise<void> {
   // 聊天内联生图进行中：顶部横幅让位于卡片内嵌动效（ImageTaskProgress），
   // finally 复位（含失败/异常路径），其余引擎任务仍走横幅。
   imageGenStore.setChatInlineGenerating(true);
   try {
-    // 决策可见（v2.1）：占位卡文案分步——识别意图 → 管家优化提示词 → 出图（动效由 ImageTaskProgress）。
+    // 决策可见（v2.1）：占位卡文案分步——识别意图 → 前置准备 → 出图（动效由 ImageTaskProgress）。
     const cardMsg = {
-      id: `imgtask-${Date.now()}`,
+      id: `${spec.cardIdPrefix}-${Date.now()}`,
       author: assistant,
       createdAt: Date.now(),
-      text: `🎨 已识别为生图任务，管家优化提示词中…`,
+      text: spec.placeholderText,
       type: 'text',
-      metadata: {imageTask: true, imagePrompt: prompt, modelName: '生图引擎'},
+      metadata: spec.placeholderMetadata,
     } as MessageType.Text;
     await chatSessionStore.addMessageToCurrentSession(cardMsg);
     const sessionId = chatSessionStore.activeSessionId;
@@ -87,27 +115,62 @@ export async function runImageTaskCard(prompt: string): Promise<void> {
     // DB 可能覆写消息 id → 插入后读回真实 id，保证后续 update 命中
     const cardId = chatSessionStore.currentSessionMessages[0]?.id ?? cardMsg.id;
 
-    const result = await runInlineImageTask(prompt);
+    const result = await spec.execute();
     if (result.uri) {
-      // 管家增强提示词写入 metadata（与原文不同才写），渲染侧小字展示「管家优化为」
-      const metadata =
-        result.enhanced && result.enhanced !== prompt
-          ? {imageEnhancedPrompt: result.enhanced}
-          : {};
-      await chatSessionStore.updateMessage(cardId, sessionId, {
-        text: `🎨 已为你生成：${prompt}`,
-        imageUris: [result.uri],
-        metadata,
-      });
+      await chatSessionStore.updateMessage(
+        cardId,
+        sessionId,
+        spec.successUpdate(result),
+      );
     } else {
-      await chatSessionStore.updateMessage(cardId, sessionId, {
-        text: `⚠️ 生图未完成：${result.error ?? '未知错误'}`,
-        metadata: {imageTaskFailed: true},
-      });
+      await chatSessionStore.updateMessage(
+        cardId,
+        sessionId,
+        spec.failureUpdate(result.error),
+      );
     }
   } finally {
     imageGenStore.setChatInlineGenerating(false);
   }
+}
+
+/**
+ * runImageTaskCard — 生图任务卡片闭环（单链路：scheduler 首次触发 / 「再来一张」/
+ * 失败卡「重试」共用）：插卡片→出图→回写卡片。
+ *   成功：imageUris=[uri]，metadata.imagePrompt 留作再生成/编辑锚点
+ *   失败：文本卡片 + metadata.imageTaskFailed（渲染侧出「重试」动作）
+ */
+export async function runImageTaskCard(prompt: string): Promise<void> {
+  return runTaskCardCore({
+    cardIdPrefix: 'imgtask',
+    placeholderText: `🎨 已识别为生图任务，管家优化提示词中…`,
+    placeholderMetadata: {
+      imageTask: true,
+      imagePrompt: prompt,
+      modelName: '生图引擎',
+    },
+    execute: () => runInlineImageTask(prompt),
+    successUpdate: result => {
+      // 管家增强提示词写入 metadata（与原文不同才写），渲染侧小字展示「管家优化为」；
+      // 增强失败写 enhancedFailed（渲染侧展示「提示词未增强」——显式失败，不静默）
+      const metadata: Record<string, unknown> = {};
+      if (result.enhanced && result.enhanced !== prompt) {
+        metadata.imageEnhancedPrompt = result.enhanced;
+      }
+      if (result.enhancedFailed) {
+        metadata.enhancedFailed = true;
+      }
+      return {
+        text: `🎨 已为你生成：${prompt}`,
+        imageUris: [result.uri!],
+        metadata,
+      };
+    },
+    failureUpdate: error => ({
+      text: `⚠️ 生图未完成：${error ?? '未知错误'}`,
+      metadata: {imageTaskFailed: true},
+    }),
+  });
 }
 
 /**
@@ -146,51 +209,33 @@ export async function runEditImageTaskCard(
   sourceUri: string,
   instruction: string,
 ): Promise<void> {
-  imageGenStore.setChatInlineGenerating(true);
-  try {
-    const cardMsg = {
-      id: `edittask-${Date.now()}`,
-      author: assistant,
-      createdAt: Date.now(),
-      text: `🖼️ 已识别为编辑任务，编码源图中…`,
-      type: 'text',
+  return runTaskCardCore({
+    cardIdPrefix: 'edittask',
+    placeholderText: `🖼️ 已识别为编辑任务，编码源图中…`,
+    placeholderMetadata: {
+      editTask: true,
+      editSourceUri: sourceUri,
+      editInstruction: instruction,
+      modelName: '生图引擎',
+    },
+    execute: () => runInlineEditTask(sourceUri, instruction),
+    successUpdate: result => ({
+      text: `🖼️ 已为你编辑：${instruction}`,
+      imageUris: [result.uri!],
       metadata: {
         editTask: true,
         editSourceUri: sourceUri,
         editInstruction: instruction,
-        modelName: '生图引擎',
       },
-    } as MessageType.Text;
-    await chatSessionStore.addMessageToCurrentSession(cardMsg);
-    const sessionId = chatSessionStore.activeSessionId;
-    if (!sessionId) {
-      return;
-    }
-    const cardId = chatSessionStore.currentSessionMessages[0]?.id ?? cardMsg.id;
-
-    const result = await runInlineEditTask(sourceUri, instruction);
-    if (result.uri) {
-      await chatSessionStore.updateMessage(cardId, sessionId, {
-        text: `🖼️ 已为你编辑：${instruction}`,
-        imageUris: [result.uri],
-        metadata: {
-          editTask: true,
-          editSourceUri: sourceUri,
-          editInstruction: instruction,
-        },
-      });
-    } else {
-      await chatSessionStore.updateMessage(cardId, sessionId, {
-        text: `⚠️ 编辑未完成：${result.error ?? '未知错误'}`,
-        metadata: {
-          editTask: true,
-          editTaskFailed: true,
-          editSourceUri: sourceUri,
-          editInstruction: instruction,
-        },
-      });
-    }
-  } finally {
-    imageGenStore.setChatInlineGenerating(false);
-  }
+    }),
+    failureUpdate: error => ({
+      text: `⚠️ 编辑未完成：${error ?? '未知错误'}`,
+      metadata: {
+        editTask: true,
+        editTaskFailed: true,
+        editSourceUri: sourceUri,
+        editInstruction: instruction,
+      },
+    }),
+  });
 }

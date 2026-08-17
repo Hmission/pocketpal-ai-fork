@@ -133,6 +133,13 @@ class ChatSessionStore {
   consecutiveFullFailures: number = 0;
   palLoadHintSeen: Set<string> = new Set();
 
+  // 任务模型选择会话偏好（SPEC §9.3）：write/code → 弹窗确认后记住的模型 id；
+  // '__current__' = 继续当前模型。会话级，不跨会话持久化（防臃肿）。
+  taskModelChoice: Record<'write' | 'code', string | null> = {
+    write: null,
+    code: null,
+  };
+
   constructor() {
     makeAutoObservable(this);
     this.initialize();
@@ -399,6 +406,8 @@ class ChatSessionStore {
       this.newChatSettingsSource = 'pal'; // Reset to default for new chat
       this.newChatThinkingOverride = undefined;
       this.newChatReasoningEffort = undefined;
+      // 会话级任务模型偏好随新会话重置（SPEC §9.3）
+      this.taskModelChoice = {write: null, code: null};
       // Do not copy completion settings from session to global settings
       // Instead, preserve global settings as they are
       this.exitEditMode();
@@ -435,6 +444,13 @@ class ChatSessionStore {
     }
   }
 
+  /** 记录任务模型选择（SPEC §9.3 会话级记住）；null 清除 */
+  setTaskModelChoice(task: 'write' | 'code', modelId: string | null) {
+    runInAction(() => {
+      this.taskModelChoice[task] = modelId;
+    });
+  }
+
   async setActiveSession(sessionId: string): Promise<void> {
     const session = this.sessions.find(s => s.id === sessionId);
 
@@ -451,6 +467,8 @@ class ChatSessionStore {
       this.newChatSettingsSource = 'pal'; // Reset for consistency
       this.newChatThinkingOverride = undefined;
       this.newChatReasoningEffort = undefined;
+      // 会话级任务模型偏好随会话切换重置（SPEC §9.3）
+      this.taskModelChoice = {write: null, code: null};
       this.lastCompletionResult = this.hydrateCompletionSnapshot(session);
       this.dismissedBannerVariants = new Set();
       this.consecutiveFullFailures = 0;

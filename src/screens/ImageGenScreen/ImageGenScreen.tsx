@@ -52,6 +52,7 @@ export const ImageGenScreen: React.FC = observer(() => {
   const [steps, setSteps] = React.useState('4'); // DreamLite mobile 官方 4 步（DMD2 蒸馏）
   const [cfg, setCfg] = React.useState('2');
   const [size, setSize] = React.useState(512);
+  const [seed, setSeed] = React.useState(''); // 6.18 空=随机，填数可复现/调试
   const [scanning, setScanning] = React.useState(false);
   const [now, setNow] = React.useState(Date.now());
   const [showAdvanced, setShowAdvanced] = React.useState(false);
@@ -494,6 +495,7 @@ export const ImageGenScreen: React.FC = observer(() => {
       cfg: parseFloat(cfg) || 2,
       width: size,
       height: size,
+      seed: seed.trim() ? parseInt(seed, 10) : undefined,
       negativePrompt: negativePrompt.trim(),
       loraPath: m?.lora ? `${AIOS_MODELS_DIR}/${m.lora}` : undefined,
       loraMultiplier: m?.loraMultiplier,
@@ -645,6 +647,7 @@ export const ImageGenScreen: React.FC = observer(() => {
           cfg={cfg}
           size={size}
           ratio={ratio}
+          seed={seed}
           isDream={isDream}
           editArming={editArming}
           editRgb={editRgb}
@@ -659,6 +662,7 @@ export const ImageGenScreen: React.FC = observer(() => {
           onNegativePromptChange={setNegativePrompt}
           onStepsChange={setSteps}
           onCfgChange={setCfg}
+          onSeedChange={setSeed}
           onSizeChange={setSize}
           onRatioChange={setRatio}
           onToggleAdvanced={() => setShowAdvanced(a => !a)}

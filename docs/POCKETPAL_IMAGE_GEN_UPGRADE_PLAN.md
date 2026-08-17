@@ -199,9 +199,9 @@ superseded_by: POCKETPAL_IMAGEGEN_UI_SPEC
 |---|---|---|
 | P6-1 | LoRA 通道基建（JNI sd_lora_t + Kotlin + manifest.lora + store 透传） | ✅ |
 | P6-2 | SD3.5 默认 20→10 步提速（治 375s） | ✅ |
-| P6-3 | 下载 SDXL-Lightning 4-step + SDXL-base Q4，建快+好 SDXL 选项 | ⏳ |
-| P6-4 | 引 MNN 引擎 + SANA 端侧（新引擎，全都要） | ⏳ |
-| P6-5 | DreamLite 接入（manifest 声明+RN 架构先行） | ⏳ 见 6.3 |
+| P6-3 | 下载 SDXL-Lightning 4-step + SDXL-base Q4，建快+好 SDXL 选项 | ⏳ 挂起（复活前提见 docs/internal/AIOS_IMAGEGEN_SPEEDUP_ASSESSMENT.md §1.5） |
+| P6-4 | 引 MNN 引擎 + SANA 端侧（新引擎，全都要） | ⏳ 挂起（MNN 部分已被 ORT 路线替代——DreamLite 走 ORT；SANA 未评估，见提速评估 §1.4） |
+| P6-5 | DreamLite 接入（manifest 声明+RN 架构先行） | ✅ 全闭环（实际走 ONNX Runtime 而非 MNN；真实文生图+编辑+聊天闭环，见 §6.3-6.5 与 MASTER_LOG） |
 
 ### 6.3 DreamLite 接入专项（Phase 0 已完成）
 

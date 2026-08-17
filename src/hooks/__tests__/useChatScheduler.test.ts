@@ -9,6 +9,9 @@ import {
 import {findModelForTask} from '../../store/modelCapabilityRegistry';
 import {promptWriter} from '../../services/promptWriter';
 import {awaitEngineReady} from '../../utils/engineReady';
+import {askModelSwitch} from '../../components/ui/ModelSwitchDialog';
+import {extractAndSaveMemories} from '../../services/aiosMemory';
+import {appendConversation} from '../../services/aiosMemory/conversationLog';
 import {MessageType} from '../../utils/types';
 import {user, assistant} from '../../utils/chat';
 
@@ -32,12 +35,24 @@ jest.mock('../../utils/engineReady', () => ({
   awaitEngineReady: jest.fn(),
   engineIsBusy: jest.fn().mockReturnValue(false),
 }));
+jest.mock('../../components/ui/ModelSwitchDialog', () => ({
+  askModelSwitch: jest.fn(),
+}));
+jest.mock('../../services/aiosMemory', () => ({
+  extractAndSaveMemories: jest.fn().mockResolvedValue(undefined),
+}));
+jest.mock('../../services/aiosMemory/conversationLog', () => ({
+  appendConversation: jest.fn().mockResolvedValue(undefined),
+}));
 
 const mockRunCard = runImageTaskCard as jest.Mock;
 const mockRunEditCard = runEditImageTaskCard as jest.Mock;
 const mockFind = findModelForTask as jest.Mock;
 const mockPromptChat = promptWriter.chat as jest.Mock;
 const mockAwaitReady = awaitEngineReady as jest.Mock;
+const mockAskSwitch = askModelSwitch as jest.Mock;
+const mockExtract = extractAndSaveMemories as jest.Mock;
+const mockAppendConv = appendConversation as jest.Mock;
 
 const msg = (text: string): MessageType.PartialText =>
   ({text}) as MessageType.PartialText;
@@ -55,10 +70,14 @@ describe('useChatScheduler', () => {
     mockRunEditCard.mockReset();
     mockFind.mockReset();
     mockAwaitReady.mockResolvedValue(true);
+    mockAskSwitch.mockReset();
+    mockAskSwitch.mockResolvedValue('load');
+    (promptWriter.ensureLoaded as jest.Mock).mockResolvedValue(true);
     (modelStore.selectModel as jest.Mock).mockReset();
     (promptWriter as any).isLoaded = false;
     (modelStore as any).engine = undefined;
     (modelStore as any).lastUsedModelId = undefined;
+    (chatSessionStore as any).taskModelChoice = {write: null, code: null};
   });
 
   it('前置画动词路由 image：插入用户消息后委托 runImageTaskCard 卡片闭环', async () => {
@@ -126,27 +145,44 @@ describe('useChatScheduler', () => {
     expect(handleSendPress).not.toHaveBeenCalled();
   });
 
-  it('chitchat 管家就绪但有 lastUsedModel（生图后）：走懒切换恢复聊天模型', async () => {
+  it('chitchat 管家直答：补接记忆提取与对话日志（P2 修复：管家模式记忆落盘）', async () => {
+    jest.useFakeTimers();
+    (promptWriter as any).isLoaded = true;
+    mockPromptChat.mockResolvedValue('管家回复');
+    const {wrapped, handleSendPress} = setup();
+
+    await act(async () => {
+      await wrapped(msg('我喜欢喝茶，最爱龙井'));
+    });
+
+    // 1.2s 延迟后触发提取 + 对话日志（管家直答绕过 run_finished 钩子的补接）
+    await act(async () => {
+      jest.advanceTimersByTime(1300);
+    });
+    expect(mockExtract).toHaveBeenCalledWith('我喜欢喝茶，最爱龙井', '管家回复');
+    expect(mockAppendConv).toHaveBeenCalledWith('我喜欢喝茶，最爱龙井', '管家回复');
+    expect(handleSendPress).not.toHaveBeenCalled();
+    jest.useRealTimers();
+  });
+
+  it('chitchat 管家就绪但有 lastUsedModel（生图后）：仍管家直答（SPEC §9.3 删补丁条件）', async () => {
     (promptWriter as any).isLoaded = true;
     (modelStore as any).lastUsedModelId = 'model-1';
-    (modelStore.selectModel as jest.Mock).mockImplementation(() => {
-      (modelStore as any).engine = {completion: jest.fn()};
-    });
+    mockPromptChat.mockResolvedValue('管家回复');
     const {wrapped, handleSendPress} = setup();
 
     await act(async () => {
       await wrapped(msg('你好呀'));
     });
 
-    expect(mockPromptChat).not.toHaveBeenCalled();
-    expect(modelStore.selectModel).toHaveBeenCalledWith(
-      expect.objectContaining({id: 'model-1'}),
-    );
-    expect(handleSendPress).toHaveBeenCalled();
+    expect(mockPromptChat).toHaveBeenCalledWith('你好呀');
+    expect(modelStore.selectModel).not.toHaveBeenCalled();
+    expect(handleSendPress).not.toHaveBeenCalled();
   });
 
-  it('懒切换无候选（引擎未加载且无可恢复模型）：系统提示，不加载不发送', async () => {
+  it('chitchat 管家未就绪且懒加载失败：TaskErrorCard no_model，不发送', async () => {
     mockFind.mockReturnValue(null);
+    (promptWriter.ensureLoaded as jest.Mock).mockResolvedValue(false);
     const {wrapped, handleSendPress} = setup();
 
     await act(async () => {
@@ -154,13 +190,17 @@ describe('useChatScheduler', () => {
     });
 
     expect(chatSessionStore.addMessageToCurrentSession).toHaveBeenCalledWith(
-      expect.objectContaining({metadata: {system: true}}),
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          taskError: expect.objectContaining({code: 'no_model', retryText: '你好呀'}),
+        }),
+      }),
     );
     expect(modelStore.selectModel).not.toHaveBeenCalled();
     expect(handleSendPress).not.toHaveBeenCalled();
   });
 
-  it('懒切换有候选：加载完成+引擎就绪后才送消息（时差双保险）', async () => {
+  it('write 弹窗确认加载：加载完成+引擎就绪后才送消息（决策可见+双保险）', async () => {
     mockFind.mockReturnValue({id: 'model-2', name: 'Test Model'});
     (modelStore.selectModel as jest.Mock).mockImplementation(() => {
       (modelStore as any).engine = {completion: jest.fn()};
@@ -168,33 +208,34 @@ describe('useChatScheduler', () => {
     const {wrapped, handleSendPress} = setup();
 
     await act(async () => {
-      await wrapped(msg('你好呀'));
+      await wrapped(msg('帮我写一篇作文'));
     });
 
-    expect(modelStore.selectModel).toHaveBeenCalled();
+    expect(mockAskSwitch).toHaveBeenCalledWith(
+      expect.objectContaining({task: 'write', candidateName: 'Test Model'}),
+    );
+    expect(modelStore.selectModel).toHaveBeenCalledWith(
+      expect.objectContaining({id: 'model-2'}),
+    );
     expect(mockAwaitReady).toHaveBeenCalled();
-    expect(handleSendPress).toHaveBeenCalledWith(msg('你好呀'));
+    expect(handleSendPress).toHaveBeenCalledWith(msg('帮我写一篇作文'));
   });
 
-  it('懒切换优先恢复 lastUsedModel（生图后切回聊天的懒恢复锚点）', async () => {
-    (modelStore as any).lastUsedModelId = 'model-1';
-    (modelStore.selectModel as jest.Mock).mockImplementation(() => {
-      (modelStore as any).engine = {completion: jest.fn()};
-    });
+  it('write 弹窗取消：不加载不发送（用户主权）', async () => {
+    mockFind.mockReturnValue({id: 'model-2', name: 'Test Model'});
+    mockAskSwitch.mockResolvedValue('cancel');
     const {wrapped, handleSendPress} = setup();
 
     await act(async () => {
-      await wrapped(msg('你好呀'));
+      await wrapped(msg('帮我写一篇作文'));
     });
 
-    expect(modelStore.selectModel).toHaveBeenCalledWith(
-      expect.objectContaining({id: 'model-1'}),
-    );
-    expect(mockFind).not.toHaveBeenCalled();
-    expect(handleSendPress).toHaveBeenCalled();
+    expect(mockAskSwitch).toHaveBeenCalled();
+    expect(modelStore.selectModel).not.toHaveBeenCalled();
+    expect(handleSendPress).not.toHaveBeenCalled();
   });
 
-  it('懒切换引擎未就绪（awaitEngineReady 超时）：提示收尾中，不送消息', async () => {
+  it('write 弹窗确认加载但引擎未就绪（awaitEngineReady 超时）：TaskErrorCard busy，不送消息', async () => {
     mockFind.mockReturnValue({id: 'model-2', name: 'Test Model'});
     mockAwaitReady.mockResolvedValue(false);
     (modelStore.selectModel as jest.Mock).mockImplementation(() => {
@@ -203,13 +244,16 @@ describe('useChatScheduler', () => {
     const {wrapped, handleSendPress} = setup();
 
     await act(async () => {
-      await wrapped(msg('你好呀'));
+      await wrapped(msg('帮我写一篇作文'));
     });
 
     expect(handleSendPress).not.toHaveBeenCalled();
     expect(chatSessionStore.addMessageToCurrentSession).toHaveBeenCalledWith(
       expect.objectContaining({
         text: expect.stringContaining('收尾'),
+        metadata: expect.objectContaining({
+          taskError: expect.objectContaining({code: 'busy', retryText: '帮我写一篇作文'}),
+        }),
       }),
     );
   });
@@ -230,7 +274,7 @@ describe('useChatScheduler', () => {
     expect(handleSendPress).toHaveBeenCalled();
   });
 
-  it('write 任务且引擎未加载且无候选：系统提示，不触发加载与发送', async () => {
+  it('write 任务且引擎未加载且无候选：TaskErrorCard no_model，不触发加载与发送', async () => {
     mockFind.mockReturnValue(null);
     const {wrapped, handleSendPress} = setup();
 
@@ -239,13 +283,17 @@ describe('useChatScheduler', () => {
     });
 
     expect(chatSessionStore.addMessageToCurrentSession).toHaveBeenCalledWith(
-      expect.objectContaining({metadata: {system: true}}),
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          taskError: expect.objectContaining({code: 'no_model'}),
+        }),
+      }),
     );
     expect(modelStore.selectModel).not.toHaveBeenCalled();
     expect(handleSendPress).not.toHaveBeenCalled();
   });
 
-  it('write 任务且引擎未加载且有候选：自动加载后走常规聊天', async () => {
+  it('write 任务且引擎未加载且有候选：弹窗确认后自动加载并走常规聊天', async () => {
     mockFind.mockReturnValue({id: 'model-1', name: 'Test Model'});
     (modelStore as any).engine = undefined;
     (modelStore.selectModel as jest.Mock).mockImplementation(() => {
@@ -257,6 +305,7 @@ describe('useChatScheduler', () => {
       await wrapped(msg('帮我写一篇作文'));
     });
 
+    expect(mockAskSwitch).toHaveBeenCalled();
     expect(modelStore.selectModel).toHaveBeenCalled();
     expect(handleSendPress).toHaveBeenCalled();
   });

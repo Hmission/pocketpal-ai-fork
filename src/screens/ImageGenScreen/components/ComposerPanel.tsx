@@ -18,6 +18,8 @@ interface ComposerPanelProps {
   cfg: string;
   size: number;
   ratio: string;
+  /** 6.18 种子：空=随机，填数可复现/调试 */
+  seed: string;
   /** 选中的是 DreamLite 族（编辑槽/画幅档位模式） */
   isDream: boolean;
   /** 编辑预备态：已点「编辑」锁定当前预览图，正在输入编辑指令 */
@@ -37,6 +39,7 @@ interface ComposerPanelProps {
   onNegativePromptChange: (t: string) => void;
   onStepsChange: (t: string) => void;
   onCfgChange: (t: string) => void;
+  onSeedChange: (t: string) => void;
   onSizeChange: (sz: number) => void;
   onRatioChange: (r: string) => void;
   onToggleAdvanced: () => void;
@@ -56,6 +59,7 @@ export const ComposerPanel: React.FC<ComposerPanelProps> = ({
   cfg,
   size,
   ratio,
+  seed,
   isDream,
   editArming,
   editRgb,
@@ -70,6 +74,7 @@ export const ComposerPanel: React.FC<ComposerPanelProps> = ({
   onNegativePromptChange,
   onStepsChange,
   onCfgChange,
+  onSeedChange,
   onSizeChange,
   onRatioChange,
   onToggleAdvanced,
@@ -104,7 +109,7 @@ export const ComposerPanel: React.FC<ComposerPanelProps> = ({
             ? '步数'
             : isDream
               ? '尺寸/步数'
-              : '负面/尺寸/步数/CFG'}
+              : '负面/尺寸/步数/CFG/种子'}
           ）{showAdvanced ? '▴' : '▾'}
         </Text>
       </TouchableOpacity>
@@ -171,6 +176,15 @@ export const ComposerPanel: React.FC<ComposerPanelProps> = ({
                   value={cfg}
                   onChangeText={onCfgChange}
                   keyboardType="numeric"
+                />
+                <Text style={s.paramLabel}>种子</Text>
+                <TextInput
+                  style={s.paramInput}
+                  value={seed}
+                  onChangeText={onSeedChange}
+                  keyboardType="numeric"
+                  placeholder="随机"
+                  placeholderTextColor="#999"
                 />
               </>
             )}

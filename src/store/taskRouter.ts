@@ -30,8 +30,9 @@ const IMAGE_KEYWORD_RE =
   /(?:画|生成|做|来|create|make|draw|paint|generate).{0,60}?(图片|插画|壁纸|海报|头像)|(?:画|绘).{0,60}?(照片|相片|写真)|(?:生成|做|来)(?:一[张幅个]|张|幅)\s*(照片|相片|写真)|\b(?:draw|paint|sketch|generate|create)\b.{0,60}?\b(?:image|picture|photo|art|wallpaper|illustration)\b/i;
 
 // 写作：动词 + （可跨内容）+ 文体关键词
+// 2026-08-17 补充高频文体词：游记/日记/周记/观后感/影评/散文（P1 真机验证发现缺口）
 const WRITE_RE =
-  /(?:写|帮我写|撰写)(?:一[篇首段个])?[^。！？!?\n]{0,30}?(?:诗|诗歌|文章|故事|作文|文案|总结|邮件|小说|简历)|\b(?:write|compose|draft)\b.{0,30}\b(?:poem|story|essay|article|email|summary)\b/i;
+  /(?:写|帮我写|撰写)(?:一[篇首段个])?[^。！？!?\n]{0,30}?(?:诗|诗歌|文章|故事|作文|文案|总结|邮件|小说|简历|游记|日记|周记|观后感|影评|散文|散文诗)|\b(?:write|compose|draft)\b.{0,30}\b(?:poem|story|essay|article|email|summary)\b/i;
 
 // 代码：明确的代码意图词（收紧，避免误伤日常 "error" 闲聊）
 const CODE_RE =

@@ -102,6 +102,7 @@ import {
 import NativeHardwareInfo from '../specs/NativeHardwareInfo';
 import {getModelMemoryRequirement} from '../utils/memoryEstimator';
 import {loadLlamaModelInfo} from 'llama.rn';
+import {applyModelStoreMethodGroups} from './modelStoreMethods';
 
 /**
  * Factory function to create a Model object for a remote model from an OpenAI-compatible server.
@@ -228,6 +229,9 @@ class ModelStore {
   largestSuccessfulLoad: number | undefined = undefined;
 
   constructor() {
+    // models 域拆分（批次4 P3）：方法组挂载必须在 makeAutoObservable 之前，
+    // 箭头函数实例属性与原 class field 语义一致（自动标注 MobX action）
+    applyModelStoreMethodGroups(this);
     makeAutoObservable(this, {
       activeModel: computed,
       activeModelCaps: computed,
@@ -3013,44 +3017,9 @@ class ModelStore {
    * (one direction). Idempotent and monotonic; never overrides a user
    * declaration (handled by the per-store writers).
    */
-  recordReasoningObserved = (modelId: string): void => {
-    const localModel = this.models.find(m => m.id === modelId);
-    if (!localModel) {
-      // Not a persisted local model → remote; delegate to ServerStore.
-      serverStore.recordRemoteReasoningObserved(modelId);
-      return;
-    }
-    const existing = localModel.reasoning;
-    if (existing?.source === 'user' || existing?.isReasoning === 'yes') {
-      return;
-    }
-    runInAction(() => {
-      localModel.reasoning = {
-        isReasoning: 'yes',
-        source: 'learned',
-        supportsEffort: existing?.supportsEffort ?? false,
-        effortValues: existing?.effortValues ?? [],
-        effortSource: existing?.effortSource ?? 'none',
-      };
-      localModel.supportsThinking = true;
-    });
-  };
-
-  /**
-   * Manual model-card override. Top of precedence; routes remote ids to
-   * ServerStore, local to the persisted Model.
-   */
-  setReasoningOverride = (modelId: string, cap: ReasoningCapability): void => {
-    const localModel = this.models.find(m => m.id === modelId);
-    if (!localModel) {
-      serverStore.setRemoteReasoningOverride(modelId, cap);
-      return;
-    }
-    runInAction(() => {
-      localModel.reasoning = cap;
-      localModel.supportsThinking = cap.isReasoning === 'yes';
-    });
-  };
+  // 推理能力方法组：实现迁至 modelStoreMethods/reasoningMethods.ts（行为零变化）
+  recordReasoningObserved!: (modelId: string) => void;
+  setReasoningOverride!: (modelId: string, cap: ReasoningCapability) => void;
 
   /**
    * Returns available (i.e. downloaded models) models with projection models filtered out,
@@ -3094,350 +3063,28 @@ class ModelStore {
     this.activeCompletionPromise = null;
   }
 
-  /**
-   * Get compatible projection models for a given LLM
-   * @param modelId The ID of the LLM model
-   * @returns Array of compatible projection models
-   */
-  getCompatibleProjectionModels = (modelId: string): Model[] => {
-    const model = this.models.find(m => m.id === modelId);
-    if (!model || !model.supportsMultimodal) {
-      return [];
-    }
-
-    // If the model has explicitly defined compatible projection models, use those
-    if (
-      model.compatibleProjectionModels &&
-      model.compatibleProjectionModels.length > 0
-    ) {
-      return this.models.filter(
-        m =>
-          m.modelType === ModelType.PROJECTION &&
-          model.compatibleProjectionModels?.includes(m.id),
-      );
-    }
-
-    // Otherwise, try to find projection models from the same repository
-    const modelIdParts = model.id.split('/');
-    if (modelIdParts.length >= 2) {
-      const author = modelIdParts[0];
-      const repo = modelIdParts[1];
-
-      return this.models.filter(
-        m =>
-          m.modelType === ModelType.PROJECTION &&
-          m.id.startsWith(`${author}/${repo}/`),
-      );
-    }
-
-    return [];
-  };
-
-  /**
-   * Set default projection model for an LLM
-   * @param modelId The ID of the LLM model
-   * @param projectionModelId The ID of the projection model to set as default
-   */
-  setDefaultProjectionModel = (modelId: string, projectionModelId: string) => {
-    const model = this.models.find(m => m.id === modelId);
-    if (model && model.supportsMultimodal) {
-      runInAction(() => {
-        model.defaultProjectionModel = projectionModelId;
-      });
-    }
-  };
-
-  /**
-   * Get the default projection model for an LLM
-   * @param modelId The ID of the LLM model
-   * @returns The default projection model, or undefined if none is set
-   */
-  getDefaultProjectionModel = (modelId: string): Model | undefined => {
-    const model = this.models.find(m => m.id === modelId);
-    if (!model || !model.supportsMultimodal || !model.defaultProjectionModel) {
-      return undefined;
-    }
-
-    return this.models.find(m => m.id === model.defaultProjectionModel);
-  };
-
-  /**
-   * Get all LLM models that use a specific projection model as their default
-   * @param projectionModelId The ID of the projection model
-   * @returns Array of LLM models that use this projection model as default
-   */
-  getLLMsUsingProjectionModel = (projectionModelId: string): Model[] => {
-    return this.models.filter(
-      m =>
-        m.supportsMultimodal &&
-        m.defaultProjectionModel === projectionModelId &&
-        m.modelType !== ModelType.PROJECTION,
-    );
-  };
-
-  /**
-   * Get all downloaded LLM models that use a specific projection model as their default
-   * @param projectionModelId The ID of the projection model
-   * @returns Array of downloaded LLM models that use this projection model as default
-   */
-  getDownloadedLLMsUsingProjectionModel = (
-    projectionModelId: string,
-  ): Model[] => {
-    return this.getLLMsUsingProjectionModel(projectionModelId).filter(
-      m => m.isDownloaded,
-    );
-  };
-
-  /**
-   * Check if a vision model has its required projection model downloaded
-   * @param model The vision model to check
-   * @returns true if the model doesn't need a projection model or if it has one downloaded
-   */
-  hasRequiredProjectionModel = (model: Model): boolean => {
-    const status = this.getProjectionModelStatus(model);
-    return status.isAvailable;
-  };
-
-  /**
-   * Get detailed status of a vision model's projection model
-   * @param model The vision model to check
-   * @returns Object with availability status and detailed state information
-   */
-  getProjectionModelStatus = (
-    model: Model,
-  ): {
+  // 投影模型方法组：实现迁至 modelStoreMethods/projectionMethods.ts（行为零变化）
+  getCompatibleProjectionModels!: (modelId: string) => Model[];
+  setDefaultProjectionModel!: (modelId: string, projectionModelId: string) => void;
+  getDefaultProjectionModel!: (modelId: string) => Model | undefined;
+  getLLMsUsingProjectionModel!: (projectionModelId: string) => Model[];
+  getDownloadedLLMsUsingProjectionModel!: (projectionModelId: string) => Model[];
+  hasRequiredProjectionModel!: (model: Model) => boolean;
+  getProjectionModelStatus!: (model: Model) => {
     isAvailable: boolean;
     state: 'not_needed' | 'downloaded' | 'downloading' | 'missing';
     projectionModel?: Model;
-  } => {
-    // Non-multimodal models don't need projection models
-    if (!model.supportsMultimodal || !model.defaultProjectionModel) {
-      return {
-        isAvailable: true,
-        state: 'not_needed',
-      };
-    }
-
-    // Find the projection model
-    const projectionModel = this.models.find(
-      m => m.id === model.defaultProjectionModel,
-    );
-
-    if (!projectionModel) {
-      return {
-        isAvailable: false,
-        state: 'missing',
-      };
-    }
-
-    // Check if projection model is downloaded
-    if (projectionModel.isDownloaded) {
-      return {
-        isAvailable: true,
-        state: 'downloaded',
-        projectionModel,
-      };
-    }
-
-    // Check if projection model is currently downloading
-    if (downloadManager.isDownloading(projectionModel.id)) {
-      return {
-        isAvailable: true, // Consider it available during download
-        state: 'downloading',
-        projectionModel,
-      };
-    }
-
-    // Projection model exists but is not downloaded and not downloading
-    return {
-      isAvailable: false,
-      state: 'missing',
-      projectionModel,
-    };
   };
 
-  /**
-   * Check if a projection model can be safely deleted
-   * @param projectionModelId The ID of the projection model to check
-   * @returns Object with canDelete flag and reason if deletion is blocked
-   */
-  canDeleteProjectionModel = (
-    projectionModelId: string,
-  ): {canDelete: boolean; reason?: string; dependentModels?: Model[]} => {
-    const projectionModel = this.models.find(m => m.id === projectionModelId);
-
-    if (
-      !projectionModel ||
-      projectionModel.modelType !== ModelType.PROJECTION
-    ) {
-      return {
-        canDelete: false,
-        reason: 'Model not found or not a projection model',
-      };
-    }
-
-    // Check if it's currently active - but also verify that we actually have a context
-    // This prevents false positives when the context has been released but state hasn't updated
-    if (this.activeProjectionModelId === projectionModelId) {
-      // Double-check: if we don't have an active context, the projection model isn't really active
-      if (!this.context) {
-        console.log(
-          'Projection model marked as active but no context exists, allowing deletion:',
-          projectionModelId,
-        );
-      } else {
-        return {
-          canDelete: false,
-          reason: 'Projection model is currently active',
-        };
-      }
-    }
-
-    // Get dependent models for warning purposes
-    const dependentModels =
-      this.getDownloadedLLMsUsingProjectionModel(projectionModelId);
-
-    if (dependentModels.length > 0) {
-      console.log(
-        'Projection model is used by downloaded LLM models:',
-        dependentModels.map(m => m.id),
-      );
-
-      // Return true to allow manual deletion with warning
-      // Automatic cleanup will check dependencies separately
-      return {
-        canDelete: true,
-        reason: 'Projection model is used by downloaded LLM models',
-        dependentModels,
-      };
-    }
-
-    return {canDelete: true, dependentModels};
+  canDeleteProjectionModel!: (projectionModelId: string) => {
+    canDelete: boolean;
+    reason?: string;
+    dependentModels?: Model[];
   };
-
-  /**
-   * Automatically cleanup orphaned projection models
-   * @param projectionModelId The ID of the projection model to check for cleanup
-   */
-  cleanupOrphanedProjectionModel = async (projectionModelId: string) => {
-    const projectionModel = this.models.find(m => m.id === projectionModelId);
-
-    if (
-      !projectionModel ||
-      projectionModel.modelType !== ModelType.PROJECTION
-    ) {
-      return; // Not a projection model, nothing to cleanup
-    }
-
-    if (!projectionModel.isDownloaded) {
-      return; // Not downloaded, nothing to cleanup
-    }
-
-    // For automatic cleanup, check if there are any dependent models
-    const dependentModels =
-      this.getDownloadedLLMsUsingProjectionModel(projectionModelId);
-
-    if (dependentModels.length > 0) {
-      console.log(
-        'Skipping auto-cleanup of projection model - still used by downloaded LLMs:',
-        dependentModels.map(m => m.id),
-      );
-      return;
-    }
-
-    console.log(
-      'Auto-cleaning up orphaned projection model:',
-      projectionModelId,
-    );
-    try {
-      await this.deleteModel(projectionModel);
-    } catch (error) {
-      console.error('Failed to auto-cleanup orphaned projection model:', error);
-    }
-  };
-
-  /**
-   * Automatically cleanup multiple orphaned projection models
-   * @param projectionModelIds Array of projection model IDs to check for cleanup
-   */
-  cleanupOrphanedProjectionModels = async (projectionModelIds: string[]) => {
-    console.log('Checking for orphaned projection models:', projectionModelIds);
-
-    // Process each projection model for potential cleanup
-    for (const projectionModelId of projectionModelIds) {
-      await this.cleanupOrphanedProjectionModel(projectionModelId);
-    }
-  };
-
-  /**
-   * Set vision preference for a model
-   * @param modelId The ID of the model
-   * @param enabled Whether vision capabilities should be enabled
-   */
-  setModelVisionEnabled = async (modelId: string, enabled: boolean) => {
-    const model = this.models.find(m => m.id === modelId);
-    if (!model || !model.supportsMultimodal) {
-      return;
-    }
-
-    // Store the previous vision state to detect changes
-    const previousVisionEnabled = this.getModelVisionPreference(model);
-
-    runInAction(() => {
-      model.visionEnabled = enabled;
-    });
-
-    // Check if this model is currently active and if vision state actually changed
-    const isActiveModel = this.activeModelId === modelId;
-    const visionStateChanged = previousVisionEnabled !== enabled;
-
-    if (isActiveModel && visionStateChanged && this.context) {
-      console.log(
-        `Vision ${
-          enabled ? 'enabled' : 'disabled'
-        } for active model, reloading context`,
-        {
-          modelId,
-          previousState: previousVisionEnabled,
-          newState: enabled,
-          isMultimodalActive: this.isMultimodalActive,
-        },
-      );
-
-      try {
-        // Reload the context with the new vision setting
-        await this.initContext(model);
-      } catch (error) {
-        console.error(
-          'Failed to reload context after vision state change:',
-          error,
-        );
-
-        // Revert the vision setting if context reload failed
-        runInAction(() => {
-          model.visionEnabled = previousVisionEnabled;
-        });
-
-        // Re-throw the error so the UI can handle it appropriately
-        throw error;
-      }
-    }
-  };
-
-  /**
-   * Get vision preference for a model
-   * @param model The model to check
-   * @returns true if vision should be enabled (defaults to true for backward compatibility)
-   */
-  getModelVisionPreference = (model: Model): boolean => {
-    // For non-multimodal models, always return false
-    if (!model.supportsMultimodal) {
-      return false;
-    }
-
-    // Default to true for backward compatibility if not explicitly set
-    return model.visionEnabled !== false;
-  };
+  cleanupOrphanedProjectionModel!: (projectionModelId: string) => Promise<void>;
+  cleanupOrphanedProjectionModels!: (projectionModelIds: string[]) => Promise<void>;
+  setModelVisionEnabled!: (modelId: string, enabled: boolean) => Promise<void>;
+  getModelVisionPreference!: (model: Model) => boolean;
 
   /**
    * Starts a completion with one or more images

@@ -50,9 +50,9 @@ def validate(path):
         print("  [FAIL] 文件无张量（空 LoRA？）")
         return False
 
-    # key 结构分析
-    lora_a = [k for k in keys if "lora_A.weight" in k]
-    lora_b = [k for k in keys if "lora_B.weight" in k]
+    # key 结构分析（diffusers LoRA 标准格式: ...lora_A.default.weight）
+    lora_a = [k for k in keys if "lora_A." in k or k.endswith("lora_A.weight")]
+    lora_b = [k for k in keys if "lora_B." in k or k.endswith("lora_B.weight")]
     print(f"  张量总数: {len(keys)} | lora_A: {len(lora_a)} | lora_B: {len(lora_b)}")
 
     if len(lora_a) != len(lora_b) or len(lora_a) == 0:

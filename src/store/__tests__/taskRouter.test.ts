@@ -63,6 +63,10 @@ describe('taskRouter', () => {
     it('命中「写文章」', () => {
       expect(routeTask('帮我写一篇介绍人工智能的文章').task).toBe('write');
     });
+    it('08-17 补词：命中「写游记/周记」（真机验证发现缺口）', () => {
+      expect(routeTask('帮我写一篇周末游记').task).toBe('write');
+      expect(routeTask('写一篇周记').task).toBe('write');
+    });
     it('v2.1 防误伤：含「照片」的写作句（写+文章）不判生图', () => {
       expect(routeTask('帮我写一篇关于照片的文章').task).toBe('write');
     });

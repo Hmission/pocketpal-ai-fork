@@ -45,6 +45,8 @@ def parse_args():
     ap.add_argument("--checkpoint-steps", type=int, default=500)
     ap.add_argument("--validation-prompt", default="a person in a dynamic pose, full body, fitness pose, athletic, photography")
     ap.add_argument("--dry-run", action="store_true", help="只打印配置不训练")
+    ap.add_argument("--fp16-variant", action="store_true", default=True,
+                    help="加载 fp16 变体权重（modelscope 版含 fp32+fp16 双套，fp16 加载快省内存）")
     return ap.parse_args()
 
 
@@ -119,8 +121,6 @@ def train(args, RES):
     import torch
     import torch.nn.functional as F
     from diffusers import AutoencoderKL, FlowMatchEulerDiscreteScheduler, SD3Transformer2DModel, StableDiffusion3Pipeline
-    from diffusers.utils import convert_state_dict_to_diffusers
-    from diffusers.models.attention_processor import AttnProcessor2_0
     from peft import LoraConfig, get_peft_model
     from transformers import AutoTokenizer, CLIPTextModelWithProjection, T5EncoderModel
 
@@ -130,9 +130,11 @@ def train(args, RES):
     weight_dtype = torch.bfloat16
 
     print("\n== 加载底座 ==")
-    pipe = StableDiffusion3Pipeline.from_pretrained(
-        args.base_model, torch_dtype=weight_dtype, low_cpu_mem_usage=True
-    )
+    load_kwargs = dict(torch_dtype=weight_dtype, low_cpu_mem_usage=True, use_safetensors=True)
+    if args.fp16_variant:
+        load_kwargs["variant"] = "fp16"
+        print("  [variant=fp16] 加载 fp16 变体权重")
+    pipe = StableDiffusion3Pipeline.from_pretrained(args.base_model, **load_kwargs)
     vae = pipe.vae
     tokenizer_one = pipe.tokenizer
     tokenizer_two = pipe.tokenizer_2
@@ -152,8 +154,8 @@ def train(args, RES):
         te.to(device, dtype=weight_dtype)
     transformer.requires_grad_(False)
     transformer.to(device, dtype=weight_dtype)
-    if hasattr(transformer, "set_attn_processor"):
-        transformer.set_attn_processor(AttnProcessor2_0())
+    # 注意: SD3 默认 JointAttnProcessor2_0，peft 注入后自行管理 attention processor，
+    # 不要 set_attn_processor(AttnProcessor2_0()) —— 那会破坏 JointAttention 双路输出
     if hasattr(transformer, "enable_gradient_checkpointing"):
         transformer.enable_gradient_checkpointing()
 
@@ -174,29 +176,29 @@ def train(args, RES):
 
     @torch.no_grad()
     def encode_prompt(prompt):
+        """对齐官方 StableDiffusion3Pipeline.encode_prompt：
+        CLIP 取 hidden_states[-2]，pooled 用 CLIPTextModelWithProjection 的 out[0]；
+        clip 先 pad 到 T5 维度再 cat(dim=-2) 拼时间维。"""
         if prompt in prompt_cache:
             return prompt_cache[prompt]
-        # 对齐 SD3 pipeline 的三编码器合并逻辑
         with torch.autocast("cuda", dtype=weight_dtype):
-            prompt_embeds_list, pooled_prompt_embeds_list = [], []
-            for tok, te in ((tokenizer_one, text_encoder_one),
-                            (tokenizer_two, text_encoder_two),
-                            (tokenizer_three, text_encoder_three)):
-                toks = tok(prompt, padding="max_length", max_length=77 if tok is not tokenizer_three else 256,
-                           truncation=True, return_tensors="pt").to(device)
-                if te is text_encoder_three:
-                    out = te(toks.input_ids, output_hidden_states=False)
-                    prompt_embeds_list.append(out[0])
-                else:
-                    out = te(toks.input_ids, output_hidden_states=False)
-                    prompt_embeds_list.append(out[0])
-                    pooled_prompt_embeds_list.append(out.text_embeds)
-            # CLIP-L / CLIP-G 合并 + T5 concat（对齐 SD3 官方 `_get_prompt_embeds`）
-            clip_embeds = torch.cat(prompt_embeds_list[:2], dim=-1)
-            t5_embeds = prompt_embeds_list[2]
-            # SD3: prompt_embeds = cat([clip_embeds, t5_embeds], dim=1)；T5 pad 到 77? 官方直接 concat 时间维
-            prompt_embeds = torch.cat([clip_embeds, t5_embeds], dim=1)
-            pooled_prompt_embeds = pooled_prompt_embeds_list[0]
+            # CLIP-L / CLIP-G
+            clip_embeds_list, pooled_list = [], []
+            for tok, te in ((tokenizer_one, text_encoder_one), (tokenizer_two, text_encoder_two)):
+                toks = tok(prompt, padding="max_length", max_length=77, truncation=True, return_tensors="pt").to(device)
+                out = te(toks.input_ids, output_hidden_states=True)
+                clip_embeds_list.append(out.hidden_states[-2])  # 倒数第二层
+                pooled_list.append(out[0])  # CLIPTextModelWithProjection pooled
+            # T5
+            toks3 = tokenizer_three(prompt, padding="max_length", max_length=256, truncation=True, return_tensors="pt").to(device)
+            t5_embeds = text_encoder_three(toks3.input_ids)[0]  # [1, 256, dim]
+
+            clip_embeds = torch.cat(clip_embeds_list, dim=-1)  # [1, 77, 2048]
+            clip_embeds = torch.nn.functional.pad(
+                clip_embeds, (0, t5_embeds.shape[-1] - clip_embeds.shape[-1])
+            )  # pad 到 [1, 77, 4096]
+            prompt_embeds = torch.cat([clip_embeds, t5_embeds], dim=-2)  # [1, 333, 4096]
+            pooled_prompt_embeds = torch.cat(pooled_list, dim=-1)  # [1, 4096]
             prompt_embeds = prompt_embeds.to(device, dtype=weight_dtype)
             pooled_prompt_embeds = pooled_prompt_embeds.to(device, dtype=weight_dtype)
         prompt_cache[prompt] = (prompt_embeds, pooled_prompt_embeds)

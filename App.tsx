@@ -18,6 +18,7 @@ import {
 } from 'react-native-gesture-handler';
 
 import {ttsStore, uiStore, modelStore} from './src/store';
+import {engineMutex} from './src/store/engineMutex';
 import {
   ensureAiosDirs,
   ensureWorkspaceFiles,
@@ -50,6 +51,7 @@ import {
 } from './src/components';
 import {MarkdownProvider} from './src/components/MarkdownView';
 import {ConfirmDialogHost} from './src/components/ui/ConfirmDialog';
+import {ModelSwitchDialogHost} from './src/components/ui/ModelSwitchDialog';
 import {AutomationBridge, BenchmarkRunnerScreen} from './src/__automation__';
 import {
   ChatScreen,
@@ -304,6 +306,10 @@ const App = observer(() => {
       .then(() => {
         // 启动即就绪：常驻管家模型（MiniCPM5-1B）。失败静默不阻断，
         // 状态由 engineStatus 驱动 SessionStatusBar 展示。
+        // 互斥（SPEC §9.2）：chat 大模型加载时经 engineMutex 释放管家（文本槽单实例）
+        engineMutex.register('prompter', async () => {
+          await promptWriter.release();
+        });
         promptWriter.ensureLoaded().catch(() => {});
         // 按设备内存预设上下文长度（仅向下保护，不覆盖用户自定义）
         DeviceInfo.getTotalMemory()
@@ -343,6 +349,7 @@ const App = observer(() => {
                     <DownloadOverlay />
                     <HubRunSheetHost />
                     <ConfirmDialogHost />
+                    <ModelSwitchDialogHost />
                   </BottomSheetModalProvider>
                 </NavigationContainer>
               </MarkdownProvider>

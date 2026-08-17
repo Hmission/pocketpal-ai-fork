@@ -30,6 +30,8 @@ interface ImageTaskMeta {
   imagePrompt?: string;
   /** 管家增强后的英文 SD 提示词（决策可见 v2.1：成功卡小字展示「管家优化为」） */
   imageEnhancedPrompt?: string;
+  /** 管家就绪但增强失败（P0 净化：显式失败展示，不静默） */
+  enhancedFailed?: boolean;
   /** 编辑任务卡（P5）：源图与指令留作「继续编辑/重试」锚点 */
   editTask?: boolean;
   editTaskFailed?: boolean;
@@ -131,6 +133,12 @@ export const ImageTaskActions: React.FC<{message: MessageType.Text}> = observer(
               ✨ 管家优化为：{enhanced}
             </Text>
           </TouchableOpacity>
+        )}
+        {/* P0 净化：管家就绪但增强失败 → 显式展示（不静默），原图直接出图 */}
+        {succeeded && !enhanced && meta.enhancedFailed && (
+          <Text style={styles.enhancedText(theme)} testID="image-enhanced-failed">
+            提示词未增强（管家不可用），已按原文出图
+          </Text>
         )}
         <View style={styles.row}>
           {succeeded &&

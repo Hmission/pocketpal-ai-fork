@@ -3,11 +3,11 @@
  *
  * 生图过程中帮用户把简短中文描述扩写成高质量英文 SD 提示词。
  * 首选模型：MiniCPM5-1B-heretic Q4_K_M（~0.7GB，无审查，1B 级最强，
- * Claude-Opus/Fable5 Thinking 蒸馏）；回退 Qwen3-0.6B。
+ * Claude-Opus/Fable5 Thinking 蒸馏；MODEL_MATRIX 入选清单 #7）。
  * 独立 LlamaContext，与生图引擎/聊天模型内存可共存，用完即释放避免常驻。
  *
  * 模型约定：/sdcard/Documents/AIOS/models/ 下文件名匹配
- * minicpm5*1b*（优先 heretic）或 qwen3*0.6b。
+ * minicpm5*1b*（优先 heretic）。
  */
 import {initLlama, LlamaContext} from 'llama.rn';
 import * as RNFS from '@dr.pogodin/react-native-fs';
@@ -29,11 +29,12 @@ const CHITCHAT_SYSTEM_PROMPT =
   '用用户的语言简洁、友好、带点机智地回答。若用户用中文提问则用中文回答。';
 
 /**
- * 判定文件名是否属于管家模型（MiniCPM5-1B / Qwen3-0.6B）。
+ * 判定文件名是否属于管家模型（MiniCPM5-1B，MODEL_MATRIX 入选清单 #7）。
  * modelCapabilityRegistry 用它把管家从“写作/代码专用模型”候选中排除。
+ * 注：Qwen3-0.6B 已被 MODEL_MATRIX 淘汰禁推，不在此匹配（2026-08-17 P0 净化）。
  */
 export const isPrompterModelName = (name: string): boolean =>
-  /minicpm5?[-_ ]?1b/i.test(name) || /qwen3[-_ ]?0\.?6b/i.test(name);
+  /minicpm5?[-_ ]?1b/i.test(name);
 
 // chat 结束符（im_end / llama eos）
 const STOP_TOKENS = ['<im_end>', '<|eot_id|>'];
@@ -42,7 +43,7 @@ class PromptWriter {
   private ctx: LlamaContext | undefined;
   private loading: Promise<boolean> | null = null;
 
-  /** 扫描模型目录：优先 MiniCPM5-1B heretic，回退 Qwen3-0.6B */
+  /** 扫描模型目录：优先 MiniCPM5-1B heretic，回退同型号非 heretic */
   async findModelPath(): Promise<string | null> {
     try {
       const files = await RNFS.readDir(SD_MODELS_DIR);
@@ -53,8 +54,7 @@ class PromptWriter {
       const minicpm = ggufs.find(
         f => /minicpm5?[-_ ]?1b/i.test(f.name) && !/heretic/i.test(f.name),
       );
-      const qwen = ggufs.find(f => /qwen3[-_ ]?0\.?6b/i.test(f.name));
-      const hit = heretic ?? minicpm ?? qwen;
+      const hit = heretic ?? minicpm;
       return hit ? hit.path : null;
     } catch {
       return null;
@@ -146,6 +146,35 @@ class PromptWriter {
       console.warn('[PromptWriter] completion failed:', e);
       return null;
     }
+  }
+
+  /**
+   * 通用 completion（记忆提取等小任务复用管家引擎）：guard 串行 + 冷却窗，
+   * 与 writePrompt/chat 共用 ctx。P2 修复（2026-08-17 真机复测）：
+   * 管家直答模式下 modelStore.engine 为空，提取引擎回退到管家。
+   */
+  async completion(
+    params: {
+      messages: {role: string; content: string}[];
+      n_predict?: number;
+      temperature?: number;
+      enable_thinking?: boolean;
+      stop?: string[];
+    },
+    onData?: (data: {token?: string; content?: string}) => void,
+  ): Promise<void> {
+    if (!this.ctx) {
+      const ok = await this.ensureLoaded();
+      if (!ok || !this.ctx) {
+        return;
+      }
+    }
+    await prompterGuard.run(() =>
+      this.ctx!.completion(
+        {...params, enable_thinking: false} as any,
+        onData ?? (() => {}),
+      ),
+    );
   }
 
   /** 释放引擎（把内存还给生图/聊天） */

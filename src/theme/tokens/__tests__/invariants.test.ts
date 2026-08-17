@@ -135,6 +135,11 @@ describe('design-token grep invariants', () => {
       'screens/GenerationSettingsScreen',
       'components/ChatHeader',
       'components/ImageTaskActions',
+      // 生图进度内嵌动效（ImageTaskProgress，08-16 聊天全流程动效）：radius token 消费
+      'components/ImageTaskProgress',
+      // P0 净化（2026-08-17）：调度错误卡（TaskErrorCard）与任务卡同类，
+      // 统一 danger 语义 token 消费（SPEC §3.3 error 叙事落地）
+      'components/TaskErrorCard',
       // B2：设置页入口中心卡片化（IconTile + 分组 Surface）
       'screens/SettingsScreen',
       // B4：排版升级（displayS 大标题 / numericM 数字强调）

@@ -23,6 +23,20 @@ jest.mock('../../../components/HeaderLeft', () => ({
   HeaderLeft: () => null,
 }));
 
+// 管家（promptWriter）：Screen 级 chitchat 用例需要可控 isLoaded/chat；
+// 默认 isLoaded=false 保持「model not loaded」placeholder 既有断言不变。
+jest.mock('../../../services/promptWriter', () => ({
+  promptWriter: {
+    isLoaded: false,
+    chat: jest.fn().mockResolvedValue('管家回复'),
+    ensureLoaded: jest.fn().mockResolvedValue(true),
+    writePrompt: jest.fn().mockResolvedValue(null),
+  },
+  isPrompterModelName: jest.fn().mockReturnValue(false),
+}));
+
+import {promptWriter} from '../../../services/promptWriter';
+
 const render = (ui: React.ReactElement, options: any = {}) =>
   baseRender(ui, {withBottomSheetProvider: true, ...options});
 
@@ -150,6 +164,58 @@ describe('ChatScreen', () => {
         metadata: expect.objectContaining({system: true}),
       }),
     );
+  });
+
+  it('chitchat 且 chat 引擎未加载：管家直答（SPEC §9.3 新语义，Screen 层锁定）', async () => {
+    // 无 chat 引擎（engine=undefined）+ 管家就绪 → 零弹窗管家直答
+    // 前序用例设置了 engine/context/isContextLoading，此处显式清空（observable 状态不随 clearAllMocks 复位）
+    runInAction(() => {
+      modelStore.activeModelId = undefined;
+      (modelStore as any).engine = undefined;
+      modelStore.context = undefined;
+      modelStore.isContextLoading = false;
+    });
+    (promptWriter as any).isLoaded = true;
+    (promptWriter.chat as jest.Mock).mockResolvedValue('今天天气不错，适合出门。');
+
+    const {getByPlaceholderText, getByTestId} = render(<ChatScreen />, {
+      withNavigation: true,
+    });
+    const input = getByPlaceholderText('小黄鸡已就绪，输入即可聊天');
+
+    await act(async () => {
+      fireEvent.changeText(input, '今天天气怎么样？');
+    });
+    await act(async () => {
+      fireEvent.press(getByTestId('send-button'));
+    });
+
+    // 管家直答：插用户消息 + 思考卡 → chat 回复回写
+    await waitFor(() => {
+      expect(promptWriter.chat).toHaveBeenCalledWith('今天天气怎么样？');
+    });
+    await waitFor(() => {
+      expect(chatSessionStore.addMessageToCurrentSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          author: expect.objectContaining({id: 'y9d7f8pgn'}),
+          text: '今天天气怎么样？',
+        }),
+      );
+    });
+    expect(chatSessionStore.addMessageToCurrentSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({butler: true}),
+      }),
+    );
+    await waitFor(() => {
+      expect(chatSessionStore.updateMessage).toHaveBeenCalledWith(
+        expect.anything(),
+        'session-1',
+        expect.objectContaining({text: '今天天气不错，适合出门。'}),
+      );
+    });
+    // 关键断言：未触发常规发送（modelStore.context.completion 不参与）
+    expect(modelStore.engine).toBeUndefined();
   });
 
   it('renders different message types correctly', async () => {

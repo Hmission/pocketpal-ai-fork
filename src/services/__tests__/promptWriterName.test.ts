@@ -9,9 +9,9 @@ describe('isPrompterModelName（管家模型判定）', () => {
     expect(isPrompterModelName('MiniCPM5-1B.gguf')).toBe(true);
   });
 
-  it('命中 Qwen3-0.6B', () => {
-    expect(isPrompterModelName('Qwen3-0.6B-Q8_0.gguf')).toBe(true);
-    expect(isPrompterModelName('qwen3_06b.gguf')).toBe(true);
+  it('Qwen3-0.6B 已淘汰（MODEL_MATRIX 禁推）：不再识别为管家（P0 净化）', () => {
+    expect(isPrompterModelName('Qwen3-0.6B-Q8_0.gguf')).toBe(false);
+    expect(isPrompterModelName('qwen3_06b.gguf')).toBe(false);
   });
 
   it('不误伤聊天大模型', () => {

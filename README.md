@@ -64,6 +64,7 @@ cd ios && pod install && open PocketPal.xcodeproj
 
 | 文档 | 说明 |
 |---|---|
+| [docs/POCKETPAL_PRODUCT_SPEC.md](docs/POCKETPAL_PRODUCT_SPEC.md) | 产品文档（定位/里程碑/功能设计/亮点） |
 | [CHANGELOG.md](CHANGELOG.md) | 更新日志（Keep a Changelog） |
 | [docs/APP_INTRO_COPY.md](docs/APP_INTRO_COPY.md) | App 介绍文案库（三版式 × 多语言） |
 | [docs/POCKETPAL_CHAT_UI_SPEC.md](docs/POCKETPAL_CHAT_UI_SPEC.md) | 聊天页 UI 设计规范 |

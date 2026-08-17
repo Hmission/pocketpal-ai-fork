@@ -1,14 +1,22 @@
 /**
- * EngineMutex — 引擎互斥协调器（chat vs image）
+ * EngineMutex — 引擎互斥协调器（prompter / chat / image 三槽）
  *
- * 端侧内存有限，llama.cpp（聊天）与 stable-diffusion.cpp（生图）不能同时常驻。
- * 任何引擎加载前 acquire：若对方引擎在用，先自动释放。
+ * 端侧内存有限，引擎按 SPEC §9.2 三槽互斥矩阵调度：
+ *   prompter（管家 1B）↔ chat（大模型）互斥  —— 同属 llama.rn 文本槽单实例
+ *   chat ↔ image（生图）互斥                 —— 大模型与生图引擎不同时常驻
+ *   prompter ↔ image 共存                    —— 生图扩写提示词必需（唯一价值共存）
  *
- * 回调注入模式：各 store register 自己的 releaser，EngineMutex 不反向引用 store
+ * 回调注入模式：各引擎 register 自己的 releaser，EngineMutex 不反向引用 store
  * → 无循环依赖。串行化防竞态。
  */
-type EngineKind = 'chat' | 'image';
+type EngineKind = 'prompter' | 'chat' | 'image';
 type Releaser = () => Promise<void>;
+
+/** 互斥对（SPEC §9.2）：prompter↔chat 文本槽单实例；chat↔image 内存账本 */
+const EXCLUSIVE_PAIRS: ReadonlyArray<readonly [EngineKind, EngineKind]> = [
+  ['prompter', 'chat'],
+  ['chat', 'image'],
+];
 
 class EngineMutex {
   private current: EngineKind | null = null;
@@ -20,18 +28,23 @@ class EngineMutex {
     this.releasers[kind] = releaser;
   }
 
-  /** 获取引擎使用权：若对方在用，先释放。串行化，last-one-wins 由调用方自管。 */
+  /**
+   * 获取引擎使用权：按互斥矩阵释放所有与目标互斥的引擎，然后占用目标。
+   * 串行化，last-one-wins 由调用方自管。
+   */
   acquire(kind: EngineKind): Promise<void> {
     const prev = this.acquiring;
     this.acquiring = (async () => {
       await prev;
-      const other: EngineKind = kind === 'chat' ? 'image' : 'chat';
-      if (this.current === other) {
-        const rel = this.releasers[other];
-        if (rel) {
-          await rel();
+      for (const [a, b] of EXCLUSIVE_PAIRS) {
+        const other = a === kind ? b : b === kind ? a : null;
+        if (other && this.current === other) {
+          const rel = this.releasers[other];
+          if (rel) {
+            await rel();
+          }
+          this.current = null;
         }
-        this.current = null;
       }
       this.current = kind;
     })();

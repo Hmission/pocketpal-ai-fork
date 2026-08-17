@@ -745,6 +745,13 @@ bool ModelManager::alloc_params_buffers(const std::vector<TensorState*>& states,
             }
 
             ggml_backend_buffer_t buffer = ggml_backend_buft_alloc_buffer(params_buft, chunk_size);
+            if (buffer == nullptr && chunk.size() == 1) {
+                // 6.17 小米13 修复：单张量超 GPU 单次分配上限（qwen3 token_embedding f32 1483MB > 1024MB），
+                // 单张量不可分块 → 回退 host（CPU）buft。Adreno SVM 支持零拷贝访问，embedding gather 可接受。
+                LOG_WARN("model manager: oversized tensor '%s' (%.2fMB) exceeds GPU max alloc, fallback to host buffer",
+                         ggml_get_name(chunk[0]->tensor), chunk_size / (1024.0 * 1024.0));
+                buffer = ggml_backend_buft_alloc_buffer(ggml_backend_cpu_buffer_type(), chunk_size);
+            }
             if (buffer == nullptr) {
                 LOG_ERROR("model manager alloc params backend buffer failed, size = %.2fMB",
                           chunk_size / (1024.0 * 1024.0));

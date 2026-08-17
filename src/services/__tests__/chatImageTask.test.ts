@@ -100,6 +100,21 @@ describe('runImageTaskCard', () => {
     expect(mockGenerate).toHaveBeenCalledWith(1024, 1024, 4, '一只猫');
   });
 
+  it('管家就绪但增强失败：写 enhancedFailed（显式失败，不静默，P0 净化）', async () => {
+    mockGenerate.mockResolvedValue('file:///tmp/gen_fail.png');
+    (promptWriter as any).isLoaded = true;
+    mockWritePrompt.mockRejectedValue(new Error('completion failed'));
+
+    await runImageTaskCard('一只猫');
+
+    const updateArg = (chatSessionStore.updateMessage as jest.Mock).mock
+      .calls[0][2];
+    expect(updateArg.metadata?.enhancedFailed).toBe(true);
+    expect(updateArg.metadata?.imageEnhancedPrompt).toBeUndefined();
+    // 增强失败不阻断出图：引擎收到原文
+    expect(mockGenerate).toHaveBeenCalledWith(1024, 1024, 4, '一只猫');
+  });
+
   it('出图失败：回写失败文案 + imageTaskFailed（渲染侧出「重试」动作）', async () => {
     mockGenerate.mockResolvedValue(null);
     (imageGenStore as any).error = '引擎过热';
