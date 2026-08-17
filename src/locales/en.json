@@ -640,6 +640,12 @@
         "thinkingDisabled": "Thinking mode disabled",
         "thinkText": "Think",
         "cycleEffort": "Reasoning effort: {{level}}. Double tap to cycle effort level"
+      },
+      "voiceInput": {
+        "startListening": "Start voice input",
+        "stopListening": "Stop voice input",
+        "listening": "Listening",
+        "unsupported": "Voice input is not available on this device"
       }
     },
     "contentReportSheet": {

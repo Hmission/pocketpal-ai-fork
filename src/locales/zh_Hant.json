@@ -339,6 +339,12 @@
         "thinkingDisabled": "思考模式已停用",
         "thinkText": "思考",
         "cycleEffort": "推理強度：{{level}}。連按兩次可切換強度層級"
+      },
+      "voiceInput": {
+        "startListening": "開始語音輸入",
+        "stopListening": "停止語音輸入",
+        "listening": "正在聆聽",
+        "unsupported": "目前裝置不支援語音輸入"
       }
     },
     "chatGenerationSettingsSheet": {

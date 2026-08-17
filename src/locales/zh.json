@@ -622,6 +622,12 @@
         "thinkingDisabled": "思考模式已禁用",
         "thinkText": "思考",
         "cycleEffort": "推理强度：{{level}}。双击可切换强度级别"
+      },
+      "voiceInput": {
+        "startListening": "开始语音输入",
+        "stopListening": "停止语音输入",
+        "listening": "正在聆听",
+        "unsupported": "当前设备不支持语音输入"
       }
     },
     "contentReportSheet": {

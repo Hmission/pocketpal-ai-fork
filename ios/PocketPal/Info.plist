@@ -58,6 +58,8 @@
 	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>PocketPal uses your camera to capture images and video for local AI analysis only. All processing happens on your device and no images are transmitted to external servers.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>PocketPal uses your microphone for voice input. Audio is processed by the system speech recognizer and is not transmitted to external servers.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>PocketPal connects to AI servers you run on your own network (like Ollama or llama.cpp) when you add them as remote endpoints.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

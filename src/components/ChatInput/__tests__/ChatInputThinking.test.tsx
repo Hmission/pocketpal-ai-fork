@@ -31,8 +31,20 @@ jest.mock('../../../hooks', () => ({
       display: {fontSize: 28, lineHeight: 34, fontWeight: '600'},
     },
     radius: {
-      xs: 4, s: 6, m: 10, ml: 12, l: 14, xl: 20, full: 999,
-      shapeRoles: {card: 'l', surface: 'm', pill: 'full', inputSmall: 's', circle: 'full'},
+      xs: 4,
+      s: 6,
+      m: 10,
+      ml: 12,
+      l: 14,
+      xl: 20,
+      full: 999,
+      shapeRoles: {
+        card: 'l',
+        surface: 'm',
+        pill: 'full',
+        inputSmall: 's',
+        circle: 'full',
+      },
     },
     colors: {
       primary: '#007AFF',
@@ -82,6 +94,8 @@ jest.mock('../../../assets/icons', () => ({
   VideoRecorderIcon: 'VideoRecorderIcon',
   PlusIcon: 'PlusIcon',
   AtomIcon: 'AtomIcon',
+  MicIcon: 'MicIcon',
+  StopIcon: 'StopIcon',
 }));
 
 // Mock the components

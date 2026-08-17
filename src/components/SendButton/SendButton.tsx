@@ -53,11 +53,12 @@ export const SendButton = ({
 
 // 品牌暖黄圆形主操作（DESIGN_SPEC §1.1：primary 为魂，onPrimary 深棕图标）。
 // 禁用态由 ChatInput 外层 opacity 0.4 表达，容器本身保持品牌色。
+// 36px 与思考胶囊/语音按钮统一高度（2026-08 大王裁定）。
 const styles = {
   sendButton: (theme: any) => ({
     marginLeft: theme.spacing.m,
-    minHeight: 44,
-    minWidth: 44,
+    minHeight: 36,
+    minWidth: 36,
     borderRadius: theme.radius.full,
     backgroundColor: theme.colors.primary,
     justifyContent: 'center' as const,

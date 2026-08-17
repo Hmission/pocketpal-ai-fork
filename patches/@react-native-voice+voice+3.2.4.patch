@@ -1,0 +1,53 @@
+diff --git a/node_modules/@react-native-voice/voice/android/build.gradle b/node_modules/@react-native-voice/voice/android/build.gradle
+index 8fce879..2e79830 100644
+--- a/node_modules/@react-native-voice/voice/android/build.gradle
++++ b/node_modules/@react-native-voice/voice/android/build.gradle
+@@ -2,7 +2,6 @@ apply plugin: 'com.android.library'
+ 
+ repositories {
+     mavenLocal()
+-    jcenter()
+     maven {
+         // For developing the library outside the context of the example app, expect `react-native`
+         // to be installed at `./node_modules`.
+@@ -17,10 +16,10 @@ repositories {
+ def DEFAULT_COMPILE_SDK_VERSION = 28
+ def DEFAULT_BUILD_TOOLS_VERSION = "28.0.3"
+ def DEFAULT_TARGET_SDK_VERSION = 28
+-def DEFAULT_SUPPORT_LIB_VERSION = "28.0.0"
+ 
+ android {
+-    compileSdkVersion rootProject.hasProperty('compileSdkVersion') ? rootProject.compileSdkVersion : DEFAULT_COMPILE_SDK_VERSION
++    namespace 'com.wenkesj.voice'
++    compileSdk rootProject.hasProperty('compileSdkVersion') ? rootProject.compileSdkVersion : DEFAULT_COMPILE_SDK_VERSION
+     buildToolsVersion rootProject.hasProperty('buildToolsVersion') ? rootProject.buildToolsVersion : DEFAULT_BUILD_TOOLS_VERSION
+ 
+     defaultConfig {
+@@ -39,9 +38,6 @@ android {
+ 
+ buildscript {
+     if (project == rootProject) {
+-        repositories {
+-            jcenter()
+-        }
+         dependencies {
+             classpath 'com.android.tools.build:gradle:3.3.2'
+ 
+@@ -51,17 +47,9 @@ buildscript {
+     }
+ }
+ 
+-allprojects {
+-    repositories {
+-        jcenter()
+-    }
+-}
+-
+-def supportVersion = rootProject.hasProperty('supportLibVersion') ? rootProject.supportLibVersion : DEFAULT_SUPPORT_LIB_VERSION
+ 
+ dependencies {
+     implementation fileTree(dir: 'libs', include: ['*.jar'])
+     testImplementation 'junit:junit:4.12'
+-    implementation "com.android.support:appcompat-v7:${supportVersion}"
+     implementation 'com.facebook.react:react-native:+'
+ }

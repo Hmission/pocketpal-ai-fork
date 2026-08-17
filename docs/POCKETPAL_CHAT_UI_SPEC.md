@@ -227,6 +227,38 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 - **收益**：产物图进模型输入既浪费 token 又必然走视觉编码路径；过滤后产物仅展示，视觉问答功能不受影响。
 - **判定标准**：是否进多模态输入 = `metadata.multimodal === true`（用户主动上传），与消息是否带图无关。
 
+## 14. 语音输入（v3.0 定稿，2026-08-17）
+
+### 14.1 发送按钮状态机（单状态机链路）
+
+发送按钮区域按优先级渲染，任一时刻只有一种形态：
+
+停止按钮 → 编辑模式视频按钮 → **录音中红色停止钮** → **麦克风（空输入且有识别服务）** → 发送按钮
+
+- 麦克风仅在 `value` 为空 + 设备有语音识别服务（`Voice.isAvailable()`）时显示；**一打字立即切换为发送钮**
+- 录音中 TextInput 禁用（`editable=false`），红色停止钮可打断；
+  识别结果（`onSpeechResults` / `onSpeechPartialResults`）实时填入输入框 → 立即切换发送钮
+- **降级规则**：无语音识别服务的设备自动隐藏麦克风、回退纯发送按钮（真机 66b1777f 实证：SpeechRecognizer 无服务）
+- 语音按钮在视频模式 / 相机激活 / 生成中 / 停止可见时均不出现（不抢占既有形态）
+
+### 14.2 高度基线（2026-08 大王裁定）
+
+输入第二行所有主控件统一 **36px**：思考胶囊（`thinkingToggleLeft`） / 发送按钮 / 语音按钮，
+同一基线（真机 bounds 验证：`[y2249][y2343]` = 94px = 36dp，三钮一致）。
+
+### 14.3 权限与隐私
+
+- Android：`RECORD_AUDIO`（系统语音识别自动请求）；iOS：`NSMicrophoneUsageDescription`
+- 音频仅走系统 SpeechRecognizer，**不上传外部服务器**（离线隐私口径与全 App 一致）
+
+### 14.4 testID 登记
+
+| testID | 位置 |
+|---|---|
+| voice-input-button | 空输入时麦克风按钮 |
+| voice-stop-button | 录音中红色停止按钮 |
+| quick-prefix-clear（§13 既有） | 前缀 chip × 清除 |
+
 ## 变更日志
 
 | 日期 | 版本 | 变更 |
@@ -234,3 +266,4 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 | 2026-08-15 | 2.0 | 气泡一体化（footer 收进卡片，ADR-0003）+ 灰色分层落地（§11）；legacy fonts/radius 双轨收口同波执行 |
 | 2026-08-16 | 2.1 | 生图任务卡片生成动效 + 图片撑满（§12，MASTER_LOG §20） |
 | 2026-08-16 | 2.2 | §13 聊天内闭环：快捷入口下沉 controlBar 图标钮 + 前缀 chip 标签化（原子删除）+ 图片编辑闭环（三入口下沉输入框）+ §13.6 多模态输入边界（产物图不进模型） |
+| 2026-08-17 | 3.0 | §14 语音输入：发送按钮升级为语音优先状态机 + 输入行高度统一 36px（思考/发送/语音同一基线） |

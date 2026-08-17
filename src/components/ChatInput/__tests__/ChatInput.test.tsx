@@ -1,4 +1,4 @@
-import {fireEvent, waitFor} from '@testing-library/react-native';
+import {act, fireEvent, waitFor} from '@testing-library/react-native';
 import * as React from 'react';
 import {ScrollView, Alert} from 'react-native';
 import {launchCamera, launchImageLibrary} from 'react-native-image-picker';
@@ -11,6 +11,20 @@ import {ChatInput} from '../ChatInput';
 import {render} from '../../../../jest/test-utils';
 import {palStore, chatSessionStore, modelStore} from '../../../store';
 import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
+import Voice from '@react-native-voice/voice';
+// moduleNameMapper 在运行时将该包映射到 __mocks__/external/@react-native-voice/voice.js，
+// 其命名导出（__emit* / __setVoiceAvailable 测试辅助）不在真实包类型中 → require 断言访问。
+const {
+  __emitSpeechStart,
+  __emitSpeechResults,
+  __resetVoiceMock,
+  __setVoiceAvailable,
+} = require('@react-native-voice/voice') as {
+  __emitSpeechStart: () => void;
+  __emitSpeechResults: (value: string[]) => void;
+  __resetVoiceMock: () => void;
+  __setVoiceAvailable: (available: boolean) => void;
+};
 
 // Mock react-native-image-picker
 jest.mock('react-native-image-picker', () => ({
@@ -845,6 +859,116 @@ describe('input', () => {
         text: 'Test message',
         type: 'text',
         imageUris: undefined,
+      });
+    });
+  });
+
+  describe('Voice Input (STT)', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      __resetVoiceMock();
+      runInAction(() => {
+        modelStore.activeModelId = 'test-model-id';
+      });
+    });
+
+    it('keeps send button (no mic) when recognition service is unavailable', async () => {
+      __setVoiceAvailable(false);
+      const {queryByTestId, getByTestId} = render(
+        <UserContext.Provider value={user}>
+          <ChatInput
+            {...{
+              onSendPress: jest.fn(),
+              sendButtonVisibilityMode: 'always',
+            }}
+          />
+        </UserContext.Provider>,
+      );
+      await waitFor(() => {
+        expect(queryByTestId('voice-input-button')).toBeNull();
+      });
+      expect(getByTestId('send-button')).toBeTruthy();
+    });
+
+    it('shows mic on empty input and switches to send once text is typed', async () => {
+      __setVoiceAvailable(true);
+      const {getByPlaceholderText, getByTestId, queryByTestId} = render(
+        <UserContext.Provider value={user}>
+          <ChatInput
+            {...{
+              onSendPress: jest.fn(),
+              sendButtonVisibilityMode: 'editing',
+            }}
+          />
+        </UserContext.Provider>,
+      );
+      await waitFor(() => {
+        expect(getByTestId('voice-input-button')).toBeTruthy();
+      });
+      // 一打字 → 麦克风消失、发送钮出现
+      fireEvent.changeText(
+        getByPlaceholderText(l10n.en.components.chatInput.inputPlaceholder),
+        'hello',
+      );
+      expect(queryByTestId('voice-input-button')).toBeNull();
+      expect(getByTestId('send-button')).toBeTruthy();
+    });
+
+    it('starts recognition on mic tap and shows stop button while listening', async () => {
+      __setVoiceAvailable(true);
+      const {getByTestId} = render(
+        <UserContext.Provider value={user}>
+          <ChatInput
+            {...{
+              onSendPress: jest.fn(),
+              sendButtonVisibilityMode: 'editing',
+            }}
+          />
+        </UserContext.Provider>,
+      );
+      await waitFor(() => {
+        expect(getByTestId('voice-input-button')).toBeTruthy();
+      });
+      fireEvent.press(getByTestId('voice-input-button'));
+      expect(Voice.start).toHaveBeenCalled();
+      await act(async () => {
+        __emitSpeechStart();
+      });
+      await waitFor(() => {
+        expect(getByTestId('voice-stop-button')).toBeTruthy();
+      });
+      fireEvent.press(getByTestId('voice-stop-button'));
+      expect(Voice.stop).toHaveBeenCalled();
+    });
+
+    it('fills recognized text into the input and switches to send', async () => {
+      __setVoiceAvailable(true);
+      const {getByPlaceholderText, getByTestId} = render(
+        <UserContext.Provider value={user}>
+          <ChatInput
+            {...{
+              onSendPress: jest.fn(),
+              sendButtonVisibilityMode: 'editing',
+            }}
+          />
+        </UserContext.Provider>,
+      );
+      await waitFor(() => {
+        expect(getByTestId('voice-input-button')).toBeTruthy();
+      });
+      fireEvent.press(getByTestId('voice-input-button'));
+      await act(async () => {
+        __emitSpeechResults(['你好世界']);
+      });
+      const input = getByPlaceholderText(
+        l10n.en.components.chatInput.inputPlaceholder,
+      );
+      await waitFor(() => {
+        expect(input.props.value).toBe('你好世界');
+      });
+      // 识别文字填入后 → 发送钮出现
+      await waitFor(() => {
+        expect(getByTestId('send-button')).toBeTruthy();
       });
     });
   });
