@@ -2044,6 +2044,8 @@ struct LLMEmbedder : public Conditioner {
             }
         }
 
+        // 6.17 小米13 Z-Image ggml_abort 定位埋点：确认失败在 llm->compute 内部还是之后断言
+        LOG_INFO("encode_prompt: tokens=%zu mask=%zu min_len=%d", tokens.size(), mask.size(), min_length);
         auto hidden_states = llm->compute(n_threads,
                                           input_ids,
                                           attention_mask,
@@ -2055,6 +2057,7 @@ struct LLMEmbedder : public Conditioner {
                                           true,
                                           deepstack_image_embeds,
                                           image_grids);
+        LOG_INFO("encode_prompt: llm->compute returned, empty=%d", (int)hidden_states.empty());
         GGML_ASSERT(!hidden_states.empty());
         hidden_states = apply_token_weights(std::move(hidden_states), weights);
         GGML_ASSERT(hidden_states.shape()[1] > prompt_template_encode_start_idx);

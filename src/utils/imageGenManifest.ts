@@ -43,23 +43,8 @@ export interface ImageGenManifest {
   note?: string;
 }
 
-/** 内置 manifest：覆盖官方已知模型 */
+/** 内置 manifest：覆盖官方已知模型（MODEL_MATRIX 入选清单同步，淘汰模型不得保留） */
 export const BUILTIN_MANIFESTS: ImageGenManifest[] = [
-  {
-    id: 'sdxl-turbo-fp16',
-    label: 'SDXL Turbo (fp16)',
-    family: 'classic',
-    main: 'sd_xl_turbo_1.0_fp16.safetensors',
-    defaults: {steps: 2, cfg: 2, size: 512, backend: 'OpenCL'},
-    note: '4 步极速，生态最成熟',
-  },
-  {
-    id: 'sdxl-turbo-q8',
-    label: 'SDXL Turbo (Q8 GGUF)',
-    family: 'classic',
-    main: 'sd_xl_turbo_1.0.q8_0.gguf',
-    defaults: {steps: 2, cfg: 2, size: 512, backend: 'OpenCL'},
-  },
   {
     id: 'sd35-medium-q4',
     label: 'SD 3.5 Medium (Q4_K_M)',
@@ -70,11 +55,9 @@ export const BUILTIN_MANIFESTS: ImageGenManifest[] = [
       clipG: 'sd35_clip_g.safetensors',
       vae: 'sd35_vae.safetensors',
     },
-    // P6 提速：SD3.5 裸跑 20 步过慢（实测 375s+），默认降 10 步求速度
-    // 6.16 验证期：OpenCL 端侧每步 ~11 分钟（Adreno 740），测试临时降 2 步
-    // 6.16 已闭环：512px VAE tiled 降级修复（1.94GB→416MB）+ K90 直接分配成功，恢复正式参数
-    // 6.17 Adreno 内核恢复：K90 10 步全流程 9.6 分钟（基线 45.8 分钟，提速 4.8 倍）
-    experimental: true,
+    // 08-16 闭环：白图根因修复 + 512px VAE tiled 降级（1.94GB→416MB）+ K90 直接分配成功
+    // 08-17 大王确认去掉实验性标记：双设备正式参数完整跑通（K90 ~10 分钟/小米13 ~40 分钟，0% 白图）
+    experimental: false,
     defaults: {steps: 10, cfg: 4.5, size: 512, backend: 'OpenCL'},
     note: 'MMDiT；OpenCL K90 (Adreno 840) 10 步 512px 约 10 分钟；小米 13 约 40 分钟（含 tiled VAE）',
   },
@@ -87,26 +70,12 @@ export const BUILTIN_MANIFESTS: ImageGenManifest[] = [
       llm: 'zimage_llm.gguf',
       vae: 'ae.safetensors',
     },
-    // 6.16 已跑通：K90（Adreno 840）8 步 512px 全流程 39.7 分钟，LLM 编码 141s + 采样 nan/inf=0 + VAE 1664MB 直接分配
-    // 6.17 大王确认：端侧三模型（DreamLite/SD3.5/Z-Image）均已跑通，去除实验性标记
-    // 6.17 顺序卸载探索：Z-Image 6.9GB 对中低端（小米13 GPU~2.8G）是硬件上限，cpu residency+stream_layers 无法跑通 → 仅高端设备
+    // 08-16 已跑通：K90（Adreno 840）8 步 512px 全流程 39.7 分钟，LLM 编码 141s + 采样 nan/inf=0 + VAE 1664MB 直接分配
+    // 08-17 大王确认：端侧三模型（DreamLite/SD3.5/Z-Image）均已跑通，去除实验性标记
+    // 08-17 顺序卸载探索：Z-Image 6.9GB 对中低端（小米13 GPU~2.8G）是硬件上限，cpu residency+stream_layers 无法跑通 → 仅高端设备
     experimental: false,
     defaults: {steps: 8, cfg: 1, size: 512, backend: 'OpenCL'},
     note: '无审查，中文优化；K90 8 步 512px 约 40 分钟；需 6.9GB 权重，仅高端设备（中低端 GPU 不可用）',
-  },
-  {
-    // P6 DreamLite：统一生图+编辑。UNet 0.39B(MNN)+TinyVAE+TE(Qwen-VL 4bit GGUF)
-    // 引擎待构建（需 ONNX→MNN 导出机），manifest 先行声明，文件就位即自动识别
-    id: 'dreamlite-mobile',
-    label: 'DreamLite Mobile (4步)',
-    family: 'dreamlite',
-    main: 'dreamlite_unet.mnn',
-    companions: {
-      vae: 'dreamlite_vae.mnn',
-      llm: 'dreamlite_te.gguf',
-    },
-    defaults: {steps: 4, cfg: 1, size: 1024},
-    note: '统一生图+编辑，端侧秒级',
   },
 ];
 

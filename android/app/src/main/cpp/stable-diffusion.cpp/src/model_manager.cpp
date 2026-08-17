@@ -726,6 +726,18 @@ bool ModelManager::alloc_params_buffers(const std::vector<TensorState*>& states,
         const std::vector<TensorState*>& states = pair.second;
         size_t alignment                        = ggml_backend_buft_get_alignment(params_buft);
         size_t max_size                         = ggml_backend_buft_get_max_size(params_buft);
+        // 6.17 小米13 修复：OpenCL 单次分配上限 1024MB（Adreno 740），qwen3 权重单块 1483MB 超限致分配失败崩溃。
+        // 驱动 max_size 上报可能失效（实测未拆分）→ 对非 host（GPU）buft 用保守上限 1000MB 强制分块，
+        // 设备无关（K90 2048MB 上限下多分几块无副作用）。
+        size_t effective_max = max_size;
+        if (!ggml_backend_buft_is_host(params_buft) &&
+            (effective_max == 0 || effective_max > 1000ull * 1024 * 1024)) {
+            effective_max = 1000ull * 1024 * 1024;
+        }
+        // 6.17 小米13 buffer 拆分定位埋点：确认 max_size 是否正确上报（1024MB）
+        LOG_INFO("alloc_params_buffers: buft=%s max_size=%.2fMB effective_max=%.2fMB states=%zu",
+                 ggml_backend_buft_name(params_buft), max_size / (1024.0 * 1024.0),
+                 effective_max / (1024.0 * 1024.0), states.size());
 
         auto alloc_chunk = [&](const std::vector<TensorState*>& chunk, size_t chunk_size) -> bool {
             if (chunk.empty() || chunk_size == 0) {
@@ -783,7 +795,7 @@ bool ModelManager::alloc_params_buffers(const std::vector<TensorState*>& states,
             size_t tensor_size  = GGML_PAD(ggml_backend_buft_get_alloc_size(params_buft, tensor), alignment);
             // Some backends, e.g. Vulkan, report a preferred chunk size here rather than a
             // hard per-tensor allocation limit. Oversized tensors are allocated alone.
-            if (!chunk.empty() && max_size > 0 && chunk_size + tensor_size > max_size) {
+            if (!chunk.empty() && effective_max > 0 && chunk_size + tensor_size > effective_max) {
                 if (!alloc_chunk(chunk, chunk_size)) {
                     return false;
                 }
