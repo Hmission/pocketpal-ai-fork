@@ -318,6 +318,13 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
   if (!backend_s.empty()) {
     params.backend = backend_s.c_str();
   }
+  // 6.17 顺序卸载（B1）：Z-Image 6.9GB 权重加载阶段同时驻 GPU 超限（小米13 加载即被杀），
+  // 设 params_backend=disk 让权重 disk 常驻、compute 时按需 stage 到 GPU，压低加载/采样峰值。
+  // 设计见 ONDEVICE_SEQUENTIAL_OFFLOAD_DESIGN.md。
+  if (zimage_model) {
+    static const char* kZImageParamsBackend = "diffusion=disk,te=disk";
+    params.params_backend = kZImageParamsBackend;
+  }
 
   sd_set_log_callback(sd_log_cb, nullptr);
   sd_set_progress_callback(sd_progress_cb, nullptr);

@@ -3103,6 +3103,12 @@ public:
         if (sd_version_is_pid(version) || sd_version_is_minit2i(version)) {
             return sd::ops::clamp((x + 1.f) * 0.5f, 0.0f, 1.0f);
         }
+        // 6.17 顺序卸载（A2）：Z-Image（6.9GB 权重）强制 tiled VAE 降峰值（1664MB→416MB）
+        if (sd_version_is_z_image(version) && !vae_tiling_params.enabled) {
+            vae_tiling_params.enabled    = true;
+            vae_tiling_params.rel_size_x = 0.5f;
+            vae_tiling_params.rel_size_y = 0.5f;
+        }
         auto latents = first_stage_model->diffusion_to_vae_latents(x);
         first_stage_model->set_temporal_tiling_enabled(vae_tiling_params.temporal_tiling);
         auto decoded = first_stage_model->decode(n_threads, latents, vae_tiling_params, decode_video, circular_x, circular_y);
@@ -5389,6 +5395,16 @@ static sd_image_t* decode_image_outputs(sd_ctx_t* sd_ctx,
     int64_t t0     = ggml_time_ms();
     bool cancelled = false;
 
+    // 6.17 顺序卸载（A1）：采样完成后 diffusion/conditioner/LLM 权重不再需要，
+    // release_all 强制释放全部 GPU buffer（VAE 权重解码时懒加载重建）。
+    // 峰值从 (全部权重+VAE buffer) 降到 (VAE 权重+VAE buffer)，
+    // 解决 Z-Image VAE 解码进程被杀 + 小米13 内存不足。设计见 ONDEVICE_SEQUENTIAL_OFFLOAD_DESIGN.md。
+    auto& model_mgr = sd_ctx->sd->model_manager;
+    if (model_mgr != nullptr) {
+        model_mgr->release_all();
+        LOG_INFO("decode_image_outputs: sequential offload released all weights for VAE decode");
+    }
+
     for (size_t i = 0; i < final_latents.size(); i++) {
         if (sd_ctx->sd->get_cancel_flag() == SD_CANCEL_ALL) {
             LOG_ERROR("cancelling latent decodings");
@@ -6652,6 +6668,12 @@ static ImageGenerationEmbeds prepare_video_generation_embeds(sd_ctx_t* sd_ctx,
 
     int64_t t1 = ggml_time_ms();
     LOG_INFO("get_learned_condition completed, taking %.2fs", (t1 - prepare_start_ms) * 1.0f / 1000);
+    // 6.17 顺序卸载（B1'）：条件编码完成后释放 conditioner/LLM 权重，
+    // 采样懒加载 diffusion（峰值=单模块权重）。与 A1（VAE 前释放）成全链路顺序卸载。
+    if (sd_ctx->sd->model_manager != nullptr) {
+        sd_ctx->sd->model_manager->release_all();
+        LOG_INFO("sequential offload: released conditioner weights after encoding");
+    }
 
     return embeds;
 }

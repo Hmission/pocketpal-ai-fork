@@ -27,6 +27,10 @@ public:
         bool required = false;
     };
 
+    // 6.17 顺序卸载：强制释放全部权重 GPU buffer（清零 active + 释放 staging/storage），
+    // 用于 VAE 解码前压低内存峰值（权重可懒加载重建）。设计见 ONDEVICE_SEQUENTIAL_OFFLOAD_DESIGN.md。
+    void release_all();
+
 private:
     struct TensorState {
         std::string name;
@@ -77,7 +81,6 @@ private:
     bool writable_mmap_          = false;
 
     void finish_compute_backend_usage(const std::vector<TensorState*>& states);
-    void release_all();
 
     bool resolve_required_tensor_states(const std::vector<ggml_tensor*>& tensors,
                                         std::vector<TensorState*>& required_states) const;
