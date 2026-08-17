@@ -250,7 +250,20 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
   // GGML_OPENCL_KERNEL_CACHE_DIR 缓存编译后的内核二进制（避免重复编译开销）。
   // 无害：OpenCL 非编译后端时被引擎忽略。
   // 6.18 白图排查曾置 0/禁用（ADRENO_XMEM_GEMM=0、DISABLE_ADRENO_KERNELS=1），
-  // 但最终根因是 RMS_NORM+MUL 融合跳写（与 GEMM 无关）→ 6.17 恢复默认内核对照验证提速。
+  // 但最终根因是 RMS_NORM+MUL 融合跳写（与 GEMM 无关）→ 6.17 恢复默认内核对照验证：
+  //  SD3.5 提速 4.8 倍（45.8→9.6 分钟）且 nan/inf=0；但 Z-Image step 1 全 NaN
+  //  （cross-attn 值域 ±1e4，Adreno fp16 累积溢出）→ 按模型区分：
+  //  Z-Image 双禁用（DISABLE=1 保精度 + XMEM=0：xmem 零拷贝致 VAE 解码内存峰值被杀）。
+  const char* model_path_cstr = env->GetStringUTFChars(modelPath, nullptr);
+  bool zimage_model = model_path_cstr != nullptr && strstr(model_path_cstr, "z_image") != nullptr;
+  env->ReleaseStringUTFChars(modelPath, model_path_cstr);
+  if (zimage_model) {
+    setenv("GGML_OPENCL_DISABLE_ADRENO_KERNELS", "1", 1);
+    setenv("GGML_OPENCL_ADRENO_XMEM_GEMM", "0", 1);
+  } else {
+    unsetenv("GGML_OPENCL_DISABLE_ADRENO_KERNELS");
+    unsetenv("GGML_OPENCL_ADRENO_XMEM_GEMM");
+  }
   setenv("GGML_OPENCL_KERNEL_CACHE_DIR", "/data/data/com.pocketpal/files/cl-cache", 0);
   dbg_log("==== loadModel begin ====");
   dbg_mem("loadModel entry");
