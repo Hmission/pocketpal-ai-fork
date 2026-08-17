@@ -3548,7 +3548,9 @@ protected:
     void init_params(ggml_context* ctx, const String2TensorStorage& tensor_storage_map, const std::string prefix = "") override {
         enum ggml_type wtype = get_type(prefix + "weight", tensor_storage_map, GGML_TYPE_F32);
         if (!support_get_rows(wtype)) {
-            wtype = GGML_TYPE_F32;
+            // 6.18 小米13 修复：原升 f32 致 qwen3 token_embd 1483MB 超 GPU 单次分配上限（1024MB）崩溃。
+            // f16 支持 get_rows 且体积减半（742MB），embedding 精度损失可忽略。
+            wtype = GGML_TYPE_F16;
         }
         params["weight"] = ggml_new_tensor_2d(ctx, wtype, embedding_dim, num_embeddings);
     }
