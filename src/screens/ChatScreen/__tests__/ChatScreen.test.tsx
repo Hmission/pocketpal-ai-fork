@@ -37,6 +37,9 @@ jest.mock('../../../services/promptWriter', () => ({
 
 import {promptWriter} from '../../../services/promptWriter';
 
+// §18.5：placeholder 单源决策链读 engineStatus 状态中枢（非 store mock，真实单例）
+import {engineStatus} from '../../../store/engineStatus';
+
 const render = (ui: React.ReactElement, options: any = {}) =>
   baseRender(ui, {withBottomSheetProvider: true, ...options});
 
@@ -53,6 +56,12 @@ describe('ChatScreen', () => {
     llamaRN = require('llama.rn');
   });
 
+  afterEach(() => {
+    // 复位引擎相位，防用例间污染（§18.5 决策链读同一状态中枢）
+    engineStatus.setPhase('chat', 'idle');
+    engineStatus.setPhase('prompter', 'idle');
+  });
+
   it('renders correctly when model is not loaded', () => {
     const {getByPlaceholderText} = render(<ChatScreen />, {
       withNavigation: true,
@@ -61,11 +70,19 @@ describe('ChatScreen', () => {
   });
 
   it('renders correctly when model is loading', () => {
-    modelStore.isContextLoading = true;
+    engineStatus.setPhase('chat', 'loading', '加载中…');
     const {getByPlaceholderText} = render(<ChatScreen />, {
       withNavigation: true,
     });
     expect(getByPlaceholderText(l10n.en.chat.loadingModel)).toBeTruthy();
+  });
+
+  it('renders butler-loading placeholder when prompter is loading (§18.5 优先级 2)', () => {
+    engineStatus.setPhase('prompter', 'loading', '加载中…');
+    const {getByPlaceholderText} = render(<ChatScreen />, {
+      withNavigation: true,
+    });
+    expect(getByPlaceholderText(l10n.en.chat.loadingButlerModel)).toBeTruthy();
   });
 
   it('renders correctly when model is loaded', () => {

@@ -1213,6 +1213,7 @@
     "modelNotLoaded": "Model belum dimuat. Harap inisialisasi model.",
     "completionFailed": "Gagal menyelesaikan: ",
     "loadingModel": "Memuat model...",
+    "loadingButlerModel": "Memuat model butler…",
     "typeYourMessage": "Ketik pesan Anda di sini",
     "load": "Muat",
     "goToModels": "Buka Model",

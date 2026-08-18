@@ -51,6 +51,7 @@ import {MarkdownProvider} from './src/components/MarkdownView';
 import {ConfirmDialogHost} from './src/components/ui/ConfirmDialog';
 import {ErrorReportDialogHost} from './src/components/ui/ErrorReportDialog';
 import {ModelSwitchDialogHost} from './src/components/ui/ModelSwitchDialog';
+import {IntentPickerHost} from './src/components/ui/IntentPicker';
 import {AutomationBridge, BenchmarkRunnerScreen} from './src/__automation__';
 import {
   ChatScreen,
@@ -363,6 +364,7 @@ const App = observer(() => {
                     <ConfirmDialogHost />
                     <ErrorReportDialogHost />
                     <ModelSwitchDialogHost />
+                    <IntentPickerHost />
                   </BottomSheetModalProvider>
                 </NavigationContainer>
               </MarkdownProvider>

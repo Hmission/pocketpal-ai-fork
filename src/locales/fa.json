@@ -1213,6 +1213,7 @@
     "modelNotLoaded": "مدل بارگذاری نشده. لطفاً مدل را راه‌اندازی کنید.",
     "completionFailed": "تکمیل ناموفق بود: ",
     "loadingModel": "در حال بارگذاری مدل ...",
+    "loadingButlerModel": "در حال بارگذاری مدل خدمتکار…",
     "typeYourMessage": "پیام خود را اینجا بنویسید",
     "load": "بارگذاری",
     "goToModels": "رفتن به مدل‌ها",

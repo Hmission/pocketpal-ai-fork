@@ -21,6 +21,7 @@ import {palStore} from './PalStore';
 import {uiStore} from './UIStore';
 import {deriveToolSchemas} from '../services/talents';
 import {AgentUiState, initialAgentUiState} from '../services/agent';
+import type {IntentKind} from '../services/aiosMemory/rituals';
 
 /**
  * Update payload accepted by `updateMessage` / `updateMessageStreaming`.
@@ -47,6 +48,8 @@ export interface SessionMetaData {
   activePalId?: string;
   settingsSource: 'pal' | 'custom'; // Explicit choice: use pal settings or custom settings
   messagesLoaded?: boolean; // Track if messages are loaded for lazy loading
+  // 会话级意图状态机（CHAT_UI_SPEC §18.1）：首轮定值后沿用，用户点按胶囊是唯一写入口
+  intent?: IntentKind;
 }
 
 interface SessionGroup {
@@ -334,6 +337,7 @@ class ChatSessionStore {
           activePalId: session.activePalId,
           settingsSource: (session.settingsSource as 'pal' | 'custom') || 'pal',
           messagesLoaded: false, // Mark as not loaded for lazy loading
+          intent: session.intent as IntentKind | undefined,
         });
       }
 
@@ -402,6 +406,11 @@ class ChatSessionStore {
         session.messages,
         session.completionSettings,
       );
+      // 会话级意图随副本继承（§18.1：复制的对话延续同一语境）
+      const copy = this.sessions.find(s => s.id === this.activeSessionId);
+      if (copy && session.intent) {
+        await this.setSessionIntentFor(copy.id, session.intent);
+      }
     }
   }
 
@@ -454,6 +463,35 @@ class ChatSessionStore {
     runInAction(() => {
       this.taskModelChoice[task] = modelId;
     });
+  }
+
+  /** 当前会话的意图（§18.1 会话级状态机读入口）；无会话或未定值返回 undefined */
+  get activeSessionIntent(): IntentKind | undefined {
+    const session = this.sessions.find(s => s.id === this.activeSessionId);
+    return session?.intent;
+  }
+
+  /** 意图唯一写入口（用户点按胶囊）：内存 + 落库 */
+  async setSessionIntent(intent: IntentKind): Promise<void> {
+    const session = this.sessions.find(s => s.id === this.activeSessionId);
+    if (!session) {
+      return;
+    }
+    await this.setSessionIntentFor(session.id, intent);
+  }
+
+  private async setSessionIntentFor(
+    sessionId: string,
+    intent: IntentKind,
+  ): Promise<void> {
+    const session = this.sessions.find(s => s.id === sessionId);
+    if (!session) {
+      return;
+    }
+    runInAction(() => {
+      session.intent = intent;
+    });
+    await chatSessionRepository.setSessionIntent(sessionId, intent);
   }
 
   async setActiveSession(sessionId: string): Promise<void> {

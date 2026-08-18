@@ -137,6 +137,14 @@ export const mockChatSessionStore = {
     string | null
   >,
   setTaskModelChoice: jest.fn(),
+  // 会话级意图状态机（CHAT_UI_SPEC §18.1）
+  activeSessionIntent: undefined as
+    | 'chat'
+    | 'vent'
+    | 'qa'
+    | 'task'
+    | undefined,
+  setSessionIntent: jest.fn().mockResolvedValue(undefined),
 };
 
 Object.defineProperty(mockChatSessionStore, 'isGeneratingToolCall', {

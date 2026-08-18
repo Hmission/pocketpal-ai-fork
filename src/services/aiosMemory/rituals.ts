@@ -191,8 +191,8 @@ const INTENT_GUIDANCE: Record<IntentKind, string> = {
   task: '【当前状态：任务】把任务拆解清楚再动手，需要工具就调用工具，完成要汇报结果。',
 };
 
-export function intentGuidance(userText: string): string {
-  return INTENT_GUIDANCE[classifyIntent(userText)];
+export function intentGuidance(intent: IntentKind): string {
+  return INTENT_GUIDANCE[intent];
 }
 
 // ─── 3. 收尾协议 ─────────────────────────────────────────────

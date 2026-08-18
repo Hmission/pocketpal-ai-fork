@@ -25,12 +25,12 @@ import {
 } from '../utils/systemPromptResolver';
 import {extractAndSaveMemories} from '../services/aiosMemory';
 import {assembleContext} from '../services/aiosMemory/contextAssembler';
-import {
-  getLastRecallInfo,
-  getLastIntentInfo,
-} from '../services/aiosMemory/contextAssembler';
+import {getLastRecallInfo} from '../services/aiosMemory/contextAssembler';
 import {getLastWriteTime} from '../services/aiosMemory/conversationLog';
-import {getLastSentiment} from '../services/aiosMemory/rituals';
+import {
+  getLastSentiment,
+  classifyIntent,
+} from '../services/aiosMemory/rituals';
 import {awaitEngineReady, engineIsBusy} from '../utils/engineReady';
 import {appendConversation} from '../services/aiosMemory/conversationLog';
 import {compactAndFlush} from '../services/aiosMemory/compaction';
@@ -156,7 +156,19 @@ const prepareCompletion = async ({
   });
 
   // AIOS 动态上下文组装: SOUL+AGENTS+记忆 + 召回相关历史片段
-  const assembled = await assembleContext(message.text, chatMessages.length);
+  // §18.1 会话级意图状态机：首轮 classifyIntent 定值并落库，之后永远沿用
+  // 会话 intent（唯一写入口 = 用户点按意图胶囊），不再每轮规则重判。
+  let sessionIntent = chatSessionStore.activeSessionIntent;
+  if (!sessionIntent) {
+    sessionIntent = classifyIntent(message.text);
+    await chatSessionStore.setSessionIntent(sessionIntent);
+  }
+  const assembled = await assembleContext(
+    message.text,
+    chatMessages.length,
+    5,
+    sessionIntent,
+  );
   const recalledFragment = assembled.recalledFragments.length
     ? '\n【召回的历史片段】(参考，别全部复述):\n' +
       assembled.recalledFragments.join('\n---\n')
@@ -488,7 +500,8 @@ async function applyEventToStore(
               recallCount: recall.count,
               recallPreview: recall.preview ?? [],
               sentimentLabel: getLastSentiment().label,
-              intent: getLastIntentInfo(),
+              // §18.1：快照读会话 intent（与胶囊同源），不再读已删的模块变量
+              intent: chatSessionStore.activeSessionIntent ?? 'chat',
             };
           })(),
           ...(event.result.hitMaxTurns ? {hitMaxTurns: true} : {}),

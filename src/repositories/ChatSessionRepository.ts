@@ -704,6 +704,24 @@ class ChatSessionRepository {
     });
   }
 
+  // Set session intent (会话级意图状态机落库，CHAT_UI_SPEC §18.1)
+  async setSessionIntent(sessionId: string, intent: string): Promise<void> {
+    const session = await database.collections
+      .get('chat_sessions')
+      .find(sessionId)
+      .catch(() => null);
+
+    if (!session) {
+      return;
+    }
+
+    await database.write(async () => {
+      await session.update((record: any) => {
+        record.intent = intent;
+      });
+    });
+  }
+
   // Delete a message by ID
   async deleteMessage(id: string): Promise<void> {
     const message = await database.collections

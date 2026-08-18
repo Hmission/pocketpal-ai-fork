@@ -1213,6 +1213,7 @@
     "modelNotLoaded": "אין מודל טעון. אנא אתחל מודל.",
     "completionFailed": "השלמה נכשלה: ",
     "loadingModel": "טוען מודל...",
+    "loadingButlerModel": "טוען את מודל הבאטלר…",
     "typeYourMessage": "הזן את הודעתך כאן",
     "load": "טעינה",
     "goToModels": "עבור למודלים",

@@ -15,7 +15,8 @@ import {
 } from '../../utils/paths';
 import {buildMemoryFragment} from './index';
 import {searchMemory} from './searchEngine';
-import {buildTodayState, intentGuidance, trackSentiment, classifyIntent} from './rituals';
+import {buildTodayState, intentGuidance, trackSentiment} from './rituals';
+import type {IntentKind} from './rituals';
 
 export interface AssembledContext {
   systemPrompt: string;
@@ -27,17 +28,10 @@ export interface AssembledContext {
 // Track last recall info for TurnMetricsRow display (B18 §17)
 let _lastRecallCount = 0;
 let _lastRecallPreview: string[] = [];
-// v3.8：最近一次意图分类（B18 §17 作者行意图胶囊展示用）
-let _lastIntent: 'chat' | 'vent' | 'qa' | 'task' = 'chat';
 
 /** Get the last recall count for UI display. */
 export function getLastRecallInfo(): {count: number; preview: string[]} {
   return {count: _lastRecallCount, preview: _lastRecallPreview};
-}
-
-/** v3.8：最近一次意图分类（B18 §17 作者行意图胶囊展示用） */
-export function getLastIntentInfo(): 'chat' | 'vent' | 'qa' | 'task' {
-  return _lastIntent;
 }
 
 async function readFileSafe(path: string): Promise<string> {
@@ -59,14 +53,16 @@ async function readFileSafe(path: string): Promise<string> {
  * 3. \u5373\u65f6\u5c42\uff1a\u6700\u8fd11-2\u8f6e\u539f\u6587\uff08\u7531 useChatSession \u4fdd\u7559\uff09
  * 4. \u5f53\u524d\u5c42\uff1a\u5f53\u524d user \u8f93\u5165\uff08\u7531 useChatSession \u4fdd\u7559\uff09
  *
- * @param currentUserText \u5f53\u524d\u7528\u6237\u8f93\u5165
- * @param recentMessageCount \u6700\u8fd1\u6d88\u606f\u6570\uff08\u7528\u4e8e\u81ea\u9002\u5e94\u53ec\u56de\u7247\u6bb5\u6570\uff09
- * @param maxRecallFragments \u6700\u5927\u53ec\u56de\u7247\u6bb5\u6570
+ * @param currentUserText 当前用户输入
+ * @param recentMessageCount 最近消息数（用于自适应召回片段数）
+ * @param maxRecallFragments 最大召回片段数
+ * @param sessionIntent 会话级意图（§18.1 状态机：首轮定值后沿用，不再每轮重判）
  */
 export async function assembleContext(
   currentUserText: string,
   recentMessageCount = 0,
   maxRecallFragments = 5,
+  sessionIntent: IntentKind,
 ): Promise<AssembledContext> {
   // \u81ea\u9002\u5e94\u53ec\u56de\uff1a\u8fd1\u671f\u6d88\u606f\u591a\uff08\u4e0a\u4e0b\u6587\u7a7a\u95f4\u5c11\uff09\u2192\u5c11\u53ec\u56de\uff1b\u8fd1\u671f\u6d88\u606f\u5c11\uff08\u7a7a\u95f4\u591a\uff09\u2192\u591a\u53ec\u56de
   const adaptiveMax = recentMessageCount > 10
@@ -80,13 +76,14 @@ export async function assembleContext(
   const user = await readFileSafe(AIOS_USER_FILE);
   const agents = await readFileSafe(AIOS_AGENTS_FILE);
   const memoryDoc = (await readFileSafe(AIOS_MEMORY_FILE)).slice(0, 2000);
-  // 9-3 意图引导装填：classifyIntent 四态 → buildMemoryFragment 按意图选策略
-  const intentKind = classifyIntent(currentUserText);
-  _lastIntent = intentKind; // v3.8：意图标签（B18 §17 作者行胶囊）
-  const memoryFragment = await buildMemoryFragment(currentUserText, intentKind);
+  // 9-3 意图引导装填：会话级意图（调用方从会话状态机传入，不每轮重判）
+  const memoryFragment = await buildMemoryFragment(
+    currentUserText,
+    sessionIntent,
+  );
   // P4 仪式：开场状态（日期+上次摘要+昨日情绪）+ 意图语气（闲聊/倾诉/问答/任务）
   const todayState = recentMessageCount <= 2 ? await buildTodayState() : '';
-  const intent = intentGuidance(currentUserText);
+  const intent = intentGuidance(sessionIntent);
   // M7 情绪：跟踪大王输入情绪，供状态展示
   trackSentiment(currentUserText);
   const systemPrompt = [soul, user, agents, memoryDoc, todayState, intent, memoryFragment]

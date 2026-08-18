@@ -143,5 +143,16 @@ export default schemaMigrations({
         }),
       ],
     },
+    // Migration to version 8: Add intent column to chat_sessions
+    // (会话级意图状态机落库，CHAT_UI_SPEC §18.1)
+    {
+      toVersion: 8,
+      steps: [
+        addColumns({
+          table: 'chat_sessions',
+          columns: [{name: 'intent', type: 'string', isOptional: true}],
+        }),
+      ],
+    },
   ],
 });

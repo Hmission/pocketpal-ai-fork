@@ -1,5 +1,5 @@
 import React, {useRef, ReactNode, useState} from 'react';
-import {View, Text} from 'react-native';
+import {View, Text, TouchableOpacity} from 'react-native';
 
 import {observer} from 'mobx-react';
 import {runInAction} from 'mobx';
@@ -40,6 +40,8 @@ import {TaskErrorCard} from '../../components/TaskErrorCard/TaskErrorCard';
 import {TextMessage} from '../../components/TextMessage';
 import {promptWriter} from '../../services/promptWriter';
 import {imageGenStore} from '../../store/imageGenStore';
+import {engineStatus} from '../../store/engineStatus';
+import {askIntentChoice} from '../../components/ui/IntentPicker';
 import {ROUTES} from '../../utils/navigationConstants';
 
 import {VideoPalScreen} from './VideoPalScreen';
@@ -51,6 +53,15 @@ const INTENT_LABEL: Record<string, string> = {
   vent: '倾诉',
   qa: '问答',
   task: '任务',
+};
+
+// §18.1 意图胶囊点按：会话级状态机的唯一用户写入口。
+// 选择器取消（null）不改状态；Host 未挂载时 fail-fast 同样不改状态。
+const handleIntentPress = async () => {
+  const next = await askIntentChoice(chatSessionStore.activeSessionIntent);
+  if (next) {
+    await chatSessionStore.setSessionIntent(next);
+  }
 };
 
 const renderBubble = ({
@@ -111,8 +122,10 @@ const renderBubble = ({
             </Text>
           ) : null}
           {intent && INTENT_LABEL[intent] ? (
-            <View
+            <TouchableOpacity
               testID="assistant-intent-capsule"
+              onPress={handleIntentPress}
+              activeOpacity={0.7}
               style={{
                 backgroundColor: withOpacity(intentColor, 0.12),
                 borderRadius: theme.radius[theme.shapeRoles.pill],
@@ -127,7 +140,7 @@ const renderBubble = ({
                 }}>
                 {INTENT_LABEL[intent]}
               </Text>
-            </View>
+            </TouchableOpacity>
           ) : null}
         </View>
       ) : null}
@@ -466,13 +479,20 @@ export const ChatScreen: React.FC = observer(() => {
           onEffortCycle: handleEffortCycle,
         }}
         textInputProps={{
-          placeholder: !modelStore.engine
-            ? modelStore.isContextLoading
+          // §18.5 placeholder 单源决策表（engineStatus 状态中枢为唯一事实源）：
+          // 1 chat 引擎 loading → 加载模型；2 管家 loading → 加载管家模型；
+          // 3 chat 引擎 ready → 输入消息；4 管家就绪 → 小黄鸡就绪；
+          // 5 其余 → 模型未加载。
+          placeholder:
+            engineStatus.engines.chat.phase === 'loading'
               ? l10n.chat.loadingModel
-              : promptWriter.isLoaded
-                ? '小黄鸡已就绪，输入即可聊天'
-                : l10n.chat.modelNotLoaded
-            : l10n.chat.typeYourMessage,
+              : engineStatus.engines.prompter.phase === 'loading'
+                ? l10n.chat.loadingButlerModel
+                : modelStore.engine
+                  ? l10n.chat.typeYourMessage
+                  : promptWriter.isLoaded
+                    ? '小黄鸡已就绪，输入即可聊天'
+                    : l10n.chat.modelNotLoaded,
         }}
       />
       {uiStore.chatWarning && (

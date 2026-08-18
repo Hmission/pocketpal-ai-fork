@@ -1237,6 +1237,7 @@
     "engineBusyTimeout": "模型繁忙，请稍后重试。",
     "completionFailed": "生成失败: ",
     "loadingModel": "加载模型中...",
+    "loadingButlerModel": "正在加载管家模型…",
     "typeYourMessage": "输入消息",
     "load": "加载",
     "goToModels": "转到模型",

@@ -655,6 +655,7 @@
     "modelNotLoaded": "Modèle non chargé. Veuillez initialiser le modèle.",
     "completionFailed": "Échec de la complétion : ",
     "loadingModel": "Chargement du modèle ...",
+    "loadingButlerModel": "Chargement du modèle majordome…",
     "typeYourMessage": "Saisissez votre message ici",
     "load": "Charger",
     "goToModels": "Aller aux modèles",

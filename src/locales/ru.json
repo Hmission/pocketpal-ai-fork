@@ -161,6 +161,7 @@
   },
   "chat": {
     "loadingModel": "Загрузка модели...",
+    "loadingButlerModel": "Загрузка модели-дворецкого…",
     "typeYourMessage": "Введите сообщение",
     "load": "Загрузка",
     "goToModels": "Перейти к моделям",

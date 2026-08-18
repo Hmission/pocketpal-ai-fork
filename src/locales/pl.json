@@ -1540,6 +1540,7 @@
     "completionFailed": "Błąd podczas uzupełniania: ",
     "toolCallTruncated": "Wywołanie narzędzia zostało przerwane - prawdopodobnie zabrakło pamięci roboczej modelu. Spróbuj użyć większego kontekstu lub zmniejszyć rozmiar zapytania.",
     "loadingModel": "Ładowanie modelu...",
+    "loadingButlerModel": "Ładowanie modelu lokaja…",
     "typeYourMessage": "Wpisz tutaj swoją wiadomość",
     "load": "Załaduj",
     "goToModels": "Przejdź do Modeli",

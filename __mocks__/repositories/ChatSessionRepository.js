@@ -118,6 +118,10 @@ class ChatSessionRepository {
     return; // Mock: do nothing
   }
 
+  async setSessionIntent(sessionId, intent) {
+    return; // Mock: do nothing
+  }
+
   // Update session completion settings
   async updateSessionCompletionSettings(sessionId, settings) {
     return; // Mock: do nothing
