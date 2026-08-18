@@ -405,6 +405,32 @@
       "vision": "Bildverarbeitung"
     }
   },
+  "completionParamsLabels": {
+    "n_predict": "Generierungslänge",
+    "include_thinking_in_context": "Denkprozess im Kontext",
+    "temperature": "Temperatur",
+    "top_k": "Top K",
+    "top_p": "Top P",
+    "min_p": "Min P",
+    "xtc_threshold": "XTC-Schwelle",
+    "xtc_probability": "XTC-Wahrscheinlichkeit",
+    "typical_p": "Typical P",
+    "penalty_last_n": "Penalty-Fenster",
+    "penalty_repeat": "Wiederholungs-Penalty",
+    "penalty_freq": "Frequenz-Penalty",
+    "penalty_present": "Präsenz-Penalty",
+    "mirostat": "Mirostat",
+    "mirostat_tau": "Mirostat Tau",
+    "mirostat_eta": "Mirostat Eta",
+    "seed": "Zufalls-Seed",
+    "jinja": "Jinja-Vorlage"
+  },
+  "completionParamControls": {
+    "off": "Aus",
+    "unlimited": "Unbegrenzt",
+    "custom": "Benutzerdefiniert",
+    "palPrefix": "Pal"
+  },
   "completionParams": {
     "include_thinking_in_context": "KI-Denk-/Schlussfolgerungen in den an das Modell gesendeten Kontext einbeziehen. Durch Deaktivieren dieser Option kann Kontextspeicherplatz gespart werden. Dies kann die Leistung beeinträchtigen.",
     "jinja": "Jinja-Vorlagen für die Chatformatierung aktivieren. Wenn aktiviert, wird die Jinja-basierte Chatvorlagenverarbeitung für eine bessere Kompatibilität mit modernen Modellen verwendet.",

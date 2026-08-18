@@ -454,6 +454,32 @@
       "vision": "Visão"
     }
   },
+  "completionParamsLabels": {
+    "n_predict": "Comprimento de geração",
+    "include_thinking_in_context": "Incluir raciocínio no contexto",
+    "temperature": "Temperatura",
+    "top_k": "Top K",
+    "top_p": "Top P",
+    "min_p": "Min P",
+    "xtc_threshold": "Limiar XTC",
+    "xtc_probability": "Probabilidade XTC",
+    "typical_p": "Typical P",
+    "penalty_last_n": "Janela de penalidade",
+    "penalty_repeat": "Penalidade de repetição",
+    "penalty_freq": "Penalidade de frequência",
+    "penalty_present": "Penalidade de presença",
+    "mirostat": "Mirostat",
+    "mirostat_tau": "Mirostat Tau",
+    "mirostat_eta": "Mirostat Eta",
+    "seed": "Semente aleatória",
+    "jinja": "Modelo Jinja"
+  },
+  "completionParamControls": {
+    "off": "Desativado",
+    "unlimited": "Ilimitado",
+    "custom": "Personalizado",
+    "palPrefix": "Pal"
+  },
   "completionParams": {
     "include_thinking_in_context": "Incluir as partes de raciocínio/pensamento da IA no contexto enviado ao modelo. Desativar isso pode economizar espaço de contexto. Pode impactar o desempenho.",
     "jinja": "Ativar a formatação Jinja para o chat. Quando ativado, usa o processamento de modelo de chat baseado em Jinja para melhor compatibilidade com modelos mais recentes.",

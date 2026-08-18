@@ -259,6 +259,24 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 | voice-stop-button | 录音中红色停止按钮 |
 | quick-prefix-clear（§13 既有） | 前缀 chip × 清除 |
 
+## 15. 生成设置参数标签本地化规范（v3.1，2026-08-18）
+
+### 15.1 问题与根因
+
+聊天页/伙伴设置生成设置 sheet（CompletionSettings）的参数**描述**走 l10n（`completionParams` 段），但**标签**硬编码为 `name.toUpperCase().replace('_',' ')`（如 TEMPERATURE / INCLUDE THINKING IN CONTEXT / N PREDICT），中文 UI 下呈现大量大写英文。
+
+### 15.2 规范
+
+- 标签文案源：`completionParamsLabels`（18 个参数标签）+ `completionParamControls`（off / unlimited / custom / palPrefix）
+- 组件经 `paramLabel()` helper 取值，带大写英文 fallback（无该段的语言自动回退 en，不显示 undefined）
+- **ML 专有名词全语言保留英文**：Top K / Top P / Min P / Typical P / XTC / Mirostat / Jinja；描述性词必须翻译（temperature→温度、seed→随机种子、n_predict→预测长度）
+- 控制词禁硬编码：Off / Unlimited / Custom / Pal(名字) 一律走 completionParamControls
+- 共用组件约束：CompletionSettings 同时被 ChatGenerationSettingsSheet 与 PalGenerationSettingsSheet 消费，改标签需双场景验证
+
+### 15.3 覆盖
+
+16 语言全覆盖（zh/zh_Hant/en/ja/ko/fa/he/id/ms/pl/pt/pt_BR/ru/uk/de/fr），每语言 18 标签 + 4 控制词；zh_Hant 另补齐 modelDirs 10 key 后缺失清零。
+
 ## 变更日志
 
 | 日期 | 版本 | 变更 |
@@ -267,3 +285,4 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 | 2026-08-16 | 2.1 | 生图任务卡片生成动效 + 图片撑满（§12，MASTER_LOG §20） |
 | 2026-08-16 | 2.2 | §13 聊天内闭环：快捷入口下沉 controlBar 图标钮 + 前缀 chip 标签化（原子删除）+ 图片编辑闭环（三入口下沉输入框）+ §13.6 多模态输入边界（产物图不进模型） |
 | 2026-08-17 | 3.0 | §14 语音输入：发送按钮升级为语音优先状态机 + 输入行高度统一 36px（思考/发送/语音同一基线） |
+| 2026-08-18 | 3.1 | §15 生成设置参数标签本地化：新增 completionParamsLabels/Controls 两段 + paramLabel() fallback helper，16 语言全覆盖（MASTER_LOG §31.4） |

@@ -257,6 +257,32 @@
     "stop": "중지",
     "noResults": "결과 없음"
   },
+  "completionParamsLabels": {
+    "n_predict": "생성 길이",
+    "include_thinking_in_context": "컨텍스트에 사고 과정 포함",
+    "temperature": "온도",
+    "top_k": "Top K",
+    "top_p": "Top P",
+    "min_p": "Min P",
+    "xtc_threshold": "XTC 임계값",
+    "xtc_probability": "XTC 확률",
+    "typical_p": "Typical P",
+    "penalty_last_n": "페널티 범위",
+    "penalty_repeat": "반복 페널티",
+    "penalty_freq": "빈도 페널티",
+    "penalty_present": "존재 페널티",
+    "mirostat": "Mirostat",
+    "mirostat_tau": "Mirostat Tau",
+    "mirostat_eta": "Mirostat Eta",
+    "seed": "랜덤 시드",
+    "jinja": "Jinja 템플릿"
+  },
+  "completionParamControls": {
+    "off": "끄기",
+    "unlimited": "무제한",
+    "custom": "사용자 지정",
+    "palPrefix": "팔"
+  },
   "completionParams": {
     "grammar": "특정 문법 규칙을 적용하여 생성된 텍스트가 정해진 구조나 형식을 따르도록 강제합니다.",
     "stop": "텍스트 생성을 중단할 특정 문구를 지정합니다.",

@@ -428,6 +428,32 @@
       "copyFailed": "Nie udało się skopiować pliku modelu"
     }
   },
+  "completionParamsLabels": {
+    "n_predict": "Długość generacji",
+    "include_thinking_in_context": "Rozważania w kontekście",
+    "temperature": "Temperatura",
+    "top_k": "Top K",
+    "top_p": "Top P",
+    "min_p": "Min P",
+    "xtc_threshold": "Próg XTC",
+    "xtc_probability": "Prawdopodobieństwo XTC",
+    "typical_p": "Typical P",
+    "penalty_last_n": "Okno kary",
+    "penalty_repeat": "Kara za powtórzenia",
+    "penalty_freq": "Kara za częstotliwość",
+    "penalty_present": "Kara za obecność",
+    "mirostat": "Mirostat",
+    "mirostat_tau": "Mirostat Tau",
+    "mirostat_eta": "Mirostat Eta",
+    "seed": "Ziarno losowe",
+    "jinja": "Szablon Jinja"
+  },
+  "completionParamControls": {
+    "off": "Wył",
+    "unlimited": "Bez limitu",
+    "custom": "Niestandardowe",
+    "palPrefix": "Pal"
+  },
   "completionParams": {
     "ignore_eos": "Kontynuuj generowanie, nawet jeśli model chce się zatrzymać. Przydatne do wymuszania dłuższych odpowiedzi",
     "logit_bias": "Wpływaj na prawdopodobieństwo pojawienia się określonych słów w odpowiedzi",

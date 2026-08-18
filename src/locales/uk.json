@@ -454,6 +454,32 @@
       "resolveError": "Не вдалося завантажити деталі моделі. Перевірте з'єднання та спробуйте ще раз."
     }
   },
+  "completionParamsLabels": {
+    "n_predict": "Довжина генерації",
+    "include_thinking_in_context": "Роздуми в контексті",
+    "temperature": "Температура",
+    "top_k": "Top K",
+    "top_p": "Top P",
+    "min_p": "Min P",
+    "xtc_threshold": "Поріг XTC",
+    "xtc_probability": "Ймовірність XTC",
+    "typical_p": "Typical P",
+    "penalty_last_n": "Вікно штрафу",
+    "penalty_repeat": "Штраф за повтори",
+    "penalty_freq": "Штраф за частоту",
+    "penalty_present": "Штраф за присутність",
+    "mirostat": "Mirostat",
+    "mirostat_tau": "Mirostat Tau",
+    "mirostat_eta": "Mirostat Eta",
+    "seed": "Випадкове зерно",
+    "jinja": "Шаблон Jinja"
+  },
+  "completionParamControls": {
+    "off": "Вимк",
+    "unlimited": "Без обмежень",
+    "custom": "Власне",
+    "palPrefix": "Пал"
+  },
   "completionParams": {
     "include_thinking_in_context": "Включіть фрагменти міркувань/роздумів ШІ у контекст, що надсилається до моделі. Вимкнення цієї опції дозволяє заощадити місце для контексту. Це може вплинути на продуктивність.",
     "jinja": "Увімкнути використання шаблонів Jinja для форматування чату. Якщо ця опція увімкнена, обробка шаблонів чату здійснюється на основі Jinja для кращої сумісності з сучасними моделями.",

@@ -454,6 +454,32 @@
       "resolveError": "بارگذاری جزئیات مدل ممکن نشد. اتصال خود را بررسی کرده و دوباره تلاش کنید."
     }
   },
+  "completionParamsLabels": {
+    "n_predict": "طول تولید",
+    "include_thinking_in_context": "شامل‌کردن تفکر در زمینه",
+    "temperature": "دما",
+    "top_k": "Top K",
+    "top_p": "Top P",
+    "min_p": "Min P",
+    "xtc_threshold": "آستانه XTC",
+    "xtc_probability": "احتمال XTC",
+    "typical_p": "Typical P",
+    "penalty_last_n": "پنجره جریمه",
+    "penalty_repeat": "جریمه تکرار",
+    "penalty_freq": "جریمه فراوانی",
+    "penalty_present": "جریمه حضور",
+    "mirostat": "Mirostat",
+    "mirostat_tau": "Mirostat Tau",
+    "mirostat_eta": "Mirostat Eta",
+    "seed": "بذر تصادفی",
+    "jinja": "قالب Jinja"
+  },
+  "completionParamControls": {
+    "off": "خاموش",
+    "unlimited": "نامحدود",
+    "custom": "سفارشی",
+    "palPrefix": "پال"
+  },
   "completionParams": {
     "include_thinking_in_context": "بخش‌های تفکر/استدلال هوش مصنوعی را در متنی که به مدل ارسال می‌شود بگنجانید. غیرفعال کردن این گزینه می‌تواند فضای متن را ذخیره کند. ممکن است روی عملکرد تأثیر بگذارد.",
     "jinja": "قالب‌بندی Jinja را برای فرمت چت فعال کنید. وقتی فعال باشد، از پردازش قالب چت مبتنی بر Jinja برای سازگاری بهتر با مدل‌های جدید استفاده می‌شود.",

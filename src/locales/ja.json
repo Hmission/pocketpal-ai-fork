@@ -454,6 +454,32 @@
       "resolveError": "モデル詳細を読み込めませんでした。接続を確認してもう一度お試しください。"
     }
   },
+  "completionParamsLabels": {
+    "n_predict": "生成長",
+    "include_thinking_in_context": "思考をコンテキストに含める",
+    "temperature": "温度",
+    "top_k": "Top K",
+    "top_p": "Top P",
+    "min_p": "Min P",
+    "xtc_threshold": "XTC しきい値",
+    "xtc_probability": "XTC 確率",
+    "typical_p": "Typical P",
+    "penalty_last_n": "ペナルティ範囲",
+    "penalty_repeat": "繰り返しペナルティ",
+    "penalty_freq": "頻度ペナルティ",
+    "penalty_present": "存在ペナルティ",
+    "mirostat": "Mirostat",
+    "mirostat_tau": "Mirostat Tau",
+    "mirostat_eta": "Mirostat Eta",
+    "seed": "乱数シード",
+    "jinja": "Jinja テンプレート"
+  },
+  "completionParamControls": {
+    "off": "オフ",
+    "unlimited": "無制限",
+    "custom": "カスタム",
+    "palPrefix": "パル"
+  },
   "completionParams": {
     "include_thinking_in_context": "AIの思考/推論部分をモデルに送信するコンテキストに含めます、無効にするとコンテキスト容量を節約できますが、パフォーマンスに影響する可能性があります",
     "jinja": "チャットフォーマットにJinjaテンプレートを使用します、有効にすると、最新のモデルとの互換性を向上させるためにJinjaベースのチャットテンプレート処理を使用します",

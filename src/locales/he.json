@@ -454,6 +454,32 @@
       "resolveError": "טעינת פרטי המודל נכשלה. בדוק את החיבור ונסה שוב."
     }
   },
+  "completionParamsLabels": {
+    "n_predict": "אורך יצירה",
+    "include_thinking_in_context": "הכללת מחשבות בהקשר",
+    "temperature": "טמפרטורה",
+    "top_k": "Top K",
+    "top_p": "Top P",
+    "min_p": "Min P",
+    "xtc_threshold": "סף XTC",
+    "xtc_probability": "הסתברות XTC",
+    "typical_p": "Typical P",
+    "penalty_last_n": "חלון ענישה",
+    "penalty_repeat": "עונש חזרות",
+    "penalty_freq": "עונש תדירות",
+    "penalty_present": "עונש נוכחות",
+    "mirostat": "Mirostat",
+    "mirostat_tau": "Mirostat Tau",
+    "mirostat_eta": "Mirostat Eta",
+    "seed": "זרע אקראי",
+    "jinja": "תבנית Jinja"
+  },
+  "completionParamControls": {
+    "off": "כבוי",
+    "unlimited": "ללא הגבלה",
+    "custom": "מותאם אישית",
+    "palPrefix": "פאל"
+  },
   "completionParams": {
     "include_thinking_in_context": "כלול חלקי חשיבה/הנמקה של ה-AI בהקשר שנשלח למודל. השבתת אפשרות זו יכולה לחסוך מקום בהקשר. הדבר עלול להשפיע על הביצועים.",
     "jinja": "הפעל תבניות Jinja לעיצוב צ'אט. כאשר מופעל, נעשה שימוש בעיבוד תבניות צ'אט מבוססות Jinja לצורך תאימות טובה יותר עם מודלים מודרניים.",

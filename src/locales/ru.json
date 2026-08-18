@@ -257,6 +257,32 @@
     "stop": "Остановить",
     "noResults": "Ничего не найдено"
   },
+  "completionParamsLabels": {
+    "n_predict": "Длина генерации",
+    "include_thinking_in_context": "Размышления в контексте",
+    "temperature": "Температура",
+    "top_k": "Top K",
+    "top_p": "Top P",
+    "min_p": "Min P",
+    "xtc_threshold": "Порог XTC",
+    "xtc_probability": "Вероятность XTC",
+    "typical_p": "Typical P",
+    "penalty_last_n": "Окно штрафа",
+    "penalty_repeat": "Штраф за повторы",
+    "penalty_freq": "Штраф за частоту",
+    "penalty_present": "Штраф за присутствие",
+    "mirostat": "Mirostat",
+    "mirostat_tau": "Mirostat Tau",
+    "mirostat_eta": "Mirostat Eta",
+    "seed": "Случайное зерно",
+    "jinja": "Шаблон Jinja"
+  },
+  "completionParamControls": {
+    "off": "Выкл",
+    "unlimited": "Без ограничений",
+    "custom": "Вручную",
+    "palPrefix": "Пал"
+  },
   "completionParams": {
     "grammar": "Принудительное соблюдение грамматических правил, чтобы текст следовал строгой структуре или формату",
     "stop": "Определить фразы, при появлении которых генерация текста прекратится",

@@ -417,7 +417,8 @@
         "workspace": "智慧體",
         "tool": "工具設定",
         "imageGen": "生圖",
-        "generationSettings": "生成設定"
+        "generationSettings": "生成設定",
+        "modelDirs": "模型資料夾"
       },
       "searchPlaceholder": "搜尋對話",
       "newChat": "新對話",
@@ -787,6 +788,16 @@
       "importSuccess": "已成功匯入 {{count}} 個 pal。",
       "importError": "匯入 pal 失敗。請檢查檔案格式。"
     },
+    "modelDirs": {
+      "defaultDirLabel": "預設資料夾",
+      "defaultDirHint": "從 Hugging Face 下載的模型會儲存在這裡，無需額外權限。",
+      "customDirsLabel": "自訂資料夾",
+      "customDirsHint": "用於掃描本機模型的資料夾。AIOS 共享資料夾已預先註冊。",
+      "addDirButton": "新增資料夾",
+      "invalidDir": "找不到資料夾或無法讀取",
+      "removeConfirm": "要將此資料夾從掃描列表中移除嗎？",
+      "defaultBadge": "預設"
+    },
     "pendingIndicator": {
       "preparingTool": "正在準備工具",
       "buildingPage": "建置頁面",
@@ -1101,7 +1112,8 @@
     "benchmark": "基準測試",
     "settings": "設定",
     "appInfo": "應用程式資訊",
-    "testCompletion": "測試完成"
+    "testCompletion": "測試完成",
+    "modelDirs": "模型資料夾"
   },
   "settings": {
     "modelInitializationSettings": "模型初始化設定",

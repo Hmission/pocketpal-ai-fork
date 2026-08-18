@@ -230,6 +230,32 @@
       "creativity": "Écriture créative"
     }
   },
+  "completionParamsLabels": {
+    "n_predict": "Longueur de génération",
+    "include_thinking_in_context": "Inclure la réflexion dans le contexte",
+    "temperature": "Température",
+    "top_k": "Top K",
+    "top_p": "Top P",
+    "min_p": "Min P",
+    "xtc_threshold": "Seuil XTC",
+    "xtc_probability": "Probabilité XTC",
+    "typical_p": "Typical P",
+    "penalty_last_n": "Fenêtre de pénalité",
+    "penalty_repeat": "Pénalité de répétition",
+    "penalty_freq": "Pénalité de fréquence",
+    "penalty_present": "Pénalité de présence",
+    "mirostat": "Mirostat",
+    "mirostat_tau": "Mirostat Tau",
+    "mirostat_eta": "Mirostat Eta",
+    "seed": "Graine aléatoire",
+    "jinja": "Modèle Jinja"
+  },
+  "completionParamControls": {
+    "off": "Désactivé",
+    "unlimited": "Illimité",
+    "custom": "Personnalisé",
+    "palPrefix": "Pal"
+  },
   "completionParams": {
     "include_thinking_in_context": "Inclure les parties de réflexion/raisonnement de l'IA dans le contexte envoyé au modèle. Désactiver ceci peut économiser de l'espace de contexte. Cela pourrait impacter les performances.",
     "grammar": "Appliquer des règles grammaticales spécifiques pour s'assurer que le texte généré suit une structure ou un format particulier",

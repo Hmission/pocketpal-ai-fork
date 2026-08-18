@@ -454,6 +454,32 @@
       "resolveError": "Gagal memuat detail model. Periksa koneksi Anda dan coba lagi."
     }
   },
+  "completionParamsLabels": {
+    "n_predict": "Panjang generasi",
+    "include_thinking_in_context": "Sertakan pemikiran dalam konteks",
+    "temperature": "Suhu",
+    "top_k": "Top K",
+    "top_p": "Top P",
+    "min_p": "Min P",
+    "xtc_threshold": "Ambang XTC",
+    "xtc_probability": "Probabilitas XTC",
+    "typical_p": "Typical P",
+    "penalty_last_n": "Jendela penalti",
+    "penalty_repeat": "Penalti pengulangan",
+    "penalty_freq": "Penalti frekuensi",
+    "penalty_present": "Penalti keberadaan",
+    "mirostat": "Mirostat",
+    "mirostat_tau": "Mirostat Tau",
+    "mirostat_eta": "Mirostat Eta",
+    "seed": "Benih acak",
+    "jinja": "Template Jinja"
+  },
+  "completionParamControls": {
+    "off": "Nonaktif",
+    "unlimited": "Tanpa batas",
+    "custom": "Kustom",
+    "palPrefix": "Pal"
+  },
   "completionParams": {
     "include_thinking_in_context": "Sertakan bagian pemikiran/penalaran AI dalam konteks yang dikirim ke model. Menonaktifkan ini dapat menghemat ruang konteks, tetapi mungkin memengaruhi performa.",
     "jinja": "Aktifkan templat Jinja untuk format obrolan. Saat diaktifkan, menggunakan pemrosesan templat berbasis Jinja untuk kompatibilitas lebih baik dengan model modern.",
