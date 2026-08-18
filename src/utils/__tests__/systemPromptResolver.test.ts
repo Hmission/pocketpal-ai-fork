@@ -260,5 +260,46 @@ describe('systemPromptResolver', () => {
       expect(result.slice(1)).toEqual(history);
       expect(result.filter(msg => msg.role === 'system')).toHaveLength(1);
     });
+
+    it('normalizes consecutive same-role messages（孤儿 user 修复：上次生成失败无 assistant 落盘 → 连续 user 合并，严格模板不拒绝）', () => {
+      const history = [
+        {role: 'user' as const, content: '上次失败的消息'}, // 孤儿 user
+        {role: 'user' as const, content: '这次的新消息'},
+      ];
+      const result = assembleMessages([sys('Pal')], [], history);
+
+      expect(result.slice(1)).toEqual([
+        {role: 'user', content: '上次失败的消息\n这次的新消息'},
+      ]);
+    });
+
+    it('normalizes assistant-assistant runs but keeps tool messages adjacent', () => {
+      const history = [
+        {role: 'assistant' as const, content: '第一段'},
+        {role: 'assistant' as const, content: '第二段'},
+        {role: 'tool' as const, content: 'tool result', tool_call_id: 't1'},
+      ];
+      const result = assembleMessages([sys('Pal')], [], history);
+
+      expect(result.slice(1)).toEqual([
+        {role: 'assistant', content: '第一段\n第二段'},
+        {role: 'tool', content: 'tool result', tool_call_id: 't1'},
+      ]);
+    });
+
+    it('keeps assistant-with-tool_calls unmerged（合并只针对纯文本段）', () => {
+      const history = [
+        {
+          role: 'assistant' as const,
+          content: '',
+          tool_calls: [{id: 'c1', type: 'function', function: {name: 'x', arguments: '{}'}}],
+        },
+        {role: 'assistant' as const, content: '普通回复'},
+      ];
+      const result = assembleMessages([sys('Pal')], [], history);
+
+      expect(result.slice(1)).toHaveLength(2);
+      expect(result[1]).toHaveProperty('tool_calls');
+    });
   });
 });

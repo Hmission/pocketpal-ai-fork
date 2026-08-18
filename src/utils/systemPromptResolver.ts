@@ -40,6 +40,34 @@ export function resolveSystemPrompt(
 type ChatMessage = {role: string; content?: unknown};
 
 /**
+ * 角色交替规范化（2026-08-19 真机实证）：严格 chat 模板（如 Ministral）要求
+ * system 之后 user/assistant 严格交替。孤儿 user（上次生成失败无 assistant 落盘）
+ * 或连续 assistant 段会让模板 raise，导致会话永久卡死。
+ * 合并相邻同角色纯文本段（保真拼接，不丢内容）；带 tool_calls 的 assistant 不合并
+ * （tool_call_id 回引配对完整性优先）。
+ */
+function normalizeAlternatingRoles(messages: ChatMessage[]): ChatMessage[] {
+  const out: ChatMessage[] = [];
+  for (const msg of messages) {
+    const last = out[out.length - 1];
+    const mergeable =
+      last &&
+      last.role === msg.role &&
+      (msg.role === 'user' || msg.role === 'assistant') &&
+      typeof last.content === 'string' &&
+      typeof msg.content === 'string' &&
+      !(msg as {tool_calls?: unknown}).tool_calls &&
+      !(last as {tool_calls?: unknown}).tool_calls;
+    if (mergeable) {
+      last.content = `${last.content}\n${msg.content}`;
+      continue;
+    }
+    out.push(msg);
+  }
+  return out;
+}
+
+/**
  * Fold the system prompt + every talent fragment into ONE leading system
  * message; a second system message makes strict chat templates raise.
  */
@@ -57,7 +85,10 @@ export function assembleMessages(
     ? [{role: 'system', content: parts.join('\n\n')}]
     : [];
 
-  const messages = [...leadingSystemMessage, ...followingMessages];
+  const messages = [
+    ...leadingSystemMessage,
+    ...normalizeAlternatingRoles(followingMessages),
+  ];
 
   if (__DEV__) {
     const systemPositions = messages
