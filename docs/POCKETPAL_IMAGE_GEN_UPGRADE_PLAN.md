@@ -202,6 +202,7 @@ superseded_by: POCKETPAL_IMAGEGEN_UI_SPEC
 | P6-3 | 下载 SDXL-Lightning 4-step + SDXL-base Q4，建快+好 SDXL 选项 | ⏳ 挂起（复活前提见 docs/internal/AIOS_IMAGEGEN_SPEEDUP_ASSESSMENT.md §1.5） |
 | P6-4 | 引 MNN 引擎 + SANA 端侧（新引擎，全都要） | ⏳ 挂起（MNN 部分已被 ORT 路线替代——DreamLite 走 ORT；SANA 未评估，见提速评估 §1.4） |
 | P6-5 | DreamLite 接入（manifest 声明+RN 架构先行） | ✅ 全闭环（实际走 ONNX Runtime 而非 MNN；真实文生图+编辑+聊天闭环，见 §6.3-6.5 与 MASTER_LOG） |
+| P6-6 | SD3 2B 人体姿态 LoRA 训练闭环（引擎兼容路线） | ✅ 全闭环（2026-08-18：手写 joint_blocks MMDiT → 3000 步训练 loss 0.1195 → 烘焙合并 → q4_K 2.24GB → 真机出图验证通过；详见 ADR-0006 与训练域 SSOT v2.0） |
 
 ### 6.3 DreamLite 接入专项（Phase 0 已完成）
 
@@ -290,8 +291,8 @@ superseded_by: POCKETPAL_IMAGEGEN_UI_SPEC
 - **提示词生命周期**：上传新图/进入编辑 → 清空提示词（新图无历史提示词，编辑指令与生成描述语义不同）；切到已生成图 → 回填历史提示词+参数；上传图（prompt=''）→ 自动清空。
 - 生成/编辑完成 → 新图入 history[0] → 自动翻结果页；删除 → 回 0 页（防 previewIndex 越界）。
 
-**对账状态（2026-08-13/14）**：
-- ✅ 已落地：P0/P1 全部、P2 代码层（CMake arm64 开 OpenCL，运行时默认 CPU）、P5.4 全系列、P6-1/2、P6-5 DreamLite 全闭环（真实文生图+编辑）、6.4 黑图修复、6.5 产品级重构、6.5.5 双形态动效。
+**对账状态（2026-08-14/18）**：
+- ✅ 已落地：P0/P1 全部、P2 代码层（CMake arm64 开 OpenCL，运行时默认 CPU）、P5.4 全系列、P6-1/2、P6-5 DreamLite 全闭环（真实文生图+编辑）、P6-6 SD3 2B 训练闭环（引擎兼容路线，2026-08-18）、6.4 黑图修复、6.5 产品级重构、6.5.5 双形态动效。
 - ⏳ 未落地：P6-3 SDXL-Lightning 下载（网络下载任务）；P6-4 MNN+SANA（新引擎工程）；P2 OpenCL 真机速度对比验证。
 
 ### 6.5.5 生成/编辑双形态动效 + 编辑·出图并列（大王三轮反馈，2026-08-14）

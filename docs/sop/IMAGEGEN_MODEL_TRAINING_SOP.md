@@ -3,20 +3,21 @@ doc_id: IMAGEGEN_MODEL_TRAINING_SOP
 module: sop
 type: sop
 status: active
-version: "1.0"
+version: "2.0"
 created: "2026-08-17"
-updated: "2026-08-17"
+updated: "2026-08-18"
 relates:
   - docs/imagegen/IMAGEGEN_MODEL_TRAINING_SSOT.md
   - docs/adr/ADR-0005-sd35-lora-training-route.md
+  - docs/adr/ADR-0006-sd3-2b-engine-compat-route.md
 ---
 <!-- D-FORMAT:v3 -->
 
 # 生图模型训练 · SOP（ImageGen Model Training Operations）
 
-**状态**：active | **版本**：1.0 | **更新**：2026-08-17
+**状态**：active | **版本**：2.0 | **更新**：2026-08-18
 
-> **定位**：SD3.5 Medium 人体姿态 LoRA 训练与部署的日常运维、验证与故障排查操作手册。SSOT 见 [`IMAGEGEN_MODEL_TRAINING_SSOT.md`](../imagegen/IMAGEGEN_MODEL_TRAINING_SSOT.md)。
+> **定位**：SD3 2B（joint_blocks，引擎兼容架构）人体姿态 LoRA 训练与部署的日常运维、验证与故障排查操作手册。SSOT 见 [`IMAGEGEN_MODEL_TRAINING_SSOT.md`](../imagegen/IMAGEGEN_MODEL_TRAINING_SSOT.md)；架构决策见 [ADR-0006](../adr/ADR-0006-sd3-2b-engine-compat-route.md)。
 
 ## 一、独立运行验证（standalone smoke）
 
@@ -39,8 +40,10 @@ python 02_train_sd35_lora.py --dataset E:\sd35_lora\dataset\train --output E:\sd
 | 数据集 | `ls E:\sd35_lora\dataset\train/*.jpg \| wc -l` | 300（或全量 897） |
 | caption 配对 | `ls E:\sd35_lora\dataset\train/*.txt \| wc -l` | 与图片数一致 |
 | 尺寸统一 | 抽查 `python -c "from PIL import Image; print(Image.open('<图>').size)"` | (1024, 1536) |
-| LoRA 产物 | `ls E:\sd35_lora\output\pytorch_lora_weights.safetensors` | 存在，50-100MB |
-| GGUF 产物 | `ls E:\sd35_lora\release\sd35_medium_humanpose_q4_k_m.gguf` | 存在，~1.8GB |
+| 底座 safetensors | `ls E:\sd35_lora\base2\sd3_2b_qknorm.safetensors` | 存在，~4.94GB（GGUF 提取版带 QK-norm） |
+| 手写模型冒烟 | `python .tmp\sd35_lora\smoke_sd3_2b.py` | 665 key 全加载、forward 无 NaN |
+| LoRA 产物 | `ls E:\sd35_lora\output_2b\pytorch_lora_weights.safetensors` | 存在，~83MB（440 key） |
+| GGUF 产物 | `ls E:\sd35_lora\release_2b\sd3_2b_humanpose_q4_K.gguf` | 存在，~2.24GB |
 | 真机文件 | `adb shell ls -l /sdcard/Documents/AIOS/models/` | 微调版 + `.bak` 备份都在 |
 
 ### 1.3 退出码 / 状态速查
@@ -72,19 +75,28 @@ python 01_prepare_dataset.py --src "E:\图\PoseBookCN" --out "E:\sd35_lora\datas
 # 全量: --max-imgs 0（897 张）
 ```
 
-**② 训练（3090 Ti，4-8 小时）**
+**② 训练（3090 Ti，~2 小时）**
 
 ```bash
-python scripts/sd35_lora/02_train_sd35_lora.py --dataset E:\sd35_lora\dataset\train --output E:\sd35_lora\output --steps 3000
-# 参数调整: --rank 16/32、--lr 1e-4、--use-modelscope（底座下载断流时）
-# 先验链路: 加 --dry-run 只打印配置不启动
-# 训练后校验产物: python scripts/sd35_lora/05_validate_lora.py E:\sd35_lora\output\pytorch_lora_weights.safetensors
+# 冒烟（3 步全链路验证）
+python scripts/sd35_lora/02b_train_sd3_2b.py --dataset E:\sd35_lora\dataset\train --output E:\sd35_lora\output_2b_smoke --steps 3 --grad-accum 1
+
+# 正式训练（3000 步，~2h；flash attention 后每步 2.2s）
+python scripts/sd35_lora/02b_train_sd3_2b.py --dataset E:\sd35_lora\dataset\train --output E:\sd35_lora\output_2b --steps 3000 --rank 16 --lr 1e-4 --resolution 1024x1536 --grad-accum 4
+
+# 中断续训（电脑重启等场景，从 checkpoint 继续）
+python scripts/sd35_lora/02b_train_sd3_2b.py --dataset E:\sd35_lora\dataset\train --output E:\sd35_lora\output_2b --steps 3000 --resume E:\sd35_lora\output_2b\lora_step1000.safetensors --resume-step 1000
 ```
 
-**③ LoRA 合并 + GGUF 转换（30-60 分钟）**
+**③ LoRA 合并 + GGUF 转换 + 量化（合并 ~5min，转换 ~4min）**
 
 ```bash
-python scripts/sd35_lora/03_merge_and_convert.py --base <底座目录> --lora E:\sd35_lora\output\pytorch_lora_weights.safetensors --out E:\sd35_lora\release
+python scripts/sd35_lora/03b_merge_sd3_2b.py \
+  --base E:\sd35_lora\base2\sd3_2b_qknorm.safetensors \
+  --lora E:\sd35_lora\output_2b\pytorch_lora_weights.safetensors \
+  --out E:\sd35_lora\release_2b --quant q4_K
+# 说明: 手动灌入 peft LoRA（440 key）+ base_layer.weight 合并 + 引擎命名逆映射导出；
+# sd-cli -M convert -m（无前缀）→ f16 → q4_K（大写 K）；烘焙校验 4/4 必过
 ```
 
 **④ 真机部署（10-20 分钟）**
@@ -107,8 +119,12 @@ bash scripts/sd35_lora/04_deploy.sh E:\sd35_lora\release\sd35_medium_humanpose_q
 | 出图人体畸变 | 过拟合/rank 过高 | 降 rank、加数据、减 steps |
 | 微调效果不明显 | steps 不足 | 升 `--steps`（4000-6000） |
 | quantize 找不到 | 转换工具未编译 | 编译 city96 sd.cpp 或用 fp16 GGUF 先验证 |
-| 端侧白图 | GGUF 转换异常 | 用 fp16 GGUF 对照排查，确认 convert 参数 `--sd3` |
+| 端侧白图 | GGUF 转换异常 | 用 fp16 GGUF 对照排查，确认 convert 参数 `-m` 无前缀 |
 | 真机推模型后 App 不识别 | 文件未就位/损坏 | 04 脚本大小校验；`adb shell ls -l` 确认 |
+| 引擎报 `get sd version from file failed` | 架构不兼容：产物非 joint_blocks（如 SD3.5 Medium transformer_blocks） | 换 SD3 2B 路线（06/02b/03b 脚本），引擎只识别 joint_blocks/FLUX |
+| LoRA 合并后抽查与底座相同 | peft `set_peft_model_state_dict` 静默失败 / LoraLayer `base_layer.weight` 死参数 | 03b 已内置修复（手动灌入 440 key + base_layer 合并），出现此问题直接跑 03b |
+| 训练每步 >8s | 手写 einsum attention 无 flash 内核 | 06 模型已用 `F.scaled_dot_product_attention`（每步 2.2s）；新代码禁用 einsum attention |
+| 训练中断 | 电脑重启/断点 | 用 `--resume` 从最近 `lora_stepN.safetensors` 续训（`--resume-step N`） |
 
 ### 3.2 诊断路径
 
@@ -157,9 +173,11 @@ adb shell cp /sdcard/Documents/AIOS/models/sd35_medium_q4_k_m.gguf.bak /sdcard/D
 | 日期 | 版本 | 变更 |
 |------|------|------|
 | 2026-08-17 | 1.0 | 首发：SD3.5 LoRA 训练四段流水线操作手册 |
+| 2026-08-18 | 2.0 | 架构切换 SD3 2B：02b/03b/06 新脚本链路、续训、flash attention 提速、新故障排查（架构不兼容/base_layer/慢速训练/中断） |
 
 ## 关联文档
 
 - [训练域 SSOT](../imagegen/IMAGEGEN_MODEL_TRAINING_SSOT.md)（imagegen）
-- [ADR-0005](../adr/ADR-0005-sd35-lora-training-route.md)（adr）
-- 训练脚本目录：`scripts/sd35_lora/`（01 数据预处理 / 02 训练 / 03 合并转换 / 04 部署 / 05 校验）
+- [ADR-0005](../adr/ADR-0005-sd35-lora-training-route.md)（adr，SD3.5 路线被取代）
+- [ADR-0006](../adr/ADR-0006-sd3-2b-engine-compat-route.md)（adr，现行）
+- 训练脚本目录：`scripts/sd35_lora/`（01 数据预处理 / 02b 训练 / 03b 合并转换 / 04 部署 / 06 手写模型）

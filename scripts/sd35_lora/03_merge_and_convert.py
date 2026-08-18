@@ -31,7 +31,74 @@ CONVERT_REPO = "https://github.com/city96/stable-diffusion.cpp.git"
 QUANT_TYPES = ["q4_k_m", "q4_0", "q5_k_m", "q8_0", "f16"]
 
 
-def merge_lora(base_dir, lora_path, out_dir):
+def manual_fuse_lora(model, lora_scale=2.0):
+    """手动把 LoRA 融合进主权重（绕开 diffusers fuse_lora 的 meta tensor bug）。
+
+    背景: diffusers 0.39 的 pipe.fuse_lora() 在 fuse 后会把 LoRA 参数置为 meta
+    tensor，save_pretrained 时 'Cannot copy out of meta tensor' 崩溃。
+    训练产物是 peft 格式（lora_A/lora_B ModuleDict），合并数学与 peft 一致：
+    W += scaling * (B @ A)，其中 scaling = lora_alpha / r。
+    注意: 训练配置 lora_alpha=32/r=16 → scaling=2.0；diffusers 加载后模块上的
+    scaling dict 不可信（无 alpha 元数据时默认为 1.0），故由 --lora-scale 显式传入。
+    """
+    import torch
+
+    fused = 0
+    # 诊断：确认 LoRA 挂载结构
+    lora_params = [n for n, _ in model.named_parameters() if "lora" in n.lower()]
+    lora_mods = [n for n, m in model.named_modules()
+                 if hasattr(m, "lora_A") or hasattr(m, "lora_B") or getattr(m, "lora_layer", None) is not None]
+    print(f"  [diag] LoRA 参数 {len(lora_params)} 个 | LoRA 模块 {len(lora_mods)} 个")
+    if lora_params:
+        print(f"  [diag] 参数样例: {lora_params[:3]}")
+    if lora_mods:
+        m0 = model.get_submodule(lora_mods[0])
+        la = getattr(m0, "lora_A", None)
+        print(f"  [diag] 模块样例: {lora_mods[0]} | lora_A 类型={type(la).__name__} | "
+              f"scaling={getattr(m0, 'scaling', 'N/A')} | alpha={getattr(m0, 'lora_alpha', 'N/A')} | rank={getattr(m0, 'r', getattr(m0, 'rank', 'N/A'))}")
+
+    for name, module in model.named_modules():
+        # diffusers 风格：lora_layer（up/down）
+        ll = getattr(module, "lora_layer", None)
+        if ll is not None and hasattr(module, "weight"):
+            with torch.no_grad():
+                w_orig = module.weight.data.float()
+                w_up = ll.up.weight.data.float()
+                w_down = ll.down.weight.data.float()
+                if ll.network_alpha is not None:
+                    w_up = w_up * ll.network_alpha / ll.rank
+                fused_w = w_orig + (lora_scale * torch.bmm(w_up[None, :], w_down[None, :])[0])
+                module.weight.data = fused_w.to(module.weight.dtype)
+            module.lora_layer = None
+            fused += 1
+            continue
+        # peft 风格：lora_A / lora_B ModuleDict（训练产物格式）
+        la = getattr(module, "lora_A", None)
+        lb = getattr(module, "lora_B", None)
+        if la is None or lb is None or not hasattr(module, "weight"):
+            continue
+        for adapter in list(la.keys()):
+            if adapter not in lb:
+                print(f"  [WARN] {name} 缺 adapter {adapter} 的 lora_B，跳过")
+                continue
+            with torch.no_grad():
+                A = la[adapter].weight if hasattr(la[adapter], "weight") else la[adapter]
+                B = lb[adapter].weight if hasattr(lb[adapter], "weight") else lb[adapter]
+                delta = (B @ A) * lora_scale
+                module.weight.data.add_(delta.to(module.weight.dtype))
+            fused += 1
+        # 卸载 LoRA 相关属性，保证 state_dict 干净
+        for attr in ("lora_A", "lora_B", "lora_dropout", "lora_embedding_A", "lora_embedding_B"):
+            if hasattr(module, attr):
+                try:
+                    delattr(module, attr)
+                except Exception:
+                    pass
+    print(f"  手动合并完成: {fused} 组 LoRA (scale={lora_scale})")
+    return fused
+
+
+def merge_lora(base_dir, lora_path, out_dir, lora_scale=2.0):
     """用 diffusers 把 LoRA 融合进底座，导出完整 safetensors"""
     print("== LoRA 合并 ==")
     import torch
@@ -47,12 +114,25 @@ def merge_lora(base_dir, lora_path, out_dir):
             sys.exit("[FAIL] LoRA 校验未通过，中止合并")
 
     print(f"  加载底座: {base_dir}")
+    # low_cpu_mem_usage=False: 强制实权重加载（meta tensor 无法 save_pretrained）
+    # variant=fp16: 与训练一致的 fp16 变体（modelscope 版含 fp32+fp16 双套）
     pipe = StableDiffusion3Pipeline.from_pretrained(
-        base_dir, torch_dtype=torch.float16
+        base_dir, torch_dtype=torch.float16,
+        low_cpu_mem_usage=False, use_safetensors=True, variant="fp16"
     ).to("cuda")
     print(f"  加载 LoRA: {lora_path}")
     pipe.load_lora_weights(lora_path)
-    pipe.fuse_lora(lora_scale=1.0)
+    # 用手动合并绕开 pipe.fuse_lora() 的 meta tensor bug
+    n = manual_fuse_lora(pipe.transformer, lora_scale=lora_scale)
+    if n == 0:
+        sys.exit("[FAIL] 未合并到任何 LoRA 组，中止")
+    # 合并后校验：无 meta、无 lora 残留
+    n_meta = sum(1 for p in pipe.transformer.parameters() if p.is_meta)
+    lora_left = [nm for nm, _ in pipe.transformer.named_parameters() if "lora" in nm.lower()]
+    if n_meta:
+        sys.exit(f"[FAIL] 合并后仍有 {n_meta} 个 meta tensor，中止")
+    if lora_left:
+        print(f"  [WARN] LoRA 残留 {len(lora_left)} 个参数: {lora_left[:3]}...")
     merged_dir = os.path.join(out_dir, "sd35_medium_humanpose_full")
     pipe.save_pretrained(merged_dir, safe_serialization=True)
     print(f"  [OK] 合并完成: {merged_dir}")
@@ -121,6 +201,8 @@ def main():
     ap.add_argument("--lora", required=True, help="训练输出的 LoRA safetensors")
     ap.add_argument("--out", required=True, help="发布目录")
     ap.add_argument("--quant", default="q4_k_m", choices=QUANT_TYPES)
+    ap.add_argument("--lora-scale", type=float, default=2.0,
+                    help="LoRA 合并缩放（默认 2.0 = 训练 lora_alpha/r = 32/16）")
     ap.add_argument("--skip-gguf", action="store_true", help="只 merge 不转 GGUF")
     args = ap.parse_args()
 
@@ -128,7 +210,7 @@ def main():
         sys.exit(f"[FAIL] LoRA 文件不存在: {args.lora}")
     os.makedirs(args.out, exist_ok=True)
 
-    merged = merge_lora(args.base, args.lora, args.out)
+    merged = merge_lora(args.base, args.lora, args.out, args.lora_scale)
     if args.skip_gguf:
         print(f"\n[OK] 仅合并完成: {merged}（未转 GGUF）")
         return

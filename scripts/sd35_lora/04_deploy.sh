@@ -31,7 +31,8 @@ if [ ! -f "$GGUF_IN" ]; then
 fi
 
 REMOTE_DIR="/sdcard/Documents/AIOS/models"
-REMOTE_NEW="sd35_medium_humanpose_q4_k_m.gguf"
+# 路线 A（零代码改动）: 用原文件名覆盖式替换，manifest 引用 sd35_medium_q4_k_m.gguf 不变
+REMOTE_NEW="sd35_medium_q4_k_m.gguf"
 REMOTE_BAK="sd35_medium_q4_k_m.gguf.bak"
 
 echo "== 1/5 设备检查 =="
