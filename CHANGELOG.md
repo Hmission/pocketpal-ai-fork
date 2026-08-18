@@ -11,10 +11,14 @@
 - 聊天输入语音输入（设备端 STT，2026-08-17）：发送按钮升级为「空输入显示麦克风 → 录音中变红色停止 → 识别结果实时填入 → 打字后恢复发送」状态机；基于 @react-native-voice/voice 3.2.4（patch-package 适配 AGP8 namespace），Android RECORD_AUDIO / iOS 麦克风权限说明；无语音识别服务的设备自动降级为纯发送按钮（真机实证）
 - 聊天输入第二行高度统一 36px（思考胶囊 / 发送 / 语音按钮同一基线，真机 bounds 验证一致）
 - 关于页标准版文案（多语 16 语言）：详细介绍段落 + 特性列表 + 开源说明
+- 生成设置参数标签 16 语言本地化（completionParamsLabels / completionParamControls，ML 术语保留英文）
 - 开源发布准备：README 重写（中英双语）、LICENSE 追加 fork 版权、AGENTS.md 公开版、内部 AIOS 文档移出跟踪
 - 模型目录双轨架构（ADR-0004 / B15）：HF 等平台下载的模型默认落应用专属规范目录（getExternalFilesDir/models，零权限、Play 合规）；设置页新增「模型目录」入口，自定义目录走系统目录选择器（SAF，只能选文件夹），默认注册 AIOS 共享目录（/sdcard/Documents/AIOS/models）续读存量模型
 
 ### 修复
+- 关于页硬编码中文 MIT 署名行 l10n 化（此前英文界面也显示中文）
+- 生成设置参数标签硬编码大写英文（TEMPERATURE/N PREDICT 等）改为多语言文案
+- zh_Hant 补齐 modelDirs 10 key（模型文件夹繁中，缺失清零）
 - llama.rn 原生库缺失防御（2026-08-17）："JSI bindings not installed" 根因 = llama.rn 0.12.7 上游发布不一致（npm 包代码期望 librnllama_jni_*.so，官方 prebuilt 无 _jni），jniLibs 被重装依赖删除后无法自动恢复；新增 scripts/restore-llamarn-jnilibs.js（三级恢复：.tmp 滚动备份 → gradle 构建缓存 → release APK 纯 Node zip 提取）挂接 postinstall，丢失自动修复或显式报错
 - 聊天记录卸载丢失（B14）：WatermelonDB JSI 私有库快照机制——进后台导出到共享存储，启动时私有库缺失自动恢复；聊天记录与模型目录同一持久化策略，仅用户主动清数据才丢
 - 存储权限设计重做（B13）：以「目录实际可读」判定权限（PermissionsAndroid.check 对 MANAGE 特殊权限不可靠），系统请求优先、永不短路扫描，修复「已授权仍扫不到模型」
