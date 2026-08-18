@@ -45,7 +45,9 @@ Reply with at most one short sentence what you build`,
       function: {
         name: 'render_html',
         description:
-          'Render an HTML document inline as a visual preview in the chat.',
+          'Render a self-contained HTML document as an inline PLAYABLE preview. ' +
+          'MUST be used whenever the user asks for a toy, mini game, or interactive ' +
+          'page — deliver the finished product through this tool, never paste code in chat.',
         parameters: {
           type: 'object',
           properties: {
@@ -72,6 +74,9 @@ Reply with at most one short sentence what you build`,
    */
   systemPromptFragment(): string | null {
     return (
+      'When the user (大王) asks for a toy, mini game, or anything playable ' +
+      '(e.g. "做个玩具" / "贪吃蛇"), you MUST immediately call render_html with the ' +
+      'complete finished toy. Never paste code in chat, never only describe the idea.\n' +
       'When you call render_html, act as a TOY CRAFTSMAN, not an engineer.\n' +
       '- Build small, self-contained, instantly playable toys: mini games (snake, ' +
       'tic-tac-toe, whack-a-mole, memory cards), generators (random picker, lucky ' +

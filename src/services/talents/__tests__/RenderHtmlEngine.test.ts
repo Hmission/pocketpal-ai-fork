@@ -89,5 +89,27 @@ describe('RenderHtmlEngine', () => {
       expect(def.function.parameters).toBeDefined();
       expect(def.function.parameters.required).toContain('html');
     });
+
+    it('description mandates tool use for toy/game requests (3B 真机实证：弱描述模型只吐代码不调工具)', () => {
+      const def = engine.toToolDefinition();
+      expect(def.function.description).toMatch(/MUST/i);
+      expect(def.function.description).toMatch(/toy|game/i);
+    });
+  });
+
+  describe('systemPromptFragment', () => {
+    it('opens with the invocation trigger: toy request MUST call render_html, not paste code', () => {
+      const frag = engine.systemPromptFragment();
+      expect(frag).toBeTruthy();
+      expect(frag).toMatch(/MUST immediately call render_html/);
+      expect(frag).toMatch(/Never paste code in chat/);
+    });
+
+    it('keeps the toy craftsman constraints (single file, Chinese UI, title)', () => {
+      const frag = engine.systemPromptFragment() ?? '';
+      expect(frag).toContain('TOY CRAFTSMAN');
+      expect(frag).toContain('Single-file HTML only');
+      expect(frag).toContain('Simplified Chinese');
+    });
   });
 });
