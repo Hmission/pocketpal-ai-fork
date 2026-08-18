@@ -75,7 +75,7 @@ export const BUILTIN_MANIFESTS: ImageGenManifest[] = [
     // 08-17 顺序卸载探索：Z-Image 6.9GB 对中低端（小米13 GPU~2.8G）是硬件上限，cpu residency+stream_layers 无法跑通 → 仅高端设备
     experimental: false,
     defaults: {steps: 8, cfg: 1, size: 512, backend: 'OpenCL'},
-    note: '无审查，中文优化；K90 8 步 512px 约 40 分钟；需 6.9GB 权重，仅高端设备（中低端 GPU 不可用）',
+    note: '无审查，中文优化；K90 8 步 512px 约 40 分钟；需 6.9GB 权重，仅高端设备（中低端 Adreno 740 级 OpenCL 驱动采样 hang，实测无解）',
   },
 ];
 

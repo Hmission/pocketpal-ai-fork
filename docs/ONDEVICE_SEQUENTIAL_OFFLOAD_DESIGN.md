@@ -167,6 +167,16 @@ if (zimage_model) {
 - **对策 A（用户侧）**：电池省电→不限制 + 最近任务锁定（待大王验证）。
 - **对策 B（工程侧，备选）**：压低加载阶段 RAM 峰值（mmap 缓存 + convert buffer + GPU buffer 叠加）。
 
+### 7.4 终局：Adreno 740 OpenCL 采样 hang（2026-08-18 闭环）
+
+白名单 + ANR 守护就位后复跑，条件编码通过、diffusion 加载完成，但**采样首步提交后引擎 hang**：
+- 全线程 sleeping、CPU ~7% 空转、GPU 空闲（kgsl 无活动）、无 GPU fault/tombstone。
+- JS 侧 120s 干净失败正确报错「采样超时（引擎无响应）」（锋利哲学生效）。
+- 对照 K90（Adreno 840）同路径正常 → **Adreno 740 驱动级 OpenCL hang**，应用侧无解。
+
+**最终产品结论**：小米 13（Adreno 740）Z-Image 不可用系驱动/硬件生态问题，非代码缺陷；
+Z-Image 仅高端设备（K90 级），小米 13 用 SD3.5/DreamLite。manifest note 已同步。
+
 
 ### 6.3 已验证可用（无需再动）
 
