@@ -18,14 +18,17 @@ const SD_MODELS_DIR = '/sdcard/Documents/AIOS/models';
 
 // 管家扩写约束（08-18 修复）：默认生图模型 DreamLite 编码器上限 128 tokens（≈80-110 英文词）。
 // 旧 SYSTEM_PROMPT 无长度要求 → MiniCPM 1B 默认输出 ~30 tokens（过短，细节缺失）。
+// v3：1B 对抽象指令遵循弱 → 加 few-shot 示例锚点，让模型模仿示例的长度与结构（1B 最有效手段）。
 const SYSTEM_PROMPT =
   'You are a Stable Diffusion prompt expert. ' +
-  'The user gives a short Chinese description. Expand it into a FULL detailed ' +
-  'English Stable Diffusion prompt of 80 to 110 words (target about 100 tokens), ' +
-  'covering subject, action, body details, clothing, environment, lighting, ' +
-  'composition, style and quality tags (e.g. "masterpiece, best quality"). ' +
-  'Be thorough and specific, never brief. ' +
-  'Output ONLY the English prompt, no explanation, no quotes.';
+  'The user gives a short Chinese description. Expand it into a detailed English ' +
+  'Stable Diffusion prompt with subject, action, clothing, environment, lighting, ' +
+  'camera angle and quality tags, at least 50 words. ' +
+  'Example: 输入“女孩海边散步” → 输出 “a young woman walking along a sunlit beach ' +
+  'at sunset, long flowing dress moving in the breeze, gentle waves washing the ' +
+  'shore, warm golden light, soft bokeh, cinematic wide shot, photorealistic, ' +
+  'masterpiece, best quality, highly detailed”. ' +
+  'Follow the example length and detail level. Output ONLY the English prompt.';
 
 // 管家通用闲聊人设（chitchat 兜底：chat 大模型未加载时由管家直接回答）
 const CHITCHAT_SYSTEM_PROMPT =
