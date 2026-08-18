@@ -1549,7 +1549,8 @@
       "body": "Tanpa akun. Tanpa cloud. Tanpa pelacakan. Percakapan Anda tetap milik Anda.",
       "highlight": "Tanpa akun. Tanpa cloud. Tanpa pelacakan.",
       "cta": "Mulai",
-      "eyebrow": "Privasi Terjamin"
+      "eyebrow": "Privasi Terjamin",
+      "storageNote": "Saat pertama dijalankan, kami meminta izin \"Akses semua file\" — hanya untuk membaca folder model dan mencadangkan obrolan. Dapat diubah kapan saja di pengaturan sistem."
     },
     "screen5": {
       "title": "Untuk apa pal Anda?",

@@ -61,5 +61,12 @@
     "physicalBatchSize": "Dimensione fisica del batch",
     "physicalBatchSizeDescription": "Dimensione fisica del batch: {{physicalBatchSize}}{{effectivePhysicalBatch}}",
     "cpuThreads": "Thread CPU"
+  },
+  "errorReport": {
+    "copy": "Copia report errore",
+    "close": "Chiudi",
+    "copiedSaved": "Copiato e salvato in {path}",
+    "copiedFallback": "Copiato negli appunti (salvataggio non riuscito)",
+    "chatTitle": "Errore conversazione"
   }
 }

@@ -23,11 +23,13 @@ import {
   AIOS_AGENTS_FILE,
   AIOS_MEMORY_FILE,
   AIOS_WORKSPACE_DIR,
+  AIOS_DIARY_DIR,
 } from '../../utils/paths';
+import {listDiaries} from '../../services/aiosMemory/rituals';
 import {useTheme, useStaggerEntry} from '../../hooks';
 import type {Theme} from '../../utils/types';
 import {IconTile, ListItem} from '../../components/ui';
-import {EditBoxIcon} from '../../assets/icons';
+import {EditBoxIcon, PencilLineIcon} from '../../assets/icons';
 
 const FILES = [
   {label: 'SOUL.md (人设)', path: AIOS_SOUL_FILE},
@@ -45,6 +47,22 @@ export function WorkspaceScreen({navigation}: any) {
   const [content, setContent] = React.useState('');
   const [original, setOriginal] = React.useState('');
   const [saving, setSaving] = React.useState(false);
+  // 小鸡日记（P9，INNERLIFE_SPEC）：收尾仪式写就的每日日记列表
+  const [diaries, setDiaries] = React.useState<{date: string; path: string}[]>(
+    [],
+  );
+
+  const refreshDiaries = React.useCallback(async () => {
+    try {
+      setDiaries(await listDiaries());
+    } catch (e) {
+      console.warn('[WorkspaceScreen] list diaries failed:', e);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    refreshDiaries();
+  }, [refreshDiaries]);
 
   const loadFile = async (path: string) => {
     try {
@@ -205,6 +223,29 @@ export function WorkspaceScreen({navigation}: any) {
               </React.Fragment>
             ))}
           </Animated.View>
+
+          {/* 小鸡日记（P9，INNERLIFE_SPEC §5）：收尾仪式写就，点击查看（复用编辑器） */}
+          <Animated.View style={staggerList}>
+            <Text style={styles.sectionTitle}>{AIOS_DIARY_DIR}</Text>
+            {diaries.length === 0 ? (
+              <Text style={styles.emptyDiary}>
+                还没有日记。当日对话满 15 轮后，收尾仪式会自动写一篇。
+              </Text>
+            ) : (
+              diaries.map(d => (
+                <React.Fragment key={d.date}>
+                  <ListItem
+                    title={`${d.date} 日记`}
+                    subtitle={d.path.split('/').pop()}
+                    Icon={PencilLineIcon}
+                    color={theme.colors.domain.workspace}
+                    onPress={() => loadFile(d.path)}
+                  />
+                  <Divider />
+                </React.Fragment>
+              ))
+            )}
+          </Animated.View>
         </ScrollView>
       )}
     </View>
@@ -251,5 +292,11 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.warning,
       marginTop: theme.spacing.xs,
       textAlign: 'right',
+    },
+    emptyDiary: {
+      ...theme.typography.captionM,
+      color: theme.colors.onSurfaceVariant,
+      paddingHorizontal: theme.spacing.m,
+      paddingVertical: theme.spacing.sm,
     },
   });

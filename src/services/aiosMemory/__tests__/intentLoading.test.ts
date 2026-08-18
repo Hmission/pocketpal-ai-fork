@@ -3,7 +3,13 @@ import {
   _invalidateCache,
   AiosMemory,
 } from '../index';
-import {trackSentiment, buildTodayState} from '../rituals';
+import {
+  trackSentiment,
+  buildTodayState,
+  maybeClosingSummary,
+  listDiaries,
+  readDiary,
+} from '../rituals';
 import * as RNFS from '@dr.pogodin/react-native-fs';
 
 // 意图引导装填 + 情绪持久化测试（批次 9-3）
@@ -148,5 +154,89 @@ describe('意图引导装填 + 情绪持久化（批次 9-3）', () => {
     // 应包含昨日情绪信息
     expect(state).toContain('上次大王情绪');
     expect(state).toContain('低落');
+  });
+
+  it('内心生活：buildTodayState 注入收尾预写的晨间独白（P9，INNERLIFE_SPEC）', async () => {
+    (RNFS.exists as jest.Mock).mockImplementation(async (path: string) => {
+      if (String(path).includes('opening/2026-08-18.md')) return true;
+      return false;
+    });
+    (RNFS.readFile as jest.Mock).mockImplementation(async (path: string) => {
+      if (String(path).includes('opening/')) {
+        return '大王，昨晚我梦到咱们一起折纸飞机。今天要开心呀。';
+      }
+      return '';
+    });
+
+    const state = await buildTodayState();
+    expect(state).toContain('【女妖晨间独白】');
+    expect(state).toContain('折纸飞机');
+  });
+
+  it('内心生活：无独白文件时回退规则版问候（文件即过期，无兜底）', async () => {
+    (RNFS.exists as jest.Mock).mockResolvedValue(false);
+    const state = await buildTodayState();
+    expect(state).toContain('开场请自然问候大王');
+  });
+
+  it('内心生活：收尾三件套②③——明日独白 + 当日日记落盘（P9）', async () => {
+    const writeCalls: string[] = [];
+    (RNFS.writeFile as jest.Mock).mockImplementation(async (p: string) => {
+      writeCalls.push(String(p));
+    });
+    (RNFS.exists as jest.Mock).mockResolvedValue(false);
+
+    // 模拟已加载引擎（completion 回调拼接输出）
+    const mockEngine = {
+      completion: jest.fn(
+        async (
+          params: any,
+          cb: (d: {token?: string}) => void,
+        ): Promise<void> => {
+          if (String(params.messages[0].content).includes('明日清晨独白')) {
+            cb({token: '大王，今天也要好好吃饭。'});
+          } else if (
+            String(params.messages[0].content).includes('当日日记')
+          ) {
+            cb({token: '今天大王和我聊了模型，他说玩具工坊真好玩。'});
+          } else {
+            cb({token: '今日小结：大王聊了工作与玩具，还聊了模型调度。女妖记住了玩具工坊很好玩。'});
+          }
+        },
+      ),
+    };
+    // 重设 modelStore mock 的 engine
+    const storeMock = require('../../../store');
+    storeMock.modelStore.engine = mockEngine;
+    storeMock.modelStore.inferencing = false;
+
+    await maybeClosingSummary('帮我看看这个模型', '好的大王，这就来', 20);
+
+    // 小结已写
+    expect(writeCalls.some(p => p.includes('closing.md'))).toBe(true);
+    // 明日独白 + 当日日记 fire-and-forget 异步：等待微任务
+    await new Promise(r => setTimeout(r, 0));
+    expect(writeCalls.some(p => p.includes('opening/'))).toBe(true);
+    expect(writeCalls.some(p => p.includes('chick_diary/'))).toBe(true);
+    storeMock.modelStore.engine = undefined;
+  });
+
+  it('内心生活：listDiaries/readDiary 读取日记（P9）', async () => {
+    (RNFS.exists as jest.Mock).mockImplementation(async (path: string) => {
+      if (String(path).includes('chick_diary')) return true;
+      if (String(path).includes('chick_diary/2026-08-18.md')) return true;
+      return false;
+    });
+    (RNFS.readDir as jest.Mock).mockResolvedValue([
+      {name: '2026-08-17.md', path: '/d/2026-08-17.md'},
+      {name: '2026-08-18.md', path: '/d/2026-08-18.md'},
+    ]);
+    (RNFS.readFile as jest.Mock).mockResolvedValue('# 2026-08-18 小鸡日记\n\n今天很开心');
+
+    const diaries = await listDiaries();
+    expect(diaries.length).toBe(2);
+    expect(diaries[0].date).toBe('2026-08-18'); // 新→旧
+    const content = await readDiary('2026-08-18');
+    expect(content).toContain('小鸡日记');
   });
 });

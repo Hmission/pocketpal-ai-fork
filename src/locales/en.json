@@ -1573,7 +1573,8 @@
       "body": "No accounts. No cloud. No tracking. Your conversations stay yours.",
       "highlight": "No accounts. No cloud. No tracking.",
       "cta": "Get Started",
-      "eyebrow": "Privacy promised"
+      "eyebrow": "Privacy promised",
+      "storageNote": "On first launch we ask for \"All files access\" — used only to read your model folder and back up chats. You can change this anytime in system settings."
     },
     "screen5": {
       "title": "What’s your pal for?",

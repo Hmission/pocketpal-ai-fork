@@ -1549,7 +1549,8 @@
       "body": "Tiada akaun. Tiada awan. Tiada penjejakan. Perbualan anda kekal milik anda.",
       "highlight": "Tiada akaun. Tiada awan. Tiada penjejakan.",
       "cta": "Mula",
-      "eyebrow": "Privasi terjamin"
+      "eyebrow": "Privasi terjamin",
+      "storageNote": "Semasa pertama dilancarkan, kami meminta \"Akses semua fail\" — hanya untuk membaca folder model dan membuat sandaran sembang. Boleh diubah bila-bila masa dalam tetapan sistem."
     },
     "screen5": {
       "title": "Untuk apa pal anda?",

@@ -123,7 +123,7 @@ release_2b/sd3_2b_humanpose_q4_K.gguf（~2.24GB，q4_K 大写 K）
 | 2026-08-18 | 2.1 | 路线 B 落地：运行时 LoRA 挂载开关（ADR-0007），GAP-001 闭环 |
 | 2026-08-18 | 2.2 | 非 Dream 模型高级参数补比例档（SD_RATIOS 1:1/2:3/3:2/3:4/4:3，替代固定方形尺寸），出图宽高按比例派生 |
 | 2026-08-18 | 2.3 | 提示词限制改按 token 计：各模型编码器硬限（DreamLite 128 / SD3.2B 77 CLIP / Z-Image 256），替代原 120 字符（≈30 tokens 过低） |
-| 2026-08-18 | 2.4 | 管家扩写加长度约束（promptWriter SYSTEM_PROMPT few-shot 示例锚点）：旧版无长度要求 MiniCPM 1B 输出 ~8-30 tokens 过短，对齐 DreamLite 128 tokens 上限 |
+| 2026-08-18 | 2.4 | 管家扩写加长度约束（promptWriter SYSTEM_PROMPT few-shot 示例锚点）：旧版无长度要求 MiniCPM 1B 输出 ~8-30 tokens 过短，对齐 DreamLite 128 tokens 上限；真机验证通过 |
 
 ## 关联文档
 

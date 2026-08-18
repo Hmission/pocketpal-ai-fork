@@ -1485,7 +1485,8 @@
       "body": "Żadnych kont. Żadnej chmury. Żadnego śledzenia. Twoje rozmowy pozostają wyłącznie Twoje.",
       "highlight": "Żadnych kont. Żadnej chmury. Żadnego śledzenia.",
       "eyebrow": "Gwarancja prywatności",
-      "cta": "Zaczynajmy"
+      "cta": "Zaczynajmy",
+      "storageNote": "Przy pierwszym uruchomieniu poprosimy o „Dostęp do wszystkich plików” — tylko do odczytu folderu modeli i kopii zapasowych czatów. Można to zmienić w ustawieniach systemu."
     },
     "screen2": {
       "title": "Kiedy chcesz,\nGdzie chcesz.",

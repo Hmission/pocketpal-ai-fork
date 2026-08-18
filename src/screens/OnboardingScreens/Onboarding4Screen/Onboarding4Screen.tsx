@@ -1,6 +1,9 @@
 import React from 'react';
 import {View} from 'react-native';
 import {observer} from 'mobx-react';
+import {Text} from 'react-native-paper';
+
+import {useTheme} from '../../../hooks';
 
 import {OnboardingScaffold} from '../components/OnboardingScaffold';
 import {OnboardingBottomBar} from '../components/OnboardingBottomBar';
@@ -13,6 +16,7 @@ import {styles} from './styles';
 
 export const Onboarding4Screen: React.FC = observer(() => {
   const {l10n, next, goBack} = useOnboardingHandlers(4);
+  const theme = useTheme();
   const t = l10n.onboarding;
   return (
     <OnboardingScaffold
@@ -32,10 +36,21 @@ export const Onboarding4Screen: React.FC = observer(() => {
             />
           }
           body={
-            <HighlightText
-              body={t.screen4.body}
-              phrases={[t.screen4.highlight]}
-            />
+            <>
+              <HighlightText
+                body={t.screen4.body}
+                phrases={[t.screen4.highlight]}
+              />
+              {/* 阶段四审计闭环：首启流程存储权限说明（B13/B15 权限链的可见面） */}
+              <Text
+                style={{
+                  marginTop: 12,
+                  ...theme.typography.captionS,
+                  color: theme.colors.onSurfaceVariant,
+                }}>
+                {t.screen4.storageNote}
+              </Text>
+            </>
           }
         />
       }

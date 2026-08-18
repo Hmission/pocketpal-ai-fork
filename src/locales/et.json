@@ -10,5 +10,12 @@
     "error": "Viga",
     "export": "Ekspordi",
     "networkError": "Võrguühenduse viga. Palun proovi uuesti."
+  },
+  "errorReport": {
+    "copy": "Kopeeri veaaruanne",
+    "close": "Sulge",
+    "copiedSaved": "Kopeeritud ja salvestatud {path}",
+    "copiedFallback": "Kopeeritud lõikelauale (salvestamine ebaõnnestus)",
+    "chatTitle": "Vestluse viga"
   }
 }

@@ -1549,7 +1549,8 @@
       "body": "Sem contas. Sem nuvem. Sem rastreamento. Suas conversas continuam suas.",
       "highlight": "Sem contas. Sem nuvem. Sem rastreamento.",
       "cta": "Começar",
-      "eyebrow": "Privacidade garantida"
+      "eyebrow": "Privacidade garantida",
+      "storageNote": "Na primeira execução pedimos \"Acesso a todos os arquivos\" — usado apenas para ler a pasta de modelos e fazer backup das conversas. Pode alterar nas configurações do sistema."
     },
     "screen5": {
       "title": "Para que é o seu pal?",

@@ -32,6 +32,9 @@ export const AIOS_CONVERSATIONS_DIR = `${AIOS_WORKSPACE_DIR}/conversations`;
 export const AIOS_WORKSPACE_MEMORY_DIR = `${AIOS_WORKSPACE_DIR}/memory`;
 // 玩具箱（P8 玩具工坊，PLAY_SPEC）：render_html 成品存档库
 export const AIOS_TOYS_DIR = `${AIOS_WORKSPACE_DIR}/toys`;
+// 内心生活（P9，INNERLIFE_SPEC）：晨间独白预写 + 小鸡日记
+export const AIOS_OPENING_DIR = `${AIOS_WORKSPACE_DIR}/opening`;
+export const AIOS_DIARY_DIR = `${AIOS_WORKSPACE_DIR}/chick_diary`;
 export const AIOS_SOUL_FILE = `${AIOS_WORKSPACE_DIR}/SOUL.md`;
 export const AIOS_USER_FILE = `${AIOS_WORKSPACE_DIR}/USER.md`;
 export const AIOS_AGENTS_FILE = `${AIOS_WORKSPACE_DIR}/AGENTS.md`;
@@ -86,6 +89,8 @@ export async function ensureAiosDirs(): Promise<void> {
     AIOS_CONVERSATIONS_DIR,
     AIOS_WORKSPACE_MEMORY_DIR,
     AIOS_TOYS_DIR,
+    AIOS_OPENING_DIR,
+    AIOS_DIARY_DIR,
   ];
   for (const d of dirs) {
     try {
