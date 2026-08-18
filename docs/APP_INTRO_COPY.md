@@ -18,7 +18,7 @@ relates: []
 
 ## 维护契约
 
-1. **版本二（标准版）已落地 App 关于页**，文案存储于 `src/locales/*.json` 的 `about` 段（key：`description` / `body` / `featuresTitle` / `features` / `openSourceBody` / `basedOn`），UI 位于 `src/screens/AboutScreen/AboutScreen.tsx`。
+1. **版本二（标准版）已落地 App 关于页**，文案存储于 `src/locales/*.json` 的 `about` 段（key：`description` / `body` / `featuresTitle` / `features` / `openSourceBody` / `basedOn` / `githubRepoDescription` / `githubButton`），UI 位于 `src/screens/AboutScreen/AboutScreen.tsx`（含 GitHub 仓库入口按钮）。
 2. **改文案 = 改两处**：① `src/locales/*.json`（关于页实际展示） ② 本文档（对外文案存档）。
 3. **新增语言**：参考 `src/locales/index.ts` 的 languageRegistry 注册流程，并同步本文档。
 
@@ -45,10 +45,10 @@ relates: []
 
 > **小黄鸡 —— 把大模型装进口袋**
 >
-> 一款将大语言模型直接部署到您手机上的 AI 应用，基于 llama.cpp 与 llama.rn 构建。模型本地运行，完全离线，聊天数据不出手机，隐私由您掌控。
+> 一款将大语言模型直接部署到您手机上的 AI 应用，基于 llama.cpp 与 llama.rn 构建。模型本地运行，完全离线，聊天数据不出手机，隐私由您掌控。项目完全开源，源码托管于 GitHub。
 >
 > - 🐣 完全离线：断网也能聊
-> - 🆓 免费开源：基于 PocketPal AI（MIT License）开发
+> - 🆓 完全开源：基于 PocketPal AI（MIT License）开发，欢迎 Star 与共建
 > - 📦 多模型自由切换：按需下载、随时卸载
 > - 🎨 本地生图：一句话生成图片，全程端侧完成
 
@@ -56,18 +56,22 @@ relates: []
 
 > **小黄鸡（Pocket Chick）**
 >
-> 一款将大语言模型直接部署到您手机上的 AI 应用，基于 llama.cpp 与 llama.rn 构建。
+> 一款将大语言模型直接部署到您手机上的 AI 应用，完全开源，基于 llama.cpp 与 llama.rn 构建。
 >
-> 与传统"联网问答"不同，小黄鸡的模型运行在您的设备本地——不需要服务器，不需要联网，更不需要把对话上传给任何第三方。您的每一次提问、每一段对话，都只留在您自己的手机里。
+> 与传统“联网问答”不同，小黄鸡的模型运行在您的设备本地——不需要服务器，不需要联网，更不需要把对话上传给任何第三方。您的每一次提问、每一段对话，都只留在您自己的手机里。整个项目已在 GitHub 完全开源——欢迎 Fork、二次开发与共建。
 >
 > **特性**
 > - 完全离线运行，无网络也能使用
 > - 支持多种开源大模型，自由下载、切换与卸载
 > - 端侧本地生图，创作全程不离开设备
+> - 完全开源，欢迎贡献与二次开发
 > - 轻量启动，即开即用
 >
 > **开源**
-> 本项目基于 PocketPal AI（MIT License）开发，遵循开放、透明的开源精神，欢迎贡献与二次开发。
+> 本项目基于 PocketPal AI（MIT License）二次开发，源码已在 GitHub 完全开源——欢迎提交 Issue、Pull Request 与二次开发。
+>
+> **仓库**
+> https://github.com/Hmission/pocketpal-ai-fork
 >
 > **版本信息**
 > 版本：v1.16.1 (143) · 引擎：llama.cpp 10054 (ac2557c)
@@ -76,7 +80,7 @@ relates: []
 
 > **小黄鸡** — 将大语言模型直接部署到您手机上的 AI 应用。
 >
-> 基于 llama.cpp 与 llama.rn 构建 · 基于 PocketPal AI（MIT License）开发 · 完全离线 · 免费开源
+> 基于 llama.cpp 与 llama.rn 构建 · 二开自 PocketPal AI（MIT License）· 完全离线 · 完全开源
 >
 > v1.16.1 (143) · llama.cpp 10054 (ac2557c)
 
@@ -88,10 +92,10 @@ relates: []
 
 > **小黃雞 —— 把大模型裝進口袋**
 >
-> 一款將大語言模型直接部署到您手機上的 AI 應用，基於 llama.cpp 與 llama.rn 構建。模型本地運行，完全離線，聊天數據不出手機，隱私由您掌控。
+> 一款將大語言模型直接部署到您手機上的 AI 應用，基於 llama.cpp 與 llama.rn 構建。模型本地運行，完全離線，聊天數據不出手機，隱私由您掌控。專案完全開源，原始碼托管於 GitHub。
 >
 > - 🐣 完全離線：斷網也能聊
-> - 🆓 免費開源：基於 PocketPal AI（MIT License）開發
+> - 🆓 完全開源：基於 PocketPal AI（MIT License）開發，歡迎 Star 與共建
 > - 📦 多模型自由切換：按需下載、隨時卸載
 > - 🎨 本地生圖：一句話生成圖片，全程端側完成
 
@@ -99,18 +103,22 @@ relates: []
 
 > **小黃雞（Pocket Chick）**
 >
-> 一款將大語言模型直接部署到您手機上的 AI 應用，基於 llama.cpp 與 llama.rn 構建。
+> 一款將大語言模型直接部署到您手機上的 AI 應用，完全開源，基於 llama.cpp 與 llama.rn 構建。
 >
-> 與傳統「聯網問答」不同，小黃雞的模型運行在您的裝置本地——不需要伺服器，不需要聯網，更不需要把對話上傳給任何第三方。您的每一次提問、每一段對話，都只留在您自己的手機裡。
+> 與傳統「聯網問答」不同，小黃雞的模型運行在您的裝置本地——不需要伺服器，不需要聯網，更不需要把對話上傳給任何第三方。您的每一次提問、每一段對話，都只留在您自己的手機裡。整個專案已在 GitHub 完全開源——歡迎 Fork、二次開發與共建。
 >
 > **特性**
 > - 完全離線運行，無網路也能使用
 > - 支援多種開源大模型，自由下載、切換與卸載
 > - 端側本地生圖，創作全程不離開裝置
+> - 完全開源，歡迎貢獻與二次開發
 > - 輕量啟動，即開即用
 >
 > **開源**
-> 本專案基於 PocketPal AI（MIT License）開發，遵循開放、透明的開源精神，歡迎貢獻與二次開發。
+> 本專案基於 PocketPal AI（MIT License）二次開發，原始碼已在 GitHub 完全開源——歡迎提交 Issue、Pull Request 與二次開發。
+>
+> **倉庫**
+> https://github.com/Hmission/pocketpal-ai-fork
 >
 > **版本資訊**
 > 版本：v1.16.1 (143) · 引擎：llama.cpp 10054 (ac2557c)
@@ -119,7 +127,7 @@ relates: []
 
 > **小黃雞** — 將大語言模型直接部署到您手機上的 AI 應用。
 >
-> 基於 llama.cpp 與 llama.rn 構建 · 基於 PocketPal AI（MIT License）開發 · 完全離線 · 免費開源
+> 基於 llama.cpp 與 llama.rn 構建 · 二開自 PocketPal AI（MIT License）· 完全離線 · 完全開源
 >
 > v1.16.1 (143) · llama.cpp 10054 (ac2557c)
 
@@ -142,18 +150,22 @@ relates: []
 
 > **Pocket Chick**
 >
-> An app that brings language models directly to your phone. Sits on the shoulders of llama.cpp and llama.rn.
+> An app that brings language models directly to your phone. Fully open source, built on llama.cpp and llama.rn.
 >
-> Unlike cloud-based chatbots, Pocket Chick runs models entirely on your device — no servers, no internet, and no third party ever sees your conversations. Every question and every reply stays on your phone.
+> Unlike cloud-based chatbots, Pocket Chick runs models entirely on your device — no servers, no internet, and no third party ever sees your conversations. Every question and every reply stays on your phone. The entire project is fully open source on GitHub — fork it, extend it, build your own.
 >
 > **Features**
 > - Fully offline — works without a network
 > - Supports many open-source models — download, switch, and remove freely
 > - On-device image generation — your creations never leave your phone
+> - Fully open source — contributions and derivative works are welcome
 > - Lightweight — ready to use instantly
 >
 > **Open Source**
-> This project is built on PocketPal AI (MIT License) and follows the open, transparent spirit of open source. Contributions and derivative works are welcome.
+> This project is a fork of PocketPal AI (MIT License). The source code is fully open on GitHub — issues, pull requests and derivative works are all welcome.
+>
+> **Repository**
+> https://github.com/Hmission/pocketpal-ai-fork
 >
 > **Version**
 > Version: v1.16.1 (143) · Engine: llama.cpp 10054 (ac2557c)
@@ -196,7 +208,10 @@ relates: []
 > - 軽量で起動が速い
 >
 > **オープンソース**
-> 本プロジェクトは PocketPal AI（MIT License）に基づいて開発されており、オープンで透明なオープンソースの精神に従っています。コントリビューションと二次開発を歓迎します。
+> 本プロジェクトは PocketPal AI（MIT License）のフォークであり、ソースコードは GitHub で完全に公開されています。Issue・Pull Request・二次開発を歓迎します。
+>
+> **リポジトリ**
+> https://github.com/Hmission/pocketpal-ai-fork
 >
 > **バージョン情報**
 > バージョン：v1.16.1 (143) · エンジン：llama.cpp 10054 (ac2557c)
@@ -239,7 +254,10 @@ relates: []
 > - 가벼운 시작 — 켜자마자 사용 가능
 >
 > **오픈소스**
-> 이 프로젝트는 PocketPal AI(MIT License)를 기반으로 개발되었으며, 개방적이고 투명한 오픈소스 정신을 따릅니다. 기여와 2차 개발을 환영합니다.
+> 이 프로젝트는 PocketPal AI(MIT License)의 포크이며, 소스 코드가 GitHub에 완전히 공개되어 있습니다. Issue와 Pull Request, 2차 개발을 환영합니다.
+>
+> **저장소**
+> https://github.com/Hmission/pocketpal-ai-fork
 >
 > **버전 정보**
 > 버전: v1.16.1 (143) · 엔진: llama.cpp 10054 (ac2557c)
@@ -282,7 +300,10 @@ relates: []
 > - سبک و آماده استفاده
 >
 > **متن‌باز**
-> این پروژه بر پایه PocketPal AI (مجوز MIT) ساخته شده و از روح باز و شفاف متن‌باز پیروی می‌کند. مشارکت و توسعه مشتق‌پذیر خوش‌آمد است.
+> این پروژه فورک PocketPal AI (مجوز MIT) است و کد منبع آن به‌طور کامل در GitHub منتشر شده است. Issue، Pull Request و توسعه مشتق خوش‌آمد است.
+>
+> **مخزن**
+> https://github.com/Hmission/pocketpal-ai-fork
 >
 > **اطلاعات نسخه**
 > نسخه: v1.16.1 (143) · موتور: llama.cpp 10054 (ac2557c)
@@ -325,7 +346,10 @@ relates: []
 > - קל ומהיר להפעלה
 >
 > **קוד פתוח**
-> פרויקט זה מבוסס על PocketPal AI (רישיון MIT) ופועל ברוח הקוד הפתוח הפתוחה והשקופה. תרומות ופיתוח נגזר יתקבלו בברכה.
+> פרויקט זה הוא Fork של PocketPal AI (רישיון MIT); קוד המקור פתוח לחלוטין ב-GitHub. Issue, Pull Request ופיתוח נגזר יתקבלו בברכה.
+>
+> **מאגר**
+> https://github.com/Hmission/pocketpal-ai-fork
 >
 > **מידע גרסה**
 > גרסה: v1.16.1 (143) · מנוע: llama.cpp 10054 (ac2557c)
@@ -368,7 +392,10 @@ relates: []
 > - Ringan dan siap pakai
 >
 > **Sumber Terbuka**
-> Proyek ini dibangun di atas PocketPal AI (Lisensi MIT) dan mengikuti semangat open source yang terbuka dan transparan. Kontribusi dan pengembangan turunan sangat diterima.
+> Proyek ini adalah fork PocketPal AI (Lisensi MIT); kode sumber sepenuhnya terbuka di GitHub. Issue, pull request, dan pengembangan turunan sangat diterima.
+>
+> **Repositori**
+> https://github.com/Hmission/pocketpal-ai-fork
 >
 > **Info Versi**
 > Versi: v1.16.1 (143) · Mesin: llama.cpp 10054 (ac2557c)
@@ -411,7 +438,10 @@ relates: []
 > - Ringan dan sedia digunakan
 >
 > **Sumber Terbuka**
-> Projek ini dibina berdasarkan PocketPal AI (Lesen MIT) dan mengikuti semangat sumber terbuka yang terbuka dan telus. Sumbangan dan pembangunan terbitan dialu-alukan.
+> Projek ini adalah fork PocketPal AI (Lesen MIT); kod sumber terbuka sepenuhnya di GitHub. Isu, pull request dan pembangunan terbitan dialu-alukan.
+>
+> **Repositori**
+> https://github.com/Hmission/pocketpal-ai-fork
 >
 > **Maklumat Versi**
 > Versi: v1.16.1 (143) · Enjin: llama.cpp 10054 (ac2557c)
@@ -454,7 +484,10 @@ relates: []
 > - Lekki start — gotowy do użycia od razu
 >
 > **Open Source**
-> Projekt oparty jest na PocketPal AI (licencja MIT) i podąża za otwartym, przejrzystym duchem open source. Zapraszamy do kontrybucji i rozwoju pochodnych.
+> Projekt jest forkiem PocketPal AI (licencja MIT); kod źródłowy jest w pełni otwarty na GitHub. Issue, pull requesty i rozwój pochodny są mile widziane.
+>
+> **Repozytorium**
+> https://github.com/Hmission/pocketpal-ai-fork
 >
 > **Informacje o wersji**
 > Wersja: v1.16.1 (143) · Silnik: llama.cpp 10054 (ac2557c)
@@ -497,7 +530,10 @@ relates: []
 > - Leve e pronto a usar
 >
 > **Open Source**
-> Este projeto é baseado no PocketPal AI (Licença MIT) e segue o espírito aberto e transparente do código aberto. Contribuições e obras derivadas são bem-vindas.
+> Este projeto é um fork do PocketPal AI (Licença MIT); o código-fonte está totalmente aberto no GitHub. Issues, pull requests e obras derivadas são bem-vindos.
+>
+> **Repositório**
+> https://github.com/Hmission/pocketpal-ai-fork
 >
 > **Informações da Versão**
 > Versão: v1.16.1 (143) · Motor: llama.cpp 10054 (ac2557c)
@@ -540,7 +576,10 @@ relates: []
 > - Leve e pronto para usar
 >
 > **Open Source**
-> Este projeto é baseado no PocketPal AI (licença MIT) e segue o espírito aberto e transparente do código aberto. Contribuições e obras derivadas são bem-vindas.
+> Este projeto é um fork do PocketPal AI (licença MIT); o código-fonte está totalmente aberto no GitHub. Issues, pull requests e obras derivadas são bem-vindos.
+>
+> **Repositório**
+> https://github.com/Hmission/pocketpal-ai-fork
 >
 > **Informações da Versão**
 > Versão: v1.16.1 (143) · Motor: llama.cpp 10054 (ac2557c)
@@ -583,7 +622,10 @@ relates: []
 > - Лёгкий запуск — готов к работе сразу
 >
 > **Открытый код**
-> Проект основан на PocketPal AI (лицензия MIT) и следует открытому и прозрачному духу open source. Приветствуются вклад и производные разработки.
+> Проект является форком PocketPal AI (лицензия MIT); исходный код полностью открыт на GitHub. Приветствуются Issue, Pull Request и производные разработки.
+>
+> **Репозиторий**
+> https://github.com/Hmission/pocketpal-ai-fork
 >
 > **Информация о версии**
 > Версия: v1.16.1 (143) · Движок: llama.cpp 10054 (ac2557c)
@@ -626,7 +668,10 @@ relates: []
 > - Легкий запуск — готовий до роботи одразу
 >
 > **Відкритий код**
-> Проєкт засновано на PocketPal AI (ліцензія MIT) і він дотримується відкритого та прозорого духу open source. Вітаються внески та похідні розробки.
+> Проєкт є форком PocketPal AI (ліцензія MIT); вихідний код повністю відкритий на GitHub. Вітаються Issue, Pull Request та похідні розробки.
+>
+> **Репозиторій**
+> https://github.com/Hmission/pocketpal-ai-fork
 >
 > **Інформація про версію**
 > Версія: v1.16.1 (143) · Двигун: llama.cpp 10054 (ac2557c)

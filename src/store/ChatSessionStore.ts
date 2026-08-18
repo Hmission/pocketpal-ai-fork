@@ -1601,7 +1601,10 @@ class ChatSessionStore {
 
     return this.resolveCompletionSettings(
       this.activeSessionId || undefined,
-      activePalId,
+      // 无显式 Pal 时兜底 AIOS 女妖——与 useChatSession 系统提示词兜底对仗：
+      // pact.talents 是工具可用性的唯一事实源，否则灵魂注入了、手被砍了，
+      // play/adventure 等工具任务静默退化为纯聊天（2026-08-19 K90 真机实证）。
+      activePalId ?? palStore.getAiosPal()?.id,
     );
   }
 }

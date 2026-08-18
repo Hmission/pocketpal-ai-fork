@@ -1,8 +1,9 @@
 import React from 'react';
-import {Alert} from 'react-native';
+import {Alert, Linking} from 'react-native';
 import {render, fireEvent} from '../../../../jest/test-utils';
 import {AboutScreen} from '../AboutScreen';
 import {l10n} from '../../../locales';
+import {GITHUB_REPO_URL} from '../../../utils/openSource';
 
 // Mock DeviceInfo
 jest.mock('react-native-device-info', () => ({
@@ -17,12 +18,14 @@ jest.mock('@react-native-clipboard/clipboard', () => ({
 
 jest.spyOn(Alert, 'alert');
 
+jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined as any);
+
 describe('AboutScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('renders the brand card only (no GitHub/support sections)', () => {
+  it('renders the brand card with the open-source GitHub entry', () => {
     const {getByText, queryByText} = render(<AboutScreen />);
 
     expect(getByText('小黄鸡')).toBeTruthy();
@@ -36,11 +39,21 @@ describe('AboutScreen', () => {
     });
     expect(getByText(l10n.en.about.openSourceBody)).toBeTruthy();
     expect(getByText(l10n.en.about.basedOn)).toBeTruthy();
-    // 精简后不再展示开源项目支持/GitHub/新手指引/法律行
+    // 开源定位：GitHub 引导语 + 按钮
+    expect(getByText(l10n.en.about.githubRepoDescription)).toBeTruthy();
+    expect(getByText(l10n.en.about.githubButton)).toBeTruthy();
+    // 精简后不再展示上游支持/赞助/新手指引/法律行
     expect(queryByText(l10n.en.about.supportProject)).toBeNull();
-    expect(queryByText(l10n.en.about.githubButton)).toBeNull();
     expect(queryByText(l10n.en.about.tour)).toBeNull();
     expect(queryByText(l10n.en.about.privacyPolicy)).toBeNull();
+  });
+
+  it('opens the GitHub repo when the GitHub button is pressed', () => {
+    const {getByTestId} = render(<AboutScreen />);
+
+    fireEvent.press(getByTestId('github-repo-button'));
+
+    expect(Linking.openURL).toHaveBeenCalledWith(GITHUB_REPO_URL);
   });
 
   it('copies version to clipboard when version button is pressed', () => {

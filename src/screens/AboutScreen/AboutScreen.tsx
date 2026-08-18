@@ -5,6 +5,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Linking,
   NativeModules,
 } from 'react-native';
 
@@ -19,6 +20,7 @@ import {CopyIcon} from '../../assets/icons';
 import {useTheme, useStaggerEntry} from '../../hooks';
 import {createStyles} from './styles';
 import {L10nContext} from '../../utils';
+import {GITHUB_REPO_URL} from '../../utils/openSource';
 
 // 构建时间（开发者预览版）：Android BuildInfoModule 常量注入；
 // iOS/未注册时 undefined → UI 优雅省略。
@@ -55,6 +57,12 @@ export const AboutScreen: React.FC = () => {
       l10n.about.versionCopiedTitle,
       l10n.about.versionCopiedDescription,
     );
+  };
+
+  const openGitHubRepo = () => {
+    Linking.openURL(GITHUB_REPO_URL).catch(() => {
+      Alert.alert(l10n.about.versionCopiedTitle, GITHUB_REPO_URL);
+    });
   };
 
   return (
@@ -109,6 +117,21 @@ export const AboutScreen: React.FC = () => {
                 )
               </Text>
               <Text style={styles.basedOnText}>{l10n.about.basedOn}</Text>
+              <View style={styles.githubSection}>
+                <Text variant="bodySmall" style={styles.githubDescription}>
+                  {l10n.about.githubRepoDescription}
+                </Text>
+                <TouchableOpacity
+                  style={styles.githubButton}
+                  onPress={openGitHubRepo}
+                  testID="github-repo-button"
+                  accessibilityRole="button"
+                  accessibilityLabel={l10n.about.githubButton}>
+                  <Text style={styles.githubButtonText}>
+                    {l10n.about.githubButton}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </View>

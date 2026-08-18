@@ -4,7 +4,9 @@
 
 # 小黄鸡 Pocket Chick 🐤
 
-**一款将大语言模型直接部署到您手机上的 AI 应用**
+**一款将大语言模型直接部署到您手机上的 AI 应用 · 完全开源**
+
+An open-source AI app that brings large language models directly to your phone.
 
 基于 [llama.cpp](https://github.com/ggml-org/llama.cpp) 与 [llama.rn](https://github.com/mybigday/llama.rn) 构建 · 二开自 [PocketPal AI](https://github.com/a-ghorbani/pocketpal-ai)（MIT License）
 
@@ -14,11 +16,16 @@
 
 ---
 
+## 📦 仓库 / Repository
+
+- 开源仓库：https://github.com/Hmission/pocketpal-ai-fork
+- 欢迎 Star、Issue 与 Pull Request，共同把「端侧 AI」做得更好。
+
 ## 🐣 简介 / Intro
 
-**中文**：与传统「联网问答」不同，小黄鸡的模型运行在您的设备本地——不需要服务器，不需要联网，更不需要把对话上传给任何第三方。您的每一次提问、每一段对话，都只留在您自己的手机里。
+**中文**：与传统「联网问答」不同，小黄鸡的模型运行在您的设备本地——不需要服务器，不需要联网，更不需要把对话上传给任何第三方。您的每一次提问、每一段对话，都只留在您自己的手机里。整个项目已在 GitHub 完全开源——欢迎 Fork、二次开发与共建。
 
-**English**: Unlike cloud-based chatbots, Pocket Chick runs models entirely on your device — no servers, no internet, and no third party ever sees your conversations. Every question and every reply stays on your phone.
+**English**: Unlike cloud-based chatbots, Pocket Chick runs models entirely on your device — no servers, no internet, and no third party ever sees your conversations. Every question and every reply stays on your phone. The entire project is fully open source on GitHub — fork it, extend it, build your own.
 
 ## ✨ 功能特性 / Features
 
@@ -29,6 +36,7 @@
 | 🎨 端侧本地生图（DreamLite / SD3.5 / Z-Image），创作全程不离开设备 | On-device image generation (DreamLite / SD3.5 / Z-Image) — your creations never leave your phone |
 | ⚡ 轻量启动，即开即用 | Lightweight — ready to use instantly |
 | 🌍 多语言界面（14+ 语言） | Localized UI (14+ languages) |
+| 🆓 完全开源，欢迎贡献与二次开发 | Fully open source — contributions and derivative works are welcome |
 
 ## 🛠 技术栈 / Tech Stack
 
@@ -41,7 +49,7 @@
 
 > TODO: 补充截图（欢迎贡献）
 
-## 🚀 构建 / Build
+## 🚀 快速开始 / Quick Start
 
 ```bash
 yarn install
@@ -52,6 +60,13 @@ cd ios && pod install && open PocketPal.xcodeproj
 ```
 
 开发环境与常用命令详见 [AGENTS.md](AGENTS.md) 与 [docs/getting_started.md](docs/getting_started.md)。
+
+## 🤝 贡献 / Contributing
+
+欢迎任何形式的贡献：提交 [Issue](https://github.com/Hmission/pocketpal-ai-fork/issues)、发起 [Pull Request](https://github.com/Hmission/pocketpal-ai-fork/pulls)、翻译文案或分享使用经验。
+
+- 提交规范：Conventional Commits（见 [CONTRIBUTING.md](CONTRIBUTING.md)）
+- 行为准则：[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 
 ## 🌍 多语言 / Localization
 
@@ -78,7 +93,7 @@ cd ios && pod install && open PocketPal.xcodeproj
 
 ## 💝 开源声明 / Open Source
 
-本项目基于 [PocketPal AI](https://github.com/a-ghorbani/pocketpal-ai)（MIT License）二次开发，遵循开放、透明的开源精神，欢迎贡献与二次开发。
+本项目基于 [PocketPal AI](https://github.com/a-ghorbani/pocketpal-ai)（MIT License）二次开发，源码已在 GitHub 完全开源，遵循开放、透明的开源精神，欢迎贡献与二次开发。
 
 - 上游作者：Asghar Ghorbani（[a-ghorbani](https://github.com/a-ghorbani)）
 - 生图引擎：[stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)、[DreamLite](https://huggingface.co/LemmeStudio/DreamLite)

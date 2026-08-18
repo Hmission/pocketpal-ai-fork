@@ -1,19 +1,21 @@
 {
   "about": {
     "screenTitle": "應用程式資訊",
-    "description": "一個能把語言模型直接帶到你手機上的應用程式，基於 llama.cpp 與 llama.rn 構建。",
-    "body": "與傳統「聯網問答」不同，小黃雞的模型運行在您的裝置本地——不需要伺服器，不需要聯網，更不需要把對話上傳給任何第三方。您的每一次提問、每一段對話，都只留在您自己的手機裡。",
+    "description": "一款將大語言模型直接部署到您手機上的 App，完全開源，基於 llama.cpp 與 llama.rn 構建。",
+    "body": "與傳統「聯網問答」不同，小黃雞的模型運行在您的裝置本地——不需要伺服器，不需要聯網，更不需要把對話上傳給任何第三方。您的每一次提問、每一段對話，都只留在您自己的手機裡。整個專案已在 GitHub 完全開源——歡迎 Fork、二次開發與共建。",
     "featuresTitle": "特性",
     "features": [
       "完全離線運行，無網路也能使用",
       "支援多種開源大模型，自由下載、切換與卸載",
       "端側本地生圖，創作全程不離開裝置",
+      "完全開源，歡迎貢獻與二次開發",
       "輕量啟動，即開即用"
     ],
-    "openSourceBody": "本專案基於 PocketPal AI（MIT License）開發，遵循開放、透明的開源精神，歡迎貢獻與二次開發。",
+    "openSourceBody": "本專案基於 PocketPal AI（MIT License）二次開發，原始碼已在 GitHub 完全開源——歡迎提交 Issue、Pull Request 與二次開發。",
     "basedOn": "基於 PocketPal AI（MIT License）開發",
     "supportProject": "支援此專案",
     "supportProjectDescription": "如果您喜歡使用 PocketPal AI，請考慮透過以下方式支援此專案：",
+    "githubRepoDescription": "小黃雞已完全開源。給倉庫點個 Star，或提交 Issue 與 Pull Request 一起共建。",
     "githubButton": "在 GitHub 上點讚",
     "orText": "或",
     "orBy": "或通過",

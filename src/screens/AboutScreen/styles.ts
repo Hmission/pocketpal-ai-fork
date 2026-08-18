@@ -99,4 +99,26 @@ export const createStyles = (theme: Theme, insets: EdgeInsets) =>
       marginTop: theme.spacing.default / 2,
       opacity: 0.7,
     },
+    githubSection: {
+      marginTop: theme.spacing.default * 1.5,
+      gap: theme.spacing.default / 2,
+    },
+    githubDescription: {
+      color: theme.colors.onSurfaceVariant,
+      lineHeight: 18,
+      opacity: 0.85,
+    },
+    githubButton: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.colors.primary,
+      paddingHorizontal: theme.spacing.default * 1.5,
+      paddingVertical: theme.spacing.default,
+      borderRadius: theme.borders.default,
+    },
+    githubButtonText: {
+      ...theme.fonts.labelLarge,
+      color: theme.colors.onPrimary,
+      fontWeight: '600',
+    },
   });

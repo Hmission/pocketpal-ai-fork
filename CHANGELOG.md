@@ -22,7 +22,7 @@
 - 聊天输入第二行高度统一 36px（思考胶囊 / 发送 / 语音按钮同一基线，真机 bounds 验证一致）
 - 关于页标准版文案（多语 16 语言）：详细介绍段落 + 特性列表 + 开源说明
 - 生成设置参数标签 16 语言本地化（completionParamsLabels / completionParamControls，ML 术语保留英文）
-- 开源发布准备：README 重写（中英双语）、LICENSE 追加 fork 版权、AGENTS.md 公开版、内部 AIOS 文档移出跟踪
+- 开源发布准备（2026-08-19）：README 重写（中英双语 + 贡献指南 + 仓库地址）、LICENSE 追加 fork 版权、AGENTS.md 公开版、内部 AIOS 文档移出跟踪；关于页新增 GitHub 仓库入口按钮（16 语言，Linking 直达仓库）；about 文案全面升级为开源定位（description/body/features/openSourceBody 完全开源表述 + 新增 githubRepoDescription）；APP_INTRO_COPY 三版式同步开源定位与仓库地址
 - 模型目录双轨架构（ADR-0004 / B15）：HF 等平台下载的模型默认落应用专属规范目录（getExternalFilesDir/models，零权限、Play 合规）；设置页新增「模型目录」入口，自定义目录走系统目录选择器（SAF，只能选文件夹），默认注册 AIOS 共享目录（/sdcard/Documents/AIOS/models）续读存量模型
 
 ### 修复
