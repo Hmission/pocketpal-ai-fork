@@ -14,15 +14,13 @@ import {useTheme} from '../../hooks';
 import {chatSessionStore, modelStore} from '../../store';
 import {promptWriter} from '../../services/promptWriter';
 import {HeaderLeft} from '../HeaderLeft';
-import {SessionStatusBar} from '../SessionStatusBar';
 import {getModelDisplayName} from '../../utils/modelDisplayNames';
 import {BUTLER_DISPLAY_NAME} from '../../utils/modelDisplayNames';
 import {withOpacity} from '../../utils/colorUtils';
 
 export const ChatHeader: React.FC<{
   onModelPickerPress?: () => void;
-  onTapContext?: () => void;
-}> = observer(({onModelPickerPress, onTapContext}) => {
+}> = observer(({onModelPickerPress}) => {
     const theme = useTheme();
 
     const insets = useSafeAreaInsets();
@@ -92,7 +90,8 @@ export const ChatHeader: React.FC<{
             <HeaderRight />
           </View>
         </View>
-        <SessionStatusBar onTapContext={onTapContext} />
+        {/* B18 §17：SessionStatusBar 整行删除——引擎就绪融入胶囊（§16.1），
+            上下文余量/落盘/召回/情绪 下沉助手卡 TurnMetricsRow（每输出快照） */}
       </View>
     );
   },

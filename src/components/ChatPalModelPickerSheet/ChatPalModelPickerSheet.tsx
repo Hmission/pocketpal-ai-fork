@@ -1,7 +1,6 @@
 import React, {useRef, useEffect} from 'react';
-import {View, Pressable, Keyboard} from 'react-native';
+import {View, Keyboard, Pressable, TouchableOpacity, Text as RNText} from 'react-native';
 import {observer} from 'mobx-react';
-import {Text} from 'react-native-paper';
 import BottomSheet, {BottomSheetScrollView} from '@gorhom/bottom-sheet';
 
 import {useTheme} from '../../hooks';
@@ -12,7 +11,10 @@ import {getModelSkills, Model} from '../../utils';
 import {
   getModelDisplayNameWithParams,
   isChatSelectable,
+  isButlerModel,
+  getModelNote,
 } from '../../utils/modelDisplayNames';
+import {promptWriter} from '../../services/promptWriter';
 import {SkillsDisplay} from '../SkillsDisplay';
 
 interface ChatPalModelPickerSheetProps {
@@ -113,26 +115,74 @@ export const ChatPalModelPickerSheet = observer(
       [onModelSelect, onClose],
     );
 
+    // B18 §16.2：卡片化（生图页 ModelPickerPanel 同范式）——
+    // 简称 + 徽章［已加载/管家驻场］+ 入选说明 + 行内加载/卸载 + 进度行。
+    // 管家卡卸载禁用（核心链路）；视觉开关（SkillsDisplay）保留。
     const renderModelItem = React.useCallback(
       (model: Model) => {
         const isActiveModel = model.id === modelStore.activeModelId;
+        const butler = isButlerModel(model);
+        const butlerResident = butler && promptWriter.isLoaded;
+        const note = getModelNote(model);
+        const loadingThis =
+          modelStore.isContextLoading && modelStore.loadingModel?.id === model.id;
         const modelSkills = getModelSkills(model)
           .flatMap(skill => skill.labelKey)
           .join(', ');
         return (
           <Pressable
             key={model.id}
-            style={[styles.listItem, isActiveModel && styles.activeListItem]}
-            onPress={() => handleModelSelect(model)}>
-            <View style={styles.itemContent}>
-              <Text
-                style={[
-                  styles.itemTitle,
-                  isActiveModel && styles.activeItemTitle,
-                ]}>
+            testID={`picker-card-${model.id}`}
+            accessibilityRole="button"
+            onPress={() => handleModelSelect(model)}
+            style={[styles.card, isActiveModel && styles.cardActive]}>
+            <View style={styles.cardTitleRow}>
+              <RNText style={styles.itemTitle} numberOfLines={1}>
                 {getModelDisplayNameWithParams(model)}
-              </Text>
-              {modelSkills && <ObservedSkillsDisplay model={model} />}
+              </RNText>
+              {butlerResident ? (
+                <RNText style={styles.badgeResident}>管家驻场</RNText>
+              ) : isActiveModel ? (
+                <RNText style={styles.badgeLoaded}>已加载</RNText>
+              ) : null}
+            </View>
+            {note ? (
+              <RNText style={styles.cardNote} numberOfLines={2}>
+                {note}
+              </RNText>
+            ) : null}
+            {modelSkills ? <ObservedSkillsDisplay model={model} /> : null}
+            <View style={styles.cardActionRow}>
+              {butler ? (
+                // 管家卡禁卸（核心链路）：加载新模型自动卸载管家之外的聊天模型，
+                // 管家本体常驻不占槽；脚注已注明单槽语义。
+                <RNText style={styles.actionDisabled}>卸载禁用</RNText>
+              ) : loadingThis ? (
+                <RNText style={styles.actionDisabled}>正在加载…</RNText>
+              ) : isActiveModel ? (
+                // 卸载 = 独立动作（不触发选择），stopPropagation 隔卡片 onPress
+                <TouchableOpacity
+                  testID={`picker-unload-${model.id}`}
+                  disabled={modelStore.isContextLoading}
+                  onPress={e => {
+                    e.stopPropagation();
+                    modelStore.releaseContext(true);
+                  }}>
+                  <RNText style={[styles.actionText, styles.actionTextUnload]}>
+                    卸载
+                  </RNText>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  testID={`picker-load-${model.id}`}
+                  disabled={modelStore.isContextLoading}
+                  onPress={e => {
+                    e.stopPropagation();
+                    handleModelSelect(model);
+                  }}>
+                  <RNText style={styles.actionText}>加载</RNText>
+                </TouchableOpacity>
+              )}
             </View>
           </Pressable>
         );
@@ -171,6 +221,10 @@ export const ChatPalModelPickerSheet = observer(
           {modelStore.availableModels
             .filter(isChatSelectable)
             .map(renderModelItem)}
+          {/* B18 单槽脚注（大王裁定标注） */}
+          <RNText style={styles.sheetFootnote}>
+            聊天模型单槽：加载新模型会自动卸载当前模型；管家常驻不占槽。
+          </RNText>
         </BottomSheetScrollView>
       </BottomSheet>
     );

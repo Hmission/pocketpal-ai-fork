@@ -37,6 +37,9 @@ jest.mock('../../services/aiosMemory/contextAssembler', () => ({
     recallCount: 0,
     dirtyEnvironment: false,
   })),
+  // B18 §17：finalize 的 turnMetrics 快照消费（无 mock 则 run_finished 抛错）
+  getLastRecallInfo: jest.fn(() => ({count: 0, preview: []})),
+  getLastIntentInfo: jest.fn(() => 'chat'),
 }));
 
 const mockAssistant = {

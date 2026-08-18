@@ -2,7 +2,8 @@
  * EngineStatus — 统一引擎状态源（调度叙事的状态中枢）
  *
  * 三引擎 prompter(常驻) / chat / image 的 phase/progress/stage/error 单一来源。
- * 消费方：SessionStatusBar（全景一行）+ ActiveTaskBanner（聊天内任务卡片）。
+ * 消费方：ActiveTaskBanner（聊天内任务卡片）。B18 §17 后状态栏整行删除，
+ * 引擎就绪信息融入顶栏模型胶囊（ChatHeader）。
  * 生产方：promptWriter / ModelStore / imageGenStore 在生命周期节点写入。
  *
  * 锋利原则：只做状态镜像与派生，不驱动任何 native 调用。
@@ -86,7 +87,7 @@ class EngineStatus {
     return null;
   }
 
-  /** 全景摘要（SessionStatusBar 一行显示） */
+  /** 全景摘要（B18 §17 后无消费方，保留供调试/日志） */
   get summary(): string {
     const name: Record<EngineKind, string> = {
       prompter: '管家',

@@ -24,10 +24,10 @@ export interface AssembledContext {
   dirtyEnvironment: boolean; // true when conversations/ is empty (fallback mode)
 }
 
-// Track last recall info for SessionStatusBar display
+// Track last recall info for TurnMetricsRow display (B18 §17)
 let _lastRecallCount = 0;
 let _lastRecallPreview: string[] = [];
-// v3.8：最近一次意图分类（SessionStatusBar 意图标签）
+// v3.8：最近一次意图分类（B18 §17 作者行意图胶囊展示用）
 let _lastIntent: 'chat' | 'vent' | 'qa' | 'task' = 'chat';
 
 /** Get the last recall count for UI display. */
@@ -35,7 +35,7 @@ export function getLastRecallInfo(): {count: number; preview: string[]} {
   return {count: _lastRecallCount, preview: _lastRecallPreview};
 }
 
-/** v3.8：最近一次意图分类（SessionStatusBar 展示用） */
+/** v3.8：最近一次意图分类（B18 §17 作者行意图胶囊展示用） */
 export function getLastIntentInfo(): 'chat' | 'vent' | 'qa' | 'task' {
   return _lastIntent;
 }
@@ -82,7 +82,7 @@ export async function assembleContext(
   const memoryDoc = (await readFileSafe(AIOS_MEMORY_FILE)).slice(0, 2000);
   // 9-3 意图引导装填：classifyIntent 四态 → buildMemoryFragment 按意图选策略
   const intentKind = classifyIntent(currentUserText);
-  _lastIntent = intentKind; // v3.8：SessionStatusBar 意图标签
+  _lastIntent = intentKind; // v3.8：意图标签（B18 §17 作者行胶囊）
   const memoryFragment = await buildMemoryFragment(currentUserText, intentKind);
   // P4 仪式：开场状态（日期+上次摘要+昨日情绪）+ 意图语气（闲聊/倾诉/问答/任务）
   const todayState = recentMessageCount <= 2 ? await buildTodayState() : '';
@@ -113,7 +113,7 @@ export async function assembleContext(
     dirtyEnvironment = true;
   }
 
-  // Track for SessionStatusBar
+  // Track for TurnMetricsRow（B18 §17：每输出快照消费）
   _lastRecallCount = recalledFragments.length;
   _lastRecallPreview = recalledFragments.slice(0, 3);
 

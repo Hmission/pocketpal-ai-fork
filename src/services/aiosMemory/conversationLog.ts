@@ -8,7 +8,7 @@ import * as RNFS from '@dr.pogodin/react-native-fs';
 import {AIOS_CONVERSATIONS_DIR} from '../../utils/paths';
 import {updateConversationCache} from './searchEngine';
 
-// Track last write time for SessionStatusBar display
+// Track last write time for TurnMetricsRow display (B18 §17)
 let _lastWriteTime: number | null = null;
 
 /** Get the timestamp of the last successful conversation append (for UI display). */

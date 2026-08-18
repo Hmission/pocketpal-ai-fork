@@ -29,6 +29,7 @@ import {L10nContext} from '../../utils';
 import {resolveReasoningCapability} from '../../utils/reasoningCapability';
 import {MessageType, Theme} from '../../utils/types';
 import {getModelDisplayName} from '../../utils/modelDisplayNames';
+import {withOpacity} from '../../utils/colorUtils';
 import {ErrorState} from '../../utils/errors';
 import {user, assistant} from '../../utils/chat';
 import {useChatScheduler} from '../../hooks/useChatScheduler';
@@ -42,6 +43,15 @@ import {imageGenStore} from '../../store/imageGenStore';
 import {ROUTES} from '../../utils/navigationConstants';
 
 import {VideoPalScreen} from './VideoPalScreen';
+
+// B18 §17：意图四色胶囊（作者标签行，与模型徽章同高）。
+// 硬编码 hex 收口 DS token：闲聊=中性 / 倾诉=error / 问答=info / 任务=warning。
+const INTENT_LABEL: Record<string, string> = {
+  chat: '闲聊',
+  vent: '倾诉',
+  qa: '问答',
+  task: '任务',
+};
 
 const renderBubble = ({
   child,
@@ -61,20 +71,65 @@ const renderBubble = ({
     message.author.id !== user.id
       ? (message.metadata as {modelName?: string} | undefined)?.modelName
       : undefined;
+  // B18 §17：意图胶囊从状态栏上移到作者标签行（快照驱动，无快照不渲染）
+  const intent =
+    message.author.id !== user.id
+      ? (
+          message.metadata as
+            | {turnMetrics?: {intent?: string}}
+            | undefined
+        )?.turnMetrics?.intent
+      : undefined;
+  const intentColor =
+    intent === 'vent'
+      ? theme.colors.error
+      : intent === 'qa'
+        ? theme.colors.info
+        : intent === 'task'
+          ? theme.colors.warning
+          : theme.colors.onSurfaceVariant;
   return (
     <View>
-      {modelName ? (
-        <Text
-          testID="assistant-model-badge"
+      {modelName || intent ? (
+        <View
           style={{
-            ...theme.typography.captionS,
-            fontWeight: '600',
-            color: theme.colors.brandAccent,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: theme.spacing.xxs,
             marginLeft: theme.spacing.sm,
             marginBottom: theme.spacing.xs,
           }}>
-          {getModelDisplayName({name: modelName})}
-        </Text>
+          {modelName ? (
+            <Text
+              testID="assistant-model-badge"
+              style={{
+                ...theme.typography.captionS,
+                fontWeight: '600',
+                color: theme.colors.brandAccent,
+              }}>
+              {getModelDisplayName({name: modelName})}
+            </Text>
+          ) : null}
+          {intent && INTENT_LABEL[intent] ? (
+            <View
+              testID="assistant-intent-capsule"
+              style={{
+                backgroundColor: withOpacity(intentColor, 0.12),
+                borderRadius: theme.radius[theme.shapeRoles.pill],
+                paddingHorizontal: theme.spacing.xs,
+                paddingVertical: 1,
+              }}>
+              <Text
+                style={{
+                  ...theme.typography.captionS,
+                  fontWeight: '500',
+                  color: intentColor,
+                }}>
+                {INTENT_LABEL[intent]}
+              </Text>
+            </View>
+          ) : null}
+        </View>
       ) : null}
       <Bubble
         child={child}
@@ -373,9 +428,8 @@ export const ChatScreen: React.FC = observer(() => {
   }
 
   // Otherwise, show the regular chat view
-  // NOTE: SessionStatusBar is rendered inside ChatHeader (once). Adding
-  // another instance here caused it to render twice — a duplicate status
-  // strip overlapping the system status bar area on Android.
+  // NOTE: B18 §17——SessionStatusBar 整行已删（引擎融入顶栏胶囊、指标下沉
+  // 助手卡 TurnMetricsRow），顶栏下无重复状态条。
   return (
     <>
       <ChatView

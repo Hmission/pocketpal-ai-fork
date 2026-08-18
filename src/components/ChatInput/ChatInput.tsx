@@ -803,6 +803,8 @@ export const ChatInput = observer(
                     // 全局 UI 规范：选中态 = 标准橙黄底 + onPrimary 前景（替代旧 onSurface 黑底）
                     isThinkingEnabled && {backgroundColor: theme.colors.primary},
                   ]}
+                  // B18 §17：胶囊 24px 视觉，触区上下 +6 补回 36px 行基线
+                  hitSlop={{top: 6, bottom: 6, left: 4, right: 4}}
                   onPress={() =>
                     supportsEffort && effortValues.length > 0
                       ? onEffortCycle?.()

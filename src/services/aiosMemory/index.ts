@@ -54,7 +54,7 @@ export function extractAttrSlot(content: string): string | undefined {
 let cache: AiosMemory[] | null = null;
 let extracting = false;
 
-// v3.8 记忆可见性：最近一次提取新增条数（SessionStatusBar 指示器用）
+// v3.8 记忆可见性：最近一次提取新增条数（B18 §17 后暂无消费方，保留供调试）
 let _lastExtractionCount = 0;
 
 export function getLastExtractionCount(): number {
@@ -450,7 +450,7 @@ export async function extractAndSaveMemories(
       }
     }
     const items = Array.isArray(parsed.memories) ? parsed.memories : [];
-    // v3.8：记录本次提取新增条数（SessionStatusBar 记忆+N 指示器）
+    // v3.8：记录本次提取新增条数（记忆可见性指示器）
     _lastExtractionCount = 0;
     for (const item of items.slice(0, 3)) {
       if (item && typeof item.content === 'string' && item.content.trim()) {

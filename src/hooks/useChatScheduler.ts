@@ -95,7 +95,7 @@ async function loadCandidate(
     );
     return 'abort';
   }
-  // 加载完成，状态归隐（避免残留；模型状态由 SessionStatusBar 既有区展示）
+  // 加载完成，状态归隐（避免残留；模型状态由顶栏胶囊展示，B18 §16.1）
   engineStatus.setPhase('chat', 'idle');
   return 'proceed';
 }

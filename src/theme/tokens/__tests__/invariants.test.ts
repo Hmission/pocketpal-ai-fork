@@ -128,7 +128,6 @@ describe('design-token grep invariants', () => {
       'screens/MemoryScreen',
       'screens/ImageGenScreen',
       'components/ActiveTaskBanner',
-      'components/SessionStatusBar',
       'components/MarkdownView',
       // 同波散点字号 token 化（A3）
       'screens/ChatScreen',
@@ -169,6 +168,8 @@ describe('design-token grep invariants', () => {
       'components/ChatGenerationSettingsSheet',
       // B15 模型目录管理页（ADR-0004 双轨）：token 表面消费
       'screens/ModelDirsScreen',
+      // B18 §17 每输出指标行（TurnMetricsRow）：状态栏能力下沉，token 表面消费
+      'components/TurnMetricsRow',
     ];
     const files = listFiles(SRC).filter(f => {
       const rel = path.relative(SRC, f).replace(/\\/g, '/');

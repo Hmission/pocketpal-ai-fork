@@ -389,6 +389,8 @@ describe('ChatInput Thinking Toggle', () => {
     );
     // 全局 UI 规范：选中态 = primary 底 + onPrimary 前景（禁止旧 onSurface 黑底）
     expect(flat.backgroundColor).toBe('#007AFF');
+    // B18 §17：胶囊高度 24px（与两边图标钮视觉同量级；触区由 hitSlop 补 36 基线）
+    expect(flat.height).toBe(24);
   });
 
   it('should handle missing onThinkingToggle callback gracefully', () => {

@@ -42,8 +42,10 @@ export const createStyles = ({
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      height: 36, // 与右侧发送/语音按钮统一高度（2026-08 大王裁定）
-      borderRadius: 18,
+      // B18 §17：胶囊 36→24px（与两边 28px 图标钮视觉同量级，不再凸出）；
+      // 行基线仍 36，触区由 hitSlop 上下各 +6 补齐（ChatInput 单点）。
+      height: 24,
+      borderRadius: 12,
       paddingHorizontal: 12,
       marginLeft: 8,
       // 2026-08-16 去描边（与快捷生图/编辑图标钮统一无描边）：状态靠背景填充色表达，

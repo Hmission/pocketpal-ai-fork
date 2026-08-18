@@ -25,6 +25,12 @@ import {
 } from '../utils/systemPromptResolver';
 import {extractAndSaveMemories} from '../services/aiosMemory';
 import {assembleContext} from '../services/aiosMemory/contextAssembler';
+import {
+  getLastRecallInfo,
+  getLastIntentInfo,
+} from '../services/aiosMemory/contextAssembler';
+import {getLastWriteTime} from '../services/aiosMemory/conversationLog';
+import {getLastSentiment} from '../services/aiosMemory/rituals';
 import {awaitEngineReady, engineIsBusy} from '../utils/engineReady';
 import {appendConversation} from '../services/aiosMemory/conversationLog';
 import {compactAndFlush} from '../services/aiosMemory/compaction';
@@ -468,6 +474,23 @@ async function applyEventToStore(
           copyable: true,
           multimodal: ctx.hasImages && ctx.isMultimodalEnabled,
           completionResult: snapshot,
+          // B18 §17：每输出指标行快照（上下文余量/落盘/召回/情绪/意图），
+          // 助手卡底部各记各的；老消息无快照=不渲染（锋利不兜底）。
+          turnMetrics: (() => {
+            const nCtx = modelStore.activeContextSettings?.n_ctx;
+            const used = snapshot?.used ?? 0;
+            const recall = getLastRecallInfo();
+            return {
+              ctxPct: nCtx
+                ? Math.min(100, Math.round((used / nCtx) * 100))
+                : 0,
+              writeTime: getLastWriteTime() ?? Date.now(),
+              recallCount: recall.count,
+              recallPreview: recall.preview ?? [],
+              sentimentLabel: getLastSentiment().label,
+              intent: getLastIntentInfo(),
+            };
+          })(),
           ...(event.result.hitMaxTurns ? {hitMaxTurns: true} : {}),
         },
       });

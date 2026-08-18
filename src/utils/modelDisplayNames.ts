@@ -159,8 +159,12 @@ export function getModelDisplayNameWithParams(
 export function isChatSelectable(
   model: Pick<Model, 'modelType' | 'filename'>,
 ): boolean {
+  // 聊天引擎只加载 GGUF：safetensors/onnx 等生图 checkpoint 一律不显示
+  // （sd35 自定义 checkpoint 不在 manifest 排除集，靠后缀单规则收口）
+  const gguf = !model.filename || /\.gguf$/i.test(model.filename);
   return (
     model.modelType === ModelType.LLM &&
+    gguf &&
     (model.filename ? !IMAGE_GEN_MODEL_FILES.has(model.filename) : true)
   );
 }

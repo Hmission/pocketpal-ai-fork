@@ -147,7 +147,7 @@ async function readLastSentiment(): Promise<SentimentRecord | null> {
   return null;
 }
 
-/** 最近情绪（供 SessionStatusBar 等展示） */
+/** 最近情绪（供 TurnMetricsRow 等展示，B18 §17） */
 export function getLastSentiment(): {score: number; label: string} {
   const label =
     _lastSentiment > 0 ? '愉悦' : _lastSentiment < 0 ? '低落' : '平稳';

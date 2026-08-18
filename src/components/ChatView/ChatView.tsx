@@ -65,7 +65,6 @@ import {
   L10nContext,
 } from '../../utils';
 import {hasVideoCapability} from '../../utils/pal-capabilities';
-import {ROUTES} from '../../utils/navigationConstants';
 
 import {
   Message,
@@ -1195,9 +1194,6 @@ export const ChatView = observer(
           <View style={styles.headerWrapper}>
             <ChatHeader
               onModelPickerPress={() => setIsPickerVisible(true)}
-              onTapContext={() =>
-                navigation.navigate(ROUTES.GENERATION_SETTINGS)
-              }
             />
             {headerAccessory}
           </View>

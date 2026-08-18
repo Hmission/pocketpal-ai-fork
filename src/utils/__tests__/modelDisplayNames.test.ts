@@ -97,5 +97,13 @@ describe('modelDisplayNames', () => {
         }),
       ).toBe(false);
     });
+
+    it('非 GGUF（生图 safetensors checkpoint）不可选（B18 单规则收口）', () => {
+      expect(
+        isChatSelectable(
+          model('sd35', {filename: 'sd35_medium_humanpose_baked.safetensors'}),
+        ),
+      ).toBe(false);
+    });
   });
 });
