@@ -1,15 +1,16 @@
 import * as React from 'react';
 import {
-  TouchableOpacity,
-  View,
+  ActivityIndicator,
+  Switch,
   Text,
   TextInput,
-  ActivityIndicator,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 import {useTheme} from '../../../hooks';
 import {createStyles} from '../styles';
-import {PROMPT_LIMIT, RATIOS, SIZES} from '../constants';
+import {PROMPT_LIMIT, RATIOS, SD_RATIOS} from '../constants';
 
 interface ComposerPanelProps {
   prompt: string;
@@ -34,7 +35,12 @@ interface ComposerPanelProps {
   /** DreamLite 画幅宽（由 ratio 派生） */
   dreamW: number;
   dreamH: number;
-  error: string | null;
+  /** 08-18 路线 B：当前模型是否声明了独立 LoRA（manifest.lora 非空） */
+  hasLora: boolean;
+  loraEnabled: boolean;
+  loraMultiplier: string;
+  onLoraEnabledChange: (v: boolean) => void;
+  onLoraMultiplierChange: (t: string) => void;
   onPromptChange: (t: string) => void;
   onNegativePromptChange: (t: string) => void;
   onStepsChange: (t: string) => void;
@@ -69,7 +75,11 @@ export const ComposerPanel: React.FC<ComposerPanelProps> = ({
   loaded,
   dreamW,
   dreamH,
-  error,
+  hasLora,
+  loraEnabled,
+  loraMultiplier,
+  onLoraEnabledChange,
+  onLoraMultiplierChange,
   onPromptChange,
   onNegativePromptChange,
   onStepsChange,
@@ -109,7 +119,7 @@ export const ComposerPanel: React.FC<ComposerPanelProps> = ({
             ? '步数'
             : isDream
               ? '尺寸/步数'
-              : '负面/尺寸/步数/CFG/种子'}
+              : '负面/比例/步数/CFG/种子'}
           ）{showAdvanced ? '▴' : '▾'}
         </Text>
       </TouchableOpacity>
@@ -149,15 +159,20 @@ export const ComposerPanel: React.FC<ComposerPanelProps> = ({
             )
           ) : (
             <View style={s.paramRow}>
-              <Text style={s.paramLabel}>尺寸</Text>
-              {SIZES.map(sz => (
-                <TouchableOpacity
-                  key={sz}
-                  style={[s.sizeBtn, size === sz && s.sizeBtnSelected]}
-                  onPress={() => onSizeChange(sz)}>
-                  <Text style={s.sizeBtnText}>{sz}</Text>
-                </TouchableOpacity>
-              ))}
+              <Text style={s.paramLabel}>比例</Text>
+              {(isDream ? RATIOS : SD_RATIOS) &&
+                Object.keys(isDream ? RATIOS : SD_RATIOS).map(r => (
+                  <TouchableOpacity
+                    key={r}
+                    style={[s.sizeBtn, ratio === r && s.sizeBtnSelected]}
+                    onPress={() => onRatioChange(r)}>
+                    <Text style={s.sizeBtnText}>{r}</Text>
+                    <Text style={s.sizeBtnSub}>
+                      {(isDream ? RATIOS : SD_RATIOS)[r][0]}×
+                      {(isDream ? RATIOS : SD_RATIOS)[r][1]}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
             </View>
           )}
           <View style={s.paramRow}>
@@ -189,6 +204,24 @@ export const ComposerPanel: React.FC<ComposerPanelProps> = ({
               </>
             )}
           </View>
+          {!isDream && hasLora && (
+            <View style={s.paramRow}>
+              <Text style={s.paramLabel}>LoRA</Text>
+              <Switch
+                value={loraEnabled}
+                onValueChange={onLoraEnabledChange}
+                disabled={generating}
+              />
+              <Text style={s.paramLabel}>强度</Text>
+              <TextInput
+                style={s.paramInput}
+                value={loraMultiplier}
+                onChangeText={onLoraMultiplierChange}
+                keyboardType="numeric"
+                editable={loraEnabled && !generating}
+              />
+            </View>
+          )}
         </>
       )}
       {isDream && (
@@ -244,7 +277,8 @@ export const ComposerPanel: React.FC<ComposerPanelProps> = ({
           )}
         </TouchableOpacity>
       )}
-      {error && <Text style={s.error}>{error}</Text>}
+      {/* 报错唯一出口 = 预览区 failed 任务页（任务化，2026-08），
+          composer 底部不再展示错误文本 */}
     </View>
   );
 };

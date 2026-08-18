@@ -23,12 +23,16 @@ import {imageGenStore, GeneratedImage} from '../../store/imageGenStore';
 import {useTheme} from '../../hooks';
 import {AIOS_MODELS_DIR} from '../../utils/paths';
 import {
+  buildErrorReport,
+  copyAndSaveErrorReport,
+} from '../../utils/errorReport';
+import {
   listAvailableModels,
   resolveCompanions,
 } from '../../utils/imageGenManifest';
 
 import {createStyles} from './styles';
-import {DREAMLITE_MANIFEST, RATIOS, ModelEntry} from './constants';
+import {DREAMLITE_MANIFEST, RATIOS, SD_RATIOS, ModelEntry} from './constants';
 import {useToast} from './hooks/useToast';
 import {useWaveDots} from './hooks/useWaveDots';
 import {
@@ -53,6 +57,9 @@ export const ImageGenScreen: React.FC = observer(() => {
   const [cfg, setCfg] = React.useState('2');
   const [size, setSize] = React.useState(512);
   const [seed, setSeed] = React.useState(''); // 6.18 空=随机，填数可复现/调试
+    // 08-18 路线 B：运行时 LoRA 开关（默认关=纯 base；multiplier 默认 manifest 值，供强度梯度）
+  const [loraEnabled, setLoraEnabled] = React.useState(false);
+  const [loraMult, setLoraMult] = React.useState('2.0');
   const [scanning, setScanning] = React.useState(false);
   const [now, setNow] = React.useState(Date.now());
   const [showAdvanced, setShowAdvanced] = React.useState(false);
@@ -191,7 +198,10 @@ export const ImageGenScreen: React.FC = observer(() => {
 
   const loadEntry = async (entry: ModelEntry) => {
     if (entry.manifest.family === 'dreamlite') {
-      await imageGenStore.loadDreamLiteEntry();
+      const ok = await imageGenStore.loadDreamLiteEntry();
+      if (!ok) {
+        await pushLoadFailedTask(entry.manifest.label);
+      }
       return;
     }
     const {extras, missing} = await resolveCompanions(
@@ -199,16 +209,99 @@ export const ImageGenScreen: React.FC = observer(() => {
       AIOS_MODELS_DIR,
     );
     if (missing.length > 0) {
+      const summary = `缺少伴侣文件：${missing.join('、')}`;
       runInAction(() => {
-        imageGenStore.error = `缺少伴侣文件：${missing.join('、')}`;
+        imageGenStore.error = summary;
       });
+      const report = await buildErrorReport({
+        scope: 'imagegen',
+        summary,
+        extra: {模型: entry.manifest.label},
+      });
+      imageGenStore.pushFailedTask(
+        failedTaskBase(entry.manifest.label, entry.manifest.family),
+        summary,
+        report.detail,
+      );
+      scrollToPreview(1);
       return;
     }
-    await imageGenStore.loadModel(
+    const ok = await imageGenStore.loadModel(
       entry.mainPath,
       {...extras, backend: entry.manifest.defaults.backend},
       entry.manifest.id,
     );
+    if (!ok) {
+      await pushLoadFailedTask(entry.manifest.label);
+    }
+  };
+
+  // 失败任务条目基座（非生成类错误：加载/解码/伴侣文件）
+  const failedTaskBase = (
+    modelLabel: string,
+    family?: string,
+  ): Omit<GeneratedImage, 'taskId' | 'status'> => ({
+    uri: '',
+    prompt: '',
+    seed: 0,
+    ts: Date.now(),
+    width: 0,
+    height: 0,
+    family,
+    kind: 'generated',
+    modelLabel,
+  });
+
+  // 加载失败 → failed 任务页（报错唯一出口 = 预览区）
+  const pushLoadFailedTask = async (modelLabel: string) => {
+    const summary = imageGenStore.error ?? '模型加载失败';
+    const report = await buildErrorReport({
+      scope: 'imagegen',
+      summary,
+      extra: {模型: modelLabel},
+    });
+    imageGenStore.pushFailedTask(
+      failedTaskBase(modelLabel),
+      summary,
+      report.detail,
+    );
+    scrollToPreview(1);
+  };
+
+  // 生成/编辑失败：组装完整报错报告回填任务（页面保留，可一键复制）
+  const failTaskWithReport = async (
+    taskId: string,
+    summary: string,
+    extra: Record<string, string | number | undefined>,
+  ) => {
+    const report = await buildErrorReport({
+      scope: 'imagegen',
+      summary,
+      error: imageGenStore.error ?? summary,
+      extra,
+    });
+    imageGenStore.failTask(taskId, report.summary, report.detail);
+  };
+
+  // 失败任务页：一键复制完整报错（复制 + 落盘 AIOS/logs）
+  const handleCopyError = async (item: GeneratedImage) => {
+    const path = await copyAndSaveErrorReport({
+      summary: item.errorSummary ?? '生图失败',
+      detail: item.errorDetail ?? '',
+    });
+    showToast(path ? '已复制，并保存到 AIOS/logs' : '已复制到剪贴板');
+  };
+
+  // 失败任务页：同参数重试（回填参数后用该任务的提示词重新发起）
+  const handleRetryTask = (item: GeneratedImage) => {
+    syncFromParams(item);
+    handleGenerate(item.prompt);
+  };
+
+  // 失败任务页：删除该任务条目
+  const handleDeleteTask = (item: GeneratedImage) => {
+    imageGenStore.deleteTask(item.taskId);
+    scrollToPreview(0, false);
   };
 
   // 卸载（行内按钮）
@@ -291,7 +384,15 @@ export const ImageGenScreen: React.FC = observer(() => {
         setRatio(r[0]);
       }
     } else if (item.width) {
-      setSize(item.width);
+      // 08-18 升级：按像素反查 SD 比例档（历史图回填比例，保持参数一致）
+      const r2 = Object.entries(SD_RATIOS).find(
+        ([, wh]) => wh[0] === item.width && wh[1] === (item.height ?? wh[1]),
+      );
+      if (r2) {
+        setRatio(r2[0]);
+      } else {
+        setSize(item.width);
+      }
     }
     if (item.steps) {
       setSteps(String(item.steps));
@@ -348,6 +449,8 @@ export const ImageGenScreen: React.FC = observer(() => {
         height: sq,
         family: 'dreamlite',
         kind: 'upload',
+        taskId: `task_${Date.now()}_${Math.floor(Math.random() * 1e6)}`,
+        status: 'success',
       });
       setPrompt(''); // 新源图无历史提示词，清空输入区
       scrollToPreview(0);
@@ -359,6 +462,19 @@ export const ImageGenScreen: React.FC = observer(() => {
       runInAction(() => {
         imageGenStore.error = `解码图片: ${(e as any)?.message ?? e}`;
       });
+      const summary = `解码图片失败：${(e as any)?.message ?? e}`;
+      const report = await buildErrorReport({
+        scope: 'imagegen',
+        summary,
+        error: e,
+        extra: {源图: path},
+      });
+      imageGenStore.pushFailedTask(
+        failedTaskBase('DreamLite', 'dreamlite'),
+        summary,
+        report.detail,
+      );
+      scrollToPreview(1);
     }
   };
 
@@ -411,6 +527,18 @@ export const ImageGenScreen: React.FC = observer(() => {
       runInAction(() => {
         imageGenStore.error = `解码图片: ${(e as any)?.message ?? e}`;
       });
+      const summary = `解码图片失败：${(e as any)?.message ?? e}`;
+      const report = await buildErrorReport({
+        scope: 'imagegen',
+        summary,
+        error: e,
+      });
+      imageGenStore.pushFailedTask(
+        failedTaskBase('DreamLite', 'dreamlite'),
+        summary,
+        report.detail,
+      );
+      scrollToPreview(1);
     }
   };
 
@@ -418,9 +546,23 @@ export const ImageGenScreen: React.FC = observer(() => {
     if (!editRgb) {
       return;
     }
-    setTaskKind('edit'); // 编辑动效：叠在当前图上
     const sq = Math.min(dreamW, dreamH);
     const startTs = Date.now();
+    const modelLabel = selectedEntry?.manifest.label ?? 'DreamLite';
+    // 任务化：先建 running 条目；编辑动效仍叠当前图（taskKind=edit）
+    const taskId = imageGenStore.beginTask({
+      uri: '',
+      prompt: prompt.trim(),
+      seed: Date.now() % 1e9,
+      ts: Date.now(),
+      width: sq,
+      height: sq,
+      steps: parseInt(steps, 10) || 4,
+      family: 'dreamlite',
+      kind: 'generated',
+      modelLabel,
+    });
+    setTaskKind('edit'); // 编辑动效：叠在当前图上
     const uri = await imageGenStore.editDreamLiteEntry(
       editRgb,
       sq,
@@ -430,49 +572,38 @@ export const ImageGenScreen: React.FC = observer(() => {
     );
     setTaskKind(null);
     if (!uri) {
+      // 失败：页面保留（failed 任务页，可一键复制报错）
+      await failTaskWithReport(taskId, '编辑失败', {
+        模型: modelLabel,
+        尺寸: `${sq}×${sq}`,
+        指令: prompt.trim(),
+      });
+      scrollToPreview(1);
       return;
     }
     setEditRgb(null);
     setEditSource(null);
-    imageGenStore.pushHistory({
-      uri,
-      prompt: prompt.trim(),
-      seed: Date.now() % 1e9,
-      ts: Date.now(),
-      width: sq,
-      height: sq,
-      steps: parseInt(steps, 10) || 4,
-      family: 'dreamlite',
-      kind: 'generated',
+    imageGenStore.finishTask(taskId, uri, {
       durationMs: Date.now() - startTs,
-      modelLabel: selectedEntry?.manifest.label ?? 'DreamLite',
     });
     // 新图在 history[0] → 预览页 1
     scrollToPreview(1);
     showToast('编辑完成');
   };
 
-  const handleGenerate = async () => {
-    if (!prompt.trim()) {
+  const handleGenerate = async (promptOverride?: string) => {
+    const p = (promptOverride ?? prompt).trim();
+    if (!p) {
       return;
     }
     setEditArming(false); // 出图退出编辑预备态
+    const startTs = Date.now();
     if (isDream) {
-      setTaskKind('gen'); // 出图动效：预览区空白页
-      const startTs = Date.now();
-      const uri = await imageGenStore.generateDreamLiteEntry(
-        dreamW,
-        dreamH,
-        parseInt(steps, 10) || 4,
-        prompt.trim(),
-      );
-      setTaskKind(null);
-      if (!uri) {
-        return;
-      }
-      imageGenStore.pushHistory({
-        uri,
-        prompt: prompt.trim(),
+      const modelLabel = selectedEntry?.manifest.label ?? 'DreamLite';
+      // 任务化：先落 running 任务 → 翻到空白预览页 → 成功回填/失败保留
+      const taskId = imageGenStore.beginTask({
+        uri: '',
+        prompt: p,
         seed: Date.now() % 1e9,
         ts: Date.now(),
         width: dreamW,
@@ -480,8 +611,29 @@ export const ImageGenScreen: React.FC = observer(() => {
         steps: parseInt(steps, 10) || 4,
         family: 'dreamlite',
         kind: 'generated',
+        modelLabel,
+      });
+      setTaskKind('gen'); // 出图动效：running 任务页（空白页+进度）
+      scrollToPreview(1);
+      const uri = await imageGenStore.generateDreamLiteEntry(
+        dreamW,
+        dreamH,
+        parseInt(steps, 10) || 4,
+        p,
+      );
+      setTaskKind(null);
+      if (!uri) {
+        await failTaskWithReport(taskId, '生成失败', {
+          模型: modelLabel,
+          尺寸: `${dreamW}×${dreamH}`,
+          步数: steps,
+          提示词: p,
+        });
+        scrollToPreview(1);
+        return;
+      }
+      imageGenStore.finishTask(taskId, uri, {
         durationMs: Date.now() - startTs,
-        modelLabel: selectedEntry?.manifest.label ?? 'DreamLite',
       });
       // 新图在 history[0] → 预览页 1
       scrollToPreview(1);
@@ -489,21 +641,55 @@ export const ImageGenScreen: React.FC = observer(() => {
       return;
     }
     const m = selectedEntry?.manifest;
-    setTaskKind('gen'); // 出图动效：预览区空白页
-    const uri = await imageGenStore.generate(prompt.trim(), {
+    const seedNum = seed.trim()
+      ? parseInt(seed, 10)
+      : Math.floor(Math.random() * 2 ** 31);
+    const taskId = imageGenStore.beginTask({
+      uri: '',
+      prompt: p,
+      seed: seedNum,
+      ts: Date.now(),
+      // 08-18 升级：非 Dream 比例档派生宽高
+      width: SD_RATIOS[ratio]?.[0] ?? size,
+      height: SD_RATIOS[ratio]?.[1] ?? size,
       steps: parseInt(steps, 10) || 2,
       cfg: parseFloat(cfg) || 2,
-      width: size,
-      height: size,
-      seed: seed.trim() ? parseInt(seed, 10) : undefined,
+      family: m?.family,
+      kind: 'generated',
+      modelLabel: m?.label,
+    });
+    setTaskKind('gen'); // 出图动效：running 任务页（空白页+进度）
+    scrollToPreview(1);
+    const uri = await imageGenStore.generate(p, {
+      steps: parseInt(steps, 10) || 2,
+      cfg: parseFloat(cfg) || 2,
+      // 08-18 升级：非 Dream 比例档派生宽高（默认 1:1 = 512×512），替代原固定方形
+      width: SD_RATIOS[ratio]?.[0] ?? size,
+      height: SD_RATIOS[ratio]?.[1] ?? size,
+      seed: seedNum,
       negativePrompt: negativePrompt.trim(),
-      loraPath: m?.lora ? `${AIOS_MODELS_DIR}/${m.lora}` : undefined,
-      loraMultiplier: m?.loraMultiplier,
+      // 08-18 路线 B：LoRA 开关开且 manifest 声明才传 lora（关/未声明 = 空串 = 纯 base）
+      loraPath:
+        loraEnabled && m?.lora ? `${AIOS_MODELS_DIR}/${m.lora}` : undefined,
+      loraMultiplier: loraEnabled ? parseFloat(loraMult) || undefined : undefined,
       modelLabel: m?.label,
     });
     setTaskKind(null);
     if (uri) {
+      imageGenStore.finishTask(taskId, uri, {
+        durationMs: Date.now() - startTs,
+      });
       // 新图在 history[0] → 预览页 1
+      scrollToPreview(1);
+      showToast(`生成完成（${size}×${size}）`);
+    } else {
+      await failTaskWithReport(taskId, '生成失败', {
+        模型: m?.label,
+        尺寸: `${size}×${size}`,
+        步数: steps,
+        CFG: cfg,
+        提示词: p,
+      });
       scrollToPreview(1);
     }
   };
@@ -618,11 +804,16 @@ export const ImageGenScreen: React.FC = observer(() => {
           onSave={handleSave}
           onReroll={handleReroll}
           onDelete={handleDeleteCurrent}
+          onCopyError={handleCopyError}
+          onRetryTask={handleRetryTask}
+          onDeleteTask={handleDeleteTask}
         />
 
-        {/* ② 历史区 */}
+        {/* ② 历史区（只列成功任务缩略图；保留原始索引供翻页定位） */}
         <HistoryStrip
-          history={imageGenStore.history}
+          items={imageGenStore.history
+            .map((item, index) => ({item, index}))
+            .filter(({item}) => (item.status ?? 'success') === 'success')}
           manageMode={manageMode}
           toDelete={toDelete}
           onUpload={handlePickEditImage}
@@ -657,7 +848,11 @@ export const ImageGenScreen: React.FC = observer(() => {
           loaded={loaded}
           dreamW={dreamW}
           dreamH={dreamH}
-          error={imageGenStore.error}
+          hasLora={!!selectedEntry?.manifest.lora}
+          loraEnabled={loraEnabled}
+          loraMultiplier={loraMult}
+          onLoraEnabledChange={setLoraEnabled}
+          onLoraMultiplierChange={setLoraMult}
           onPromptChange={setPrompt}
           onNegativePromptChange={setNegativePrompt}
           onStepsChange={setSteps}

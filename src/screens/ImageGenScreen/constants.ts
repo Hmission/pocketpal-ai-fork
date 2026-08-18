@@ -31,8 +31,16 @@ export const RATIOS: Record<string, [number, number]> = {
   '9:16': [768, 1344],
 };
 
-// 通用 SD 模型可选尺寸
-export const SIZES = [384, 512, 640, 768];
+// 通用 SD 模型比例档（08-18 升级：原仅方形尺寸 → 比例可选，对齐 DreamLite 画幅模式）
+// 端侧 512 级：像素 16 倍数对齐 VAE(8x)/patch(2)；2:3/3:2 竖横对齐人体姿态训练分布
+// 非 Dream 模型出图宽高由此表派生（默认 1:1 = 512×512）
+export const SD_RATIOS: Record<string, [number, number]> = {
+  '1:1': [512, 512],
+  '2:3': [512, 768],
+  '3:2': [768, 512],
+  '3:4': [384, 512],
+  '4:3': [512, 384],
+};
 
 /** 模型条目：设备扫描结果（manifest + 主文件路径），DreamLite 无文件（mainPath=''） */
 export interface ModelEntry {

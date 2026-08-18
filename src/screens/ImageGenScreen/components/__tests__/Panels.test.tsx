@@ -27,13 +27,15 @@ const historyItem: GeneratedImage = {
   height: 1024,
   family: 'dreamlite',
   kind: 'generated',
+  taskId: 'task_test_1',
+  status: 'success',
 };
 
 describe('HistoryStrip', () => {
   it('渲染相册计数与上传入口', () => {
     const {getByText} = wrap(
       <HistoryStrip
-        history={[historyItem]}
+        items={[{item: historyItem, index: 0}]}
         manageMode={false}
         toDelete={[]}
         onUpload={jest.fn()}
@@ -51,7 +53,7 @@ describe('HistoryStrip', () => {
   it('管理模式：删除按钮随选中计数启用', () => {
     const {getByText} = wrap(
       <HistoryStrip
-        history={[historyItem]}
+        items={[{item: historyItem, index: 0}]}
         manageMode={true}
         toDelete={[historyItem.uri]}
         onUpload={jest.fn()}
@@ -70,7 +72,7 @@ describe('HistoryStrip', () => {
     const onThumbPress = jest.fn();
     const {getByText} = wrap(
       <HistoryStrip
-        history={[historyItem]}
+        items={[{item: historyItem, index: 0}]}
         manageMode={true}
         toDelete={[]}
         onUpload={jest.fn()}
@@ -103,7 +105,12 @@ describe('ComposerPanel', () => {
     loaded: true,
     dreamW: 1024,
     dreamH: 1024,
-    error: null,
+    // 08-18 路线 B：LoRA 开关（默认关，manifest 声明时显示）
+    hasLora: false,
+    loraEnabled: false,
+    loraMultiplier: '2.0',
+    onLoraEnabledChange: jest.fn(),
+    onLoraMultiplierChange: jest.fn(),
     onPromptChange: jest.fn(),
     onNegativePromptChange: jest.fn(),
     onStepsChange: jest.fn(),
@@ -139,6 +146,24 @@ describe('ComposerPanel', () => {
     );
     fireEvent.press(getByText('出图'));
     expect(onGenerate).not.toHaveBeenCalled();
+  });
+
+  it('08-18 声明 lora 的模型显示 LoRA 开关，未声明不显示', () => {
+    const {queryByText, getByText, rerender} = wrap(
+      <ComposerPanel {...baseProps} showAdvanced={true} hasLora={true} />,
+    );
+    expect(getByText('LoRA')).toBeTruthy();
+    rerender(<ComposerPanel {...baseProps} showAdvanced={true} hasLora={false} />);
+    expect(queryByText('LoRA')).toBeNull();
+  });
+
+  it('08-18 非 Dream 模型显示比例档（SD_RATIOS），含竖图 2:3', () => {
+    const {getByText} = wrap(
+      <ComposerPanel {...baseProps} showAdvanced={true} />,
+    );
+    expect(getByText('比例')).toBeTruthy();
+    expect(getByText('2:3')).toBeTruthy();
+    expect(getByText('512×768')).toBeTruthy();
   });
 });
 
@@ -246,6 +271,9 @@ describe('ResultPreview', () => {
     onSave: jest.fn(),
     onReroll: jest.fn(),
     onDelete: jest.fn(),
+    onCopyError: jest.fn(),
+    onRetryTask: jest.fn(),
+    onDeleteTask: jest.fn(),
   };
 
   it('无当前图时不渲染操作条，编辑槽显示上传按钮', () => {
@@ -270,15 +298,45 @@ describe('ResultPreview', () => {
     expect(queryByText('编辑')).toBeNull();
   });
 
-  it('生成中渲染进度 overlay', () => {
+  it('生成中：running 任务页渲染进度卡（空白页，不叠旧图）', () => {
+    const runningItem: GeneratedImage = {
+      ...historyItem,
+      uri: '',
+      taskId: 'task_test_running',
+      status: 'running',
+    };
     const {getByText} = wrap(
       <ResultPreview
         {...baseProps}
+        history={[runningItem]}
         generating={true}
         taskKind="gen"
         progressText="1/4"
       />,
     );
     expect(getByText(/正在生成新图/)).toBeTruthy();
+  });
+
+  it('失败任务页：摘要 + 复制报错/重试/删除按钮', () => {
+    const failedItem: GeneratedImage = {
+      ...historyItem,
+      uri: '',
+      taskId: 'task_test_failed',
+      status: 'failed',
+      errorSummary: '显存不足',
+      errorDetail: 'FULL REPORT',
+    };
+    const onCopyError = jest.fn();
+    const {getByText, getByTestId} = wrap(
+      <ResultPreview
+        {...baseProps}
+        history={[failedItem]}
+        onCopyError={onCopyError}
+      />,
+    );
+    expect(getByText('生成失败')).toBeTruthy();
+    expect(getByText('显存不足')).toBeTruthy();
+    fireEvent.press(getByTestId('imagegen-copy-error'));
+    expect(onCopyError).toHaveBeenCalledWith(failedItem);
   });
 });

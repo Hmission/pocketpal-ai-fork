@@ -9,6 +9,7 @@ updated: "2026-08-18"
 relates:
   - docs/adr/ADR-0005-sd35-lora-training-route.md
   - docs/adr/ADR-0006-sd3-2b-engine-compat-route.md
+  - docs/adr/ADR-0007-runtime-lora-mount-switch.md
   - docs/sop/IMAGEGEN_MODEL_TRAINING_SOP.md
   - docs/POCKETPAL_MODEL_MATRIX.md
   - docs/POCKETPAL_IMAGE_GEN_UPGRADE_PLAN.md
@@ -42,8 +43,8 @@ relates:
 
 1. **蒸馏模型不直接微调**：DMD2 / Lightning / schnell 类蒸馏少步模型（DreamLite-mobile、Z-Image-Turbo）直接训 LoRA 破坏蒸馏流形；微调对象限定为非蒸馏或已验证可微调模型。**现行唯一入选：SD3 2B（joint_blocks，引擎兼容架构）**——SD3.5 Medium 已被引擎架构判别否决（见公理 7）。
 2. **训练在 PC/云 GPU，端侧只消费产物**：扩散模型微调需梯度+优化器状态（显存 4-6 倍于推理），手机端不可行。训练机要求：NVIDIA GPU ≥16GB（3090/3090Ti/4090），CUDA ≥12.8。
-3. **烘焙合并优先，运行时挂载为演进**：训练产物优先 merge 回完整权重 → 转 GGUF → 替换真机（零代码）；运行时 LoRA 挂载（manifest `lora` 字段 + 引擎 `LoraSpec` 通道）作为风格插件生态的后续演进。
-4. **分辨率对齐模型原生**：训练分辨率 1024（2:3 桶 1024×1536），保比例不变形，不 center-crop 正方形；SD3 2B 的 384×384 pos_embed 支持中心裁剪任意 ≤384² 的 patch 网格。
+3. **烘焙合并优先，运行时挂载为演进**：训练产物优先 merge 回完整权重 → 转 GGUF → 替换真机（零代码）；运行时 LoRA 挂载（manifest `lora` 字段 + 引擎 `LoraSpec` 通道）作为风格插件生态的后续演进。**（2026-08-18：路线 B 已落地，见 [ADR-0007](../adr/ADR-0007-runtime-lora-mount-switch.md)——base 模型 + 独立 LoRA 文件 + 生图页秒级开关）**
+4. **分辨率对齐模型原生**：训练分辨率 1024（2:3 桶 1024×1536），保比例不变形，不 center-crop 正方形；SD3 2B 的 384×384 pos_embed 支持中心裁剪任意 ≤384² 的 patch 网格。**（2026-08-18：非 Dream 模型（SD3.5/Z-Image）高级参数已补比例档 `SD_RATIOS`（1:1/2:3/3:2/3:4/4:3，512 级 16 倍数像素），2:3 竖图对齐人体姿态训练分布）**
 5. **可回滚是部署铁律**：真机替换前必须备份原文件（`.bak`），任何部署可一键回滚。
 6. **数据质量先于训练**：去重（dHash）→ 过滤（损坏/过小/构图污染）→ 统一尺寸 → caption，四步缺一不可。
 7. **引擎架构兼容是硬约束**：vendored 引擎（stable-diffusion.cpp）`get_sd_version()` 只识别 `joint_blocks`（SD3 2B）/ `double_blocks`（FLUX）——`transformer_blocks`（SD3.5 Medium）无判别分支，产物加载失败。**训练底座必须与引擎原版架构逐位一致**（含 QK-norm、pos_embed 布局、无前缀命名），否则端侧不可部署。
@@ -103,7 +104,7 @@ release_2b/sd3_2b_humanpose_q4_K.gguf（~2.24GB，q4_K 大写 K）
 
 | Gap ID | 现象 | 补齐路径 |
 |--------|------|----------|
-| GAP-001 | 运行时 LoRA 挂载未接线（JNI 透传 + UI 开关） | 烘焙路线验证通过后评估路线 B，实现多 LoRA 风格切换 |
+| GAP-001 | 运行时 LoRA 挂载未接线（JNI 透传 + UI 开关） | ✅ 已闭环（2026-08-18 ADR-0007）：JNI/引擎/透传链路本就存在；补格式转换 + UI 开关 + base 模型回退 |
 | GAP-002 | caption 为统一模板（非自动打标） | 数据扩容时用 Florence-2/BLIP 自动打标提升 prompt 语义对齐 |
 | GAP-003 | 端侧模型替换后无内置 A/B 对比入口 | 验证期人工对比（原版 .bak ↔ 微调版），后续可做应用内对比功能 |
 
@@ -119,6 +120,8 @@ release_2b/sd3_2b_humanpose_q4_K.gguf（~2.24GB，q4_K 大写 K）
 |------|------|------|
 | 2026-08-17 | 1.0 | 首发：训练域边界、路线契约、四段流水线 |
 | 2026-08-18 | 2.0 | 架构切换：SD3.5 Medium（引擎不识别）→ SD3 2B 手写 MMDiT（ADR-0006）；训练/合并/转换/部署全链路闭环，真机出图验证通过 |
+| 2026-08-18 | 2.1 | 路线 B 落地：运行时 LoRA 挂载开关（ADR-0007），GAP-001 闭环 |
+| 2026-08-18 | 2.2 | 非 Dream 模型高级参数补比例档（SD_RATIOS 1:1/2:3/3:2/3:4/4:3，替代固定方形尺寸），出图宽高按比例派生 |
 
 ## 关联文档
 

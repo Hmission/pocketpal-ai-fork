@@ -59,6 +59,9 @@ export const BUILTIN_MANIFESTS: ImageGenManifest[] = [
     },
     // 08-16 闭环：白图根因修复 + 512px VAE tiled 降级（1.94GB→416MB）+ K90 直接分配成功
     // 08-17 大王确认去掉实验性标记：双设备正式参数完整跑通（K90 ~10 分钟/小米13 ~40 分钟，0% 白图）
+    // 08-18 路线 B：独立 LoRA 运行时挂载（生图页开关控制，默认关=纯 base；multiplier=训练 scaling alpha/rank=2.0）
+    lora: 'lora_humanpose.safetensors',
+    loraMultiplier: 2.0,
     experimental: false,
     defaults: {steps: 10, cfg: 4.5, size: 512, backend: 'OpenCL'},
     note: 'MMDiT；OpenCL K90 (Adreno 840) 10 步 512px 约 10 分钟；小米 13 约 40 分钟（含 tiled VAE）',
