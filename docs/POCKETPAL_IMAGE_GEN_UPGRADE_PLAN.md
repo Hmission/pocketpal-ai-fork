@@ -804,3 +804,36 @@ CMake 选项链：
 #### 结论
 
 **OpenCL × Adreno 840 实证可用**——互联网调研方向正确（OpenCL 是 Adreno 正确路径），xmem GEMM 激活后采样 5.3 分钟（可接受）。下一步：Z-Image 同法验证 + Phase 2 性能榨干（kernel cache 已设，权重预打包待测）。
+
+
+---
+
+## §6.18 小米13 Z-Image 四层根因突破 + 设备分级灰置 + LoRA 同步（2026-08-18，本窗口闭环）
+
+### 四层根因（小米13 Z-Image 不可用逐层剥洋葱）
+
+| 层 | 根因 | 处置 | 提交 |
+|---|---|---|---|
+| 1 | q6_K embedding 升 f32=1483MB > GPU 单次分配 1024MB | f16 修复（742MB）+ 撤 CPU 回退 | c959b9b |
+| 2 | HyperOS per-app 内存配额 forceStop（signal 9, from process） | 用户白名单（电池不限制+任务锁定） | 配置 |
+| 3 | 计算争抢致主线程 ANR（Input dispatching timed out） | MainActivity 关硬件加速（软件渲染）+ ANR 守护 | bf20ad7 |
+| 4 | **Adreno 740 OpenCL 采样驱动级 hang**（GPU 空闲/线程 sleeping/无 fault） | 应用侧无解 → 设备分级灰置 | 47dc804/3ee032b |
+
+对照 K90（Adreno 840）同路径全通 → 第 4 层系驱动/硬件生态差异，非代码缺陷。
+
+### 设备分级灰置（3ee032b）
+
+- Kotlin `getGpuRenderer`（EGL pbuffer 查 GL_RENDERER）→ store.gpuRenderer
+- manifest `requiresHighGpu`（Z-Image=true）；下拉行不兼容（非 `Adreno (TM) [89]\d\d`）→ 灰置+加载禁用+[本机不可用]徽章
+- 小米13 真机截图实锤灰置生效；探测失败留空=不灰置（锋利不兜底，干净失败机制仍兜底 hang）
+
+### LoRA 同步
+
+- 另一窗口 SD3.5 人体姿态 LoRA 已**合并进 gguf**（2.24GB，665 张量完整），双机同步覆盖
+- LoRA 开关方案已简报（A 双模型条目 / B 运行时 loraPath 挂载秒级切换），**开发移交新窗口**
+
+### 本窗口移交清单（→新窗口）
+
+1. LoRA 开关开发（方案 A/B 待大王确认）
+2. K90 下拉灰置反向截图复核（逻辑确定性高，未眼见）
+3. ANR 根因优化（主线程 input dispatch 阻塞源头，软件渲染为缓解非根治）

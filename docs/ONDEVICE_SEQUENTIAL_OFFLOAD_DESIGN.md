@@ -177,6 +177,13 @@ if (zimage_model) {
 **最终产品结论**：小米 13（Adreno 740）Z-Image 不可用系驱动/硬件生态问题，非代码缺陷；
 Z-Image 仅高端设备（K90 级），小米 13 用 SD3.5/DreamLite。manifest note 已同步。
 
+### 7.5 设备分级灰置落地 + LoRA 同步 + 移交（2026-08-18 闭环）
+
+- **灰置链**：Kotlin getGpuRenderer（EGL pbuffer）→ store.gpuRenderer → manifest requiresHighGpu →
+  下拉行非 `Adreno (TM) [89]\d\d` 灰置 + 加载禁用 + [本机不可用] 徽章。小米13 真机实锤。
+- **LoRA**：另一窗口 SD3.5 人体姿态 LoRA 合并进 gguf（2.24GB）双机同步；开关方案（A 双条目 / B 运行时挂载）已简报，开发移交新窗口。
+- **移交清单**：LoRA 开关开发、K90 灰置反向复核、ANR 根因优化（软件渲染为缓解非根治）。
+
 
 ### 6.3 已验证可用（无需再动）
 
