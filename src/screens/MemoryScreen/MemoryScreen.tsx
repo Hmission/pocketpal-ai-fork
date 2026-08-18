@@ -8,6 +8,8 @@ import {
   Alert,
   Modal,
   TextInput,
+  Image,
+  ScrollView,
 } from 'react-native';
 import {Appbar, Button, IconButton, List, Divider} from 'react-native-paper';
 
@@ -21,6 +23,11 @@ import {
   rotateOldLogs,
   AiosMemory,
 } from '../../services/aiosMemory';
+import {
+  createWeeklyAlbum,
+  listAlbums,
+  Album,
+} from '../../services/albumBook';
 import {AIOS_MEMORIES_DIR} from '../../utils/paths';
 import {useTheme, useStaggerEntry} from '../../hooks';
 import type {Theme} from '../../utils/types';
@@ -115,6 +122,42 @@ export function MemoryScreen({navigation}: any) {
   const [editing, setEditing] = React.useState<AiosMemory | null>(null);
   const [editText, setEditText] = React.useState('');
   const [governing, setGoverning] = React.useState(false);
+  // 记忆绘本（P10，ALBUM_SPEC）：相册列表 + 生成状态
+  const [albumVisible, setAlbumVisible] = React.useState(false);
+  const [albums, setAlbums] = React.useState<Album[]>([]);
+  const [albumBusy, setAlbumBusy] = React.useState(false);
+  const [albumError, setAlbumError] = React.useState<string | null>(null);
+  const [selectedAlbum, setSelectedAlbum] = React.useState<Album | null>(null);
+
+  const refreshAlbums = React.useCallback(async () => {
+    try {
+      setAlbums(await listAlbums());
+    } catch (e) {
+      console.warn('[MemoryScreen] list albums failed:', e);
+    }
+  }, []);
+
+  const openAlbum = async () => {
+    setAlbumVisible(true);
+    setAlbumError(null);
+    await refreshAlbums();
+  };
+
+  const handleCreateAlbum = async () => {
+    setAlbumBusy(true);
+    setAlbumError(null);
+    try {
+      const result = await createWeeklyAlbum();
+      if (!result.ok) {
+        setAlbumError(result.error ?? '绘本生成失败');
+      }
+      await refreshAlbums();
+    } catch (e) {
+      setAlbumError(String(e));
+    } finally {
+      setAlbumBusy(false);
+    }
+  };
 
   const refresh = React.useCallback(async () => {
     setLoading(true);
@@ -260,6 +303,7 @@ export function MemoryScreen({navigation}: any) {
           loading={governing}
           disabled={governing}
         />
+        <Appbar.Action icon="book-open-variant" onPress={openAlbum} />
         <Appbar.Action icon="broom" onPress={handleClearAll} />
       </Appbar.Header>
 
@@ -286,6 +330,81 @@ export function MemoryScreen({navigation}: any) {
         }
         contentContainerStyle={memories.length === 0 ? styles.emptyList : null}
       />
+
+      {/* 记忆绘本 Modal（P10，ALBUM_SPEC §5） */}
+      <Modal
+        visible={albumVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAlbumVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, styles.albumModalContent]}>
+            <View style={styles.albumHeader}>
+              <Text style={styles.modalTitle}>记忆绘本</Text>
+              <IconButton
+                icon="close"
+                size={20}
+                onPress={() => {
+                  setAlbumVisible(false);
+                  setSelectedAlbum(null);
+                }}
+              />
+            </View>
+
+            {selectedAlbum ? (
+              <ScrollView style={styles.albumDetail}>
+                <Text style={styles.albumWeek}>{selectedAlbum.week} · 本周故事</Text>
+                <Image
+                  source={{uri: selectedAlbum.coverUri}}
+                  style={styles.albumCover}
+                  resizeMode="cover"
+                />
+                <Text style={styles.albumStory}>{selectedAlbum.story}</Text>
+                <Button mode="text" onPress={() => setSelectedAlbum(null)}>
+                  返回相册列表
+                </Button>
+              </ScrollView>
+            ) : albums.length === 0 ? (
+              <View style={styles.albumEmpty}>
+                <Text style={styles.emptyText}>
+                  {albumBusy
+                    ? '正在生成绘本：写故事 → 画封面…'
+                    : '还没有绘本。生成本周绘本：把记忆变成故事，配上 DreamLite 画的封面。'}
+                </Text>
+              </View>
+            ) : (
+              <FlatList
+                data={albums}
+                renderItem={({item}) => (
+                  <List.Item
+                    title={`${item.week} 本周故事`}
+                    description={item.story.replace(/^#.*\n?/, '').slice(0, 60)}
+                    left={() => <List.Icon icon="book-open-variant" />}
+                    onPress={() => setSelectedAlbum(item)}
+                  />
+                )}
+                keyExtractor={item => item.week}
+                ItemSeparatorComponent={Divider}
+                style={styles.albumList}
+              />
+            )}
+
+            {albumError && !selectedAlbum && (
+              <Text style={styles.albumError}>{albumError}</Text>
+            )}
+            {!selectedAlbum && (
+              <Button
+                mode="contained"
+                onPress={handleCreateAlbum}
+                disabled={albumBusy}
+                loading={albumBusy}
+                style={styles.albumCreateBtn}>
+                生成本周绘本
+              </Button>
+            )}
+          </View>
+        </View>
+      </Modal>
 
       {/* Edit Modal */}
       <Modal
@@ -413,5 +532,48 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       justifyContent: 'flex-end',
       gap: theme.spacing.s,
+    },
+    albumModalContent: {
+      maxHeight: '80%',
+    },
+    albumHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    albumList: {
+      marginTop: theme.spacing.s,
+    },
+    albumEmpty: {
+      paddingVertical: theme.spacing.ml,
+      alignItems: 'center',
+    },
+    albumError: {
+      ...theme.typography.captionM,
+      color: theme.colors.error,
+      marginTop: theme.spacing.s,
+      textAlign: 'center',
+    },
+    albumCreateBtn: {
+      marginTop: theme.spacing.sm,
+    },
+    albumDetail: {
+      flexGrow: 0,
+    },
+    albumWeek: {
+      ...theme.typography.titleS,
+      color: theme.colors.onSurface,
+      marginBottom: theme.spacing.s,
+    },
+    albumCover: {
+      width: '100%',
+      aspectRatio: 1,
+      borderRadius: theme.radius.m,
+      marginBottom: theme.spacing.sm,
+    },
+    albumStory: {
+      ...theme.typography.bodyS,
+      lineHeight: 22,
+      color: theme.colors.onSurface,
     },
   });

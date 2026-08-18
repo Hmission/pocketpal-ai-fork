@@ -839,3 +839,20 @@ CMake 选项链：
 1. LoRA 开关开发（方案 A/B 待大王确认）
 2. K90 下拉灰置反向截图复核（逻辑确定性高，未眼见）
 3. ANR 根因优化（主线程 input dispatch 阻塞源头，软件渲染为缓解非根治）
+
+### 6.17 全量链路复查闭环（2026-08-18，鸿雁全量审计）
+
+**复查发现并修复（代码回归/哲学违例）**：
+1. **useWaveDots/useToast native driver 回归**：任务化重构引入的三点波浪动效用 `Animated.loop + useNativeDriver:true`，违「loop 一律 JS driver」收口规则（07a47ed），分钟级生成全程=weak-ref 累积通路复活。修复：两 hook 全改 JS driver + 规则注释；全仓 `Animated.loop` 恢复零 native driver。
+2. **Vulkan→CPU 自动回退重试删除**：imageGenStore.loadModel 的 fallback retry 违单后端铁律，且使 `this.backend` 与真实后端脱钩致超时窗口误判。修复：删除回退，加载失败=干净失败（明确报错+释放）。
+
+**旧标记更正（文档滞后清理，代码已闭环）**：
+- §6.12「⏳ 未落地：weak-ref 溢出回归根治」→ ✅ 已被 08-14 三波 + 08-18 回归闭环取代（全 App loop 零 native driver）。
+- §6.12「OpenCL hang 根因」→ 被 6.16 决策取代：OpenCL 回归为最终后端（arm64 编译期 ON + manifest 'OpenCL' 单点），Vulkan 挂长期观察（补链路径三处单点保留）。
+- 移交清单 1「LoRA 开关开发」→ ✅ 已落地路线 B（运行时 lora 挂载开关，89ccdb0）+ 非 Dream 模型比例档升级；提示词限制改按 token 计（a4e98a6）。
+- P6-3/P6-4 维持挂起（产品决策态，非代码缺口）。
+
+**保留的开放性待办（有明确边界，非隐性欠账）**：
+- ANR 根因优化（主线程 input dispatch 阻塞；软件渲染为缓解，根治挂长期）；
+- 小米 13 Z-Image GPU VRAM 硬件上限（requiresHighGpu 灰置=产品边界决策）；
+- RN 上游 weak-ref 修复跟踪（版本升级时消化）。

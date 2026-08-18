@@ -18,13 +18,13 @@ export const useToast = () => {
       Animated.timing(toastOpacity, {
         toValue: 1,
         duration: 200,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }).start();
       toastTimer.current = setTimeout(() => {
         Animated.timing(toastOpacity, {
           toValue: 0,
           duration: 400,
-          useNativeDriver: true,
+          useNativeDriver: false,
         }).start(() => setToast(null));
       }, 2500);
     },

@@ -321,6 +321,7 @@ NaN 指纹跨设备一致（c≡3 mod 64）→ 判定非设备特定 → fusion 
 | P7 | Phase2 预留 | device_control（无障碍权限）、sqlite-vec——明确「不做的事」边界 |
 | P8 | **玩具工坊（✅ 已落地 2026-08-18）** | play 路由「做个玩具」→ 代码模型 render_html 出可玩成品 → 玩具箱存档重玩；玩法引导（输入卡快捷按钮 + 知识库玩具箱 tab），见 [PLAY_SPEC](./POCKETPAL_PLAY_SPEC.md) |
 | P9 | **内心生活（✅ 已落地 2026-08-18）** | 收尾三件套：小结+明日晨间独白+小鸡日记（写作模型现编，非规则模板）；开场注入模型独白；Workspace 浏览日记，见 [INNERLIFE_SPEC](./POCKETPAL_INNERLIFE_SPEC.md) |
+| P10 | **记忆绘本（✅ 已落地 2026-08-18）** | 周度故事（记忆+日记素材 → 写作模型现编）+ DreamLite 封面插画 → memories/album/ 成长相册；MemoryScreen 手动生成+浏览，见 [ALBUM_SPEC](./POCKETPAL_ALBUM_SPEC.md) |
 
 ### 6.3 技术债与待办
 
