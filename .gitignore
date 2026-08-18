@@ -158,3 +158,17 @@ __pycache__/
 /*.apk
 /pocketchick-preset-models*.zip
 
+# 内部开发工具 / AIOS 治理（不属于项目工程，不开源）
+.qoder/
+scripts/aios/
+scripts/governance/
+scripts/sd35_lora/
+docs/CURSOR_DOC_USAGE.md
+docs/DOC_GOVERNANCE_SPEC.md
+docs/DOC_MANAGEMENT.md
+docs/POCKETPAL_STARMAP_DOMAINS.md
+docs/_templates/
+docs/INDEX.md
+docs/adr/
+docs/internal/
+
