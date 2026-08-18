@@ -22,6 +22,8 @@ import {useNavigation} from '@react-navigation/native';
 import {imageGenStore, GeneratedImage} from '../../store/imageGenStore';
 import {useTheme} from '../../hooks';
 import {AIOS_MODELS_DIR} from '../../utils/paths';
+import {L10nContext} from '../../utils';
+import {t} from '../../locales';
 import {
   buildErrorReport,
   copyAndSaveErrorReport,
@@ -32,7 +34,13 @@ import {
 } from '../../utils/imageGenManifest';
 
 import {createStyles} from './styles';
-import {DREAMLITE_MANIFEST, RATIOS, SD_RATIOS, ModelEntry} from './constants';
+import {
+  DREAMLITE_MANIFEST,
+  PROMPT_TOKEN_LIMIT,
+  RATIOS,
+  SD_RATIOS,
+  ModelEntry,
+} from './constants';
 import {useToast} from './hooks/useToast';
 import {useWaveDots} from './hooks/useWaveDots';
 import {
@@ -46,6 +54,7 @@ import {confirmDialog} from '../../components/ui/ConfirmDialog';
 
 export const ImageGenScreen: React.FC = observer(() => {
   const theme = useTheme();
+  const l10n = React.useContext(L10nContext);
   const s = createStyles(theme);
   const navigation = useNavigation();
 
@@ -289,7 +298,11 @@ export const ImageGenScreen: React.FC = observer(() => {
       summary: item.errorSummary ?? '生图失败',
       detail: item.errorDetail ?? '',
     });
-    showToast(path ? '已复制，并保存到 AIOS/logs' : '已复制到剪贴板');
+    showToast(
+      path
+        ? t(l10n.errorReport.copiedSaved, {path})
+        : l10n.errorReport.copiedFallback,
+    );
   };
 
   // 失败任务页：同参数重试（回填参数后用该任务的提示词重新发起）
@@ -848,6 +861,9 @@ export const ImageGenScreen: React.FC = observer(() => {
           loaded={loaded}
           dreamW={dreamW}
           dreamH={dreamH}
+          tokenLimit={
+            PROMPT_TOKEN_LIMIT[selectedEntry?.manifest.family ?? 'sd3'] ?? 256
+          }
           hasLora={!!selectedEntry?.manifest.lora}
           loraEnabled={loraEnabled}
           loraMultiplier={loraMult}

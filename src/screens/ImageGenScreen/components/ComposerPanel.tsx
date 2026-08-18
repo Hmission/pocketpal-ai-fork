@@ -10,7 +10,7 @@ import {
 
 import {useTheme} from '../../../hooks';
 import {createStyles} from '../styles';
-import {PROMPT_LIMIT, RATIOS, SD_RATIOS} from '../constants';
+import {estimateTokens, RATIOS, SD_RATIOS} from '../constants';
 
 interface ComposerPanelProps {
   prompt: string;
@@ -35,6 +35,8 @@ interface ComposerPanelProps {
   /** DreamLite 画幅宽（由 ratio 派生） */
   dreamW: number;
   dreamH: number;
+  /** 08-18 修复：当前模型提示词 token 上限（编码器硬限，超出将被截断） */
+  tokenLimit: number;
   /** 08-18 路线 B：当前模型是否声明了独立 LoRA（manifest.lora 非空） */
   hasLora: boolean;
   loraEnabled: boolean;
@@ -75,6 +77,7 @@ export const ComposerPanel: React.FC<ComposerPanelProps> = ({
   loaded,
   dreamW,
   dreamH,
+  tokenLimit,
   hasLora,
   loraEnabled,
   loraMultiplier,
@@ -109,8 +112,13 @@ export const ComposerPanel: React.FC<ComposerPanelProps> = ({
         multiline
       />
       <Text
-        style={prompt.length > PROMPT_LIMIT ? s.promptHintWarn : s.promptHint}>
-        {prompt.length}/{PROMPT_LIMIT} · 端侧建议≤{PROMPT_LIMIT}字，过长拖慢速度
+        style={
+          estimateTokens(prompt) > tokenLimit ? s.promptHintWarn : s.promptHint
+        }>
+        ~{estimateTokens(prompt)}/{tokenLimit} tokens
+        {estimateTokens(prompt) > tokenLimit
+          ? ' · 超出编码上限，出图将被截断'
+          : ' · 端侧建议≤上限，过长拖慢速度'}
       </Text>
       <TouchableOpacity onPress={onToggleAdvanced}>
         <Text style={s.advToggle}>

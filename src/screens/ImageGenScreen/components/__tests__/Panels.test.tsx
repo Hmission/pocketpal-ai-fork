@@ -105,6 +105,8 @@ describe('ComposerPanel', () => {
     loaded: true,
     dreamW: 1024,
     dreamH: 1024,
+    // 08-18 修复：token 上限（sd3=77，按模型传）
+    tokenLimit: 77,
     // 08-18 路线 B：LoRA 开关（默认关，manifest 声明时显示）
     hasLora: false,
     loraEnabled: false,
@@ -123,11 +125,20 @@ describe('ComposerPanel', () => {
     onGenerate: jest.fn(),
   };
 
-  it('提示词超限（>120）显示 warn 计数', () => {
+  it('08-18 按 token 显示提示词计数，超上限红字警告', () => {
     const {getByText} = wrap(
-      <ComposerPanel {...baseProps} prompt={'猫'.repeat(121)} />,
+      <ComposerPanel {...baseProps} prompt={'cat '.repeat(40)} />,
     );
-    expect(getByText(/121\/120/)).toBeTruthy();
+    // 'cat ' x40 = 160 字符 ≈ 40 tokens，未超 77
+    expect(getByText(/~\d+\/77 tokens/)).toBeTruthy();
+    // 超限（77+ tokens）显示截断警告
+    const {getByText: g2} = wrap(
+      <ComposerPanel
+        {...baseProps}
+        prompt={'a very long english prompt word '.repeat(30)}
+      />,
+    );
+    expect(g2(/超出编码上限/)).toBeTruthy();
   });
 
   it('出图按钮触发 onGenerate', () => {

@@ -20,6 +20,31 @@ export const DREAMLITE_MANIFEST: ImageGenManifest = {
 
 export const PROMPT_LIMIT = 120;
 
+// 08-18 修复：提示词按 token 计（原按字符 120 过低——120 字符≈30 tokens 远低于模型上限）
+// 各模型 token 上限（编码器硬限，超出将被截断）：
+//   dreamlite: 128（UNet 条件上限，官方 max_sequence_length=200，本实现 128）
+//   sd3: 77（CLIP-L/G max_length=77，训练/推理一致，引擎 chunk_len=77）
+//   zimage: 256（LLM 编码，宽松）
+export const PROMPT_TOKEN_LIMIT: Record<string, number> = {
+  dreamlite: 128,
+  sd3: 77,
+  zimage: 256,
+};
+
+/** 粗估 token 数：英文 ~4 字符/token，中文 1 字符/token（BPE 近似，供输入提示） */
+export function estimateTokens(text: string): number {
+  let ascii = 0;
+  let nonAscii = 0;
+  for (const ch of text) {
+    if (ch.charCodeAt(0) < 128) {
+      ascii++;
+    } else {
+      nonAscii++;
+    }
+  }
+  return Math.ceil(ascii / 4) + nonAscii;
+}
+
 // 官方多分辨率训练桶（~1M 像素，与 HF Space 选项一致；旧自定尺寸如 576×1024 偏离训练桶会导致非方图质量下降）
 export const RATIOS: Record<string, [number, number]> = {
   '1:1': [1024, 1024],
