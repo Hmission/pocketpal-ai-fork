@@ -108,6 +108,21 @@ describe('taskRouter', () => {
     });
   });
 
+  describe('adventure 任务（P12 城主，ADVENTURE_SPEC v1）', () => {
+    it('「来场冒险」命中', () => {
+      expect(routeTask('来场冒险').task).toBe('adventure');
+    });
+    it('「开个副本」命中', () => {
+      expect(routeTask('开个副本玩').task).toBe('adventure');
+    });
+    it('「当城主」命中', () => {
+      expect(routeTask('你来当城主').task).toBe('adventure');
+    });
+    it('防误伤：日常「冒险尝试」不命中', () => {
+      expect(routeTask('我想冒险尝试一下新方法').task).toBe('chitchat');
+    });
+  });
+
   describe('chitchat 兜底', () => {
     it('普通问候归为闲聊', () => {
       expect(routeTask('你好，今天过得怎么样').task).toBe('chitchat');

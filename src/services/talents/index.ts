@@ -6,6 +6,7 @@ import {ReadUrlEngine} from './ReadUrlEngine';
 import {MemorySearchEngine} from './MemorySearchEngine';
 import {NoteSaveEngine} from './NoteSaveEngine';
 import {DeviceControlEngine} from './DeviceControlEngine';
+import {AdventureStateEngine} from './AdventureStateEngine';
 import {talentRegistry} from './TalentRegistry';
 import type {SearchAccess} from './searchAccess';
 import type {ToolDefinition, SystemPromptContext} from './types';
@@ -68,6 +69,7 @@ export function registerDefaultTalents(): void {
   talentRegistry.register(new MemorySearchEngine());
   talentRegistry.register(new NoteSaveEngine());
   talentRegistry.register(new DeviceControlEngine());
+  talentRegistry.register(new AdventureStateEngine());
   registered = true;
 }
 

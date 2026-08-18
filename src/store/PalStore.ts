@@ -853,6 +853,7 @@ class PalStore {
             {name: 'search_memory', necessity: 'optional' as const},
             {name: 'note_save', necessity: 'optional' as const},
             {name: 'device_control', necessity: 'optional' as const},
+            {name: 'adventure_state', necessity: 'optional' as const},
           ],
         },
       };

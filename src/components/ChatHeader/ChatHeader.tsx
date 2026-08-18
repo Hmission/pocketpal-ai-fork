@@ -12,9 +12,11 @@ import {
 import {getDefaultHeaderHeight} from '@react-navigation/elements';
 import {useTheme} from '../../hooks';
 import {chatSessionStore, modelStore} from '../../store';
+import {promptWriter} from '../../services/promptWriter';
 import {HeaderLeft} from '../HeaderLeft';
 import {SessionStatusBar} from '../SessionStatusBar';
 import {getModelDisplayName} from '../../utils/modelDisplayNames';
+import {BUTLER_DISPLAY_NAME} from '../../utils/modelDisplayNames';
 import {withOpacity} from '../../utils/colorUtils';
 
 export const ChatHeader: React.FC<{
@@ -42,10 +44,14 @@ export const ChatHeader: React.FC<{
       : styles.headerWithoutDivider;
 
     const activeModel = modelStore.activeModel;
-    // 模型名用中文简称（modelDisplayNames 注册表，与弹窗/徽章共用单一事实源）
+    // 胶囊三档显示链（B18 §16.1，单点决策）：
+    // 已加载聊天模型 → 中文简称；仅管家驻场 → 管家名；均未加载 → 选模型。
+    // 引擎就绪信息融入胶囊（SessionStatusBar 引擎项已随整行删除）。
     const modelShort = activeModel
       ? getModelDisplayName(activeModel)
-      : '选模型';
+      : promptWriter.isLoaded
+        ? BUTLER_DISPLAY_NAME
+        : '选模型';
 
     return (
       <View style={styles.wrapper}>

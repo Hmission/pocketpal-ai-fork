@@ -287,6 +287,42 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 
 16 语言全覆盖（zh/zh_Hant/en/ja/ko/fa/he/id/ms/pl/pt/pt_BR/ru/uk/de/fr），每语言 18 标签 + 4 控制词；zh_Hant 另补齐 modelDirs 10 key 后缺失清零。
 
+## 16. 顶栏胶囊管家感知 + 选择器卡片化（v3.2，2026-08-18 大王裁定）
+
+### 16.1 胶囊显示链（单点决策）
+
+| 优先级 | 状态 | 文案 |
+|---|---|---|
+| 1 | 聊天槽模型已加载 | 中文简称（modelDisplayNames 单一事实源） |
+| 2 | 仅管家驻场（默认态） | 「管家 MiniCPM 1B」 |
+| 3 | 均未加载 | 「选模型」 |
+
+引擎就绪信息融入胶囊——SessionStatusBar 引擎项随整行删除（§17）。
+
+### 16.2 选择器卡片化（与生图页 ModelPickerPanel 同范式）
+
+- 卡片 = 中文简称（参数_量化）+ 徽章［已加载 / 管家驻场 / 本机不可用］+ 一行入选说明 + 行内「加载/卸载」+ 加载进度行；
+- 说明单一事实源 `getModelNote()`（modelDisplayNames 注册表），文案取自 MODEL_MATRIX §1 入选理由：
+  - 通义千问 2B（Q8_0）：写作/聊天主力，Q8 近无损；配对视觉伴侣可看图
+  - 通义千问 4B：日用均衡档，质量上限更高
+  - Liquid 2.6B：任务/工具调用优化，低延迟
+  - Liquid 8B（MoE 激活~1.5B）：复杂任务质量上限
+  - 小雾 3B：代码专长
+  - 面壁 MiniCPM 4B：轻量聊天备选
+  - 管家 MiniCPM 1B：常驻管家（意图/扩写/记忆收尾），自动加载、不占聊天槽
+- **管家卡卸载禁用**（核心链路，卸了意图/扩写全断）；
+- **单槽脚注**（大王裁定标注）：「聊天模型单槽：加载新模型会自动卸载当前模型；管家常驻不占槽。」
+
+## 17. 状态栏拆解融合进助手卡片（v3.2，2026-08-18 大王裁定）
+
+- **SessionStatusBar 整行删除**；引擎项删除（已融胶囊，§16.1）；
+- **意图胶囊上移**：闲聊/问答/任务/倾诉 四色小胶囊 → 助手卡作者标签行（模型徽章后），同高；硬编码 hex 收口 DS token；
+- **每输出指标行**：助手卡底部（footer 下一行）：`上下文余量 x% · 落盘 HH:mm · 召回 n · 情绪`；
+  - ctx 改中文「上下文余量」，点按直达生成设置（入口不丢）；
+  - 召回点按展开片段预览（既有能力平移，默认折叠）；
+  - **快照语义**：run_finished 时写入 `metadata.turnMetrics`（ctxPct/writeTime/recallCount/recallPreview/sentimentLabel/intent），每卡各记各的；老消息无快照=不渲染该行（锋利不兜底）；
+- **思考胶囊高度收敛**：选中胶囊 36→24px（与两边图标按钮视觉同高），行基线仍 36（hitSlop 补触区）。
+
 ## 变更日志
 
 | 日期 | 版本 | 变更 |
@@ -297,3 +333,4 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 | 2026-08-18 | 2.3 | footer 按钮组升级（开发者预览版）：复制门控改内容完成度（isFinalMessage）+ 重新生成按钮（复用 handleTryAgain）+ 按钮组左对齐正文缩进；顶栏模型胶囊加 primary 描边 |
 | 2026-08-17 | 3.0 | §14 语音输入：发送按钮升级为语音优先状态机 + 输入行高度统一 36px（思考/发送/语音同一基线） |
 | 2026-08-18 | 3.1 | §15 生成设置参数标签本地化：新增 completionParamsLabels/Controls 两段 + paramLabel() fallback helper，16 语言全覆盖（MASTER_LOG §31.4） |
+| 2026-08-18 | 3.2 | §16 顶栏胶囊管家感知 + 选择器卡片化（介绍/徽章/加载卸载/管家禁卸/单槽脚注）；§17 状态栏拆解融合进助手卡片（意图胶囊上移 + 每输出指标行 turnMetrics 快照 + ctx 中文直达 + 召回展开）+ 思考胶囊 24px 收敛 |

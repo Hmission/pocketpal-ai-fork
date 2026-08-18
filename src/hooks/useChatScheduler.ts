@@ -21,6 +21,7 @@ import {MessageType, Model} from '../utils/types';
  *   write/code → 能力注册表推荐专用模型：当前模型≠推荐时弹窗确认
  *             （[加载推荐] / [继续当前] / 会话内记住，决策可见 + 用户主权）
  *   play（P8 玩具工坊）→ 同 code 选型（玩具匠=代码模型，PLAY_SPEC §2.2）
+ *   adventure（P12 城主）→ 同 write 选型（城主=写作模型，ADVENTURE_SPEC §2.3）
  * 返回 wrappedSendPress，供 ChatScreen 作为 ChatView onSendPress。
  */
 
@@ -286,12 +287,17 @@ export const useChatScheduler = (
 
       // write/code：任务模型解析（弹窗确认 + 会话级记住）
       // play（P8 玩具工坊）：同构——玩具匠=代码模型选型，弹窗文案区分「玩具」任务
+      // adventure（P12 城主）：同构——城主=写作模型选型，弹窗文案沿用「写作」
       if (
         signal.task === 'write' ||
         signal.task === 'code' ||
-        signal.task === 'play'
+        signal.task === 'play' ||
+        signal.task === 'adventure'
       ) {
-        const decision = await resolveTaskModel(signal.task, text);
+        const decision = await resolveTaskModel(
+          signal.task === 'adventure' ? 'write' : signal.task,
+          text,
+        );
         if (decision === 'abort') {
           return;
         }

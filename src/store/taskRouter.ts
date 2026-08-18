@@ -10,8 +10,9 @@
  *   write    → chat 大模型
  *   code     → chat 大模型
  *   play     → chat 大模型（玩具匠：代码模型 + render_html 出可玩成品，PLAY_SPEC v1）
+ *   adventure → chat 大模型（城主：写作模型写剧情 + adventure_state 工具管状态，ADVENTURE_SPEC v1）
  */
-export type TaskKind = 'chitchat' | 'image' | 'write' | 'code' | 'play';
+export type TaskKind = 'chitchat' | 'image' | 'write' | 'code' | 'play' | 'adventure';
 
 export interface TaskSignal {
   task: TaskKind;
@@ -92,6 +93,14 @@ export function routeTask(text: string): TaskSignal {
     /(?:做个|来一个|来个|来款|造个|整个|给我做个|帮我做|想玩)[^。！？!?\n]{0,20}?(?:游戏|玩具|贪吃蛇|俄罗斯方块|扫雷|抽签|转盘|摇奖|小游戏|小玩意|生成艺术|canvas)/i;
   if (PLAY_RE.test(t)) {
     return {task: 'play', payload: t};
+  }
+
+  // 6) 冒险（P12 v1，ADVENTURE_SPEC）：城主/副本/冒险显式意图。
+  //    收紧避免误伤：需含冒险类关键词，日常「冒险尝试」不命中。
+  const ADVENTURE_RE =
+    /(?:来场|开个|当|开启|进入|继续)(?:冒险|副本|地牢|dungeon)|冒险模式|一起冒险|城主/gi;
+  if (ADVENTURE_RE.test(t)) {
+    return {task: 'adventure', payload: t};
   }
 
   return {task: 'chitchat', payload: t};

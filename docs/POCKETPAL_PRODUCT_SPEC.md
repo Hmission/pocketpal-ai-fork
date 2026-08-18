@@ -323,6 +323,7 @@ NaN 指纹跨设备一致（c≡3 mod 64）→ 判定非设备特定 → fusion 
 | P9 | **内心生活（✅ 已落地 2026-08-18）** | 收尾三件套：小结+明日晨间独白+小鸡日记（写作模型现编，非规则模板）；开场注入模型独白；Workspace 浏览日记，见 [INNERLIFE_SPEC](./POCKETPAL_INNERLIFE_SPEC.md) |
 | P10 | **记忆绘本（✅ 已落地 2026-08-18）** | 周度故事（记忆+日记素材 → 写作模型现编）+ DreamLite 封面插画 → memories/album/ 成长相册；MemoryScreen 手动生成+浏览，见 [ALBUM_SPEC](./POCKETPAL_ALBUM_SPEC.md) |
 | P11 | **读屏围观（✅ 已落地 2026-08-18）** | device_control 只读子集：原生 AccessibilityService 读 a11y 树 → read_screen/find_app → 写作模型围观点评；写操作永久边界外，见 [SCREENWATCH_SPEC](./POCKETPAL_SCREENWATCH_SPEC.md) |
+| P12 | **TRPG 城主（✅ 已落地 2026-08-18）** | 聊天即冒险：adventure 路由 + adventure_state 工具化状态管理（HP/位置/背包 JSON 落盘）+ 城主叙事；模型剧团（多模型辩论）因内存账本观望，见 [ADVENTURE_SPEC](./POCKETPAL_ADVENTURE_SPEC.md) |
 
 ### 6.3 技术债与待办
 

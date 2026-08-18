@@ -126,8 +126,8 @@ describe('PACT vocabulary audit', () => {
 
     it('returns ToolDefinition array for all registered engines', () => {
       const schemas = deriveToolSchemas();
-      // 默认注册集已随记忆/设备控制工具扩展（2026-08）
-      expect(schemas).toHaveLength(8);
+      // 默认注册集已随记忆/设备控制/adventure 工具扩展（2026-08）
+      expect(schemas).toHaveLength(9);
       const names = schemas.map(s => s.function.name);
       expect(names).toContain('render_html');
       expect(names).toContain('calculate');
@@ -144,7 +144,7 @@ describe('PACT vocabulary audit', () => {
       // registerDefaultTalents internally.
       expect(talentRegistry.has('render_html')).toBe(false);
       const schemas = deriveToolSchemas();
-      expect(schemas).toHaveLength(8);
+      expect(schemas).toHaveLength(9);
       expect(talentRegistry.has('render_html')).toBe(true);
     });
   });

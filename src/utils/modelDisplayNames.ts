@@ -22,6 +22,53 @@ const DISPLAY_NAME_RULES: Array<{pattern: RegExp; short: string}> = [
   {pattern: /ministral/i, short: '小雾'},
 ];
 
+/** 管家显示名（顶栏胶囊二档 / 选择器管家卡，B18 单一事实源） */
+export const BUTLER_DISPLAY_NAME = '管家 MiniCPM 1B';
+
+/** 管家模型判定：minicpm5_1b_heretic（prompter 常驻专用） */
+export function isButlerModel(
+  model: Partial<Pick<Model, 'name' | 'filename'>>,
+): boolean {
+  const raw = model.name || model.filename || '';
+  return /heretic/i.test(raw) || /minicpm\s*5?[-_.]?1b/i.test(raw);
+}
+
+// 入选说明（B18，文案取自 MODEL_MATRIX §1 入选理由；选择器卡片单一事实源）
+const NOTE_RULES: Array<{pattern: RegExp; note: string}> = [
+  {
+    pattern: /qwen3[.\-]?5[-_.\s]?2b/i,
+    note: '写作/聊天主力，Q8 近无损；配对视觉伴侣可看图',
+  },
+  {pattern: /qwen3[.\-]?5[-_.\s]?4b/i, note: '日用均衡档，质量上限更高'},
+  {pattern: /lfm2[.\-]?5[-_.\s]?2[.\-]?6b/i, note: '任务/工具调用优化，低延迟'},
+  {
+    pattern: /lfm2[.\-]?5[-_.\s]?8b/i,
+    note: 'MoE 大模型（激活~1.5B），复杂任务质量上限',
+  },
+  {pattern: /ministral/i, note: '代码专长'},
+  {pattern: /minicpm/i, note: '轻量聊天备选'},
+];
+
+/** 管家卡说明（卸载禁用原因 + 不占槽语义） */
+export const BUTLER_NOTE =
+  '常驻管家：意图识别/扩写/记忆收尾，自动加载、不占聊天槽';
+
+/** 选择器卡片一行入选说明；管家命中管家说明，无命中返回空串 */
+export function getModelNote(
+  model: Partial<Pick<Model, 'name' | 'filename'>>,
+): string {
+  if (isButlerModel(model)) {
+    return BUTLER_NOTE;
+  }
+  const raw = model.name || model.filename || '';
+  for (const rule of NOTE_RULES) {
+    if (rule.pattern.test(raw)) {
+      return rule.note;
+    }
+  }
+  return '';
+}
+
 /** 回落规则：去容器后缀与量化档位，取族名（xxx-Q4_K_M.gguf → xxx） */
 const fallbackName = (raw: string): string =>
   raw

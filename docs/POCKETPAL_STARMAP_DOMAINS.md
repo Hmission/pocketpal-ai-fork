@@ -50,3 +50,4 @@ relates: [POCKETPAL_DESIGN_SPEC, DOC_GOVERNANCE_SPEC]
 - 内心生活（2026-08-18，INNERLIFE_SPEC v1）：memory 域 rituals 收尾三件套升级（小结+明日晨间独白 opening/ + 当日小鸡日记 chick_diary/）；buildTodayState 注入模型独白；workspace 域 WorkspaceScreen 新增「小鸡日记」浏览区块。
 - 记忆绘本（2026-08-18，ALBUM_SPEC v1）：memory 域新增 albumBook 服务（memories/album/ 周度绘本：故事+封面）；MemoryScreen 新增绘本入口（手动生成+浏览）。
 - 读屏围观（2026-08-18，SCREENWATCH_SPEC v1）：tools 域 DeviceControlEngine 落地只读 read_screen/find_app（写操作永久移除）；android 域新增 ScreenReaderService（AccessibilityService）+ ScreenReaderModule 桥；ToolScreen 权限引导。
+- TRPG 城主（2026-08-18，ADVENTURE_SPEC v1）：chat 域 taskRouter 新增 adventure 意图 + useChatScheduler 接入（城主=写作模型选型）；tools 域新增 adventure_state talent（workspace/adventure/state.json 工具化状态管理）；pals 域女妖 pact 增 adventure_state。
