@@ -105,5 +105,13 @@ describe('modelDisplayNames', () => {
         ),
       ).toBe(false);
     });
+
+    it('GGUF 容器但属生图工件（manifest 名单）不可选', () => {
+      expect(
+        isChatSelectable(
+          model('sd35baked', {filename: 'sd35_medium_humanpose_baked.gguf'}),
+        ),
+      ).toBe(false);
+    });
   });
 });

@@ -86,35 +86,6 @@ class EngineStatus {
     }
     return null;
   }
-
-  /** 全景摘要（B18 §17 后无消费方，保留供调试/日志） */
-  get summary(): string {
-    const name: Record<EngineKind, string> = {
-      prompter: '管家',
-      chat: '对话',
-      image: '生图',
-    };
-    const label: Record<EnginePhase, string> = {
-      idle: '',
-      loading: '加载中',
-      ready: '就绪',
-      running: '运行中',
-      error: '出错',
-    };
-    const parts: string[] = [];
-    for (const k of ['prompter', 'chat', 'image'] as EngineKind[]) {
-      const e = this.engines[k];
-      if (e.phase === 'idle') {
-        continue;
-      }
-      let s = `${name[k]}${label[e.phase]}`;
-      if ((e.phase === 'loading' || e.phase === 'running') && e.progress >= 0) {
-        s += ` ${e.progress}%`;
-      }
-      parts.push(s);
-    }
-    return parts.join(' · ') || '待命';
-  }
 }
 
 export const engineStatus = new EngineStatus();

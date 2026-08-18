@@ -1150,9 +1150,10 @@ export const ChatView = observer(
     );
 
     // ============ MODEL PICKER HANDLER ============
+    // B18 §16.2：关闭动作单点收敛在选择器内部（加载期间驻留、收尾自动关）；
+    // 此处只记录选中模型，不直接关 sheet。
     const handleModelSelect = React.useCallback((model: string) => {
       setSelectedModel(model);
-      setIsPickerVisible(false);
     }, []);
 
     // ============ COMPUTED VALUES ============

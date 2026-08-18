@@ -54,13 +54,6 @@ export function extractAttrSlot(content: string): string | undefined {
 let cache: AiosMemory[] | null = null;
 let extracting = false;
 
-// v3.8 记忆可见性：最近一次提取新增条数（B18 §17 后暂无消费方，保留供调试）
-let _lastExtractionCount = 0;
-
-export function getLastExtractionCount(): number {
-  return _lastExtractionCount;
-}
-
 // \u5bf9\u8bdd\u65e5\u5fd7\u8bed\u6599\u7f13\u5b58\uff08dateStr \u2192 content\uff09
 let conversationCache: Map<string, string> = new Map();
 
@@ -450,15 +443,12 @@ export async function extractAndSaveMemories(
       }
     }
     const items = Array.isArray(parsed.memories) ? parsed.memories : [];
-    // v3.8：记录本次提取新增条数（记忆可见性指示器）
-    _lastExtractionCount = 0;
     for (const item of items.slice(0, 3)) {
       if (item && typeof item.content === 'string' && item.content.trim()) {
         const type = ['fact', 'episode', 'insight'].includes(item.type)
           ? item.type
           : 'episode';
         await addMemory(type, item.content);
-        _lastExtractionCount++;
       }
     }
     // Refresh USER.md from fact memories after extraction

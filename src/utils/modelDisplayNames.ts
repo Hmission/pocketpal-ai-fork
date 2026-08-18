@@ -8,7 +8,7 @@
  *  - 非 LLM 模型（projection/vision 嵌入模型）聊天链路不可加载，一律不显示。
  *  - 简称仅中文显示；无注册命中时回落「去量化后缀的族名」，不硬造翻译。
  */
-import {Model, ModelType} from './types';
+import {Model, ModelType, ModelOrigin} from './types';
 import {IMAGE_GEN_MODEL_FILES} from './imageGenManifest';
 
 // 已知模型 → 中文简称（顺序敏感：具体版本规则在前，族兜底在后）
@@ -157,14 +157,21 @@ export function getModelDisplayNameWithParams(
  * 生图模型（manifest 声明的 main/companions 文件）同样排除。
  */
 export function isChatSelectable(
-  model: Pick<Model, 'modelType' | 'filename'>,
+  model: Pick<Model, 'modelType'> &
+    Partial<Pick<Model, 'filename' | 'origin'>>,
 ): boolean {
-  // 聊天引擎只加载 GGUF：safetensors/onnx 等生图 checkpoint 一律不显示
-  // （sd35 自定义 checkpoint 不在 manifest 排除集，靠后缀单规则收口）
-  const gguf = !model.filename || /\.gguf$/i.test(model.filename);
+  if (model.modelType !== ModelType.LLM) {
+    return false;
+  }
+  // 远程模型无本地文件：只排 manifest 生图文件
+  if (model.origin === ModelOrigin.REMOTE) {
+    return model.filename ? !IMAGE_GEN_MODEL_FILES.has(model.filename) : true;
+  }
+  // 本地模型：聊天引擎只加载 GGUF——safetensors/onnx 等生图 checkpoint
+  // 一律不显示；GGUF 容器但属生图工件（baked SD 权重）靠 manifest 名单收口
   return (
-    model.modelType === ModelType.LLM &&
-    gguf &&
-    (model.filename ? !IMAGE_GEN_MODEL_FILES.has(model.filename) : true)
+    !!model.filename &&
+    /\.gguf$/i.test(model.filename) &&
+    !IMAGE_GEN_MODEL_FILES.has(model.filename)
   );
 }

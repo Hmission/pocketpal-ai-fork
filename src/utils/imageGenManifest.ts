@@ -89,12 +89,15 @@ export const BUILTIN_MANIFESTS: ImageGenManifest[] = [
  * 生图模型文件集合（内置 manifest 的 main + companions 全量文件名）。
  * 用于 LLM 扫描/聊天选择时屏蔽生图文件（同为 .gguf 会被误注册为 LLM）。
  */
-export const IMAGE_GEN_MODEL_FILES: ReadonlySet<string> = new Set(
-  BUILTIN_MANIFESTS.flatMap(m => [
+export const IMAGE_GEN_MODEL_FILES: ReadonlySet<string> = new Set([
+  ...BUILTIN_MANIFESTS.flatMap(m => [
     m.main,
     ...Object.values(m.companions ?? {}),
   ]),
-);
+  // 已知非 LLM 的 gguf 工件（SD 权重烘焙进 GGUF 容器，架构非 LLM）：
+  // 后缀单规则区分不了，声明式名单单点收口。
+  'sd35_medium_humanpose_baked.gguf',
+]);
 
 /** 解析设备端 *.manifest.json（扩展点） */
 async function loadDeviceManifests(

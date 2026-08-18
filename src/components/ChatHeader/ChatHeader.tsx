@@ -14,8 +14,10 @@ import {useTheme} from '../../hooks';
 import {chatSessionStore, modelStore} from '../../store';
 import {promptWriter} from '../../services/promptWriter';
 import {HeaderLeft} from '../HeaderLeft';
-import {getModelDisplayName} from '../../utils/modelDisplayNames';
-import {BUTLER_DISPLAY_NAME} from '../../utils/modelDisplayNames';
+import {
+  getModelDisplayName,
+  BUTLER_DISPLAY_NAME,
+} from '../../utils/modelDisplayNames';
 import {withOpacity} from '../../utils/colorUtils';
 
 export const ChatHeader: React.FC<{

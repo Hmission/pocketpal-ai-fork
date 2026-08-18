@@ -102,17 +102,47 @@ export const ChatPalModelPickerSheet = observer(
       };
     }, [isVisible, onClose]);
 
+    // B18 §16.2 加载进度行（生图页 ModelPickerPanel 同范式：已耗时 Xs）。
+    // 本地计时单点：isContextLoading 起表，1s tick；结束归零。
+    const [loadStartedAt, setLoadStartedAt] = React.useState<number | null>(
+      null,
+    );
+    const [nowTs, setNowTs] = React.useState(Date.now());
+    useEffect(() => {
+      if (modelStore.isContextLoading) {
+        setLoadStartedAt(prev => prev ?? Date.now());
+        const id = setInterval(() => setNowTs(Date.now()), 1000);
+        return () => clearInterval(id);
+      }
+      setLoadStartedAt(null);
+      return undefined;
+    }, [modelStore.isContextLoading]);
+    const loadElapsedS = loadStartedAt
+      ? Math.max(0, Math.round((nowTs - loadStartedAt) / 1000))
+      : 0;
+
+    // 加载收尾自动关 sheet（进度行使命完成）；state 驱动以触发 effect 重跑
+    const [pendingClose, setPendingClose] = React.useState(false);
+    useEffect(() => {
+      if (!modelStore.isContextLoading && pendingClose) {
+        setPendingClose(false);
+        onClose();
+      }
+    }, [modelStore.isContextLoading, pendingClose, onClose]);
+
     const handleModelSelect = React.useCallback(
       async (model: (typeof modelStore.availableModels)[0]) => {
         try {
           onModelSelect?.(model.id);
-          onClose();
           modelStore.selectModel(model);
+          // B18 §16.2：加载期间 sheet 驻留（进度行可见），加载收尾后自动关闭；
+          // 已加载模型纯选择 = isContextLoading 恒 false → 下一帧即关。
+          setPendingClose(true);
         } catch (e) {
           console.log(`Error: ${e}`);
         }
       },
-      [onModelSelect, onClose],
+      [onModelSelect],
     );
 
     // B18 §16.2：卡片化（生图页 ModelPickerPanel 同范式）——
@@ -158,7 +188,9 @@ export const ChatPalModelPickerSheet = observer(
                 // 管家本体常驻不占槽；脚注已注明单槽语义。
                 <RNText style={styles.actionDisabled}>卸载禁用</RNText>
               ) : loadingThis ? (
-                <RNText style={styles.actionDisabled}>正在加载…</RNText>
+                <RNText style={styles.actionDisabled}>
+                  正在加载 · 已耗时 {loadElapsedS}s
+                </RNText>
               ) : isActiveModel ? (
                 // 卸载 = 独立动作（不触发选择），stopPropagation 隔卡片 onPress
                 <TouchableOpacity
@@ -187,7 +219,7 @@ export const ChatPalModelPickerSheet = observer(
           </Pressable>
         );
       },
-      [styles, handleModelSelect],
+      [styles, handleModelSelect, loadElapsedS],
     );
 
     // If the snapPoints not memoized, the sheet gets closed when the tab is changed for the first time.
