@@ -197,12 +197,14 @@ export const IncreaseContextSheet: React.FC<IncreaseContextSheetProps> =
         if (confirmDisabled) {
           return;
         }
-        const previousNCtx = modelStore.contextInitParams.n_ctx;
+        // §18.6 单一事实源：写每模型覆盖（与生成设置页同一存储），
+        // 不再写全局 setNContext——一边调了另一边自动同步，跨重启持久。
+        const previousNCtx = modelStore.getModelNCtx(model.id);
         setIsReloading(true);
         onReloadStart();
         onClose();
         try {
-          modelStore.setNContext(chosen);
+          modelStore.setModelNCtx(model.id, chosen);
           await modelStore.releaseContext();
           await modelStore.initContext(model);
           onReloadResult(true, chosen);
@@ -210,7 +212,7 @@ export const IncreaseContextSheet: React.FC<IncreaseContextSheetProps> =
           // releaseContext already unloaded the model. Restore the prior n_ctx
           // and re-init so the model is actually loaded again, not just the
           // setting restored.
-          modelStore.setNContext(previousNCtx);
+          modelStore.setModelNCtx(model.id, previousNCtx);
           try {
             await modelStore.initContext(model);
           } catch {

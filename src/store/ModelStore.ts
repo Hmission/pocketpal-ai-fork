@@ -101,6 +101,7 @@ import {
 } from '../utils/contextInitParamsVersions';
 import NativeHardwareInfo from '../specs/NativeHardwareInfo';
 import {getModelMemoryRequirement} from '../utils/memoryEstimator';
+import {CONTEXT_LADDER} from '../utils/bannerVariantResolver';
 import {loadLlamaModelInfo} from 'llama.rn';
 import {applyModelStoreMethodGroups} from './modelStoreMethods';
 
@@ -424,6 +425,50 @@ class ModelStore {
   /** 生效 n_ctx：每模型覆盖优先，无覆盖回退全局默认 */
   getModelNCtx = (modelId?: string | null): number =>
     (modelId && this.perModelNCtx[modelId]) || this.contextInitParams.n_ctx;
+
+  /**
+   * §18.6 每模型预调：模型无 n_ctx 覆盖时，按设备内存上限沿 CONTEXT_LADDER
+   * 取最大可装档（封顶 GGUF context_length），一次预调、持久化。
+   * 锋利不兜底：ceiling 未知（<=0）不虚构，只升不降（不覆盖已有值，
+   * 包括用户手动调小过的档）。仅本地模型（REMOTE 无本地内存语义）。
+   */
+  private presetModelNCtxIfAbsent = (model: Model, projectionModel?: Model): void => {
+    if (model.origin === ModelOrigin.REMOTE || this.perModelNCtx[model.id]) {
+      return;
+    }
+    const ceiling = Math.max(
+      this.largestSuccessfulLoad ?? 0,
+      this.availableMemoryCeiling ?? 0,
+    );
+    if (ceiling <= 0) {
+      return;
+    }
+    const modelMaxCtx =
+      model.ggufMetadata?.context_length ??
+      CONTEXT_LADDER[CONTEXT_LADDER.length - 1];
+    let best: number | undefined;
+    for (const tier of CONTEXT_LADDER) {
+      if (tier > modelMaxCtx) {
+        break;
+      }
+      try {
+        const mem = getModelMemoryRequirement(model, projectionModel, {
+          ...this.contextInitParams,
+          n_ctx: tier,
+        });
+        if (mem <= ceiling) {
+          best = tier;
+        } else {
+          break;
+        }
+      } catch {
+        break;
+      }
+    }
+    if (best && best > this.getModelNCtx(model.id)) {
+      this.setModelNCtx(model.id, best);
+    }
+  };
 
   setNGPULayers = (n_gpu_layers: number) => {
     runInAction(() => {
@@ -1879,6 +1924,10 @@ class ModelStore {
       this.isMultimodalActive = false; // Reset until we confirm it's enabled
       this.activeProjectionModelId = projectionModel?.id;
     });
+
+    // §18.6 每模型预调：无覆盖时按内存 ceiling 预写最大可装档（一次预调、
+    // 持久化），赶在 getEffectiveContextInitParams 读取之前。
+    this.presetModelNCtxIfAbsent(model, projectionModel);
 
     // Get all effective initialization settings BEFORE try block
     // so they're available for error reporting if initialization fails

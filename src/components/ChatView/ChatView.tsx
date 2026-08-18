@@ -297,7 +297,11 @@ export const ChatView = observer(
     const projectionModel = modelStore.models.find(
       m => m.id === modelStore.activeProjectionModelId,
     );
-    const currentNCtx = modelStore.activeContextSettings?.n_ctx;
+    // §18.6 单一事实源：读每模型覆盖（与 sheet confirm 写入同一存储），
+    // 不再读 activeContextSettings（实时快照会滑过用户刚确认的档）
+    const currentNCtx = activeModel
+      ? modelStore.getModelNCtx(activeModel.id)
+      : undefined;
     const memoryCeiling = Math.max(
       modelStore.largestSuccessfulLoad ?? 0,
       modelStore.availableMemoryCeiling ?? 0,

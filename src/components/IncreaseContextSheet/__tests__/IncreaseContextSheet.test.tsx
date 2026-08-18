@@ -10,16 +10,28 @@ import * as memoryEstimator from '../../../utils/memoryEstimator';
 
 import {IncreaseContextSheet} from '../IncreaseContextSheet';
 
-jest.mock('../../../store', () => ({
-  modelStore: {
-    contextInitParams: {n_ctx: 4096},
-    largestSuccessfulLoad: 8 * 1e9,
-    availableMemoryCeiling: 8 * 1e9,
-    setNContext: jest.fn(),
-    releaseContext: jest.fn().mockResolvedValue(undefined),
-    initContext: jest.fn().mockResolvedValue(undefined),
-  },
-}));
+jest.mock('../../../store', () => {
+  // §18.6：sheet 收口每模型存储，mock 同语义实现（闭包态 + 真实读写）
+  const perModelNCtx: Record<string, number> = {};
+  return {
+    modelStore: {
+      contextInitParams: {n_ctx: 4096},
+      largestSuccessfulLoad: 8 * 1e9,
+      availableMemoryCeiling: 8 * 1e9,
+      setNContext: jest.fn(),
+      perModelNCtx,
+      setModelNCtx: jest.fn((modelId: string, nCtx: number) => {
+        perModelNCtx[modelId] = nCtx;
+      }),
+      getModelNCtx: jest.fn(
+        (modelId?: string | null) =>
+          (modelId && perModelNCtx[modelId]) || 4096,
+      ),
+      releaseContext: jest.fn().mockResolvedValue(undefined),
+      initContext: jest.fn().mockResolvedValue(undefined),
+    },
+  };
+});
 
 jest.mock('react-native-device-info', () => ({
   getTotalMemory: jest.fn().mockResolvedValue(12 * 1e9),
@@ -81,6 +93,9 @@ describe('IncreaseContextSheet', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (modelStore.setNContext as jest.Mock).mockReset();
+    (modelStore.setModelNCtx as jest.Mock).mockClear();
+    // 预置每模型覆盖：当前档 4096（与 renderSheet 的 currentNCtx 对仗）
+    (modelStore as any).perModelNCtx['model-1'] = 4096;
     (modelStore.releaseContext as jest.Mock).mockResolvedValue(undefined);
     (modelStore.initContext as jest.Mock).mockResolvedValue(undefined);
     (modelStore as any).largestSuccessfulLoad = 8 * 1e9;
@@ -95,6 +110,7 @@ describe('IncreaseContextSheet', () => {
 
   afterEach(() => {
     memSpy.mockRestore();
+    delete (modelStore as any).perModelNCtx['model-1'];
   });
 
   describe('confirm path (restore-on-failure preserved)', () => {
@@ -107,7 +123,9 @@ describe('IncreaseContextSheet', () => {
       await waitFor(() =>
         expect(onReloadResult).toHaveBeenCalledWith(true, 6144),
       );
-      expect(modelStore.setNContext).toHaveBeenCalledWith(6144);
+      // §18.6：写每模型覆盖（不再写全局 setNContext）
+      expect(modelStore.setModelNCtx).toHaveBeenCalledWith('model-1', 6144);
+      expect(modelStore.setNContext).not.toHaveBeenCalled();
       expect(modelStore.initContext).toHaveBeenCalledTimes(1);
     });
 
@@ -123,7 +141,10 @@ describe('IncreaseContextSheet', () => {
         expect(onReloadResult).toHaveBeenCalledWith(false, 6144),
       );
       // Setting restored to the prior n_ctx and the model actually re-loaded.
-      expect(modelStore.setNContext).toHaveBeenLastCalledWith(4096);
+      expect(modelStore.setModelNCtx).toHaveBeenLastCalledWith(
+        'model-1',
+        4096,
+      );
       expect(modelStore.initContext).toHaveBeenCalledTimes(2);
     });
 
@@ -138,7 +159,10 @@ describe('IncreaseContextSheet', () => {
       await waitFor(() =>
         expect(onReloadResult).toHaveBeenCalledWith(false, 6144),
       );
-      expect(modelStore.setNContext).toHaveBeenLastCalledWith(4096);
+      expect(modelStore.setModelNCtx).toHaveBeenLastCalledWith(
+        'model-1',
+        4096,
+      );
     });
   });
 

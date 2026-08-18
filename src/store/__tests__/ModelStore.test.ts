@@ -128,6 +128,74 @@ describe('ModelStore', () => {
     showErrorSpy.mockRestore();
   });
 
+  describe('§18.6 每模型 n_ctx 预调（presetModelNCtxIfAbsent）', () => {
+    const presetCtxModel: Model = {
+      ...presetModelFixture,
+      id: 'preset-ctx-model',
+      ggufMetadata: {context_length: 32768} as GGUFMetadata,
+    } as Model;
+
+    let memSpy: jest.SpyInstance;
+    beforeEach(() => {
+      // 线性估算：1 GB 底 + 1 GB/4K，8 GB ceiling → 最大可装 24576
+      //（32768 需 9 GB 超顶，break）
+      const estimator = jest.requireActual('../../utils/memoryEstimator');
+      memSpy = jest
+        .spyOn(estimator, 'getModelMemoryRequirement')
+        .mockImplementation(
+          (_m: any, _p: any, params: any) => 1e9 + (params.n_ctx / 4096) * 1e9,
+        );
+    });
+    afterEach(() => {
+      memSpy.mockRestore();
+      runInAction(() => {
+        modelStore.perModelNCtx = {};
+        modelStore.largestSuccessfulLoad = undefined;
+        modelStore.availableMemoryCeiling = undefined;
+      });
+    });
+
+    it('无覆盖时按内存 ceiling 取最大可装档（封顶 GGUF）', () => {
+      runInAction(() => {
+        modelStore.largestSuccessfulLoad = 8e9;
+        modelStore.availableMemoryCeiling = 8e9;
+      });
+      (modelStore as any).presetModelNCtxIfAbsent(presetCtxModel);
+      expect(modelStore.perModelNCtx['preset-ctx-model']).toBe(24576);
+    });
+
+    it('已有覆盖不重预调（只升不降，不覆盖用户手调）', () => {
+      runInAction(() => {
+        modelStore.largestSuccessfulLoad = 8e9;
+        modelStore.perModelNCtx = {'preset-ctx-model': 4096};
+      });
+      (modelStore as any).presetModelNCtxIfAbsent(presetCtxModel);
+      expect(modelStore.perModelNCtx['preset-ctx-model']).toBe(4096);
+    });
+
+    it('ceiling 未知不虚构（锋利不兜底）', () => {
+      runInAction(() => {
+        modelStore.largestSuccessfulLoad = undefined;
+        modelStore.availableMemoryCeiling = undefined;
+      });
+      (modelStore as any).presetModelNCtxIfAbsent(presetCtxModel);
+      expect(modelStore.perModelNCtx['preset-ctx-model']).toBeUndefined();
+    });
+
+    it('REMOTE 模型无本地内存语义，不预调', () => {
+      runInAction(() => {
+        modelStore.largestSuccessfulLoad = 8e9;
+      });
+      const remote = {
+        ...presetCtxModel,
+        id: 'remote-ctx-model',
+        origin: ModelOrigin.REMOTE,
+      } as Model;
+      (modelStore as any).presetModelNCtxIfAbsent(remote);
+      expect(modelStore.perModelNCtx['remote-ctx-model']).toBeUndefined();
+    });
+  });
+
   describe('mergeModelLists', () => {
     it('drops non-downloaded PRESET stubs', () => {
       modelStore.models = [{...presetModelFixture, isDownloaded: false}];
