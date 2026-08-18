@@ -30,6 +30,16 @@ relates: [POCKETPAL_DESIGN_SPEC]
 | 6 | Ministral-3-3B | `Ministral-3-3B-Instruct-2512-Q4_K_M.gguf` | Q4_K_M | 2.15 GB | 代码 |
 | 7 | MiniCPM5-1B 管家 | `minicpm5_1b_heretic_q4km.gguf` | Q4_K_M | ~0.69 GB | 常驻管家（prompter） |
 
+## 1.1 任务选型优先级（2026-08-20，listModelsForTask）
+
+任务（write/code/play，adventure 归 write，play 归 code）选型返回候选列表，排序：
+
+1. **用户用途标签命中**（设置页打的 capabilities 标签，write 同义键 rewriting/creativity/instructions）——组内 size 降序；
+2. **文件名指纹**（本清单定稿：write→`qwen3.5[-_ ]?[24]b`，code→`ministral[-_ ]?3[-_ ]?3b`）——排除已入标签组；
+3. **其余本地模型** size 降序兜底（越大越强）。
+
+排除：管家模型（prompter 常驻槽）/ projection / 远程模型。候选首项 = 推荐项；弹窗多候选由用户单选（PRODUCT_SPEC §4.9）。
+
 ## 2. 生图入选清单（3 件）
 
 | # | 模型 | 说明 | 定位 |

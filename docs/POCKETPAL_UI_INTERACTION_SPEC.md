@@ -3,9 +3,9 @@ doc_id: POCKETPAL_UI_INTERACTION_SPEC
 module: root
 type: spec
 status: active
-version: "1.0"
+version: "1.1"
 created: "2026-08-14"
-updated: "2026-08-15"
+updated: "2026-08-20"
 relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_CHAT_UI_SPEC]
 ---
 
@@ -14,7 +14,7 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_CHAT_UI_SPEC]
 # PocketPal 全局交互定稿规范（UI_INTERACTION_SPEC）
 
 > 单一事实源：抽屉/导航层级/弹窗体系/消息长按菜单的交互定稿。
-> 任何交互迭代必须先更新本文档再改代码。版本：v1（2026-08-14，11 项 UI 优化定稿）
+> 任何交互迭代必须先更新本文档再改代码。版本：v1.1（2026-08-20，聊天页八项升级交互；v1：2026-08-14，11 项 UI 优化定稿）
 > 并列文档：POCKETPAL_IMAGEGEN_UI_SPEC.md（生图页）
 > 上位规范：POCKETPAL_DESIGN_SPEC.md（UI 域 SSOT）
 
@@ -96,8 +96,31 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_CHAT_UI_SPEC]
 | imagegen-quick-load | 生图页模型胶囊快速加载 |
 | confirm-dialog-confirm / confirm-dialog-cancel | 全局确认弹窗 |
 | imagegen-button | 聊天头部生图入口（既有） |
+| assistant-intent-capsule | 助手卡意图胶囊（点按出四态选择器，v1.1） |
+| intent-picker-{chat\|vent\|qa\|task} | 意图四态选择器选项（v1.1） |
+| model-switch-candidate-{id} | 任务模型切换弹窗候选行（v1.1） |
+| metrics-ctx / metrics-recall | 助手卡统一指标行：余量直达生成设置 / 召回展开（v1.1） |
 
-## 6. 遗留债务（待后续迭代）
+## 6. 聊天页升级交互（v1.1，2026-08-20，CHAT_UI_SPEC §18）
+
+### 意图胶囊点按切换（会话级状态机唯一写入口）
+- 点按助手卡意图胶囊 → 四态选择器小卡片（闲聊/倾诉/问答/任务，当前项高亮）
+- 选择 → 写入会话实体落库，后续轮次沿用；点遮罩/返回键 = 取消（不改状态）
+- Host 未挂载 fail-fast：视为取消，不改变状态（不弹错不兜底）
+- 老消息胶囊读快照（无快照不渲染）；新轮次胶囊读会话 intent（同源）
+
+### 任务模型切换弹窗多候选
+- write/code/play（adventure 归 write）触发且需切换时弹：候选列表单选，默认选中推荐项（首项，标「· 推荐」）
+- 场景 A（有当前模型）：[继续当前模型] + [加载所选模型]；场景 B（无）：仅 [加载所选模型]（不显示死按钮）
+- 返回 `{choice:'load'|'current'|'cancel', modelId}`；load 记会话偏好（会话内不再问），current 记 `__current__`
+- 会话内已选过的模型再次触发：直接加载不再问（显式选择不重复打扰）
+
+### 发送钮双态 / 顶栏紧凑 / placeholder 单源
+- 发送钮：可用实心圆，不可用描边圆（轮廓恒在，状态表达收进组件内部）
+- 顶栏：新建会话=加号（reset-button），右侧三控件 gap 2 收紧一组
+- placeholder 按 engineStatus 五级优先决策（CHAT_UI_SPEC §18.5 表）
+
+## 7. 遗留债务（待后续迭代）
 
 - 信息型弹窗（约 20 文件）统一为 InfoDialog 体系（分批替换清单见 §3）
 - ChatScreen.test/useChatSession.test 既有失败与新架构对齐专项

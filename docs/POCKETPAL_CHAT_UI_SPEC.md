@@ -325,6 +325,59 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
   - **快照语义**：run_finished 时写入 `metadata.turnMetrics`（ctxPct/writeTime/recallCount/recallPreview/sentimentLabel/intent），每卡各记各的；老消息无快照=不渲染该行（锋利不兜底）；
 - **思考胶囊高度收敛**：选中胶囊 36→24px（与两边图标按钮视觉同高），行基线仍 36（hitSlop 补触区）。
 
+## 18. 聊天页八项体验升级（v3.4，2026-08-20 大王裁定）
+
+### 18.1 意图胶囊会话级状态机
+
+- **状态机唯一规则（不兜底）**：`intent == null`（首轮）→ `classifyIntent` 定初值并落库；之后永远沿用会话 intent，直到用户显式切换。
+- **落库**：Session 实体新增 `intent` 列（WatermelonDB schema v8，`chat_sessions.intent`，同 `settingsSource` 模式）；复制会话继承 intent。
+- **唯一写入口**：意图胶囊可点按 → 四态选择器（闲聊/倾诉/问答/任务，IntentPickerHost App 根挂载，未挂载 fail-fast 不改状态）。
+- **同源消费**：system 语气注入（contextAssembler）与胶囊/turnMetrics 快照同读会话 intent；`_lastIntent` 模块变量已删（每轮重判是第二轮回闲聊的根因）。
+
+### 18.2 助手卡 chrome 双行合并（TurnMetricsRow 已删）
+
+- AssistantTurnFooter 纵向双行：**行1** = 播放/复制/重新生成（+ interrupted 状态）；**行2** = 统一指标行：`54ms/token · 18.6 t/s · 16.8s TTFT · 上下文余量29% · 落盘01:58 · 召回0 · 平稳`。
+- **统一排版契约**：captionS 字号；数值 brandAccent 600；标签 textSecondary；分隔符 `·`（outlineVariant）。
+- **交互保留**：ctx 段点按直达生成设置；召回段点按展开片段预览（默认折叠）。
+- **单一存在理由**：TurnMetricsRow 组件删除（含 Message 两处渲染点），能力并入 footer——每卡只有一块 chrome。门控：timings/turnMetrics/内容就绪/interrupted/可朗读 任一成立才渲染。
+
+### 18.3 顶栏紧凑化 + 新建会话换加号
+
+- HeaderRight：新建会话图标 EditBox→**PlusIcon**（testID `reset-button` 不变，a11y「新建会话」）；两按钮改 36px 紧凑触区（margin 0，IconButton 40px 默认容器弃用）。
+- ChatHeader 右侧行 gap 6→2，三控件（模型胶囊/新建会话/菜单）收紧为一组。
+
+### 18.4 发送钮双态描边统一
+
+- SendButton 内置 `enabled` 双态：可用 = primary 实心圆 + onPrimary 图标；不可用 = 透明底 + outlineVariant 圆形描边 + onSurfaceVariant 灰图标。尺寸恒 36px（快捷图标钮/语音钮同基准）。
+- ChatInput 删除外层 `opacity 0.4` 包裹，状态表达收进组件内部。
+
+### 18.5 输入卡 placeholder 单源决策表（engineStatus 状态中枢）
+
+| 优先级 | 条件 | 文案 |
+|---|---|---|
+| 1 | chat 引擎 loading | 「正在加载模型…」 |
+| 2 | prompter loading | 「正在加载管家模型…」 |
+| 3 | chat 引擎 ready（modelStore.engine） | 「输入消息…」 |
+| 4 | prompter ready（promptWriter.isLoaded） | 「小黄鸡已就绪，输入即可聊天」 |
+| 5 | 其余 | 「模型未加载」 |
+
+根因修复：旧链只看 `promptWriter.isLoaded`，管家加载中落入「模型未加载」分支。
+
+### 18.6 n_ctx 单一事实源 + 每模型预调
+
+- **两入口收口同一存储**：IncreaseContextSheet confirm 改写 `setModelNCtx(model.id)`（不再全局 setNContext，失败恢复同源）；sheet 与 BannerRow 入口 currentNCtx 读 `getModelNCtx(model.id)`。生成设置页已走该链路 → 一边调了另一边自动同步，持久化跨重启。
+- **每模型预调**：加载链（proceedWithInitialization）在该模型无覆盖时，按设备内存 ceiling 沿 CONTEXT_LADDER 取最大可装档（封顶 GGUF `context_length`）写入 perModelNCtx——一次预调、持久化；只升不降，ceiling 未知不虚构，REMOTE 不适用。
+
+### 18.7 模型用途标签 + 切换弹窗多候选
+
+- **用途标签**：ModelSettingsSheet「用途」多选 chips（写作/代码；玩具复用 code 选型不增第三枚），写入 `model.capabilities`（保留非用途键）。
+- **选型升级**：`listModelsForTask` 返回候选列表：用户标签命中（size 降序）> DEFAULT_MAP 指纹 > 其余 size 降序；`findModelForTask` = 首项兼容面。
+- **弹窗升级**：ModelSwitchDialog 渲染候选列表（单选，默认选中推荐项，testID `model-switch-candidate-{id}`）+ 继续当前（场景 A）；返回 `{choice, modelId}`；选择结果沿用 `taskModelChoice` 会话级记住。闭环：设置页打标签 → 选型读标签 → 弹窗多候选 → 会话记住。
+
+### 18.8 快捷行入口裁定（不加）
+
+日记/绘本/读屏不属「前缀 chip → 输入 → 发送」形态且各有唯一入口（日记=WorkspaceScreen 浏览、绘本=MemoryScreen 按钮、读屏=ToolScreen 行），加图标 = 入口重复，违锋利原则。快捷行维持四图标。
+
 ## 变更日志
 
 | 日期 | 版本 | 变更 |
@@ -337,3 +390,4 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 | 2026-08-18 | 3.1 | §15 生成设置参数标签本地化：新增 completionParamsLabels/Controls 两段 + paramLabel() fallback helper，16 语言全覆盖（MASTER_LOG §31.4） |
 | 2026-08-18 | 3.2 | §16 顶栏胶囊管家感知 + 选择器卡片化（介绍/徽章/加载卸载/管家禁卸/单槽脚注）；§17 状态栏拆解融合进助手卡片（意图胶囊上移 + 每输出指标行 turnMetrics 快照 + ctx 中文直达 + 召回展开）；思考胶囊 24px 收敛 |
 | 2026-08-19 | 3.3 | B18 复查锋利化：加载进度行（正在加载·已耗时 Xs）+ 加载期 sheet 驻留/收尾自动关（关闭单点收敛）；徽章集收口［已加载/管家驻场］（「本机不可用」属生图域范式不虚构）；isChatSelectable GGUF+manifest 名单单规则 |
+| 2026-08-20 | 3.4 | §18 聊天页八项升级：意图胶囊会话级状态机（schema v8 + 胶囊点按唯一写入口）；助手卡 chrome 双行合并（删 TurnMetricsRow）；顶栏紧凑化 + 新建会话换加号；发送钮双态描边；placeholder engineStatus 单源决策表；n_ctx 每模型收口 + 预调；模型用途标签 + 弹窗多候选 |
