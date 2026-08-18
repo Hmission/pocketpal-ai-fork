@@ -80,6 +80,8 @@ class ImageGenStore {
   private outDir = '';
   /** 当前引擎后端（manifest 透传：'CPU' | 'OpenCL' | 'Vulkan'；空走引擎默认 CPU） */
   backend: string | null = null;
+  /** 08-18：GPU renderer（设备兼容性分级：requiresHighGpu 模型在 740 级灰置） */
+  gpuRenderer = '';
 
   constructor() {
     makeAutoObservable(this);
@@ -172,6 +174,15 @@ class ImageGenStore {
       await RNFS.mkdir(this.outDir);
     } catch (e) {
       console.warn('[ImageGenStore] init failed:', e);
+    }
+    // 08-18：GPU 探测（设备分级，失败留空=不灰置任何模型，锋利不兖底）
+    try {
+      const r = await ImageGen.getGpuRenderer();
+      runInAction(() => {
+        this.gpuRenderer = typeof r === 'string' ? r : '';
+      });
+    } catch {
+      /* GPU 探测失败静默 */
     }
     // 历史持久化：重启后恢复（图片文件仍在磁盘，仅元数据落盘）
     try {

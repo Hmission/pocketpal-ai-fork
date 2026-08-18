@@ -193,6 +193,42 @@ class ImageGenModule(reactContext: ReactApplicationContext) :
     }.start()
   }
 
+  /**
+   * 08-18：GPU renderer 探测（EGL pbuffer 查询 GL_RENDERER）。
+   * 用于生图模型设备兼容性分级（Z-Image 仅 Adreno 800 系高端可用，740 级灰置）。
+   */
+  @ReactMethod
+  fun getGpuRenderer(promise: Promise) {
+    Thread {
+      try {
+        val egl = android.opengl.EGL14.eglGetDisplay(android.opengl.EGL14.EGL_DEFAULT_DISPLAY)
+        val version = IntArray(2)
+        android.opengl.EGL14.eglInitialize(egl, version, 0, version, 1)
+        val configAttribs = intArrayOf(
+          android.opengl.EGL14.EGL_RENDERABLE_TYPE, android.opengl.EGL14.EGL_OPENGL_ES2_BIT,
+          android.opengl.EGL14.EGL_SURFACE_TYPE, android.opengl.EGL14.EGL_PBUFFER_BIT,
+          android.opengl.EGL14.EGL_NONE
+        )
+        val configs = arrayOfNulls<android.opengl.EGLConfig>(1)
+        val numConfigs = IntArray(1)
+        android.opengl.EGL14.eglChooseConfig(egl, configAttribs, 0, configs, 0, 1, numConfigs, 0)
+        val ctxAttribs = intArrayOf(android.opengl.EGL14.EGL_CONTEXT_CLIENT_VERSION, 2, android.opengl.EGL14.EGL_NONE)
+        val ctx = android.opengl.EGL14.eglCreateContext(egl, configs[0], android.opengl.EGL14.EGL_NO_CONTEXT, ctxAttribs, 0)
+        val pbufAttribs = intArrayOf(android.opengl.EGL14.EGL_WIDTH, 1, android.opengl.EGL14.EGL_HEIGHT, 1, android.opengl.EGL14.EGL_NONE)
+        val surf = android.opengl.EGL14.eglCreatePbufferSurface(egl, configs[0], pbufAttribs, 0)
+        android.opengl.EGL14.eglMakeCurrent(egl, surf, surf, ctx)
+        val renderer = android.opengl.GLES20.glGetString(android.opengl.GLES20.GL_RENDERER) ?: ""
+        android.opengl.EGL14.eglMakeCurrent(egl, android.opengl.EGL14.EGL_NO_SURFACE, android.opengl.EGL14.EGL_NO_SURFACE, android.opengl.EGL14.EGL_NO_CONTEXT)
+        android.opengl.EGL14.eglDestroySurface(egl, surf)
+        android.opengl.EGL14.eglDestroyContext(egl, ctx)
+        android.opengl.EGL14.eglTerminate(egl)
+        promise.resolve(renderer)
+      } catch (e: Throwable) {
+        promise.resolve("")
+      }
+    }.start()
+  }
+
   companion object {
     private var reactContextRef: ReactApplicationContext? = null
 

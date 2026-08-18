@@ -685,6 +685,10 @@ export const ImageGenScreen: React.FC = observer(() => {
         stage={imageGenStore.stage}
         generating={imageGenStore.generating}
         modelsDir={AIOS_MODELS_DIR}
+        isIncompatible={entry =>
+          entry.manifest.requiresHighGpu === true &&
+          !/Adreno \(TM\) [89]\d\d/.test(imageGenStore.gpuRenderer)
+        }
         onToggleDrop={() => setShowModelDrop(v => !v)}
         onSelectModel={handleSelectModel}
         onRowAction={handleRowAction}

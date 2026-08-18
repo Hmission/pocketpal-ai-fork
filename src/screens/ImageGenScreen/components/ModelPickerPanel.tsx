@@ -82,6 +82,8 @@ interface DropdownProps {
   stage: string;
   generating: boolean;
   modelsDir: string;
+  /** 08-18：设备不兼容判定（requiresHighGpu 模型在 740 级 GPU 灰置） */
+  isIncompatible?: (entry: ModelEntry) => boolean;
   onToggleDrop: () => void;
   onSelectModel: (entry: ModelEntry) => void;
   onRowAction: (entry: ModelEntry) => void;
@@ -101,6 +103,7 @@ export const ModelPickerDropdown: React.FC<DropdownProps> = ({
   stage,
   generating,
   modelsDir,
+  isIncompatible,
   onToggleDrop,
   onSelectModel,
   onRowAction,
@@ -130,14 +133,16 @@ export const ModelPickerDropdown: React.FC<DropdownProps> = ({
           available.map(item => {
             const rowLoaded = isRowLoaded(item);
             const rowLoading = loading;
+            const rowIncompat = isIncompatible?.(item) === true;
             return (
               <TouchableOpacity
                 key={item.manifest.id}
                 style={[
                   s.modelRow,
                   selectedId === item.manifest.id && s.modelRowSelected,
+                  rowIncompat && {opacity: 0.45},
                 ]}
-                onPress={() => onSelectModel(item)}>
+                onPress={() => !rowIncompat && onSelectModel(item)}>
                 <View style={s.modelRowMain}>
                   <Text style={s.modelName} numberOfLines={1}>
                     {FAMILY_BADGE[item.manifest.family] ? (
@@ -156,6 +161,9 @@ export const ModelPickerDropdown: React.FC<DropdownProps> = ({
                     {item.manifest.experimental ? (
                       <Text style={s.badgeExp}> [实验性]</Text>
                     ) : null}
+                    {rowIncompat ? (
+                      <Text style={s.badgeExp}> [本机不可用]</Text>
+                    ) : null}
                   </Text>
                   {item.manifest.note ? (
                     <Text style={s.modelNote} numberOfLines={2}>
@@ -165,7 +173,7 @@ export const ModelPickerDropdown: React.FC<DropdownProps> = ({
                 </View>
                 <TouchableOpacity
                   style={[s.rowActionBtn, rowLoaded && s.rowActionBtnUnload]}
-                  disabled={loading || generating}
+                  disabled={loading || generating || rowIncompat}
                   onPress={() => onRowAction(item)}>
                   {rowLoading ? (
                     <ActivityIndicator
