@@ -101,6 +101,7 @@ relates: [POCKETPAL_SCREENWATCH_SPEC, POCKETPAL_PLAY_SPEC, POCKETPAL_PRODUCT_SPE
 |------|------|------|
 | 2026-08-18 | 1.0 | 首发：adventure 路由 + adventure_state 工具化状态管理 + 城主叙事 |
 | 2026-08-19 | 1.1 | 闭环收口：存量女妖 pact 对账迁移（schemaVersion 差集并入）+ 快捷前缀「来场冒险：」引导 |
+| 2026-08-19 | 1.2 | 工具可用性修复：无显式 Pal 会话兜底 AIOS 女妖 pact（见 PLAY_SPEC v1.2 PLAY-3）——adventure_state 不再因会话未绑 Pal 而缺席 |
 
 ## 关联文档
 

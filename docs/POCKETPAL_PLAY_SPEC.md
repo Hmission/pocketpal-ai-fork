@@ -88,6 +88,7 @@ relates: [POCKETPAL_PRODUCT_SPEC, POCKETPAL_STARMAP_DOMAINS, POCKETPAL_MODEL_MAT
 |--------|------|----------|
 | PLAY-1 | 3B 玩具匠首生成质量未知 | 真机人类模拟操作验证；若质量不达标，玩具模板库（资产目录，非兜底分支） |
 | PLAY-2 | 玩具箱条目无限增长 | ✅ 已闭环（v1.1）：上限 50 件滚动淘汰——saveToy 裁 index 时同步 unlink 出局 html 文件（名单与文件同生共死，无孤儿残留） |
+| PLAY-3 | 无显式 Pal 的会话拿不到 pact 工具：系统提示词兜底 AIOS 女妖（useChatSession），但 getCurrentCompletionSettings 无兜底——灵魂注入了、手被砍了，play 任务静默退化为纯聊天 | ✅ 已闭环（v1.2）：getCurrentCompletionSettings 无显式 Pal 时兜底 AIOS 女妖 pact（与提示词兜底对仗）——pact.talents 是工具可用性的唯一事实源（2026-08-19 K90 真机实证） |
 
 ## 八、关联
 
@@ -101,6 +102,7 @@ relates: [POCKETPAL_PRODUCT_SPEC, POCKETPAL_STARMAP_DOMAINS, POCKETPAL_MODEL_MAT
 |------|------|------|
 | 2026-08-18 | 1.0 | 首发：play 路由 + 玩具匠人格 + 玩具箱 + 玩法引导（前后端对齐） |
 | 2026-08-19 | 1.1 | 闭环收口：PLAY-2 文件级滚动淘汰（unlink 出局 html）——名单与文件同生共死 |
+| 2026-08-19 | 1.2 | 闭环 PLAY-3：无显式 Pal 会话的工具兜底（getCurrentCompletionSettings → AIOS 女妖 pact），play/adventure 工具任务不再静默退化 |
 
 ## 关联文档
 

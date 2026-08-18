@@ -336,4 +336,96 @@ describe('ChatSessionStore - Pal Settings', () => {
       expect(toolNames).toContain('calculate');
     });
   });
+
+  describe('getCurrentCompletionSettings — AIOS pal fallback', () => {
+    const makeAiosPal = (talents: Array<{name: string}>): Pal =>
+      ({
+        type: 'local',
+        id: 'aios-pal-id',
+        name: '女妖',
+        description: 'AIOS pal',
+        systemPrompt: '',
+        isSystemPromptChanged: false,
+        useAIPrompt: false,
+        parameters: {},
+        parameterSchema: [],
+        source: 'local',
+        pact: {
+          talents: talents.map(t => ({...t, necessity: 'optional' as const})),
+        },
+      }) as Pal;
+
+    it('injects AIOS pact tools when the active session has no explicit pal', async () => {
+      palStore.pals.push(
+        makeAiosPal([{name: 'render_html'}, {name: 'adventure_state'}]),
+      );
+      chatSessionStore.sessions = [
+        {
+          id: 'session-no-pal',
+          title: 'No Pal Session',
+          date: '2024-01-01',
+          messages: [],
+          completionSettings: {...defaultCompletionSettings},
+          settingsSource: 'custom',
+        },
+      ];
+      chatSessionStore.activeSessionId = 'session-no-pal';
+
+      const result = await chatSessionStore.getCurrentCompletionSettings();
+
+      const toolNames = ((result.tools ?? []) as any[]).map(
+        (t: any) => t?.function?.name ?? t?.name,
+      );
+      expect(toolNames).toContain('render_html');
+      expect(toolNames).toContain('adventure_state');
+    });
+
+    it('keeps an explicit session pal in charge (no AIOS override)', async () => {
+      palStore.pals.push(makeAiosPal([{name: 'render_html'}]));
+      const otherPal: Pal = {
+        ...makeAiosPal([{name: 'calculate'}]),
+        id: 'other-pal-id',
+        name: 'Other Pal',
+      };
+      palStore.pals.push(otherPal);
+      chatSessionStore.sessions = [
+        {
+          id: 'session-with-pal',
+          title: 'Pal Session',
+          date: '2024-01-01',
+          messages: [],
+          completionSettings: {...defaultCompletionSettings},
+          activePalId: 'other-pal-id',
+          settingsSource: 'custom',
+        },
+      ];
+      chatSessionStore.activeSessionId = 'session-with-pal';
+
+      const result = await chatSessionStore.getCurrentCompletionSettings();
+
+      const toolNames = ((result.tools ?? []) as any[]).map(
+        (t: any) => t?.function?.name ?? t?.name,
+      );
+      expect(toolNames).toContain('calculate');
+      expect(toolNames).not.toContain('render_html');
+    });
+
+    it('yields no tools when there is no AIOS pal to fall back to', async () => {
+      chatSessionStore.sessions = [
+        {
+          id: 'session-no-pal',
+          title: 'No Pal Session',
+          date: '2024-01-01',
+          messages: [],
+          completionSettings: {...defaultCompletionSettings},
+          settingsSource: 'custom',
+        },
+      ];
+      chatSessionStore.activeSessionId = 'session-no-pal';
+
+      const result = await chatSessionStore.getCurrentCompletionSettings();
+
+      expect(result.tools).toBeUndefined();
+    });
+  });
 });
