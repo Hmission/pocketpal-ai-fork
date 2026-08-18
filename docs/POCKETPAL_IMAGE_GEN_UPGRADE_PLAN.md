@@ -204,6 +204,7 @@ superseded_by: POCKETPAL_IMAGEGEN_UI_SPEC
 | P6-5 | DreamLite 接入（manifest 声明+RN 架构先行） | ✅ 全闭环（实际走 ONNX Runtime 而非 MNN；真实文生图+编辑+聊天闭环，见 §6.3-6.5 与 MASTER_LOG） |
 | P6-6 | SD3 2B 人体姿态 LoRA 训练闭环（引擎兼容路线） | ✅ 全闭环（2026-08-18：手写 joint_blocks MMDiT → 3000 步训练 loss 0.1195 → 烘焙合并 → q4_K 2.24GB → 真机出图验证通过；详见 ADR-0006 与训练域 SSOT v2.0） |
 | P6-7 | 运行时 LoRA 挂载开关（路线 B，GAP-001 闭环） | ✅ 全闭环（2026-08-18：base 模型 + 独立 LoRA 文件 + 生图页 LoRA 开关秒级切换；详见 ADR-0007） |
+| P6-8 | 端侧生图交互完善配套（比例档 + token 限制 + 管家扩写） | ✅ 全闭环（2026-08-18：① 非 Dream 模型比例档 SD_RATIOS；② 提示词按 token 计（DreamLite 128/SD3 77/Z-Image 256）替代 120 字符；③ 管家扩写 few-shot 对齐 DreamLite 128 tokens；详见训练域 SSOT v2.4） |
 
 ### 6.3 DreamLite 接入专项（Phase 0 已完成）
 
@@ -293,7 +294,7 @@ superseded_by: POCKETPAL_IMAGEGEN_UI_SPEC
 - 生成/编辑完成 → 新图入 history[0] → 自动翻结果页；删除 → 回 0 页（防 previewIndex 越界）。
 
 **对账状态（2026-08-14/18）**：
-- ✅ 已落地：P0/P1 全部、P2 代码层（CMake arm64 开 OpenCL，运行时默认 CPU）、P5.4 全系列、P6-1/2、P6-5 DreamLite 全闭环（真实文生图+编辑）、P6-6 SD3 2B 训练闭环（引擎兼容路线）、P6-7 运行时 LoRA 挂载开关（路线 B，GAP-001 闭环）、6.4 黑图修复、6.5 产品级重构、6.5.5 双形态动效。
+- ✅ 已落地：P0/P1 全部、P2 代码层（CMake arm64 开 OpenCL，运行时默认 CPU）、P5.4 全系列、P6-1/2、P6-5 DreamLite 全闭环（真实文生图+编辑）、P6-6 SD3 2B 训练闭环（引擎兼容路线）、P6-7 运行时 LoRA 挂载开关（路线 B，GAP-001 闭环）、P6-8 交互完善配套（比例档+token 限制+管家扩写）、6.4 黑图修复、6.5 产品级重构、6.5.5 双形态动效。
 - ⏳ 未落地：P6-3 SDXL-Lightning 下载（网络下载任务）；P6-4 MNN+SANA（新引擎工程）；P2 OpenCL 真机速度对比验证。
 
 ### 6.5.5 生成/编辑双形态动效 + 编辑·出图并列（大王三轮反馈，2026-08-14）
