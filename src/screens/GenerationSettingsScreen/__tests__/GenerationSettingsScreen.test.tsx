@@ -11,8 +11,7 @@ import {
 
 import {GenerationSettingsScreen} from '../GenerationSettingsScreen';
 
-import {modelStore, uiStore, ttsStore} from '../../../store';
-import {l10n} from '../../../locales';
+import {modelStore, uiStore} from '../../../store';
 
 jest.useFakeTimers();
 
@@ -44,7 +43,6 @@ describe('GenerationSettingsScreen', () => {
 
     expect(getByText('Model Initialization Settings')).toBeTruthy();
     expect(getByText('Model Loading Settings')).toBeTruthy();
-    expect(getByText('App Settings')).toBeTruthy();
     expect(getByDisplayValue('2048')).toBeTruthy(); // Context size
   });
 
@@ -160,20 +158,6 @@ describe('GenerationSettingsScreen', () => {
     expect(uiStore.setAutoNavigateToChat).toHaveBeenCalledWith(false);
   });
 
-  it('toggles Dark Mode switch', async () => {
-    const {getByTestId} = render(<GenerationSettingsScreen />, {
-      withSafeArea: true,
-      withNavigation: true,
-    });
-    const darkModeSwitch = getByTestId('dark-mode-switch');
-
-    await act(async () => {
-      fireEvent(darkModeSwitch, 'valueChange', true);
-    });
-
-    expect(uiStore.setColorScheme).toHaveBeenCalledWith('dark');
-  });
-
   it('toggles GPU acceleration switch on iOS and adjusts GPU layers', async () => {
     Platform.OS = 'ios';
     jest.useFakeTimers();
@@ -205,20 +189,6 @@ describe('GenerationSettingsScreen', () => {
     });
 
     expect(modelStore.setNGPULayers).toHaveBeenCalledWith(60);
-  });
-
-  it('toggles Display Memory Usage switch', async () => {
-    const {getByTestId} = render(<GenerationSettingsScreen />, {
-      withSafeArea: true,
-      withNavigation: true,
-    });
-    const memoryUsageSwitch = getByTestId('display-memory-usage-switch');
-
-    await act(async () => {
-      fireEvent(memoryUsageSwitch, 'valueChange', true);
-    });
-
-    expect(uiStore.setDisplayMemUsage).toHaveBeenCalledWith(true);
   });
 
   it('renders image max tokens slider in advanced settings', async () => {
@@ -263,105 +233,6 @@ describe('GenerationSettingsScreen', () => {
     });
 
     expect(modelStore.setImageMaxTokens).toHaveBeenCalledWith(768);
-  });
-
-  describe('TTS availability toggle', () => {
-    afterEach(() => {
-      // Reset observable fields between tests — beforeEach's clearAllMocks()
-      // resets jest.fn() call lists but not field values.
-      runInAction(() => {
-        ttsStore.deviceMeetsMemory = false;
-        ttsStore.userTTSOverride = null;
-      });
-    });
-
-    it('§6.A — high-memory, no override: switch ON, helper line hidden', async () => {
-      runInAction(() => {
-        ttsStore.deviceMeetsMemory = true;
-        ttsStore.userTTSOverride = null;
-      });
-      const {getByTestId, queryByText} = render(<GenerationSettingsScreen />, {
-        withSafeArea: true,
-        withNavigation: true,
-      });
-
-      const sw = getByTestId('tts-availability-switch');
-      expect(sw.props.value).toBe(true);
-      expect(
-        queryByText(l10n.en.settings.ttsAvailabilityLowMemoryWarning),
-      ).toBeNull();
-    });
-
-    it('§6.B — low-memory, no override: switch OFF, helper line visible', async () => {
-      runInAction(() => {
-        ttsStore.deviceMeetsMemory = false;
-        ttsStore.userTTSOverride = null;
-      });
-      const {getByTestId, getByText} = render(<GenerationSettingsScreen />, {
-        withSafeArea: true,
-        withNavigation: true,
-      });
-
-      const sw = getByTestId('tts-availability-switch');
-      expect(sw.props.value).toBe(false);
-      expect(
-        getByText(l10n.en.settings.ttsAvailabilityLowMemoryWarning),
-      ).toBeTruthy();
-    });
-
-    it('§6.C — low-memory: toggling ON calls setUserTTSOverride(true)', async () => {
-      runInAction(() => {
-        ttsStore.deviceMeetsMemory = false;
-        ttsStore.userTTSOverride = null;
-      });
-      const {getByTestId} = render(<GenerationSettingsScreen />, {
-        withSafeArea: true,
-        withNavigation: true,
-      });
-      const sw = getByTestId('tts-availability-switch');
-
-      await act(async () => {
-        fireEvent(sw, 'valueChange', true);
-      });
-
-      expect(ttsStore.setUserTTSOverride).toHaveBeenCalledWith(true);
-    });
-
-    it('§6.D — high-memory: toggling OFF calls setUserTTSOverride(false)', async () => {
-      runInAction(() => {
-        ttsStore.deviceMeetsMemory = true;
-        ttsStore.userTTSOverride = null;
-      });
-      const {getByTestId} = render(<GenerationSettingsScreen />, {
-        withSafeArea: true,
-        withNavigation: true,
-      });
-      const sw = getByTestId('tts-availability-switch');
-
-      await act(async () => {
-        fireEvent(sw, 'valueChange', false);
-      });
-
-      expect(ttsStore.setUserTTSOverride).toHaveBeenCalledWith(false);
-    });
-
-    it('§9f — low-memory + opt-in: switch ON, helper line still visible', async () => {
-      runInAction(() => {
-        ttsStore.deviceMeetsMemory = false;
-        ttsStore.userTTSOverride = true;
-      });
-      const {getByTestId, getByText} = render(<GenerationSettingsScreen />, {
-        withSafeArea: true,
-        withNavigation: true,
-      });
-
-      const sw = getByTestId('tts-availability-switch');
-      expect(sw.props.value).toBe(true);
-      // Helper line tracks deviceMeetsMemory, NOT the override.
-      expect(
-        getByText(l10n.en.settings.ttsAvailabilityLowMemoryWarning),
-      ).toBeTruthy();
-    });
   });
 
   it('shows effective value when image_max_tokens exceeds n_ctx', async () => {

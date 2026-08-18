@@ -133,6 +133,8 @@ describe('design-token grep invariants', () => {
       // 同波散点字号 token 化（A3）
       'screens/ChatScreen',
       'screens/GenerationSettingsScreen',
+      // v3.8 系统设置页（语言+色彩模式三选）归位 token 表面
+      'screens/SystemSettingsScreen',
       'components/ChatHeader',
       'components/ImageTaskActions',
       // 生图进度内嵌动效（ImageTaskProgress，08-16 聊天全流程动效）：radius token 消费

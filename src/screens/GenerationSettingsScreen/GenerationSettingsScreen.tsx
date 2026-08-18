@@ -28,12 +28,8 @@ import {
 } from 'react-native-paper';
 
 import {
-  GlobeIcon,
-  MoonIcon,
-  CpuChipIcon,
   ShareIcon,
   LinkExternalIcon,
-  VolumeOnIcon,
 } from '../../assets/icons';
 
 import {
@@ -41,7 +37,6 @@ import {
   Menu,
   Divider,
   HFTokenSheet,
-  LanguageSelector,
   SearchProviderKeySheet,
   InputSlider,
 } from '../../components';
@@ -54,7 +49,6 @@ import {
   modelStore,
   uiStore,
   hfStore,
-  ttsStore,
   searchProviderStore,
 } from '../../store';
 import type {SearchProviderId} from '../../services/search/types';
@@ -893,144 +887,6 @@ export const GenerationSettingsScreen: React.FC = observer(() => {
                     onValueChange={value =>
                       uiStore.setAutoNavigateToChat(value)
                     }
-                  />
-                </View>
-              </View>
-            </Card.Content>
-          </Card>
-          </StaggeredCard>
-
-          {/* UI Settings */}
-          <StaggeredCard index={3}>
-          <Card elevation={0} style={styles.card}>
-            <Card.Title title={l10n.settings.appSettings} />
-            <Card.Content>
-              <View style={styles.settingItemContainer}>
-                {/* Language Selection */}
-                <View style={styles.switchContainer}>
-                  <View style={styles.textContainer}>
-                    <View style={styles.labelWithIconContainer}>
-                      <GlobeIcon
-                        width={20}
-                        height={20}
-                        style={styles.settingIcon}
-                        stroke={theme.colors.onSurface}
-                      />
-                      <Text variant="titleMedium" style={styles.textLabel}>
-                        {l10n.settings.language}
-                      </Text>
-                    </View>
-                  </View>
-                  <LanguageSelector />
-                </View>
-                <Divider />
-
-                {/* Dark Mode */}
-                <View style={styles.switchContainer}>
-                  <View style={styles.textContainer}>
-                    <View style={styles.labelWithIconContainer}>
-                      <MoonIcon
-                        width={20}
-                        height={20}
-                        style={styles.settingIcon}
-                        stroke={theme.colors.onSurface}
-                      />
-                      <Text variant="titleMedium" style={styles.textLabel}>
-                        {l10n.settings.darkMode}
-                      </Text>
-                    </View>
-                  </View>
-                  <Switch
-                    testID="dark-mode-switch"
-                    value={uiStore.colorScheme === 'dark'}
-                    onValueChange={value =>
-                      uiStore.setColorScheme(value ? 'dark' : 'light')
-                    }
-                  />
-                </View>
-                <Divider />
-
-                {/* Text-to-speech availability toggle */}
-                <View style={styles.switchContainer}>
-                  <View style={styles.textContainer}>
-                    <View style={styles.labelWithIconContainer}>
-                      <VolumeOnIcon
-                        width={20}
-                        height={20}
-                        style={styles.settingIcon}
-                        stroke={theme.colors.onSurface}
-                      />
-                      <Text variant="titleMedium" style={styles.textLabel}>
-                        {l10n.settings.ttsAvailability}
-                      </Text>
-                    </View>
-                    <Text variant="labelSmall" style={styles.textDescription}>
-                      {l10n.settings.ttsAvailabilityDescription}
-                    </Text>
-                    {!ttsStore.deviceMeetsMemory && (
-                      <Text variant="labelSmall" style={styles.textDescription}>
-                        {l10n.settings.ttsAvailabilityLowMemoryWarning}
-                      </Text>
-                    )}
-                  </View>
-                  <Switch
-                    testID="tts-availability-switch"
-                    value={
-                      ttsStore.userTTSOverride ?? ttsStore.deviceMeetsMemory
-                    }
-                    onValueChange={value => ttsStore.setUserTTSOverride(value)}
-                  />
-                </View>
-
-                {/* Display Memory Usage (iOS only) */}
-                {Platform.OS === 'ios' && (
-                  <>
-                    <Divider />
-                    <View style={styles.switchContainer}>
-                      <View style={styles.textContainer}>
-                        <View style={styles.labelWithIconContainer}>
-                          <CpuChipIcon
-                            width={20}
-                            height={20}
-                            style={styles.settingIcon}
-                            stroke={theme.colors.onSurface}
-                          />
-                          <Text variant="titleMedium" style={styles.textLabel}>
-                            {l10n.settings.displayMemoryUsage}
-                          </Text>
-                        </View>
-                        <Text
-                          variant="labelSmall"
-                          style={styles.textDescription}>
-                          {l10n.settings.displayMemoryUsageDescription}
-                        </Text>
-                      </View>
-                      <Switch
-                        testID="display-memory-usage-switch"
-                        value={uiStore.displayMemUsage}
-                        onValueChange={value =>
-                          uiStore.setDisplayMemUsage(value)
-                        }
-                      />
-                    </View>
-                  </>
-                )}
-
-                {/* P4 自检修正：重要回复跑两遍（生成→自检→修正） */}
-                <Divider />
-                <View style={styles.switchContainer}>
-                  <View style={styles.textContainer}>
-                    <Text variant="titleMedium" style={styles.textLabel}>
-                      自检修正
-                    </Text>
-                    <Text variant="labelSmall" style={styles.textDescription}>
-                      开启后重要回复会跑两遍（生成→自检→修正），更稳但更慢
-                    </Text>
-                  </View>
-                  <Switch
-                    testID="self-check-switch"
-                    value={uiStore.selfCheckEnabled}
-                    onValueChange={value => uiStore.setSelfCheckEnabled(value)}
                   />
                 </View>
               </View>

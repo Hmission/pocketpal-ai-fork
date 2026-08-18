@@ -34,9 +34,18 @@ export class UIStore {
   // This is a flag to auto-navigate to the chat page after loading a model
   autoNavigatetoChat = true;
 
-  //colorScheme = useColorScheme();
-  colorScheme: 'light' | 'dark' =
+  // v3.8 修复：支持 'system' 模式 + Appearance 监听器跟随系统色彩
+  colorScheme: 'light' | 'dark' | 'system' = 'system';
+  // 系统当前色彩（由 Appearance.addEventListener 实时更新）
+  _systemColorScheme: 'light' | 'dark' =
     Appearance.getColorScheme() === 'dark' ? 'dark' : 'light';
+
+  /** 计算：'system' 模式解析为实际 light/dark */
+  get resolvedColorScheme(): 'light' | 'dark' {
+    return this.colorScheme === 'system'
+      ? this._systemColorScheme
+      : this.colorScheme;
+  }
 
   // Current selected language (default to Chinese; user can switch in settings)
   _language: AvailableLanguage = 'zh';
@@ -132,6 +141,16 @@ export class UIStore {
 
     // backwards compatibility. Removed this from the ui settings screen.
     this.iOSBackgroundDownloading = true;
+
+    // v3.8：监听系统色彩变化，'system' 模式实时跟随（RN 0.82 API）
+    Appearance.addChangeListener(({colorScheme: newScheme}) => {
+      if (!newScheme || newScheme === 'unspecified') {
+        return;
+      }
+      runInAction(() => {
+        this._systemColorScheme = newScheme;
+      });
+    });
   }
 
   setValue<T extends keyof typeof this.pageStates>(
@@ -148,7 +167,7 @@ export class UIStore {
     });
   }
 
-  setColorScheme(colorScheme: 'light' | 'dark') {
+  setColorScheme(colorScheme: 'light' | 'dark' | 'system') {
     runInAction(() => {
       this.colorScheme = colorScheme;
     });

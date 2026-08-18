@@ -4,7 +4,8 @@ import {Theme} from '../../../utils/types';
 import {uiStore} from '../../../store';
 
 export const createStyles = (theme: Theme) => {
-  const isDark = uiStore.colorScheme === 'dark';
+  // v3.8：使用 resolvedColorScheme（'system' 模式解析为实际 light/dark）
+  const isDark = uiStore.resolvedColorScheme === 'dark';
 
   return StyleSheet.create({
     fab: {

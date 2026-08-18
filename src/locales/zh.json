@@ -191,7 +191,10 @@
       "consentRevoke": "撤销"
     },
     "languageSheetTitle": "语言",
-    "languageSearchPlaceholder": "搜索语言"
+    "languageSearchPlaceholder": "搜索语言",
+    "lightMode": "浅色",
+    "systemMode": "跟随系统",
+    "colorScheme": "色彩模式"
   },
   "memory": {
     "shortWarning": "内存警告",
@@ -980,7 +983,8 @@
         "tool": "工具配置",
         "imageGen": "生图",
         "generationSettings": "生成设置",
-        "modelDirs": "模型目录"
+        "modelDirs": "模型目录",
+        "systemSettings": "系统设置"
       },
       "searchPlaceholder": "搜索对话",
       "newChat": "新对话",

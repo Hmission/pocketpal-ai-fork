@@ -7,6 +7,7 @@ export const ROUTES = {
   BENCHMARK: 'Benchmark',
   SETTINGS: 'Settings',
   GENERATION_SETTINGS: 'GenerationSettings',
+  SYSTEM_SETTINGS: 'SystemSettings',
   APP_INFO: 'App Info',
   MEMORY: 'Memory',
   KNOWLEDGE: 'Knowledge',

@@ -5,6 +5,8 @@ import {modelStore, chatSessionStore} from '../../store';
 import {engineStatus} from '../../store/engineStatus';
 import {getLastWriteTime} from '../../services/aiosMemory/conversationLog';
 import {getLastRecallInfo} from '../../services/aiosMemory/contextAssembler';
+import {getLastIntentInfo} from '../../services/aiosMemory/contextAssembler';
+import {getLastExtractionCount} from '../../services/aiosMemory';
 import {getLastSentiment} from '../../services/aiosMemory/rituals';
 import {useTheme} from '../../hooks';
 import type {Theme} from '../../utils/types';
@@ -34,6 +36,21 @@ export const SessionStatusBar = observer(() => {
 
   const lastWrite = getLastWriteTime();
   const recallInfo = getLastRecallInfo();
+  // v3.8：记忆新增数 + 意图标签（记忆可见性）
+  const extractionCount = getLastExtractionCount();
+  const intent = getLastIntentInfo();
+  const INTENT_LABEL: Record<string, string> = {
+    chat: '闲聊',
+    vent: '倾诉',
+    qa: '问答',
+    task: '任务',
+  };
+  const INTENT_COLOR: Record<string, string> = {
+    chat: '#888',
+    vent: '#F44336',
+    qa: '#2196F3',
+    task: '#FF9800',
+  };
 
   // 模型归属信息已移入聊天流卡片标签，顶栏不再重复展示模型状态
 
@@ -83,6 +100,17 @@ export const SessionStatusBar = observer(() => {
         <Text style={styles.value}>{recallInfo.count}</Text>
       </TouchableOpacity>
 
+      {/* v3.8 记忆可见性：最近提取新增条数 */}
+      {extractionCount > 0 && (
+        <>
+          <Text style={styles.separator}>|</Text>
+          <View style={styles.section}>
+            <Text style={styles.label}>记忆</Text>
+            <Text style={[styles.value, {color: '#4CAF50'}]}>+{extractionCount}</Text>
+          </View>
+        </>
+      )}
+
       {/* 模型状态区已移入聊天流卡片归属标签（顶栏瘦身） */}
 
       {/* M7 情绪指示 */}
@@ -90,6 +118,14 @@ export const SessionStatusBar = observer(() => {
       <View style={styles.section}>
         <Text style={[styles.value, {color: sentimentColor}]}>
           {sentiment.label}
+        </Text>
+      </View>
+
+      {/* v3.8 意图标签：task/vent/qa/chat 四色区分 */}
+      <Text style={styles.separator}>|</Text>
+      <View style={styles.section}>
+        <Text style={[styles.value, {color: INTENT_COLOR[intent]}]}>
+          {INTENT_LABEL[intent]}
         </Text>
       </View>
 

@@ -57,6 +57,7 @@ import {
   ChatScreen,
   ModelsScreen,
   SettingsScreen,
+  SystemSettingsScreen,
   GenerationSettingsScreen,
   BenchmarkScreen,
   AboutScreen,
@@ -183,6 +184,13 @@ const AppDrawer: React.FC = () => {
           headerStyle: styles.headerWithoutDivider,
           title:
             currentL10n.components.sidebarContent.menuItems.generationSettings,
+        }}
+      />
+      <Drawer.Screen
+        name={ROUTES.SYSTEM_SETTINGS}
+        component={gestureHandlerRootHOC(SystemSettingsScreen)}
+        options={{
+          headerShown: false,
         }}
       />
       <Drawer.Screen

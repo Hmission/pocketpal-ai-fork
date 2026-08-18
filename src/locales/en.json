@@ -191,7 +191,10 @@
     "removeRemoteModel": "Remove {{modelName}} ({{serverName}})?",
     "retryConnection": "Retry",
     "enterUrlManually": "Enter URL manually",
-    "manageServers": "Manage Servers"
+    "manageServers": "Manage Servers",
+    "lightMode": "Light",
+    "systemMode": "System",
+    "colorScheme": "Color Scheme"
   },
   "memory": {
     "shortWarning": "Memory Warning",
@@ -998,7 +1001,8 @@
         "tool": "Tools",
         "imageGen": "Image Gen",
         "generationSettings": "Generation Settings",
-        "modelDirs": "Model Folders"
+        "modelDirs": "Model Folders",
+        "systemSettings": "System Settings"
       },
       "searchPlaceholder": "Search chats",
       "newChat": "New chat",

@@ -8,7 +8,11 @@ export class UIStore {
 }
 
 export const mockUiStore = {
-  colorScheme: 'light',
+  colorScheme: 'system',
+  // v3.8：resolvedColorScheme 供 useTheme 消费
+  get resolvedColorScheme(): 'light' | 'dark' {
+    return this.colorScheme === 'dark' ? 'dark' : 'light';
+  },
   autoNavigatetoChat: false,
   benchmarkShareDialog: {
     shouldShow: true,
@@ -29,6 +33,8 @@ export const mockUiStore = {
   setAutoNavigateToChat: jest.fn(),
   setColorScheme: jest.fn(),
   setDisplayMemUsage: jest.fn(),
+  selfCheckEnabled: false,
+  setSelfCheckEnabled: jest.fn(),
   setBenchmarkShareDialogPreference: jest.fn(),
   showError: jest.fn(),
   setChatWarning: jest.fn(),

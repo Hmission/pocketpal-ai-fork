@@ -165,6 +165,15 @@ export const SettingsScreen: React.FC = () => {
             onPress={navigateTo(ROUTES.GENERATION_SETTINGS)}
           />
           <Row
+            testID="settings-item-system-settings"
+            title={menuItems.systemSettings}
+            Icon={SettingsIcon}
+            color={theme.colors.secondary}
+            styles={styles}
+            chevronColor={theme.colors.onSurfaceVariant}
+            onPress={navigateTo(ROUTES.SYSTEM_SETTINGS)}
+          />
+          <Row
             testID="settings-item-appinfo"
             title={menuItems.appInfo}
             Icon={AppInfoIcon}

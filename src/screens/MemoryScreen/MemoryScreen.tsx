@@ -46,14 +46,36 @@ const StaggeredMemoryRow = ({
 }) => {
   const l10n = React.useContext(L10nContext);
   const entry = useStaggerEntry(index);
+  const superseded = !!item.supersededBy;
+  // v3.8 记忆可见性：属性槽友好标签（偏好/讨厌/在做/身份/位置）
+  const slotLabel = item.attrSlot
+    ? {
+        preference: '偏好',
+        dislike: '讨厌',
+        activity: '在做',
+        identity: '身份',
+        location: '位置',
+      }[item.attrSlot] ?? item.attrSlot
+    : null;
   return (
     <Animated.View style={entry}>
       <List.Item
         title={item.content}
-        description={`${item.type} · ${new Date(item.ts).toLocaleString()}`}
+        titleStyle={superseded ? styles.supersededTitle : undefined}
+        description={`${item.type}${slotLabel ? ` · ${slotLabel}` : ''} · ${new Date(
+          item.ts,
+        ).toLocaleString()}${superseded ? ' · 已被替代' : ''}`}
+        descriptionStyle={superseded ? styles.supersededDesc : undefined}
         left={() => (
           <View
-            style={[styles.typeBadge, {backgroundColor: typeColor(item.type)}]}>
+            style={[
+              styles.typeBadge,
+              {
+                backgroundColor: superseded
+                  ? themeColourForSuperseded()
+                  : typeColor(item.type),
+              },
+            ]}>
             <Text style={styles.typeText}>{item.type[0].toUpperCase()}</Text>
           </View>
         )}
@@ -78,6 +100,11 @@ const StaggeredMemoryRow = ({
     </Animated.View>
   );
 };
+
+/** v3.8：被替代记忆的徽章色（灰） */
+function themeColourForSuperseded(): string {
+  return '#9E9E9E';
+}
 
 export function MemoryScreen({navigation}: any) {
   const theme = useTheme();
@@ -316,6 +343,14 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     listItem: {paddingVertical: theme.spacing.xs},
+    // v3.8 记忆可见性：被替代记忆灰显
+    supersededTitle: {
+      color: theme.colors.outlineVariant,
+      textDecorationLine: 'line-through',
+    },
+    supersededDesc: {
+      color: theme.colors.outlineVariant,
+    },
     typeBadge: {
       width: 36,
       height: 36,

@@ -8,7 +8,7 @@ import {buildTheme} from '../utils/theme';
 /**
  * Consumes the active design-system Theme.
  *
- * Reads `uiStore.colorScheme` and `uiStore.language` (reactive inside an
+ * Reads `uiStore.resolvedColorScheme` and `uiStore.language` (reactive inside an
  * `observer`) and `usePaperTheme()`. The `usePaperTheme()` call is load-
  * bearing: it subscribes the consumer to Paper's ThemeContext, which is
  * the React-context path that re-renders NON-`observer` consumers (and
@@ -29,7 +29,8 @@ const themeCache = new WeakMap<MD3Theme, Map<string, Theme>>();
 
 export const useTheme = (): Theme => {
   const paperTheme = usePaperTheme<MD3Theme>();
-  const mode = uiStore.colorScheme;
+  // v3.8：使用 resolvedColorScheme（'system' 模式解析为实际 light/dark）
+  const mode = uiStore.resolvedColorScheme;
   const language = uiStore.language;
   const key = `${mode}:${language}`;
 

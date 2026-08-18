@@ -27,10 +27,17 @@ export interface AssembledContext {
 // Track last recall info for SessionStatusBar display
 let _lastRecallCount = 0;
 let _lastRecallPreview: string[] = [];
+// v3.8：最近一次意图分类（SessionStatusBar 意图标签）
+let _lastIntent: 'chat' | 'vent' | 'qa' | 'task' = 'chat';
 
 /** Get the last recall count for UI display. */
 export function getLastRecallInfo(): {count: number; preview: string[]} {
   return {count: _lastRecallCount, preview: _lastRecallPreview};
+}
+
+/** v3.8：最近一次意图分类（SessionStatusBar 展示用） */
+export function getLastIntentInfo(): 'chat' | 'vent' | 'qa' | 'task' {
+  return _lastIntent;
 }
 
 async function readFileSafe(path: string): Promise<string> {
@@ -75,6 +82,7 @@ export async function assembleContext(
   const memoryDoc = (await readFileSafe(AIOS_MEMORY_FILE)).slice(0, 2000);
   // 9-3 意图引导装填：classifyIntent 四态 → buildMemoryFragment 按意图选策略
   const intentKind = classifyIntent(currentUserText);
+  _lastIntent = intentKind; // v3.8：SessionStatusBar 意图标签
   const memoryFragment = await buildMemoryFragment(currentUserText, intentKind);
   // P4 仪式：开场状态（日期+上次摘要+昨日情绪）+ 意图语气（闲聊/倾诉/问答/任务）
   const todayState = recentMessageCount <= 2 ? await buildTodayState() : '';

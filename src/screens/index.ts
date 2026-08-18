@@ -9,6 +9,7 @@ export * from './ModelDirsScreen';
 export * from './ModelsScreen';
 export * from './PalsScreen';
 export * from './SettingsScreen';
+export * from './SystemSettingsScreen';
 export * from './ToolScreen';
 export * from './WorkspaceScreen';
 
