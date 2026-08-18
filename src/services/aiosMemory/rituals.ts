@@ -8,9 +8,18 @@
  * 4. 自检开关：uiStore 控制；开启时重要回复跑两遍（生成→自检→修正）
  */
 import * as RNFS from '@dr.pogodin/react-native-fs';
-import {AIOS_WORKSPACE_MEMORY_DIR} from '../../utils/paths';
+import {AIOS_WORKSPACE_MEMORY_DIR, AIOS_MEMORIES_DIR} from '../../utils/paths';
 import {readSummary} from './compaction';
 import {modelStore} from '../../store';
+
+// 情绪持久化文件（trackSentiment 落盘 → buildTodayState 读昨日情绪）
+const SENTIMENT_FILE = `${AIOS_MEMORIES_DIR}/sentiment.json`;
+
+interface SentimentRecord {
+  score: number;
+  label: string;
+  ts: string; // ISO date string (YYYY-MM-DD)
+}
 
 // ─── 1. 开场仪式 ─────────────────────────────────────────────
 /**
@@ -53,6 +62,11 @@ export async function buildTodayState(): Promise<string> {
     } else {
       parts.push('这是和女妖的首次对话。');
     }
+    // 情绪持久化：读昨日情绪，让女妖感知大王情绪延续
+    const lastSentiment = await readLastSentiment();
+    if (lastSentiment && lastSentiment.ts < dateStr) {
+      parts.push(`上次大王情绪：${lastSentiment.label}（${lastSentiment.score > 0 ? '积极' : lastSentiment.score < 0 ? '消极' : '平稳'}）`);
+    }
     parts.push('开场请自然问候大王（一两句即可，不必长篇）。');
     return parts.join('\n');
   } catch {
@@ -82,6 +96,29 @@ let _lastSentiment = 0;
 
 export function trackSentiment(userText: string): void {
   _lastSentiment = sentimentScore(userText);
+  // 情绪持久化：落盘到 sentiment.json（重启后 buildTodayState 可读昨日情绪）
+  const today = new Date().toISOString().slice(0, 10);
+  const record: SentimentRecord = {
+    score: _lastSentiment,
+    label: _lastSentiment > 0 ? '愉悦' : _lastSentiment < 0 ? '低落' : '平稳',
+    ts: today,
+  };
+  RNFS.writeFile(SENTIMENT_FILE, JSON.stringify(record), 'utf8').catch(() => {
+    // fire-and-forget，写入失败不影响主流程
+  });
+}
+
+/** 读取最近的情绪记录（供 buildTodayState 读取昨日情绪用） */
+async function readLastSentiment(): Promise<SentimentRecord | null> {
+  try {
+    if (await RNFS.exists(SENTIMENT_FILE)) {
+      const raw = await RNFS.readFile(SENTIMENT_FILE, 'utf8');
+      return JSON.parse(raw) as SentimentRecord;
+    }
+  } catch {
+    // ignore
+  }
+  return null;
 }
 
 /** 最近情绪（供 SessionStatusBar 等展示） */

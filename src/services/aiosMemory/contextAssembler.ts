@@ -15,7 +15,7 @@ import {
 } from '../../utils/paths';
 import {buildMemoryFragment} from './index';
 import {searchMemory} from './searchEngine';
-import {buildTodayState, intentGuidance, trackSentiment} from './rituals';
+import {buildTodayState, intentGuidance, trackSentiment, classifyIntent} from './rituals';
 
 export interface AssembledContext {
   systemPrompt: string;
@@ -73,8 +73,10 @@ export async function assembleContext(
   const user = await readFileSafe(AIOS_USER_FILE);
   const agents = await readFileSafe(AIOS_AGENTS_FILE);
   const memoryDoc = (await readFileSafe(AIOS_MEMORY_FILE)).slice(0, 2000);
-  const memoryFragment = await buildMemoryFragment(currentUserText);
-  // P4 仪式：开场状态（日期+上次摘要）+ 意图语气（闲聊/倾诉/问答/任务）
+  // 9-3 意图引导装填：classifyIntent 四态 → buildMemoryFragment 按意图选策略
+  const intentKind = classifyIntent(currentUserText);
+  const memoryFragment = await buildMemoryFragment(currentUserText, intentKind);
+  // P4 仪式：开场状态（日期+上次摘要+昨日情绪）+ 意图语气（闲聊/倾诉/问答/任务）
   const todayState = recentMessageCount <= 2 ? await buildTodayState() : '';
   const intent = intentGuidance(currentUserText);
   // M7 情绪：跟踪大王输入情绪，供状态展示

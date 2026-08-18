@@ -11,6 +11,7 @@ import * as RNFS from '@dr.pogodin/react-native-fs';
 import {AIOS_MEMORIES_DIR, AIOS_CONVERSATIONS_DIR, AIOS_USER_FILE} from '../../utils/paths';
 import {modelStore} from '../../store';
 import {promptWriter} from '../promptWriter';
+import type {IntentKind} from './rituals';
 
 export interface AiosMemory {
   id: string;
@@ -18,11 +19,37 @@ export interface AiosMemory {
   content: string;
   keywords?: string[];
   ts: number;
+  /** 9D 轻量裁决：属性槽（fact 专属，规则提取，用于同属性新替旧） */
+  attrSlot?: string;
+  /** 9D 轻量裁决：被更新版本替代时记录新条目 id（supersede 链） */
+  supersededBy?: string;
 }
 
 const FILE = `${AIOS_MEMORIES_DIR}/aios_memories.json`;
 const MAX_MEMORIES = 200;
 const INJECT_COUNT = 8;
+/** 9D 裁决：episode 30 天 TTL（事实永存、事件淡忘） */
+const EPISODE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+/**
+ * 9D 轻量裁决——属性槽句法提取（规则化，4B 模型友好）。
+ * 同属性的新 fact 到来时，旧 fact 标记 supersededBy，实现 supersede 链。
+ * 例：「最喜欢杭州」→ slot=preference；改口「最喜欢上海」→ 旧条 supersede。
+ */
+export function extractAttrSlot(content: string): string | undefined {
+  const c = content.trim();
+  // 偏好类
+  if (/喜欢|爱|偏好|最爱|最喜欢|钟爱/.test(c)) return 'preference';
+  // 讨厌类
+  if (/讨厌|不喜欢|反感|受不了/.test(c)) return 'dislike';
+  // 正在做的事
+  if (/在学|在做|在玩|在写|在读|在研究/.test(c)) return 'activity';
+  // 身份
+  if (/(?:^|是)一个|职业|身份|工作是|是一名/.test(c)) return 'identity';
+  // 位置
+  if (/住在|住在|家在|城市|通勤|上班/.test(c)) return 'location';
+  return undefined;
+}
 
 let cache: AiosMemory[] | null = null;
 let extracting = false;
@@ -30,7 +57,7 @@ let extracting = false;
 // \u5bf9\u8bdd\u65e5\u5fd7\u8bed\u6599\u7f13\u5b58\uff08dateStr \u2192 content\uff09
 let conversationCache: Map<string, string> = new Map();
 
-async function load(): Promise<AiosMemory[]> {
+export async function load(): Promise<AiosMemory[]> {
   if (cache) {
     return cache;
   }
@@ -48,7 +75,7 @@ async function load(): Promise<AiosMemory[]> {
   return cache!;
 }
 
-async function save(memories: AiosMemory[]): Promise<void> {
+export async function save(memories: AiosMemory[]): Promise<void> {
   cache = memories.slice(-MAX_MEMORIES);
   try {
     await RNFS.writeFile(FILE, JSON.stringify(cache, null, 1), 'utf8');
@@ -105,15 +132,38 @@ export async function addMemory(
   if (memories.some(m => m.content === trimmed)) {
     return;
   }
+  const newId = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+  // 9D 轻量裁决：fact 类型提取属性槽，同属性新替旧（supersede 链）
+  let attrSlot: string | undefined;
+  if (type === 'fact') {
+    attrSlot = extractAttrSlot(trimmed);
+    if (attrSlot) {
+      // 同属性槽且未被替代过的旧 fact，标记为 supersededBy
+      for (const m of memories) {
+        if (
+          m.type === 'fact' &&
+          m.attrSlot === attrSlot &&
+          !m.supersededBy
+        ) {
+          m.supersededBy = newId;
+        }
+      }
+    }
+  }
   memories.push({
-    id: `${Date.now()}-${Math.floor(Math.random() * 1e6)}`,
+    id: newId,
     type,
     content: trimmed.slice(0, 200),
     keywords: generateKeywords(trimmed),
     ts: Date.now(),
+    ...(attrSlot ? {attrSlot} : {}),
   });
   await save(memories);
-  console.log('[aiosMemory] \u8bb0\u4f4f\u4e86:', trimmed.slice(0, 40));
+  console.log(
+    '[aiosMemory] 记住了:',
+    trimmed.slice(0, 40),
+    attrSlot ? `(slot=${attrSlot})` : '',
+  );
 }
 
 export async function deleteMemory(id: string): Promise<void> {
@@ -154,14 +204,15 @@ export async function getMemoriesFileSize(): Promise<number> {
 export async function refreshUserMd(): Promise<void> {
   try {
     const memories = await load();
-    const facts = memories.filter(m => m.type === 'fact');
+    // 9D 裁决：只聚合 supersede 链尾（未被替代的 fact），画像不自相矛盾
+    const facts = memories.filter(m => m.type === 'fact' && !m.supersededBy);
     if (facts.length === 0) {
       return; // Don't overwrite if no facts yet
     }
     const lines = facts.map(f => `- ${f.content}`);
     const content = `# 大王画像\n\n由记忆系统从 fact 类记忆自动聚合（${new Date().toLocaleString()}）\n\n${lines.join('\n')}\n`;
     await RNFS.writeFile(AIOS_USER_FILE, content, 'utf8');
-    console.log('[aiosMemory] USER.md refreshed with', facts.length, 'facts');
+    console.log('[aiosMemory] USER.md refreshed with', facts.length, 'facts (chain tails only)');
   } catch (e) {
     console.warn('[aiosMemory] refreshUserMd failed:', e);
   }
@@ -169,6 +220,11 @@ export async function refreshUserMd(): Promise<void> {
 
 export async function clearMemories(): Promise<void> {
   await save([]);
+}
+
+/** Testability: 重置模块缓存（测试间隔离用，生产代码不调用） */
+export function _invalidateCache(): void {
+  cache = null;
 }
 
 export async function listMemories(): Promise<AiosMemory[]> {
@@ -179,28 +235,55 @@ export async function listMemories(): Promise<AiosMemory[]> {
  * \u6784\u5efa\u6ce8\u5165 system prompt \u7684\u8bb0\u5fc6\u788e\u7247\uff08\u7531 useChatSession \u8c03\u7528\uff09\u3002
  * \u63a5\u6536\u5f53\u524d\u7528\u6237\u8f93\u5165\uff0c\u505a\u5173\u952e\u8bcd\u5339\u914d\u8fd4\u56de\u6700\u76f8\u5173\u7684 INJECT_COUNT \u6761\u8bb0\u5fc6\u3002
  */
-export async function buildMemoryFragment(userText?: string): Promise<string> {
+/**
+ * 意图引导装填（批次 9-3 · task_hint 式主动装填）
+ *
+ * 大王纲领：「用——治理好要用得上才有用」。
+ * 根据 classifyIntent 四态调整注入策略，注入量减半（8→≤4）但更相关。
+ */
+export async function buildMemoryFragment(
+  userText?: string,
+  intent?: IntentKind,
+): Promise<string> {
   try {
     const memories = await load();
     if (memories.length === 0) {
       return '';
     }
+    // 9D 裁决：过滤被替代的记忆（supersede 链尾才注入） + episode 30 天 TTL
+    const now = Date.now();
+    const visible = memories.filter(m => {
+      if (m.supersededBy) {
+        return false; // 已被新 fact 替代，不再注入
+      }
+      if (m.type === 'episode' && now - m.ts > EPISODE_TTL_MS) {
+        return false; // episode 30 天淡忘（事实永存、事件淡忘）
+      }
+      return true;
+    });
+    if (visible.length === 0) {
+      return '';
+    }
+    // 意图引导：注入量减半（8→4），按意图调整选择策略
+    const injectCount = intent ? Math.min(4, INJECT_COUNT) : INJECT_COUNT;
     let selected: AiosMemory[];
     if (userText && userText.trim()) {
-      const scored = memories
+      const scored = visible
         .map(m => ({m, score: scoreMatch(userText, m)}))
         .sort((a, b) => b.score - a.score);
-      const matched = scored.filter(s => s.score > 0).slice(0, INJECT_COUNT);
-      selected =
-        matched.length > 0
-          ? matched.map(s => s.m)
-          : memories.slice(-INJECT_COUNT);
+      const matched = scored.filter(s => s.score > 0).slice(0, injectCount);
+      if (matched.length > 0) {
+        selected = matched.map(s => s.m);
+      } else {
+        // 无关键词命中时，按意图选默认集
+        selected = selectByIntent(visible, intent, injectCount);
+      }
     } else {
-      selected = memories.slice(-INJECT_COUNT);
+      selected = selectByIntent(visible, intent, injectCount);
     }
     const lines = selected.map(m => `- [${m.type}] ${m.content}`);
     return lines.length
-      ? '\u3010\u4f60\u5bf9\u5927\u738b\u7684\u8bb0\u5fc6\u3011(\u76f8\u5173\u65f6\u81ea\u7136\u7528\u4e0a\uff0c\u522b\u5168\u90e8\u590d\u8ff0):\n' +
+      ? '【你对大王的记忆】(相关时自然用上，别全部复述):\n' +
           lines.join('\n')
       : '';
   } catch (e) {
@@ -209,10 +292,45 @@ export async function buildMemoryFragment(userText?: string): Promise<string> {
   }
 }
 
+/**
+ * 按意图选择默认记忆集（无关键词命中时的 fallback 策略）
+ * - task：fact 优先（大王属性/偏好/正在做的事）
+ * - vent：insight 优先（女妖对大王的感悟 + 关怀记忆）
+ * - qa/chat：最近 episode + fact 混合
+ */
+function selectByIntent(
+  visible: AiosMemory[],
+  intent: IntentKind | undefined,
+  count: number,
+): AiosMemory[] {
+  if (intent === 'task') {
+    // fact 优先，不足补充最近 episode
+    const facts = visible.filter(m => m.type === 'fact').slice(-count);
+    if (facts.length >= count) return facts;
+    const episodes = visible
+      .filter(m => m.type === 'episode')
+      .slice(-(count - facts.length));
+    return [...facts, ...episodes];
+  }
+  if (intent === 'vent') {
+    // insight 优先（女妖对大王的感悟），不足补充 fact
+    const insights = visible.filter(m => m.type === 'insight').slice(-count);
+    if (insights.length >= count) return insights;
+    const facts = visible
+      .filter(m => m.type === 'fact')
+      .slice(-(count - insights.length));
+    return [...insights, ...facts];
+  }
+  // qa / chat：最近混合
+  return visible.slice(-count);
+}
+
 // search logic moved to searchEngine.ts (spec: independent file)
 // FTS5 not available (WatermelonDB wraps SQLite), using pure JS full-text search
 export {searchMemory, updateConversationCache, initIndex} from './searchEngine';
 export {compactAndFlush, listSummaryDates, readSummary} from './compaction';
+export {governMemories, rotateOldLogs} from './governance';
+export type {GovernanceResult} from './governance';
 
 // ---- \u7a33\u5b9a\u62bd\u53d6\uff08grammar \u7ea6\u675f + \u5f3a\u8bed\u4e49\u8fc7\u6ee4\uff09----
 

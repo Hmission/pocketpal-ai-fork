@@ -17,6 +17,8 @@ import {
   clearMemories,
   updateMemoryContent,
   getMemoriesFileSize,
+  governMemories,
+  rotateOldLogs,
   AiosMemory,
 } from '../../services/aiosMemory';
 import {AIOS_MEMORIES_DIR} from '../../utils/paths';
@@ -85,6 +87,7 @@ export function MemoryScreen({navigation}: any) {
   const [fileSize, setFileSize] = React.useState(0);
   const [editing, setEditing] = React.useState<AiosMemory | null>(null);
   const [editText, setEditText] = React.useState('');
+  const [governing, setGoverning] = React.useState(false);
 
   const refresh = React.useCallback(async () => {
     setLoading(true);
@@ -118,6 +121,39 @@ export function MemoryScreen({navigation}: any) {
         },
       },
     ]);
+  };
+
+  const handleGovern = async () => {
+    Alert.alert(
+      '记忆治理',
+      '将调用本地模型对记忆进行蒸馏结构化（去重合并 + 精炼重写），\n治理后记忆条数会减少但更精准。\n同时清理 90 天前的旧对话日志。\n\n确认开始？',
+      [
+        {text: '取消', style: 'cancel'},
+        {
+          text: '治理',
+          onPress: async () => {
+            setGoverning(true);
+            try {
+              const rotated = await rotateOldLogs();
+              const result = await governMemories();
+              if (result.distilled) {
+                Alert.alert(
+                  '治理完成',
+                  `蒸馏：${result.before}→${result.after} 条\n日志轮转：删除 ${rotated} 个旧日志`,
+                );
+              } else {
+                Alert.alert('治理跳过', result.error || '无需治理');
+              }
+              refresh();
+            } catch (e) {
+              Alert.alert('治理失败', String(e));
+            } finally {
+              setGoverning(false);
+            }
+          },
+        },
+      ],
+    );
   };
 
   const handleClearAll = () => {
@@ -190,6 +226,12 @@ export function MemoryScreen({navigation}: any) {
               <Text style={styles.appbarTitle}>记忆管理</Text>
             </View>
           }
+        />
+        <Appbar.Action
+          icon="auto-fix"
+          onPress={handleGovern}
+          loading={governing}
+          disabled={governing}
         />
         <Appbar.Action icon="broom" onPress={handleClearAll} />
       </Appbar.Header>
