@@ -21,7 +21,8 @@ import type {Theme} from '../../utils/types';
  * - 召回片段预览 (current turn recalled fragments, expandable)
  * - 模型加载状态 + 内存占用
  */
-export const SessionStatusBar = observer(() => {
+export const SessionStatusBar = observer(
+  ({onTapContext}: {onTapContext?: () => void} = {}) => {
   const theme = useTheme();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
   const [expanded, setExpanded] = React.useState(false);
@@ -71,8 +72,12 @@ export const SessionStatusBar = observer(() => {
 
   return (
     <View style={styles.container}>
-      {/* Context usage + 剩余上下文 */}
-      <View style={styles.section}>
+      {/* Context usage + 剩余上下文（点按 → 生成设置页调每模型上下文） */}
+      <TouchableOpacity
+        style={styles.section}
+        onPress={onTapContext}
+        disabled={!onTapContext}
+        testID="status-bar-ctx">
         <View style={[styles.dot, {backgroundColor: contextColor}]} />
         <Text style={styles.label}>ctx</Text>
         <Text style={[styles.value, {color: contextColor}]}>
@@ -81,7 +86,7 @@ export const SessionStatusBar = observer(() => {
             ? ` · 余${Math.max(0, Math.round((nCtx - usedTokens) / 100) / 10)}k`
             : ''}
         </Text>
-      </View>
+      </TouchableOpacity>
 
       {/* Disk status */}
       <Text style={styles.separator}>|</Text>

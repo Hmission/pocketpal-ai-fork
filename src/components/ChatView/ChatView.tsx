@@ -17,7 +17,7 @@ import dayjs from 'dayjs';
 import {observer} from 'mobx-react';
 import calendar from 'dayjs/plugin/calendar';
 import {Snackbar} from 'react-native-paper';
-import {useIsFocused} from '@react-navigation/native';
+import {useIsFocused, useNavigation} from '@react-navigation/native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {
@@ -65,6 +65,7 @@ import {
   L10nContext,
 } from '../../utils';
 import {hasVideoCapability} from '../../utils/pal-capabilities';
+import {ROUTES} from '../../utils/navigationConstants';
 
 import {
   Message,
@@ -254,6 +255,7 @@ export const ChatView = observer(
     const styles = createStyles({theme});
     const insets = useSafeAreaInsets();
     const isFocused = useIsFocused();
+    const navigation = useNavigation<any>();
 
     // ============ REFS ============
     const animationRef = React.useRef(false);
@@ -886,6 +888,17 @@ export const ChatView = observer(
       chatSessionStore.agentUiState.pendingTalentNames;
     const isGeneratingToolCall = agentStatus === 'generating_tool_call';
 
+    // footer 重新生成按钮：复用长按菜单同一 handleTryAgain 完整能力链
+    //（回溯上一条用户消息 → 删除其后全部 → 重发）；仅 text/assistant_turn 生效。
+    const handleFooterRegenerate = React.useCallback(
+      (message: MessageType.Any) => {
+        if (message.type === 'text' || message.type === 'assistant_turn') {
+          handleTryAgain(message);
+        }
+      },
+      [handleTryAgain],
+    );
+
     // Render individual message
     const renderMessage = React.useCallback(
       ({item: message}: {item: MessageType.DerivedAny; index: number}) => {
@@ -925,6 +938,10 @@ export const ChatView = observer(
                 onMessageLongPress: handleMessageLongPress,
                 onMessagePress: handleMessagePress,
                 onPreviewDataFetched,
+                onRegenerate: handleFooterRegenerate,
+                // 与长按菜单 disabled 规则一致：agent 运行中 / 无激活模型
+                regenerateDisabled:
+                  isAgentActive || modelStore.activeModelId === undefined,
                 renderBubble,
                 renderCustomMessage,
                 renderFileMessage,
@@ -946,6 +963,8 @@ export const ChatView = observer(
         handleMessageLongPress,
         handleMessagePress,
         onPreviewDataFetched,
+        handleFooterRegenerate,
+        isAgentActive,
         renderBubble,
         renderCustomMessage,
         renderFileMessage,
@@ -955,7 +974,6 @@ export const ChatView = observer(
         size.width,
         usePreviewData,
         user.id,
-        isAgentActive,
         newestMessageId,
         activeRunPendingTalentNames,
         isGeneratingToolCall,
@@ -1175,7 +1193,12 @@ export const ChatView = observer(
           onLayout={onLayout}>
           {/* Header */}
           <View style={styles.headerWrapper}>
-            <ChatHeader onModelPickerPress={() => setIsPickerVisible(true)} />
+            <ChatHeader
+              onModelPickerPress={() => setIsPickerVisible(true)}
+              onTapContext={() =>
+                navigation.navigate(ROUTES.GENERATION_SETTINGS)
+              }
+            />
             {headerAccessory}
           </View>
 

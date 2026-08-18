@@ -15,6 +15,7 @@ import {useTheme} from '../../hooks';
 import {L10nContext} from '../../utils';
 import type {Theme} from '../../utils/types';
 import {LanguageSelector} from '../../components';
+import {deleteSharedDbSnapshot} from '../../utils/paths';
 import {
   VolumeOnIcon,
   CpuChipIcon,
@@ -130,6 +131,32 @@ export const SystemSettingsScreen: React.FC<{navigation?: any}> = observer(
                   onValueChange={value =>
                     uiStore.setSelfCheckEnabled(value)
                   }
+                />
+              </View>
+              <Divider />
+
+              {/* 卸载后保留聊天记录（共享存储快照开关）：
+                  关 = 停止导出 + 删除已有快照（用户主动清数据语义） */}
+              <View style={styles.settingItem}>
+                <View style={styles.labelWithIcon}>
+                  <View style={styles.textBlock}>
+                    <Text style={styles.textLabel}>
+                      {l10n.settings.persistUserData}
+                    </Text>
+                    <Text style={styles.textDescription}>
+                      {l10n.settings.persistUserDataDescription}
+                    </Text>
+                  </View>
+                </View>
+                <Switch
+                  testID="persist-user-data-switch"
+                  value={uiStore.persistUserData}
+                  onValueChange={value => {
+                    uiStore.setPersistUserData(value);
+                    if (!value) {
+                      deleteSharedDbSnapshot().catch(() => {});
+                    }
+                  }}
                 />
               </View>
 

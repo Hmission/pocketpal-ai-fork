@@ -16,7 +16,9 @@ import {
 import {chatSessionRepository} from '../repositories/ChatSessionRepository';
 import {defaultCompletionParams} from '../utils/completionSettingsVersions';
 import {derivedText} from '../utils/chat';
+import {scheduleDbSnapshot} from '../utils/paths';
 import {palStore} from './PalStore';
+import {uiStore} from './UIStore';
 import {deriveToolSchemas} from '../services/talents';
 import {AgentUiState, initialAgentUiState} from '../services/agent';
 
@@ -133,11 +135,13 @@ class ChatSessionStore {
   consecutiveFullFailures: number = 0;
   palLoadHintSeen: Set<string> = new Set();
 
-  // 任务模型选择会话偏好（SPEC §9.3）：write/code → 弹窗确认后记住的模型 id；
+  // 任务模型选择会话偏好（SPEC §9.3）：write/code/play → 弹窗确认后记住的模型 id；
   // '__current__' = 继续当前模型。会话级，不跨会话持久化（防臃肿）。
-  taskModelChoice: Record<'write' | 'code', string | null> = {
+  // play（P8 玩具工坊）：玩具匠复用 code 选型，偏好槽独立（弹窗文案区分）。
+  taskModelChoice: Record<'write' | 'code' | 'play', string | null> = {
     write: null,
     code: null,
+    play: null,
   };
 
   constructor() {
@@ -374,6 +378,7 @@ class ChatSessionStore {
   async deleteSession(id: string): Promise<void> {
     try {
       await chatSessionRepository.deleteSession(id);
+      this.scheduleSnapshot();
 
       if (id === this.activeSessionId) {
         this.resetActiveSession();
@@ -407,7 +412,7 @@ class ChatSessionStore {
       this.newChatThinkingOverride = undefined;
       this.newChatReasoningEffort = undefined;
       // 会话级任务模型偏好随新会话重置（SPEC §9.3）
-      this.taskModelChoice = {write: null, code: null};
+      this.taskModelChoice = {write: null, code: null, play: null};
       // Do not copy completion settings from session to global settings
       // Instead, preserve global settings as they are
       this.exitEditMode();
@@ -445,7 +450,7 @@ class ChatSessionStore {
   }
 
   /** 记录任务模型选择（SPEC §9.3 会话级记住）；null 清除 */
-  setTaskModelChoice(task: 'write' | 'code', modelId: string | null) {
+  setTaskModelChoice(task: 'write' | 'code' | 'play', modelId: string | null) {
     runInAction(() => {
       this.taskModelChoice[task] = modelId;
     });
@@ -468,7 +473,7 @@ class ChatSessionStore {
       this.newChatThinkingOverride = undefined;
       this.newChatReasoningEffort = undefined;
       // 会话级任务模型偏好随会话切换重置（SPEC §9.3）
-      this.taskModelChoice = {write: null, code: null};
+      this.taskModelChoice = {write: null, code: null, play: null};
       this.lastCompletionResult = this.hydrateCompletionSnapshot(session);
       this.dismissedBannerVariants = new Set();
       this.consecutiveFullFailures = 0;
@@ -547,6 +552,7 @@ class ChatSessionStore {
           message,
         );
         message.id = newMessage.id;
+        this.scheduleSnapshot();
 
         // Update local state
         await this.updateSessionTitle(session);
@@ -622,6 +628,7 @@ class ChatSessionStore {
         this.newChatPalId,
         birthSource,
       );
+      this.scheduleSnapshot();
 
       // Get the full session data
       const sessionData = await chatSessionRepository.getSessionById(
@@ -867,6 +874,7 @@ class ChatSessionStore {
     try {
       // Update in database
       await chatSessionRepository.updateMessage(id, update);
+      this.scheduleSnapshot();
 
       // Determine which session to update
       const targetSessionId = sessionId || this.activeSessionId;
@@ -1328,6 +1336,7 @@ class ChatSessionStore {
           for (const msg of messagesToRemove) {
             await chatSessionRepository.deleteMessage(msg.id);
           }
+          this.scheduleSnapshot();
 
           const updatedSession = await chatSessionRepository.getSessionById(
             this.activeSessionId,
@@ -1355,6 +1364,16 @@ class ChatSessionStore {
       return session?.activePalId;
     }
     return this.newChatPalId;
+  }
+
+  /**
+   * B14 快照刷新：用户数据写入后调度 debounce（10s）共享存储导出，
+   * 前台被杀时最多丢最近 10s 窗口。保留开关关闭时不调度。
+   */
+  private scheduleSnapshot(): void {
+    if (uiStore.persistUserData) {
+      scheduleDbSnapshot();
+    }
   }
 
   // Selection mode computed properties

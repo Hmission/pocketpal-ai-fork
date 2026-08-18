@@ -61,6 +61,8 @@
     "darkMode": "Tryb Ciemny",
     "displayMemoryUsage": "Wyświetl Zużycie Pamięci",
     "displayMemoryUsageDescription": "Wyświetl zużycie pamięci na stronie czatu.",
+    "persistUserData": "Zachowaj czaty po odinstalowaniu",
+    "persistUserDataDescription": "Czaty są automatycznie kopiowane do pamięci współdzielonej i przywracane po ponownej instalacji. Wyłączenie zatrzymuje kopie zapasowe i usuwa istniejące.",
     "exportOptions": "Opcje Eksportu",
     "exportLegacyChats": "Eksportuj Stare Czaty",
     "exportLegacyChatsDescription": "Skorzystaj z tej opcji, jeśli migracja nie powiodła się lub chcesz odzyskać stare sesje czatu.",
@@ -1606,5 +1608,12 @@
     "titleByPal": "{{name}} jest w trakcie pobierania",
     "titleByModel": "{{name}} jest w trakcie pobierania",
     "extraInProgress": "+{{count}} kolejnych w trakcie realizacji"
+  },
+  "errorReport": {
+    "copy": "Kopiuj raport błędu",
+    "close": "Zamknij",
+    "copiedSaved": "Skopiowano i zapisano w {path}",
+    "copiedFallback": "Skopiowano do schowka (zapis nie powiódł się)",
+    "chatTitle": "Błąd czatu"
   }
 }

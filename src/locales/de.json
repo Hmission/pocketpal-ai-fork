@@ -95,6 +95,8 @@
     "darkMode": "Dunkler Modus",
     "displayMemoryUsage": "Speichernutzung anzeigen",
     "displayMemoryUsageDescription": "Speichernutzung im Chat anzeigen.",
+    "persistUserData": "Chatverlauf nach Deinstallation behalten",
+    "persistUserDataDescription": "Chats werden automatisch in den gemeinsamen Speicher gesichert und nach einer Neuinstallation wiederhergestellt. Beim Ausschalten werden Sicherungen gestoppt und vorhandene gelöscht.",
     "exportOptions": "Export-Optionen",
     "exportLegacyChats": "Exportiere alte Chats",
     "exportLegacyChatsDescription": "Dies nutzen wenn Migration fehlgeschlagen ist oder alte Chats wiederhergestellt werden sollen.",
@@ -962,5 +964,12 @@
     "captureInterval": "Erfassungsinterval",
     "captureIntervalUnit": "ms",
     "world": "Welt"
+  },
+  "errorReport": {
+    "copy": "Fehlerbericht kopieren",
+    "close": "Schließen",
+    "copiedSaved": "Kopiert und gespeichert unter {path}",
+    "copiedFallback": "In Zwischenablage kopiert (Speichern fehlgeschlagen)",
+    "chatTitle": "Chat-Fehler"
   }
 }

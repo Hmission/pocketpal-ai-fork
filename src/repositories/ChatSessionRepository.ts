@@ -17,6 +17,7 @@ import {
   defaultCompletionParams,
   migrateCompletionSettings,
 } from '../utils/completionSettingsVersions';
+import {prepareSharedStorage} from '../utils/paths';
 
 // Default completion settings without prompt and stop
 const defaultCompletionSettings = {...defaultCompletionParams};
@@ -179,6 +180,7 @@ class ChatSessionRepository {
   // 等待 SQLite adapter 初始化完成（冷启动竞态根治）。WatermelonDB 的
   // JSI 查询不等待 `_initPromise`——数据库尚未打开时直接下发，偶发失败
   // 导致会话列表/消息水合不全（真机复现：冷启动后列表 9/12、0/12 波动）。
+  // 同时先 await 共享存储 bootstrap：卸载重装时快照恢复必须赶在首次建库前。
   private readyPromise: Promise<unknown> | null = null;
   ensureReady(): Promise<unknown> {
     if (!this.readyPromise) {
@@ -186,7 +188,9 @@ class ChatSessionRepository {
       const pending =
         adapter?.underlyingAdapter?.initializingPromise ??
         adapter?.initializingPromise;
-      this.readyPromise = Promise.resolve(pending);
+      this.readyPromise = prepareSharedStorage().then(() =>
+        Promise.resolve(pending),
+      );
     }
     return this.readyPromise;
   }

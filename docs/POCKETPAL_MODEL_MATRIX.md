@@ -69,6 +69,8 @@ relates: [POCKETPAL_DESIGN_SPEC]
 
 ## 6. 装机 SOP（备用机黄金标准核对 · 2026-08-14 定稿）
 
+> **测试员分发包（2026-08-18，开发者预览版）**：仓库根 `pocketchick-preset-models-*.zip`（store 模式，内含 `models/` 14 件 + `dreamlite/` 6 文件 + TESTER_GUIDE.md），清单与本文件 §1/§2 入选名单逐一同步；解压落 `/sdcard/Documents/AIOS/{models,dreamlite}/`。淘汰件禁入包内（门禁同推送规则）。
+>
 > **电脑端模型源（2026-08-15 定稿）**：装机/补推模型文件的唯一电脑端源 = `F:\Cursor\OneTakeMVP\models\pocketpal_hf\`（HF 缓存目录，`author__repo` 结构）。
 >
 > | 模型 | 源路径 |

@@ -22,7 +22,7 @@ interface ResultPreviewProps {
   pageW: number;
   /** 0 页编辑槽来源图路径 */
   editSource: string | null;
-  /** 生成历史（≥1 页） */
+  /** 任务历史（≥1 页：running/success/failed 三态） */
   history: GeneratedImage[];
   generating: boolean;
   /** 首屏已定位（编排层持有 bootedRef，页面切换保留状态） */
@@ -52,12 +52,22 @@ interface ResultPreviewProps {
   onSave: () => void;
   onReroll: () => void;
   onDelete: () => void;
+  /** 失败任务页：一键复制完整报错（复制+落盘 AIOS/logs） */
+  onCopyError: (item: GeneratedImage) => void;
+  /** 失败任务页：同参数重试 */
+  onRetryTask: (item: GeneratedImage) => void;
+  /** 失败任务页：删除该任务条目 */
+  onDeleteTask: (item: GeneratedImage) => void;
 }
 
 /**
- * ResultPreview — ①结果区：横向分页 [0页编辑槽] + 历史图；生成进度 overlay 与
- * toast 叠在预览区；当前图操作条 + 参数水印；全屏查看 Modal。
- * 只读 props 渲染，翻页/回填等逻辑由编排层 onMomentumEnd 注入。
+ * ResultPreview — ①结果区：横向分页 [0页编辑槽] + 任务页（三态）。
+ *
+ * 任务化（2026-08 开发者预览版）：每次生成/编辑 = 一个持久化任务条目：
+ *  - running：空白预览页 + 进度卡（不再叠在旧图上）
+ *  - success：回填图片 + 信息条 + 操作条
+ *  - failed：报错页保留（摘要 + 一键复制完整报错 + 重试/删除）
+ * 编辑态动效例外：仍半透明叠在当前图上（图上可见编辑过程）。
  */
 export const ResultPreview: React.FC<ResultPreviewProps> = ({
   previewRef,
@@ -88,14 +98,17 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
   onSave,
   onReroll,
   onDelete,
+  onCopyError,
+  onRetryTask,
+  onDeleteTask,
 }) => {
   const theme = useTheme();
   const s = createStyles(theme);
 
-  // 生成/编辑动效 overlay：浅色圆角（与卡片设计语言统一）；出图=盖住预览区；编辑=半透明叠在当前图上（图可见）
-  const genOverlay = generating ? (
-    <View style={[s.genOverlay, taskKind === 'edit' ? s.genOverlayEdit : null]}>
-      {/* 三点波浪呼吸（替代旧圆形 orb 缩放） */}
+  // 进度卡内容（running 任务页与编辑态 overlay 共用）
+  const progressBody = (title: string) => (
+    <>
+      {/* 三点波浪呼吸 */}
       <View style={s.genDotsRow}>
         {waveDots.map((dot, i) => (
           <Animated.View
@@ -120,9 +133,7 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
           />
         ))}
       </View>
-      <Text style={s.genOverlayTitle}>
-        {taskKind === 'edit' ? '正在编辑此图…' : '正在生成新图…'}
-      </Text>
+      <Text style={s.genOverlayTitle}>{title}</Text>
       <View style={[s.progressTrack, s.progressTrackW70]}>
         <View
           style={[s.progressBarFill, {width: `${Math.max(progress, 2)}%`}]}
@@ -141,50 +152,116 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
           ▸ {stage}
         </Text>
       ) : null}
-    </View>
-  ) : null;
+    </>
+  );
+
+  // 编辑态动效：半透明叠在当前图上（图可见）——仅编辑保留 overlay 语义；
+  // 出图进度归 running 任务页（空白页），不再叠在旧图上。
+  const editOverlay =
+    generating && taskKind === 'edit' ? (
+      <View style={[s.genOverlay, s.genOverlayEdit]}>
+        {progressBody('正在编辑此图…')}
+      </View>
+    ) : null;
 
   /** FlatList 懒加载分页：只挂载可视页附近（windowSize），避免 50 张全尺寸大图
    *  同时解码导致渲染管线堵塞（HWUI 解码过载 → 全页图片空白）。 */
-  const renderItem = ({item}: {item: GeneratedImage}) => (
-    <View style={{width: pageW}}>
-      <TouchableOpacity onPress={onOpenFullscreen}>
-        <Image
-          source={{uri: item.uri}}
-          style={[s.preview, {width: pageW}]}
-          resizeMode="contain"
-        />
-      </TouchableOpacity>
-      {/* 信息条压在预览图顶部：模型 · 耗时 · 分辨率（DESIGN_SPEC B1 同波定稿） */}
-      {item.kind !== 'upload' ? (
-        <View style={s.infoOverlay} pointerEvents="none">
-          <Text style={s.infoOverlayText} numberOfLines={1}>
-            {[
-              item.modelLabel,
-              item.durationMs != null
-                ? `${(item.durationMs / 1000).toFixed(1)}s`
-                : null,
-              `${item.width}×${item.height}`,
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-          </Text>
+  const renderItem = ({item}: {item: GeneratedImage}) => {
+    const status = item.status ?? 'success';
+
+    // running：空白预览页 + 进度卡
+    if (status === 'running') {
+      return (
+        <View style={{width: pageW}}>
+          <View style={[s.taskPage, {width: pageW}]}>
+            {progressBody(
+              taskKind === 'edit' ? '正在编辑此图…' : '正在生成新图…',
+            )}
+          </View>
         </View>
-      ) : (
-        <View style={s.infoOverlay} pointerEvents="none">
-          <Text style={s.infoOverlayText} numberOfLines={1}>
-            {`上传图 · ${item.width}×${item.height}`}
-          </Text>
+      );
+    }
+
+    // failed：报错页保留（摘要 + 一键复制完整报错 + 重试/删除）
+    if (status === 'failed') {
+      return (
+        <View style={{width: pageW}}>
+          <View style={[s.taskPage, {width: pageW}]} testID="imagegen-failed-page">
+            <Text style={s.failedIcon}>⚠</Text>
+            <Text style={s.failedTitle}>生成失败</Text>
+            <Text style={s.failedSummary} numberOfLines={3}>
+              {item.errorSummary ?? '未知错误'}
+            </Text>
+            <View style={s.failedBtns}>
+              <TouchableOpacity
+                style={s.failedBtn}
+                onPress={() => onCopyError(item)}
+                testID="imagegen-copy-error">
+                <Text style={s.failedBtnText}>复制报错信息</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={s.failedBtnGhost}
+                onPress={() => onRetryTask(item)}
+                testID="imagegen-retry-task">
+                <Text style={s.failedBtnGhostText}>重试</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={s.failedBtnGhost}
+                onPress={() => onDeleteTask(item)}
+                testID="imagegen-delete-task">
+                <Text style={s.failedBtnGhostText}>删除</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
-      )}
-    </View>
-  );
+      );
+    }
+
+    // success：图片 + 信息条
+    return (
+      <View style={{width: pageW}}>
+        <TouchableOpacity onPress={onOpenFullscreen}>
+          <Image
+            source={{uri: item.uri}}
+            style={[s.preview, {width: pageW}]}
+            resizeMode="contain"
+          />
+        </TouchableOpacity>
+        {/* 信息条压在预览图顶部：模型 · 耗时 · 分辨率（DESIGN_SPEC B1 同波定稿） */}
+        {item.kind !== 'upload' ? (
+          <View style={s.infoOverlay} pointerEvents="none">
+            <Text style={s.infoOverlayText} numberOfLines={1}>
+              {[
+                item.modelLabel,
+                item.durationMs != null
+                  ? `${(item.durationMs / 1000).toFixed(1)}s`
+                  : null,
+                `${item.width}×${item.height}`,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </Text>
+          </View>
+        ) : (
+          <View style={s.infoOverlay} pointerEvents="none">
+            <Text style={s.infoOverlayText} numberOfLines={1}>
+              {`上传图 · ${item.width}×${item.height}`}
+            </Text>
+          </View>
+        )}
+      </View>
+    );
+  };
 
   const onMomentum = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     if (bootedRef.current) {
       onMomentumEnd(e);
     }
   };
+
+  // 操作条仅对成功图展示（失败页按钮在页内；running 页无操作）
+  const showActionRow =
+    !!currentImage && (currentItem?.status ?? 'success') === 'success';
 
   return (
     <>
@@ -199,7 +276,7 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
               horizontal
               pagingEnabled
               showsHorizontalScrollIndicator={false}
-              keyExtractor={item => item.uri}
+              keyExtractor={item => item.taskId ?? item.uri}
               getItemLayout={(_, index) => ({
                 length: pageW,
                 offset: pageW * (index + 1), // 0 页 = 编辑槽 header
@@ -245,7 +322,7 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
               renderItem={renderItem}
             />
           ) : null}
-          {genOverlay}
+          {editOverlay}
           {/* 轻量滚动信息条：保存/编辑等操作的即时反馈，不打断操作 */}
           {toast ? (
             <Animated.View
@@ -257,7 +334,7 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
             </Animated.View>
           ) : null}
         </View>
-        {currentImage && (
+        {showActionRow && (
           <>
             {/* 操作条定稿三按钮：保存/再次生成/删除；编辑唯一入口=ComposerPanel 底部 */}
             <View style={s.actionRow}>

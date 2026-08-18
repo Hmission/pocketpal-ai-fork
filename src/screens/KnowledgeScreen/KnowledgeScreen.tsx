@@ -13,6 +13,8 @@ import {
   readSummary,
 } from '../../services/aiosMemory/compaction';
 import {AIOS_MEMORY_FILE} from '../../utils/paths';
+import {listToys, readToy, ToyEntry} from '../../services/toyChest';
+import {HtmlPreviewBubble} from '../../components/HtmlPreviewBubble';
 import {useTheme, useStaggerEntry} from '../../hooks';
 import type {Theme} from '../../utils/types';
 import {IconTile, ListItem} from '../../components/ui';
@@ -20,9 +22,10 @@ import {
   GridIcon,
   MessageCircleMdIcon,
   PencilLineIcon,
+  PlayIcon,
 } from '../../assets/icons';
 
-type Tab = 'conversations' | 'summaries' | 'longterm';
+type Tab = 'conversations' | 'summaries' | 'longterm' | 'toys';
 
 // 列表行错峰入场（DESIGN_SPEC §5：一次性、不循环；JS driver）
 const StaggeredListItem = ({
@@ -64,6 +67,12 @@ export function KnowledgeScreen({navigation}: any) {
   const [content, setContent] = React.useState('');
   const [query, setQuery] = React.useState('');
   const [searchResults, setSearchResults] = React.useState<string[]>([]);
+  // 玩具箱（P8 玩具工坊，PLAY_SPEC）：render_html 成品清单 + 选中玩具
+  const [toys, setToys] = React.useState<ToyEntry[]>([]);
+  const [selectedToy, setSelectedToy] = React.useState<{
+    title: string;
+    html: string;
+  } | null>(null);
 
   const refresh = React.useCallback(async () => {
     try {
@@ -71,6 +80,7 @@ export function KnowledgeScreen({navigation}: any) {
       setDates(list);
       const slist = await listSummaryDates();
       setSummaryDates(slist);
+      setToys(await listToys());
     } catch (e) {
       console.warn('[KnowledgeScreen] refresh failed:', e);
     }
@@ -115,8 +125,16 @@ export function KnowledgeScreen({navigation}: any) {
     }
     setContent('');
     setSelectedDate(null);
+    setSelectedToy(null);
     const results = await searchMemory(query, 10);
     setSearchResults(results);
+  };
+
+  const openToy = async (toy: ToyEntry) => {
+    setSelectedDate(null);
+    setSearchResults([]);
+    const html = await readToy(toy.id);
+    setSelectedToy(html ? {title: toy.title, html} : null);
   };
 
   return (
@@ -182,10 +200,23 @@ export function KnowledgeScreen({navigation}: any) {
             长期记忆
           </Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, tab === 'toys' && styles.tabActive]}
+          onPress={() => {
+            setTab('toys');
+            setSelectedToy(null);
+            refresh();
+          }}>
+          <Text style={tab === 'toys' ? styles.tabTextActive : styles.tabText}>
+            玩具箱
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* Content area */}
-      {searchResults.length > 0 ? (
+      {selectedToy ? (
+        <HtmlPreviewBubble html={selectedToy.html} title={selectedToy.title} />
+      ) : searchResults.length > 0 ? (
         <FlatList
           data={searchResults}
           renderItem={({item}) => (
@@ -246,6 +277,29 @@ export function KnowledgeScreen({navigation}: any) {
             <Text style={styles.empty}>
               {summaryDates.length === 0
                 ? '暂无摘要。对话超过阈值后自动生成摘要。'
+                : ''}
+            </Text>
+          }
+        />
+      ) : tab === 'toys' ? (
+        <FlatList
+          data={toys}
+          renderItem={({item, index}) => (
+            <StaggeredListItem
+              index={index}
+              title={item.title}
+              subtitle={new Date(item.createdAt).toLocaleString()}
+              Icon={PlayIcon}
+              color={theme.colors.domain.knowledge}
+              onPress={() => openToy(item)}
+            />
+          )}
+          keyExtractor={item => item.id}
+          ItemSeparatorComponent={Divider}
+          ListEmptyComponent={
+            <Text style={styles.empty}>
+              {toys.length === 0
+                ? '玩具箱空空的。在聊天里说「做个玩具：贪吃蛇」让小鸡造一个吧！'
                 : ''}
             </Text>
           }

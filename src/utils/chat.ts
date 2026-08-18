@@ -40,6 +40,25 @@ export function derivedText(message: MessageType.Any): string {
 }
 
 /**
+ * 消息内容完成度判定（单一事实源）：
+ *  - legacy text：流式结束后写入 completionResult
+ *  - assistant_turn：无残留 partial step
+ * PlayButton 显示门控与 footer 复制/重新生成按钮共用本判定，
+ * 避免多处重复 hasFinalResult 逻辑。
+ */
+export function isFinalMessage(message: MessageType.Any): boolean {
+  if (message.type === 'assistant_turn') {
+    return !((message as MessageType.AssistantTurn).steps ?? []).some(
+      s => s.partial,
+    );
+  }
+  if (message.type === 'text') {
+    return !!message.metadata?.completionResult;
+  }
+  return false;
+}
+
+/**
  * Serialize an in-memory `AgentToolCall` into the wire shape llama.rn /
  * OpenAI accept. `function.arguments` is stored as a JSON-encoded
  * string throughout the runner; this just lifts it onto a ChatMessage.

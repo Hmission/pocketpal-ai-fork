@@ -23,10 +23,11 @@ export const createStyles = (theme: Theme) =>
       alignItems: 'center',
       gap: 8,
       paddingHorizontal: 10,
-      // 灰色治理（DESIGN_SPEC §1.8）：搜索框不再用 surfaceVariant，改 surface + 描边
+      // 灰色治理（DESIGN_SPEC §1.8）：搜索框不再用 surfaceVariant，改 surface + 描边；
+      // 描边提为 1px 实线（hairline 太弱看不清），聚焦态橙黄由组件内联覆盖
       borderRadius: theme.radius[theme.shapeRoles.inputSmall],
       backgroundColor: theme.colors.surface,
-      borderWidth: StyleSheet.hairlineWidth,
+      borderWidth: 1,
       borderColor: theme.colors.outline,
     },
     searchInput: {

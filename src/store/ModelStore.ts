@@ -182,6 +182,10 @@ class ModelStore {
   // Track initialization settings for the active context
   activeContextSettings: ContextInitParams | undefined = undefined;
 
+  // 每模型上下文长度覆盖（2026-08-18 大王裁定：n_ctx 每模型独立）。
+  // 全局 contextInitParams.n_ctx 作默认值；加载链按 modelId 取覆盖。
+  perModelNCtx: Record<string, number> = {};
+
   context: LlamaContext | undefined = undefined;
 
   engine: CompletionEngine | undefined = undefined;
@@ -248,6 +252,7 @@ class ModelStore {
         'rulesVersion',
         'useAutoRelease',
         'contextInitParams',
+        'perModelNCtx',
         'lastUsedModelId',
         'wasAutoReleased',
         'lastAutoReleasedModelId',
@@ -409,6 +414,17 @@ class ModelStore {
     });
   };
 
+  /** 每模型上下文覆盖写入（生成设置页活动模型行 / 聊天页入口共用） */
+  setModelNCtx = (modelId: string, n_ctx: number) => {
+    runInAction(() => {
+      this.perModelNCtx = {...this.perModelNCtx, [modelId]: n_ctx};
+    });
+  };
+
+  /** 生效 n_ctx：每模型覆盖优先，无覆盖回退全局默认 */
+  getModelNCtx = (modelId?: string | null): number =>
+    (modelId && this.perModelNCtx[modelId]) || this.contextInitParams.n_ctx;
+
   setNGPULayers = (n_gpu_layers: number) => {
     runInAction(() => {
       this.contextInitParams = {
@@ -460,9 +476,10 @@ class ModelStore {
    */
   getEffectiveContextInitParams = async (
     filePath?: string,
+    modelId?: string,
   ): Promise<Omit<ContextParams, 'model'>> => {
-    // Apply batch constraints
-    const effectiveContext = this.contextInitParams.n_ctx;
+    // Apply batch constraints（n_ctx 每模型独立：加载哪个模型取哪个覆盖）
+    const effectiveContext = this.getModelNCtx(modelId);
     const effectiveBatch = Math.min(
       this.contextInitParams.n_batch,
       effectiveContext,
@@ -1866,7 +1883,7 @@ class ModelStore {
     // Get all effective initialization settings BEFORE try block
     // so they're available for error reporting if initialization fails
     const effectiveSettings =
-      await this.getEffectiveContextInitParams(filePath);
+      await this.getEffectiveContextInitParams(filePath, model.id);
 
     try {
       // Create properly versioned ContextInitParams

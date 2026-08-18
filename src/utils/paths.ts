@@ -30,6 +30,8 @@ export const DEFAULT_MODELS_DIR =
 export const AIOS_WORKSPACE_DIR = `${AIOS_ROOT}/workspace`;
 export const AIOS_CONVERSATIONS_DIR = `${AIOS_WORKSPACE_DIR}/conversations`;
 export const AIOS_WORKSPACE_MEMORY_DIR = `${AIOS_WORKSPACE_DIR}/memory`;
+// 玩具箱（P8 玩具工坊，PLAY_SPEC）：render_html 成品存档库
+export const AIOS_TOYS_DIR = `${AIOS_WORKSPACE_DIR}/toys`;
 export const AIOS_SOUL_FILE = `${AIOS_WORKSPACE_DIR}/SOUL.md`;
 export const AIOS_USER_FILE = `${AIOS_WORKSPACE_DIR}/USER.md`;
 export const AIOS_AGENTS_FILE = `${AIOS_WORKSPACE_DIR}/AGENTS.md`;
@@ -83,6 +85,7 @@ export async function ensureAiosDirs(): Promise<void> {
     AIOS_WORKSPACE_DIR,
     AIOS_CONVERSATIONS_DIR,
     AIOS_WORKSPACE_MEMORY_DIR,
+    AIOS_TOYS_DIR,
   ];
   for (const d of dirs) {
     try {
@@ -97,13 +100,31 @@ export async function ensureAiosDirs(): Promise<void> {
 
 /**
  * B14 聊天记录快照机制（2026-08-15 事故修复）：
- * WatermelonDB JSI 的 SQLite 固定落应用私有目录（files/pocketpalai.db），
- * 卸载即删。快照方案：App 进后台时把私有库导出到共享存储
- * （/sdcard/Documents/AIOS/database/），启动时若私有库缺失（卸载重装）
- * 则从共享快照恢复。与模型目录同一持久化策略：仅用户主动清数据才丢。
+ * WatermelonDB SQLite 落应用私有目录，卸载即删。快照方案：写入后 debounce
+ * 把私有库导出到共享存储（/sdcard/Documents/AIOS/database/），启动时若私有库
+ * 缺失（卸载重装）则从共享快照恢复。与模型目录同一持久化策略：仅用户主动清数据才丢。
+ *
+ * 双模式路径兼容（2026-08-18 真机取证修正）：watermelondb native 用
+ * getDatabasePath(name).replace("/databases", "") → 实际落私有根目录
+ * /data/data/<pkg>/pocketpalai.db（JSI/async 两模式同路径，源码实证）；
+ * 保留 files/ 与 databases/ 候选作历史版本兼容。导出取先存在者；恢复多写。
  */
-const PRIVATE_DB = `${RNFS.DocumentDirectoryPath}/pocketpalai.db`;
+const PRIVATE_PKG_ROOT = RNFS.DocumentDirectoryPath.replace(/\/files$/, '');
+const PRIVATE_DB_CANDIDATES = [
+  `${PRIVATE_PKG_ROOT}/pocketpalai.db`,
+  `${RNFS.DocumentDirectoryPath}/pocketpalai.db`,
+  `${PRIVATE_PKG_ROOT}/databases/pocketpalai.db`,
+];
 const SHARED_DB = `${AIOS_DB_DIR}/pocketpalai.db`;
+
+async function findExistingDb(paths: string[]): Promise<string | null> {
+  for (const p of paths) {
+    if (await RNFS.exists(p)) {
+      return p;
+    }
+  }
+  return null;
+}
 
 async function copyDbWithSidecars(src: string, dst: string): Promise<void> {
   if (!(await RNFS.exists(src))) {
@@ -122,26 +143,30 @@ async function copyDbWithSidecars(src: string, dst: string): Promise<void> {
   }
 }
 
-/** 启动时：共享快照存在且私有库缺失 → 恢复（卸载重装找回聊天记录）。 */
+/** 启动时：共享快照存在且私有库双候选均缺失 → 恢复（卸载重装找回聊天记录）。 */
 export async function restoreDbSnapshot(): Promise<void> {
   try {
-    if (!(await RNFS.exists(SHARED_DB)) || (await RNFS.exists(PRIVATE_DB))) {
+    if (!(await RNFS.exists(SHARED_DB)) || (await findExistingDb(PRIVATE_DB_CANDIDATES))) {
       return;
     }
-    await copyDbWithSidecars(SHARED_DB, PRIVATE_DB);
+    // 双写：适配器当前模式未知（JSI/async），两个候选位置都恢复
+    for (const dst of PRIVATE_DB_CANDIDATES) {
+      await copyDbWithSidecars(SHARED_DB, dst);
+    }
     console.log('[paths] restored db from shared snapshot');
   } catch (e) {
     console.warn('[paths] restoreDbSnapshot failed:', e);
   }
 }
 
-/** 进后台/退出时：私有库 → 共享快照（卸载重装不丢）。 */
+/** 写入后 debounce / 进后台：私有库（双候选取先存在者）→ 共享快照。 */
 export async function exportDbSnapshot(): Promise<void> {
   try {
-    if (!(await RNFS.exists(PRIVATE_DB))) {
+    const src = await findExistingDb(PRIVATE_DB_CANDIDATES);
+    if (!src) {
       return;
     }
-    await copyDbWithSidecars(PRIVATE_DB, SHARED_DB);
+    await copyDbWithSidecars(src, SHARED_DB);
   } catch (e) {
     console.warn('[paths] exportDbSnapshot failed:', e);
   }
@@ -159,6 +184,52 @@ export async function migrateLegacyDbToShared(): Promise<void> {
     await exportDbSnapshot();
   } catch (e) {
     console.warn('[paths] migrateLegacyDbToShared failed:', e);
+  }
+}
+
+/**
+ * 共享存储 bootstrap（memoized 单门）：目录就绪 + 快照恢复 + 旧库迁移。
+ * 竞态根治：WatermelonDB 私有库首次打开前必须先 await 本 promise
+ *（ChatSessionRepository.ensureReady），否则空库先建会让
+ * restoreDbSnapshot 的「私有库缺失」条件失效，卸载重装丢聊天记录。
+ * 权限步骤（ensureStorageAccess）由 App.tsx 启动链在本门之前完成。
+ */
+let bootstrapPromise: Promise<void> | null = null;
+export function prepareSharedStorage(): Promise<void> {
+  if (!bootstrapPromise) {
+    bootstrapPromise = ensureAiosDirs()
+      .then(() => restoreDbSnapshot())
+      .then(() => migrateLegacyDbToShared());
+  }
+  return bootstrapPromise;
+}
+
+/**
+ * 节流快照导出（10s debounce）：消息写入后触发，避免每次写库都整库复制；
+ * 前台被杀时最多丢最近 10s 窗口（进后台导出仍保留为双保险）。
+ */
+let snapshotTimer: ReturnType<typeof setTimeout> | null = null;
+export function scheduleDbSnapshot(): void {
+  if (snapshotTimer) {
+    clearTimeout(snapshotTimer);
+  }
+  snapshotTimer = setTimeout(() => {
+    snapshotTimer = null;
+    exportDbSnapshot().catch(() => {});
+  }, 10000);
+}
+
+/** 用户关闭「卸载后保留聊天记录」：删除共享快照（仅用户主动清数据语义）。 */
+export async function deleteSharedDbSnapshot(): Promise<void> {
+  for (const ext of ['', '-wal', '-shm']) {
+    try {
+      const p = `${SHARED_DB}${ext}`;
+      if (await RNFS.exists(p)) {
+        await RNFS.unlink(p);
+      }
+    } catch (e) {
+      console.warn('[paths] deleteSharedDbSnapshot failed:', e);
+    }
   }
 }
 

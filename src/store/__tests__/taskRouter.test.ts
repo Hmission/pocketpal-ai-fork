@@ -84,6 +84,30 @@ describe('taskRouter', () => {
     });
   });
 
+  describe('play 任务（P8 玩具工坊，PLAY_SPEC v1）', () => {
+    it('快捷前缀「做个玩具：」命中且剥离前缀', () => {
+      const r = routeTask('做个玩具：贪吃蛇');
+      expect(r.task).toBe('play');
+      expect(r.payload).toBe('贪吃蛇');
+    });
+    it('「做个玩具：」后无内容不路由（无主体不造）', () => {
+      expect(routeTask('做个玩具：').task).toBe('chitchat');
+    });
+    it('自然语言「做个贪吃蛇」命中', () => {
+      expect(routeTask('做个贪吃蛇').task).toBe('play');
+    });
+    it('自然语言「来个小游戏」命中', () => {
+      expect(routeTask('来个小游戏玩').task).toBe('play');
+    });
+    it('防误伤：普通聊天含「游戏」话题不误判', () => {
+      // 缺动词（做个/来一个/想玩…），不应命中 play
+      expect(routeTask('昨晚打游戏太晚了').task).toBe('chitchat');
+    });
+    it('防误伤：写代码含「游戏」目标词不被 play 抢占（code 优先）', () => {
+      expect(routeTask('帮我写一个游戏的代码').task).toBe('code');
+    });
+  });
+
   describe('chitchat 兜底', () => {
     it('普通问候归为闲聊', () => {
       expect(routeTask('你好，今天过得怎么样').task).toBe('chitchat');

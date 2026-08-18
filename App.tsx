@@ -20,10 +20,8 @@ import {
 import {ttsStore, uiStore, modelStore} from './src/store';
 import {engineMutex} from './src/store/engineMutex';
 import {
-  ensureAiosDirs,
+  prepareSharedStorage,
   ensureWorkspaceFiles,
-  migrateLegacyDbToShared,
-  restoreDbSnapshot,
   exportDbSnapshot,
 } from './src/utils/paths';
 import {ensureStorageAccess} from './src/utils/androidPermission';
@@ -51,6 +49,7 @@ import {
 } from './src/components';
 import {MarkdownProvider} from './src/components/MarkdownView';
 import {ConfirmDialogHost} from './src/components/ui/ConfirmDialog';
+import {ErrorReportDialogHost} from './src/components/ui/ErrorReportDialog';
 import {ModelSwitchDialogHost} from './src/components/ui/ModelSwitchDialog';
 import {AutomationBridge, BenchmarkRunnerScreen} from './src/__automation__';
 import {
@@ -302,9 +301,10 @@ const App = observer(() => {
     ensureStorageAccess()
       .catch(() => {})
       .then(() =>
-        ensureAiosDirs()
-          .then(() => restoreDbSnapshot())
-          .then(() => migrateLegacyDbToShared())
+        // 共享存储 bootstrap 单门（目录就绪 + 快照恢复 + 旧库迁移，memoized）；
+        // DB 首查询经 ChatSessionRepository.ensureReady await 同一门，
+        // 保证卸载重装时快照恢复必先于建库（竞态根治）。
+        prepareSharedStorage()
           .then(() => ensureWorkspaceFiles())
           .then(() => {
             initIndex();
@@ -332,9 +332,13 @@ const App = observer(() => {
   }, []);
 
   // B14：进后台/退出时导出聊天记录快照到共享存储（卸载重装不丢）。
+  // 用户可在系统设置关闭保留（persistUserData=false 时不再导出）。
   React.useEffect(() => {
     const sub = AppState.addEventListener('change', state => {
-      if (state === 'background' || state === 'inactive') {
+      if (
+        (state === 'background' || state === 'inactive') &&
+        uiStore.persistUserData
+      ) {
         exportDbSnapshot().catch(() => {});
       }
     });
@@ -357,6 +361,7 @@ const App = observer(() => {
                     <DownloadOverlay />
                     <HubRunSheetHost />
                     <ConfirmDialogHost />
+                    <ErrorReportDialogHost />
                     <ModelSwitchDialogHost />
                   </BottomSheetModalProvider>
                 </NavigationContainer>

@@ -9,8 +9,9 @@
  *   image    → image 引擎（触发加载）
  *   write    → chat 大模型
  *   code     → chat 大模型
+ *   play     → chat 大模型（玩具匠：代码模型 + render_html 出可玩成品，PLAY_SPEC v1）
  */
-export type TaskKind = 'chitchat' | 'image' | 'write' | 'code';
+export type TaskKind = 'chitchat' | 'image' | 'write' | 'code' | 'play';
 
 export interface TaskSignal {
   task: TaskKind;
@@ -40,7 +41,8 @@ const CODE_RE =
 
 // 快捷前缀（P5 v2）：输入卡快捷按钮预填「图像生成：/图片编辑：」——显式意图引导。
 // 图像生成→image（payload 剥离前缀）；图片编辑无源图无法编辑，不在此路由（显式链路走 scheduler）。
-const QUICK_PREFIX_RE = /^(图像生成|图片编辑)[:：]\s*/;
+// 玩具工坊（P8 v1）：快捷按钮预填「做个玩具：」——玩法引导前后端对齐（PLAY_SPEC §2.5）。
+const QUICK_PREFIX_RE = /^(图像生成|图片编辑|做个玩具)[:：]\s*/;
 
 export function routeTask(text: string): TaskSignal {
   const t = text.trim();
@@ -52,6 +54,15 @@ export function routeTask(text: string): TaskSignal {
     if (payload) {
       return {task: 'image', payload};
     }
+  }
+  // 0.1) 快捷前缀「做个玩具：」：显式玩法意图（PLAY_SPEC v1）。
+  //     剥离后为空直接短路回 chitchat——否则「做个玩具：」会被下方 PLAY_RE 命中（做个+玩具）。
+  if (quick && quick[1] === '做个玩具') {
+    const payload = t.slice(quick[0].length).trim();
+    if (payload) {
+      return {task: 'play', payload};
+    }
+    return {task: 'chitchat', payload: t};
   }
 
   // 1) 前置画/绘：主体=动词后内容
@@ -73,6 +84,14 @@ export function routeTask(text: string): TaskSignal {
   // 4) 代码
   if (CODE_RE.test(t)) {
     return {task: 'code', payload: t};
+  }
+
+  // 5) 玩具（P8 v1，PLAY_SPEC）：动词 + 玩具/游戏/小玩意类目标词。
+  //    收紧避免误伤：目标词仅限可玩品类，不含「代码/程序」（那是 code 域）。
+  const PLAY_RE =
+    /(?:做个|来一个|来个|来款|造个|整个|给我做个|帮我做|想玩)[^。！？!?\n]{0,20}?(?:游戏|玩具|贪吃蛇|俄罗斯方块|扫雷|抽签|转盘|摇奖|小游戏|小玩意|生成艺术|canvas)/i;
+  if (PLAY_RE.test(t)) {
+    return {task: 'play', payload: t};
   }
 
   return {task: 'chitchat', payload: t};

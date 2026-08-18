@@ -6,16 +6,16 @@ import {Text} from 'react-native-paper';
 import Clipboard from '@react-native-clipboard/clipboard';
 import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
 
-import {CopyIcon} from '../../assets/icons';
+import {CopyIcon, RefreshIcon} from '../../assets/icons';
 import {useTheme} from '../../hooks';
 import {PlayButton} from '../TextMessage/PlayButton';
 import {isSpeakableMessage} from '../../utils/speakable';
 
 import {styles} from './styles';
 
-import {chatSessionStore, ttsStore} from '../../store';
+import {chatSessionStore, modelStore, ttsStore} from '../../store';
 import {L10nContext} from '../../utils';
-import {derivedText} from '../../utils/chat';
+import {derivedText, isFinalMessage} from '../../utils/chat';
 import {MessageType} from '../../utils/types';
 import {t} from '../../locales';
 
@@ -26,33 +26,52 @@ const hapticOptions = {
 
 interface AssistantTurnFooterProps {
   message: MessageType.Any;
+  /** 重新生成（复用长按菜单同一 handleTryAgain 完整能力链）；
+   *  未传则不渲染按钮 */
+  onRegenerate?: () => void;
+  /** 重新生成禁用（agent 运行中 / 无激活模型） */
+  regenerateDisabled?: boolean;
 }
 
 /**
- * Turn-level chrome (timing + copy + interrupt status) rendered once per
- * assistant row, below all step blocks. Each slot is gated only by field
- * presence:
+ * Turn-level chrome (timing + copy + regenerate + interrupt status) rendered
+ * once per assistant row, below all step blocks. 插槽门控：
  *
  *   - `metadata.timings` present       → render the timing line
- *   - `metadata.copyable` true         → render the copy button
+ *   - 内容非空且已完成              → render the copy button（不再依赖
+ *     metadata.copyable：旧消息缺字段时复制按钮丢失的根因修复，
+ *     与长按菜单复制无门控对齐）
  *   - `metadata.interrupted` true      → render the interrupted status
  *   - `metadata.truncationLikely` true → upgrade status to "cut off"
  *
- * On a turn aborted mid-stream with partial content, `copyable` is true
- * but `timings` is absent — the footer renders the copy button alone.
  * Used by both AssistantTurn rows and legacy assistant Text rows.
  */
 export const AssistantTurnFooter: React.FC<AssistantTurnFooterProps> = observer(
-  ({message}) => {
+  ({message, onRegenerate, regenerateDisabled}) => {
     const theme = useTheme();
     const l10n = useContext(L10nContext);
-    const {copyable, timings, interrupted, truncationLikely, completionResult} =
+    const {timings, interrupted, truncationLikely, completionResult} =
       message.metadata || {};
+
+    // 复制/重新生成按钮可见性：内容非空且（已完成 或 当前非流式中）。
+    // 完成度单一事实源 = isFinalMessage（PlayButton 同源）。
+    const copyText =
+      message.type === 'text' || message.type === 'assistant_turn'
+        ? derivedText(message).trim()
+        : '';
+    const actionsReady =
+      copyText.length > 0 &&
+      (isFinalMessage(message) || !modelStore.isStreaming);
 
     // 朗读按钮独立决定 footer 显示：仅可朗读消息（TTS 可用 + 内容判定）
     // 无 chrome 字段时也渲染 footer，承载 PlayButton。
     const speakable = ttsStore.isTTSAvailable && isSpeakableMessage(message);
-    if (!timings && !copyable && !interrupted && !speakable) {
+    if (
+      !timings &&
+      !actionsReady &&
+      !interrupted &&
+      !speakable
+    ) {
       return null;
     }
 
@@ -104,7 +123,7 @@ export const AssistantTurnFooter: React.FC<AssistantTurnFooterProps> = observer(
     return (
       <View style={componentStyles.container} testID="assistant-turn-footer">
         <PlayButton message={message} />
-        {copyable && (
+        {actionsReady && (
           <TouchableOpacity
             onPress={copyToClipboard}
             testID="footer-copy"
@@ -117,6 +136,22 @@ export const AssistantTurnFooter: React.FC<AssistantTurnFooterProps> = observer(
             />
           </TouchableOpacity>
         )}
+        {actionsReady && onRegenerate ? (
+          <TouchableOpacity
+            onPress={regenerateDisabled ? undefined : onRegenerate}
+            testID="footer-regenerate"
+            accessibilityLabel={l10n.components.chatView.menuItems.regenerate}
+            style={
+              regenerateDisabled ? componentStyles.actionDisabled : undefined
+            }
+            hitSlop={{top: 14, bottom: 14, left: 14, right: 14}}>
+            <RefreshIcon
+              stroke={theme.colors.textSecondary}
+              width={16}
+              height={16}
+            />
+          </TouchableOpacity>
+        ) : null}
         {timings && timingParts.length > 0 ? (
           <Text style={componentStyles.timing} testID="footer-timing">
             {timingParts.map((part, i) => (

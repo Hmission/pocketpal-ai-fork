@@ -26,13 +26,14 @@ describe('AssistantTurnFooter', () => {
     jest.clearAllMocks();
   });
 
-  it('renders nothing when neither timings nor copyable are set', () => {
-    const message = baseTurn({metadata: {}});
+  it('renders nothing when no content, no timings, no interrupted (空内容无 chrome)', () => {
+    // 新契约：复制门控 = 内容非空且完成；空 steps 且无其他 chrome → 不渲染
+    const message = baseTurn({metadata: {}, steps: []});
     const {queryByTestId} = render(<AssistantTurnFooter message={message} />);
     expect(queryByTestId('assistant-turn-footer')).toBeNull();
   });
 
-  it('renders timing line when timings present (no copy button if not copyable)', () => {
+  it('renders timing line when timings present (复制按钮同显：内容有内容即完成态)', () => {
     const message = baseTurn({
       metadata: {
         timings: {predicted_per_token_ms: 10, predicted_per_second: 100},
@@ -43,7 +44,8 @@ describe('AssistantTurnFooter', () => {
     );
     expect(queryByTestId('assistant-turn-footer')).toBeTruthy();
     expect(getByText('10ms/token, 100.00 tokens/sec')).toBeTruthy();
-    expect(queryByTestId('footer-copy')).toBeNull();
+    // 新契约：内容非空且完成 → 复制按钮显示（不再依赖 metadata.copyable）
+    expect(queryByTestId('footer-copy')).toBeTruthy();
   });
 
   it('renders copy button when copyable, even if timings absent (abort path)', () => {
@@ -85,7 +87,8 @@ describe('AssistantTurnFooter', () => {
     ).toHaveBeenCalledWith('Sure, here it is.\n\nHope this helps.');
   });
 
-  it('copy button is a no-op for unsupported message types', () => {
+  it('does not render copy button for unsupported message types (非文本类型无复制钮)', () => {
+    // 新契约：非 text/assistant_turn 类型 derivedText 为空 → 复制按钮不渲染
     const message = {
       author: {id: 'assistant'},
       createdAt: 0,
@@ -98,8 +101,8 @@ describe('AssistantTurnFooter', () => {
       name: 'foo.png',
       metadata: {copyable: true},
     } as any;
-    const {getByTestId} = render(<AssistantTurnFooter message={message} />);
-    fireEvent.press(getByTestId('footer-copy'));
+    const {queryByTestId} = render(<AssistantTurnFooter message={message} />);
+    expect(queryByTestId('footer-copy')).toBeNull();
     expect(
       require('@react-native-clipboard/clipboard').setString,
     ).not.toHaveBeenCalled();
@@ -149,15 +152,62 @@ describe('AssistantTurnFooter', () => {
     expect(getByText('Cut off — likely context full')).toBeTruthy();
   });
 
-  it('renders the footer for interrupted-only turns (no copyable, no timings)', () => {
-    // Defensive: the footer should still surface the failure even if
-    // the rollback path forgot to set `copyable`.
+  it('renders the footer for interrupted-only turns (新契约：有内容即显复制)', () => {
+    // 新契约：复制门控不再依赖 metadata.copyable——有内容且完成即显示；
+    // interrupted 状态同时展示。
     const message = baseTurn({metadata: {interrupted: true}});
     const {queryByTestId} = render(<AssistantTurnFooter message={message} />);
     expect(queryByTestId('assistant-turn-footer')).toBeTruthy();
     expect(queryByTestId('footer-interrupted-status')).toBeTruthy();
-    expect(queryByTestId('footer-copy')).toBeNull();
+    expect(queryByTestId('footer-copy')).toBeTruthy();
     expect(queryByTestId('footer-timing')).toBeNull();
+  });
+
+  it('流式中的 partial 消息不渲染复制/重新生成按钮（actionsReady 门控）', () => {
+    // 未完成（partial step）且流式中：按钮隐藏，避免复制半截内容
+    const {modelStore} = require('../../../store');
+    runInAction(() => {
+      modelStore.setIsStreaming(true);
+    });
+    try {
+      const message = baseTurn({
+        metadata: {},
+        steps: [{content: 'half...', partial: true}],
+      });
+      const {queryByTestId} = render(
+        <AssistantTurnFooter message={message} />,
+      );
+      expect(queryByTestId('footer-copy')).toBeNull();
+      expect(queryByTestId('footer-regenerate')).toBeNull();
+    } finally {
+      runInAction(() => {
+        modelStore.setIsStreaming(false);
+      });
+    }
+  });
+
+  it('传入 onRegenerate 时渲染重新生成按钮并触发回调', () => {
+    const onRegenerate = jest.fn();
+    const message = baseTurn({metadata: {}});
+    const {getByTestId} = render(
+      <AssistantTurnFooter message={message} onRegenerate={onRegenerate} />,
+    );
+    fireEvent.press(getByTestId('footer-regenerate'));
+    expect(onRegenerate).toHaveBeenCalled();
+  });
+
+  it('regenerateDisabled 时按钮不触发回调', () => {
+    const onRegenerate = jest.fn();
+    const message = baseTurn({metadata: {}});
+    const {getByTestId} = render(
+      <AssistantTurnFooter
+        message={message}
+        onRegenerate={onRegenerate}
+        regenerateDisabled
+      />,
+    );
+    fireEvent.press(getByTestId('footer-regenerate'));
+    expect(onRegenerate).not.toHaveBeenCalled();
   });
 
   describe('context-full banner / footer non-duplication', () => {

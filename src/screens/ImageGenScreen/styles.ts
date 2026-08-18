@@ -183,6 +183,50 @@ export const createStyles = (theme: any) =>
     },
     overlayText: {...theme.typography.captionS, color: theme.colors.onSurfaceVariant},
     overlayStage: {...theme.typography.captionS, color: theme.colors.onSurfaceVariant},
+    // 任务化预览页（running 空白进度页 / failed 报错页）：与图片页同规格方形容器
+    taskPage: {
+      aspectRatio: 1,
+      borderRadius: theme.radius.s,
+      backgroundColor: theme.colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 16,
+      gap: 8,
+      overflow: 'hidden',
+    },
+    failedIcon: {fontSize: 34, color: theme.colors.danger, fontWeight: '700'},
+    failedTitle: {
+      ...theme.typography.uiM,
+      color: theme.colors.onSurface,
+      fontWeight: '600',
+    },
+    failedSummary: {
+      ...theme.typography.captionM,
+      color: theme.colors.onSurfaceVariant,
+      textAlign: 'center',
+    },
+    failedBtns: {flexDirection: 'row', gap: 8, marginTop: 8},
+    failedBtn: {
+      alignItems: 'center',
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: theme.radius.s,
+      backgroundColor: theme.colors.primary,
+    },
+    failedBtnText: {
+      ...theme.typography.uiS,
+      color: theme.colors.onPrimary,
+      fontWeight: '600',
+    },
+    failedBtnGhost: {
+      alignItems: 'center',
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: theme.radius.s,
+      borderWidth: 1,
+      borderColor: theme.colors.outline,
+    },
+    failedBtnGhostText: {...theme.typography.uiS, color: theme.colors.onSurface},
     actionRow: {flexDirection: 'row', gap: 8},
     actionBtn: {
       flex: 1,
@@ -236,11 +280,15 @@ export const createStyles = (theme: any) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: 4,
-      backgroundColor: withOpacity(theme.colors.domain.imageGen, 0.12),
+      // 与聊天顶栏模型胶囊同一设计语言：primary 12% 底 + 标准橙黄描边
+      backgroundColor: withOpacity(theme.colors.primary, 0.12),
       borderRadius: theme.radius.full,
       paddingVertical: 4,
       paddingHorizontal: 10,
       maxWidth: 180,
+      // 标准橙黄描边：与聊天顶栏模型胶囊同一处理
+      borderWidth: 1,
+      borderColor: theme.colors.primary,
     },
     triggerText: {
       ...theme.typography.uiS,

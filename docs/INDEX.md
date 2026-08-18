@@ -5,7 +5,7 @@ type: index
 status: active
 version: "1.0"
 created: "2026-08-15"
-updated: "2026-08-16"
+updated: "2026-08-18"
 relates: [DOC_GOVERNANCE_SPEC, DOC_MANAGEMENT, CURSOR_DOC_USAGE, POCKETPAL_DESIGN_SPEC]
 ---
 
@@ -13,7 +13,7 @@ relates: [DOC_GOVERNANCE_SPEC, DOC_MANAGEMENT, CURSOR_DOC_USAGE, POCKETPAL_DESIG
 
 # 文档索引（INDEX）
 
-**状态**：active | **版本**：1.0 | **更新**：2026-08-16
+**状态**：active | **版本**：1.0 | **更新**：2026-08-18
 
 > 全仓权威导航。第一读链：本索引 → 模块文档 → `relates` 扩散。新增文档必须在本文件登记。
 
@@ -41,6 +41,7 @@ relates: [DOC_GOVERNANCE_SPEC, DOC_MANAGEMENT, CURSOR_DOC_USAGE, POCKETPAL_DESIG
 | [APP_INTRO_COPY](./APP_INTRO_COPY.md) | copy | active | 介绍文案库（多语言同步基准） |
 | [getting_started](./getting_started.md) | howto | active | 开发环境与启动流程 |
 | [POCKETPAL_IMAGE_GEN_UPGRADE_PLAN](./POCKETPAL_IMAGE_GEN_UPGRADE_PLAN.md) | planning | superseded | 生图升级历史规划（已执行完毕，历史证据） |
+| [POCKETPAL_PLAY_SPEC](./POCKETPAL_PLAY_SPEC.md) | spec | active | 玩具工坊玩法：play 路由 + 玩具匠人格 + 玩具箱 + 玩法引导（B 层） |
 
 ## 三、ADR 库（module: adr，决策证据链）
 

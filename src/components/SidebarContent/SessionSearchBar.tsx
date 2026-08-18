@@ -1,4 +1,4 @@
-import React, {useContext} from 'react';
+import React, {useContext, useState} from 'react';
 import {TouchableOpacity, View, Text, TextInput} from 'react-native';
 import {Divider} from 'react-native-paper';
 
@@ -28,14 +28,28 @@ export const SessionSearchBar: React.FC<SessionSearchBarProps> = ({
   const theme = useTheme();
   const styles = createStyles(theme);
   const l10n = useContext(L10nContext);
+  // 焦点态：聚焦时描边切标准橙黄（primary），与输入态语义对齐
+  const [focused, setFocused] = useState(false);
 
   return (
     <View style={styles.topSection}>
-      <View style={styles.searchContainer}>
-        <SearchIcon stroke={theme.colors.onSurfaceVariant} />
+      <View
+        style={[
+          styles.searchContainer,
+          {
+            borderColor: focused
+              ? theme.colors.primary
+              : theme.colors.outlineVariant,
+          },
+        ]}>
+        <SearchIcon
+          stroke={focused ? theme.colors.primary : theme.colors.onSurfaceVariant}
+        />
         <TextInput
           value={searchQuery}
           onChangeText={onSearchChange}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
           placeholder={l10n.components.sidebarContent.searchPlaceholder}
           placeholderTextColor={theme.colors.onSurfaceVariant}
           style={styles.searchInput}

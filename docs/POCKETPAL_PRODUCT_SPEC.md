@@ -319,6 +319,7 @@ NaN 指纹跨设备一致（c≡3 mod 64）→ 判定非设备特定 → fusion 
 | P5 | 生图提速评估 | TAESD 预览、Q3_K 量化下探、LeMiCa4Z-Image 缓存（观望态） |
 | P6 | AIOS 仪式与玩法扩展 | 梦境模式/双人格/语音养成——防臃肿边界内按需评估 |
 | P7 | Phase2 预留 | device_control（无障碍权限）、sqlite-vec——明确「不做的事」边界 |
+| P8 | **玩具工坊（✅ 已落地 2026-08-18）** | play 路由「做个玩具」→ 代码模型 render_html 出可玩成品 → 玩具箱存档重玩；玩法引导（输入卡快捷按钮 + 知识库玩具箱 tab），见 [PLAY_SPEC](./POCKETPAL_PLAY_SPEC.md) |
 
 ### 6.3 技术债与待办
 

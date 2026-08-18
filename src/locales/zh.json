@@ -97,6 +97,8 @@
     "darkMode": "深色模式",
     "displayMemoryUsage": "显示内存使用情况",
     "displayMemoryUsageDescription": "在聊天页面中显示内存使用情况。",
+    "persistUserData": "卸载后保留聊天记录",
+    "persistUserDataDescription": "自动把聊天记录备份到共享存储，重装 App 后可恢复。关闭将停止备份并删除已有备份。",
     "exportOptions": "导出选项",
     "exportLegacyChats": "导出旧版聊天会话",
     "exportLegacyChatsDescription": "如果迁移失败或需要恢复旧的聊天会话，请使用此选项。",
@@ -1630,5 +1632,12 @@
     "titleByPal": "{{name}} 正在下载",
     "titleByModel": "{{name}} 正在下载",
     "extraInProgress": "另有 {{count}} 个正在进行"
+  },
+  "errorReport": {
+    "copy": "一键复制报错",
+    "close": "关闭",
+    "copiedSaved": "已复制，并保存到 {path}",
+    "copiedFallback": "已复制到剪贴板（落盘失败）",
+    "chatTitle": "聊天报错"
   }
 }

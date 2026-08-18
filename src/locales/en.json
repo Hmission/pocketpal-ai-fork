@@ -104,6 +104,8 @@
     "darkMode": "Dark Mode",
     "displayMemoryUsage": "Display Memory Usage",
     "displayMemoryUsageDescription": "Display memory usage in the chat page.",
+    "persistUserData": "Keep Chat History After Uninstall",
+    "persistUserDataDescription": "Chats are automatically backed up to shared storage and can be restored after reinstalling. Turning this off stops backups and deletes existing ones.",
     "exportOptions": "Export Options",
     "exportLegacyChats": "Export Legacy Chats",
     "exportLegacyChatsDescription": "Use this if migration failed or you need to recover old chat sessions.",
@@ -1630,5 +1632,12 @@
     "titleByPal": "{{name}} is downloading",
     "titleByModel": "{{name}} is downloading",
     "extraInProgress": "+{{count}} more in progress"
+  },
+  "errorReport": {
+    "copy": "Copy error report",
+    "close": "Close",
+    "copiedSaved": "Copied and saved to {path}",
+    "copiedFallback": "Copied to clipboard (save to disk failed)",
+    "chatTitle": "Chat error"
   }
 }

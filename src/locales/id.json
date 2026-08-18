@@ -97,6 +97,8 @@
     "darkMode": "Mode Gelap",
     "displayMemoryUsage": "Tampilkan Penggunaan Memori",
     "displayMemoryUsageDescription": "Tampilkan penggunaan memori di halaman obrolan.",
+    "persistUserData": "Simpan riwayat chat setelah uninstall",
+    "persistUserDataDescription": "Chat dicadangkan otomatis ke penyimpanan bersama dan dipulihkan setelah instal ulang. Mematikan akan menghentikan pencadangan dan menghapus cadangan yang ada.",
     "exportOptions": "Opsi Ekspor",
     "exportLegacyChats": "Ekspor Obrolan Lama",
     "exportLegacyChatsDescription": "Gunakan ini jika migrasi gagal atau Anda perlu memulihkan sesi obrolan lama.",
@@ -1606,5 +1608,12 @@
     "titleByPal": "{{name}} sedang mengunduh",
     "titleByModel": "{{name}} sedang mengunduh",
     "extraInProgress": "+{{count}} lainnya sedang berlangsung"
+  },
+  "errorReport": {
+    "copy": "Salin laporan kesalahan",
+    "close": "Tutup",
+    "copiedSaved": "Disalin dan disimpan ke {path}",
+    "copiedFallback": "Disalin ke papan klip (gagal menyimpan)",
+    "chatTitle": "Kesalahan obrolan"
   }
 }

@@ -29,8 +29,11 @@ import {awaitEngineReady, engineIsBusy} from '../utils/engineReady';
 import {appendConversation} from '../services/aiosMemory/conversationLog';
 import {compactAndFlush} from '../services/aiosMemory/compaction';
 import {maybeClosingSummary, selfCheck} from '../services/aiosMemory/rituals';
+import {saveToy} from '../services/toyChest';
 import {convertToChatMessages, removeThinkingParts} from '../utils/chat';
 import {activateKeepAwake, deactivateKeepAwake} from '../utils/keepAwake';
+import {buildErrorReport} from '../utils/errorReport';
+import {showErrorReport} from '../components/ui/ErrorReportDialog';
 import {
   toApiCompletionParams,
   ApiCompletionParams,
@@ -419,6 +422,18 @@ async function applyEventToStore(
         ctx.sessionId,
         event.outcome,
       );
+      // 玩具工坊（P8，PLAY_SPEC §3）：render_html 成功成品（type='html' + title）
+      // 自动进玩具箱——fire-and-forget，与记忆提取钩子同模式，不阻塞主链。
+      if (event.outcome.toolName === 'render_html') {
+        const r = event.outcome.result;
+        if (r.type === 'html' && r.html) {
+          try {
+            void saveToy(r.title ?? '', r.html);
+          } catch (toyErr) {
+            console.warn('[useChatSession] toy chest save failed:', toyErr);
+          }
+        }
+      }
       return;
     case 'step_finished':
       // Land step.toolCalls AFTER step_finished with the runner's
@@ -816,6 +831,33 @@ export const useChatSession = (
       // CompletionResult flag upstream when available.
       const isContextFullError = /context is full/i.test(errorMessage);
       const treatAsContextFull = isToolArgsParseError || isContextFullError;
+
+      // 开发者预览版诊断面：任何完成失败都弹报错弹窗（一键复制完整报告）。
+      // 会话内的 interrupted footer / banner / system message 保留作记录，
+      // 弹窗是增量诊断面，不阻断回滚链。
+      void (async () => {
+        try {
+          const report = await buildErrorReport({
+            scope: 'chat',
+            summary: `${l10n.chat.completionFailed}${
+              errorMessage ? errorMessage.slice(0, 120) : ''
+            }`,
+            error,
+            extra: {
+              模型: modelStore.activeModel?.name,
+              n_ctx: modelStore.activeContextSettings?.n_ctx,
+              会话: chatSessionStore.activeSessionId ?? undefined,
+            },
+          });
+          showErrorReport({
+            title: l10n.errorReport.chatTitle,
+            summary: report.summary,
+            detail: report.detail,
+          });
+        } catch (reportErr) {
+          console.warn('[useChatSession] error report failed:', reportErr);
+        }
+      })();
 
       // Error rollback path. The empty/in-flight AssistantTurn row
       // already exists; preserve any partial steps and tag with

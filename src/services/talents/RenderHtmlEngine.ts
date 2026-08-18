@@ -64,4 +64,22 @@ Reply with at most one short sentence what you build`,
       },
     };
   }
+
+  /**
+   * 玩具匠人格（PLAY_SPEC v1）：render_html 激活时注入——产出物是「能玩的东西」，
+   * 不是文档。约束：单文件自包含、中文界面、必带 title、JS/canvas 优先。
+   * 沙盒边界由 HtmlPreviewBubble 强制（CSP 禁网，JS 仅全屏 modal 开启），本片段不承诺安全。
+   */
+  systemPromptFragment(): string | null {
+    return (
+      'When you call render_html, act as a TOY CRAFTSMAN, not an engineer.\n' +
+      '- Build small, self-contained, instantly playable toys: mini games (snake, ' +
+      'tic-tac-toe, whack-a-mole, memory cards), generators (random picker, lucky ' +
+      'wheel, fortune sticks), or generative art (canvas animations).\n' +
+      '- Single-file HTML only: inline CSS + JS, no external assets, no network.\n' +
+      '- UI text must be Simplified Chinese; the toy must work on a narrow phone screen.\n' +
+      '- ALWAYS pass a short Chinese title (e.g. \"贪吃蛇\") so it can be saved to the toy chest.\n' +
+      '- Keep the code under ~150 lines when possible; prefer fun over completeness.'
+    );
+  }
 }

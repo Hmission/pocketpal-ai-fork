@@ -20,6 +20,7 @@ import {MessageType, Model} from '../utils/types';
  *   chitchat → 管家直答（启动即就绪闭环；用户已显式加载大模型则尊重主权用当前模型）
  *   write/code → 能力注册表推荐专用模型：当前模型≠推荐时弹窗确认
  *             （[加载推荐] / [继续当前] / 会话内记住，决策可见 + 用户主权）
+ *   play（P8 玩具工坊）→ 同 code 选型（玩具匠=代码模型，PLAY_SPEC §2.2）
  * 返回 wrappedSendPress，供 ChatScreen 作为 ChatView onSendPress。
  */
 
@@ -145,12 +146,12 @@ async function butlerReply(text: string): Promise<boolean> {
 }
 
 /**
- * 任务模型解析（write/code，SPEC §9.3）：当前模型≠推荐时弹窗确认，
+ * 任务模型解析（write/code/play，SPEC §9.3 + PLAY_SPEC §2.2）：当前模型≠推荐时弹窗确认，
  * 选择写入会话偏好（会话级记住，不跨会话）。
  *   'proceed' → 模型已就绪，可发送；'abort' → 用户取消/失败，不发送
  */
 async function resolveTaskModel(
-  task: 'write' | 'code',
+  task: 'write' | 'code' | 'play',
   text: string,
 ): Promise<'proceed' | 'abort'> {
   const candidate = findModelForTask(task);
@@ -284,7 +285,12 @@ export const useChatScheduler = (
       }
 
       // write/code：任务模型解析（弹窗确认 + 会话级记住）
-      if (signal.task === 'write' || signal.task === 'code') {
+      // play（P8 玩具工坊）：同构——玩具匠=代码模型选型，弹窗文案区分「玩具」任务
+      if (
+        signal.task === 'write' ||
+        signal.task === 'code' ||
+        signal.task === 'play'
+      ) {
         const decision = await resolveTaskModel(signal.task, text);
         if (decision === 'abort') {
           return;

@@ -37,6 +37,14 @@ export interface GeneratedImage {
   /** 生成耗时（ms）与模型标签：预览卡顶部信息条展示 */
   durationMs?: number;
   modelLabel?: string;
+  /** 任务唯一 id（FlatList key 单一事实源；running/failed 任务无图也有条目） */
+  taskId: string;
+  /** 任务状态：running=进行中（空白预览页+进度）｜success=已回填图｜failed=保留报错页 */
+  status: 'running' | 'success' | 'failed';
+  /** 失败任务：一句话摘要（预览页展示） */
+  errorSummary?: string;
+  /** 失败任务：完整报错报告（errorReport 格式，一键复制） */
+  errorDetail?: string;
 }
 
 class ImageGenStore {
@@ -184,17 +192,109 @@ class ImageGenStore {
     } catch {
       /* GPU 探测失败静默 */
     }
-    // 历史持久化：重启后恢复（图片文件仍在磁盘，仅元数据落盘）
+    // 历史持久化：重启后恢复（图片文件仍在磁盘，仅元数据落盘）；
+    // 旧条目归一 taskId/status；残留 running（跨重启中断）降为 failed。
     try {
       const raw = await AsyncStorage.getItem(HISTORY_KEY);
       if (raw) {
         const list = JSON.parse(raw) as GeneratedImage[];
         runInAction(() => {
-          this.history = Array.isArray(list) ? list : [];
+          this.history = (Array.isArray(list) ? list : []).map(h => {
+            const status =
+              h.status ?? (h.uri ? ('success' as const) : ('failed' as const));
+            const interrupted = status === 'running';
+            return {
+              ...h,
+              taskId: h.taskId ?? `legacy_${h.ts}_${h.seed}`,
+              status: interrupted ? ('failed' as const) : status,
+              errorSummary: interrupted
+                ? '任务中断（App 重启）'
+                : h.errorSummary,
+            };
+          });
         });
       }
     } catch (e) {
       console.warn('[ImageGenStore] load history failed:', e);
+    }
+  }
+
+  private newTaskId(): string {
+    return `task_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
+  }
+
+  /**
+   * 任务化单一入口：新建 running 任务（无图，预览区空白页+进度），
+   * 返回 taskId；成功 finishTask 回填图，失败 failTask 回填报错。
+   */
+  beginTask(base: Omit<GeneratedImage, 'taskId' | 'status'>): string {
+    const taskId = this.newTaskId();
+    runInAction(() => {
+      this.history.unshift({...base, taskId, status: 'running'});
+      if (this.history.length > 50) {
+        this.history = this.history.slice(0, 50);
+      }
+    });
+    this.persistHistory();
+    return taskId;
+  }
+
+  private patchTask(taskId: string, patch: Partial<GeneratedImage>): void {
+    runInAction(() => {
+      const idx = this.history.findIndex(h => h.taskId === taskId);
+      if (idx >= 0) {
+        this.history[idx] = {...this.history[idx], ...patch};
+      }
+    });
+    this.persistHistory();
+  }
+
+  /** 任务成功：回填图片 URI（+ 可选 durationMs 等补充字段） */
+  finishTask(
+    taskId: string,
+    uri: string,
+    patch?: Partial<GeneratedImage>,
+  ): void {
+    this.patchTask(taskId, {uri, status: 'success', ...patch});
+  }
+
+  /** 任务失败：回填报错摘要/详情，页面保留（测试员可一键复制） */
+  failTask(taskId: string, errorSummary: string, errorDetail: string): void {
+    this.patchTask(taskId, {status: 'failed', errorSummary, errorDetail});
+  }
+
+  /** 非生成类错误（加载失败/缺伴侣文件/解码失败）直接落 failed 任务条目 */
+  pushFailedTask(
+    base: Omit<GeneratedImage, 'taskId' | 'status'>,
+    errorSummary: string,
+    errorDetail: string,
+  ): string {
+    const taskId = this.newTaskId();
+    runInAction(() => {
+      this.history.unshift({
+        ...base,
+        taskId,
+        status: 'failed',
+        errorSummary,
+        errorDetail,
+      });
+      if (this.history.length > 50) {
+        this.history = this.history.slice(0, 50);
+      }
+    });
+    this.persistHistory();
+    return taskId;
+  }
+
+  /** 删除单条任务（无文件条目跳过删文件） */
+  deleteTask(taskId: string): void {
+    const target = this.history.find(h => h.taskId === taskId);
+    runInAction(() => {
+      this.history = this.history.filter(h => h.taskId !== taskId);
+    });
+    this.persistHistory();
+    if (target?.uri) {
+      RNFS.unlink(target.uri.replace(/^file:\/\//, '')).catch(() => {});
     }
   }
 
@@ -216,7 +316,7 @@ class ImageGenStore {
     );
   }
 
-  /** 删除单条历史（可选删文件） */
+  /** 删除单条历史（可选删文件；无 uri 条目自动跳过删文件） */
   async deleteHistory(uris: string[], removeFile = false): Promise<void> {
     runInAction(() => {
       this.history = this.history.filter(h => !uris.includes(h.uri));
@@ -224,6 +324,9 @@ class ImageGenStore {
     this.persistHistory();
     if (removeFile) {
       for (const uri of uris) {
+        if (!uri) {
+          continue;
+        }
         try {
           await RNFS.unlink(uri.replace(/^file:\/\//, ''));
         } catch {
@@ -403,22 +506,8 @@ class ImageGenStore {
         engineStatus.setError('image', result);
         return null;
       }
-      runInAction(() => {
-        this.history.unshift({
-          uri: `file://${outPath}`,
-          prompt,
-          seed,
-          ts: Date.now(),
-          width: opts.width ?? 512,
-          height: opts.height ?? 512,
-          durationMs: Date.now() - this.genStartedAt,
-          modelLabel: opts.modelLabel,
-        });
-        if (this.history.length > 50) {
-          this.history = this.history.slice(0, 50);
-        }
-      });
-      this.persistHistory();
+      // 历史落盘归编排层任务链（beginTask/finishTask）统一管理，
+      // 本方法只负责引擎调用并返回结果 URI。
       engineStatus.setPhase('image', 'ready');
       return `file://${outPath}`;
     } catch (e: any) {

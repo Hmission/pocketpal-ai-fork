@@ -46,3 +46,4 @@ relates: [POCKETPAL_DESIGN_SPEC, DOC_GOVERNANCE_SPEC]
 - usePulse.ts 已删除，生图进度动效现为 useWaveDots.ts（三点波浪，IMAGEGEN_UI_SPEC §4）。
 - 抽屉不再承载功能导航：纯会话中心（搜索+新对话+日期分组列表+底部设置 footer）；功能入口全在设置页入口中心。
 - Phase 2（WarmNest v2）：生图页模型选择器已拆为 Trigger（headerRight 胶囊）+ Dropdown（屏级 overlay，absoluteFill 只盖 AppBar 下方内容区）；六子页（GenerationSettings/About/Memory/Knowledge/Workspace/Tool）统一错峰入场（useStaggerEntry）；Knowledge/Workspace 列表行用 DS ListItem（IconTile+PressableScale）；形状语言角色化由 tokens/shapeRoles 单源（见 DESIGN_SPEC §4）。
+- 玩具工坊（2026-08-18，PLAY_SPEC v1）：tools 域新增 toyChest 服务（workspace/toys/ 存档库）；knowledge 域 KnowledgeScreen 新增第四 tab「玩具箱」（render_html 成品浏览/重玩）；chat 域 taskRouter 新增 play 意图 + ChatInput 快捷按钮「做个玩具」——玩法引导前后端对齐。

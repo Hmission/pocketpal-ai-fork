@@ -153,3 +153,8 @@ scripts/agent/
 /scrcpy*
 /红米K90*
 __pycache__/
+
+# 开发者预览版分发产物（大文件不入库）
+/*.apk
+/pocketchick-preset-models*.zip
+

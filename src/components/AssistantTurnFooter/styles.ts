@@ -11,6 +11,13 @@ export const styles = ({theme}: {theme: Theme}) =>
       height: 24,
       gap: 6,
       marginTop: 4,
+      // 与正文同一水平缩进 token：按钮组对齐文本左缘，不再贴卡片边缘
+      marginHorizontal: theme.insets.messageInsetsHorizontal,
+      paddingBottom: 6,
+    },
+    // 重新生成禁用态（agent 运行中 / 无激活模型）
+    actionDisabled: {
+      opacity: 0.35,
     },
     timing: {
       color: theme.colors.textSecondary,

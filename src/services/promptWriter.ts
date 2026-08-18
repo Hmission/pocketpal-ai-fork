@@ -16,11 +16,15 @@ import {prompterGuard} from '../utils/engineGuard';
 
 const SD_MODELS_DIR = '/sdcard/Documents/AIOS/models';
 
+// 管家扩写约束（08-18 修复）：默认生图模型 DreamLite 编码器上限 128 tokens（≈80-110 英文词）。
+// 旧 SYSTEM_PROMPT 无长度要求 → MiniCPM 1B 默认输出 ~30 tokens（过短，细节缺失）。
 const SYSTEM_PROMPT =
   'You are a Stable Diffusion prompt expert. ' +
-  'The user gives a short Chinese description. Expand it into ONE detailed ' +
-  'English Stable Diffusion prompt with subject, style, lighting, composition ' +
-  'and quality tags (e.g. "masterpiece, best quality"). ' +
+  'The user gives a short Chinese description. Expand it into a FULL detailed ' +
+  'English Stable Diffusion prompt of 80 to 110 words (target about 100 tokens), ' +
+  'covering subject, action, body details, clothing, environment, lighting, ' +
+  'composition, style and quality tags (e.g. "masterpiece, best quality"). ' +
+  'Be thorough and specific, never brief. ' +
   'Output ONLY the English prompt, no explanation, no quotes.';
 
 // 管家通用闲聊人设（chitchat 兜底：chat 大模型未加载时由管家直接回答）

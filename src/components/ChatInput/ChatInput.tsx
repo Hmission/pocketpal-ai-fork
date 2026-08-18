@@ -199,11 +199,11 @@ export const ChatInput = observer(
     // 编辑源图状态（P5）：外部受控；发送/取消后由 ChatView 复位
     const [showEditPickerMenu, setShowEditPickerMenu] = React.useState(false);
     const [showEditHint, setShowEditHint] = React.useState(false); // 编辑空指令轻提示
-    // 快捷前缀标签（P5 v3 图标语义）：点「图像生成/图片编辑」→ 输入区顶部显示彩色前缀 chip，
+    // 快捷前缀标签（P5 v3 图标语义）：点「图像生成/图片编辑/做个玩具」→ 输入区顶部显示彩色前缀 chip，
     // 不可逐字编辑（× 整体删除，破坏一个字符即失效）；发送时拼接成完整文本（路由/编辑剥离），
     // 模型只收主体。前缀不是输入文本——不占 value，天然绕开受控组件。
     const [quickPrefix, setQuickPrefix] = React.useState<
-      '图像生成' | '图片编辑' | null
+      '图像生成' | '图片编辑' | '做个玩具' | null
     >(null);
     const isEditMode = chatSessionStore.isEditMode;
 
@@ -657,9 +657,11 @@ export const ChatInput = observer(
                   ? '想修改哪里？例如：把背景改成海边'
                   : quickPrefix === '图像生成'
                     ? '描述你想画的内容…'
-                    : isVideoCapable
-                      ? l10n.video.promptPlaceholder
-                      : l10n.components.chatInput.inputPlaceholder
+                    : quickPrefix === '做个玩具'
+                      ? '描述想玩的玩具，例如：贪吃蛇、抽签器…'
+                      : isVideoCapable
+                        ? l10n.video.promptPlaceholder
+                        : l10n.components.chatInput.inputPlaceholder
               }
               placeholderTextColor={onSurfaceColorVariant}
               underlineColorAndroid="transparent"
@@ -706,38 +708,54 @@ export const ChatInput = observer(
                 accessibilityRole="button">
                 <Icon name="palette" size={20} color={theme.colors.primary} />
               </TouchableOpacity>
+              {/* 玩具工坊（P8，PLAY_SPEC）：玩法引导入口——「做个玩具」前缀路由 play 任务 */}
               <TouchableOpacity
-                testID="image-quick-edit"
+                testID="toy-quick-gen"
                 style={[styles.quickIconBtn, {opacity: busy ? 0.4 : 1}]}
                 disabled={busy}
-                onPress={() => setShowEditPickerMenu(true)}
-                accessibilityLabel="图片编辑"
+                onPress={() => {
+                  setQuickPrefix('做个玩具');
+                  onEditSourceChange?.(null); // 退出编辑模式（若有残留源图）
+                  inputRef.current?.focus();
+                }}
+                accessibilityLabel="做个玩具"
                 accessibilityRole="button">
                 <Icon
-                  name="image-edit-outline"
+                  name="gamepad-variant"
                   size={20}
                   color={theme.colors.primary}
                 />
               </TouchableOpacity>
-              {/* 选图菜单按需挂载（点击后才渲染，避免空 Menu 常驻） */}
-              {showEditPickerMenu && (
-                <Menu
-                  visible={showEditPickerMenu}
-                  onDismiss={() => setShowEditPickerMenu(false)}
-                  anchorPosition="top"
-                  anchor={<View />}>
-                  <Menu.Item
-                    label={l10n.camera?.takePhoto || '拍照'}
-                    icon="camera"
-                    onPress={() => handleQuickEditPick('camera')}
-                  />
-                  <Menu.Item
-                    label={l10n.common?.gallery || '相册'}
-                    icon="image"
-                    onPress={() => handleQuickEditPick('gallery')}
-                  />
-                </Menu>
-              )}
+              <Menu
+                visible={showEditPickerMenu}
+                onDismiss={() => setShowEditPickerMenu(false)}
+                anchorPosition="top"
+                anchor={
+                  <TouchableOpacity
+                    testID="image-quick-edit"
+                    style={[styles.quickIconBtn, {opacity: busy ? 0.4 : 1}]}
+                    disabled={busy}
+                    onPress={() => setShowEditPickerMenu(true)}
+                    accessibilityLabel="图片编辑"
+                    accessibilityRole="button">
+                    <Icon
+                      name="image-edit-outline"
+                      size={20}
+                      color={theme.colors.primary}
+                    />
+                  </TouchableOpacity>
+                }>
+                <Menu.Item
+                  label={l10n.camera?.takePhoto || '拍照'}
+                  icon="camera"
+                  onPress={() => handleQuickEditPick('camera')}
+                />
+                <Menu.Item
+                  label={l10n.common?.gallery || '相册'}
+                  icon="image"
+                  onPress={() => handleQuickEditPick('gallery')}
+                />
+              </Menu>
 
               {/* Plus Button for Image Upload (only for regular chat) */}
               {showImageUpload && !isVideoCapable && (
@@ -782,7 +800,8 @@ export const ChatInput = observer(
                   testID="thinking-toggle"
                   style={[
                     styles.thinkingToggleLeft,
-                    isThinkingEnabled && {backgroundColor: onSurfaceColor},
+                    // 全局 UI 规范：选中态 = 标准橙黄底 + onPrimary 前景（替代旧 onSurface 黑底）
+                    isThinkingEnabled && {backgroundColor: theme.colors.primary},
                   ]}
                   onPress={() =>
                     supportsEffort && effortValues.length > 0
@@ -809,7 +828,7 @@ export const ChatInput = observer(
                     height={14}
                     stroke={
                       isThinkingEnabled
-                        ? inputBackgroundColor
+                        ? theme.colors.onPrimary
                         : onSurfaceColorVariant
                     }
                     strokeWidth={2}
@@ -818,7 +837,7 @@ export const ChatInput = observer(
                     style={[
                       styles.thinkingToggleText,
                       isThinkingEnabled
-                        ? {color: inputBackgroundColor}
+                        ? {color: theme.colors.onPrimary}
                         : {color: onSurfaceColorVariant},
                     ]}>
                     {supportsEffort && isThinkingEnabled && reasoningEffort

@@ -91,6 +91,7 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 | assistant-model-badge | 助手气泡模型徽章 |
 | drawer-imagegen-button（既有） | 抽屉生图入口（画图） |
 | footer-timing（既有） | footer 性能行 |
+| footer-regenerate | footer 重新生成按钮 |
 
 ## 7. 约束
 
@@ -133,8 +134,11 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 
 ### 11.1 气泡一体化（footer 收进卡片）
 
-- footer（朗读 ▶ / 复制 / timing）渲染在**气泡卡片内部**（同底色 assistantBubbleBackground），不再悬浮卡片下方。
-- 结构：`气泡卡片(文本 + footer[高 24，底部 padding s8])`；朗读/复制 icon 用 textSecondary，timing 数字 brandAccent 不变。
+- footer（朗读 ▶ / 复制 / 重新生成 / timing）渲染在**气泡卡片内部**（同底色 assistantBubbleBackground），不再悬浮卡片下方。
+- 结构：`气泡卡片(文本 + footer[高 24，底部 padding s8])`；朗读/复制/重新生成 icon 用 textSecondary，timing 数字 brandAccent 不变。
+- **水平对齐**：footer 容器 `marginHorizontal: messageInsetsHorizontal`（与正文同一缩进 token，按钮组对齐文本左缘）+ `paddingBottom: 6`。
+- **复制按钮门控**：内容非空且已完成（`isFinalMessage`，utils/chat.ts 单一事实源，PlayButton 同源）；不再依赖 metadata.copyable（旧消息缺字段不再丢按钮）。
+- **重新生成按钮**（footer-regenerate）：复用长按菜单同一 handleTryAgain 完整能力链（回溯上一条用户消息→删除其后全部→重发）；agent 运行中或无激活模型时禁用（与长按菜单 disabled 规则一致）。
 - 多 step turn：footer 只出现在最后一个内容块的卡片内（turn 级唯一）。
 - 图片/文件/用户消息不渲染 footer。
 
@@ -148,6 +152,12 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 | GreetingBubble | surfaceVariant | surface + accent 左缘 |
 | softCapBanner | surfaceVariant | **保留**（信息带唯一保留位） |
 | 用户气泡 | authorBubbleBackground | 保持（与 surfaceVariant 用途区隔） |
+
+### 11.3 二轮交互契约（v2.4，2026-08-18 真机反馈收口）
+
+- **思考开关选中态**：primary 底 + onPrimary 前景（替代旧 onSurface 黑底），与全局选中态规范（发送钮/胶囊）同一设计语言。
+- **图片编辑快捷钮**：按钮即 Menu anchor（修复空 `<View/>` 锚点致真机菜单不弹）；点按弹「拍照/相册」→ 选图下沉输入框 + 「图片编辑」前缀 chip → 发送走编辑任务卡（scheduler P5 链路）。
+- **n_ctx 每模型独立**：ModelStore.perModelNCtx（持久化）覆盖全局默认；加载链 getEffectiveContextInitParams(filePath, modelId) 取生效值。入口：①生成设置上下文输入框操作活动模型（标签带模型名，无模型=全局默认）；②聊天状态栏 ctx 胶囊点按直达生成设置（SessionStatusBar onTapContext → ChatView navigate）。
 
 ## 12. 生图任务卡片：生成动效 + 图片撑满（v2.1 定稿，2026-08-16）
 
@@ -284,5 +294,6 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 | 2026-08-15 | 2.0 | 气泡一体化（footer 收进卡片，ADR-0003）+ 灰色分层落地（§11）；legacy fonts/radius 双轨收口同波执行 |
 | 2026-08-16 | 2.1 | 生图任务卡片生成动效 + 图片撑满（§12，MASTER_LOG §20） |
 | 2026-08-16 | 2.2 | §13 聊天内闭环：快捷入口下沉 controlBar 图标钮 + 前缀 chip 标签化（原子删除）+ 图片编辑闭环（三入口下沉输入框）+ §13.6 多模态输入边界（产物图不进模型） |
+| 2026-08-18 | 2.3 | footer 按钮组升级（开发者预览版）：复制门控改内容完成度（isFinalMessage）+ 重新生成按钮（复用 handleTryAgain）+ 按钮组左对齐正文缩进；顶栏模型胶囊加 primary 描边 |
 | 2026-08-17 | 3.0 | §14 语音输入：发送按钮升级为语音优先状态机 + 输入行高度统一 36px（思考/发送/语音同一基线） |
 | 2026-08-18 | 3.1 | §15 生成设置参数标签本地化：新增 completionParamsLabels/Controls 两段 + paramLabel() fallback helper，16 语言全覆盖（MASTER_LOG §31.4） |

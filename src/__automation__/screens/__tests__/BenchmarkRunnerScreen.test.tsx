@@ -24,6 +24,8 @@ const {useRoute} = require('@react-navigation/native') as {
 // Mock RNFS at the module path the screen imports.
 jest.mock('@dr.pogodin/react-native-fs', () => ({
   ExternalDirectoryPath: '/mock/external',
+  DocumentDirectoryPath: '/mock/files',
+  ExternalStorageDirectoryPath: '/mock/storage',
   exists: jest.fn().mockResolvedValue(true),
   readFile: jest.fn(),
   writeFile: jest.fn().mockResolvedValue(undefined),

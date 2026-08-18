@@ -97,6 +97,8 @@
     "darkMode": "Mod Gelap",
     "displayMemoryUsage": "Papar Penggunaan Memori",
     "displayMemoryUsageDescription": "Papar penggunaan memori di halaman sembang.",
+    "persistUserData": "Kekalkan chat selepas nyahpasang",
+    "persistUserDataDescription": "Chat disandarkan secara automatik ke storan kongsi dan dipulihkan selepas pemasangan semula. Mematikan akan menghentikan sandaran dan memadam sandaran sedia ada.",
     "exportOptions": "Pilihan Eksport",
     "exportLegacyChats": "Eksport Sembang Lama",
     "exportLegacyChatsDescription": "Guna ini jika penghijrahan gagal atau anda perlu memulihkan sesi sembang lama.",
@@ -1606,5 +1608,12 @@
     "titleByPal": "{{name}} sedang dimuat turun",
     "titleByModel": "{{name}} sedang dimuat turun",
     "extraInProgress": "+{{count}} lagi sedang berjalan"
+  },
+  "errorReport": {
+    "copy": "Salin laporan ralat",
+    "close": "Tutup",
+    "copiedSaved": "Disalin dan disimpan ke {path}",
+    "copiedFallback": "Disalin ke papan keratan (gagal menyimpan)",
+    "chatTitle": "Ralat sembang"
   }
 }

@@ -51,6 +51,10 @@ export interface MessageTopLevelProps extends TextMessageTopLevelProps {
   onMessageLongPress?: (message: MessageType.Any, event?: any) => void;
   /** Called when user taps on any message */
   onMessagePress?: (message: MessageType.Any, event?: any) => void;
+  /** 重新生成（footer 按钮，复用长按菜单 handleTryAgain 完整能力链） */
+  onRegenerate?: (message: MessageType.Any) => void;
+  /** 重新生成禁用（agent 运行中 / 无激活模型） */
+  regenerateDisabled?: boolean;
   /** Customize the default bubble using this function. `child` is a content
    * you should render inside your bubble, `message` is a current message
    * (contains `author` inside) and `nextMessageInGroup` allows you to see
@@ -116,6 +120,8 @@ export const Message = observer(
     onMessagePress,
     onMessageLongPress,
     onPreviewDataFetched,
+    onRegenerate,
+    regenerateDisabled,
     renderBubble,
     renderCustomMessage,
     renderFileMessage,
@@ -181,7 +187,15 @@ export const Message = observer(
       const child = withFooter ? (
         <>
           {renderMessage()}
-          {showAssistantFooter ? <AssistantTurnFooter message={message} /> : null}
+          {showAssistantFooter ? (
+            <AssistantTurnFooter
+              message={message}
+              onRegenerate={
+                onRegenerate ? () => onRegenerate(message) : undefined
+              }
+              regenerateDisabled={regenerateDisabled}
+            />
+          ) : null}
         </>
       ) : (
         renderMessage()
@@ -298,7 +312,13 @@ export const Message = observer(
               step={stepFragment}
             />
             {withFooter && showAssistantFooter ? (
-              <AssistantTurnFooter message={message} />
+              <AssistantTurnFooter
+                message={message}
+                onRegenerate={
+                  onRegenerate ? () => onRegenerate(message) : undefined
+                }
+                regenerateDisabled={regenerateDisabled}
+              />
             ) : null}
           </>
         );

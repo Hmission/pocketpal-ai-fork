@@ -102,6 +102,8 @@
     "darkMode": "Modo Escuro",
     "displayMemoryUsage": "Exibir Uso de Memória",
     "displayMemoryUsageDescription": "Exibir o uso de memória na página de chat.",
+    "persistUserData": "Manter conversas após desinstalar",
+    "persistUserDataDescription": "As conversas são copiadas automaticamente para o armazenamento compartilhado e restauradas após a reinstalação. Desativar interrompe as cópias e exclui as existentes.",
     "exportOptions": "Opções de Exportação",
     "exportLegacyChats": "Exportar Chats Antigos",
     "exportLegacyChatsDescription": "Use isso se a migração falhou ou se você precisa recuperar sessões de chat antigas.",
@@ -1606,5 +1608,12 @@
     "titleByPal": "{{name}} está sendo baixado",
     "titleByModel": "{{name}} está sendo baixado",
     "extraInProgress": "+{{count}} mais em andamento"
+  },
+  "errorReport": {
+    "copy": "Copiar relatório de erro",
+    "close": "Fechar",
+    "copiedSaved": "Copiado e salvo em {path}",
+    "copiedFallback": "Copiado para a área de transferência (falha ao salvar)",
+    "chatTitle": "Erro de chat"
   }
 }

@@ -1,5 +1,12 @@
 import React, {useContext} from 'react';
-import {Animated, View, ScrollView, TouchableOpacity, Alert} from 'react-native';
+import {
+  Animated,
+  View,
+  ScrollView,
+  TouchableOpacity,
+  Alert,
+  NativeModules,
+} from 'react-native';
 
 import DeviceInfo from 'react-native-device-info';
 import Clipboard from '@react-native-clipboard/clipboard';
@@ -12,6 +19,10 @@ import {CopyIcon} from '../../assets/icons';
 import {useTheme, useStaggerEntry} from '../../hooks';
 import {createStyles} from './styles';
 import {L10nContext} from '../../utils';
+
+// 构建时间（开发者预览版）：Android BuildInfoModule 常量注入；
+// iOS/未注册时 undefined → UI 优雅省略。
+const buildTimestamp: string | undefined = NativeModules.BuildInfo?.buildTimestamp;
 
 export const AboutScreen: React.FC = () => {
   const theme = useTheme();
@@ -36,7 +47,9 @@ export const AboutScreen: React.FC = () => {
   }, []);
 
   const copyVersionToClipboard = () => {
-    const versionString = `Version ${appInfo.version} (${appInfo.build})`;
+    const versionString = `Version ${appInfo.version} (${appInfo.build})${
+      buildTimestamp ? ` · 构建于 ${buildTimestamp}` : ''
+    } · 开发者预览版`;
     Clipboard.setString(versionString);
     Alert.alert(
       l10n.about.versionCopiedTitle,
@@ -86,6 +99,11 @@ export const AboutScreen: React.FC = () => {
                   />
                 </TouchableOpacity>
               </View>
+              {buildTimestamp ? (
+                <Text style={styles.llamaBuildText}>
+                  {`开发者预览版 · 构建于 ${buildTimestamp}`}
+                </Text>
+              ) : null}
               <Text style={styles.llamaBuildText}>
                 llama.cpp {BuildInfo.number} ({BuildInfo.commit.substring(0, 7)}
                 )

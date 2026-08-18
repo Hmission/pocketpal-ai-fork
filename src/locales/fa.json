@@ -97,6 +97,8 @@
     "darkMode": "حالت تاریک",
     "displayMemoryUsage": "نمایش مصرف حافظه",
     "displayMemoryUsageDescription": "نمایش مصرف حافظه در صفحه چت.",
+    "persistUserData": "نگه‌داشتن گفتگوها پس از حذف نصب",
+    "persistUserDataDescription": "گفتگوها به‌طور خودکار در حافظه مشترک پشتیبان‌گیری می‌شوند و پس از نصب مجدد قابل بازیابی هستند. خاموش کردن، پشتیبان‌گیری را متوقف و نسخه‌های موجود را حذف می‌کند.",
     "exportOptions": "گزینه‌های خروجی",
     "exportLegacyChats": "خروجی چت‌های قدیمی",
     "exportLegacyChatsDescription": "اگر انتقال داده‌ها با مشکل مواجه شد یا نیاز به بازیابی چت‌های قدیمی دارید از این استفاده کنید.",
@@ -1606,5 +1608,12 @@
     "titleByPal": "{{name}} در حال دانلود است",
     "titleByModel": "{{name}} در حال دانلود است",
     "extraInProgress": "+{{count}} مورد دیگر در حال انجام"
+  },
+  "errorReport": {
+    "copy": "کپی گزارش خطا",
+    "close": "بستن",
+    "copiedSaved": "کپی و ذخیره در {path}",
+    "copiedFallback": "در کلیپ‌بورد کپی شد (ذخیره ناموفق)",
+    "chatTitle": "خطای گفتگو"
   }
 }

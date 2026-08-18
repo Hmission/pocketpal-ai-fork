@@ -97,6 +97,8 @@
     "darkMode": "ダークモード",
     "displayMemoryUsage": "メモリ使用量を表示",
     "displayMemoryUsageDescription": "チャット画面にメモリ使用量を表示します",
+    "persistUserData": "アンインストール後もチャットを保持",
+    "persistUserDataDescription": "チャットは共有ストレージに自動バックアップされ、再インストール後に復元できます。オフにするとバックアップを停止し、既存のバックアップを削除します。",
     "exportOptions": "エクスポートオプション",
     "exportLegacyChats": "旧チャットセッションをエクスポート",
     "exportLegacyChatsDescription": "移行に失敗した場合や古いチャットセッションを復元する必要がある場合に使用します",
@@ -1606,5 +1608,12 @@
     "titleByPal": "{{name}}をダウンロード中",
     "titleByModel": "{{name}}をダウンロード中",
     "extraInProgress": "他に{{count}}件進行中"
+  },
+  "errorReport": {
+    "copy": "エラーレポートをコピー",
+    "close": "閉じる",
+    "copiedSaved": "コピーして {path} に保存しました",
+    "copiedFallback": "クリップボードにコピーしました（保存失敗）",
+    "chatTitle": "チャットエラー"
   }
 }

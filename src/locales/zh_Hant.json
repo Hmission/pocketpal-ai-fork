@@ -376,7 +376,12 @@
       "confirmReset": "確認重置"
     },
     "usageStats": {
-      "byteSizes": ["位元組", "KB", "MB", "GB"],
+      "byteSizes": [
+        "位元組",
+        "KB",
+        "MB",
+        "GB"
+      ],
       "tooltip": {
         "usage": "使用率： ",
         "total": "總計： ",
@@ -1151,6 +1156,8 @@
     "darkMode": "深色模式",
     "displayMemoryUsage": "顯示記憶體使用量",
     "displayMemoryUsageDescription": "在聊天頁面顯示記憶體使用量。",
+    "persistUserData": "解除安裝後保留聊天記錄",
+    "persistUserDataDescription": "自動將聊天記錄備份到共用儲存空間，重新安裝 App 後可還原。關閉將停止備份並刪除現有備份。",
     "openCL": "OpenCL（實驗性）",
     "deviceSelection": "設備選擇",
     "deviceSelectionIOS": "設備（Metal）",
@@ -1621,5 +1628,12 @@
     "titleByPal": "{{name}} 正在下載中",
     "titleByModel": "{{name}} 正在下載中",
     "extraInProgress": "還有 {{count}} 個正在處理中"
+  },
+  "errorReport": {
+    "copy": "一鍵複製報錯",
+    "close": "關閉",
+    "copiedSaved": "已複製，並儲存到 {path}",
+    "copiedFallback": "已複製到剪貼簿（落盤失敗）",
+    "chatTitle": "聊天報錯"
   }
 }

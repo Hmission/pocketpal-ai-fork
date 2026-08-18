@@ -20,7 +20,7 @@ import {useTheme} from '../../hooks';
 export type ModelSwitchChoice = 'load' | 'current' | 'cancel';
 
 export interface ModelSwitchOptions {
-  task: 'write' | 'code';
+  task: 'write' | 'code' | 'play';
   /** 推荐模型显示名 */
   candidateName: string;
   /** 推荐模型大小（GB 展示） */
@@ -56,6 +56,7 @@ export function askModelSwitch(opts: ModelSwitchOptions): Promise<ModelSwitchCho
 const TASK_LABEL: Record<ModelSwitchOptions['task'], string> = {
   write: '写作',
   code: '代码',
+  play: '玩具',
 };
 
 /**

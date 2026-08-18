@@ -62,6 +62,10 @@ export class UIStore {
 
   iOSBackgroundDownloading = true;
 
+  // 卸载后保留聊天记录（共享存储快照开关，默认开）：
+  // 关 = 停止快照导出并删除已有快照（用户主动清数据语义）。
+  persistUserData = true;
+
   benchmarkShareDialog = {
     shouldShow: true,
   };
@@ -131,6 +135,7 @@ export class UIStore {
         'displayMemUsage',
         'selfCheckEnabled',
         'benchmarkShareDialog',
+        'persistUserData',
         '_language',
         'toolCompatWarnedModels',
         'hasCompletedOnboarding',
@@ -209,6 +214,12 @@ export class UIStore {
   setiOSBackgroundDownloading(value: boolean) {
     runInAction(() => {
       this.iOSBackgroundDownloading = value;
+    });
+  }
+
+  setPersistUserData(value: boolean) {
+    runInAction(() => {
+      this.persistUserData = value;
     });
   }
 

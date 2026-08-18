@@ -22,6 +22,11 @@ import type {
 class MockModelStore {
   models = modelsList;
   contextInitParams: ContextInitParams = createDefaultContextInitParams();
+  // n_ctx 每模型独立（2026-08-18）：覆盖表 + 生效值查询（与真实 store 同语义）
+  perModelNCtx: Record<string, number> = {};
+  getModelNCtx = (modelId?: string | null): number =>
+    (modelId && this.perModelNCtx[modelId]) || this.contextInitParams.n_ctx;
+  setModelNCtx: jest.Mock;
   max_threads = 4;
   MIN_CONTEXT_SIZE = 200;
   useAutoRelease = true;
@@ -150,6 +155,7 @@ class MockModelStore {
     this.addLocalModel = jest.fn();
     this.removeModelByFullPath = jest.fn();
     this.setNContext = jest.fn();
+    this.setModelNCtx = jest.fn();
     this.updateUseAutoRelease = jest.fn();
     this.setNoGpuDevices = jest.fn();
     this.setDevices = jest.fn();

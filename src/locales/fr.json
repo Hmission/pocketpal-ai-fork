@@ -62,6 +62,8 @@
     "darkMode": "Mode sombre",
     "displayMemoryUsage": "Afficher l'utilisation de mémoire",
     "displayMemoryUsageDescription": "Afficher l'utilisation de mémoire dans la page de chat.",
+    "persistUserData": "Conserver les discussions après désinstallation",
+    "persistUserDataDescription": "Les discussions sont sauvegardées automatiquement dans le stockage partagé et restaurées après réinstallation. Désactiver arrête les sauvegardes et supprime celles existantes.",
     "exportOptions": "Options d'exportation",
     "exportLegacyChats": "Exporter les anciens chats",
     "exportLegacyChatsDescription": "Utilisez cette option si la migration a échoué ou si vous devez récupérer d'anciennes sessions de chat.",
@@ -792,5 +794,12 @@
     "networkError": "Erreur réseau : Impossible de se connecter à l'API",
     "downloadSetupFailedTitle": "Échec de configuration du téléchargement",
     "downloadSetupFailedMessage": "Échec de préparation du modèle pour le téléchargement : {{message}}"
+  },
+  "errorReport": {
+    "copy": "Copier le rapport d'erreur",
+    "close": "Fermer",
+    "copiedSaved": "Copié et enregistré dans {path}",
+    "copiedFallback": "Copié dans le presse-papiers (échec de l'enregistrement)",
+    "chatTitle": "Erreur de chat"
   }
 }

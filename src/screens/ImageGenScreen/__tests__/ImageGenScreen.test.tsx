@@ -15,6 +15,15 @@ jest.mock('../../../utils/imageGenManifest', () => ({
   resolveCompanions: jest.fn().mockResolvedValue({extras: {}, missing: []}),
 }));
 
+// 报错报告工具 mock：编排层失败路径调 buildErrorReport 组装报告 → failTask 回填任务。
+jest.mock('../../../utils/errorReport', () => ({
+  buildErrorReport: jest.fn().mockResolvedValue({
+    summary: '报错摘要mock',
+    detail: '报错详情mock',
+  }),
+  copyAndSaveErrorReport: jest.fn().mockResolvedValue('/mock/error.txt'),
+}));
+
 // imageGenStore 单通道 mock：只保留编排层消费的字段/方法，行为由用例注入。
 jest.mock('../../../store/imageGenStore', () => ({
   imageGenStore: {
@@ -36,6 +45,7 @@ jest.mock('../../../store/imageGenStore', () => ({
     lastEventAt: 0,
     stepTime: 0,
     genStartedAt: 0,
+    gpuRenderer: '',
     init: jest.fn().mockResolvedValue(undefined),
     pushHistory: jest.fn(),
     deleteHistory: jest.fn().mockResolvedValue(undefined),
@@ -49,6 +59,12 @@ jest.mock('../../../store/imageGenStore', () => ({
     editDreamLiteEntry: jest.fn().mockResolvedValue(null),
     decodeEditImage: jest.fn().mockResolvedValue(new Float32Array(0)),
     setChatInlineGenerating: jest.fn(),
+    // 任务化契约：beginTask 建 running 条目 → 成功 finishTask 回填 uri / 失败 failTask 回填报错
+    beginTask: jest.fn().mockReturnValue('task_test_1'),
+    finishTask: jest.fn(),
+    failTask: jest.fn(),
+    pushFailedTask: jest.fn(),
+    deleteTask: jest.fn(),
   },
 }));
 
@@ -83,6 +99,10 @@ const mockEdit = imageGenStore.editDreamLiteEntry as jest.Mock;
 const mockDecode = imageGenStore.decodeEditImage as jest.Mock;
 const mockPush = imageGenStore.pushHistory as jest.Mock;
 const mockList = listAvailableModels as jest.Mock;
+const mockBeginTask = imageGenStore.beginTask as jest.Mock;
+const mockFinishTask = imageGenStore.finishTask as jest.Mock;
+const mockFailTask = imageGenStore.failTask as jest.Mock;
+const {buildErrorReport} = require('../../../utils/errorReport');
 
 describe('ImageGenScreen 编排层（P4 对齐）', () => {
   beforeEach(() => {
@@ -94,6 +114,15 @@ describe('ImageGenScreen 编排层（P4 对齐）', () => {
     mockList.mockReset();
     mockList.mockResolvedValue([]);
     mockDecode.mockResolvedValue(new Float32Array(4 * 1024 * 1024));
+    mockBeginTask.mockReset();
+    mockBeginTask.mockReturnValue('task_test_1');
+    mockFinishTask.mockReset();
+    mockFailTask.mockReset();
+    (buildErrorReport as jest.Mock).mockReset();
+    (buildErrorReport as jest.Mock).mockResolvedValue({
+      summary: '报错摘要mock',
+      detail: '报错详情mock',
+    });
     (imageGenStore as any).error = null;
     (imageGenStore as any).generating = false;
     (imageGenStore as any).history = [];
@@ -137,9 +166,9 @@ describe('ImageGenScreen 编排层（P4 对齐）', () => {
     await waitFor(() => {
       expect(mockGenerate).toHaveBeenCalledWith(1024, 1024, 4, '一只猫');
     });
-    expect(mockPush).toHaveBeenCalledWith(
+    // 任务化契约：先建 running 任务，成功后 finishTask 回填 uri
+    expect(mockBeginTask).toHaveBeenCalledWith(
       expect.objectContaining({
-        uri: 'file:///tmp/gen_1.png',
         prompt: '一只猫',
         family: 'dreamlite',
         kind: 'generated',
@@ -147,10 +176,15 @@ describe('ImageGenScreen 编排层（P4 对齐）', () => {
         height: 1024,
       }),
     );
+    expect(mockFinishTask).toHaveBeenCalledWith(
+      'task_test_1',
+      'file:///tmp/gen_1.png',
+      expect.objectContaining({durationMs: expect.any(Number)}),
+    );
     expect(getByText(/生成完成（1024×1024）/)).toBeTruthy();
   });
 
-  it('出图流：失败（uri=null）→ 不入历史，不报生成完成', async () => {
+  it('出图流：失败（uri=null）→ 任务保留为 failed（failTask 回填报错），不报生成完成', async () => {
     mockGenerate.mockResolvedValue(null);
     (imageGenStore as any).error = '引擎过热';
     const {getByPlaceholderText, getByText, queryByText} =
@@ -169,9 +203,16 @@ describe('ImageGenScreen 编排层（P4 对齐）', () => {
     await waitFor(() => {
       expect(mockGenerate).toHaveBeenCalledWith(1024, 1024, 4, '一条龙');
     });
-    expect(mockPush).not.toHaveBeenCalled();
+    expect(mockFinishTask).not.toHaveBeenCalled();
+    // 新契约：失败不再走底部 error 展示，而是 failTask 回填报错（页面保留可复制）
+    await waitFor(() => {
+      expect(mockFailTask).toHaveBeenCalledWith(
+        'task_test_1',
+        '报错摘要mock',
+        '报错详情mock',
+      );
+    });
     expect(queryByText(/生成完成/)).toBeNull();
-    expect(getByText('引擎过热')).toBeTruthy(); // store.error 回显在创作区
   });
 
   it('编辑流：无图点编辑 → 拉起相册 → 源图入槽 → 输入指令执行编辑 → 二创入历史', async () => {
@@ -216,13 +257,18 @@ describe('ImageGenScreen 编排层（P4 对齐）', () => {
         '把背景改成海边',
       );
     });
-    // 二创结果作为 generated 条目入历史（第二次 push）
-    const calls = mockPush.mock.calls.map(c => c[0]);
-    expect(calls.some(c => c.kind === 'generated' && c.uri === 'file:///tmp/edit_1.png')).toBe(true);
+    // 二创结果走任务化：finishTask 回填 uri（不再是第二次 pushHistory）
+    await waitFor(() => {
+      expect(mockFinishTask).toHaveBeenCalledWith(
+        'task_test_1',
+        'file:///tmp/edit_1.png',
+        expect.objectContaining({durationMs: expect.any(Number)}),
+      );
+    });
     expect(getByText('编辑完成')).toBeTruthy();
   });
 
-  it('编辑流：执行编辑失败（uri=null）→ 不 push 二创结果', async () => {
+  it('编辑流：执行编辑失败（uri=null）→ 任务保留为 failed（failTask 回填报错）', async () => {
     mockEdit.mockResolvedValue(null);
     (imageGenStore as any).error = '编辑采样失败';
     const {getByPlaceholderText, getByText} = await renderAndWaitScan();
@@ -246,11 +292,14 @@ describe('ImageGenScreen 编排层（P4 对齐）', () => {
     await waitFor(() => {
       expect(mockEdit).toHaveBeenCalled();
     });
-    const generated = mockPush.mock.calls
-      .map(c => c[0])
-      .filter(c => c.kind === 'generated');
-    expect(generated).toHaveLength(0);
-    expect(getByText('编辑采样失败')).toBeTruthy();
+    expect(mockFinishTask).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(mockFailTask).toHaveBeenCalledWith(
+        'task_test_1',
+        '报错摘要mock',
+        '报错详情mock',
+      );
+    });
   });
 
   it('画幅档位：切换 16:9 后出图按 1344×768 走单通道', async () => {

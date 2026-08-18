@@ -17,8 +17,10 @@ import {SessionStatusBar} from '../SessionStatusBar';
 import {getModelDisplayName} from '../../utils/modelDisplayNames';
 import {withOpacity} from '../../utils/colorUtils';
 
-export const ChatHeader: React.FC<{onModelPickerPress?: () => void}> = observer(
-  ({onModelPickerPress}) => {
+export const ChatHeader: React.FC<{
+  onModelPickerPress?: () => void;
+  onTapContext?: () => void;
+}> = observer(({onModelPickerPress, onTapContext}) => {
     const theme = useTheme();
 
     const insets = useSafeAreaInsets();
@@ -65,6 +67,9 @@ export const ChatHeader: React.FC<{onModelPickerPress?: () => void}> = observer(
                   borderRadius: theme.radius[theme.shapeRoles.pill],
                   // 灰色治理（DESIGN_SPEC §1.8）：模型 chip 从 surfaceVariant 改为域彩 12% 底
                   backgroundColor: withOpacity(theme.colors.primary, 0.12),
+                  // 标准橙黄描边：与抽屉搜索框聚焦态同一设计语言
+                  borderWidth: 1,
+                  borderColor: theme.colors.primary,
                 }}>
                 <Text
                   style={{
@@ -81,7 +86,7 @@ export const ChatHeader: React.FC<{onModelPickerPress?: () => void}> = observer(
             <HeaderRight />
           </View>
         </View>
-        <SessionStatusBar />
+        <SessionStatusBar onTapContext={onTapContext} />
       </View>
     );
   },

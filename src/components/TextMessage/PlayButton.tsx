@@ -5,7 +5,7 @@ import {observer} from 'mobx-react';
 import {useTheme} from '../../hooks';
 import {modelStore, ttsStore} from '../../store';
 import {L10nContext} from '../../utils';
-import {derivedText} from '../../utils/chat';
+import {derivedText, isFinalMessage} from '../../utils/chat';
 import {isSpeakableMessage} from '../../utils/speakable';
 import {PlayIcon, StopIcon} from '../../assets/icons';
 import type {MessageType} from '../../utils/types';
@@ -35,14 +35,10 @@ export const PlayButton: React.FC<PlayButtonProps> = observer(({message}) => {
 
   const speakableText = derivedText(message);
 
-  // For legacy `text`: completionResult is set once streaming finishes.
-  // For `assistant_turn`: streaming is over when the runner has stopped
-  // emitting partial steps. Gate on `modelStore.isStreaming` either way.
-  const hasFinalResult =
-    message.type === 'text'
-      ? !!message.metadata?.completionResult
-      : !(message.steps ?? []).some(s => s.partial);
-  if (!hasFinalResult && modelStore.isStreaming) {
+  // 完成度单一事实源（utils/chat.isFinalMessage）：legacy text 看
+  // completionResult，assistant_turn 看无 partial step。流式进行中
+  // 且未完成时隐藏（两种类型同一门控）。
+  if (!isFinalMessage(message) && modelStore.isStreaming) {
     return null;
   }
 

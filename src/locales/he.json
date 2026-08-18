@@ -97,6 +97,8 @@
     "darkMode": "מצב כהה",
     "displayMemoryUsage": "שימוש בתצוגת זיכרון",
     "displayMemoryUsageDescription": "הצגת ניצול זיכרון במסך הצ'אט.",
+    "persistUserData": "שמירת צ'אטים לאחר הסרת ההתקנה",
+    "persistUserDataDescription": "הצ'אטים מגובים אוטומטית לאחסון המשותף ומשוחזרים לאחר התקנה מחדש. כיבוי מפסיק את הגיבוי ומוחק גיבויים קיימים.",
     "exportOptions": "אפשרויות ייצוא",
     "exportLegacyChats": "ייצוא צ'אטים ישנים",
     "exportLegacyChatsDescription": "השתמש באפשרות זו אם ההעברה נכשלה או שאתה צריך לשחזר הפעלות צ'אט ישנות.",
@@ -1606,5 +1608,12 @@
     "titleByPal": "{{name}} בהורדה",
     "titleByModel": "{{name}} בהורדה",
     "extraInProgress": "+{{count}} נוספים בתהליך"
+  },
+  "errorReport": {
+    "copy": "העתק דוח שגיאה",
+    "close": "סגור",
+    "copiedSaved": "הועתק ונשמר אל {path}",
+    "copiedFallback": "הועתק ללוח (השמירה נכשלה)",
+    "chatTitle": "שגיאת צ'אט"
   }
 }

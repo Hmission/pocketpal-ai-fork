@@ -6,7 +6,8 @@ import {createStyles} from '../styles';
 import {GeneratedImage} from '../../../store/imageGenStore';
 
 interface HistoryStripProps {
-  history: GeneratedImage[];
+  /** 成功任务条目 + 原始历史索引（翻页定位用；running/failed 不入缩略图条） */
+  items: {item: GeneratedImage; index: number}[];
   manageMode: boolean;
   toDelete: string[];
   onUpload: () => void;
@@ -18,11 +19,11 @@ interface HistoryStripProps {
 }
 
 /**
- * HistoryStrip — ②历史区（紧凑横条）：上传入口 + 历史缩略图（点击联动大图预览），
+ * HistoryStrip — ②历史区（紧凑横条）：上传入口 + 成功任务缩略图（点击联动大图预览），
  * [管理] 进入多选删除。只读 props 渲染。
  */
 export const HistoryStrip: React.FC<HistoryStripProps> = ({
-  history,
+  items,
   manageMode,
   toDelete,
   onUpload,
@@ -37,25 +38,25 @@ export const HistoryStrip: React.FC<HistoryStripProps> = ({
   return (
     <View style={s.card}>
       <View style={s.historyHeader}>
-        <Text style={s.cardTitle}>相册 ({history.length})</Text>
+        <Text style={s.cardTitle}>相册 ({items.length})</Text>
         <View style={s.historyHeaderActions}>
           <TouchableOpacity onPress={onUpload}>
             <Text style={s.uploadText}>上传</Text>
           </TouchableOpacity>
-          {history.length > 0 && (
+          {items.length > 0 && (
             <TouchableOpacity onPress={onToggleManage}>
               <Text style={s.manageText}>{manageMode ? '完成' : '管理'}</Text>
             </TouchableOpacity>
           )}
         </View>
       </View>
-      {history.length > 0 && (
+      {items.length > 0 && (
         <FlatList
-          data={history}
-          keyExtractor={item => item.uri}
+          data={items}
+          keyExtractor={({item}) => item.taskId ?? item.uri}
           horizontal
           showsHorizontalScrollIndicator={false}
-          renderItem={({item, index}) => (
+          renderItem={({item: {item, index}}) => (
             <TouchableOpacity
               style={s.historyItem}
               onPress={() => {

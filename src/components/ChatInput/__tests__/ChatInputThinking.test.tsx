@@ -107,11 +107,14 @@ jest.mock('../../StopButton', () => ({
   StopButton: 'StopButton',
 }));
 
-jest.mock('../../Menu', () => ({
-  Menu: {
-    Item: 'MenuItem',
-  },
-}));
+jest.mock('../../Menu', () => {
+  const React = require('react');
+  // Menu 现为编辑按钮的 anchor 容器（常驻渲染）：mock 需渲染 anchor + children
+  const MenuMock = (props: any) =>
+    React.createElement(React.Fragment, null, props.anchor, props.children);
+  MenuMock.Item = 'MenuItem';
+  return {Menu: MenuMock};
+});
 
 const mockUser = {
   id: 'test-user',
@@ -366,6 +369,26 @@ describe('ChatInput Thinking Toggle', () => {
 
     expect(mockOnEffortCycle).toHaveBeenCalledTimes(1);
     expect(mockOnThinkingToggle).not.toHaveBeenCalled();
+  });
+
+  it('selected state uses primary background + onPrimary foreground (global selected-state spec, no black onSurface)', () => {
+    const {getByLabelText} = render(
+      <UserContext.Provider value={mockUser}>
+        <ChatInput
+          {...defaultProps}
+          showThinkingToggle={true}
+          isThinkingEnabled={true}
+          onThinkingToggle={jest.fn()}
+        />
+      </UserContext.Provider>,
+    );
+
+    const toggleButton = getByLabelText('Disable thinking mode');
+    const flat = require('react-native').StyleSheet.flatten(
+      toggleButton.props.style,
+    );
+    // 全局 UI 规范：选中态 = primary 底 + onPrimary 前景（禁止旧 onSurface 黑底）
+    expect(flat.backgroundColor).toBe('#007AFF');
   });
 
   it('should handle missing onThinkingToggle callback gracefully', () => {

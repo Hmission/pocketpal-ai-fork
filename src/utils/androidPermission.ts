@@ -2,7 +2,7 @@ import {Platform, PermissionsAndroid, Alert, Linking} from 'react-native';
 import * as RNFS from '@dr.pogodin/react-native-fs';
 
 import {uiStore} from '../store';
-import {getAllModelDirs} from './modelDirs';
+import {getCustomModelDirs} from './modelDirs';
 
 export async function ensureLegacyStoragePermission() {
   // Skip everything on iOS or any Android 11+ device (API 29+)
@@ -63,10 +63,13 @@ export async function ensureStorageAccess(): Promise<boolean> {
   if (Platform.OS !== 'android') {
     return true;
   }
-  // ① 自定义目录（含默认注册的 AIOS 共享目录）任一可读 → 通过
-  //    （RNFS.exists 对无权限路径返回 false，故对「不存在」用 mkdir 探测：
-  //    无权限时抛 EACCES → 判定不可读，需要引导）
-  const dirs = await getAllModelDirs();
+  // ① 只探测自定义目录（含默认注册的 AIOS 共享目录）：默认目录
+  //    getExternalFilesDir 零权限恒可读，混入会致判定恒真、引导永不弹
+  //    （2026-08-18 真机取证修正）。无自定义目录 = 纯零权限闭环，无需引导。
+  const dirs = await getCustomModelDirs();
+  if (dirs.length === 0) {
+    return true;
+  }
   for (const d of dirs) {
     try {
       if (await RNFS.exists(d)) {
@@ -86,9 +89,9 @@ export async function ensureStorageAccess(): Promise<boolean> {
         PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
         PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
       ]);
-      // ④ 请求后复测实际可读性
-      const dirs = await getAllModelDirs();
-      for (const d of dirs) {
+      // ④ 请求后复测实际可读性（同样只测自定义目录）
+      const dirsAfter = await getCustomModelDirs();
+      for (const d of dirsAfter) {
         try {
           if (await RNFS.exists(d)) {
             return true;

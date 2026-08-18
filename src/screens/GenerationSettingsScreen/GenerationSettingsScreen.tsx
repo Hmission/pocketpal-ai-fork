@@ -86,7 +86,9 @@ export const GenerationSettingsScreen: React.FC = observer(() => {
   const styles = createStyles(theme);
   const isFocused = useIsFocused();
   const [contextSize, setContextSize] = useState(
-    modelStore.contextInitParams.n_ctx.toString(),
+    modelStore
+      .getModelNCtx(modelStore.activeModelId)
+      .toString(),
   );
   const [isValidInput, setIsValidInput] = useState(true);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
@@ -118,12 +120,20 @@ export const GenerationSettingsScreen: React.FC = observer(() => {
   const valueCacheButtonRef = useRef<View>(null);
   const debouncedUpdateStore = useRef(
     debounce((value: number) => {
-      modelStore.setNContext(value);
+      // n_ctx 每模型独立（2026-08-18）：有活动模型写该模型覆盖，无则写全局默认
+      const modelId = modelStore.activeModelId;
+      if (modelId) {
+        modelStore.setModelNCtx(modelId, value);
+      } else {
+        modelStore.setNContext(value);
+      }
     }, 500),
   ).current;
 
   useEffect(() => {
-    setContextSize(modelStore.contextInitParams.n_ctx.toString());
+    setContextSize(
+      modelStore.getModelNCtx(modelStore.activeModelId).toString(),
+    );
 
     // Check for GPU support (Metal on iOS 18+, OpenCL on Android with Adreno + CPU features)
     const checkGpuCapabilities = async () => {
@@ -152,7 +162,7 @@ export const GenerationSettingsScreen: React.FC = observer(() => {
   // Re-sync the displayed context size when the screen regains focus or the
   // global n_ctx changes elsewhere (e.g. the chat banner's increase-context
   // flow). Skipped while the input is actively edited so it never fights typing.
-  const configuredNCtx = modelStore.contextInitParams.n_ctx;
+  const configuredNCtx = modelStore.getModelNCtx(modelStore.activeModelId);
   useEffect(() => {
     if (isFocused && !inputRef.current?.isFocused()) {
       setContextSize(configuredNCtx.toString());
@@ -412,10 +422,17 @@ export const GenerationSettingsScreen: React.FC = observer(() => {
               </View>
               <Divider />
 
-              {/* Context Size */}
+              {/* Context Size（每模型独立：标签带当前活动模型名） */}
               <View style={styles.settingItemContainer}>
                 <Text variant="titleMedium" style={styles.textLabel}>
                   {l10n.settings.contextSize}
+                  {modelStore.activeModelId
+                    ? ` · ${
+                        modelStore.models.find(
+                          m => m.id === modelStore.activeModelId,
+                        )?.name ?? ''
+                      }`
+                    : ''}
                 </Text>
                 <TextInput
                   ref={inputRef}
