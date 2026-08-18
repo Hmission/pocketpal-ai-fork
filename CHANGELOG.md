@@ -10,6 +10,7 @@
 ### 新增
 - 聊天顶栏重构（B18，2026-08-18）：模型胶囊管家感知三档显示（已加载模型→「管家 MiniCPM 1B」→选模型）；选择器卡片化（MODEL_MATRIX 入选说明+徽章+行内加载/卸载+管家禁卸+单槽脚注「加载新模型自动卸载」）
 - 状态栏拆解融合进助手卡（B18）：SessionStatusBar 整行删除；意图四色胶囊上移作者行；每输出指标行（上下文余量·落盘·召回展开·情绪）run_finished 快照 turnMetrics；ctx 中文点按直达生成设置；思考胶囊 24px 视觉同高收敛
+- B18 复查锋利化（08-19）：选择器加载进度行（正在加载·已耗时 Xs）+ 加载期 sheet 驻留/收尾自动关（关闭单点收敛）；isChatSelectable 收口 GGUF+manifest 名单（sd35 baked 工件不再混入聊天选择器）；死代码清除（engineStatus.summary / getLastExtractionCount）
 - 关于页构建时间（开发者预览版，2026-08-18）：Android BuildInfoModule 注入 BUILD_TIMESTAMP，关于页显示「开发者预览版 · 构建于 yyyy-MM-dd HH:mm」并纳入版本复制串，便于同版本号迭代对比
 - 生图任务化（2026-08-18）：每次生成/编辑 = 一个持久化任务（running 空白进度页 / success 回填图 / failed 保留报错页）；生成进度不再叠在旧图上；失败页含摘要 + 复制报错/重试/删除按钮
 - 报错一键复制（errorReport 统一出口，2026-08-18）：完整诊断报告（摘要/错误/上下文/版本/设备/时间）复制到剪贴板并落盘 /sdcard/Documents/AIOS/logs/；聊天完成失败弹报错弹窗，生图报错唯一出口收敛到预览区（composer 底部不再显示）
