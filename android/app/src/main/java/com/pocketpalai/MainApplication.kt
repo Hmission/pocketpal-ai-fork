@@ -35,6 +35,7 @@ class MainApplication : Application(), ReactApplication {
               add(DownloadPackage())
               add(ImageGenPackage())
               add(BuildInfoPackage())
+              add(ScreenReaderPackage())
             }
 
         override fun getJSMainModuleName(): String = "index"

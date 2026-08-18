@@ -44,6 +44,7 @@ relates: [DOC_GOVERNANCE_SPEC, DOC_MANAGEMENT, CURSOR_DOC_USAGE, POCKETPAL_DESIG
 | [POCKETPAL_PLAY_SPEC](./POCKETPAL_PLAY_SPEC.md) | spec | active | 玩具工坊玩法：play 路由 + 玩具匠人格 + 玩具箱 + 玩法引导（B 层） |
 | [POCKETPAL_INNERLIFE_SPEC](./POCKETPAL_INNERLIFE_SPEC.md) | spec | active | 内心生活玩法：收尾三件套（小结+晨间独白+小鸡日记）（B 层） |
 | [POCKETPAL_ALBUM_SPEC](./POCKETPAL_ALBUM_SPEC.md) | spec | active | 记忆绘本玩法：周度故事 + DreamLite 封面 → 成长相册（B 层） |
+| [POCKETPAL_SCREENWATCH_SPEC](./POCKETPAL_SCREENWATCH_SPEC.md) | spec | active | 读屏围观玩法：无障碍只读读屏 + 写作模型点评（B 层） |
 
 ## 三、ADR 库（module: adr，决策证据链）
 

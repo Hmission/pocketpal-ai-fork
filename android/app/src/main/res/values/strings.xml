@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">小黄鸡</string>
+    <string name="accessibility_screen_reader_description">小黄鸡读屏围观：让女妖看到你正在看的屏幕并点评（只读，不操作）。</string>
 </resources>

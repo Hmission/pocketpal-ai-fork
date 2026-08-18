@@ -67,6 +67,19 @@ android:requestLegacyExternalStorage="true"
         </intent-filter>
       </activity>
 
+        <!-- 读屏围观（SCREENWATCH_SPEC v1）：只读无障碍服务，不执行任何写操作 -->
+        <service
+            android:name=".ScreenReaderService"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_screen_reader" />
+        </service>
+
         <!-- Optional native library for OpenCL (GPU acceleration) -->
         <uses-native-library
             android:name="libOpenCL.so"
