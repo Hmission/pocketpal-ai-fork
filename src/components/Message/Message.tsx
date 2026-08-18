@@ -10,7 +10,6 @@ import {useTheme} from '../../hooks';
 import styles, {turnBlockStyles} from './styles';
 import {
   AssistantTurnFooter,
-  TurnMetricsRow,
   Avatar,
   StatusIcon,
   FileMessage,
@@ -189,17 +188,13 @@ export const Message = observer(
         <>
           {renderMessage()}
           {showAssistantFooter ? (
-            <>
-              <AssistantTurnFooter
-                message={message}
-                onRegenerate={
-                  onRegenerate ? () => onRegenerate(message) : undefined
-                }
-                regenerateDisabled={regenerateDisabled}
-              />
-              {/* B18 §17：每输出指标行（footer 下一行，快照驱动） */}
-              <TurnMetricsRow message={message} />
-            </>
+            <AssistantTurnFooter
+              message={message}
+              onRegenerate={
+                onRegenerate ? () => onRegenerate(message) : undefined
+              }
+              regenerateDisabled={regenerateDisabled}
+            />
           ) : null}
         </>
       ) : (
@@ -317,17 +312,13 @@ export const Message = observer(
               step={stepFragment}
             />
             {withFooter && showAssistantFooter ? (
-              <>
-                <AssistantTurnFooter
-                  message={message}
-                  onRegenerate={
-                    onRegenerate ? () => onRegenerate(message) : undefined
-                  }
-                  regenerateDisabled={regenerateDisabled}
-                />
-                {/* B18 §17：每输出指标行（footer 下一行，快照驱动） */}
-                <TurnMetricsRow message={message} />
-              </>
+              <AssistantTurnFooter
+                message={message}
+                onRegenerate={
+                  onRegenerate ? () => onRegenerate(message) : undefined
+                }
+                regenerateDisabled={regenerateDisabled}
+              />
             ) : null}
           </>
         );

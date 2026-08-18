@@ -1,8 +1,7 @@
 import React, {useContext} from 'react';
-import {Alert, Keyboard, View} from 'react-native';
+import {Alert, Keyboard, TouchableOpacity, View} from 'react-native';
 
 import {observer} from 'mobx-react';
-import {IconButton} from 'react-native-paper';
 
 import {useTheme} from '../../hooks';
 
@@ -10,8 +9,8 @@ import {
   // ClockFastForwardIcon,
   DotsVerticalIcon,
   DuplicateIcon,
-  EditBoxIcon,
   EditIcon,
+  PlusIcon,
   SettingsIcon,
   ShareIcon,
   TrashIcon,
@@ -146,38 +145,39 @@ export const HeaderRight: React.FC = observer(() => {
   return (
     <View style={styles.headerRightContainer}>
       {uiStore.displayMemUsage && <UsageStats width={40} height={20} />}
-      <IconButton
-        icon={() => (
-          <EditBoxIcon
-            stroke={theme.colors.primary}
-            width={theme.iconSize.m}
-            height={theme.iconSize.m}
-          />
-        )}
+      {/* §18.3：新建会话用加号（EditBox 像编辑）；紧凑触区 36px，
+          testID reset-button 不变（e2e 定位延续） */}
+      <TouchableOpacity
         testID="reset-button"
-        style={styles.chatBtn}
+        accessibilityLabel="新建会话"
+        accessibilityRole="button"
+        style={styles.compactBtn}
         onPress={() => {
           chatSessionStore.resetActiveSession();
-        }}
-      />
+        }}>
+        <PlusIcon
+          stroke={theme.colors.primary}
+          width={theme.iconSize.m}
+          height={theme.iconSize.m}
+        />
+      </TouchableOpacity>
       <Menu
         key={`header-right-menu-${menuSeq}`}
         visible={menuVisible}
         onDismiss={closeMenu}
         anchorPosition="bottom"
         anchor={
-          <IconButton
-            icon={() => (
-              <DotsVerticalIcon
-                fill={theme.colors.primary}
-                width={theme.iconSize.m}
-                height={theme.iconSize.m}
-              />
-            )}
-            style={styles.menuBtn}
+          <TouchableOpacity
+            style={styles.compactBtn}
             onPress={openMenu}
             testID="menu-button"
-          />
+            accessibilityRole="button">
+            <DotsVerticalIcon
+              fill={theme.colors.primary}
+              width={theme.iconSize.m}
+              height={theme.iconSize.m}
+            />
+          </TouchableOpacity>
         }>
         <Menu.Item
           onPress={onPressGenerationSettings}

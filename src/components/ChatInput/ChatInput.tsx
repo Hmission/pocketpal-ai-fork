@@ -532,7 +532,6 @@ export const ChatInput = observer(
       !isStopVisible &&
       !value.trim().length;
     const isSendButtonEnabled = value.trim().length > 0 && hasActiveModel;
-    const sendButtonOpacity = isSendButtonEnabled ? 1 : 0.4;
 
     const onSurfaceColor = currentActivePal?.color?.[0] || theme.colors.text;
     const onSurfaceColorVariant = onSurfaceColor + '55'; // for disabled state or placeholder text
@@ -950,9 +949,13 @@ export const ChatInput = observer(
                 </TouchableOpacity>
               ) : (
                 isSendButtonVisible && (
-                  <View style={{opacity: sendButtonOpacity}}>
-                    <SendButton color={onSurfaceColor} onPress={handleSend} />
-                  </View>
+                  // §18.4：状态表达收进 SendButton 内部（enabled 双态描边），
+                  // 不再外包 opacity 层
+                  <SendButton
+                    color={onSurfaceColor}
+                    enabled={isSendButtonEnabled}
+                    onPress={handleSend}
+                  />
                 )
               )}
             </View>

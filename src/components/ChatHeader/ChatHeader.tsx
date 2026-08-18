@@ -60,7 +60,8 @@ export const ChatHeader: React.FC<{
             <HeaderLeft />
             <ChatHeaderTitle />
           </View>
-          <View style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
+          {/* §18.3：右侧行 gap 6→2，三控件（模型胶囊/新建会话/菜单）收紧为一组 */}
+          <View style={{flexDirection: 'row', alignItems: 'center', gap: 2}}>
             {/* 模型切换下拉入口：直接出选择器，不跳转模型页
                 testID=chat-model-picker-chip：e2e 打开 Pal/模型 Sheet 的唯一定位 */}
             {onModelPickerPress && (
@@ -92,8 +93,8 @@ export const ChatHeader: React.FC<{
             <HeaderRight />
           </View>
         </View>
-        {/* B18 §17：SessionStatusBar 整行删除——引擎就绪融入胶囊（§16.1），
-            上下文余量/落盘/召回/情绪 下沉助手卡 TurnMetricsRow（每输出快照） */}
+        {/* B18 §17 → §18.2：SessionStatusBar 整行删除——引擎就绪融入胶囊（§16.1），
+            上下文余量/落盘/召回/情绪 下沉助手卡 AssistantTurnFooter 统一指标行 */}
       </View>
     );
   },

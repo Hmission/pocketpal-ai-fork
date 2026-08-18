@@ -4,36 +4,68 @@ import {Theme} from '../../utils/types';
 
 export const styles = ({theme}: {theme: Theme}) =>
   StyleSheet.create({
+    // §18.2 双行合并：列容器，行1 动作行 + 行2 统一指标行
     container: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      // 固定高度：复制 icon(16) 与 timing 文本(10) 统一基线，不随内容跳动
-      height: 24,
-      gap: 6,
       marginTop: 4,
       // 与正文同一水平缩进 token：按钮组对齐文本左缘，不再贴卡片边缘
       marginHorizontal: theme.insets.messageInsetsHorizontal,
       paddingBottom: 6,
     },
+    actionsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      // 固定高度：复制 icon(16) 统一基线，不随内容跳动
+      height: 24,
+      gap: 6,
+    },
     // 重新生成禁用态（agent 运行中 / 无激活模型）
     actionDisabled: {
       opacity: 0.35,
     },
-    timing: {
-      color: theme.colors.textSecondary,
-      fontSize: 10,
-    },
-    // 性能数字：品牌色强调（小黄鸡暖黄）
-    timingValue: {
-      color: theme.colors.brandAccent,
-      fontWeight: '600',
-    },
-    // 标签：辅助灰，与数字区分
-    timingSuffix: {
-      color: theme.colors.textSecondary,
-    },
     interruptedStatus: {
       color: theme.colors.error,
       fontSize: 10,
+    },
+    // ── 行2：统一指标行（排版契约：captionS；数值 brandAccent 600；
+    //    标签 textSecondary；分隔符 `·` outlineVariant）──
+    metricsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      marginTop: theme.spacing.xxs,
+    },
+    metricsSection: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.xxs,
+    },
+    metricsLabel: {
+      ...theme.typography.captionS,
+      color: theme.colors.textSecondary,
+    },
+    // 性能数字：品牌色强调（小黄鸡暖黄）
+    metricsValue: {
+      ...theme.typography.captionS,
+      color: theme.colors.brandAccent,
+      fontWeight: '600',
+    },
+    metricsSeparator: {
+      ...theme.typography.captionS,
+      color: theme.colors.outlineVariant,
+      marginHorizontal: theme.spacing.xs,
+    },
+    // 召回片段预览（默认折叠，点按展开）
+    recallPreview: {
+      marginTop: theme.spacing.xxs,
+      paddingVertical: theme.spacing.xs,
+      paddingHorizontal: theme.spacing.s,
+      backgroundColor: theme.colors.surfaceContainerHighest,
+      borderRadius: theme.radius.xs,
+      gap: theme.spacing.xxs,
+    },
+    recallText: {
+      ...theme.typography.captionS,
+      color: theme.colors.onSurfaceVariant,
+      lineHeight: 14,
     },
   });

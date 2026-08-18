@@ -1,9 +1,11 @@
 import React from 'react';
 import {runInAction} from 'mobx';
+import {NavigationContext} from '@react-navigation/native';
 
 import {render, fireEvent} from '../../../../jest/test-utils';
 
 import {chatSessionStore} from '../../../store';
+import {ROUTES} from '../../../utils/navigationConstants';
 
 import {AssistantTurnFooter} from '../AssistantTurnFooter';
 
@@ -43,7 +45,9 @@ describe('AssistantTurnFooter', () => {
       <AssistantTurnFooter message={message} />,
     );
     expect(queryByTestId('assistant-turn-footer')).toBeTruthy();
-    expect(getByText('10ms/token, 100.00 tokens/sec')).toBeTruthy();
+    // §18.2：分段渲染（分隔符 `·`），逐段断言
+    expect(getByText('10ms/token')).toBeTruthy();
+    expect(getByText('100.00 tokens/sec')).toBeTruthy();
     // 新契约：内容非空且完成 → 复制按钮显示（不再依赖 metadata.copyable）
     expect(queryByTestId('footer-copy')).toBeTruthy();
   });
@@ -55,7 +59,7 @@ describe('AssistantTurnFooter', () => {
     const {queryByTestId} = render(<AssistantTurnFooter message={message} />);
     expect(queryByTestId('assistant-turn-footer')).toBeTruthy();
     expect(queryByTestId('footer-copy')).toBeTruthy();
-    expect(queryByTestId('footer-timing')).toBeNull();
+    expect(queryByTestId('footer-metrics')).toBeNull();
   });
 
   it('renders both timing and copy when both fields present', () => {
@@ -68,7 +72,8 @@ describe('AssistantTurnFooter', () => {
     const {getByText, queryByTestId} = render(
       <AssistantTurnFooter message={message} />,
     );
-    expect(getByText('32ms/token, 30.00 tokens/sec')).toBeTruthy();
+    expect(getByText('32ms/token')).toBeTruthy();
+    expect(getByText('30.00 tokens/sec')).toBeTruthy();
     expect(queryByTestId('footer-copy')).toBeTruthy();
   });
 
@@ -126,7 +131,7 @@ describe('AssistantTurnFooter', () => {
       },
     });
     const {queryByTestId} = render(<AssistantTurnFooter message={message} />);
-    expect(queryByTestId('footer-timing')).toBeNull();
+    expect(queryByTestId('footer-metrics')).toBeNull();
     expect(queryByTestId('footer-copy')).toBeTruthy();
   });
 
@@ -160,7 +165,7 @@ describe('AssistantTurnFooter', () => {
     expect(queryByTestId('assistant-turn-footer')).toBeTruthy();
     expect(queryByTestId('footer-interrupted-status')).toBeTruthy();
     expect(queryByTestId('footer-copy')).toBeTruthy();
-    expect(queryByTestId('footer-timing')).toBeNull();
+    expect(queryByTestId('footer-metrics')).toBeNull();
   });
 
   it('流式中的 partial 消息不渲染复制/重新生成按钮（actionsReady 门控）', () => {
@@ -208,6 +213,72 @@ describe('AssistantTurnFooter', () => {
     );
     fireEvent.press(getByTestId('footer-regenerate'));
     expect(onRegenerate).not.toHaveBeenCalled();
+  });
+
+  describe('§18.2 统一指标行（TurnMetricsRow 能力并入 footer）', () => {
+    const turnMetrics = {
+      ctxPct: 29,
+      writeTime: new Date('2026-08-20T01:58:00').getTime(),
+      recallCount: 2,
+      recallPreview: ['片段一', '片段二'],
+      sentimentLabel: '平稳',
+      intent: 'chat' as const,
+    };
+
+    it('渲染统一指标行：timing 与 turnMetrics 同源排版', () => {
+      const message = baseTurn({
+        metadata: {
+          timings: {predicted_per_token_ms: 54},
+          turnMetrics,
+        },
+      });
+      const {getByTestId, getByText} = render(
+        <AssistantTurnFooter message={message} />,
+      );
+      const metricsRow = getByTestId('footer-metrics');
+      expect(metricsRow).toBeTruthy();
+      expect(getByText('54ms/token')).toBeTruthy();
+      expect(getByText('上下文余量')).toBeTruthy();
+      expect(getByText('29%')).toBeTruthy();
+      expect(getByText('落盘')).toBeTruthy();
+      expect(getByText('召回')).toBeTruthy();
+      expect(getByText('平稳')).toBeTruthy();
+    });
+
+    it('召回段点按展开片段预览', () => {
+      const message = baseTurn({metadata: {turnMetrics}});
+      const {getByTestId, queryByTestId} = render(
+        <AssistantTurnFooter message={message} />,
+      );
+      expect(queryByTestId('metrics-recall-preview')).toBeNull();
+      fireEvent.press(getByTestId('metrics-recall'));
+      expect(queryByTestId('metrics-recall-preview')).toBeTruthy();
+    });
+
+    it('ctx 段点按直达生成设置（导航上下文注入）', () => {
+      const navigation: any = {navigate: jest.fn()};
+      const message = baseTurn({metadata: {turnMetrics}});
+      const {getByTestId} = render(
+        <NavigationContext.Provider value={navigation}>
+          <AssistantTurnFooter message={message} />
+        </NavigationContext.Provider>,
+      );
+      fireEvent.press(getByTestId('metrics-ctx'));
+      expect(navigation.navigate).toHaveBeenCalledWith(
+        ROUTES.GENERATION_SETTINGS,
+      );
+    });
+
+    it('无 turnMetrics 快照的老消息不渲染指标段（锋利不兜底）', () => {
+      const message = baseTurn({
+        metadata: {timings: {predicted_per_token_ms: 10}},
+      });
+      const {queryByTestId, getByTestId} = render(
+        <AssistantTurnFooter message={message} />,
+      );
+      expect(getByTestId('footer-metrics')).toBeTruthy();
+      expect(queryByTestId('metrics-ctx')).toBeNull();
+    });
   });
 
   describe('context-full banner / footer non-duplication', () => {

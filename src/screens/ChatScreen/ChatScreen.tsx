@@ -441,8 +441,8 @@ export const ChatScreen: React.FC = observer(() => {
   }
 
   // Otherwise, show the regular chat view
-  // NOTE: B18 §17——SessionStatusBar 整行已删（引擎融入顶栏胶囊、指标下沉
-  // 助手卡 TurnMetricsRow），顶栏下无重复状态条。
+  // NOTE: B18 §17 → §18.2——SessionStatusBar 整行已删（引擎融入顶栏胶囊、指标下沉
+  // 助手卡 AssistantTurnFooter 统一指标行），顶栏下无重复状态条。
   return (
     <>
       <ChatView
