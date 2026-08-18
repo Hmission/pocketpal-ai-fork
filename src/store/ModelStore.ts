@@ -2793,6 +2793,23 @@ class ModelStore {
     }
   };
 
+  /**
+   * §18.7 模型用途标签：capabilities 唯一写入口（ModelSettingsSheet 用途 chips）。
+   * 沿用 updateModelName 同款持久化链（models 持久白名单）。
+   * 选型闭环：listModelsForTask 读标签 → 弹窗多候选。
+   */
+  updateModelCapabilities = (
+    modelId: string,
+    newCapabilities: Model['capabilities'],
+  ) => {
+    const model = this.models.find(m => m.id === modelId);
+    if (model) {
+      runInAction(() => {
+        model.capabilities = newCapabilities;
+      });
+    }
+  };
+
   resetModels = async () => {
     const localModels = this.models.filter(
       model => model.isLocal || model.origin === ModelOrigin.LOCAL,

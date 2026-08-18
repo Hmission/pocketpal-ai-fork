@@ -16,7 +16,16 @@ import {
 
 import {styles} from './styles';
 import {View} from 'react-native';
-import {L10nContext} from '../../utils';
+import {L10nContext, SkillKey} from '../../utils';
+
+// §18.7 用途标签：多选 chips（写作/代码）；玩具复用 code 选型，
+// 不增第三枚同构 chip（锋利不臃肿）。写入 model.capabilities，
+// 保存时保留非用途键（capabilities 也承载自动探测能力声明）。
+const USAGE_TAGS: Array<{key: SkillKey; label: string}> = [
+  {key: 'rewriting', label: '写作'},
+  {key: 'code', label: '代码'},
+];
+const USAGE_TAG_KEYS = USAGE_TAGS.map(t => t.key);
 
 interface ModelSettingsSheetProps {
   isVisible: boolean;
@@ -32,6 +41,10 @@ export const ModelSettingsSheet: React.FC<ModelSettingsSheetProps> = memo(
     );
     const [tempStopWords, setTempStopWords] = useState<string[]>(
       model?.stopWords || [],
+    );
+    // §18.7 用途标签选中集（仅用途键；种子自 model.capabilities）
+    const [usageSet, setUsageSet] = useState<SkillKey[]>(() =>
+      USAGE_TAG_KEYS.filter(k => model?.capabilities?.includes(k)),
     );
     const l10n = useContext(L10nContext);
 
@@ -83,6 +96,16 @@ export const ModelSettingsSheet: React.FC<ModelSettingsSheetProps> = memo(
       );
     };
 
+    const onUsageTagToggle = (key: SkillKey) => {
+      setUsageSet(prev => {
+        const next = prev.includes(key)
+          ? prev.filter(k => k !== key)
+          : [...prev, key];
+        // 固定顺序（写作/代码），渲染稳定
+        return USAGE_TAG_KEYS.filter(k => next.includes(k));
+      });
+    };
+
     // Reset temp settings when model changes
     useEffect(() => {
       if (model) {
@@ -97,6 +120,7 @@ export const ModelSettingsSheet: React.FC<ModelSettingsSheetProps> = memo(
         setSupportsEffort(cap.supportsEffort);
         setEffortSet(orderEffortValues(cap.effortValues));
         setReasoningDirty(false);
+        setUsageSet(USAGE_TAG_KEYS.filter(k => model.capabilities?.includes(k)));
       }
     }, [model]);
 
@@ -118,6 +142,14 @@ export const ModelSettingsSheet: React.FC<ModelSettingsSheetProps> = memo(
           modelStore.updateModelName(model.id, tempModelName);
           modelStore.updateModelChatTemplate(model.id, tempChatTemplate);
           modelStore.updateModelStopWords(model.id, tempStopWords);
+          // §18.7 用途标签：保留非用途键（自动探测能力声明），合并用户选择
+          const preserved = (model.capabilities ?? []).filter(
+            c => !USAGE_TAG_KEYS.includes(c),
+          );
+          modelStore.updateModelCapabilities(model.id, [
+            ...preserved,
+            ...usageSet,
+          ]);
         }
         // Persist a source:'user' reasoning override only when the user
         // actually touched a reasoning control. Otherwise leave the existing
@@ -183,6 +215,29 @@ export const ModelSettingsSheet: React.FC<ModelSettingsSheetProps> = memo(
               onStopWordsChange={value => setTempStopWords(value || [])}
               onModelNameChange={handleModelNameChange}
             />
+          )}
+
+          {/* §18.7 用途标签：写作/代码多选，任务选型（listModelsForTask）最高优先 */}
+          {!isRemote && (
+            <>
+              <Divider style={styles.multimodalDivider} />
+              <Text style={styles.multimodalSectionTitle}>用途</Text>
+              <Text variant="bodySmall" style={styles.reasoningHelp}>
+                打标签后，对应任务切换模型时优先推荐该模型。
+              </Text>
+              <View style={styles.effortChipsRow}>
+                {USAGE_TAGS.map(tag => (
+                  <Chip
+                    key={tag.key}
+                    testID={`usage-chip-${tag.key}`}
+                    selected={usageSet.includes(tag.key)}
+                    showSelectedCheck
+                    onPress={() => onUsageTagToggle(tag.key)}>
+                    {tag.label}
+                  </Chip>
+                ))}
+              </View>
+            </>
           )}
 
           {/* Multimodal Settings Section */}

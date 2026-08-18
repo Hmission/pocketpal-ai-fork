@@ -80,6 +80,7 @@ class MockModelStore {
   updateModelStopWords: jest.Mock;
   resetModelStopWords: jest.Mock;
   updateModelName: jest.Mock;
+  updateModelCapabilities: jest.Mock;
   resetModelName: jest.Mock;
   setImageMaxTokens: jest.Mock;
   setNThreads: jest.Mock;
@@ -129,6 +130,7 @@ class MockModelStore {
       updateModelStopWords: false,
       resetModelStopWords: false,
       updateModelName: false,
+      updateModelCapabilities: false,
       resetModelName: false,
       setImageMaxTokens: false,
       setNThreads: false,
@@ -203,6 +205,7 @@ class MockModelStore {
     this.updateModelStopWords = jest.fn();
     this.resetModelStopWords = jest.fn();
     this.updateModelName = jest.fn();
+    this.updateModelCapabilities = jest.fn();
     this.resetModelName = jest.fn();
     this.setImageMaxTokens = jest.fn();
     this.setNThreads = jest.fn();

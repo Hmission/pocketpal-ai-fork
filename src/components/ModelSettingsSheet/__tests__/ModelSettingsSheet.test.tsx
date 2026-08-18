@@ -451,4 +451,43 @@ describe('ModelSettingsSheet', () => {
       expect(modelStore.updateModelName).not.toHaveBeenCalled();
     });
   });
+
+  describe('§18.7 用途标签闭环（chips → capabilities）', () => {
+    it('点选 chips 保存：合并写入 capabilities，保留非用途键', async () => {
+      const taggedModel = {
+        ...mockModel,
+        capabilities: ['search'] as any,
+      };
+      const {getByTestId, getByText} = render(
+        <ModelSettingsSheet {...defaultProps} model={taggedModel} />,
+      );
+      fireEvent.press(getByTestId('usage-chip-rewriting'));
+      await act(async () => {
+        fireEvent.press(getByText('Save Changes'));
+      });
+      expect(modelStore.updateModelCapabilities).toHaveBeenCalledWith(
+        taggedModel.id,
+        ['search', 'rewriting'],
+      );
+    });
+
+    it('已有标签默认选中：取消选择后保存移除（固定顺序）', async () => {
+      const taggedModel = {
+        ...mockModel,
+        capabilities: ['rewriting', 'code'] as any,
+      };
+      const {getByTestId, getByText} = render(
+        <ModelSettingsSheet {...defaultProps} model={taggedModel} />,
+      );
+      // 取消写作，保留代码
+      fireEvent.press(getByTestId('usage-chip-rewriting'));
+      await act(async () => {
+        fireEvent.press(getByText('Save Changes'));
+      });
+      expect(modelStore.updateModelCapabilities).toHaveBeenCalledWith(
+        taggedModel.id,
+        ['code'],
+      );
+    });
+  });
 });

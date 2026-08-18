@@ -3,7 +3,7 @@ import React from 'react';
 import {chatSessionStore, modelStore} from '../store';
 import {routeTask, TaskKind} from '../store/taskRouter';
 import {runImageTaskCard, runEditImageTaskCard} from '../services/chatImageTask';
-import {findModelForTask} from '../store/modelCapabilityRegistry';
+import {findModelForTask, listModelsForTask} from '../store/modelCapabilityRegistry';
 import {engineStatus} from '../store/engineStatus';
 import {promptWriter} from '../services/promptWriter';
 import {extractAndSaveMemories} from '../services/aiosMemory';
@@ -147,7 +147,7 @@ async function butlerReply(text: string): Promise<boolean> {
 }
 
 /**
- * 任务模型解析（write/code/play，SPEC §9.3 + PLAY_SPEC §2.2）：当前模型≠推荐时弹窗确认，
+ * 任务模型解析（write/code/play，SPEC §9.3 → §18.7 多候选）：候选列表弹窗单选，
  * 选择写入会话偏好（会话级记住，不跨会话）。
  *   'proceed' → 模型已就绪，可发送；'abort' → 用户取消/失败，不发送
  */
@@ -155,38 +155,56 @@ async function resolveTaskModel(
   task: 'write' | 'code' | 'play',
   text: string,
 ): Promise<'proceed' | 'abort'> {
-  const candidate = findModelForTask(task);
+  const candidates = listModelsForTask(task);
+  const recommended = candidates[0];
   const remembered = chatSessionStore.taskModelChoice[task];
+  const toDialogCandidates = () =>
+    candidates.map(c => ({
+      id: c.id,
+      name: c.name || c.filename || '候选模型',
+      size: c.size,
+    }));
 
   // 场景 A：chat 引擎已加载（用户显式加载过大模型）——尊重主权
   if (modelStore.engine) {
     const current = modelStore.activeModel;
-    // 推荐为空 / 当前即推荐 / 记住继续当前 → 零弹窗直接发送
-    if (!candidate || (current && current.id === candidate.id)) {
+    // 零弹窗：候选空 / 当前即推荐 / 记住继续当前 / 当前即记住项
+    if (!recommended || (current && current.id === recommended.id)) {
       return 'proceed';
     }
-    if (remembered === candidate.id || remembered === '__current__') {
+    if (remembered === '__current__') {
       return 'proceed';
     }
-    const choice = await askModelSwitch({
+    if (remembered) {
+      const rememberedModel = candidates.find(c => c.id === remembered);
+      if (rememberedModel) {
+        if (current && current.id === remembered) {
+          return 'proceed';
+        }
+        // 会话内已显式选过的模型，直接加载不再问
+        return loadCandidate(rememberedModel, text);
+      }
+    }
+    const result = await askModelSwitch({
       task,
-      candidateName: candidate.name || candidate.filename || '推荐模型',
-      candidateSize: candidate.size,
+      candidates: toDialogCandidates(),
       canKeepCurrent: true,
     });
-    if (choice === 'load') {
-      chatSessionStore.setTaskModelChoice(task, candidate.id);
-      return loadCandidate(candidate, text);
+    if (result.choice === 'load') {
+      const chosen =
+        candidates.find(c => c.id === result.modelId) ?? recommended;
+      chatSessionStore.setTaskModelChoice(task, chosen.id);
+      return loadCandidate(chosen, text);
     }
-    if (choice === 'current') {
+    if (result.choice === 'current') {
       chatSessionStore.setTaskModelChoice(task, '__current__');
       return 'proceed';
     }
     return 'abort'; // cancel：用户放弃切换，消息不发送
   }
 
-  // 场景 B：chat 引擎未加载——推荐模型加载（弹窗确认）
-  if (!candidate) {
+  // 场景 B：chat 引擎未加载——候选模型加载（弹窗确认）
+  if (!recommended) {
     await insertTaskError(
       'no_model',
       '没有可用的对话模型',
@@ -195,19 +213,23 @@ async function resolveTaskModel(
     );
     return 'abort';
   }
-  if (remembered === candidate.id) {
-    return loadCandidate(candidate, text);
+  // 记住的模型仍在候选 → 直接加载（会话内显式选择不再问）
+  if (remembered && remembered !== '__current__') {
+    const rememberedModel = candidates.find(c => c.id === remembered);
+    if (rememberedModel) {
+      return loadCandidate(rememberedModel, text);
+    }
   }
-  const choice = await askModelSwitch({
+  const result = await askModelSwitch({
     task,
-    candidateName: candidate.name || candidate.filename || '推荐模型',
-    candidateSize: candidate.size,
+    candidates: toDialogCandidates(),
     // 场景 B 无当前模型：不显示「继续当前」死按钮（锋利不臃肿）
     canKeepCurrent: false,
   });
-  if (choice === 'load') {
-    chatSessionStore.setTaskModelChoice(task, candidate.id);
-    return loadCandidate(candidate, text);
+  if (result.choice === 'load') {
+    const chosen = candidates.find(c => c.id === result.modelId) ?? recommended;
+    chatSessionStore.setTaskModelChoice(task, chosen.id);
+    return loadCandidate(chosen, text);
   }
   return 'abort'; // 无当前模型可选「继续当前」→ 取消
 }

@@ -6,7 +6,10 @@ import {
   runImageTaskCard,
   runEditImageTaskCard,
 } from '../../services/chatImageTask';
-import {findModelForTask} from '../../store/modelCapabilityRegistry';
+import {
+  findModelForTask,
+  listModelsForTask,
+} from '../../store/modelCapabilityRegistry';
 import {promptWriter} from '../../services/promptWriter';
 import {awaitEngineReady} from '../../utils/engineReady';
 import {askModelSwitch} from '../../components/ui/ModelSwitchDialog';
@@ -30,6 +33,7 @@ jest.mock('../../services/promptWriter', () => ({
 }));
 jest.mock('../../store/modelCapabilityRegistry', () => ({
   findModelForTask: jest.fn(),
+  listModelsForTask: jest.fn(),
 }));
 jest.mock('../../utils/engineReady', () => ({
   awaitEngineReady: jest.fn(),
@@ -48,6 +52,7 @@ jest.mock('../../services/aiosMemory/conversationLog', () => ({
 const mockRunCard = runImageTaskCard as jest.Mock;
 const mockRunEditCard = runEditImageTaskCard as jest.Mock;
 const mockFind = findModelForTask as jest.Mock;
+const mockList = listModelsForTask as jest.Mock;
 const mockPromptChat = promptWriter.chat as jest.Mock;
 const mockAwaitReady = awaitEngineReady as jest.Mock;
 const mockAskSwitch = askModelSwitch as jest.Mock;
@@ -69,9 +74,11 @@ describe('useChatScheduler', () => {
     mockRunCard.mockReset();
     mockRunEditCard.mockReset();
     mockFind.mockReset();
+    mockList.mockReset();
     mockAwaitReady.mockResolvedValue(true);
     mockAskSwitch.mockReset();
-    mockAskSwitch.mockResolvedValue('load');
+    // §18.7：多候选返回形 {choice, modelId}；默认选推荐项（无 modelId 回落首项）
+    mockAskSwitch.mockResolvedValue({choice: 'load'});
     (promptWriter.ensureLoaded as jest.Mock).mockResolvedValue(true);
     (modelStore.selectModel as jest.Mock).mockReset();
     (promptWriter as any).isLoaded = false;
@@ -182,6 +189,7 @@ describe('useChatScheduler', () => {
 
   it('chitchat 管家未就绪且懒加载失败：TaskErrorCard no_model，不发送', async () => {
     mockFind.mockReturnValue(null);
+    mockList.mockReturnValue([]);
     (promptWriter.ensureLoaded as jest.Mock).mockResolvedValue(false);
     const {wrapped, handleSendPress} = setup();
 
@@ -201,7 +209,7 @@ describe('useChatScheduler', () => {
   });
 
   it('write 弹窗确认加载：加载完成+引擎就绪后才送消息（决策可见+双保险）', async () => {
-    mockFind.mockReturnValue({id: 'model-2', name: 'Test Model'});
+    mockList.mockReturnValue([{id: 'model-2', name: 'Test Model'}]);
     (modelStore.selectModel as jest.Mock).mockImplementation(() => {
       (modelStore as any).engine = {completion: jest.fn()};
     });
@@ -212,7 +220,12 @@ describe('useChatScheduler', () => {
     });
 
     expect(mockAskSwitch).toHaveBeenCalledWith(
-      expect.objectContaining({task: 'write', candidateName: 'Test Model'}),
+      expect.objectContaining({
+        task: 'write',
+        candidates: expect.arrayContaining([
+          expect.objectContaining({id: 'model-2', name: 'Test Model'}),
+        ]),
+      }),
     );
     expect(modelStore.selectModel).toHaveBeenCalledWith(
       expect.objectContaining({id: 'model-2'}),
@@ -222,8 +235,8 @@ describe('useChatScheduler', () => {
   });
 
   it('write 弹窗取消：不加载不发送（用户主权）', async () => {
-    mockFind.mockReturnValue({id: 'model-2', name: 'Test Model'});
-    mockAskSwitch.mockResolvedValue('cancel');
+    mockList.mockReturnValue([{id: 'model-2', name: 'Test Model'}]);
+    mockAskSwitch.mockResolvedValue({choice: 'cancel'});
     const {wrapped, handleSendPress} = setup();
 
     await act(async () => {
@@ -236,7 +249,7 @@ describe('useChatScheduler', () => {
   });
 
   it('write 弹窗确认加载但引擎未就绪（awaitEngineReady 超时）：TaskErrorCard busy，不送消息', async () => {
-    mockFind.mockReturnValue({id: 'model-2', name: 'Test Model'});
+    mockList.mockReturnValue([{id: 'model-2', name: 'Test Model'}]);
     mockAwaitReady.mockResolvedValue(false);
     (modelStore.selectModel as jest.Mock).mockImplementation(() => {
       (modelStore as any).engine = {completion: jest.fn()};
@@ -276,6 +289,7 @@ describe('useChatScheduler', () => {
 
   it('write 任务且引擎未加载且无候选：TaskErrorCard no_model，不触发加载与发送', async () => {
     mockFind.mockReturnValue(null);
+    mockList.mockReturnValue([]);
     const {wrapped, handleSendPress} = setup();
 
     await act(async () => {
@@ -294,7 +308,7 @@ describe('useChatScheduler', () => {
   });
 
   it('write 任务且引擎未加载且有候选：弹窗确认后自动加载并走常规聊天', async () => {
-    mockFind.mockReturnValue({id: 'model-1', name: 'Test Model'});
+    mockList.mockReturnValue([{id: 'model-1', name: 'Test Model'}]);
     (modelStore as any).engine = undefined;
     (modelStore.selectModel as jest.Mock).mockImplementation(() => {
       (modelStore as any).engine = {completion: jest.fn()};
@@ -307,6 +321,32 @@ describe('useChatScheduler', () => {
 
     expect(mockAskSwitch).toHaveBeenCalled();
     expect(modelStore.selectModel).toHaveBeenCalled();
+    expect(handleSendPress).toHaveBeenCalled();
+  });
+
+  it('write 多候选：用户选中非推荐项 → 加载所选并会话级记住（§18.7）', async () => {
+    mockList.mockReturnValue([
+      {id: 'model-1', name: '推荐小模型'},
+      {id: 'model-9', name: '用户所选大模型'},
+    ]);
+    mockAskSwitch.mockResolvedValue({choice: 'load', modelId: 'model-9'});
+    (modelStore.selectModel as jest.Mock).mockImplementation(() => {
+      (modelStore as any).engine = {completion: jest.fn()};
+    });
+    const {wrapped, handleSendPress} = setup();
+
+    await act(async () => {
+      await wrapped(msg('帮我写一篇作文'));
+    });
+
+    expect(modelStore.selectModel).toHaveBeenCalledWith(
+      expect.objectContaining({id: 'model-9'}),
+    );
+    // mock store 的 setTaskModelChoice 不突变，断言调用即可
+    expect(chatSessionStore.setTaskModelChoice).toHaveBeenCalledWith(
+      'write',
+      'model-9',
+    );
     expect(handleSendPress).toHaveBeenCalled();
   });
 });
