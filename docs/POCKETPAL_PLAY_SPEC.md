@@ -87,7 +87,7 @@ relates: [POCKETPAL_PRODUCT_SPEC, POCKETPAL_STARMAP_DOMAINS, POCKETPAL_MODEL_MAT
 | Gap ID | 现象 | 补齐路径 |
 |--------|------|----------|
 | PLAY-1 | 3B 玩具匠首生成质量未知 | 真机人类模拟操作验证；若质量不达标，玩具模板库（资产目录，非兜底分支） |
-| PLAY-2 | 玩具箱条目无限增长 | 上限 50 件滚动淘汰（满则删最旧，锋利不臃肿） |
+| PLAY-2 | 玩具箱条目无限增长 | ✅ 已闭环（v1.1）：上限 50 件滚动淘汰——saveToy 裁 index 时同步 unlink 出局 html 文件（名单与文件同生共死，无孤儿残留） |
 
 ## 八、关联
 
@@ -100,6 +100,7 @@ relates: [POCKETPAL_PRODUCT_SPEC, POCKETPAL_STARMAP_DOMAINS, POCKETPAL_MODEL_MAT
 | 日期 | 版本 | 变更 |
 |------|------|------|
 | 2026-08-18 | 1.0 | 首发：play 路由 + 玩具匠人格 + 玩具箱 + 玩法引导（前后端对齐） |
+| 2026-08-19 | 1.1 | 闭环收口：PLAY-2 文件级滚动淘汰（unlink 出局 html）——名单与文件同生共死 |
 
 ## 关联文档
 

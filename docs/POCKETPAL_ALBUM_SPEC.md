@@ -65,7 +65,7 @@ MemoryScreen「绘本」Modal：listAlbums() 周列表 → 展开（故事文本
 
 - **paths.ts**：`AIOS_ALBUM_DIR`（memories/album/）入 ensureAiosDirs。
 - **albumBook.createWeeklyAlbum()**：返回 `{ok, album?, error?}`；本周已存在 → `{ok:false, error:'已存在'}`；素材空 → 显式错误；出图失败 → 复用 imageGenStore.error。
-- **albumBook.listAlbums() / readAlbum(weekKey)**：周列表（新→旧）+ 读取 story.md 与 cover 路径。
+- **albumBook.listAlbums() / readAlbum(weekKey)**：周列表（新→旧）+ 读取 story.md 与 cover 路径（v1.1：readAlbum 独立导出，契约对齐）。
 - **MemoryScreen**：Appbar 新增「绘本」action（book-open-variant）→ Modal：空态引导 + 生成按钮 / 周列表展开查看（故事文本 + 封面缩放预览）。
 
 ## 六、健康指标
@@ -94,6 +94,7 @@ MemoryScreen「绘本」Modal：listAlbums() 周列表 → 展开（故事文本
 | 日期 | 版本 | 变更 |
 |------|------|------|
 | 2026-08-18 | 1.0 | 首发：周度绘本（故事+封面）+ MemoryScreen 浏览 |
+| 2026-08-19 | 1.1 | 闭环收口：readAlbum(weekKey) 独立导出（契约对齐，listAlbums 内联拆分） |
 
 ## 关联文档
 

@@ -123,6 +123,17 @@ describe('taskRouter', () => {
     });
   });
 
+  describe('adventure 快捷前缀（P12 v1.1，ADVENTURE_SPEC §五）', () => {
+    it('「来场冒险：地牢探险」剥离前缀路由 adventure 并提取主题', () => {
+      const signal = routeTask('来场冒险：地牢探险');
+      expect(signal.task).toBe('adventure');
+      expect(signal.payload).toBe('地牢探险');
+    });
+    it('「来场冒险：」空主体短路回 chitchat（防误伤）', () => {
+      expect(routeTask('来场冒险：').task).toBe('chitchat');
+    });
+  });
+
   describe('chitchat 兜底', () => {
     it('普通问候归为闲聊', () => {
       expect(routeTask('你好，今天过得怎么样').task).toBe('chitchat');

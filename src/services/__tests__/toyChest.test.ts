@@ -19,7 +19,9 @@ jest.mock('@dr.pogodin/react-native-fs', () => {
       return mem.get(p)!;
     }),
     copyFile: jest.fn(async () => undefined),
-    unlink: jest.fn(async () => undefined),
+    unlink: jest.fn(async (p: string) => {
+      mem.delete(p);
+    }),
     ExternalStorageDirectoryPath: '/sdcard',
     DocumentDirectoryPath: '/data/user/0/com.pocketpalai/files',
     ExternalDirectoryPath: '/sdcard/Android/data/com.pocketpalai/files',
@@ -72,5 +74,22 @@ describe('toyChest（P8 玩具工坊，PLAY_SPEC v1）', () => {
     // 最旧的 5 件（T0..T4）已被淘汰
     expect(toys.some(t => t.title === 'T0')).toBe(false);
     expect(toys.some(t => t.title === `T${TOY_LIMIT + 4}`)).toBe(true);
+  });
+
+  it('滚动淘汰同步清除出局 html 文件（名单与文件同生共死，PLAY-2 v1.1）', async () => {
+    const first: string[] = [];
+    for (let i = 0; i < TOY_LIMIT; i++) {
+      const entry = await saveToy(`T${i}`, `<html>${i}</html>`);
+      first.push(entry!.id);
+    }
+    // 第 51 件触发淘汰：T0 文件应被 unlink
+    await saveToy('T-LAST', '<html>last</html>');
+    expect(RNFS.unlink).toHaveBeenCalledWith(
+      `${AIOS_TOYS_DIR}/${first[0]}.html`,
+    );
+    // 文件级删除：被淘汰玩具的 html 不再可读
+    expect(await readToy(first[0])).toBeNull();
+    // 幸存玩具文件完好
+    expect(await readToy(first[TOY_LIMIT - 1])).not.toBeNull();
   });
 });

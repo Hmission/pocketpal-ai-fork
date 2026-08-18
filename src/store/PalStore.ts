@@ -50,10 +50,31 @@ import {ModelOrigin} from '../utils/types';
 import type {Model} from '../utils/types';
 import {downloadPalThumbnail, deletePalThumbnail} from '../utils/imageUtils';
 
+/**
+ * AIOS 女妖默认工具集（D-1 对账基准，2026-08-19）。
+ * 新增玩法工具在此登记；存量女妖按差集并集升级，不复活用户手动关闭的工具。
+ */
+const AIOS_PAL_DEFAULT_TALENTS: Array<{
+  name: string;
+  necessity: 'optional';
+}> = [
+  {name: 'web_search', necessity: 'optional'},
+  {name: 'read_url', necessity: 'optional'},
+  {name: 'calculate', necessity: 'optional'},
+  {name: 'datetime', necessity: 'optional'},
+  {name: 'render_html', necessity: 'optional'},
+  {name: 'search_memory', necessity: 'optional'},
+  {name: 'note_save', necessity: 'optional'},
+  {name: 'device_control', necessity: 'optional'},
+  {name: 'adventure_state', necessity: 'optional'},
+];
+
+/** pact.schemaVersion 当前版本：v1 = 九工具全量集。 */
+const PACT_SCHEMA_VERSION = 1;
+
 class PalStore {
   // Core pals storage
   pals: Pal[] = [];
-
   // PalsHub integration state
   cachedPalsHubPals: PalsHubPal[] = [];
   userLibrary: PalsHubPal[] = [];
@@ -813,7 +834,9 @@ class PalStore {
   /**
    * Initialize the built-in AIOS Pal with persona + all talents.
    * Persona lives in Pal.systemPrompt (not in memory service).
-   * pact.talents declares all 8 tools — accessible out-of-box.
+   * pact.talents declares all 9 tools — accessible out-of-box.
+   * 存量对账（2026-08-19，D-1）：老设备女妖 pact 无 schemaVersion →
+   * 差集并集补默认工具集（只补缺的，不复活用户手动关闭的工具）。
    */
   private async initializeAiosPal(): Promise<void> {
     try {
@@ -821,6 +844,28 @@ class PalStore {
         p => p.name === '女妖' && p.source === 'local',
       );
       if (existing) {
+        const currentVersion = existing.pact?.schemaVersion ?? 0;
+        if (currentVersion < PACT_SCHEMA_VERSION) {
+          const currentNames = new Set(
+            (existing.pact?.talents ?? []).map(t => t.name),
+          );
+          const missing = AIOS_PAL_DEFAULT_TALENTS.filter(
+            t => !currentNames.has(t.name),
+          );
+          if (missing.length > 0) {
+            await this.updatePal(existing.id, {
+              pact: {
+                talents: [...(existing.pact?.talents ?? []), ...missing],
+                schemaVersion: PACT_SCHEMA_VERSION,
+              },
+            });
+            console.log(
+              `[PalStore] AIOS pal pact reconciled: +${missing
+                .map(t => t.name)
+                .join(', ')}`,
+            );
+          }
+        }
         return;
       }
 
@@ -844,17 +889,8 @@ class PalStore {
         color: ['#4A0E4E', '#1A0A2E'],
         source: 'local',
         pact: {
-          talents: [
-            {name: 'web_search', necessity: 'optional' as const},
-            {name: 'read_url', necessity: 'optional' as const},
-            {name: 'calculate', necessity: 'optional' as const},
-            {name: 'datetime', necessity: 'optional' as const},
-            {name: 'render_html', necessity: 'optional' as const},
-            {name: 'search_memory', necessity: 'optional' as const},
-            {name: 'note_save', necessity: 'optional' as const},
-            {name: 'device_control', necessity: 'optional' as const},
-            {name: 'adventure_state', necessity: 'optional' as const},
-          ],
+          talents: AIOS_PAL_DEFAULT_TALENTS,
+          schemaVersion: PACT_SCHEMA_VERSION,
         },
       };
 

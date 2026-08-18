@@ -1,4 +1,4 @@
-import {createWeeklyAlbum, listAlbums, weekKeyOf} from '../albumBook';
+import {createWeeklyAlbum, listAlbums, readAlbum, weekKeyOf} from '../albumBook';
 import {listMemories} from '../aiosMemory';
 import {listDiaries, readDiary} from '../aiosMemory/rituals';
 import {promptWriter} from '../promptWriter';
@@ -174,5 +174,23 @@ describe('albumBook（P10 记忆绘本，ALBUM_SPEC v1）', () => {
     expect(albums.length).toBe(1);
     expect(albums[0].week).toBe(week);
     expect(albums[0].coverUri).toBe(`${dir}/cover.png`);
+  });
+
+  it('readAlbum 读取单周绘本；缺失返回 null（ALBUM_SPEC §五，v1.1）', async () => {
+    const week = weekKeyOf(new Date());
+    const dir = `${AIOS_ALBUM_DIR}/${week}`;
+    (RNFS as any).__dirs.add(dir);
+    (RNFS as any).__mem.set(
+      `${dir}/story.md`,
+      `# ${week} 本周故事\n\n这一周很开心`,
+    );
+
+    const album = await readAlbum(week);
+    expect(album).not.toBeNull();
+    expect(album!.week).toBe(week);
+    expect(album!.story).toContain('很开心');
+    expect(album!.coverUri).toBe(`${dir}/cover.png`);
+
+    expect(await readAlbum('2020-W00')).toBeNull();
   });
 });

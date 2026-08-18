@@ -63,7 +63,6 @@ export function KnowledgeScreen({navigation}: any) {
   const [tab, setTab] = React.useState<Tab>('conversations');
   const [dates, setDates] = React.useState<string[]>([]);
   const [summaryDates, setSummaryDates] = React.useState<string[]>([]);
-  const [_selectedDate, setSelectedDate] = React.useState<string | null>(null);
   const [content, setContent] = React.useState('');
   const [query, setQuery] = React.useState('');
   const [searchResults, setSearchResults] = React.useState<string[]>([]);
@@ -91,21 +90,18 @@ export function KnowledgeScreen({navigation}: any) {
   }, [refresh]);
 
   const loadDate = async (date: string) => {
-    setSelectedDate(date);
     setSearchResults([]);
     const c = await readConversationLog(date);
     setContent(c);
   };
 
   const loadSummary = async (date: string) => {
-    setSelectedDate(date);
     setSearchResults([]);
     const c = await readSummary(date);
     setContent(c);
   };
 
   const loadLongTermMemory = async () => {
-    setSelectedDate('MEMORY.md');
     setSearchResults([]);
     try {
       if (await RNFS.exists(AIOS_MEMORY_FILE)) {
@@ -124,14 +120,12 @@ export function KnowledgeScreen({navigation}: any) {
       return;
     }
     setContent('');
-    setSelectedDate(null);
     setSelectedToy(null);
     const results = await searchMemory(query, 10);
     setSearchResults(results);
   };
 
   const openToy = async (toy: ToyEntry) => {
-    setSelectedDate(null);
     setSearchResults([]);
     const html = await readToy(toy.id);
     setSelectedToy(html ? {title: toy.title, html} : null);

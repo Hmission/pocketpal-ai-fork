@@ -116,6 +116,8 @@ export interface Pal {
    */
   pact?: {
     talents: TalentRef[];
+    /** 工具集版本（PACT_SCHEMA_VERSION，对账迁移用）：缺失=老设备，落后=差集并集补新工具。 */
+    schemaVersion?: number;
   };
 
   // ============================================================================

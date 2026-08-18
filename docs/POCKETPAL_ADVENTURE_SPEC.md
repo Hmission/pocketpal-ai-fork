@@ -62,7 +62,7 @@ relates: [POCKETPAL_SCREENWATCH_SPEC, POCKETPAL_PLAY_SPEC, POCKETPAL_PRODUCT_SPE
 
 ## 五、契约
 
-- **taskRouter**：`TaskKind` 增 `'adventure'`；ADVENTURE_RE 自然语言（来场冒险/开个副本/当城主/冒险模式/一起冒险）→ `{task:'adventure', payload}`。
+- **taskRouter**：`TaskKind` 增 `'adventure'`；ADVENTURE_RE 自然语言（来场冒险/开个副本/当城主/冒险模式/一起冒险）→ `{task:'adventure', payload}`；快捷前缀「来场冒险：」显式引导（v1.1，与「做个玩具：」同构，前后端对齐）。
 - **useChatScheduler**：`signal.task === 'adventure'` → `resolveTaskModel('write', text)`（城主=写作模型，弹窗「写作」叙事沿用）→ handleSendPress。
 - **AdventureStateEngine（talent `adventure_state`）**：
   - `{action:'get'}` → `{ok, state}`；未开档 → `{ok:false, error:'尚未开档，请先让城主开启冒险'}`
@@ -70,6 +70,7 @@ relates: [POCKETPAL_SCREENWATCH_SPEC, POCKETPAL_PLAY_SPEC, POCKETPAL_PRODUCT_SPE
   - `{action:'reset'}` → 删除 state.json（新冒险清档）
   - 上限 20KB（防膨胀）
 - **注册**：talents/index.ts `registerDefaultTalents` + 女妖 pact.talents 增 `adventure_state`。
+- **存量对账**（v1.1，D-1 修复）：PalStore `initializeAiosPal` 对存量女妖做 pact 对账——`pact.schemaVersion` 落后时并入默认工具集差集（只补新增，不复活用户手动关闭的工具）；老设备女妖开箱即得新工具。
 - **systemPromptFragment**：城主引导——写剧情、自主用 adventure_state 维护 HP/位置/背包、判定用骰子叙事（1d20 口语化）、冒险结束自动 reset。
 - **paths.ts**：`AIOS_ADVENTURE_DIR`（workspace/adventure/）入 ensureAiosDirs。
 
@@ -99,6 +100,7 @@ relates: [POCKETPAL_SCREENWATCH_SPEC, POCKETPAL_PLAY_SPEC, POCKETPAL_PRODUCT_SPE
 | 日期 | 版本 | 变更 |
 |------|------|------|
 | 2026-08-18 | 1.0 | 首发：adventure 路由 + adventure_state 工具化状态管理 + 城主叙事 |
+| 2026-08-19 | 1.1 | 闭环收口：存量女妖 pact 对账迁移（schemaVersion 差集并入）+ 快捷前缀「来场冒险：」引导 |
 
 ## 关联文档
 

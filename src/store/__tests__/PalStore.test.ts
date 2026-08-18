@@ -209,6 +209,83 @@ describe('PalStore', () => {
       expect(lookieCreate).toBeUndefined();
       expect(resolveHFModelForDownload).not.toHaveBeenCalled();
     });
+
+    it('D-1 pact 对账：存量女妖缺 render_html/device_control/adventure_state → 差集并集补齐 + 写 schemaVersion', async () => {
+      const legacyBanshee: Pal = {
+        ...mockPal,
+        id: 'legacy-banshee',
+        name: '女妖',
+        source: 'local',
+        pact: {
+          talents: [
+            {name: 'web_search', necessity: 'optional'},
+            {name: 'read_url', necessity: 'optional'},
+            {name: 'calculate', necessity: 'optional'},
+            {name: 'datetime', necessity: 'optional'},
+            {name: 'search_memory', necessity: 'optional'},
+            {name: 'note_save', necessity: 'optional'},
+          ],
+          // 老设备无 schemaVersion → 触发对账
+        },
+      };
+      (palRepository.getAllPals as jest.Mock).mockResolvedValue([
+        legacyBanshee,
+      ]);
+      (palRepository.createPal as jest.Mock).mockImplementation(
+        async (palData: any) => ({
+          ...palData,
+          id: 'created-id',
+          created_at: 'now',
+          updated_at: 'now',
+        }),
+      );
+      (palRepository.updatePal as jest.Mock).mockImplementation(
+        async (id: string, updates: any) => ({
+          ...legacyBanshee,
+          ...updates,
+        }),
+      );
+
+      // eslint-disable-next-line no-new
+      new (palStore.constructor as any)();
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      const reconcileCall = (palRepository.updatePal as jest.Mock).mock.calls.find(
+        call => call[0] === 'legacy-banshee',
+      );
+      expect(reconcileCall).toBeDefined();
+      const pact = reconcileCall![1].pact;
+      const names = pact.talents.map((t: any) => t.name);
+      expect(names).toEqual(
+        expect.arrayContaining([
+          'web_search',
+          'render_html',
+          'device_control',
+          'adventure_state',
+        ]),
+      );
+      expect(pact.schemaVersion).toBe(1);
+    });
+
+    it('D-1 pact 对账：schemaVersion 已最新 → 不重复对账（不复活用户手动关闭的工具）', async () => {
+      const banshee: Pal = {
+        ...mockPal,
+        id: 'banshee-current',
+        name: '女妖',
+        source: 'local',
+        pact: {
+          talents: [{name: 'web_search', necessity: 'optional'}], // 用户手动关掉其余工具
+          schemaVersion: 1,
+        },
+      };
+      (palRepository.getAllPals as jest.Mock).mockResolvedValue([banshee]);
+
+      // eslint-disable-next-line no-new
+      new (palStore.constructor as any)();
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      expect(palRepository.updatePal).not.toHaveBeenCalled();
+    });
   });
 
   describe('checkout eligibility writer', () => {

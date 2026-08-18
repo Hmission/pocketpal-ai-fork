@@ -43,7 +43,18 @@ const CODE_RE =
 // 快捷前缀（P5 v2）：输入卡快捷按钮预填「图像生成：/图片编辑：」——显式意图引导。
 // 图像生成→image（payload 剥离前缀）；图片编辑无源图无法编辑，不在此路由（显式链路走 scheduler）。
 // 玩具工坊（P8 v1）：快捷按钮预填「做个玩具：」——玩法引导前后端对齐（PLAY_SPEC §2.5）。
-const QUICK_PREFIX_RE = /^(图像生成|图片编辑|做个玩具)[:：]\s*/;
+// TRPG 城主（P12 v1.1）：快捷按钮预填「来场冒险：」——冒险玩法引导（ADVENTURE_SPEC §五）。
+const QUICK_PREFIX_RE = /^(图像生成|图片编辑|做个玩具|来场冒险)[:：]\s*/;
+
+// 玩具（P8 v1，PLAY_SPEC）：动词 + 玩具/游戏/小玩意类目标词。
+// 收紧避免误伤：目标词仅限可玩品类，不含「代码/程序」（那是 code 域）。
+const PLAY_RE =
+  /(?:做个|来一个|来个|来款|造个|整个|给我做个|帮我做|想玩)[^。！？!?\n]{0,20}?(?:游戏|玩具|贪吃蛇|俄罗斯方块|扫雷|抽签|转盘|摇奖|小游戏|小玩意|生成艺术|canvas)/i;
+
+// 冒险（P12 v1，ADVENTURE_SPEC）：城主/副本/冒险显式意图。
+// 收紧避免误伤：需含冒险类关键词，日常「冒险尝试」不命中。
+const ADVENTURE_RE =
+  /(?:来场|开个|当|开启|进入|继续)(?:冒险|副本|地牢|dungeon)|冒险模式|一起冒险|城主/i;
 
 export function routeTask(text: string): TaskSignal {
   const t = text.trim();
@@ -62,6 +73,15 @@ export function routeTask(text: string): TaskSignal {
     const payload = t.slice(quick[0].length).trim();
     if (payload) {
       return {task: 'play', payload};
+    }
+    return {task: 'chitchat', payload: t};
+  }
+  // 0.2) 快捷前缀「来场冒险：」：显式玩法意图（ADVENTURE_SPEC v1.1，D-4）。
+  //     剥离后为空直接短路回 chitchat——与「做个玩具」同构防误伤。
+  if (quick && quick[1] === '来场冒险') {
+    const payload = t.slice(quick[0].length).trim();
+    if (payload) {
+      return {task: 'adventure', payload};
     }
     return {task: 'chitchat', payload: t};
   }
@@ -87,18 +107,12 @@ export function routeTask(text: string): TaskSignal {
     return {task: 'code', payload: t};
   }
 
-  // 5) 玩具（P8 v1，PLAY_SPEC）：动词 + 玩具/游戏/小玩意类目标词。
-  //    收紧避免误伤：目标词仅限可玩品类，不含「代码/程序」（那是 code 域）。
-  const PLAY_RE =
-    /(?:做个|来一个|来个|来款|造个|整个|给我做个|帮我做|想玩)[^。！？!?\n]{0,20}?(?:游戏|玩具|贪吃蛇|俄罗斯方块|扫雷|抽签|转盘|摇奖|小游戏|小玩意|生成艺术|canvas)/i;
+  // 5) 玩具（P8 v1，PLAY_SPEC）
   if (PLAY_RE.test(t)) {
     return {task: 'play', payload: t};
   }
 
-  // 6) 冒险（P12 v1，ADVENTURE_SPEC）：城主/副本/冒险显式意图。
-  //    收紧避免误伤：需含冒险类关键词，日常「冒险尝试」不命中。
-  const ADVENTURE_RE =
-    /(?:来场|开个|当|开启|进入|继续)(?:冒险|副本|地牢|dungeon)|冒险模式|一起冒险|城主/gi;
+  // 6) 冒险（P12 v1，ADVENTURE_SPEC）
   if (ADVENTURE_RE.test(t)) {
     return {task: 'adventure', payload: t};
   }

@@ -55,6 +55,15 @@ export async function saveToy(title: string, html: string): Promise<ToyEntry | n
     const next = [entry, ...entries].slice(0, TOY_LIMIT);
     await RNFS.writeFile(`${AIOS_TOYS_DIR}/${entry.id}.html`, html, 'utf8');
     await writeIndex(next);
+    // 滚动淘汰（PLAY-2 v1.1）：被裁出名单的最旧条目，文件同步清除——名单与文件同生共死。
+    const evicted = entries.slice(TOY_LIMIT - 1);
+    for (const old of evicted) {
+      try {
+        await RNFS.unlink(`${AIOS_TOYS_DIR}/${old.id}.html`);
+      } catch (e) {
+        console.warn(`[toyChest] evict file failed for ${old.id}:`, e);
+      }
+    }
     return entry;
   } catch (e) {
     console.warn('[toyChest] saveToy failed:', e);

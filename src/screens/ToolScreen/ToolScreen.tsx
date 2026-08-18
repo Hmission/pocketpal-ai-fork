@@ -20,7 +20,6 @@ const StaggeredToolRow = ({
   index,
   item,
   enabled,
-  isPhase2,
   screenReaderOn,
   styles,
   onToggle,
@@ -28,7 +27,6 @@ const StaggeredToolRow = ({
   index: number;
   item: ToolDefinition;
   enabled: boolean;
-  isPhase2: boolean;
   screenReaderOn: boolean;
   styles: any;
   onToggle: (name: string, enable: boolean) => void;
@@ -41,7 +39,6 @@ const StaggeredToolRow = ({
         title={
           <View style={styles.titleRow}>
             <Text style={styles.titleText}>{name}</Text>
-            {isPhase2 && <Text style={styles.phase2Badge}>Phase 2 未实现</Text>}
             {name === 'device_control' &&
               (screenReaderOn ? (
                 <Text style={styles.readOnlyBadge}>读屏围观 ✓</Text>
@@ -70,7 +67,6 @@ const StaggeredToolRow = ({
           ) : (
             <Switch
               value={enabled}
-              disabled={isPhase2}
               onValueChange={v => onToggle(name, v)}
             />
           )
@@ -153,7 +149,11 @@ export function ToolScreen({navigation}: any) {
       updatedTalents = currentTalents.filter(t => t.name !== name);
     }
     await palStore.updatePal(aiosPal.id, {
-      pact: {talents: updatedTalents},
+      pact: {
+        talents: updatedTalents,
+        // 保留 schemaVersion，避免对账逻辑误判为老设备（D-1）
+        schemaVersion: aiosPal.pact?.schemaVersion,
+      },
     });
     setEnabledTalents(new Set(updatedTalents.map(t => t.name)));
   };
@@ -161,15 +161,11 @@ export function ToolScreen({navigation}: any) {
   const renderItem = ({item, index}: {item: ToolDefinition; index: number}) => {
     const name = item.function.name;
     const enabled = enabledTalents.has(name);
-    // device_control 已落地只读读屏（P11），不再有 Phase 2 工具；
-    // 保留 isPhase2 通道供未来真 skeleton 使用（当前恒 false）
-    const isPhase2 = false;
     return (
       <StaggeredToolRow
         index={index}
         item={item}
         enabled={enabled}
-        isPhase2={isPhase2}
         screenReaderOn={screenReaderOn}
         styles={styles}
         onToggle={toggleTalent}
@@ -269,16 +265,6 @@ const createStyles = (theme: Theme) =>
     titleText: {
       ...theme.typography.titleS,
       color: theme.colors.onSurface,
-    },
-    phase2Badge: {
-      ...theme.typography.captionS,
-      color: theme.colors.warning,
-      backgroundColor: withOpacity(theme.colors.warning, 0.12),
-      paddingHorizontal: theme.spacing.s,
-      paddingVertical: theme.spacing.xxs,
-      // 形状角色：胶囊 chip/badge（DESIGN_SPEC §4）
-      borderRadius: theme.radius.full,
-      overflow: 'hidden',
     },
     readOnlyBadge: {
       ...theme.typography.captionS,

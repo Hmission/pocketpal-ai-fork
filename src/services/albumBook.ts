@@ -193,19 +193,31 @@ export async function listAlbums(): Promise<Album[]> {
       .sort((a, b) => (a.name < b.name ? 1 : -1));
     const albums: Album[] = [];
     for (const d of dirs) {
-      const storyPath = `${d.path}/story.md`;
-      if (!(await RNFS.exists(storyPath))) {
-        continue;
+      const album = await readAlbum(d.name);
+      if (album) {
+        albums.push(album);
       }
-      const story = await RNFS.readFile(storyPath, 'utf8');
-      albums.push({
-        week: d.name,
-        story,
-        coverUri: `${d.path}/cover.png`,
-      });
     }
     return albums;
   } catch {
     return [];
+  }
+}
+
+/** 读取单周绘本；缺失返回 null（ALBUM_SPEC §五 readAlbum 契约，v1.1）。 */
+export async function readAlbum(weekKey: string): Promise<Album | null> {
+  try {
+    const storyPath = `${AIOS_ALBUM_DIR}/${weekKey}/story.md`;
+    if (!(await RNFS.exists(storyPath))) {
+      return null;
+    }
+    const story = await RNFS.readFile(storyPath, 'utf8');
+    return {
+      week: weekKey,
+      story,
+      coverUri: `${AIOS_ALBUM_DIR}/${weekKey}/cover.png`,
+    };
+  } catch {
+    return null;
   }
 }
