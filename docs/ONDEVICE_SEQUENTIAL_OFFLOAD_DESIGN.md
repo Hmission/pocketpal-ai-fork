@@ -144,6 +144,30 @@ if (zimage_model) {
 
 **产品策略**：小米 13 用 SD3.5（~40 分钟）/DreamLite；Z-Image 仅高端设备（manifest note 已标注）。
 
+---
+
+## 七、小米 13 Z-Image 突破实录（2026-08-18，f16 embedding + OEM kill）
+
+### 7.1 真凶与修复
+
+- **真凶**：qwen3 `token_embd.weight`（gguf 里 q6_K 304MB）因不支持 get_rows 被引擎升级 **f32 = 1483.75MB**，超小米13 GPU 单次分配上限 1024MB（崩溃日志 `failed to allocate 1483.75 MiB` 数字级吻合）。
+- **K90 能跑的原因**：同路径同 f32，但 K90 上限 2048MB > 1483MB（对照组自洽）。
+- **修复**（ggml_extend.hpp Embedding::init_params）：`!support_get_rows` 时升 **f16**（742MB < 1024MB）而非 f32。commit c959b9b。
+- 撤销 CPU 回退（OpenCL kernel 读不了 host tensor，系上轮闪退元凶）。
+
+### 7.2 f16 验证结果：条件编码首次通过
+
+- 小米 13 日志首次出现 `sampling using Euler method`——**进入采样阶段**（历史性突破）。
+- 但 70 秒后被 **signal 9 kill**：`Killing ... stop com.pocketpalai due to from process:7072`（无 tombstone，非崩溃）。
+
+### 7.3 新敌：HyperOS OEM 管理 kill
+
+- 7072 = 小米系统管理进程（非本 App，本 App 单进程无自杀逻辑）。
+- 被杀时系统 MemAvailable 8GB+ → **非全局内存不足，系 HyperOS per-app 内存配额/电源管理 forceStop**。
+- **对策 A（用户侧）**：电池省电→不限制 + 最近任务锁定（待大王验证）。
+- **对策 B（工程侧，备选）**：压低加载阶段 RAM 峰值（mmap 缓存 + convert buffer + GPU buffer 叠加）。
+
+
 ### 6.3 已验证可用（无需再动）
 
 - K90（Adreno 840）：SD3.5 ~10 分钟、Z-Image ~40 分钟（双禁用）——顺序卸载对 K90 是加速/稳定性增益，不改变可用性。
