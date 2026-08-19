@@ -184,6 +184,20 @@ describe('ImageGenScreen 编排层（P4 对齐）', () => {
     expect(getByText(/生成完成（1024×1024）/)).toBeTruthy();
   });
 
+  it('空提示词点出图：显式 toast 提示（不静默），不触发生成（复查 2026-08-20 真机回归）', async () => {
+    mockGenerate.mockClear();
+    const {getByText, queryByText} = await renderAndWaitScan();
+
+    await act(async () => {
+      fireEvent.press(getByText('出图'));
+    });
+
+    // 显式反馈：不再「有动效无反应」
+    expect(getByText('先输入提示词，再点出图')).toBeTruthy();
+    expect(mockGenerate).not.toHaveBeenCalled();
+    expect(queryByText(/生成完成/)).toBeNull();
+  });
+
   it('出图流：失败（uri=null）→ 任务保留为 failed（failTask 回填报错），不报生成完成', async () => {
     mockGenerate.mockResolvedValue(null);
     (imageGenStore as any).error = '引擎过热';

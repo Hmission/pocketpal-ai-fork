@@ -438,8 +438,16 @@ export const ImageGenScreen: React.FC = observer(() => {
     }
   }, [pageW, historyLen]);
 
+  // 再次生成 = 当前图同参数重新生成（复查 2026-08-20）：用任务自带 prompt
+  // 而非当前输入框——输入框被清空/编辑预备态清 prompt 后再次生成仍有效，
+  // 与失败页「重试」同一语义（handleGenerate(item.prompt)）。
   const handleReroll = () => {
-    handleGenerate(); // 同参数再次生成
+    if (currentItem) {
+      syncFromParams(currentItem);
+      handleGenerate(currentItem.prompt);
+    } else {
+      handleGenerate(); // 无当前图（编辑槽）时回落当前输入框
+    }
   };
 
   // 编辑源图入槽（单一入口：相册上传 / 聊天图片卡片「编辑图片」深链共用）：
@@ -607,6 +615,9 @@ export const ImageGenScreen: React.FC = observer(() => {
   const handleGenerate = async (promptOverride?: string) => {
     const p = (promptOverride ?? prompt).trim();
     if (!p) {
+      // 复查 2026-08-20：空提示词点「出图」必须显式反馈（不静默）——
+      // 此前静默早退导致「有动效无反应」，两台真机稳定复现
+      showToast('先输入提示词，再点出图');
       return;
     }
     setEditArming(false); // 出图退出编辑预备态

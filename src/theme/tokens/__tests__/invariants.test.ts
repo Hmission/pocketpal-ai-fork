@@ -170,6 +170,8 @@ describe('design-token grep invariants', () => {
       'screens/ModelDirsScreen',
       // B18 §17 → §18.2：每输出指标行并入 AssistantTurnFooter（双行合并），token 表面消费
       'components/AssistantTurnFooter',
+      // §18.4 发送钮双态/停止钮重绘（批次B）：token 表面消费
+      'components/StopButton',
     ];
     const files = listFiles(SRC).filter(f => {
       const rel = path.relative(SRC, f).replace(/\\/g, '/');

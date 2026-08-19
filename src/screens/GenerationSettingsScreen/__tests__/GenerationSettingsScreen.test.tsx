@@ -43,7 +43,7 @@ describe('GenerationSettingsScreen', () => {
 
     expect(getByText('Model Initialization Settings')).toBeTruthy();
     expect(getByText('Model Loading Settings')).toBeTruthy();
-    expect(getByDisplayValue('2048')).toBeTruthy(); // Context size
+    expect(getByDisplayValue('8192')).toBeTruthy(); // Context size (v2.3 default)
   });
 
   it('updates context size correctly', async () => {
@@ -52,7 +52,7 @@ describe('GenerationSettingsScreen', () => {
       withSafeArea: true,
       withNavigation: true,
     });
-    const contextSizeInput = getByDisplayValue('2048');
+    const contextSizeInput = getByDisplayValue('8192');
 
     act(() => {
       fireEvent.changeText(contextSizeInput, '512');
@@ -79,7 +79,7 @@ describe('GenerationSettingsScreen', () => {
         withNavigation: true,
       },
     );
-    const contextSizeInput = getByDisplayValue('2048');
+    const contextSizeInput = getByDisplayValue('8192');
 
     await act(async () => {
       fireEvent.changeText(contextSizeInput, '100'); // Below minimum size
@@ -96,14 +96,14 @@ describe('GenerationSettingsScreen', () => {
         withNavigation: true,
       },
     );
-    const contextSizeInput = getByDisplayValue('2048');
+    const contextSizeInput = getByDisplayValue('8192');
 
     fireEvent.changeText(contextSizeInput, '512');
     fireEvent.press(getByText('Model Initialization Settings'));
 
     await waitFor(() => {
       expect(Keyboard.dismiss).toHaveBeenCalled();
-      expect(getByDisplayValue('2048')).toBeTruthy(); // Reset back to original size
+      expect(getByDisplayValue('8192')).toBeTruthy(); // Reset back to original size
     });
   });
 
@@ -115,17 +115,17 @@ describe('GenerationSettingsScreen', () => {
       withSafeArea: true,
       withNavigation: true,
     });
-    expect(getByDisplayValue('2048')).toBeTruthy();
+    expect(getByDisplayValue('8192')).toBeTruthy();
 
     // Simulate the IncreaseContextSheet confirm writing the per-model override
     // (setModelNCtx 路径，不再改全局 contextInitParams.n_ctx)。
     runInAction(() => {
-      (modelStore as any).perModelNCtx['test-model'] = 8192;
+      (modelStore as any).perModelNCtx['test-model'] = 16384;
     });
     rerender(<GenerationSettingsScreen />);
 
     await waitFor(() => {
-      expect(getByDisplayValue('8192')).toBeTruthy();
+      expect(getByDisplayValue('16384')).toBeTruthy();
     });
 
     runInAction(() => {
@@ -250,18 +250,18 @@ describe('GenerationSettingsScreen', () => {
     fireEvent.press(getByText('Advanced Settings'));
 
     await waitFor(() => {
-      // Initially, with image_max_tokens = 512 and n_ctx = 2048, no effective label should show
+      // Initially, with image_max_tokens = 512 and n_ctx = 8192, no effective label should show
       expect(queryByText(/effective:/)).toBeFalsy();
     });
 
     // Now set image_max_tokens > n_ctx to trigger effective display
     act(() => {
-      modelStore.contextInitParams.image_max_tokens = 3000;
+      modelStore.contextInitParams.image_max_tokens = 9000;
     });
 
     await waitFor(() => {
-      // Should show effective value clamped to n_ctx (2048)
-      expect(getByText(/effective: 2048/)).toBeTruthy();
+      // Should show effective value clamped to n_ctx (8192)
+      expect(getByText(/effective: 8192/)).toBeTruthy();
     });
   });
 });
