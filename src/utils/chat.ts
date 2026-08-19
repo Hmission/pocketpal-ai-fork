@@ -129,6 +129,28 @@ function stepToApiMessages(step: AgentStep): ChatMessage[] {
   return [assistantMsg, ...toolMsgs];
 }
 
+/**
+ * Strip `reasoning_content` from assistant messages (2026-08-19 K90 血证)。
+ * 能生成 reasoning 的模板未必能回灌：Ministral 对携带 reasoning_content 的
+ * 历史 assistant 消息重格式化即 Jinja 拒收（'Only text chunks are supported
+ * in assistant message contents'），会话永久卡死。装载探针
+ * （detectReasoningReinject）标记 false 时，历史消息剥离该字段再入模板。
+ */
+export function stripReasoningContent(
+  messages: ChatMessage[],
+): ChatMessage[] {
+  return messages.map(msg => {
+    if (
+      msg.role === 'assistant' &&
+      (msg as {reasoning_content?: string}).reasoning_content !== undefined
+    ) {
+      const {reasoning_content: _rc, ...rest} = msg as Record<string, unknown>;
+      return rest as ChatMessage;
+    }
+    return msg;
+  });
+}
+
 export function convertToChatMessages(
   messages: MessageType.Any[],
   isMultimodalEnabled: boolean = true,

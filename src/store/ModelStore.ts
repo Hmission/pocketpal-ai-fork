@@ -87,7 +87,10 @@ import {
   getRecommendedThreadCount,
   getCpuCoreCount,
 } from '../utils/deviceCapabilities';
-import {detectThinkingCapability} from '../utils/thinkingCapabilityDetection';
+import {
+  detectThinkingCapability,
+  detectReasoningReinject,
+} from '../utils/thinkingCapabilityDetection';
 import {ReasoningCapability} from '../utils/reasoningCapability';
 import {capsMatchBinding} from '../utils/remoteCaps';
 import {resolveModelCaps} from '../utils/modelCaps';
@@ -3151,10 +3154,13 @@ class ModelStore {
       }
 
       const result = await detectThinkingCapability(ctx);
+      // Reasoning 回灌探针：能生成 ≠ 能回灌（Ministral 回灌即 Jinja 拒收）。
+      const reinject = await detectReasoningReinject(ctx);
 
       runInAction(() => {
         // Keep the deprecated boolean + tags in sync for back-compat readers.
         storeModel.supportsThinking = result.supported;
+        storeModel.reasoningReinject = reinject;
         if (result.thinkingStartTag) {
           storeModel.thinkingStartTag = result.thinkingStartTag;
         }

@@ -619,6 +619,13 @@ export interface Model {
   thinkingEndTag?: string; // Thinking end tag from getFormattedChat (e.g., '</think>')
   // Reasoning capability (two axes). Local home; persisted with the model.
   reasoning?: ReasoningCapability;
+  /**
+   * Reasoning 回灌探针（2026-08-19 K90 血证）：模板能否接受历史 assistant
+   * 消息携带 reasoning_content 重格式化。Ministral 等模板能生成 reasoning
+   * 但回灌即 Jinja 拒收（'Only text chunks'）→ false 时历史剥离该字段。
+   * undefined = 未探测（远程模型/旧记录），不剥离。
+   */
+  reasoningReinject?: boolean;
 
   // GGUF metadata (for memory estimation)
   ggufMetadata?: GGUFMetadata;

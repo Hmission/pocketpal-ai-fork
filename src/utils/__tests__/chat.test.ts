@@ -3,6 +3,7 @@ import {
   applyChatTemplate,
   convertToChatMessages,
   derivedText,
+  stripReasoningContent,
   user,
   assistant,
 } from '../chat';
@@ -685,6 +686,49 @@ describe('derivedText', () => {
     expect(
       derivedText({id: '1', type: 'unsupported', author: user} as any),
     ).toBe('');
+  });
+});
+
+describe('stripReasoningContent', () => {
+  it('strips reasoning_content from assistant messages only', () => {
+    const messages: ChatMessage[] = [
+      {role: 'user', content: 'hi'},
+      {
+        role: 'assistant',
+        content: 'answer',
+        reasoning_content: 'thoughts',
+      } as unknown as ChatMessage,
+    ];
+
+    const stripped = stripReasoningContent(messages);
+
+    expect(stripped[0]).toBe(messages[0]); // user message untouched
+    expect(stripped[1]).toEqual({role: 'assistant', content: 'answer'});
+    expect(
+      (stripped[1] as {reasoning_content?: string}).reasoning_content,
+    ).toBeUndefined();
+  });
+
+  it('keeps assistant messages without reasoning_content as-is', () => {
+    const messages: ChatMessage[] = [
+      {role: 'assistant', content: 'plain'},
+    ];
+
+    const stripped = stripReasoningContent(messages);
+    expect(stripped[0]).toBe(messages[0]);
+  });
+
+  it('does not strip reasoning-like fields on user messages', () => {
+    const messages: ChatMessage[] = [
+      {
+        role: 'user',
+        content: 'q',
+        reasoning_content: 'not mine',
+      } as unknown as ChatMessage,
+    ];
+
+    const stripped = stripReasoningContent(messages);
+    expect(stripped[0]).toBe(messages[0]);
   });
 });
 

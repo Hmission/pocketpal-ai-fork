@@ -2,7 +2,10 @@
  * Tests for thinking capability detection utilities
  */
 
-import {detectThinkingCapability} from '../thinkingCapabilityDetection';
+import {
+  detectThinkingCapability,
+  detectReasoningReinject,
+} from '../thinkingCapabilityDetection';
 import {LlamaContext} from 'llama.rn';
 
 const createMockContext = (getFormattedChatResult: any) => {
@@ -161,5 +164,64 @@ describe('detectThinkingCapability', () => {
     await detectThinkingCapability(ctx);
 
     expect(ctx.getFormattedChat).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('detectReasoningReinject', () => {
+  let warnSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
+  });
+
+  it('should return true when the template round-trips reasoning_content', async () => {
+    const ctx = createMockContext({
+      type: 'jinja',
+      prompt: '...',
+      has_media: false,
+    });
+
+    const result = await detectReasoningReinject(ctx);
+    expect(result).toBe(true);
+  });
+
+  it('should return false when the template rejects reasoning_content', async () => {
+    const ctx = {
+      getFormattedChat: jest.fn().mockRejectedValue(
+        new Error(
+          'Only text chunks are supported in assistant message contents',
+        ),
+      ),
+    } as unknown as LlamaContext;
+
+    const result = await detectReasoningReinject(ctx);
+    expect(result).toBe(false);
+  });
+
+  it('should probe with an assistant message carrying reasoning_content', async () => {
+    const ctx = createMockContext({
+      type: 'jinja',
+      prompt: '...',
+      has_media: false,
+    });
+
+    await detectReasoningReinject(ctx);
+
+    expect(ctx.getFormattedChat).toHaveBeenCalledWith(
+      [
+        {role: 'user', content: 'probe'},
+        {
+          role: 'assistant',
+          content: 'answer',
+          reasoning_content: 'thinking probe',
+        },
+      ],
+      null,
+      {jinja: true, enable_thinking: true},
+    );
   });
 });

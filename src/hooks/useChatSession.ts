@@ -36,7 +36,11 @@ import {appendConversation} from '../services/aiosMemory/conversationLog';
 import {compactAndFlush} from '../services/aiosMemory/compaction';
 import {maybeClosingSummary, selfCheck} from '../services/aiosMemory/rituals';
 import {saveToy} from '../services/toyChest';
-import {convertToChatMessages, removeThinkingParts} from '../utils/chat';
+import {
+  convertToChatMessages,
+  removeThinkingParts,
+  stripReasoningContent,
+} from '../utils/chat';
 import {activateKeepAwake, deactivateKeepAwake} from '../utils/keepAwake';
 import {buildErrorReport} from '../utils/errorReport';
 import {showErrorReport} from '../components/ui/ErrorReportDialog';
@@ -143,6 +147,14 @@ const prepareCompletion = async ({
       }
       return msg;
     });
+  }
+
+  // Reasoning 回灌探针（2026-08-19 K90 血证）：模板能生成 reasoning 未必能
+  // 回灌——Ministral 对携带 reasoning_content 的历史 assistant 消息重格式化
+  // 即 Jinja 拒收（'Only text chunks'），会话永久卡死。探针标记 false 时
+  // 历史剥离该字段；undefined（未探测/远程）不动。
+  if (modelStore.activeModel?.reasoningReinject === false) {
+    chatMessages = stripReasoningContent(chatMessages);
   }
 
   // Talent-contributed system-prompt fragments (e.g. search grounding). Kept on
