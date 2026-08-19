@@ -7,6 +7,10 @@
 
 ## [Unreleased]
 
+### 改进
+- 进度监控卡卡片化（2026-08-19，CHAT_UI_SPEC §18.9 v4.2）：PendingIndicator 容器升级为 assistant 卡片设计语言（assistantBubbleBackground 底色 + messageBorderRadius 圆角），与聊天流卡片同一视觉族；K90 真机三截图验证
+- 代码/玩具匠终局选型 LFM2.5-2.6B（2026-08-20，大王钦定）：替代 Ministral-3-3B（迭代合规不稳 PLAY-6）；LFM2.5 族工具调用专长 + 1.67GB PSS 安全（LFM8B 5.16GB 被 K90 HyperOS PSS 看护 6GB 硬杀，厂商锁死不可关）；K90 真机三点验收全绿（选型生效 + 加载 2s + 玩具生成落盘）
+
 ### 新增
 - RealESRGAN 通用图像放大能力（2026-08-19，独立通用，不绑定 DreamLite）：双模型内置（x4plus 63MB 通用写实 / animevideov3 2MB 动漫插画）；tiled 推理引擎（256 tile + 16px overlap 羽化 + 输入解码限 1024 + 大图防护 4096 上限）；桥传输 base64（3.1M 装箱过桥峰值 ~150MB OOM 风险 → 改 ~4MB base64 串 + 纯 JS 解码器）；engineMutex 互斥纳入；UpscalePanel 纯参数面板 + 任务化进度；DRC 动作 imagegen.upscale
 - 全屏图片查看器 ZoomableImage（2026-08-19→20，3 轮真机复测闭环）：双指捏合缩放（1-4×）+ 拖动平移 + 单击关闭；浅色主题遮罩；Modal 内 GestureHandlerRootView 重新 root；reanimated worklet 指令 + runOnJS；Gesture.Exclusive(composed, tap) 官方 PhotoZoom 范式
