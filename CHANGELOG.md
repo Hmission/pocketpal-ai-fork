@@ -17,6 +17,9 @@
 - DRC 能力 Skill 化挂测试链路（2026-08-19）：母仓新增 drc-remote-debug Skill（动作表/标准测试序列/观测三出口/CP 失败处置），挂啄木鸟测试专工链路 v1.1.2；DRC_SPEC 新增 §9 跨窗口智能体调用（最小提示词模板）；INDEX.md 登记 debug 模块（DRC_*）；DESIGN_SPEC B19 登记
 - DRC 远程调试能力（2026-08-19，src/debug/）：文件双通道（adb push 命令 → App 执行 → 结果/事件落盘）——AI 测试发送 actionId 直接驱动 App（nav.go/chat.send/imagegen.generate 等 9 个动作白名单 + zod 校验），读 events.jsonl/state.json 替代读屏幕；状态指南针（StateCompass 五字段：state/nextAction/label/evidence/terminal，engineStatus 增强）；CP 报错机制（errorRegistry 六模式 + errorReport 报告附指南针编号）；门控 __DEV__||__E2E__（prod release DCE 剥离 + DRC_BRIDGE marker 契约）；开发机工具 scripts/drc/（drc-push/drc-tail/drc-state）；规范文档 docs/DebugRemoteControl/（DRC_SPEC + COMPASS_REGISTRY）
 - DRC 方案补完（2026-08-19，Spec 对照审计）：动作注册表扩至 15 个（补 chat.newSession/models.load/models.unload/system.events/imagegen.loadDreamLite/imagegen.generateDreamLite——DreamLite 真机 39s 出图全链路验证，事件流完整记录 start→stage 25/50/75/100%→done）；事件流补 chat.turn_done（useChatSession run_finished）与 imagegen.stage（SD 1Hz 轮询 + DreamLite 采样回调）；独立 src/debug/stateCompass.ts（域级 STATE_MAP：engine/chat/imagegen/model + 未知降级 unknown）；门控改为 __E2E__||BuildInfo.isDevSupport（Hermes 预编译 __DEV__ 恒 false 真机实证）；drc-push.js 增 --params-file（Windows PowerShell 引号易错）；单测 5 套 37 用例（+stateCompass/新动作）
+- 多玩法品牌标语（2026-08-19~20，大王钦定语）：「住进手机的开源 AI 伙伴——聊天、生图、玩乐、绘本、冒险，多种玩法全部离线运行在您的设备上」替换「部署大语言模型」旧定位；16 语言 about.description + README + APP_INTRO_COPY 三版式 + AGENTS.md + PRODUCT_SPEC §1.1 + GitHub 仓库 description 全链路同步
+- 开源边界清理（2026-08-19~20）：.qoder/settings.json 从全 git 历史清除（filter-repo）+ force push；scripts/aios、scripts/governance、scripts/sd35_lora、docs/adr、docs/_templates 及内部治理文档共 38 文件移除（-4552 行）；.gitignore 扩充 14 条防回潮（只开源工程，不开源开发工具）
+- 版本同步单点命令（2026-08-19~20）：scripts/bump-version.js 一处命令四处同步（.version/package.json/build.gradle/pbxproj，versionCode 自增 +1，同版本显式失败）；jest 5/5；AGENTS.md 发布流程改为「单点命令，禁止手工改」；git tag v2.0.0
 
 ## [2.0.0] - 2026-08-19
 
