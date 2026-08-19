@@ -9,8 +9,6 @@ import {
 import {useTheme} from '../../hooks';
 import {StopIcon} from '../../assets/icons';
 
-// import {L10nContext} from '../../utils';
-
 export interface StopButtonPropsAdditionalProps {
   touchableOpacityProps?: TouchableOpacityProps;
 }
@@ -21,12 +19,17 @@ export interface StopButtonProps extends StopButtonPropsAdditionalProps {
   color?: string;
 }
 
+/**
+ * §18.4 发送/停止同一按钮语言的时态切换（复查 2026-08-20 定稿）：
+ * 与 SendButton 同规格——36px 触区 + 20px 图标 + 圆形衬底，
+ * 仅语义色表达状态（停止=error 红，发送=primary 黄）。
+ * 生成中出停止钮时，触区/图标尺寸不变，不跳不缩。
+ */
 export const StopButton = ({
   onPress,
   touchableOpacityProps,
   color,
 }: StopButtonProps) => {
-  // const l10n = React.useContext(L10nContext);
   const theme = useTheme();
   const handlePress = (event: GestureResponderEvent) => {
     if (onPress) {
@@ -37,28 +40,31 @@ export const StopButton = ({
 
   return (
     <TouchableOpacity
-      //accessibilityLabel={l10n.stopButtonAccessibilityLabel}
       accessibilityRole="button"
       testID="stop-button"
       {...touchableOpacityProps}
       onPress={handlePress}
-      style={styles.stopButton}>
+      style={styles.stopButton(theme)}>
       <StopIcon
-        stroke={color ?? theme.colors.background}
-        width={24}
-        height={24}
+        stroke={color ?? theme.colors.onError}
+        width={20}
+        height={20}
       />
     </TouchableOpacity>
   );
 };
 
-const styles = StyleSheet.create({
-  stopButton: {
-    marginLeft: 16,
-    // Minimum 44pt touch target for accessibility
-    minHeight: 40,
-    minWidth: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-});
+const styles = {
+  stopButton: (theme: any) =>
+    StyleSheet.create({
+      stopButton: {
+        // §18.4 与 SendButton 同基准：36px 触区、去 marginLeft（间距由容器 gap 控制）
+        minHeight: 36,
+        minWidth: 36,
+        borderRadius: theme.radius.full,
+        backgroundColor: theme.colors.error,
+        justifyContent: 'center' as const,
+        alignItems: 'center' as const,
+      },
+    }).stopButton,
+};

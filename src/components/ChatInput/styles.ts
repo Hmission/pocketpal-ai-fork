@@ -119,6 +119,8 @@ export const createStyles = ({
       position: 'relative',
       flexDirection: 'row',
       alignItems: 'center',
+      // §18.4 发送/停止/语音钮同基准间距（去按钮 marginLeft 后由容器控制）
+      gap: 8,
     },
     editBar: {
       position: 'absolute',

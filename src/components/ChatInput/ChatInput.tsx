@@ -886,7 +886,8 @@ export const ChatInput = observer(
               {/* Send/Stop/Voice Button：空输入且语音可用→麦克风；录音中→红色停止；
                   有文字→发送（一打字即切换） */}
               {isStopVisible ? (
-                <StopButton color={onSurfaceColor} onPress={onStopPress} />
+                // §18.4 停止=error 红底+onError 图标（与发送钮同规格，仅语义色差异）
+                <StopButton onPress={onStopPress} />
               ) : isVideoCapable && !isCameraActive ? (
                 /* Compact Start Video Button for Video Pals */
                 <TouchableOpacity

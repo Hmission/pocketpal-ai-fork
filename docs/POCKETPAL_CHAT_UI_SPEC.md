@@ -352,6 +352,7 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 - SendButton 内置 `enabled` 双态：可用 = primary 实心圆 + onPrimary 图标；不可用 = 透明底 + outlineVariant 圆形描边 + onSurfaceVariant 灰图标。尺寸恒 36px（快捷图标钮/语音钮同基准）。
 - ChatInput 删除外层 `opacity 0.4` 包裹，状态表达收进组件内部。
 - **图标 20px 同行同尺寸（复查 2026-08-20 定稿）**：SendIcon 22→20 与 controlBar 快捷图标钮图标同尺寸，去 marginLeft 右缘对齐——视觉高度与同行按钮一致，不靠衬底撑大。
+- **停止钮同一按钮语言（复查 2026-08-20 定稿）**：StopButton 与 SendButton 同规格（36px 触区 + 20px 图标 + 圆形衬底），仅语义色表达时态——发送=primary 黄、停止生成=error 红（onError 图标）；生成中发送↔停止切换尺寸不跳变；间距由 rightControls gap 8 统一。
 
 ### 18.5 输入卡 placeholder 单源决策表（engineStatus 状态中枢）
 
@@ -402,4 +403,5 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 | 2026-08-20 | 3.5 | 复查闭环（六维审计）：placeholder 第 4 分支硬编码中文收口 l10n（chat.butlerReady，16 语）；生成设置失焦显示与保存同源修正；§18.6 指标/设置分离定稿（BannerRow 读实际加载值）；用途标签/a11y 中文「产品叙事硬编码口径」显式登记 |
 | 2026-08-20 | 3.6 | §18.6 PSS 安全阀：预调天花板 min(ceiling, PSS_SAFE_BUDGET 4GB) + 启动审计自愈超限档——K90 真机实证厂商 PSS 看护 6GB 硬杀，空闲内存 ceiling 不是存活天花板 |
 | 2026-08-20 | 3.7 | 六维复审（8 项需求复盘）：§18.4 发送钮图标 20px 同行同尺寸；§18.5 placeholder 时序缺口修复（prompter loading 前置，冷启动首帧不再「模型未加载」）；§18.7 选型语义重定义（任务族候选上限 3，不甩全量 + 一句话推荐说明）+ 弹窗内加载（遮罩阻塞/失败弹窗承载不插卡） |
+| 2026-08-20 | 3.9 | 发送/停止钮同一按钮语言：StopButton 与 SendButton 同规格（36px + 20px + 圆形衬底，停止=error 红），时态切换不跳变；rightControls gap 8 |
 | 2026-08-19 | 3.8 | 默认 n_ctx 4096→8192（contextInitParams v2.3 迁移仅抬旧默认）+ perModelNCtxSource 源跟踪（审计不碰用户手调）+ 审计覆盖无覆盖模型——大王裁定「默认上下文必须够工具基线」 |
