@@ -13,7 +13,7 @@ import {Platform} from 'react-native';
 
 // Current version of the context init params schema
 // Increment this when adding new parameters or changing existing ones
-export const CURRENT_CONTEXT_INIT_PARAMS_VERSION = '2.2';
+export const CURRENT_CONTEXT_INIT_PARAMS_VERSION = '2.3';
 
 /**
  * Creates properly versioned ContextInitParams from ContextParams (excluding model)
@@ -40,7 +40,9 @@ export const createContextInitParams = (
     use_mmap,
     version: CURRENT_CONTEXT_INIT_PARAMS_VERSION,
     // Ensure all required fields have values (with fallbacks for safety)
-    n_ctx: params.n_ctx ?? 2048, // Increased default from 1024
+    // 默认 8192（v2.3，2026-08-19）：工具 schema 注入后提示词基线 ~4.5K，
+    // 旧默认 4096 必溢；K90 真机血证「对话空间已满」。
+    n_ctx: params.n_ctx ?? 8192, // Increased default from 4096
     n_batch: params.n_batch ?? 512,
     n_ubatch: params.n_ubatch ?? 512,
     n_threads: params.n_threads ?? 4,
@@ -194,6 +196,16 @@ export function migrateContextInitParams(
     migratedParams.version = '2.2';
   }
 
+  // Migration from 2.2 to 2.3: default context raised for tool-schema baseline
+  if (migratedParams.version === '2.2') {
+    // Only bump the OLD DEFAULT (4096); user-chosen values are sovereignty.
+    if (migratedParams.n_ctx === 4096) {
+      migratedParams.n_ctx = 8192;
+    }
+
+    migratedParams.version = '2.3';
+  }
+
   // Ensure the final version is set correctly
   migratedParams.version = CURRENT_CONTEXT_INIT_PARAMS_VERSION;
 
@@ -237,7 +249,7 @@ export function validateContextInitParams(
 export function createDefaultContextInitParams(): ContextInitParams {
   return {
     version: CURRENT_CONTEXT_INIT_PARAMS_VERSION,
-    n_ctx: 2048,
+    n_ctx: 8192,
     n_batch: 512,
     n_ubatch: 512,
     n_threads: 4,

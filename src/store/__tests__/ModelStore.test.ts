@@ -163,6 +163,7 @@ describe('ModelStore', () => {
       (modelStore as any).presetModelNCtxIfAbsent(presetCtxModel);
       // 估算 1GB + 1GB/4K：PSS 安全预算 4GB 卡住梯子 → 12288（非 24576）
       expect(modelStore.perModelNCtx['preset-ctx-model']).toBe(12288);
+      expect(modelStore.perModelNCtxSource['preset-ctx-model']).toBe('preset');
     });
 
     it('已有覆盖不重预调（只升不降，不覆盖用户手调）', () => {
@@ -221,7 +222,12 @@ describe('ModelStore', () => {
       memSpy.mockRestore();
       runInAction(() => {
         modelStore.perModelNCtx = {};
+        modelStore.perModelNCtxSource = {};
         modelStore.models = [];
+        modelStore.contextInitParams = {
+          ...modelStore.contextInitParams,
+          n_ctx: 4096,
+        };
       });
     });
 
@@ -254,6 +260,27 @@ describe('ModelStore', () => {
       modelStore.auditPerModelNCtxAgainstPss();
       expect(modelStore.perModelNCtx['remote-audit']).toBe(32768);
       expect(modelStore.perModelNCtx['audit-model']).toBeUndefined();
+    });
+
+    it('用户手调（source=user）不碰——主权高于审计', () => {
+      runInAction(() => {
+        modelStore.perModelNCtx = {'audit-model': 32768};
+        modelStore.perModelNCtxSource = {'audit-model': 'user'};
+      });
+      modelStore.auditPerModelNCtxAgainstPss();
+      expect(modelStore.perModelNCtx['audit-model']).toBe(32768);
+    });
+
+    it('无覆盖但全局默认越限 → 写安全档夹住（8B 血证：默认 8192 超预算）', () => {
+      runInAction(() => {
+        modelStore.contextInitParams = {
+          ...modelStore.contextInitParams,
+          n_ctx: 32768,
+        };
+      });
+      modelStore.auditPerModelNCtxAgainstPss();
+      expect(modelStore.perModelNCtx['audit-model']).toBe(12288);
+      expect(modelStore.perModelNCtxSource['audit-model']).toBe('preset');
     });
   });
 

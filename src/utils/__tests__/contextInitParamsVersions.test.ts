@@ -158,7 +158,7 @@ describe('contextInitParamsVersions', () => {
 
       const migrated = migrateContextInitParams(v20Params);
 
-      expect(migrated.version).toBe('2.2');
+      expect(migrated.version).toBe('2.3');
       expect(migrated.image_max_tokens).toBe(512);
       expect(migrated.no_extra_bufts).toBe(false);
     });
@@ -182,8 +182,49 @@ describe('contextInitParamsVersions', () => {
 
       const migrated = migrateContextInitParams(v20ParamsWithTokens);
 
-      expect(migrated.version).toBe('2.2');
+      expect(migrated.version).toBe('2.3');
       expect(migrated.image_max_tokens).toBe(1024); // Should preserve custom value
+    });
+  });
+
+  describe('migrate 2.2 -> 2.3', () => {
+    it('bumps the old default n_ctx 4096 to 8192 (tool-schema baseline)', () => {
+      const v22 = {
+        version: '2.2',
+        n_ctx: 4096,
+        n_batch: 512,
+        n_ubatch: 512,
+        n_threads: 4,
+        cache_type_k: 'f16',
+        cache_type_v: 'f16',
+        n_gpu_layers: 99,
+        use_mlock: false,
+        use_mmap: 'false',
+      };
+
+      const migrated = migrateContextInitParams(v22);
+
+      expect(migrated.version).toBe('2.3');
+      expect(migrated.n_ctx).toBe(8192);
+    });
+
+    it('preserves user-chosen n_ctx (sovereignty: migration only bumps the old default)', () => {
+      const v22 = {
+        version: '2.2',
+        n_ctx: 6144,
+        n_batch: 512,
+        n_ubatch: 512,
+        n_threads: 4,
+        cache_type_k: 'f16',
+        cache_type_v: 'f16',
+        n_gpu_layers: 99,
+        use_mlock: false,
+        use_mmap: 'false',
+      };
+
+      const migrated = migrateContextInitParams(v22);
+
+      expect(migrated.n_ctx).toBe(6144);
     });
   });
 
@@ -224,7 +265,7 @@ describe('contextInitParamsVersions', () => {
 
       expect(validateContextInitParams(defaultSettings)).toBe(true);
       expect(defaultSettings.version).toBe(CURRENT_CONTEXT_INIT_PARAMS_VERSION);
-      expect(defaultSettings.n_ctx).toBe(2048);
+      expect(defaultSettings.n_ctx).toBe(8192);
       expect(defaultSettings.n_batch).toBe(512);
       expect(defaultSettings.n_ubatch).toBe(512);
       expect(defaultSettings.n_threads).toBe(4);

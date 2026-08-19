@@ -125,7 +125,7 @@ describe('benchmarkMigration', () => {
       const migratedResult = migrateBenchmarkResult(originalResult);
 
       expect(originalResult).toEqual(originalCopy);
-      expect(migratedResult.initSettings?.version).toBe('2.2');
+      expect(migratedResult.initSettings?.version).toBe('2.3');
     });
 
     it('should not migrate if already at current version', () => {
@@ -143,7 +143,7 @@ describe('benchmarkMigration', () => {
         modelName: 'Test Model',
         uuid: 'test-uuid',
         initSettings: {
-          version: '2.2',
+          version: '2.3',
           n_ctx: N_CONTEXT,
           n_batch: 512,
           n_ubatch: 256,
@@ -197,7 +197,7 @@ describe('benchmarkMigration', () => {
 
       expect(migratedResult.initSettings?.n_ctx).toBe(N_CONTEXT);
       expect(migratedResult.initSettings).not.toHaveProperty('n_context');
-      expect(migratedResult.initSettings?.version).toBe('2.2');
+      expect(migratedResult.initSettings?.version).toBe('2.3');
     });
   });
 
@@ -295,7 +295,7 @@ describe('benchmarkMigration', () => {
 
       expect(migratedResult.initSettings?.n_ctx).toBe(N_CONTEXT);
       expect(migratedResult.initSettings).not.toHaveProperty('n_context');
-      expect(migratedResult.initSettings?.version).toBe('2.2');
+      expect(migratedResult.initSettings?.version).toBe('2.3');
     });
   });
 });

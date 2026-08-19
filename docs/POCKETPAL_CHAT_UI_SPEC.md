@@ -373,6 +373,7 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 - **指标与设置分离（复查 2026-08-20 定稿）**：BannerRow 的「上下文余量」与 turnMetrics 快照继续读**实际加载值**（activeContextSettings.n_ctx）——模型实际按该值跑，指标语义正确；sheet/设置页读**设置值**（getModelNCtx）。两者语义不同，刻意分离，不强行同源。
 - **每模型预调**：加载链（proceedWithInitialization）在该模型无覆盖时，按设备内存 ceiling 沿 CONTEXT_LADDER 取最大可装档（封顶 GGUF `context_length`）写入 perModelNCtx——一次预调、持久化；只升不降，ceiling 未知不虚构，REMOTE 不适用。
 - **PSS 安全阀（v3.6，2026-08-19 K90 真机血证）**：厂商 PSS 看护（HyperOS 实测 pss threshold 6GB 硬杀，与空闲内存无关）才是进程存活的天花板。预调天花板改取 min(内存 ceiling, `PSS_SAFE_BUDGET` 4GB)；启动新增 `auditPerModelNCtxAgainstPss` 审计——已持久化档位估算超预算者降到最大安全档（自愈旧版预调污染：K90 实证 40960/32768 档 f16 KV 生成中 PSS 6.77GB 被硬杀）。「只升不降」保护的是安全范围内的用户主权，不是必杀值；用户手调不受预算限制（决策可见）。
+- **默认上下文提升 + 源跟踪（v3.7）**：全局默认 n_ctx 4096→8192（contextInitParams v2.3 迁移：仅抬旧默认，用户自选值不动）——工具 schema 注入后提示词基线 ~4.5K，旧默认必溢（K90 实证「对话空间已满」）。`perModelNCtxSource`（preset/user）持久化：审计只动 preset/无源档，用户手调=主权不碰；审计覆盖面扩到「无覆盖取全局默认」的模型（8B 默认 8192 越限写安全档夹住）。
 
 ### 18.7 模型用途标签 + 切换弹窗多候选
 
@@ -401,3 +402,4 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 | 2026-08-20 | 3.5 | 复查闭环（六维审计）：placeholder 第 4 分支硬编码中文收口 l10n（chat.butlerReady，16 语）；生成设置失焦显示与保存同源修正；§18.6 指标/设置分离定稿（BannerRow 读实际加载值）；用途标签/a11y 中文「产品叙事硬编码口径」显式登记 |
 | 2026-08-20 | 3.6 | §18.6 PSS 安全阀：预调天花板 min(ceiling, PSS_SAFE_BUDGET 4GB) + 启动审计自愈超限档——K90 真机实证厂商 PSS 看护 6GB 硬杀，空闲内存 ceiling 不是存活天花板 |
 | 2026-08-20 | 3.7 | 六维复审（8 项需求复盘）：§18.4 发送钮图标 20px 同行同尺寸；§18.5 placeholder 时序缺口修复（prompter loading 前置，冷启动首帧不再「模型未加载」）；§18.7 选型语义重定义（任务族候选上限 3，不甩全量 + 一句话推荐说明）+ 弹窗内加载（遮罩阻塞/失败弹窗承载不插卡） |
+| 2026-08-19 | 3.8 | 默认 n_ctx 4096→8192（contextInitParams v2.3 迁移仅抬旧默认）+ perModelNCtxSource 源跟踪（审计不碰用户手调）+ 审计覆盖无覆盖模型——大王裁定「默认上下文必须够工具基线」 |

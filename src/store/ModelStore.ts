@@ -190,6 +190,10 @@ class ModelStore {
   // 全局 contextInitParams.n_ctx 作默认值；加载链按 modelId 取覆盖。
   perModelNCtx: Record<string, number> = {};
 
+  // 覆盖来源（2026-08-19）：preset=自动预调/审计写入，user=用户手调。
+  // PSS 审计只动 preset/无源（旧版污染）档，用户手调=可见决策=主权，审计不碰。
+  perModelNCtxSource: Record<string, 'preset' | 'user'> = {};
+
   context: LlamaContext | undefined = undefined;
 
   engine: CompletionEngine | undefined = undefined;
@@ -257,6 +261,7 @@ class ModelStore {
         'useAutoRelease',
         'contextInitParams',
         'perModelNCtx',
+        'perModelNCtxSource',
         'lastUsedModelId',
         'wasAutoReleased',
         'lastAutoReleasedModelId',
@@ -419,9 +424,14 @@ class ModelStore {
   };
 
   /** 每模型上下文覆盖写入（生成设置页活动模型行 / 聊天页入口共用） */
-  setModelNCtx = (modelId: string, n_ctx: number) => {
+  setModelNCtx = (
+    modelId: string,
+    n_ctx: number,
+    source: 'preset' | 'user' = 'user',
+  ) => {
     runInAction(() => {
       this.perModelNCtx = {...this.perModelNCtx, [modelId]: n_ctx};
+      this.perModelNCtxSource = {...this.perModelNCtxSource, [modelId]: source};
     });
   };
 
@@ -476,25 +486,27 @@ class ModelStore {
       }
     }
     if (best && best > this.getModelNCtx(model.id)) {
-      this.setModelNCtx(model.id, best);
+      this.setModelNCtx(model.id, best, 'preset');
     }
   };
 
   /**
-   * PSS 安全审计（2026-08-19）：启动时复查已持久化的每模型 n_ctx，
-   * 估算超出 PSS_SAFE_BUDGET 的档降到最大安全档——自愈旧版预调写入的
-   * 超限档（K90 实证：40960 档 f16 KV 生成中 PSS 6.77GB > 6GB 硬限被杀）。
-   * 「只升不降」原则保护的是安全范围内的用户主权，不是必杀值。
+   * PSS 安全审计（2026-08-19）：启动时复查每模型生效 n_ctx（覆盖优先，
+   * 无覆盖取全局默认），估算超 PSS_SAFE_BUDGET 者降到最大安全档——
+   * 自愈旧版预调污染与全局默认越限（K90 实证：40960 档 f16 KV 生成中
+   * PSS 6.77GB > 6GB 硬限被杀；8B 模型全局默认 8192 亦越限）。
+   * 用户手调（source='user'）= 可见决策 = 主权，审计不碰；
+   * 「只升不降」保护的是安全范围内的用户主权，不是必杀值。
    */
   auditPerModelNCtxAgainstPss = (): void => {
     for (const model of this.models) {
       if (model.origin === ModelOrigin.REMOTE) {
         continue;
       }
-      const nCtx = this.perModelNCtx[model.id];
-      if (!nCtx) {
+      if (this.perModelNCtxSource[model.id] === 'user') {
         continue;
       }
+      const nCtx = this.perModelNCtx[model.id] ?? this.contextInitParams.n_ctx;
       let estimated: number;
       try {
         estimated = getModelMemoryRequirement(model, undefined, {
@@ -530,7 +542,7 @@ class ModelStore {
         console.warn(
           `[ModelStore] PSS audit: ${model.name} n_ctx ${nCtx} → ${safe} (estimate exceeded PSS safe budget)`,
         );
-        this.setModelNCtx(model.id, safe);
+        this.setModelNCtx(model.id, safe, 'preset');
       }
     }
   };
