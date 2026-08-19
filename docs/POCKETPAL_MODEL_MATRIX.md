@@ -25,8 +25,8 @@ relates: [POCKETPAL_DESIGN_SPEC]
 | 1 | Qwen3.5-2B 无限制 | `Qwen3.5-2B-Uncensored-HauhauCS-Aggressive-Q8_0.gguf` | Q8_0 | 2.01 GB | 写作/聊天主力 |
 | 2 | Qwen3.5-2B 视觉伴侣 | `mmproj-Qwen3.5-2B-...-f16.gguf` | f16 | 0.67 GB | 多模态（配对 #1） |
 | 3 | Qwen3.5-4B 无限制 | `Qwen3.5-4B-Uncensored-HauhauCS-Aggressive-Q4_K_M.gguf` | Q4_K_M | 2.71 GB | 日用 |
-| 4 | LFM2.5-2.6B | `LFM2.5-2.6B-Q4_K_M.gguf` | Q4_K_M | 1.67 GB | 任务/工具调用 |
-| 5 | LFM2.5-8B-A1B | `LFM2.5-8B-A1B-Q4_K_M.gguf` | Q4_K_M | 5.16 GB | 代码/玩具匠（MoE 大模型，激活~1.5B，工具调用专长） |
+| 4 | LFM2.5-2.6B | `LFM2.5-2.6B-Q4_K_M.gguf` | Q4_K_M | 1.67 GB | 代码/玩具匠（工具调用优化，低延迟） |
+| 5 | LFM2.5-8B-A1B | `LFM2.5-8B-A1B-Q4_K_M.gguf` | Q4_K_M | 5.16 GB | MoE 大模型（激活~1.5B）；K90 PSS 看护硬杀不可用（2026-08-19 实证） |
 | 6 | Ministral-3-3B | `Ministral-3-3B-Instruct-2512-Q4_K_M.gguf` | Q4_K_M | 2.15 GB | 代码候选（均衡档） |
 | 7 | MiniCPM5-1B 管家 | `minicpm5_1b_heretic_q4km.gguf` | Q4_K_M | ~0.69 GB | 常驻管家（prompter） |
 
@@ -35,7 +35,7 @@ relates: [POCKETPAL_DESIGN_SPEC]
 任务（write/code/play，adventure 归 write，play 归 code）选型返回候选列表，排序：
 
 1. **用户用途标签命中**（设置页打的 capabilities 标签，write 同义键 rewriting/creativity/instructions）——组内 size 降序；
-2. **文件名指纹**（本清单定稿：write→`qwen3.5[-_ ]?[24]b`，code→`lfm2[.\-]?5[-_ ]?8b`——2026-08-19 大王钦定代码/玩具匠升 LFM2.5-8B-A1B）——排除已入标签组；
+2. **文件名指纹**（本清单定稿：write→`qwen3.5[-_ ]?[24]b`，code→`lfm2[.\-]?5[-_ ]?2[.\-]?6b`——2026-08-19 大王钦定终局代码/玩具匠=LFM2.5-2.6B；LFM8B 超 K90 PSS 看护线硬杀退出代码位）——排除已入标签组；
 3. **其余本地模型** size 降序兜底（越大越强）。
 
 排除：管家模型（prompter 常驻槽）/ projection / 远程模型。候选首项 = 推荐项；弹窗多候选由用户单选（PRODUCT_SPEC §4.9）。

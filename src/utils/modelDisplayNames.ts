@@ -40,10 +40,10 @@ const NOTE_RULES: Array<{pattern: RegExp; note: string}> = [
     note: '写作/聊天主力，Q8 近无损；配对视觉伴侣可看图',
   },
   {pattern: /qwen3[.\-]?5[-_.\s]?4b/i, note: '日用均衡档，质量上限更高'},
-  {pattern: /lfm2[.\-]?5[-_.\s]?2[.\-]?6b/i, note: '任务/工具调用优化，低延迟'},
+  {pattern: /lfm2[.\-]?5[-_.\s]?2[.\-]?6b/i, note: '代码/玩具匠，工具调用优化，低延迟'},
   {
     pattern: /lfm2[.\-]?5[-_.\s]?8b/i,
-    note: '代码/玩具匠，MoE 大模型（激活~1.5B）工具调用专长',
+    note: 'MoE 大模型（激活~1.5B）；K90 PSS 看护硬杀不可用',
   },
   {pattern: /ministral/i, note: '代码候选（均衡档）'},
   {pattern: /minicpm/i, note: '轻量聊天备选'},

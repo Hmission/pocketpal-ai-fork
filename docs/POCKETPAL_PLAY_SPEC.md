@@ -34,7 +34,7 @@ relates: [POCKETPAL_PRODUCT_SPEC, POCKETPAL_STARMAP_DOMAINS, POCKETPAL_MODEL_MAT
 ## 二、核心原则 / 公理
 
 1. **只判不执**：taskRouter 只分类，调度执行由 useChatScheduler 受控完成（与 image/write/code 同构）。
-2. **玩具匠=代码模型**：play 任务选型复用 code 指纹（LFM2.5-8B-A1B，MODEL_MATRIX 入选清单 #5；2026-08-19 大王钦定自小雾 3B 升级——LFM2.5 族工具调用专长，迭代合规更稳）；弹窗文案区分「玩具」任务，决策可见 + 用户主权。
+2. **玩具匠=代码模型**：play 任务选型复用 code 指纹（LFM2.5-2.6B，MODEL_MATRIX 入选清单 #4；2026-08-19 大王钦定终局自小雾 3B 升级——LFM2.5 族工具调用专长，迭代合规更稳；LFM8B 候选因 K90 PSS 硬杀退出）；弹窗文案区分「玩具」任务，决策可见 + 用户主权。
 3. **成品即藏品**：render_html 成功（非 error）且带 title 的产物自动进玩具箱——玩具箱是 render_html 的存档库，不做二次确认（无补丁无兜底）。
 4. **沙盒不破防**：玩具渲染沿用 HtmlPreviewBubble 严格 CSP（default-src 'none'，禁网络），JS 全开仅限全屏 modal（用户主动激活）。
 5. **玩法引导前置**：用户无需知道路由关键词——输入卡快捷按钮「做个玩具」即入口；知识库玩具箱 tab 可回看全部藏品。

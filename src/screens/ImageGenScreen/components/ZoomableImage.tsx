@@ -21,8 +21,8 @@ interface ZoomableImageProps {
  * ZoomableImage — 全屏图片查看器（P6-6 增补）：
  * 双指捏合缩放（1-4×）+ 双指/单指拖动平移（放大后）+ 单击关闭；
  * 浅色 surface 遮罩（主题表面色 ~94% 不透明，非纯黑）。
- * 手势组合：Exclusive(单击关闭, Simultaneous(捏合, 平移))——
- * 轻点触发 tap；任何移动/双指则 composed 接管。
+ * 手势组合：Exclusive(Simultaneous(捏合, 平移), 单击关闭)——组合手势在前、
+ * tap 在后（官方 PhotoZoom 范式），且 tap.onEnd 必判 success（失败也触发）。
  * 注意：本组件渲染在 RN <Modal> 内——Android Modal 是独立原生窗口，
  * App 根的 GestureHandlerRootView 覆盖不到，必须在 Modal 内部重新 root，
  * 否则手势全部失效（2026-08-19 真机实锤：单击/缩放/拖动全无响应）。
@@ -66,12 +66,21 @@ export const ZoomableImage: React.FC<ZoomableImageProps> = ({uri, onClose}) => {
       savedTy.value = ty.value;
     });
 
+  // 单击关闭：onEnd 在手势成功与失败时都会触发（第二参数 success 标记成败）——
+  // 不判 success 时，双指按下/拖动超阈导致 tap 失败也会误关全屏
+  // （2026-08-19 真机实锤：缩放/拖动看似未实现，实为一动就被误关）。
   const tap = Gesture.Tap()
     .runOnJS(true)
-    .onEnd(() => onClose());
+    .onEnd((_e, success) => {
+      if (success) {
+        onClose();
+      }
+    });
 
   const composed = Gesture.Simultaneous(pinch, pan);
-  const gesture = Gesture.Exclusive(tap, composed);
+  // Exclusive 顺序对齐官方图片查看器范例（PhotoZoom）：组合手势在前、单击在后，
+  // 否则 pinch/pan 要等 tap 失败才能启动（tap 在前时缩放/拖动被阻塞）。
+  const gesture = Gesture.Exclusive(composed, tap);
 
   const imgStyle = useAnimatedStyle(() => ({
     transform: [

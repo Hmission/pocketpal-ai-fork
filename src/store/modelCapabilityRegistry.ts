@@ -7,7 +7,7 @@
  *      生图走 image 引擎独立槽位，均不在此选型。
  *   2. 用户用途标签命中（§18.7：设置页打的 capabilities 标签，最高优先）
  *   3. DEFAULT_MAP 文件名指纹（MODEL_MATRIX 入选清单：
- *      code→LFM2.5-8B-A1B、write→Qwen3.5-2B/4B）
+ *      code→LFM2.5-2.6B、write→Qwen3.5-2B/4B）
  *   4. 其余本地模型按大小降序兜底（越大越强）
  * 组内一律按 size 降序。排除：管家模型（prompter 常驻槽）、projection 模型。
  * play（P8 玩具工坊）：玩具匠=代码模型，选型复用 code（PLAY_SPEC §2.2）。
@@ -24,9 +24,10 @@ const displayName = (m: Model): string =>
 /** 默认映射（MODEL_MATRIX 入选清单文件名指纹）：声明缺失时的推荐 */
 const DEFAULT_MAP: Record<'write' | 'code', RegExp> = {
   write: /qwen3\.5[-_ ]?[24]b/i,
-  // 2026-08-19 大王钦定：代码/玩具匠升 LFM2.5-8B-A1B（MoE 大模型，
-  // LFM2.5 族工具调用专长，迭代合规优于小雾 3B；K90 实证 3B 偏差）
-  code: /lfm2[.\-]?5[-_ ]?8b/i,
+  // 2026-08-19 大王钦定终局：代码/玩具匠=LFM2.5-2.6B（LFM2.5 族工具调用
+  // 专长，迭代合规优于小雾 3B）。LFM8B 虽更大但 5.16GB 全权重超 K90 厂商
+  // PSS 看护线被硬杀，且看护厂商锁死关不掉（SecurityException 实证）。
+  code: /lfm2[.\-]?5[-_ ]?2[.\-]?6b/i,
 };
 
 const bySizeDesc = (a: Model, b: Model) => b.size - a.size;
