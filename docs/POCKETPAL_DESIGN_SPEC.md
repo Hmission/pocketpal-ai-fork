@@ -358,7 +358,8 @@ ScrollView
 | B19 | **DRC 远程调试（开发者预览版诊断面扩展）**：文件双通道远程调试（adb push actionId 命令 → App 白名单执行 store 动作 → results/events.jsonl/state.json 落盘取证），15 动作注册表 + 13 类事件埋点 + StateCompass 域级 STATE_MAP + CP-APP 报错指南针 + 开发机三工具；门控 __E2E__||BuildInfo.isDevSupport（release 运行时恒不激活）；Skill 化挂测试专工链路（母仓 drc-remote-debug） | DRC_SPEC SSOT（docs/DebugRemoteControl/） | tsc/jest 绿 + 真机 6 命令闭环 + e2e spec 实现 | ✅ 已完成（2026-08-19） |
 | B20 | **RealESRGAN 通用图像放大 + 全屏预览交互**：独立通用放大能力（不绑定 DreamLite），双模型内置（x4plus 63MB / animevideov3 2MB）；tiled 推理引擎 + base64 桥传输 + engineMutex 互斥 + UpscalePanel 参数面板；ZoomableImage 全屏查看器（双指缩放 1-4× + 拖动 + 单击关闭 + 浅色 surface 遮罩）——3 轮真机复测闭环（Modal root / worklet 红屏 / onEnd success + Exclusive PhotoZoom 范式） | IMAGE_GEN_UPGRADE_PLAN §6.19 SSOT | tsc/eslint 0 错 + DRC 真机 5 项 + 大王终验通过 | ✅ 已完成（2026-08-20） |
 | B21 | **GitHub 开源发布 + 多玩法品牌定位 + v2.0.0 自主版本机制**：①AboutScreen GitHub 入口（openSource.ts 常量 + Linking，16 语言）；②16 语言 about 文案开源定位升级 + APP_INTRO_COPY 三版式 + README 仓库首页；③git 历史重写 Hmission 身份 + master→main + 仓库创建推送；④开源边界清理（.qoder/aios/governance/lora/adr 等内部资产全历史移除 + .gitignore 收口）；⑤多玩法标语（聊天/生图/玩乐/绘本/冒险全离线）替换「部署大语言模型」旧定位，全链路同步（16 语言/README/APP_INTRO_COPY/AGENTS/PRODUCT_SPEC/GitHub description）；⑥v2.0.0 定版（1.16.1 上游遗产 → 2.0.0，versionCode 144 四处同步）+ bump-version.js 单点命令（jest 5/5）+ tag v2.0.0 | PRODUCT_SPEC §1.1/§6.1 SSOT | tsc 0 错 + jest 8/8 + l10n valid + 真机 dex 取证版本实锤 | ✅ 已完成（2026-08-19~20） |
-| B22 | **上下文压缩链路根治 + 出图按钮失效修复**：①B19.1 压缩执行死锁根治（小米 13 DRC 血证）——水位双源校准（resolveWatermark 消费 lastCompletionResult.used 钉底）+ 生成预留（GENERATION_RESERVE=512）+ 摘要工作集预算化（tokenBudgetToMaxChars 1:1 保守折算）+ 满态显式失败（饱和跳过压缩，context-full banner 用户主权）；②出图按钮 onPress 直传 async 函数致 GestureResponderEvent 污染 promptOverride → TypeError 静默吞掉（两台真机 + DRC 三重复现），修复 `onPress={() => onGenerate()}` 显式无参包装 + testID + RNTL 回归防线（fireEvent.press 显式注入 event 模拟真机） | CONTEXT_COMPACTION_SPEC v1.1 / IMAGEGEN_UI_SPEC v2.1 | tsc 0 错 + jest 24/24 含回归用例 + 双机装机验证 | ✅ 已完成（2026-08-20） |
+| B22 | **上下文压缩链路根治 + 出图按钮失效修复**：①B19.1 压缩执行死锁根治（小米 13 DRC 血证）六项——水位双源校准（resolveWatermark 消费 lastCompletionResult.used 钉底）+ 生成预留（GENERATION_RESERVE=512）+ 摘要工作集预算化（tokenBudgetToMaxChars 1:1 保守折算）+ 满态显式失败（饱和跳过压缩，context-full banner 用户主权，不静默不换引擎）+ 防抢检查限定显式引擎路径（pre-send 压缩自身 inferencing=true 不被 1ms 拦死）+ createNewSession 快照重置（欠账残留不误伤新会话首条）；真机全链路证据链：send-saturated → 87% 触发 → summary-ok(342字) → context_compacted(7条) → 压缩后 5/5 轮 contextFull=false + 循环二次压缩 + footer「压缩 19」计数 UI 可见；②出图按钮 onPress 直传 async 函数致 GestureResponderEvent 污染 promptOverride → TypeError 静默吞掉（两台真机 + DRC 三重复现），修复 `onPress={() => onGenerate()}` 显式无参包装 + testID + RNTL 回归防线（fireEvent.press 显式注入 event 模拟真机） | CONTEXT_COMPACTION_SPEC v1.1 / IMAGEGEN_UI_SPEC v2.1 | tsc 0 错 + jest 52/52（全量 4498）+ 小米 13 DRC 全链路 5/5 验证 | ✅ 已完成（2026-08-20） |
+| B23 | **浮层与横幅体系收敛（单一事实源）**：①§12 契约定稿；②ui/OverlayCard 弹窗底座（4 命令式弹窗 + Memory×2/ImageGen 参数/RenameModal 迁移）；③ui/BannerBar 横幅底座（BannerRow/ActiveTaskBanner/DownloadBanner 收敛，进度条三套合一）；④删除休眠组件 ui/Modal、ui/Sheet、ui/Dialog 与自建 useToast；⑤ErrorSnackbar 图标自绘化 + UpscalePanel 改 Sheet + Sheet 底色 surfaceElevated | §12 定稿 | tsc 0 错 + jest 全绿 + 真机双模式走查（弹窗/横幅/提示面零回归） | ✅ 已完成（2026-08-20） |
 
 **批次间依赖**：B1 前置最大（聊天域，含 §8 旧债务 4 项中的 2 项），完成后旧债务全部清零；新债务一律按本表规则补录（批次号 + 验收 + 前置），不允许无批次挂账。
 
@@ -389,11 +390,61 @@ ScrollView
 
 > 新增/变更 testID 必须同步本表；testID 零变更红线不变。
 
+## 12. 浮层与横幅契约（v3.5 新增，2026-08-20 收敛批次）
+
+**问题**：弹窗 5 范式并存（命令式 Host 弹窗族 4 个 / 业务内嵌裸 Modal 4 处 / Paper Dialog / @gorhom Sheet / 休眠 DS 组件 3 个），遮罩 0.35/0.45/0.5/backdrop 四态、圆角 14/16/32 三态、横幅进度条三套实现、图标 emoji/vector-icons/自绘三轨——无单一事实源，新增弹窗只能复制粘贴再微调。
+
+**规则：每种产品语义唯一载体，新增一律走底座，禁止新裸 Modal（全屏查看器豁免且需登记）。**
+
+### 12.1 弹窗四要素（居中卡弹窗 = ui/OverlayCard 唯一底座）
+
+| 要素 | 契约值 | 说明 |
+|---|---|---|
+| 遮罩 | `theme.colors.backdrop` | 禁 rgba 字面量；深浅双模式随 token |
+| 卡底色 | `theme.colors.surfaceElevated` | 浮层专用（§1.5），禁 surface |
+| 圆角 | `radius[shapeRoles.surface]` = xl(32) | 浮层表面角色（§4） |
+| 层级 | elevation 8 | Modal/弹窗层级（§5.x） |
+| 标题 | `theme.typography.titleS` + onSurface，600 | 禁字号硬编码 |
+| 正文 | bodyS / onSurfaceVariant，lineHeight 20 | —— |
+| 操作区 | ui/OverlayCard Actions（ui/Button 体系） | 禁手写 TouchableOpacity 按钮；destructive 语义保留 |
+| 动画 | fade | 居中卡弹窗统一；底部弹出走 Sheet |
+
+### 12.2 底部 Sheet（components/Sheet 唯一载体）
+
+- 底色 `theme.colors.surfaceElevated`（契约化前为 background，已修正）；顶部圆角 xl + elevation 4。
+- 新底部弹层一律走 components/Sheet（@gorhom），禁手写 bottom Modal（UpscalePanel 已迁移）。
+
+### 12.3 横幅三要素（ui/BannerBar 唯一底座）
+
+| 要素 | 契约值 | 说明 |
+|---|---|---|
+| 底色 | 语义色 12% wash：`withOpacity(语义色, 0.12)` | neutral 用 surfaceVariant；禁 withAlpha 自拼 |
+| 边框 | hairline，语义色 25% | —— |
+| 文本 | `theme.typography.captionM` / onSurfaceVariant | 禁 fontSize 字面量 |
+| 进度条 | BannerBar 内置 Meter（4px / radius 2） | 禁第二套实现 |
+| 动作 | BannerBar actions 槽（text 按钮） | —— |
+| 图标 | assets/icons 自绘 | 禁 emoji 作 UI 图标 |
+
+### 12.4 轻提示（Paper Snackbar 唯一载体）
+
+- 操作反馈/错误提示一律 Paper Snackbar（ChatView 既有模式）；自建 Animated toast 已删除（useToast）。
+
+### 12.5 图标铁律
+
+- **新增 UI 一律 `src/assets/icons` 自绘**；禁 emoji 作 UI 图标（ActiveTaskBanner/IntentPicker 已清零）；新弹窗/新横幅禁 react-native-vector-icons。
+- 存量 vector-icons 消费方（ChatView/ChatInput/SearchView 等 14 处）为 legacy 组件，不在弹窗/横幅收敛范围，随各自改造批次渐进迁移；本批次已迁 ErrorSnackbar。
+- 新图标先查存量（alert/alert-triangle/wifi-off/shield/check-circle 等已覆盖错误/网络/认证语义）。
+
+### 12.6 全屏查看器豁免（登记）
+
+HtmlPreviewBubble / ResultPreview / TextMessage 图片全屏 / ZoomableImage：手势与业务差异大，不强行统一组件，但遮罩与关闭图标必须走 token（backdrop + XIcon）。新增全屏查看器须在此登记。
+
 ## 变更日志
 
 | 日期 | 版本 | 变更 |
 |------|------|------|
-| 2026-08-20 | 3.4 | B22（上下文压缩链路根治 + 出图按钮失效修复）；IMAGEGEN_UI_SPEC 升 v2.1（onPress 无参包装约束）；CONTEXT_COMPACTION_SPEC v1.1 已同步 |
+| 2026-08-20 | 3.6 | Gap Ledger B22 修订：B19.1 六项根治（补防抢检查限定显式引擎路径 + createNewSession 快照重置）+ 小米 13 DRC 全链路证据链（87% 触发 → summary-ok 342字 → context_compacted 7条 → 5/5 轮 contextFull=false + 压缩19计数） |
+| 2026-08-20 | 3.5 | B23（浮层与横幅体系收敛）：§12 浮层与横幅契约定稿（弹窗四要素/横幅三要素/图标铁律/全屏豁免）；ui/OverlayCard + ui/BannerBar 唯一底座；删除休眠组件 ui/Modal、ui/Sheet、ui/Dialog；轻提示归一 Paper Snackbar |
 | 2026-08-20 | 3.2 | Gap Ledger 补 B20（RealESRGAN 通用图像放大 + 全屏预览交互）；relates 挂 IMAGE_GEN_UPGRADE_PLAN §6.19 |
 | 2026-08-19 | 3.1 | Gap Ledger 补 B19（DRC 远程调试，诊断面扩展）；relates 挂 DRC_SPEC；关联文档补 DebugRemoteControl |
 | 2026-08-14 | 2.0 | Phase 2 规范治理：形状角色表 + 60-30-10 色彩应用 + 子页模板 + 动效目录 |
