@@ -153,8 +153,7 @@ class ChatSessionStore {
     runInAction(() => {
       this.lastAgentEventAt = Date.now();
       if (reasoning && reasoning.length > 0) {
-        const tail =
-          reasoning.length > 200 ? reasoning.slice(-200) : reasoning;
+        const tail = reasoning.length > 200 ? reasoning.slice(-200) : reasoning;
         if (tail !== this.streamingReasoningTail) {
           this.streamingReasoningTail = tail;
         }
@@ -170,6 +169,11 @@ class ChatSessionStore {
       this.streamingReasoningTail = '';
     });
   }
+
+  // 跨屏预填（PLAY_SPEC v1.6 玩具迭代闭环）：玩具箱「继续修改」→ 跳回
+  // 聊天 → ChatInput 消费并清空（同 imageGenStore.pendingPrompt 模式）。
+  // MobX 内存态，不持久化。
+  pendingChatText: string | null = null;
 
   // Banner state for the context-limit warning. All ephemeral (MobX-only,
   // no DB column). The snapshot is mirrored from the newest finished turn's
@@ -646,14 +650,13 @@ class ChatSessionStore {
         // author.role 为 'user' 时为用户消息（author.id 不总是 'user'）
         const isUser = message.author.role === 'user';
         emit('chat', isUser ? 'chat.user_msg' : 'chat.assistant_msg', {
-            sessionId: this.activeSessionId,
-            messageId: message.id,
-            text:
-              message.type === 'text'
-                ? (message as MessageType.Text).text
-                : message.type,
-          },
-        );
+          sessionId: this.activeSessionId,
+          messageId: message.id,
+          text:
+            message.type === 'text'
+              ? (message as MessageType.Text).text
+              : message.type,
+        });
 
         // Update local state
         await this.updateSessionTitle(session);
@@ -1033,11 +1036,16 @@ class ChatSessionStore {
           const merged = {...session.messages[index]} as MessageType.Any;
           const text = derivedText(merged) || (update as any).text || '';
           if (typeof text === 'string' && text.length > 0) {
-            emit('chat', 'chat.assistant_delta', {
-              sessionId: targetSessionId,
-              messageId: id,
-              text,
-            }, `delta:${id}`);
+            emit(
+              'chat',
+              'chat.assistant_delta',
+              {
+                sessionId: targetSessionId,
+                messageId: id,
+                text,
+              },
+              `delta:${id}`,
+            );
           }
         }
       }

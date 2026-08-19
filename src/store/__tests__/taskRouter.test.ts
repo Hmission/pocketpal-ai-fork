@@ -116,6 +116,15 @@ describe('taskRouter', () => {
       expect(routeTask('昨晚打游戏太晚了').task).toBe('chitchat');
       expect(routeTask('把游戏截图发我').task).toBe('chitchat');
     });
+    it('迭代话术「把贪吃蛇改成红色」命中（v1.6 玩具迭代闭环）', () => {
+      expect(routeTask('把贪吃蛇改成红色').task).toBe('play');
+      expect(routeTask('把贪吃蛇升级一下').task).toBe('play');
+      expect(routeTask('把抽签器改一下').task).toBe('play');
+    });
+    it('迭代防误伤：无目标玩具词不命中', () => {
+      expect(routeTask('把背景改成海边').task).toBe('chitchat');
+      expect(routeTask('把这段文字改一下').task).toBe('chitchat');
+    });
   });
 
   describe('adventure 任务（P12 城主，ADVENTURE_SPEC v1）', () => {

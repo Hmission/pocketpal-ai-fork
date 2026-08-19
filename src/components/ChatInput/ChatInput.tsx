@@ -180,6 +180,16 @@ export const ChatInput = observer(
 
     // Use `defaultValue` if provided
     const [text, setText] = React.useState(textInputProps?.defaultValue ?? '');
+    // 跨屏预填（PLAY_SPEC v1.6 玩具迭代闭环）：玩具箱「继续修改」→ 跳回聊天
+    // → 响应式消费 pendingChatText 并清空（同 imageGenStore.pendingPrompt 模式）。
+    const pendingChatText = chatSessionStore.pendingChatText;
+    React.useEffect(() => {
+      if (pendingChatText && pendingChatText.length > 0) {
+        chatSessionStore.pendingChatText = null;
+        setText(pendingChatText);
+        inputRef.current?.focus();
+      }
+    }, [pendingChatText]);
     // State for selected images - use external control when provided
     const [internalSelectedImages, setInternalSelectedImages] = React.useState<
       string[]

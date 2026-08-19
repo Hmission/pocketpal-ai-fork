@@ -67,10 +67,12 @@ const AIOS_PAL_DEFAULT_TALENTS: Array<{
   {name: 'note_save', necessity: 'optional'},
   {name: 'device_control', necessity: 'optional'},
   {name: 'adventure_state', necessity: 'optional'},
+  // 玩具迭代闭环（PLAY_SPEC v1.6）：改已有玩具前按 title 读回原文
+  {name: 'read_html', necessity: 'optional'},
 ];
 
-/** pact.schemaVersion 当前版本：v1 = 九工具全量集。 */
-const PACT_SCHEMA_VERSION = 1;
+/** pact.schemaVersion 当前版本：v2 = 十工具全量集（v1 九工具 + read_html）。 */
+const PACT_SCHEMA_VERSION = 2;
 
 class PalStore {
   // Core pals storage

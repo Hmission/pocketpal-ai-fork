@@ -13,8 +13,10 @@ import {
   readSummary,
 } from '../../services/aiosMemory/compaction';
 import {AIOS_MEMORY_FILE} from '../../utils/paths';
+import {ROUTES} from '../../utils/navigationConstants';
 import {listToys, readToy, ToyEntry} from '../../services/toyChest';
 import {HtmlPreviewBubble} from '../../components/HtmlPreviewBubble';
+import {chatSessionStore} from '../../store';
 import {useTheme, useStaggerEntry} from '../../hooks';
 import type {Theme} from '../../utils/types';
 import {IconTile, ListItem} from '../../components/ui';
@@ -131,6 +133,13 @@ export function KnowledgeScreen({navigation}: any) {
     setSelectedToy(html ? {title: toy.title, html} : null);
   };
 
+  // 玩具迭代闭环（PLAY_SPEC v1.6）：跳回聊天 + 预填「继续改玩具「X」：」
+  // → 模型 read_html 读回原文 → 改 → render_html 同名覆盖存档。
+  const continueModifyToy = (toy: {title: string}) => {
+    chatSessionStore.pendingChatText = `继续改玩具「${toy.title}」：`;
+    navigation.navigate(ROUTES.CHAT);
+  };
+
   return (
     <View style={styles.container}>
       <Appbar.Header>
@@ -209,7 +218,17 @@ export function KnowledgeScreen({navigation}: any) {
 
       {/* Content area */}
       {selectedToy ? (
-        <HtmlPreviewBubble html={selectedToy.html} title={selectedToy.title} />
+        <View style={styles.toyDetail}>
+          <HtmlPreviewBubble html={selectedToy.html} title={selectedToy.title} />
+          <Button
+            mode="contained"
+            icon="pencil"
+            onPress={() => continueModifyToy(selectedToy)}
+            style={styles.toyModifyBtn}
+            testID="toy-continue-modify">
+            继续修改
+          </Button>
+        </View>
       ) : searchResults.length > 0 ? (
         <FlatList
           data={searchResults}
@@ -365,5 +384,14 @@ const createStyles = (theme: Theme) =>
       textAlign: 'center',
       color: theme.colors.outlineVariant,
       padding: theme.spacing.xxl,
+    },
+    // 玩具迭代闭环（PLAY_SPEC v1.6）：选中玩具详情 + 继续修改入口
+    toyDetail: {
+      flex: 1,
+    },
+    toyModifyBtn: {
+      marginHorizontal: theme.spacing.m,
+      marginBottom: theme.spacing.m,
+      borderRadius: theme.radius.m,
     },
   });

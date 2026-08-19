@@ -65,6 +65,19 @@ describe('toyChest（P8 玩具工坊，PLAY_SPEC v1）', () => {
     expect(await readToy('nope')).toBeNull();
   });
 
+  it('upsert 迭代（v1.6）：同 title 覆盖原 id 不堆条目，且条目置顶', async () => {
+    const v1 = await saveToy('贪吃蛇', '<html>v1</html>');
+    const other = await saveToy('抽签器', '<html>draw</html>');
+    const v2 = await saveToy('贪吃蛇', '<html>v2</html>');
+
+    expect(v2!.id).toBe(v1!.id); // 覆盖迭代 id 不变
+    const toys = await listToys();
+    expect(toys).toHaveLength(2); // 不堆重复条目
+    expect(toys[0].title).toBe('贪吃蛇'); // 最新迭代置顶
+    expect(toys[1].title).toBe('抽签器');
+    expect(await readToy(v1!.id)).toBe('<html>v2</html>'); // 文件内容已覆盖
+  });
+
   it('超过 TOY_LIMIT 滚动淘汰最旧', async () => {
     for (let i = 0; i < TOY_LIMIT + 5; i++) {
       await saveToy(`T${i}`, `<html>${i}</html>`);
