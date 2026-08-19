@@ -108,6 +108,7 @@ import {
   PSS_SAFE_BUDGET,
 } from '../utils/memoryEstimator';
 import {CONTEXT_LADDER} from '../utils/bannerVariantResolver';
+import {defaultNCtxForModel} from '../utils/modelContextDefaults';
 import {loadLlamaModelInfo} from 'llama.rn';
 import {applyModelStoreMethodGroups} from './modelStoreMethods';
 
@@ -443,53 +444,46 @@ class ModelStore {
     (modelId && this.perModelNCtx[modelId]) || this.contextInitParams.n_ctx;
 
   /**
-   * §18.6 每模型预调：模型无 n_ctx 覆盖时，按设备内存上限沿 CONTEXT_LADDER
-   * 取最大可装档（封顶 GGUF context_length），一次预调、持久化。
-   * PSS 安全阀（2026-08-19 K90 真机血证）：厂商 PSS 看护（HyperOS 实测
-   * ~6GB 硬杀，与空闲内存无关）是进程存活的真正天花板；预调天花板取
-   * min(内存 ceiling, PSS_SAFE_BUDGET)——估算是理论值，PSS 含运行时全部
-   * 开销，宁少勿杀。预调自动档永不越过安全预算；用户手调不受此限（决策可见）。
-   * 锋利不兜底：ceiling 未知（<=0）不虚构，只升不降（不覆盖已有值，
-   * 包括用户手动调小过的档）。仅本地模型（REMOTE 无本地内存语义）。
+   * §18.6 每模型预调：无覆盖时写人工策展默认（modelContextDefaults），
+   * 一次预调、持久化。策展表取代内存梯子「能装多大给多大」
+   * （2026-08-19 大王裁定：K90 实证梯子给 1B 写 98304 KV 虚占、
+   * 漏档模型回全局 4096 一轮即满）；设备内存安全由 PSS 审计兜底，
+   * 用户手调 = 主权不碰。
    */
-  private presetModelNCtxIfAbsent = (model: Model, projectionModel?: Model): void => {
+  private presetModelNCtxIfAbsent = (
+    model: Model,
+    _projectionModel?: Model,
+  ): void => {
     if (model.origin === ModelOrigin.REMOTE || this.perModelNCtx[model.id]) {
       return;
     }
-    const ceiling = Math.min(
-      Math.max(
-        this.largestSuccessfulLoad ?? 0,
-        this.availableMemoryCeiling ?? 0,
-      ),
-      PSS_SAFE_BUDGET,
-    );
-    if (ceiling <= 0) {
-      return;
-    }
-    const modelMaxCtx =
-      model.ggufMetadata?.context_length ??
-      CONTEXT_LADDER[CONTEXT_LADDER.length - 1];
-    let best: number | undefined;
-    for (const tier of CONTEXT_LADDER) {
-      if (tier > modelMaxCtx) {
-        break;
+    this.setModelNCtx(model.id, defaultNCtxForModel(model), 'preset');
+  };
+  
+  /**
+   * 策展默认一次归一（2026-08-19）：preset 源超策展默认者降档
+   * （旧梯子遗留，如 1B 98304）；user 源不碰（主权）；preset 低于
+   * 策展者是审计的安全决策，不拉回（防与审计乒乓）。
+   */
+  normalizePresetNCtxToCuratedDefaults = (): void => {
+    for (const model of this.models) {
+      if (model.origin === ModelOrigin.REMOTE) {
+        continue;
       }
-      try {
-        const mem = getModelMemoryRequirement(model, projectionModel, {
-          ...this.contextInitParams,
-          n_ctx: tier,
-        });
-        if (mem <= ceiling) {
-          best = tier;
-        } else {
-          break;
-        }
-      } catch {
-        break;
+      if (this.perModelNCtxSource[model.id] === 'user') {
+        continue;
       }
-    }
-    if (best && best > this.getModelNCtx(model.id)) {
-      this.setModelNCtx(model.id, best, 'preset');
+      const current = this.perModelNCtx[model.id];
+      if (!current) {
+        continue;
+      }
+      const curated = defaultNCtxForModel(model);
+      if (current > curated) {
+        console.warn(
+          `[ModelStore] curated default: ${model.name} n_ctx ${current} → ${curated}`,
+        );
+        this.setModelNCtx(model.id, curated, 'preset');
+      }
     }
   };
 
@@ -759,6 +753,9 @@ class ModelStore {
     // PSS 安全审计：自愈旧版预调写入的超限 n_ctx 档（估算超 PSS 安全预算
     // 降到最大安全档）——K90 实证超限档生成中被厂商看护硬杀。
     this.auditPerModelNCtxAgainstPss();
+
+    // 策展默认归一：旧梯子遗留 preset 超策展档者降档（user 源不碰）。
+    this.normalizePresetNCtxToCuratedDefaults();
 
     // Check if we need to reload an auto-released model (for app restarts)
     this.checkAndReloadAutoReleasedModel();

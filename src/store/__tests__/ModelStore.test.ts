@@ -155,18 +155,19 @@ describe('ModelStore', () => {
       });
     });
 
-    it('无覆盖时按内存 ceiling 取最大可装档（封顶 GGUF，且不越 PSS 安全预算）', () => {
+    it('无覆盖时写人工策展默认（尺寸档 2e9 → 16384）', () => {
       runInAction(() => {
         modelStore.largestSuccessfulLoad = 8e9;
         modelStore.availableMemoryCeiling = 8e9;
       });
       (modelStore as any).presetModelNCtxIfAbsent(presetCtxModel);
-      // 估算 1GB + 1GB/4K：PSS 安全预算 4GB 卡住梯子 → 12288（非 24576）
-      expect(modelStore.perModelNCtx['preset-ctx-model']).toBe(12288);
+      // 策展表取代内存梯子（2026-08-19 大王裁定）：fixture 无规则命中，
+      // size 2e9 落尺寸档 16384。
+      expect(modelStore.perModelNCtx['preset-ctx-model']).toBe(16384);
       expect(modelStore.perModelNCtxSource['preset-ctx-model']).toBe('preset');
     });
-
-    it('已有覆盖不重预调（只升不降，不覆盖用户手调）', () => {
+    
+    it('已有覆盖不重预调（不覆盖用户手调）', () => {
       runInAction(() => {
         modelStore.largestSuccessfulLoad = 8e9;
         modelStore.perModelNCtx = {'preset-ctx-model': 4096};
@@ -174,14 +175,14 @@ describe('ModelStore', () => {
       (modelStore as any).presetModelNCtxIfAbsent(presetCtxModel);
       expect(modelStore.perModelNCtx['preset-ctx-model']).toBe(4096);
     });
-
-    it('ceiling 未知不虚构（锋利不兜底）', () => {
+    
+    it('ceiling 未知仍写策展默认（策展非内存虚构）', () => {
       runInAction(() => {
         modelStore.largestSuccessfulLoad = undefined;
         modelStore.availableMemoryCeiling = undefined;
       });
       (modelStore as any).presetModelNCtxIfAbsent(presetCtxModel);
-      expect(modelStore.perModelNCtx['preset-ctx-model']).toBeUndefined();
+      expect(modelStore.perModelNCtx['preset-ctx-model']).toBe(16384);
     });
 
     it('REMOTE 模型无本地内存语义，不预调', () => {
@@ -195,6 +196,64 @@ describe('ModelStore', () => {
       } as Model;
       (modelStore as any).presetModelNCtxIfAbsent(remote);
       expect(modelStore.perModelNCtx['remote-ctx-model']).toBeUndefined();
+    });
+  });
+
+  describe('策展默认归一（normalizePresetNCtxToCuratedDefaults）', () => {
+    afterEach(() => {
+      runInAction(() => {
+        modelStore.perModelNCtx = {};
+        modelStore.perModelNCtxSource = {};
+        modelStore.models = [];
+      });
+    });
+
+    it('preset 超策展档降档（旧梯子遗留 98304 → 1B 策展 8192）', () => {
+      const butler = {
+        ...presetModelFixture,
+        id: 'minicpm-butler',
+        filename: 'minicpm5_1b_heretic_q4km.gguf',
+        size: 0.8e9,
+      } as Model;
+      modelStore.models = [butler];
+      runInAction(() => {
+        modelStore.perModelNCtx = {'minicpm-butler': 98304};
+        modelStore.perModelNCtxSource = {'minicpm-butler': 'preset'};
+      });
+      modelStore.normalizePresetNCtxToCuratedDefaults();
+      expect(modelStore.perModelNCtx['minicpm-butler']).toBe(8192);
+    });
+
+    it('user 源不碰（主权）', () => {
+      const butler = {
+        ...presetModelFixture,
+        id: 'minicpm-butler',
+        filename: 'minicpm5_1b_heretic_q4km.gguf',
+        size: 0.8e9,
+      } as Model;
+      modelStore.models = [butler];
+      runInAction(() => {
+        modelStore.perModelNCtx = {'minicpm-butler': 98304};
+        modelStore.perModelNCtxSource = {'minicpm-butler': 'user'};
+      });
+      modelStore.normalizePresetNCtxToCuratedDefaults();
+      expect(modelStore.perModelNCtx['minicpm-butler']).toBe(98304);
+    });
+
+    it('preset 低于策展者不拉回（审计安全决策防乒乓）', () => {
+      const m = {
+        ...presetModelFixture,
+        id: 'low-preset',
+        filename: 'qwen3.5-4b-x.gguf',
+        size: 2.5e9,
+      } as Model;
+      modelStore.models = [m];
+      runInAction(() => {
+        modelStore.perModelNCtx = {'low-preset': 8192};
+        modelStore.perModelNCtxSource = {'low-preset': 'preset'};
+      });
+      modelStore.normalizePresetNCtxToCuratedDefaults();
+      expect(modelStore.perModelNCtx['low-preset']).toBe(8192);
     });
   });
 

@@ -13,7 +13,7 @@ import {Platform} from 'react-native';
 
 // Current version of the context init params schema
 // Increment this when adding new parameters or changing existing ones
-export const CURRENT_CONTEXT_INIT_PARAMS_VERSION = '2.3';
+export const CURRENT_CONTEXT_INIT_PARAMS_VERSION = '2.4';
 
 /**
  * Creates properly versioned ContextInitParams from ContextParams (excluding model)
@@ -204,6 +204,18 @@ export function migrateContextInitParams(
     }
 
     migratedParams.version = '2.3';
+  }
+
+  // Migration from 2.3 to 2.4: heal poisoned sub-baseline globals.
+  // K90 血证：v2.3 后无活动模型时滑条把 4096 写回全局（版本已 2.3，
+  // 迁移永不再碰）→ 漏档模型一轮即满。只抬旧默认毒档 4096（与 2.2→2.3
+  // 同口径），用户自选非默认值（2048/6144…）视为主权不碰。
+  if (migratedParams.version === '2.3') {
+    if (migratedParams.n_ctx === 4096) {
+      migratedParams.n_ctx = 8192;
+    }
+
+    migratedParams.version = '2.4';
   }
 
   // Ensure the final version is set correctly

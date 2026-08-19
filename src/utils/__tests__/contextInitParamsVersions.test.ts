@@ -158,7 +158,7 @@ describe('contextInitParamsVersions', () => {
 
       const migrated = migrateContextInitParams(v20Params);
 
-      expect(migrated.version).toBe('2.3');
+      expect(migrated.version).toBe('2.4');
       expect(migrated.image_max_tokens).toBe(512);
       expect(migrated.no_extra_bufts).toBe(false);
     });
@@ -182,7 +182,7 @@ describe('contextInitParamsVersions', () => {
 
       const migrated = migrateContextInitParams(v20ParamsWithTokens);
 
-      expect(migrated.version).toBe('2.3');
+      expect(migrated.version).toBe('2.4');
       expect(migrated.image_max_tokens).toBe(1024); // Should preserve custom value
     });
   });
@@ -204,11 +204,11 @@ describe('contextInitParamsVersions', () => {
 
       const migrated = migrateContextInitParams(v22);
 
-      expect(migrated.version).toBe('2.3');
+      expect(migrated.version).toBe('2.4');
       expect(migrated.n_ctx).toBe(8192);
     });
 
-    it('preserves user-chosen n_ctx (sovereignty: migration only bumps the old default)', () => {
+    it('preserves user-chosen non-default n_ctx (sovereignty: migration only bumps the old default)', () => {
       const v22 = {
         version: '2.2',
         n_ctx: 6144,
@@ -225,6 +225,29 @@ describe('contextInitParamsVersions', () => {
       const migrated = migrateContextInitParams(v22);
 
       expect(migrated.n_ctx).toBe(6144);
+    });
+  });
+
+  describe('migrate 2.3 -> 2.4', () => {
+    it('heals poisoned v2.3 globals (4096 old default; K90: slider wrote it back post-2.3)', () => {
+      const v23 = {
+        version: '2.3',
+        n_ctx: 4096,
+      };
+
+      const migrated = migrateContextInitParams(v23);
+
+      expect(migrated.version).toBe('2.4');
+      expect(migrated.n_ctx).toBe(8192);
+    });
+
+    it('preserves globals at or above baseline', () => {
+      const migrated = migrateContextInitParams({
+        version: '2.3',
+        n_ctx: 16384,
+      });
+
+      expect(migrated.n_ctx).toBe(16384);
     });
   });
 
