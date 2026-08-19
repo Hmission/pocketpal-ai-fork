@@ -289,7 +289,7 @@
   },
   "about": {
     "screenTitle": "Infos sur l'application",
-    "description": "Une application qui apporte des modèles de langage directement sur votre téléphone, entièrement open source. Repose sur llama.cpp et llama.rn.",
+    "description": "Pocket Chick est un compagnon IA entièrement open source qui vit sur votre téléphone — discussion, génération d'images, jeux, livres illustrés et aventures, le tout hors ligne sur votre appareil.",
     "body": "Contrairement aux chatbots cloud, les modèles de Pocket Chick s'exécutent entièrement sur votre appareil — pas de serveur, pas d'internet, aucune conversation transmise à un tiers. Chaque question et chaque réponse restent sur votre téléphone. Tout le projet est entièrement open source sur GitHub — forks, œuvres dérivées et collaborations sont les bienvenus.",
     "featuresTitle": "Fonctionnalités",
     "features": [

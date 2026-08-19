@@ -514,7 +514,7 @@
   },
   "about": {
     "screenTitle": "Maklumat Aplikasi",
-    "description": "Aplikasi yang membawa model bahasa terus ke telefon anda, sepenuhnya sumber terbuka. Dibina di atas llama.cpp dan llama.rn.",
+    "description": "Pocket Chick ialah teman AI sumber terbuka sepenuhnya yang tinggal dalam telefon anda — berbual, penjanaan imej, bermain, buku bergambar dan pengembaraan, semuanya berjalan luar talian pada peranti anda.",
     "body": "Berbeza dengan chatbot berasaskan awan, model Pocket Chick berjalan sepenuhnya pada peranti anda — tanpa pelayan, tanpa internet, dan tanpa menghantar perbualan kepada pihak ketiga. Setiap soalan dan setiap jawapan kekal dalam telefon anda. Keseluruhan projek adalah sumber terbuka sepenuhnya di GitHub — fork, pembangunan terbitan dan kolaborasi dialu-alukan.",
     "featuresTitle": "Ciri-ciri",
     "features": [

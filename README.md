@@ -4,9 +4,9 @@
 
 # 小黄鸡 Pocket Chick 🐤
 
-**一款将大语言模型直接部署到您手机上的 AI 应用 · 完全开源**
+**一款住进手机的开源 AI 伙伴——聊天、生图、玩乐、绘本、冒险，多种玩法全部离线运行在您的设备上**
 
-An open-source AI app that brings large language models directly to your phone.
+An open-source AI companion that lives on your phone — chat, image generation, play, picture books and adventures, all running offline on your device.
 
 基于 [llama.cpp](https://github.com/ggml-org/llama.cpp) 与 [llama.rn](https://github.com/mybigday/llama.rn) 构建 · 二开自 [PocketPal AI](https://github.com/a-ghorbani/pocketpal-ai)（MIT License）
 

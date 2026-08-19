@@ -29,7 +29,7 @@ relates: [INDEX, POCKETPAL_DESIGN_SPEC, POCKETPAL_MODEL_MATRIX, APP_INTRO_COPY, 
 
 ### 1.1 一句话定位
 
-**小黄鸡（Pocket Chick）是一款把大语言模型与图像生成模型直接部署到手机上的 AI 应用——完全离线、无审查、有人设、可生图，对话与创作全程不离开设备。**
+**小黄鸡（Pocket Chick）是一款住进手机的完全开源 AI 伙伴——聊天、生图、玩乐、绘本、冒险，多种玩法全部离线运行在设备上；无审查、有人设，对话与创作全程不离开设备。**
 
 ### 1.2 品牌
 

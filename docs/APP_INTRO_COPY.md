@@ -45,7 +45,7 @@ relates: []
 
 > **小黄鸡 —— 把大模型装进口袋**
 >
-> 一款将大语言模型直接部署到您手机上的 AI 应用，基于 llama.cpp 与 llama.rn 构建。模型本地运行，完全离线，聊天数据不出手机，隐私由您掌控。项目完全开源，源码托管于 GitHub。
+> 一款住进手机的开源 AI 伙伴——聊天、生图、玩乐、绘本、冒险，多种玩法全部离线运行在您的设备上。基于 llama.cpp 与 llama.rn 构建。模型本地运行，完全离线，聊天数据不出手机，隐私由您掌控。项目完全开源，源码托管于 GitHub。
 >
 > - 🐣 完全离线：断网也能聊
 > - 🆓 完全开源：基于 PocketPal AI（MIT License）开发，欢迎 Star 与共建
@@ -56,7 +56,7 @@ relates: []
 
 > **小黄鸡（Pocket Chick）**
 >
-> 一款将大语言模型直接部署到您手机上的 AI 应用，完全开源，基于 llama.cpp 与 llama.rn 构建。
+> 小黄鸡（Pocket Chick）是一款住进手机的开源 AI 伙伴——聊天、生图、玩乐、绘本、冒险，多种玩法全部离线运行在您的设备上。基于 llama.cpp 与 llama.rn 构建。
 >
 > 与传统“联网问答”不同，小黄鸡的模型运行在您的设备本地——不需要服务器，不需要联网，更不需要把对话上传给任何第三方。您的每一次提问、每一段对话，都只留在您自己的手机里。整个项目已在 GitHub 完全开源——欢迎 Fork、二次开发与共建。
 >
@@ -78,7 +78,7 @@ relates: []
 
 ### 版本三：极简版
 
-> **小黄鸡** — 将大语言模型直接部署到您手机上的 AI 应用。
+> **小黄鸡** — 住进手机的开源 AI 伙伴：聊天、生图、玩乐、绘本、冒险，全部离线。
 >
 > 基于 llama.cpp 与 llama.rn 构建 · 二开自 PocketPal AI（MIT License）· 完全离线 · 完全开源
 >
@@ -92,7 +92,7 @@ relates: []
 
 > **小黃雞 —— 把大模型裝進口袋**
 >
-> 一款將大語言模型直接部署到您手機上的 AI 應用，基於 llama.cpp 與 llama.rn 構建。模型本地運行，完全離線，聊天數據不出手機，隱私由您掌控。專案完全開源，原始碼托管於 GitHub。
+> 一款住進手機的開源 AI 夥伴——聊天、生圖、玩樂、繪本、冒險，多種玩法全部離線運行在您的裝置上。基於 llama.cpp 與 llama.rn 構建。模型本地運行，完全離線，聊天數據不出手機，隱私由您掌控。專案完全開源，原始碼托管於 GitHub。
 >
 > - 🐣 完全離線：斷網也能聊
 > - 🆓 完全開源：基於 PocketPal AI（MIT License）開發，歡迎 Star 與共建
@@ -103,7 +103,7 @@ relates: []
 
 > **小黃雞（Pocket Chick）**
 >
-> 一款將大語言模型直接部署到您手機上的 AI 應用，完全開源，基於 llama.cpp 與 llama.rn 構建。
+> 小黃雞（Pocket Chick）是一款住進手機的開源 AI 夥伴——聊天、生圖、玩樂、繪本、冒險，多種玩法全部離線運行在您的裝置上。基於 llama.cpp 與 llama.rn 構建。
 >
 > 與傳統「聯網問答」不同，小黃雞的模型運行在您的裝置本地——不需要伺服器，不需要聯網，更不需要把對話上傳給任何第三方。您的每一次提問、每一段對話，都只留在您自己的手機裡。整個專案已在 GitHub 完全開源——歡迎 Fork、二次開發與共建。
 >
@@ -125,7 +125,7 @@ relates: []
 
 ### 版本三：極簡版
 
-> **小黃雞** — 將大語言模型直接部署到您手機上的 AI 應用。
+> **小黃雞** — 住進手機的開源 AI 夥伴：聊天、生圖、玩樂、繪本、冒險，全部離線。
 >
 > 基於 llama.cpp 與 llama.rn 構建 · 二開自 PocketPal AI（MIT License）· 完全離線 · 完全開源
 >
@@ -139,7 +139,7 @@ relates: []
 
 > **Pocket Chick — AI in your pocket**
 >
-> An AI app that runs large language models directly on your phone, built on llama.cpp and llama.rn. Models run locally and fully offline — your chats never leave your device, and your privacy stays yours.
+> A fully open-source AI companion that lives on your phone — chat, image generation, play, picture books and adventures, all running offline on your device. Built on llama.cpp and llama.rn. Models run locally and fully offline — your chats never leave your device, and your privacy stays yours.
 >
 > - 🐣 Fully offline: works without a network
 > - 🆓 Free & open source: built on PocketPal AI (MIT License)
@@ -150,7 +150,7 @@ relates: []
 
 > **Pocket Chick**
 >
-> An app that brings language models directly to your phone. Fully open source, built on llama.cpp and llama.rn.
+> Pocket Chick is a fully open-source AI companion that lives on your phone — chat, image generation, play, picture books and adventures, all running offline on your device. Built on llama.cpp and llama.rn.
 >
 > Unlike cloud-based chatbots, Pocket Chick runs models entirely on your device — no servers, no internet, and no third party ever sees your conversations. Every question and every reply stays on your phone. The entire project is fully open source on GitHub — fork it, extend it, build your own.
 >
@@ -172,7 +172,7 @@ relates: []
 
 ### Version 3: Minimal
 
-> **Pocket Chick** — The AI app that runs large language models directly on your phone.
+> **Pocket Chick** — The open-source AI companion that lives on your phone: chat, image generation, play, picture books and adventures, all offline.
 >
 > Built on llama.cpp & llama.rn · Fork of PocketPal AI (MIT License) · Fully offline · Free & open source
 >

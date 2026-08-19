@@ -4,7 +4,7 @@
 
 ## 项目简介
 
-**Pocket Chick（小黄鸡）** 是一款将大语言模型直接部署到手机上的 AI 应用，基于 [llama.cpp](https://github.com/ggml-org/llama.cpp) 与 [llama.rn](https://github.com/mybigday/llama.rn) 构建，二开自 [PocketPal AI](https://github.com/a-ghorbani/pocketpal-ai)（MIT License）。
+**Pocket Chick（小黄鸡）** 是一款住进手机的开源 AI 伙伴——聊天、生图、玩乐、绘本、冒险，多种玩法全部离线运行在设备上；基于 [llama.cpp](https://github.com/ggml-org/llama.cpp) 与 [llama.rn](https://github.com/mybigday/llama.rn) 构建，二开自 [PocketPal AI](https://github.com/a-ghorbani/pocketpal-ai)（MIT License）。
 
 核心能力：完全离线本地聊天、端侧图像生成（DreamLite ONNX 引擎 / SD3.5 / Z-Image-Turbo）、多模型自由切换、隐私本地化。
 
