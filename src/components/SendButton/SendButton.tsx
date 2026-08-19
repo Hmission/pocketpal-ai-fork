@@ -54,8 +54,10 @@ export const SendButton = ({
               ? color ?? theme.colors.onPrimary
               : theme.colors.onSurfaceVariant
           }
-          width={22}
-          height={22}
+          // §18.4 复查：图标 22→20 与 controlBar 快捷图标钮同尺寸（视觉高度一致），
+          // 不再靠实心圆衬底撑大视觉权重
+          width={20}
+          height={20}
         />
       )}
     </TouchableOpacity>
@@ -64,10 +66,9 @@ export const SendButton = ({
 
 // 品牌暖黄圆形主操作（DESIGN_SPEC §1.1：primary 为魂，onPrimary 深棕图标）。
 // §18.4：不可用态 = 透明底 + outlineVariant 描边（圆形轮廓恒在，状态统一）。
-// 36px 与快捷图标钮/语音钮同基准（2026-08 大王裁定）。
+// 36px 触区与快捷图标钮/语音钮同基准（2026-08 大王裁定）；图标 20px 同行同尺寸。
 const styles = {
   sendButton: (theme: any, enabled: boolean) => ({
-    marginLeft: theme.spacing.m,
     minHeight: 36,
     minWidth: 36,
     borderRadius: theme.radius.full,

@@ -15,6 +15,7 @@
 import {Model, ModelOrigin, ModelType} from '../utils/types';
 import {modelStore} from './index';
 import {isPrompterModelName} from '../services/promptWriter';
+import {getModelNote} from '../utils/modelDisplayNames';
 import type {TaskKind} from './taskRouter';
 
 const displayName = (m: Model): string =>
@@ -28,8 +29,27 @@ const DEFAULT_MAP: Record<'write' | 'code', RegExp> = {
 
 const bySizeDesc = (a: Model, b: Model) => b.size - a.size;
 
+// §18.7 复查：候选上限（避免把全量模型甩给用户——推荐要精，不要清单）
+const MAX_CANDIDATES = 3;
+
+/**
+ * 候选推荐说明（§18.7 复查）：MODEL_MATRIX 定位（getModelNote）优先，
+ * 无定位则按大小给速度档位语——用户要的是「差异可决策」，不是裸列表。
+ */
+export function candidateNote(model: Model): string {
+  const note = getModelNote(model);
+  if (note) {
+    return note;
+  }
+  const sizeGB = model.size ? model.size / 1024 ** 3 : 0;
+  return sizeGB > 3 ? '更大更强，但加载更慢' : '均衡档，更快上手';
+}
+
 /**
  * 任务候选列表（§18.7 弹窗多候选）：[0] = 推荐项。
+ * 语义（2026-08-20 大王复核）：只推「同任务族」候选——
+ *   用户标签命中 + 文件名指纹命中（去重），上限 MAX_CANDIDATES；
+ *   无任何命中时才兜底 1 个最大模型（标注说明，不甩全量）。
  * 空数组 = 无可用本地模型（调用方各自显式失败，不兜底）。
  */
 export function listModelsForTask(task: TaskKind): Model[] {
@@ -53,7 +73,9 @@ export function listModelsForTask(task: TaskKind): Model[] {
 
   // 1) 用户用途标签命中（最高优先；write 同义键 creativity/instructions 延续旧语义）
   const wanted =
-    modelTask === 'code' ? ['code'] : ['rewriting', 'creativity', 'instructions'];
+    modelTask === 'code'
+      ? ['code']
+      : ['rewriting', 'creativity', 'instructions'];
   const tagged = candidates
     .filter(m => m.capabilities?.some(c => wanted.includes(c)))
     .sort(bySizeDesc);
@@ -68,12 +90,13 @@ export function listModelsForTask(task: TaskKind): Model[] {
     )
     .sort(bySizeDesc);
 
-  // 3) 其余按大小降序兜底
-  const rest = candidates
-    .filter(m => !tagged.includes(m) && !fingerprint.includes(m))
-    .sort(bySizeDesc);
-
-  return [...tagged, ...fingerprint, ...rest];
+  // 3) 任务族候选 = 标签 + 指纹；为空才兜底最大模型（单个，不甩全量）
+  const family = [...tagged, ...fingerprint].slice(0, MAX_CANDIDATES);
+  if (family.length > 0) {
+    return family;
+  }
+  const biggest = [...candidates].sort(bySizeDesc)[0];
+  return biggest ? [biggest] : [];
 }
 
 /** 单候选兼容面：推荐项 = 候选列表首项；无候选返回 null。 */

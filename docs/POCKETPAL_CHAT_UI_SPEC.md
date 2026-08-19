@@ -351,6 +351,7 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 
 - SendButton 内置 `enabled` 双态：可用 = primary 实心圆 + onPrimary 图标；不可用 = 透明底 + outlineVariant 圆形描边 + onSurfaceVariant 灰图标。尺寸恒 36px（快捷图标钮/语音钮同基准）。
 - ChatInput 删除外层 `opacity 0.4` 包裹，状态表达收进组件内部。
+- **图标 20px 同行同尺寸（复查 2026-08-20 定稿）**：SendIcon 22→20 与 controlBar 快捷图标钮图标同尺寸，去 marginLeft 右缘对齐——视觉高度与同行按钮一致，不靠衬底撑大。
 
 ### 18.5 输入卡 placeholder 单源决策表（engineStatus 状态中枢）
 
@@ -364,6 +365,8 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 
 根因修复：旧链只看 `promptWriter.isLoaded`，管家加载中落入「模型未加载」分支。五分支全部收口 l10n（复查 2026-08-20：第 4 分支硬编码中文收口 `chat.butlerReady`，16 语同步，de/it/et 回退 en）。
 
+**时序缺口修复（复查 2026-08-20）**：冷启动首帧偶发「模型未加载」的根因 = `ensureLoaded` 在 `findModelPath()` await 期间 prompter 相位未设置（保持 idle）→ 首帧落分支 5。修复：loading 相位提前到模型路径扫描之前，未找到路径再回落 idle——加载中语义从首帧即正确。
+
 ### 18.6 n_ctx 单一事实源 + 每模型预调
 
 - **两入口收口同一存储**：IncreaseContextSheet confirm 改写 `setModelNCtx(model.id)`（不再全局 setNContext，失败恢复同源）；sheet 与生成设置页的「当前值」读 `getModelNCtx(model.id)`。生成设置页已走该链路 → 一边调了另一边自动同步，持久化跨重启。
@@ -374,8 +377,9 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 ### 18.7 模型用途标签 + 切换弹窗多候选
 
 - **用途标签**：ModelSettingsSheet「用途」多选 chips（写作/代码；玩具复用 code 选型不增第三枚），写入 `model.capabilities`（保留非用途键）。chips 文案与弹窗 TASK_LABEL 属「产品叙事硬编码口径」（同 B18 §17 意图标签裁定，2026-08-20 显式登记）。
-- **选型升级**：`listModelsForTask` 返回候选列表：用户标签命中（size 降序）> DEFAULT_MAP 指纹 > 其余 size 降序；`findModelForTask` = 首项兼容面。
-- **弹窗升级**：ModelSwitchDialog 渲染候选列表（单选，默认选中推荐项，testID `model-switch-candidate-{id}`）+ 继续当前（场景 A）；返回 `{choice, modelId}`；选择结果沿用 `taskModelChoice` 会话级记住。闭环：设置页打标签 → 选型读标签 → 弹窗多候选 → 会话记住。
+- **选型语义（复查 2026-08-20 大王复核定稿）**：`listModelsForTask` 返回**任务族候选**——用户标签命中 + 文件名指纹命中（去重），**上限 3**；任务族为空才兜底单个最大模型（**不甩全量**，推荐要精不要清单）。每个候选带一句话推荐说明（`candidateNote`：MODEL_MATRIX 定位优先，无定位按大小给「更大更强，但加载更慢 / 均衡档，更快上手」）——差异可决策。`findModelForTask` = 首项兼容面。
+- **弹窗升级**：ModelSwitchDialog 渲染任务族候选（单选，默认选中推荐项，testID `model-switch-candidate-{id}`）+ 一句话说明行 + 继续当前（场景 A）；返回 `{choice, modelId}`。
+- **弹窗内加载（复查定稿，移动端重量级操作最佳实践）**：确认后**弹窗不立即关**——Modal 遮罩保持（全屏模态 → 其他交互天然阻塞，受影响按钮不可操作），内容转「正在加载所选模型…」态；加载完成自动关并恢复；失败在弹窗内显示原因（可取消/重试），**不再插聊天错误卡**（错误归属弹窗，单一承载）。闭环：设置页打标签 → 选型读标签 → 弹窗任务族多候选 → 弹窗内加载 → 会话记住。
 
 ### 18.8 快捷行入口裁定（不加）
 
@@ -396,3 +400,4 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 | 2026-08-20 | 3.4 | §18 聊天页八项升级：意图胶囊会话级状态机（schema v8 + 胶囊点按唯一写入口）；助手卡 chrome 双行合并（删 TurnMetricsRow）；顶栏紧凑化 + 新建会话换加号；发送钮双态描边；placeholder engineStatus 单源决策表；n_ctx 每模型收口 + 预调；模型用途标签 + 弹窗多候选 |
 | 2026-08-20 | 3.5 | 复查闭环（六维审计）：placeholder 第 4 分支硬编码中文收口 l10n（chat.butlerReady，16 语）；生成设置失焦显示与保存同源修正；§18.6 指标/设置分离定稿（BannerRow 读实际加载值）；用途标签/a11y 中文「产品叙事硬编码口径」显式登记 |
 | 2026-08-20 | 3.6 | §18.6 PSS 安全阀：预调天花板 min(ceiling, PSS_SAFE_BUDGET 4GB) + 启动审计自愈超限档——K90 真机实证厂商 PSS 看护 6GB 硬杀，空闲内存 ceiling 不是存活天花板 |
+| 2026-08-20 | 3.7 | 六维复审（8 项需求复盘）：§18.4 发送钮图标 20px 同行同尺寸；§18.5 placeholder 时序缺口修复（prompter loading 前置，冷启动首帧不再「模型未加载」）；§18.7 选型语义重定义（任务族候选上限 3，不甩全量 + 一句话推荐说明）+ 弹窗内加载（遮罩阻塞/失败弹窗承载不插卡） |

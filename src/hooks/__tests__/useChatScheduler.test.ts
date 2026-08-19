@@ -34,6 +34,7 @@ jest.mock('../../services/promptWriter', () => ({
 jest.mock('../../store/modelCapabilityRegistry', () => ({
   findModelForTask: jest.fn(),
   listModelsForTask: jest.fn(),
+  candidateNote: jest.fn().mockReturnValue(''),
 }));
 jest.mock('../../utils/engineReady', () => ({
   awaitEngineReady: jest.fn(),
@@ -77,8 +78,15 @@ describe('useChatScheduler', () => {
     mockList.mockReset();
     mockAwaitReady.mockResolvedValue(true);
     mockAskSwitch.mockReset();
-    // §18.7：多候选返回形 {choice, modelId}；默认选推荐项（无 modelId 回落首项）
-    mockAskSwitch.mockResolvedValue({choice: 'load'});
+    // §18.7：多候选返回形 {choice, modelId}；默认模拟弹窗内加载（onLoad 成功）
+    mockAskSwitch.mockImplementation(async (opts: any) => {
+      try {
+        await opts.onLoad?.(opts.candidates?.[0]?.id ?? '');
+      } catch {
+        // 弹窗内失败由 Host 承载（此处模拟用户取消收尾）
+      }
+      return {choice: 'load', modelId: opts.candidates?.[0]?.id};
+    });
     (promptWriter.ensureLoaded as jest.Mock).mockResolvedValue(true);
     (modelStore.selectModel as jest.Mock).mockReset();
     (promptWriter as any).isLoaded = false;
@@ -248,11 +256,20 @@ describe('useChatScheduler', () => {
     expect(handleSendPress).not.toHaveBeenCalled();
   });
 
-  it('write 弹窗确认加载但引擎未就绪（awaitEngineReady 超时）：TaskErrorCard busy，不送消息', async () => {
+  it('write 弹窗内加载但引擎未就绪（awaitEngineReady 超时）：onLoad 失败由弹窗承载，不插卡不发送（§18.7）', async () => {
     mockList.mockReturnValue([{id: 'model-2', name: 'Test Model'}]);
     mockAwaitReady.mockResolvedValue(false);
     (modelStore.selectModel as jest.Mock).mockImplementation(() => {
       (modelStore as any).engine = {completion: jest.fn()};
+    });
+    // 弹窗内加载失败 → 失败态由弹窗显示；模拟用户看到失败后取消（错误不再插聊天卡）
+    mockAskSwitch.mockImplementation(async (opts: any) => {
+      try {
+        await opts.onLoad?.('model-2');
+      } catch {
+        return {choice: 'cancel'};
+      }
+      return {choice: 'load', modelId: 'model-2'};
     });
     const {wrapped, handleSendPress} = setup();
 
@@ -260,15 +277,10 @@ describe('useChatScheduler', () => {
       await wrapped(msg('帮我写一篇作文'));
     });
 
+    expect(modelStore.selectModel).toHaveBeenCalled();
     expect(handleSendPress).not.toHaveBeenCalled();
-    expect(chatSessionStore.addMessageToCurrentSession).toHaveBeenCalledWith(
-      expect.objectContaining({
-        text: expect.stringContaining('收尾'),
-        metadata: expect.objectContaining({
-          taskError: expect.objectContaining({code: 'busy', retryText: '帮我写一篇作文'}),
-        }),
-      }),
-    );
+    // 错误由弹窗承载，不再插 busy 错误卡（锋利不臃肿）
+    expect(chatSessionStore.addMessageToCurrentSession).not.toHaveBeenCalled();
   });
 
   it('chitchat 但 chat 引擎已加载：常规发送优先（管家旁路）', async () => {
@@ -324,12 +336,15 @@ describe('useChatScheduler', () => {
     expect(handleSendPress).toHaveBeenCalled();
   });
 
-  it('write 多候选：用户选中非推荐项 → 加载所选并会话级记住（§18.7）', async () => {
+  it('write 多候选：用户选中非推荐项 → 弹窗内加载所选并会话级记住（§18.7）', async () => {
     mockList.mockReturnValue([
       {id: 'model-1', name: '推荐小模型'},
       {id: 'model-9', name: '用户所选大模型'},
     ]);
-    mockAskSwitch.mockResolvedValue({choice: 'load', modelId: 'model-9'});
+    mockAskSwitch.mockImplementation(async (opts: any) => {
+      await opts.onLoad?.('model-9');
+      return {choice: 'load', modelId: 'model-9'};
+    });
     (modelStore.selectModel as jest.Mock).mockImplementation(() => {
       (modelStore as any).engine = {completion: jest.fn()};
     });

@@ -3,7 +3,7 @@ doc_id: POCKETPAL_UI_INTERACTION_SPEC
 module: root
 type: spec
 status: active
-version: "1.1"
+version: "1.2"
 created: "2026-08-14"
 updated: "2026-08-20"
 relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_CHAT_UI_SPEC]
@@ -14,7 +14,7 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_CHAT_UI_SPEC]
 # PocketPal 全局交互定稿规范（UI_INTERACTION_SPEC）
 
 > 单一事实源：抽屉/导航层级/弹窗体系/消息长按菜单的交互定稿。
-> 任何交互迭代必须先更新本文档再改代码。版本：v1.1（2026-08-20，聊天页八项升级交互；v1：2026-08-14，11 项 UI 优化定稿）
+> 任何交互迭代必须先更新本文档再改代码。版本：v1.2（2026-08-20，弹窗内加载阻塞；v1.1：聊天页八项升级交互；v1：2026-08-14，11 项 UI 优化定稿）
 > 并列文档：POCKETPAL_IMAGEGEN_UI_SPEC.md（生图页）
 > 上位规范：POCKETPAL_DESIGN_SPEC.md（UI 域 SSOT）
 
@@ -109,9 +109,9 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_CHAT_UI_SPEC]
 - Host 未挂载 fail-fast：视为取消，不改变状态（不弹错不兜底）
 - 老消息胶囊读快照（无快照不渲染）；新轮次胶囊读会话 intent（同源）
 
-### 任务模型切换弹窗多候选
-- write/code/play（adventure 归 write）触发且需切换时弹：候选列表单选，默认选中推荐项（首项，标「· 推荐」）
-- 场景 A（有当前模型）：[继续当前模型] + [加载所选模型]；场景 B（无）：仅 [加载所选模型]（不显示死按钮）
+### 任务模型切换弹窗多候选（v1.1 → v1.2 弹窗内加载）
+- write/code/play（adventure 归 write）触发且需切换时弹：**任务族候选**单选（上限 3，默认选中推荐项首项，标「· 推荐」+ 一句话说明「代码专长 / 更大更强但加载更慢 / 均衡档更快上手」）；场景 A 加 [继续当前模型]
+- **弹窗内加载（v1.2，重量级操作最佳实践）**：点「加载所选模型」后弹窗不立即关——遮罩保持（全屏模态 → 其他交互天然阻塞，受影响按钮不可操作），内容转「正在加载所选模型…」态；加载完成自动关并恢复；失败在弹窗内显示原因（可取消/重试），不插聊天错误卡
 - 返回 `{choice:'load'|'current'|'cancel', modelId}`；load 记会话偏好（会话内不再问），current 记 `__current__`
 - 会话内已选过的模型再次触发：直接加载不再问（显式选择不重复打扰）
 

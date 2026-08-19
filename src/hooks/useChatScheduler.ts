@@ -3,7 +3,7 @@ import React from 'react';
 import {chatSessionStore, modelStore} from '../store';
 import {routeTask, TaskKind} from '../store/taskRouter';
 import {runImageTaskCard, runEditImageTaskCard} from '../services/chatImageTask';
-import {findModelForTask, listModelsForTask} from '../store/modelCapabilityRegistry';
+import {findModelForTask, listModelsForTask, candidateNote} from '../store/modelCapabilityRegistry';
 import {engineStatus} from '../store/engineStatus';
 import {promptWriter} from '../services/promptWriter';
 import {extractAndSaveMemories} from '../services/aiosMemory';
@@ -100,6 +100,34 @@ async function loadCandidate(
   return 'proceed';
 }
 
+/**
+ * §18.7 弹窗内加载版本：加载失败抛错（弹窗显示失败态，不插错误卡），
+ * 成功静默。供 askModelSwitch 的 onLoad 钩子使用——加载期遮罩保持阻塞。
+ */
+async function loadCandidateForDialog(
+  candidate: Model,
+  retryText: string,
+): Promise<void> {
+  engineStatus.setPhase('chat', 'loading', `加载 ${candidate.name}…`);
+  try {
+    await modelStore.selectModel(candidate);
+  } catch (e) {
+    console.error('[Scheduler] selectModel failed:', e);
+    engineStatus.setError('chat', '对话模型加载失败');
+    throw new Error((e as Error)?.message ?? '未知错误');
+  }
+  if (!modelStore.engine) {
+    engineStatus.setError('chat', '对话模型加载失败');
+    throw new Error('引擎未就绪');
+  }
+  const ready = await awaitEngineReady();
+  if (!ready) {
+    engineStatus.setError('chat', '引擎忙碌，请稍后重试');
+    throw new Error('模型刚加载完仍在收尾');
+  }
+  engineStatus.setPhase('chat', 'idle');
+}
+
 /** 管家直答（启动即就绪闭环）：插用户消息 + 思考卡 → 管家回复回写 */
 async function butlerReply(text: string): Promise<boolean> {
   await chatSessionStore.addMessageToCurrentSession({
@@ -163,6 +191,8 @@ async function resolveTaskModel(
       id: c.id,
       name: c.name || c.filename || '候选模型',
       size: c.size,
+      // §18.7 一句话推荐说明（MODEL_MATRIX 定位 / 大小档位）
+      note: candidateNote(c),
     }));
 
   // 场景 A：chat 引擎已加载（用户显式加载过大模型）——尊重主权
@@ -189,12 +219,19 @@ async function resolveTaskModel(
       task,
       candidates: toDialogCandidates(),
       canKeepCurrent: true,
+      // §18.7 弹窗内加载：遮罩保持（交互阻塞），完成/失败自动关
+      onLoad: async (modelId: string) => {
+        const chosen =
+          candidates.find(c => c.id === modelId) ?? recommended!;
+        chatSessionStore.setTaskModelChoice(task, chosen.id);
+        await loadCandidateForDialog(chosen, text);
+      },
     });
     if (result.choice === 'load') {
       const chosen =
         candidates.find(c => c.id === result.modelId) ?? recommended;
       chatSessionStore.setTaskModelChoice(task, chosen.id);
-      return loadCandidate(chosen, text);
+      return 'proceed';
     }
     if (result.choice === 'current') {
       chatSessionStore.setTaskModelChoice(task, '__current__');
@@ -225,11 +262,18 @@ async function resolveTaskModel(
     candidates: toDialogCandidates(),
     // 场景 B 无当前模型：不显示「继续当前」死按钮（锋利不臃肿）
     canKeepCurrent: false,
+    // §18.7 弹窗内加载：遮罩保持（交互阻塞），完成/失败自动关
+    onLoad: async (modelId: string) => {
+      const chosen =
+        candidates.find(c => c.id === modelId) ?? recommended;
+      chatSessionStore.setTaskModelChoice(task, chosen.id);
+      await loadCandidateForDialog(chosen, text);
+    },
   });
   if (result.choice === 'load') {
     const chosen = candidates.find(c => c.id === result.modelId) ?? recommended;
     chatSessionStore.setTaskModelChoice(task, chosen.id);
-    return loadCandidate(chosen, text);
+    return 'proceed';
   }
   return 'abort'; // 无当前模型可选「继续当前」→ 取消
 }

@@ -77,13 +77,16 @@ class PromptWriter {
       return this.loading;
     }
     this.loading = (async () => {
+      // §18.5 复查：loading 相位在 findModelPath await 之前设置——
+      // 冷启动首帧管家仍在扫描模型路径时，prompter 必须已是 loading，
+      // 否则 placeholder 决策链落「模型未加载」（偶发灰字错误的根因）。
+      engineStatus.setPhase('prompter', 'loading', '加载管家模型…');
       const path = await this.findModelPath();
       if (!path) {
         // 未安装管家模型是正常态（非错误），保持 idle
         engineStatus.setPhase('prompter', 'idle');
         return false;
       }
-      engineStatus.setPhase('prompter', 'loading', '加载管家模型…');
       try {
         this.ctx = await initLlama({
           model: path,
