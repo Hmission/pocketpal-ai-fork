@@ -60,7 +60,7 @@ Conventional Commits（Husky commitlint 强制）：
 
 ## 发布流程
 
-1. 版本号四处同步：`.version` / `package.json` / Android `build.gradle`（versionName + versionCode）/ iOS `project.pbxproj`（MARKETING_VERSION + CURRENT_PROJECT_VERSION）
-2. `CHANGELOG.md` 顶部追加本次变更（Keep a Changelog 风格）
+1. 版本号四处同步（单点命令，禁止手工改）：`node scripts/bump-version.js <major|minor|patch|x.y.z>`，自动同步 `.version` / `package.json` / Android `build.gradle`（versionName + versionCode 自增）/ iOS `project.pbxproj`（MARKETING_VERSION + CURRENT_PROJECT_VERSION）
+2. `CHANGELOG.md` 把 `[Unreleased]` 收编为定版段 + 顶部新开空 `[Unreleased]`（Keep a Changelog 风格）
 3. 验证：`tsc` 零错 → jest 全绿 → 真机装机验证
 4. git tag + Release（GitHub）
