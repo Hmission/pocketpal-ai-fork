@@ -157,8 +157,11 @@ describe('意图引导装填 + 情绪持久化（批次 9-3）', () => {
   });
 
   it('内心生活：buildTodayState 注入收尾预写的晨间独白（P9，INNERLIFE_SPEC）', async () => {
+    // 时间解耦：独白文件路径用「今日」动态生成（曾硬编码 2026-08-18，
+    // 日期翻页即挂——2026-08-20 复查根因：时间耦合测试）
+    const today = new Date().toISOString().slice(0, 10);
     (RNFS.exists as jest.Mock).mockImplementation(async (path: string) => {
-      if (String(path).includes('opening/2026-08-18.md')) return true;
+      if (String(path).includes(`opening/${today}.md`)) return true;
       return false;
     });
     (RNFS.readFile as jest.Mock).mockImplementation(async (path: string) => {
