@@ -172,3 +172,5 @@ docs/INDEX.md
 docs/adr/
 docs/internal/
 
+b*_build.log
+assets/index.android.bundle
