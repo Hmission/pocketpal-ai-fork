@@ -1541,6 +1541,7 @@
     "toolCallTruncated": "Wywołanie narzędzia zostało przerwane - prawdopodobnie zabrakło pamięci roboczej modelu. Spróbuj użyć większego kontekstu lub zmniejszyć rozmiar zapytania.",
     "loadingModel": "Ładowanie modelu...",
     "loadingButlerModel": "Ładowanie modelu lokaja…",
+    "butlerReady": "Kurczaczek gotowy, napisz, aby pogadać!",
     "typeYourMessage": "Wpisz tutaj swoją wiadomość",
     "load": "Załaduj",
     "goToModels": "Przejdź do Modeli",

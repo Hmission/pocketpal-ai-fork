@@ -345,6 +345,7 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 
 - HeaderRight：新建会话图标 EditBox→**PlusIcon**（testID `reset-button` 不变，a11y「新建会话」）；两按钮改 36px 紧凑触区（margin 0，IconButton 40px 默认容器弃用）。
 - ChatHeader 右侧行 gap 6→2，三控件（模型胶囊/新建会话/菜单）收紧为一组。
+- a11y 中文属「产品叙事硬编码口径」（同 B18 §17 意图标签裁定，2026-08-20 显式登记）。
 
 ### 18.4 发送钮双态描边统一
 
@@ -358,19 +359,20 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 | 1 | chat 引擎 loading | 「正在加载模型…」 |
 | 2 | prompter loading | 「正在加载管家模型…」 |
 | 3 | chat 引擎 ready（modelStore.engine） | 「输入消息…」 |
-| 4 | prompter ready（promptWriter.isLoaded） | 「小黄鸡已就绪，输入即可聊天」 |
+| 4 | prompter ready（promptWriter.isLoaded） | 「小黄鸡已就绪，输入即可聊天」（l10n `chat.butlerReady`） |
 | 5 | 其余 | 「模型未加载」 |
 
-根因修复：旧链只看 `promptWriter.isLoaded`，管家加载中落入「模型未加载」分支。
+根因修复：旧链只看 `promptWriter.isLoaded`，管家加载中落入「模型未加载」分支。五分支全部收口 l10n（复查 2026-08-20：第 4 分支硬编码中文收口 `chat.butlerReady`，16 语同步，de/it/et 回退 en）。
 
 ### 18.6 n_ctx 单一事实源 + 每模型预调
 
-- **两入口收口同一存储**：IncreaseContextSheet confirm 改写 `setModelNCtx(model.id)`（不再全局 setNContext，失败恢复同源）；sheet 与 BannerRow 入口 currentNCtx 读 `getModelNCtx(model.id)`。生成设置页已走该链路 → 一边调了另一边自动同步，持久化跨重启。
+- **两入口收口同一存储**：IncreaseContextSheet confirm 改写 `setModelNCtx(model.id)`（不再全局 setNContext，失败恢复同源）；sheet 与生成设置页的「当前值」读 `getModelNCtx(model.id)`。生成设置页已走该链路 → 一边调了另一边自动同步，持久化跨重启。
+- **指标与设置分离（复查 2026-08-20 定稿）**：BannerRow 的「上下文余量」与 turnMetrics 快照继续读**实际加载值**（activeContextSettings.n_ctx）——模型实际按该值跑，指标语义正确；sheet/设置页读**设置值**（getModelNCtx）。两者语义不同，刻意分离，不强行同源。
 - **每模型预调**：加载链（proceedWithInitialization）在该模型无覆盖时，按设备内存 ceiling 沿 CONTEXT_LADDER 取最大可装档（封顶 GGUF `context_length`）写入 perModelNCtx——一次预调、持久化；只升不降，ceiling 未知不虚构，REMOTE 不适用。
 
 ### 18.7 模型用途标签 + 切换弹窗多候选
 
-- **用途标签**：ModelSettingsSheet「用途」多选 chips（写作/代码；玩具复用 code 选型不增第三枚），写入 `model.capabilities`（保留非用途键）。
+- **用途标签**：ModelSettingsSheet「用途」多选 chips（写作/代码；玩具复用 code 选型不增第三枚），写入 `model.capabilities`（保留非用途键）。chips 文案与弹窗 TASK_LABEL 属「产品叙事硬编码口径」（同 B18 §17 意图标签裁定，2026-08-20 显式登记）。
 - **选型升级**：`listModelsForTask` 返回候选列表：用户标签命中（size 降序）> DEFAULT_MAP 指纹 > 其余 size 降序；`findModelForTask` = 首项兼容面。
 - **弹窗升级**：ModelSwitchDialog 渲染候选列表（单选，默认选中推荐项，testID `model-switch-candidate-{id}`）+ 继续当前（场景 A）；返回 `{choice, modelId}`；选择结果沿用 `taskModelChoice` 会话级记住。闭环：设置页打标签 → 选型读标签 → 弹窗多候选 → 会话记住。
 
@@ -391,3 +393,4 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 | 2026-08-18 | 3.2 | §16 顶栏胶囊管家感知 + 选择器卡片化（介绍/徽章/加载卸载/管家禁卸/单槽脚注）；§17 状态栏拆解融合进助手卡片（意图胶囊上移 + 每输出指标行 turnMetrics 快照 + ctx 中文直达 + 召回展开）；思考胶囊 24px 收敛 |
 | 2026-08-19 | 3.3 | B18 复查锋利化：加载进度行（正在加载·已耗时 Xs）+ 加载期 sheet 驻留/收尾自动关（关闭单点收敛）；徽章集收口［已加载/管家驻场］（「本机不可用」属生图域范式不虚构）；isChatSelectable GGUF+manifest 名单单规则 |
 | 2026-08-20 | 3.4 | §18 聊天页八项升级：意图胶囊会话级状态机（schema v8 + 胶囊点按唯一写入口）；助手卡 chrome 双行合并（删 TurnMetricsRow）；顶栏紧凑化 + 新建会话换加号；发送钮双态描边；placeholder engineStatus 单源决策表；n_ctx 每模型收口 + 预调；模型用途标签 + 弹窗多候选 |
+| 2026-08-20 | 3.5 | 复查闭环（六维审计）：placeholder 第 4 分支硬编码中文收口 l10n（chat.butlerReady，16 语）；生成设置失焦显示与保存同源修正；§18.6 指标/设置分离定稿（BannerRow 读实际加载值）；用途标签/a11y 中文「产品叙事硬编码口径」显式登记 |

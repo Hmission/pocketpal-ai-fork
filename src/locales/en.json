@@ -1239,6 +1239,7 @@
     "toolCallTruncated": "Tool call cut off — the model likely ran out of room. Try a larger context or a smaller request.",
     "loadingModel": "Loading model ...",
     "loadingButlerModel": "Loading butler model…",
+    "butlerReady": "Little chick is ready, chat away!",
     "typeYourMessage": "Type your message here",
     "load": "Load",
     "goToModels": "Go to Models",

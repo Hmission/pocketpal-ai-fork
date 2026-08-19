@@ -1214,6 +1214,7 @@
     "completionFailed": "تکمیل ناموفق بود: ",
     "loadingModel": "در حال بارگذاری مدل ...",
     "loadingButlerModel": "در حال بارگذاری مدل خدمتکار…",
+    "butlerReady": "جوجه آماده است، برای گفتگو بنویسید",
     "typeYourMessage": "پیام خود را اینجا بنویسید",
     "load": "بارگذاری",
     "goToModels": "رفتن به مدل‌ها",

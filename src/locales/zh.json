@@ -1238,6 +1238,7 @@
     "completionFailed": "生成失败: ",
     "loadingModel": "加载模型中...",
     "loadingButlerModel": "正在加载管家模型…",
+    "butlerReady": "小黄鸡已就绪，输入即可聊天",
     "typeYourMessage": "输入消息",
     "load": "加载",
     "goToModels": "转到模型",

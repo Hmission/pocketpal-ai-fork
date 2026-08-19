@@ -194,7 +194,8 @@ export const GenerationSettingsScreen: React.FC = observer(() => {
   const handleOutsidePress = () => {
     Keyboard.dismiss();
     inputRef.current?.blur();
-    setContextSize(modelStore.contextInitParams.n_ctx.toString());
+    // §18.6 与显示/保存同源：有活动模型读该模型覆盖，无则回退全局默认
+    setContextSize(modelStore.getModelNCtx(modelStore.activeModelId).toString());
     setIsValidInput(true);
     setShowKeyCacheMenu(false);
     setShowValueCacheMenu(false);

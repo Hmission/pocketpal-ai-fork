@@ -481,8 +481,8 @@ export const ChatScreen: React.FC = observer(() => {
         textInputProps={{
           // §18.5 placeholder 单源决策表（engineStatus 状态中枢为唯一事实源）：
           // 1 chat 引擎 loading → 加载模型；2 管家 loading → 加载管家模型；
-          // 3 chat 引擎 ready → 输入消息；4 管家就绪 → 小黄鸡就绪；
-          // 5 其余 → 模型未加载。
+          // 3 chat 引擎 ready → 输入消息；4 管家就绪 → 小黄鸡就绪（l10n）；
+          // 5 其余 → 模型未加载。五分支同源收口 l10n，无硬编码。
           placeholder:
             engineStatus.engines.chat.phase === 'loading'
               ? l10n.chat.loadingModel
@@ -491,7 +491,7 @@ export const ChatScreen: React.FC = observer(() => {
                 : modelStore.engine
                   ? l10n.chat.typeYourMessage
                   : promptWriter.isLoaded
-                    ? '小黄鸡已就绪，输入即可聊天'
+                    ? l10n.chat.butlerReady
                     : l10n.chat.modelNotLoaded,
         }}
       />

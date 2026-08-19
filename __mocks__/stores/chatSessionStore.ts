@@ -131,9 +131,9 @@ export const mockChatSessionStore = {
   recordCompletionSnapshot: jest.fn(),
   setBannerDismissed: jest.fn(),
   markPalLoadHintSeen: jest.fn(),
-  // 任务模型选择会话偏好（SPEC §9.3）
-  taskModelChoice: {write: null, code: null} as Record<
-    'write' | 'code',
+  // 任务模型选择会话偏好（SPEC §9.3，含 play 槽，与真实 store 同构）
+  taskModelChoice: {write: null, code: null, play: null} as Record<
+    'write' | 'code' | 'play',
     string | null
   >,
   setTaskModelChoice: jest.fn(),

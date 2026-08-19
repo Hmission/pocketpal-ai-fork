@@ -165,6 +165,7 @@
     "completionFailed": "생성 실패: ",
     "loadingModel": "모델 로딩 중 ...",
     "loadingButlerModel": "집사 모델 로딩 중…",
+    "butlerReady": "병아리가 준비됐어요, 입력하고 대화하세요",
     "typeYourMessage": "여기에 메시지를 입력하세요",
     "load": "불러오기",
     "goToModels": "모델 목록으로 이동",

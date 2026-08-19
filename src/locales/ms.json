@@ -1214,6 +1214,7 @@
     "completionFailed": "Gagal menyiapkan: ",
     "loadingModel": "Memuatkan model...",
     "loadingButlerModel": "Memuatkan model butler…",
+    "butlerReady": "Anak ayam siap, taip untuk berbual!",
     "typeYourMessage": "Taip mesej anda di sini",
     "load": "Muat",
     "goToModels": "Pergi ke Model",

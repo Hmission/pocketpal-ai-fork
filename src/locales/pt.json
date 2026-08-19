@@ -1215,6 +1215,7 @@
     "toolCallTruncated": "Chamada de ferramenta cortada — o modelo provavelmente ficou sem espaço. Tente um contexto maior ou uma requisição menor.",
     "loadingModel": "A carregar modelo ...",
     "loadingButlerModel": "A carregar o modelo mordomo…",
+    "butlerReady": "O pintainho está pronto, escreva para conversar!",
     "typeYourMessage": "Digite a sua mensagem aqui",
     "load": "Carregar",
     "goToModels": "Ir para Modelos",

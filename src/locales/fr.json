@@ -656,6 +656,7 @@
     "completionFailed": "Échec de la complétion : ",
     "loadingModel": "Chargement du modèle ...",
     "loadingButlerModel": "Chargement du modèle majordome…",
+    "butlerReady": "Le poussin est prêt, écrivez pour discuter !",
     "typeYourMessage": "Saisissez votre message ici",
     "load": "Charger",
     "goToModels": "Aller aux modèles",

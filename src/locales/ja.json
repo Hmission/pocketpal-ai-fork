@@ -1214,6 +1214,7 @@
     "completionFailed": "生成に失敗しました: ",
     "loadingModel": "モデルを読み込み中...",
     "loadingButlerModel": "バトラーモデルを読み込み中…",
+    "butlerReady": "小ひよこ準備完了、入力してチャットしましょう",
     "typeYourMessage": "メッセージを入力",
     "load": "読み込む",
     "goToModels": "モデルへ移動",

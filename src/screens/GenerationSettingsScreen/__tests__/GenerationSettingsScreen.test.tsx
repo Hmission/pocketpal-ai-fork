@@ -107,17 +107,20 @@ describe('GenerationSettingsScreen', () => {
     });
   });
 
-  it('re-syncs the displayed context size when n_ctx changes externally', async () => {
+  it('re-syncs the displayed context size when the per-model n_ctx override changes externally (§18.6)', async () => {
+    runInAction(() => {
+      (modelStore as any).activeModelId = 'test-model';
+    });
     const {getByDisplayValue, rerender} = render(<GenerationSettingsScreen />, {
       withSafeArea: true,
       withNavigation: true,
     });
     expect(getByDisplayValue('2048')).toBeTruthy();
 
-    const original = modelStore.contextInitParams.n_ctx;
-    // Simulate the chat banner's increase-context flow raising the global n_ctx.
+    // Simulate the IncreaseContextSheet confirm writing the per-model override
+    // (setModelNCtx 路径，不再改全局 contextInitParams.n_ctx)。
     runInAction(() => {
-      modelStore.contextInitParams.n_ctx = 8192;
+      (modelStore as any).perModelNCtx['test-model'] = 8192;
     });
     rerender(<GenerationSettingsScreen />);
 
@@ -126,7 +129,8 @@ describe('GenerationSettingsScreen', () => {
     });
 
     runInAction(() => {
-      modelStore.contextInitParams.n_ctx = original;
+      delete (modelStore as any).perModelNCtx['test-model'];
+      (modelStore as any).activeModelId = undefined;
     });
   });
 

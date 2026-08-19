@@ -198,7 +198,7 @@ describe('ChatScreen', () => {
     const {getByPlaceholderText, getByTestId} = render(<ChatScreen />, {
       withNavigation: true,
     });
-    const input = getByPlaceholderText('小黄鸡已就绪，输入即可聊天');
+    const input = getByPlaceholderText(l10n.en.chat.butlerReady);
 
     await act(async () => {
       fireEvent.changeText(input, '今天天气怎么样？');
