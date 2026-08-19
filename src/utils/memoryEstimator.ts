@@ -89,6 +89,16 @@ function calculateComputeBuffer(
 }
 
 /**
+ * PSS 安全预算（2026-08-19 K90 真机血证）：厂商 PSS 看护（HyperOS 实测
+ * pss threshold 6GB 硬杀，与空闲内存无关）是进程存活的真正天花板。
+ * 自动预调的内存预算 = 6GB 硬限 − 运行时开销与估算乐观余量 2GB。
+ * 估算（权重+KV+计算×1.1）是理论值，实测 PSS 额外含 RN 运行时/原生库/分片
+ * 损耗（K90 实证：理论 ~5GB 的档位实际 PSS 6.77GB 被杀）。宁少勿杀；
+ * 用户手调不受此限（决策可见，风险自担）。
+ */
+export const PSS_SAFE_BUDGET = 4.0e9;
+
+/**
  * Get model memory requirement estimate in bytes
  *
  * When GGUF metadata is available:

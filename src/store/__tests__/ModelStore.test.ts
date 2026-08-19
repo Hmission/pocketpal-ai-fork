@@ -155,13 +155,14 @@ describe('ModelStore', () => {
       });
     });
 
-    it('无覆盖时按内存 ceiling 取最大可装档（封顶 GGUF）', () => {
+    it('无覆盖时按内存 ceiling 取最大可装档（封顶 GGUF，且不越 PSS 安全预算）', () => {
       runInAction(() => {
         modelStore.largestSuccessfulLoad = 8e9;
         modelStore.availableMemoryCeiling = 8e9;
       });
       (modelStore as any).presetModelNCtxIfAbsent(presetCtxModel);
-      expect(modelStore.perModelNCtx['preset-ctx-model']).toBe(24576);
+      // 估算 1GB + 1GB/4K：PSS 安全预算 4GB 卡住梯子 → 12288（非 24576）
+      expect(modelStore.perModelNCtx['preset-ctx-model']).toBe(12288);
     });
 
     it('已有覆盖不重预调（只升不降，不覆盖用户手调）', () => {
@@ -193,6 +194,66 @@ describe('ModelStore', () => {
       } as Model;
       (modelStore as any).presetModelNCtxIfAbsent(remote);
       expect(modelStore.perModelNCtx['remote-ctx-model']).toBeUndefined();
+    });
+  });
+
+  describe('PSS 安全审计（auditPerModelNCtxAgainstPss）', () => {
+    const auditedModel: Model = {
+      ...presetModelFixture,
+      id: 'audit-model',
+      ggufMetadata: {context_length: 32768} as GGUFMetadata,
+    } as Model;
+
+    let memSpy: jest.SpyInstance;
+    beforeEach(() => {
+      // 线性估算：1 GB 底 + 1 GB/4K；PSS 预算 4GB → 安全档封顶 12288
+      const estimator = jest.requireActual('../../utils/memoryEstimator');
+      memSpy = jest
+        .spyOn(estimator, 'getModelMemoryRequirement')
+        .mockImplementation(
+          (_m: any, _p: any, params: any) => 1e9 + (params.n_ctx / 4096) * 1e9,
+        );
+      runInAction(() => {
+        modelStore.models = [auditedModel];
+      });
+    });
+    afterEach(() => {
+      memSpy.mockRestore();
+      runInAction(() => {
+        modelStore.perModelNCtx = {};
+        modelStore.models = [];
+      });
+    });
+
+    it('超限档降到最大安全档（自愈旧版预调污染，K90 血证）', () => {
+      runInAction(() => {
+        modelStore.perModelNCtx = {'audit-model': 32768};
+      });
+      modelStore.auditPerModelNCtxAgainstPss();
+      expect(modelStore.perModelNCtx['audit-model']).toBe(12288);
+    });
+
+    it('安全档不动（审计只杀必杀值，不碰用户主权）', () => {
+      runInAction(() => {
+        modelStore.perModelNCtx = {'audit-model': 8192};
+      });
+      modelStore.auditPerModelNCtxAgainstPss();
+      expect(modelStore.perModelNCtx['audit-model']).toBe(8192);
+    });
+
+    it('REMOTE 模型与无覆盖模型跳过', () => {
+      const remote = {
+        ...auditedModel,
+        id: 'remote-audit',
+        origin: ModelOrigin.REMOTE,
+      } as Model;
+      runInAction(() => {
+        modelStore.models = [remote, auditedModel];
+        modelStore.perModelNCtx = {'remote-audit': 32768};
+      });
+      modelStore.auditPerModelNCtxAgainstPss();
+      expect(modelStore.perModelNCtx['remote-audit']).toBe(32768);
+      expect(modelStore.perModelNCtx['audit-model']).toBeUndefined();
     });
   });
 

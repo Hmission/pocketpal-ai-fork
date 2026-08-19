@@ -369,6 +369,7 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 - **两入口收口同一存储**：IncreaseContextSheet confirm 改写 `setModelNCtx(model.id)`（不再全局 setNContext，失败恢复同源）；sheet 与生成设置页的「当前值」读 `getModelNCtx(model.id)`。生成设置页已走该链路 → 一边调了另一边自动同步，持久化跨重启。
 - **指标与设置分离（复查 2026-08-20 定稿）**：BannerRow 的「上下文余量」与 turnMetrics 快照继续读**实际加载值**（activeContextSettings.n_ctx）——模型实际按该值跑，指标语义正确；sheet/设置页读**设置值**（getModelNCtx）。两者语义不同，刻意分离，不强行同源。
 - **每模型预调**：加载链（proceedWithInitialization）在该模型无覆盖时，按设备内存 ceiling 沿 CONTEXT_LADDER 取最大可装档（封顶 GGUF `context_length`）写入 perModelNCtx——一次预调、持久化；只升不降，ceiling 未知不虚构，REMOTE 不适用。
+- **PSS 安全阀（v3.6，2026-08-19 K90 真机血证）**：厂商 PSS 看护（HyperOS 实测 pss threshold 6GB 硬杀，与空闲内存无关）才是进程存活的天花板。预调天花板改取 min(内存 ceiling, `PSS_SAFE_BUDGET` 4GB)；启动新增 `auditPerModelNCtxAgainstPss` 审计——已持久化档位估算超预算者降到最大安全档（自愈旧版预调污染：K90 实证 40960/32768 档 f16 KV 生成中 PSS 6.77GB 被硬杀）。「只升不降」保护的是安全范围内的用户主权，不是必杀值；用户手调不受预算限制（决策可见）。
 
 ### 18.7 模型用途标签 + 切换弹窗多候选
 
@@ -394,3 +395,4 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 | 2026-08-19 | 3.3 | B18 复查锋利化：加载进度行（正在加载·已耗时 Xs）+ 加载期 sheet 驻留/收尾自动关（关闭单点收敛）；徽章集收口［已加载/管家驻场］（「本机不可用」属生图域范式不虚构）；isChatSelectable GGUF+manifest 名单单规则 |
 | 2026-08-20 | 3.4 | §18 聊天页八项升级：意图胶囊会话级状态机（schema v8 + 胶囊点按唯一写入口）；助手卡 chrome 双行合并（删 TurnMetricsRow）；顶栏紧凑化 + 新建会话换加号；发送钮双态描边；placeholder engineStatus 单源决策表；n_ctx 每模型收口 + 预调；模型用途标签 + 弹窗多候选 |
 | 2026-08-20 | 3.5 | 复查闭环（六维审计）：placeholder 第 4 分支硬编码中文收口 l10n（chat.butlerReady，16 语）；生成设置失焦显示与保存同源修正；§18.6 指标/设置分离定稿（BannerRow 读实际加载值）；用途标签/a11y 中文「产品叙事硬编码口径」显式登记 |
+| 2026-08-19 | 3.6 | §18.6 PSS 安全阀：预调天花板 min(ceiling, PSS_SAFE_BUDGET 4GB) + 启动审计自愈超限档——K90 真机实证厂商 PSS 看护 6GB 硬杀，空闲内存 ceiling 不是存活天花板 |

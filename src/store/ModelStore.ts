@@ -100,7 +100,10 @@ import {
   createDefaultContextInitParams,
 } from '../utils/contextInitParamsVersions';
 import NativeHardwareInfo from '../specs/NativeHardwareInfo';
-import {getModelMemoryRequirement} from '../utils/memoryEstimator';
+import {
+  getModelMemoryRequirement,
+  PSS_SAFE_BUDGET,
+} from '../utils/memoryEstimator';
 import {CONTEXT_LADDER} from '../utils/bannerVariantResolver';
 import {loadLlamaModelInfo} from 'llama.rn';
 import {applyModelStoreMethodGroups} from './modelStoreMethods';
@@ -737,6 +740,10 @@ class ModelStore {
 
     // Load missing GGUF metadata for downloaded models (background, non-blocking)
     this.loadMissingGGUFMetadata();
+
+    // PSS 安全审计：自愈旧版预调写入的超限 n_ctx 档（估算超 PSS 安全预算
+    // 降到最大安全档）——K90 实证超限档生成中被厂商看护硬杀。
+    this.auditPerModelNCtxAgainstPss();
 
     // Check if we need to reload an auto-released model (for app restarts)
     this.checkAndReloadAutoReleasedModel();
