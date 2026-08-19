@@ -1,130 +1,90 @@
+/**
+ * PendingIndicator 生成进度监控卡测试（CHAT_UI_SPEC §18.9）：
+ * 阶段标签 + 总耗时 + 思考流预览 + 心跳超时判定。
+ * 注：不用 fake timers——Animated.loop（三点波浪）与其冲突；
+ * 组件 mount 时 effect 首跑 tick() 已得出正确 elapsed/stalled，
+ * interval 只负责后续刷新，断言 mount 值即可。
+ */
 import React from 'react';
-
-import {render, act} from '../../../../jest/test-utils';
-import {l10n} from '../../../locales';
-
+import {render} from '../../../../jest/test-utils';
 import {PendingIndicator} from '../PendingIndicator';
 
-describe('PendingIndicator', () => {
-  it('renders the dot-row container with the documented testID', () => {
-    const {getByTestId} = render(<PendingIndicator />);
-    expect(getByTestId('pending-indicator')).toBeTruthy();
+const NOW = Date.now();
+
+describe('PendingIndicator — 生成进度监控卡（§18.9）', () => {
+  it('prefill 阶段显示阶段标签 + 总耗时（不再裸三点）', () => {
+    const {getByText} = render(
+      <PendingIndicator
+        agentStatus="prefill"
+        runStartedAt={NOW - 3000}
+        lastAgentEventAt={NOW}
+      />,
+    );
+    expect(getByText(/Preparing… · 3s/)).toBeTruthy();
   });
 
-  it('renders no suffix when no tool call is in progress', () => {
+  it('streaming 阶段显示「正在生成」', () => {
+    const {getByText} = render(
+      <PendingIndicator
+        agentStatus="streaming_text"
+        runStartedAt={NOW}
+        lastAgentEventAt={NOW}
+      />,
+    );
+    expect(getByText(/Generating…/)).toBeTruthy();
+  });
+
+  it('思考流预览：TTFT 期显示模型内心戏', () => {
+    const {getByTestId} = render(
+      <PendingIndicator
+        agentStatus="prefill"
+        runStartedAt={NOW}
+        lastAgentEventAt={NOW}
+        reasoningTail="用户想要一个贪吃蛇，先分析棋盘尺寸…"
+      />,
+    );
+    const text = getByTestId('pending-indicator-reasoning').props.children;
+    expect(String(text).replace('Thinking: ', '')).toContain('先分析棋盘尺寸');
+  });
+
+  it('工具调用模式保留 token 计数', () => {
+    const {getByText} = render(
+      <PendingIndicator
+        pendingTalentNames={['render_html']}
+        toolCallTokenCount={42}
+        agentStatus="generating_tool_call"
+        runStartedAt={NOW}
+        lastAgentEventAt={NOW}
+      />,
+    );
+    expect(getByText(/Building page · 42 tokens/)).toBeTruthy();
+  });
+
+  it('心跳超时（>300s 无事件）→ 疑似卡住提示', () => {
+    const {getByText} = render(
+      <PendingIndicator
+        agentStatus="prefill"
+        runStartedAt={NOW - 330000}
+        lastAgentEventAt={NOW - 301000}
+      />,
+    );
+    expect(getByText(/Seems stuck — tap Stop · 330s/)).toBeTruthy();
+  });
+
+  it('isStopping 覆盖一切（停止确认优先）', () => {
+    const {getByText} = render(
+      <PendingIndicator
+        agentStatus="prefill"
+        isStopping
+        runStartedAt={NOW}
+        lastAgentEventAt={NOW - 400000}
+      />,
+    );
+    expect(getByText('Stopping…')).toBeTruthy();
+  });
+
+  it('runStartedAt 为空 → 无耗时后缀（向后兼容）', () => {
     const {queryByTestId} = render(<PendingIndicator />);
     expect(queryByTestId('pending-indicator-suffix')).toBeNull();
-  });
-
-  it('shows the friendly label as soon as a tool call starts (no token threshold for label)', () => {
-    const {getByTestId} = render(
-      <PendingIndicator
-        pendingTalentNames={['render_html']}
-        toolCallTokenCount={0}
-      />,
-    );
-    const suffix = getByTestId('pending-indicator-suffix');
-    expect(suffix.props.children).toBe(
-      l10n.en.components.pendingIndicator.buildingPage,
-    );
-  });
-
-  it('hides the token count below threshold but keeps the label', () => {
-    const {getByTestId} = render(
-      <PendingIndicator
-        pendingTalentNames={['render_html']}
-        toolCallTokenCount={3}
-      />,
-    );
-    const suffix = getByTestId('pending-indicator-suffix');
-    expect(suffix.props.children).not.toMatch(/tokens/);
-    expect(suffix.props.children).toMatch(/Building page/);
-  });
-
-  it('shows label + token count once the count crosses the threshold', () => {
-    const {getByTestId} = render(
-      <PendingIndicator
-        pendingTalentNames={['render_html']}
-        toolCallTokenCount={120}
-      />,
-    );
-    expect(getByTestId('pending-indicator-suffix').props.children).toBe(
-      `${l10n.en.components.pendingIndicator.buildingPage} · 120 tokens`,
-    );
-  });
-
-  it('uses the per-talent label for calculate', () => {
-    const {getByTestId} = render(
-      <PendingIndicator pendingTalentNames={['calculate']} />,
-    );
-    expect(getByTestId('pending-indicator-suffix').props.children).toBe(
-      l10n.en.components.pendingIndicator.calculating,
-    );
-  });
-
-  it('uses the per-talent label for datetime', () => {
-    const {getByTestId} = render(
-      <PendingIndicator pendingTalentNames={['datetime']} />,
-    );
-    expect(getByTestId('pending-indicator-suffix').props.children).toBe(
-      l10n.en.components.pendingIndicator.lookingUpTime,
-    );
-  });
-
-  it('falls back to the generic label for unknown talents', () => {
-    const {getByTestId} = render(
-      <PendingIndicator pendingTalentNames={['mystery_tool']} />,
-    );
-    expect(getByTestId('pending-indicator-suffix').props.children).toBe(
-      l10n.en.components.pendingIndicator.preparingTool,
-    );
-  });
-
-  it('overrides everything with "Stopping…" when isStopping is true', () => {
-    // The user has tapped Stop and we're waiting for native llama.rn
-    // to finish its current llama_decode chunk. Even if a tool-call
-    // was in flight (label, token count, elapsed) the indicator must
-    // surface ONLY the stopping signal so the user knows their tap
-    // landed and the silent gap isn't a hung UI.
-    const {getByTestId} = render(
-      <PendingIndicator
-        pendingTalentNames={['render_html']}
-        toolCallTokenCount={150}
-        isStopping
-      />,
-    );
-    const suffix = getByTestId('pending-indicator-suffix');
-    expect(suffix.props.children).toBe(
-      l10n.en.components.pendingIndicator.stopping,
-    );
-    // No leftover token count or elapsed text from the previous mode.
-    expect(suffix.props.children).not.toMatch(/tokens/);
-  });
-
-  it('appends elapsed seconds after one second has passed', () => {
-    jest.useFakeTimers();
-    const {getByTestId, rerender} = render(
-      <PendingIndicator
-        pendingTalentNames={['render_html']}
-        toolCallTokenCount={120}
-      />,
-    );
-    // Initial render: no elapsed segment yet.
-    expect(getByTestId('pending-indicator-suffix').props.children).not.toMatch(
-      /\ds$/,
-    );
-    act(() => {
-      jest.advanceTimersByTime(2500);
-    });
-    rerender(
-      <PendingIndicator
-        pendingTalentNames={['render_html']}
-        toolCallTokenCount={120}
-      />,
-    );
-    expect(getByTestId('pending-indicator-suffix').props.children).toMatch(
-      /· 2s$/,
-    );
-    jest.useRealTimers();
   });
 });

@@ -36,6 +36,10 @@ import {appendConversation} from '../services/aiosMemory/conversationLog';
 import {compactAndFlush} from '../services/aiosMemory/compaction';
 import {maybeClosingSummary, selfCheck} from '../services/aiosMemory/rituals';
 import {saveToy} from '../services/toyChest';
+import {compactSessionAndMark} from '../services/contextCompaction';
+import {estimateMessagesTokens} from '../services/contextCompaction/budget';
+import {decideContextAction} from '../services/contextCompaction/decision';
+import {hasModelUpgradeFitting} from '../components/IncreaseContextSheet/fitStatus';
 import {
   convertToChatMessages,
   removeThinkingParts,
@@ -189,11 +193,78 @@ const prepareCompletion = async ({
   const effectiveSystem = assembled.systemPrompt
     ? [{role: 'system' as const, content: assembled.systemPrompt}]
     : systemMessages;
-  const messages = assembleMessages(
+  let messages = assembleMessages(
     effectiveSystem,
     [...systemPromptFragments, recalledFragment],
     [...chatMessages, {role: 'user', content: userMessageContent}],
   );
+
+  // B19 上下文预算治理（2026-08-19 大王裁定 + 行业验证）：
+  // 本地模型 + 组装预算 ≥ 0.8×n_ctx（WARNING_THRESHOLD）时，策略驱动发送前
+  // 自动压缩最旧消息（无感，提示条可见）；'ask'/'expand' 照发，banner CTA
+  // 提供选择与策略记忆（扩窗可行性单事实源 hasModelUpgradeFitting）；已到
+  // 扩窗天花板 → 直接压缩。压缩失败走既有 banner 链路，不新增兜底。
+  const activeNCtx = modelStore.activeContextSettings?.n_ctx;
+  const activeModelForBudget = modelStore.activeModel;
+  if (
+    activeNCtx &&
+    activeNCtx > 0 &&
+    activeModelForBudget &&
+    activeModelForBudget.origin !== ModelOrigin.REMOTE
+  ) {
+    const projectionModel = modelStore.models.find(
+      m => m.id === modelStore.activeProjectionModelId,
+    );
+    const canExpand = hasModelUpgradeFitting(
+      activeModelForBudget,
+      projectionModel,
+      modelStore.getModelNCtx(activeModelForBudget.id),
+      modelStore.contextInitParams,
+      Math.max(
+        modelStore.largestSuccessfulLoad ?? 0,
+        modelStore.availableMemoryCeiling ?? 0,
+      ),
+    );
+    const used = estimateMessagesTokens(messages);
+    const action = decideContextAction({
+      used,
+      nCtx: activeNCtx,
+      canExpand,
+      policy: modelStore.getContextPolicy(modelStore.activeModelId),
+    });
+    if (action === 'compact') {
+      const result = await compactSessionAndMark(
+        chatSessionStore.activeSessionId ?? '',
+        currentMessages,
+        {targetReleaseTokens: Math.max(1, used - activeNCtx * 0.7)},
+      );
+      if (result) {
+        emit('chat', 'chat.context_compacted', {
+          sessionId: chatSessionStore.activeSessionId,
+          compactedCount: result.compactedCount,
+        });
+        // 重建组装：被压消息按 id 集合过滤出 prompt（快照过滤，不依赖
+        // store 标记状态；快照不含刚发送的用户消息，无重复），
+        // 摘要作 system fragment 注入（与召回层同路，不破坏角色交替）。
+        const compactedIds = new Set(result.compactedMessageIds);
+        const filteredHistory = convertToChatMessages(
+          currentMessages.filter(
+            m => m.type !== 'image' && !compactedIds.has(m.id),
+          ),
+          isMultimodalEnabled,
+        );
+        messages = assembleMessages(
+          effectiveSystem,
+          [
+            ...systemPromptFragments,
+            recalledFragment,
+            `【本会话已压缩的早期对话】\n${result.summary}`,
+          ],
+          [...filteredHistory, {role: 'user', content: userMessageContent}],
+        );
+      }
+    }
+  }
 
   // Reseed the read_url exfiltration allowlist for this run; the trust policy
   // (which sources count) lives in the talents module.
@@ -344,6 +415,8 @@ async function applyEventToStore(
       // Status flip happens in the reducer; the empty AssistantTurn
       // already exists (created in prepareCompletion). Nothing else to
       // persist here — the message was added before the run started.
+      // 生成进度监控卡：总耗时起算 + 心跳归位（§18.9）。
+      chatSessionStore.markAgentRunStarted();
       return;
     case 'step_started':
       await chatSessionStore.pushAgentStep(ctx.messageId, ctx.sessionId, {
@@ -438,14 +511,22 @@ async function applyEventToStore(
           partial,
         );
       }
+      // 生成进度监控卡：心跳更新 + 思考流尾部（§18.9）。
+      chatSessionStore.touchAgentRun(
+        (event.delta.reasoningContent as string | undefined) ?? undefined,
+      );
       return;
     }
     case 'marker_seen':
       // Reducer handles status flip; no per-step persistence needed.
+      // 心跳：工具调用 token 阶段同样算活（§18.9）。
+      chatSessionStore.touchAgentRun();
       return;
     case 'tool_call_started':
       // Reducer handles status flip; the call payload is already on
       // the active step from the preceding `token` event with toolCalls.
+      // 心跳：工具执行期算活（§18.9）。
+      chatSessionStore.touchAgentRun();
       return;
     case 'tool_call_finished':
       await chatSessionStore.appendToolOutcome(
@@ -480,7 +561,15 @@ async function applyEventToStore(
       }
       await chatSessionStore.finalizeActiveStep(ctx.messageId, ctx.sessionId);
       return;
+    case 'run_failed':
+      // 生成进度监控卡：失败也是收尾——字段复位，进度卡立即退出
+      // （否则永久转圈 = 「在干活」误报，2026-08-19 K90 血证）。
+      // 状态翻转见 agentStateReducer run_failed → done。
+      chatSessionStore.clearAgentRun();
+      return;
     case 'run_finished': {
+      // 生成进度监控卡：字段复位（§18.9）。
+      chatSessionStore.clearAgentRun();
       // Final timings + observability for hit-max-turns. Kept here
       // (not in the runner) because timings are an observability
       // concern of the hook, not the runner.

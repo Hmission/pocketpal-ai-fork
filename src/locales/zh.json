@@ -196,7 +196,12 @@
     "languageSearchPlaceholder": "搜索语言",
     "lightMode": "浅色",
     "systemMode": "跟随系统",
-    "colorScheme": "色彩模式"
+    "colorScheme": "色彩模式",
+    "contextPolicy": "上下文策略",
+    "contextPolicyDescription": "对话接近上下文上限时的处理：内存允许先扩窗、扩到极限后压缩旧消息，或每次询问。",
+    "contextPolicyExpand": "扩充",
+    "contextPolicyCompact": "压缩",
+    "contextPolicyAsk": "每次询问"
   },
   "memory": {
     "shortWarning": "内存警告",
@@ -1066,7 +1071,12 @@
       "buildingPage": "正在构建页面",
       "calculating": "正在计算",
       "lookingUpTime": "正在查询时间",
-      "stopping": "正在停止…"
+      "stopping": "正在停止…",
+      "stagePreparing": "正在准备…",
+      "stageGenerating": "正在生成…",
+      "stageExecuting": "正在执行工具…",
+      "stageHang": "疑似卡住，可点停止",
+      "reasoningLabel": "思考"
     },
     "toolMetrics": {
       "tokens": "{{count}} 个 token",
@@ -1297,7 +1307,9 @@
       "showResultsAccessibilityLabel": "显示 {{query}} 的网络搜索结果",
       "openLinkError": "无法打开此链接。"
     },
-    "contextFullRemote": "对话空间已满，请新建聊天。"
+    "contextFullRemote": "对话空间已满，请新建聊天。",
+    "contextCompact": "压缩旧消息",
+    "compactionBanner": "已压缩 {{count}} 条早期对话"
   },
   "benchmark": {
     "title": "基准测试",

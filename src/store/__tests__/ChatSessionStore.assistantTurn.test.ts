@@ -38,6 +38,40 @@ describe('ChatSessionStore — AssistantTurn extensions', () => {
     );
   });
 
+  // ---------- 生成进度监控卡数据（§18.9） ----------
+
+  describe('生成进度监控卡字段（markAgentRunStarted/touchAgentRun/clearAgentRun）', () => {
+    beforeEach(() => {
+      (chatSessionStore as any).agentRunStartedAt = null;
+      (chatSessionStore as any).lastAgentEventAt = null;
+      (chatSessionStore as any).streamingReasoningTail = '';
+    });
+
+    it('markAgentRunStarted 起算耗时 + 心跳归位 + 清思考尾', () => {
+      (chatSessionStore as any).streamingReasoningTail = '旧思考';
+      chatSessionStore.markAgentRunStarted();
+      expect(chatSessionStore.agentRunStartedAt).not.toBeNull();
+      expect(chatSessionStore.lastAgentEventAt).not.toBeNull();
+      expect(chatSessionStore.streamingReasoningTail).toBe('');
+    });
+
+    it('touchAgentRun 更新心跳 + 思考尾部（>200 字符截尾）', () => {
+      const long = 'a'.repeat(300);
+      chatSessionStore.touchAgentRun(long);
+      expect(chatSessionStore.streamingReasoningTail.length).toBe(200);
+      expect(chatSessionStore.lastAgentEventAt).not.toBeNull();
+    });
+
+    it('clearAgentRun 全部复位（run_failed/run_finished 收尾）', () => {
+      chatSessionStore.markAgentRunStarted();
+      chatSessionStore.touchAgentRun('x');
+      chatSessionStore.clearAgentRun();
+      expect(chatSessionStore.agentRunStartedAt).toBeNull();
+      expect(chatSessionStore.lastAgentEventAt).toBeNull();
+      expect(chatSessionStore.streamingReasoningTail).toBe('');
+    });
+  });
+
   // ---------- agentUiState + isGeneratingToolCall computed ----------
 
   describe('agentUiState + isGeneratingToolCall (@computed)', () => {

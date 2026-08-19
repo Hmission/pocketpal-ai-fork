@@ -118,6 +118,13 @@ export const mockChatSessionStore = {
   setAgentUiState: jest.fn(),
   toolCallTokenCount: 0,
   setToolCallTokenCount: jest.fn(),
+  // 生成进度监控卡（§18.9）：字段 + 生命周期方法
+  agentRunStartedAt: null as number | null,
+  lastAgentEventAt: null as number | null,
+  streamingReasoningTail: '',
+  markAgentRunStarted: jest.fn(),
+  touchAgentRun: jest.fn(),
+  clearAgentRun: jest.fn(),
   pushAgentStep: jest.fn().mockResolvedValue(undefined),
   updateActiveStepStreaming: jest.fn(),
   appendToolCall: jest.fn().mockResolvedValue(undefined),

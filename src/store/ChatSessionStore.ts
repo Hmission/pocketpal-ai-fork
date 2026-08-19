@@ -130,6 +130,47 @@ class ChatSessionStore {
   // reads it.
   toolCallTokenCount: number = 0;
 
+  // 生成进度监控卡数据（2026-08-19 大王裁定，CHAT_UI_SPEC §18.9）：
+  // 用户必须能区分「正在干活 vs 挂了」——阶段标签 + 总耗时 + 思考流
+  // 预览 + 心跳（lastAgentEventAt）。写入入口唯一：applyEventToStore
+  // （run_started / token / tool_call_started / run_finished），渲染
+  // 只读；与 toolCallTokenCount 同策略（独立字段，observer 最小化）。
+  agentRunStartedAt: number | null = null;
+  lastAgentEventAt: number | null = null;
+  streamingReasoningTail: string = '';
+
+  /** run_started：起算总耗时 + 心跳归位 + 思考尾清空 */
+  markAgentRunStarted(): void {
+    runInAction(() => {
+      this.agentRunStartedAt = Date.now();
+      this.lastAgentEventAt = Date.now();
+      this.streamingReasoningTail = '';
+    });
+  }
+
+  /** token/tool 事件：心跳更新 + 思考流尾部（200 字符）节流更新 */
+  touchAgentRun(reasoning?: string): void {
+    runInAction(() => {
+      this.lastAgentEventAt = Date.now();
+      if (reasoning && reasoning.length > 0) {
+        const tail =
+          reasoning.length > 200 ? reasoning.slice(-200) : reasoning;
+        if (tail !== this.streamingReasoningTail) {
+          this.streamingReasoningTail = tail;
+        }
+      }
+    });
+  }
+
+  /** run_finished：进度卡隐藏后字段复位（防 DRC 状态残留误导） */
+  clearAgentRun(): void {
+    runInAction(() => {
+      this.agentRunStartedAt = null;
+      this.lastAgentEventAt = null;
+      this.streamingReasoningTail = '';
+    });
+  }
+
   // Banner state for the context-limit warning. All ephemeral (MobX-only,
   // no DB column). The snapshot is mirrored from the newest finished turn's
   // metadata.completionResult; the rest track per-draft dismissals, the run
@@ -138,6 +179,15 @@ class ChatSessionStore {
   dismissedBannerVariants: Set<BannerVariant> = new Set();
   consecutiveFullFailures: number = 0;
   palLoadHintSeen: Set<string> = new Set();
+
+  // B19 最近一次会话内压缩信息（2026-08-19）：写入方 useChatSession
+  // prepareCompletion，消费方 ChatView 提示条 / AssistantTurnFooter 指标。
+  lastCompaction: {
+    count: number;
+    summary: string;
+    ts: number;
+    sessionId: string;
+  } | null = null;
 
   // 任务模型选择会话偏好（SPEC §9.3）：write/code/play → 弹窗确认后记住的模型 id；
   // '__current__' = 继续当前模型。会话级，不跨会话持久化（防臃肿）。

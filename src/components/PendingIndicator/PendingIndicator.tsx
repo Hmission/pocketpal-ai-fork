@@ -8,12 +8,18 @@ import {t} from '../../locales';
 import {styles, createCountStyle} from './styles';
 
 import {Theme} from '../../utils/types';
+import type {AgentUiState} from '../../services/agent';
 
 // Suppress the count for trivial in-progress calls so simple talents
 // don't trade a dot-row for "1 tokens" the moment they start. The
 // threshold is small enough that the user sees the count appear
 // within the first few tokens of any non-trivial tool call.
 const MIN_TOKENS = 10;
+
+// 心跳超时阈值（2026-08-19 K90 血证，CHAT_UI_SPEC §18.9）：3B + 思考
+// 最坏 TTFT 226s，阈值 300s 有冗余；超此无任何 token/工具事件 →
+// 判定疑似卡住（纯告知，尊重停止钮，不自动杀）。
+const STALL_MS = 300_000;
 
 // Map talent name → l10n key under `components.pendingIndicator`.
 // Keeping the mapping local to the renderer avoids leaking React-
@@ -28,6 +34,21 @@ const TALENT_LABEL_KEYS: Record<
   calculate: 'calculating',
   datetime: 'lookingUpTime',
 };
+
+// 阶段 → 人类可读标签（生成进度监控卡 §18.9）。工具调用阶段走
+// TALENT_LABEL_KEYS（更具体），prefill/streaming/executing 走通用文案。
+function stageLabelKey(status: AgentUiState['status']): string | null {
+  switch (status) {
+    case 'prefill':
+      return 'stagePreparing';
+    case 'streaming_text':
+      return 'stageGenerating';
+    case 'executing_tool':
+      return 'stageExecuting';
+    default:
+      return null;
+  }
+}
 
 interface DotProps {
   delay: number;
@@ -91,6 +112,17 @@ interface PendingIndicatorProps {
    * winding down at its next chunk boundary."
    */
   isStopping?: boolean;
+  /**
+   * Agent run status（生成进度监控卡 §18.9）。驱动阶段标签
+   * （准备中/生成中/执行工具）；非活跃态返回 null 由调用方门控。
+   */
+  agentStatus?: AgentUiState['status'];
+  /** run_started 时间戳：总耗时起算（覆盖 prefill，K90 血证） */
+  runStartedAt?: number | null;
+  /** 最近一次 token/工具事件时间戳：心跳判定（>300s → 疑似卡住） */
+  lastAgentEventAt?: number | null;
+  /** 思考流尾部（≤200 字符）：TTFT 期「模型在干活」的可视证据 */
+  reasoningTail?: string;
 }
 
 /**
@@ -107,6 +139,10 @@ export const PendingIndicator: React.FC<PendingIndicatorProps> = ({
   pendingTalentNames,
   toolCallTokenCount = 0,
   isStopping = false,
+  agentStatus,
+  runStartedAt = null,
+  lastAgentEventAt = null,
+  reasoningTail = '',
 }) => {
   const theme = useTheme();
   const l10n = useContext(L10nContext);
@@ -115,31 +151,45 @@ export const PendingIndicator: React.FC<PendingIndicatorProps> = ({
   const firstTalent = pendingTalentNames?.[0];
   const inToolCallMode = !!firstTalent;
 
-  // Elapsed seconds tracker. Starts when we enter tool-call mode,
-  // resets when we leave. Uses a 1-second interval — coarse enough
-  // not to thrash the UI, fine enough to reassure "still going".
+  // 总耗时 + 心跳（§18.9）：interval 只依赖 runStartedAt；
+  // lastAgentEventAt 经 ref 同步最新值，避免 300ms 级事件触发
+  // interval 重建（与 toolCallTokenCount 同策略的 observer 最小化）。
+  const lastEventRef = useRef(lastAgentEventAt);
+  lastEventRef.current = lastAgentEventAt;
   const [elapsedSec, setElapsedSec] = useState(0);
+  const [stalled, setStalled] = useState(false);
   useEffect(() => {
-    if (!inToolCallMode) {
+    if (runStartedAt == null) {
       setElapsedSec(0);
+      setStalled(false);
       return;
     }
-    const startedAt = Date.now();
-    const interval = setInterval(() => {
-      setElapsedSec(Math.floor((Date.now() - startedAt) / 1000));
-    }, 1000);
+    const startedAt = runStartedAt;
+    const tick = () => {
+      const now = Date.now();
+      setElapsedSec(Math.floor((now - startedAt) / 1000));
+      const last = lastEventRef.current;
+      setStalled(last != null && now - last > STALL_MS);
+    };
+    tick();
+    const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [inToolCallMode]);
+  }, [runStartedAt]);
 
   // Build the label suffix.
-  // - In `stopping` mode we override everything with "Stopping…" so
-  //   the user knows their tap registered while we wait for native
-  //   to wind down at the next chunk boundary.
-  // - Otherwise it reads "Building page · 120 tokens · 4s" once the
-  //   thresholds are crossed (see MIN_TOKENS / elapsed >= 1).
+  // - `stopping` overrides everything with "Stopping…".
+  // - `stalled`（心跳超时）→ "Seems stuck — tap Stop · Xs"：
+  //   用户必须能区分「正在干活 vs 挂了」（§18.9）。
+  // - tool-call mode → "Building page · 120 tokens · Xs".
+  // - 其它阶段 → 阶段标签 + 总耗时（prefill 不再裸三点）。
   let suffix: string | null = null;
   if (isStopping) {
     suffix = l10n.components.pendingIndicator.stopping;
+  } else if (stalled && runStartedAt != null) {
+    suffix = `${l10n.components.pendingIndicator.stageHang} · ${t(
+      l10n.components.toolMetrics.elapsed,
+      {seconds: elapsedSec},
+    )}`;
   } else if (inToolCallMode) {
     const labelKey = firstTalent ? TALENT_LABEL_KEYS[firstTalent] : undefined;
     const label = labelKey
@@ -153,20 +203,56 @@ export const PendingIndicator: React.FC<PendingIndicatorProps> = ({
         }),
       );
     }
-    if (elapsedSec >= 1) {
-      parts.push(t(l10n.components.toolMetrics.elapsed, {seconds: elapsedSec}));
+    if (runStartedAt != null && elapsedSec >= 1) {
+      parts.push(
+        t(l10n.components.toolMetrics.elapsed, {seconds: elapsedSec}),
+      );
     }
     suffix = parts.join(' · ');
+  } else {
+    const key = stageLabelKey(agentStatus ?? 'idle');
+    const label = key
+      ? (l10n.components.pendingIndicator as Record<string, string>)[key]
+      : null;
+    const parts: string[] = [];
+    if (label) {
+      parts.push(label);
+    }
+    if (runStartedAt != null && elapsedSec >= 1) {
+      parts.push(
+        t(l10n.components.toolMetrics.elapsed, {seconds: elapsedSec}),
+      );
+    }
+    suffix = parts.length > 0 ? parts.join(' · ') : null;
   }
+
+  // 思考流预览（§18.9）：生成期模型内心戏实时可见，TTFT 的
+  // 「在干活」铁证；工具调用/卡住/停止时让位不抢眼。
+  const showReasoning =
+    !isStopping &&
+    !stalled &&
+    !inToolCallMode &&
+    reasoningTail.length > 0 &&
+    (agentStatus === 'prefill' || agentStatus === 'streaming_text');
 
   return (
     <View style={styles.container} testID="pending-indicator">
-      <Dot delay={0} theme={theme} />
-      <Dot delay={200} theme={theme} />
-      <Dot delay={400} theme={theme} />
-      {suffix !== null && (
-        <Text style={countStyle} testID="pending-indicator-suffix">
-          {suffix}
+      <View style={styles.row}>
+        <Dot delay={0} theme={theme} />
+        <Dot delay={200} theme={theme} />
+        <Dot delay={400} theme={theme} />
+        {suffix !== null && (
+          <Text style={countStyle} testID="pending-indicator-suffix">
+            {suffix}
+          </Text>
+        )}
+      </View>
+      {showReasoning && (
+        <Text
+          style={styles.reasoning}
+          numberOfLines={2}
+          testID="pending-indicator-reasoning">
+          {l10n.components.pendingIndicator.reasoningLabel}: {reasoningTail}
         </Text>
       )}
     </View>

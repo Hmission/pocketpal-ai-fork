@@ -15,6 +15,7 @@ import {
 
 import dayjs from 'dayjs';
 import {observer} from 'mobx-react';
+import {toJS} from 'mobx';
 import calendar from 'dayjs/plugin/calendar';
 import {Snackbar} from 'react-native-paper';
 import {useIsFocused, useNavigation} from '@react-navigation/native';
@@ -43,18 +44,15 @@ import {
 
 import ImageView from './ImageView';
 import {BannerRow} from './BannerRow';
+import {CompactedBlock} from './CompactedBlock';
 import {createStyles} from './styles';
 
 import {IncreaseContextSheet} from '../IncreaseContextSheet';
-import {
-  makeFitStatusFor,
-  hasFittingUpgrade,
-} from '../IncreaseContextSheet/fitStatus';
+import {hasModelUpgradeFitting} from '../IncreaseContextSheet/fitStatus';
 import {t} from '../../locales';
-import {getModelMemoryRequirement} from '../../utils/memoryEstimator';
-import {CONTEXT_LADDER} from '../../utils/bannerVariantResolver';
 
 import {chatSessionStore, modelStore} from '../../store';
+import {compactSessionAndMark} from '../../services/contextCompaction';
 
 import {MessageType, User} from '../../utils/types';
 import {Pal} from '../../types/pal';
@@ -203,6 +201,11 @@ const PendingIndicatorView: React.FC = observer(() => (
     pendingTalentNames={chatSessionStore.agentUiState.pendingTalentNames}
     toolCallTokenCount={chatSessionStore.toolCallTokenCount}
     isStopping={chatSessionStore.isStopping}
+    // 生成进度监控卡（§18.9）：阶段标签 + 总耗时 + 心跳 + 思考流
+    agentStatus={chatSessionStore.agentUiState.status}
+    runStartedAt={chatSessionStore.agentRunStartedAt}
+    lastAgentEventAt={chatSessionStore.lastAgentEventAt}
+    reasoningTail={chatSessionStore.streamingReasoningTail}
   />
 ));
 
@@ -309,38 +312,21 @@ export const ChatView = observer(
 
     // The increase CTA is shown only when at least one larger context tier
     // fits the device — same OOM-safe intent the sheet enforces per stop.
-    // Memoized: hasFittingUpgrade walks the tier ladder calling the GGUF
-    // memory estimator per stop, and ChatView re-renders on every streamed
-    // token. Non-n_ctx contextInitParams (devices/cache) change rarely and
-    // self-heal on the next ceiling/n_ctx update, so they're left out of deps.
+    // Memoized: hasModelUpgradeFitting walks the tier ladder calling the GGUF
+    // memory estimator per stop (single source with the hook budget decision),
+    // and ChatView re-renders on every streamed token. Non-n_ctx
+    // contextInitParams (devices/cache) change rarely and self-heal on the
+    // next ceiling/n_ctx update, so they're left out of deps.
     const canIncreaseContext = React.useMemo(() => {
       if (!activeModel || currentNCtx === undefined) {
         return false;
       }
-      // Match the sheet's cap so the CTA never opens a sheet whose only stop
-      // equals the current size.
-      const modelMaxCtx =
-        activeModel.ggufMetadata?.context_length ??
-        CONTEXT_LADDER[CONTEXT_LADDER.length - 1];
-      const fitStatusFor = makeFitStatusFor({
-        memBytesFor: nCtx => {
-          try {
-            return getModelMemoryRequirement(activeModel, projectionModel, {
-              ...modelStore.contextInitParams,
-              n_ctx: nCtx,
-            });
-          } catch {
-            return Number.POSITIVE_INFINITY;
-          }
-        },
-        ceiling: memoryCeiling,
-        totalMemory: 0,
-      });
-      return hasFittingUpgrade(
-        CONTEXT_LADDER,
+      return hasModelUpgradeFitting(
+        activeModel,
+        projectionModel,
         currentNCtx,
-        modelMaxCtx,
-        fitStatusFor,
+        modelStore.contextInitParams,
+        memoryCeiling,
       );
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeModel?.id, projectionModel?.id, currentNCtx, memoryCeiling]);
@@ -349,6 +335,41 @@ export const ChatView = observer(
       message: string;
       indefinite: boolean;
     } | null>(null);
+
+    // B19 手动压缩 CTA：banner「压缩上下文」——显式选择并记住策略（compact），
+    // 立即执行压缩（与发送前自动路径同一服务 compactSessionAndMark，单事实源）。
+    // 压缩结果由锚点卡片与 compaction snackbar 可见；失败静默（走既有 banner）。
+    const handleCompactContext = React.useCallback(() => {
+      const modelId = modelStore.activeModelId;
+      if (modelId) {
+        modelStore.setContextPolicy(modelId, 'compact');
+      }
+      const sessionId = chatSessionStore.activeSessionId;
+      if (!sessionId) {
+        return;
+      }
+      void compactSessionAndMark(
+        sessionId,
+        toJS(chatSessionStore.currentSessionMessages),
+      );
+    }, []);
+
+    // B19 压缩即时提示：lastCompaction 变化（本次会话）→ 短暂 snackbar。
+    const [compactionSnackbar, setCompactionSnackbar] = React.useState<
+      string | null
+    >(null);
+    const prevCompaction = usePrevious(chatSessionStore.lastCompaction);
+    React.useEffect(() => {
+      const last = chatSessionStore.lastCompaction;
+      if (
+        last &&
+        prevCompaction !== last &&
+        last.sessionId === chatSessionStore.activeSessionId
+      ) {
+        setCompactionSnackbar(t(l10n.chat.compactionBanner, {count: last.count}));
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- MobX observer 使 lastCompaction 响应式
+    }, [chatSessionStore.lastCompaction]);
 
     // The snackbar stays mounted across the reloading→result transition, so
     // Paper's auto-hide timer never re-arms for the timed result. Own the
@@ -905,6 +926,17 @@ export const ChatView = observer(
     // Render individual message
     const renderMessage = React.useCallback(
       ({item: message}: {item: MessageType.DerivedAny; index: number}) => {
+        // B19 压缩锚点：承载摘要的卡片替代原文气泡（点按展开摘要）。
+        const compactionMeta =
+          message.type !== 'dateHeader'
+            ? (message.metadata?.compaction as
+                | MessageType.CompactionMeta
+                | undefined)
+            : undefined;
+        if (compactionMeta) {
+          return <CompactedBlock compaction={compactionMeta} />;
+        }
+
         const messageWidth =
           showUserAvatars &&
           message.type !== 'dateHeader' &&
@@ -1052,6 +1084,19 @@ export const ChatView = observer(
       [isPending, chatMessages.length, headerStyle],
     );
 
+    // B19 压缩可见性：仅展示锚点卡片（compaction）与正常消息；
+    // 纯 compacted 标记的消息被锚点代表，从列表隐藏（原文保留在库中）。
+    const visibleChatMessages = React.useMemo(
+      () =>
+        chatMessages.filter(
+          m =>
+            m.type === 'dateHeader' ||
+            m.metadata?.compaction ||
+            (!m.metadata?.compacted && !m.metadata?.compaction),
+        ),
+      [chatMessages],
+    );
+
     // Render complete chat list with scroll-to-bottom button
     const renderChatList = React.useCallback(
       () => (
@@ -1079,7 +1124,7 @@ export const ChatView = observer(
               showsVerticalScrollIndicator={false}
               onScroll={handleScroll}
               {...unwrap(flatListProps)}
-              data={chatMessages}
+              data={visibleChatMessages}
               inverted={chatMessages.length > 0}
               // iOS keeps the interactive (drag-to-dismiss) gesture. On Android,
               // "interactive" makes a drag forcibly close the keyboard as the
@@ -1222,6 +1267,7 @@ export const ChatView = observer(
                 canIncrease={canIncreaseContext}
                 onNewChat={() => chatSessionStore.resetActiveSession()}
                 onIncreaseContext={() => setIncreaseSheetOpen(true)}
+                onCompactContext={handleCompactContext}
               />
               <ChatInput
                 {...{
@@ -1369,6 +1415,14 @@ export const ChatView = observer(
             }
             testID="context-reload-snackbar">
             {reloadSnackbar?.message ?? ''}
+          </Snackbar>
+
+          <Snackbar
+            visible={isFocused && compactionSnackbar !== null}
+            onDismiss={() => setCompactionSnackbar(null)}
+            duration={4000}
+            testID="compaction-snackbar">
+            {compactionSnackbar ?? ''}
           </Snackbar>
 
           <Snackbar

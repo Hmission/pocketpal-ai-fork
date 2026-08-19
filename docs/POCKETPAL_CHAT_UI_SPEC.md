@@ -387,6 +387,24 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 
 日记/绘本/读屏不属「前缀 chip → 输入 → 发送」形态且各有唯一入口（日记=WorkspaceScreen 浏览、绘本=MemoryScreen 按钮、读屏=ToolScreen 行），加图标 = 入口重复，违锋利原则。快捷行维持四图标。
 
+### 18.9 生成进度监控卡（v4.0，2026-08-19 大王裁定）
+
+**问题**：小雾 3B + 思考开启 TTFT 实测 45~226s，旧 PendingIndicator 在 prefill 阶段裸三点无耗时无阶段；引擎真挂时永远转圈——用户无法区分「正在干活 vs 挂了」（K90 血证：16 分钟生成全程无进度反馈）。
+
+**设计**：原位升级 PendingIndicator（头部槽位，不插消息卡——回复气泡本身在流式，插卡=重复污染）。四要素：
+
+| 要素 | 数据源（单一事实源=chatSessionStore） | 说明 |
+|---|---|---|
+| 阶段标签 | `agentUiState.status` → l10n（准备中/生成中/执行工具/工具名） | prefill 不再裸三点 |
+| 总耗时 | `agentRunStartedAt`（run_started 写入，1s interval） | 覆盖所有阶段含 prefill |
+| 思考流预览 | `streamingReasoningTail`（reasoning 尾部 ≤200 字符） | TTFT 期「模型在干活」铁证，2 行尾随 |
+| 心跳判定 | `lastAgentEventAt`（token/工具事件写入）>300s → 「疑似卡住，可点停止」 | 纯告知尊重停止钮，不自动杀 |
+
+- **写入入口唯一**：applyEventToStore（run_started=markAgentRunStarted / token+marker+tool= touchAgentRun / run_finished+run_failed=clearAgentRun）；渲染只读，observer 最小化（与 toolCallTokenCount 同策略）。
+- **run_failed 收尾**：失败即 clearAgentRun + reducer 已翻转 status='failed'——进度卡立即退出，杜绝「挂了还在转」误报。
+- **锋利裁剪**：不滚 content（气泡已有 token 流，重复=臃肿）；思考流只在 prefill/streaming 显示，工具/卡住/停止时让位；阈值 300s 定死不配置化（3B 最坏 TTFT 226s 有冗余）。
+- **与生图卡同构**：三点波浪 + 阶段文本 + 耗时，同一视觉语言（ResultPreview/ImageTaskProgress 基准）。
+
 ## 变更日志
 
 | 日期 | 版本 | 变更 |
@@ -405,3 +423,4 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 | 2026-08-20 | 3.7 | 六维复审（8 项需求复盘）：§18.4 发送钮图标 20px 同行同尺寸；§18.5 placeholder 时序缺口修复（prompter loading 前置，冷启动首帧不再「模型未加载」）；§18.7 选型语义重定义（任务族候选上限 3，不甩全量 + 一句话推荐说明）+ 弹窗内加载（遮罩阻塞/失败弹窗承载不插卡） |
 | 2026-08-20 | 3.9 | 发送/停止钮同一按钮语言：StopButton 与 SendButton 同规格（36px + 20px + 圆形衬底，停止=error 红），时态切换不跳变；rightControls gap 8 |
 | 2026-08-19 | 3.8 | 默认 n_ctx 4096→8192（contextInitParams v2.3 迁移仅抬旧默认）+ perModelNCtxSource 源跟踪（审计不碰用户手调）+ 审计覆盖无覆盖模型——大王裁定「默认上下文必须够工具基线」 |
+| 2026-08-19 | 4.0 | §18.9 生成进度监控卡：PendingIndicator 升级四要素（阶段标签/总耗时/思考流预览/300s 心跳）——prefill 不再裸三点，引擎真挂有「疑似卡住」提示；run_failed 收尾防永久转圈 |

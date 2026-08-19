@@ -196,7 +196,12 @@
     "manageServers": "Manage Servers",
     "lightMode": "Light",
     "systemMode": "System",
-    "colorScheme": "Color Scheme"
+    "colorScheme": "Color Scheme",
+    "contextPolicy": "Context policy",
+    "contextPolicyDescription": "What to do when the chat nears the context limit: expand the window first while memory allows, compress old messages once the window is at its limit, or ask each time.",
+    "contextPolicyExpand": "Expand",
+    "contextPolicyCompact": "Compress",
+    "contextPolicyAsk": "Ask"
   },
   "memory": {
     "shortWarning": "Memory Warning",
@@ -621,7 +626,12 @@
       "buildingPage": "Building page",
       "calculating": "Calculating",
       "lookingUpTime": "Looking up time",
-      "stopping": "Stopping…"
+      "stopping": "Stopping…",
+      "stagePreparing": "Preparing…",
+      "stageGenerating": "Generating…",
+      "stageExecuting": "Running tool…",
+      "stageHang": "Seems stuck — tap Stop",
+      "reasoningLabel": "Thinking"
     },
     "toolMetrics": {
       "tokens": "{{count}} tokens",
@@ -1297,7 +1307,9 @@
       "searchResultsTitle": "Search results",
       "showResultsAccessibilityLabel": "Show web search results for {{query}}",
       "openLinkError": "Couldn't open this link."
-    }
+    },
+    "contextCompact": "Compress old messages",
+    "compactionBanner": "Compressed {{count}} earlier messages."
   },
   "htmlPreview": {
     "defaultTitle": "Preview",
