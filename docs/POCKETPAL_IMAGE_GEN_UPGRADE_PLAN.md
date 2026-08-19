@@ -914,6 +914,18 @@ CMake 选项链：
 
 **终验**：桌面左红右蓝图 leftR=254.9/rightB=255.0；真机 DRC 重测输出 RGB mean [189.2,168.8,127.8]（ch-diff 40.9），tile 边界 ratio 0.8-1.07 无格子。
 
+### 全屏预览交互补闭环（2026-08-19→20，3 轮真机复测）
+
+**规格**：点预览图 → 全屏 → 双指缩放（1-4×）/ 拖动平移 / 单击关闭；浅色遮罩（主题 surface ~94%，非纯黑）。
+
+**R1 · 手势全无响应**：RN `<Modal>` 在 Android 是独立原生窗口，App 根 `GestureHandlerRootView` 覆盖不到 → 手势静默失效。修复：ZoomableImage 内部包 `GestureHandlerRootView` 重新 root；遮罩改主题 surface + 'F0'；条件渲染每次打开重置共享值。
+
+**R2 · Worklets 红屏**：reanimated babel 插件自动 worklet 化手势回调 → 跑 UI 线程调普通 JS 函数（onClose setState）抛 non-worklet 错误。修复：pinch/pan onUpdate/onEnd 加 `'worklet'` 指令 + `Math.max/min` 内联；tap 加 `.runOnJS(true)`。
+
+**R3 · 缩放拖动失效**：① `tap.onEnd` 在成功与失败时都触发，未判 `success` → 双指按下/拖动超阈致 tap 失败也误关全屏；② `Exclusive(tap, composed)` 把 tap 放前 → pinch/pan 等 tap 失败才能启动。修复：`tap.onEnd((_e, success) => { if (success) onClose(); })`；Exclusive 顺序改 `(composed, tap)`——官方 PhotoZoom 范式。
+
+**组件**：`src/screens/ImageGenScreen/components/ZoomableImage.tsx` + `ResultPreview.tsx`（全屏 Modal 条件渲染）。
+
 ### 遗留
 
 - 真机放大手动验证（生图→放大→参数→进度→结果条目；大图上传放大验证降采样防护）——大王操作，agent 只读旁证。

@@ -356,6 +356,7 @@ ScrollView
 | B17 | **真机二轮反馈收口**：①关于页构建时间独立成行（防同行溢出）；②生图胶囊底色统一 primary 12%（与聊天胶囊同设计语言）；③思考开关选中态 onSurface 黑底改 primary 底 + onPrimary 前景（全局选中态规范）；④图片编辑快捷钮空锚点根治（按钮即 Menu anchor，真机菜单可弹）；⑤n_ctx 每模型独立（perModelNCtx 持久化覆盖 + 加载链取生效值 + 生成设置操作活动模型 + 状态栏 ctx 胶囊直达入口）；⑥真机取证两根治：快照私有库三候选兼容（watermelondb 实际落私有根目录）、权限引导只探测自定义目录（零权限默认目录混入致判定恒真） | §1.8 / CHAT_UI_SPEC §11 / IMAGEGEN_UI_SPEC §4 | 真机复验 | ✅ 已完成（2026-08-18） |
 | B18 | **聊天顶栏重构**：①胶囊管家感知三档显示链（已加载模型→管家 MiniCPM 1B→选模型）；②选择器卡片化（MODEL_MATRIX §1 入选说明 + 徽章 + 行内加载/卸载 + 管家禁卸 + 单槽脚注「加载新模型自动卸载」+ 加载进度行「正在加载·已耗时 Xs」，加载期 sheet 驻留/收尾自动关，关闭单点收敛）；③SessionStatusBar 整行删除、拆解融合进助手卡（意图四色胶囊上移作者行 + 每输出指标行 turnMetrics 快照：上下文余量/落盘/召回展开/情绪 + ctx 中文点按直达生成设置）；④思考胶囊 36→24px 视觉同高收敛；⑤复查锋利化：isChatSelectable GGUF+manifest 名单单规则（sd35 baked 工件收口）+ 死代码清除（engineStatus.summary/getLastExtractionCount） | CHAT_UI_SPEC §16/§17 | 真机复验 | ✅ 已完成（2026-08-19 复查闭环） |
 | B19 | **DRC 远程调试（开发者预览版诊断面扩展）**：文件双通道远程调试（adb push actionId 命令 → App 白名单执行 store 动作 → results/events.jsonl/state.json 落盘取证），15 动作注册表 + 13 类事件埋点 + StateCompass 域级 STATE_MAP + CP-APP 报错指南针 + 开发机三工具；门控 __E2E__||BuildInfo.isDevSupport（release 运行时恒不激活）；Skill 化挂测试专工链路（母仓 drc-remote-debug） | DRC_SPEC SSOT（docs/DebugRemoteControl/） | tsc/jest 绿 + 真机 6 命令闭环 + e2e spec 实现 | ✅ 已完成（2026-08-19） |
+| B20 | **RealESRGAN 通用图像放大 + 全屏预览交互**：独立通用放大能力（不绑定 DreamLite），双模型内置（x4plus 63MB / animevideov3 2MB）；tiled 推理引擎 + base64 桥传输 + engineMutex 互斥 + UpscalePanel 参数面板；ZoomableImage 全屏查看器（双指缩放 1-4× + 拖动 + 单击关闭 + 浅色 surface 遮罩）——3 轮真机复测闭环（Modal root / worklet 红屏 / onEnd success + Exclusive PhotoZoom 范式） | IMAGE_GEN_UPGRADE_PLAN §6.19 SSOT | tsc/eslint 0 错 + DRC 真机 5 项 + 大王终验通过 | ✅ 已完成（2026-08-20） |
 
 **批次间依赖**：B1 前置最大（聊天域，含 §8 旧债务 4 项中的 2 项），完成后旧债务全部清零；新债务一律按本表规则补录（批次号 + 验收 + 前置），不允许无批次挂账。
 
@@ -390,6 +391,7 @@ ScrollView
 
 | 日期 | 版本 | 变更 |
 |------|------|------|
+| 2026-08-20 | 3.2 | Gap Ledger 补 B20（RealESRGAN 通用图像放大 + 全屏预览交互）；relates 挂 IMAGE_GEN_UPGRADE_PLAN §6.19 |
 | 2026-08-19 | 3.1 | Gap Ledger 补 B19（DRC 远程调试，诊断面扩展）；relates 挂 DRC_SPEC；关联文档补 DebugRemoteControl |
 | 2026-08-14 | 2.0 | Phase 2 规范治理：形状角色表 + 60-30-10 色彩应用 + 子页模板 + 动效目录 |
 | 2026-08-15 | 3.0 | 全面治理：补齐间距栅格/阴影层级/组件状态/中性色分层/可访问性/文案六维度；债务全部进入治理批次（Gap Ledger）；升格为 UI 域 SSOT（frontmatter 规范） |
@@ -402,6 +404,7 @@ ScrollView
 - [图标规范](./POCKETPAL_ICON_SPEC.md)（spec）
 - [远程调试协议 DRC_SPEC](./DebugRemoteControl/DRC_SPEC.md)（spec，B19）
 - [App 侧指南针注册表 COMPASS_REGISTRY](./DebugRemoteControl/COMPASS_REGISTRY.md)（registry，B19）
+- [RealESRGAN 图像放大计划](./POCKETPAL_IMAGE_GEN_UPGRADE_PLAN.md)（spec，§6.19 B20）
 - [ADR-0001 UI 规范单源](./adr/ADR-0001-ui-ssot-single-source.md)（adr）
 - [ADR-0002 生图顶栏重构](./adr/ADR-0002-imagegen-header-right.md)（adr）
 - [ADR-0003 气泡一体化](./adr/ADR-0003-bubble-footer-unification.md)（adr）
