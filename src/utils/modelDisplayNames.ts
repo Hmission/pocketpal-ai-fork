@@ -43,9 +43,9 @@ const NOTE_RULES: Array<{pattern: RegExp; note: string}> = [
   {pattern: /lfm2[.\-]?5[-_.\s]?2[.\-]?6b/i, note: '任务/工具调用优化，低延迟'},
   {
     pattern: /lfm2[.\-]?5[-_.\s]?8b/i,
-    note: 'MoE 大模型（激活~1.5B），复杂任务质量上限',
+    note: '代码/玩具匠，MoE 大模型（激活~1.5B）工具调用专长',
   },
-  {pattern: /ministral/i, note: '代码专长'},
+  {pattern: /ministral/i, note: '代码候选（均衡档）'},
   {pattern: /minicpm/i, note: '轻量聊天备选'},
 ];
 

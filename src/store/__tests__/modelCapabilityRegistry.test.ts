@@ -102,8 +102,10 @@ describe('listModelsForTask', () => {
   });
 
   it('candidateNote：MODEL_MATRIX 定位优先，无定位给大小档位语', () => {
-    const ministral = model({id: 'm', name: 'Ministral-3-3B-Instruct'});
-    expect(candidateNote(ministral)).toBe('代码专长');
+    const lfm8b = model({id: 'm', name: 'LFM2.5-8B-A1B-Q4_K_M'});
+    expect(candidateNote(lfm8b)).toBe(
+      '代码/玩具匠，MoE 大模型（激活~1.5B）工具调用专长',
+    );
     const big = model({id: 'big', name: 'BigGeneric', size: 6e9});
     expect(candidateNote(big)).toBe('更大更强，但加载更慢');
     const small = model({id: 'small', name: 'Tiny', size: 1e9});
