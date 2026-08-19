@@ -3,7 +3,7 @@ doc_id: DRC_SPEC
 module: root
 type: spec
 status: active
-version: "1.0"
+version: "1.1"
 created: "2026-08-19"
 updated: "2026-08-19"
 relates: [COMPASS_SYSTEM_SSOT, STATE_COMPASS_ENGINE_SELF_NAVIGATION_SSOT, POCKETPAL_CHAT_UI_SPEC]
@@ -15,7 +15,11 @@ relates: [COMPASS_SYSTEM_SSOT, STATE_COMPASS_ENGINE_SELF_NAVIGATION_SSOT, POCKET
 
 > 单一事实源：App 远程调试双通道（命令注入 + 事件观测）的协议、动作注册表、事件清单与安全边界。
 > 任何 DRC 协议变更必须先更新本文档再改代码。
-> 版本：v1.0（2026-08-19，P0-P4 落地）
+> 版本：v1.1（2026-08-19，P0-P4 落地 + v1.1 流式进度补全）
+
+> v1.1（2026-08-19）：chat.assistant_delta 触发点扩到 updateActiveStepStreaming（assistant_turn
+> 流式路径）——此前只在 updateMessage（整条落库）发，agent 环流式增量 token 在涨但事件流死寂，
+> 开发侧看不到生成进度（K90 真机血证）。text=步骤累计内容，drc-tail --follow 可实时观测 token 增长。
 
 ## 0. 设计哲学
 
@@ -113,7 +117,7 @@ relates: [COMPASS_SYSTEM_SSOT, STATE_COMPASS_ENGINE_SELF_NAVIGATION_SSOT, POCKET
 | nav | nav.go | actionRegistry nav.go | route |
 | chat | chat.user_msg | ChatSessionStore.addMessageToCurrentSession（user） | sessionId/messageId/text |
 | chat | chat.assistant_msg | 同上（assistant） | sessionId/messageId/text |
-| chat | chat.assistant_delta | ChatSessionStore.updateMessage（节流 300ms/消息） | sessionId/messageId/text |
+| chat | chat.assistant_delta | ChatSessionStore.updateMessage / updateActiveStepStreaming（节流 300ms/消息，text=累计内容） | sessionId/messageId/text |
 | chat | chat.turn_done | useChatSession run_finished | sessionId/messageId/hitMaxTurns/tokensPredicted/contextFull |
 | imagegen | imagegen.start | imageGenStore.generate / generateDreamLiteEntry | prompt/seed/steps/cfg/width/height |
 | imagegen | imagegen.stage | pullSnapshot（SD 1Hz）与 DreamLite 采样回调（节流） | progress/stage/stepTime |
@@ -160,6 +164,7 @@ StateCompass 五字段与母仓 `STATE_COMPASS` 同构：state（定位）/ next
 | chat.newSession | title(≤100) | 新建会话 |
 | imagegen.generate | prompt/steps(1-64)/cfg(0-20)/width/height(64-2048)/seed/negativePrompt/loraPath/loraMultiplier(0-2)/modelLabel | SD 生图（需 SD 模型已加载） |
 | imagegen.generateDreamLite | prompt/width/height(64-2048)/steps(1-64) | DreamLite 文生图（4 步 DMD2；未加载时自动加载） |
+| imagegen.upscale | uri/scale(2\|4)/style(general\|anime) | RealESRGAN 通用放大（P6-6，CPU 耗时较长；自动释放 DreamLite/SD） |
 | imagegen.loadModel | modelPath/clipL/clipG/llm/vae/backend | 加载 SD 模型 |
 | imagegen.loadDreamLite | - | 加载 DreamLite 引擎（unet/vae/TE） |
 | imagegen.unloadModel | - | 卸载 SD 模型 |

@@ -910,6 +910,22 @@ class ChatSessionStore {
         ...partial,
       };
     });
+    // DRC 事件流（观测不为 SPOF）：assistant_turn 流式路径增量（节流
+    // key=messageId）——agent 环 token 在涨就必须有进度可见，否则开发侧
+    // 误判卡死（2026-08-19 K90 血证，DRC_SPEC v1.1）。text=步骤累计内容。
+    const streamedText = derivedText(turn) || '';
+    if (typeof streamedText === 'string' && streamedText.length > 0) {
+      emit(
+        'chat',
+        'chat.assistant_delta',
+        {
+          sessionId: targetSessionId,
+          messageId: pending.id,
+          text: streamedText,
+        },
+        `delta:${pending.id}`,
+      );
+    }
     chatSessionRepository
       .updateMessage(pending.id, {steps: turn.steps})
       .catch(error =>

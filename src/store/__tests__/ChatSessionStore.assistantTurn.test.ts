@@ -4,6 +4,7 @@ import {chatSessionStore, defaultCompletionSettings} from '../ChatSessionStore';
 import {chatSessionRepository} from '../../repositories/ChatSessionRepository';
 import {AgentStep, AgentToolOutcome, MessageType} from '../../utils/types';
 import {initialAgentUiState} from '../../services/agent';
+import * as eventStream from '../../debug/eventStream';
 
 jest.spyOn(chatSessionRepository, 'updateMessage');
 jest.spyOn(chatSessionRepository, 'updateSessionTitle');
@@ -497,6 +498,40 @@ describe('ChatSessionStore — AssistantTurn extensions', () => {
       expect((chatSessionStore as any).pendingStreamingUpdate.kind).toBe(
         'text',
       );
+    });
+
+    it('emits chat.assistant_delta with accumulated step text (DRC_SPEC v1.1 streaming progress)', () => {
+      const emitSpy = jest.spyOn(eventStream, 'emit');
+      const turn = makeAssistantTurn([{content: ''}]);
+      chatSessionStore.sessions = [
+        {
+          id: 'session1',
+          title: '',
+          date: '',
+          messages: [turn],
+          completionSettings: defaultCompletionSettings,
+          settingsSource: 'pal',
+          activePalId: undefined,
+          messagesLoaded: true,
+        } as any,
+      ];
+      chatSessionStore.activeSessionId = 'session1';
+
+      chatSessionStore.updateActiveStepStreaming(turn.id, 'session1', {
+        content: '正在生成……',
+      });
+
+      expect(emitSpy).toHaveBeenCalledWith(
+        'chat',
+        'chat.assistant_delta',
+        expect.objectContaining({
+          sessionId: 'session1',
+          messageId: turn.id,
+          text: '正在生成……',
+        }),
+        `delta:${turn.id}`,
+      );
+      emitSpy.mockRestore();
     });
   });
 
