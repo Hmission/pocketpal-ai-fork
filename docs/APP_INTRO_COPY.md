@@ -35,7 +35,7 @@ relates: []
 - **已启用（14）**：zh（简体）、zh_Hant（繁体）、en、ja、ko、fa、he、id、ms、pl、pt、pt_BR、ru、uk
 - **已翻译未注册（2）**：de、fr（l10n 文件已补齐，未加入 languageRegistry）
 - **残缺未启用（2）**：et、it（l10n 文件只有 common 段，待完整翻译后再启用）
-- 版本号占位：`v1.16.1 (143)` · `llama.cpp 10054 (ac2557c)`（迭代时同步更新）
+- 版本号占位：`v2.0.0 (144)` · `llama.cpp 10054 (ac2557c)`（迭代时同步更新）
 
 ---
 
@@ -74,7 +74,7 @@ relates: []
 > https://github.com/Hmission/pocketpal-ai-fork
 >
 > **版本信息**
-> 版本：v1.16.1 (143) · 引擎：llama.cpp 10054 (ac2557c)
+> 版本：v2.0.0 (144) · 引擎：llama.cpp 10054 (ac2557c)
 
 ### 版本三：极简版
 
@@ -82,7 +82,7 @@ relates: []
 >
 > 基于 llama.cpp 与 llama.rn 构建 · 二开自 PocketPal AI（MIT License）· 完全离线 · 完全开源
 >
-> v1.16.1 (143) · llama.cpp 10054 (ac2557c)
+> v2.0.0 (144) · llama.cpp 10054 (ac2557c)
 
 ---
 
@@ -121,7 +121,7 @@ relates: []
 > https://github.com/Hmission/pocketpal-ai-fork
 >
 > **版本資訊**
-> 版本：v1.16.1 (143) · 引擎：llama.cpp 10054 (ac2557c)
+> 版本：v2.0.0 (144) · 引擎：llama.cpp 10054 (ac2557c)
 
 ### 版本三：極簡版
 
@@ -129,7 +129,7 @@ relates: []
 >
 > 基於 llama.cpp 與 llama.rn 構建 · 二開自 PocketPal AI（MIT License）· 完全離線 · 完全開源
 >
-> v1.16.1 (143) · llama.cpp 10054 (ac2557c)
+> v2.0.0 (144) · llama.cpp 10054 (ac2557c)
 
 ---
 
@@ -168,7 +168,7 @@ relates: []
 > https://github.com/Hmission/pocketpal-ai-fork
 >
 > **Version**
-> Version: v1.16.1 (143) · Engine: llama.cpp 10054 (ac2557c)
+> Version: v2.0.0 (144) · Engine: llama.cpp 10054 (ac2557c)
 
 ### Version 3: Minimal
 
@@ -176,7 +176,7 @@ relates: []
 >
 > Built on llama.cpp & llama.rn · Fork of PocketPal AI (MIT License) · Fully offline · Free & open source
 >
-> v1.16.1 (143) · llama.cpp 10054 (ac2557c)
+> v2.0.0 (144) · llama.cpp 10054 (ac2557c)
 
 ---
 
@@ -214,7 +214,7 @@ relates: []
 > https://github.com/Hmission/pocketpal-ai-fork
 >
 > **バージョン情報**
-> バージョン：v1.16.1 (143) · エンジン：llama.cpp 10054 (ac2557c)
+> バージョン：v2.0.0 (144) · エンジン：llama.cpp 10054 (ac2557c)
 
 ### バージョン3：ミニマル版
 
@@ -222,7 +222,7 @@ relates: []
 >
 > llama.cppとllama.rnベース · PocketPal AI（MIT License）フォーク · 完全オフライン · 無料＆オープンソース
 >
-> v1.16.1 (143) · llama.cpp 10054 (ac2557c)
+> v2.0.0 (144) · llama.cpp 10054 (ac2557c)
 
 ---
 
@@ -260,7 +260,7 @@ relates: []
 > https://github.com/Hmission/pocketpal-ai-fork
 >
 > **버전 정보**
-> 버전: v1.16.1 (143) · 엔진: llama.cpp 10054 (ac2557c)
+> 버전: v2.0.0 (144) · 엔진: llama.cpp 10054 (ac2557c)
 
 ### 버전 3: 미니멀 버전
 
@@ -268,7 +268,7 @@ relates: []
 >
 > llama.cpp & llama.rn 기반 · PocketPal AI(MIT License) 포크 · 완전 오프라인 · 무료 & 오픈소스
 >
-> v1.16.1 (143) · llama.cpp 10054 (ac2557c)
+> v2.0.0 (144) · llama.cpp 10054 (ac2557c)
 
 ---
 
@@ -306,7 +306,7 @@ relates: []
 > https://github.com/Hmission/pocketpal-ai-fork
 >
 > **اطلاعات نسخه**
-> نسخه: v1.16.1 (143) · موتور: llama.cpp 10054 (ac2557c)
+> نسخه: v2.0.0 (144) · موتور: llama.cpp 10054 (ac2557c)
 
 ### نسخه ۳: نسخه مینیمال
 
@@ -314,7 +314,7 @@ relates: []
 >
 > بر پایه llama.cpp و llama.rn · فورک PocketPal AI (مجوز MIT) · کاملاً آفلاین · رایگان و متن‌باز
 >
-> v1.16.1 (143) · llama.cpp 10054 (ac2557c)
+> v2.0.0 (144) · llama.cpp 10054 (ac2557c)
 
 ---
 
@@ -352,7 +352,7 @@ relates: []
 > https://github.com/Hmission/pocketpal-ai-fork
 >
 > **מידע גרסה**
-> גרסה: v1.16.1 (143) · מנוע: llama.cpp 10054 (ac2557c)
+> גרסה: v2.0.0 (144) · מנוע: llama.cpp 10054 (ac2557c)
 
 ### גרסה 3: מינימלית
 
@@ -360,7 +360,7 @@ relates: []
 >
 > מבוסס על llama.cpp ו-llama.rn · פורק של PocketPal AI (רישיון MIT) · לא מקוון לגמרי · חינם וקוד פתוח
 >
-> v1.16.1 (143) · llama.cpp 10054 (ac2557c)
+> v2.0.0 (144) · llama.cpp 10054 (ac2557c)
 
 ---
 
@@ -398,7 +398,7 @@ relates: []
 > https://github.com/Hmission/pocketpal-ai-fork
 >
 > **Info Versi**
-> Versi: v1.16.1 (143) · Mesin: llama.cpp 10054 (ac2557c)
+> Versi: v2.0.0 (144) · Mesin: llama.cpp 10054 (ac2557c)
 
 ### Versi 3: Minimal
 
@@ -406,7 +406,7 @@ relates: []
 >
 > Dibangun di atas llama.cpp & llama.rn · Fork dari PocketPal AI (MIT License) · Sepenuhnya offline · Gratis & open source
 >
-> v1.16.1 (143) · llama.cpp 10054 (ac2557c)
+> v2.0.0 (144) · llama.cpp 10054 (ac2557c)
 
 ---
 
@@ -444,7 +444,7 @@ relates: []
 > https://github.com/Hmission/pocketpal-ai-fork
 >
 > **Maklumat Versi**
-> Versi: v1.16.1 (143) · Enjin: llama.cpp 10054 (ac2557c)
+> Versi: v2.0.0 (144) · Enjin: llama.cpp 10054 (ac2557c)
 
 ### Versi 3: Minimal
 
@@ -452,7 +452,7 @@ relates: []
 >
 > Dibina berdasarkan llama.cpp & llama.rn · Fork PocketPal AI (Lesen MIT) · Luar talian sepenuhnya · Percuma & sumber terbuka
 >
-> v1.16.1 (143) · llama.cpp 10054 (ac2557c)
+> v2.0.0 (144) · llama.cpp 10054 (ac2557c)
 
 ---
 
@@ -490,7 +490,7 @@ relates: []
 > https://github.com/Hmission/pocketpal-ai-fork
 >
 > **Informacje o wersji**
-> Wersja: v1.16.1 (143) · Silnik: llama.cpp 10054 (ac2557c)
+> Wersja: v2.0.0 (144) · Silnik: llama.cpp 10054 (ac2557c)
 
 ### Wersja 3: Minimalna
 
@@ -498,7 +498,7 @@ relates: []
 >
 > Oparta na llama.cpp & llama.rn · Fork PocketPal AI (MIT License) · W pełni offline · Darmowe i open source
 >
-> v1.16.1 (143) · llama.cpp 10054 (ac2557c)
+> v2.0.0 (144) · llama.cpp 10054 (ac2557c)
 
 ---
 
@@ -536,7 +536,7 @@ relates: []
 > https://github.com/Hmission/pocketpal-ai-fork
 >
 > **Informações da Versão**
-> Versão: v1.16.1 (143) · Motor: llama.cpp 10054 (ac2557c)
+> Versão: v2.0.0 (144) · Motor: llama.cpp 10054 (ac2557c)
 
 ### Versão 3: Mínima
 
@@ -544,7 +544,7 @@ relates: []
 >
 > Construída sobre o llama.cpp & llama.rn · Fork do PocketPal AI (MIT License) · Totalmente offline · Grátis e open source
 >
-> v1.16.1 (143) · llama.cpp 10054 (ac2557c)
+> v2.0.0 (144) · llama.cpp 10054 (ac2557c)
 
 ---
 
@@ -582,7 +582,7 @@ relates: []
 > https://github.com/Hmission/pocketpal-ai-fork
 >
 > **Informações da Versão**
-> Versão: v1.16.1 (143) · Motor: llama.cpp 10054 (ac2557c)
+> Versão: v2.0.0 (144) · Motor: llama.cpp 10054 (ac2557c)
 
 ### Versão 3: Mínima
 
@@ -590,7 +590,7 @@ relates: []
 >
 > Construído sobre o llama.cpp & llama.rn · Fork do PocketPal AI (MIT License) · Totalmente offline · Grátis e open source
 >
-> v1.16.1 (143) · llama.cpp 10054 (ac2557c)
+> v2.0.0 (144) · llama.cpp 10054 (ac2557c)
 
 ---
 
@@ -628,7 +628,7 @@ relates: []
 > https://github.com/Hmission/pocketpal-ai-fork
 >
 > **Информация о версии**
-> Версия: v1.16.1 (143) · Движок: llama.cpp 10054 (ac2557c)
+> Версия: v2.0.0 (144) · Движок: llama.cpp 10054 (ac2557c)
 
 ### Версия 3: Минимальная
 
@@ -636,7 +636,7 @@ relates: []
 >
 > На базе llama.cpp & llama.rn · Форк PocketPal AI (MIT License) · Полностью офлайн · Бесплатно и с открытым кодом
 >
-> v1.16.1 (143) · llama.cpp 10054 (ac2557c)
+> v2.0.0 (144) · llama.cpp 10054 (ac2557c)
 
 ---
 
@@ -674,7 +674,7 @@ relates: []
 > https://github.com/Hmission/pocketpal-ai-fork
 >
 > **Інформація про версію**
-> Версія: v1.16.1 (143) · Двигун: llama.cpp 10054 (ac2557c)
+> Версія: v2.0.0 (144) · Двигун: llama.cpp 10054 (ac2557c)
 
 ### Версія 3: Мінімальна
 
@@ -682,7 +682,7 @@ relates: []
 >
 > На базі llama.cpp & llama.rn · Форк PocketPal AI (MIT License) · Повністю офлайн · Безкоштовно та з відкритим кодом
 >
-> v1.16.1 (143) · llama.cpp 10054 (ac2557c)
+> v2.0.0 (144) · llama.cpp 10054 (ac2557c)
 
 ---
 
@@ -717,7 +717,7 @@ relates: []
 > Dieses Projekt basiert auf PocketPal AI (MIT License) und folgt dem offenen, transparenten Geist der Open Source. Beiträge und Weiterentwicklungen sind willkommen.
 >
 > **Versionsinformationen**
-> Version: v1.16.1 (143) · Engine: llama.cpp 10054 (ac2557c)
+> Version: v2.0.0 (144) · Engine: llama.cpp 10054 (ac2557c)
 
 ### Version 3: Minimal
 
@@ -725,7 +725,7 @@ relates: []
 >
 > Basierend auf llama.cpp & llama.rn · Fork von PocketPal AI (MIT License) · Komplett offline · Kostenlos und Open Source
 >
-> v1.16.1 (143) · llama.cpp 10054 (ac2557c)
+> v2.0.0 (144) · llama.cpp 10054 (ac2557c)
 
 ---
 
@@ -760,7 +760,7 @@ relates: []
 > Ce projet est basé sur PocketPal AI (licence MIT) et suit l'esprit ouvert et transparent de l'open source. Contributions et œuvres dérivées sont les bienvenues.
 >
 > **Informations de version**
-> Version : v1.16.1 (143) · Moteur : llama.cpp 10054 (ac2557c)
+> Version : v2.0.0 (144) · Moteur : llama.cpp 10054 (ac2557c)
 
 ### Version 3 : Minimale
 
@@ -768,4 +768,4 @@ relates: []
 >
 > Construite sur llama.cpp & llama.rn · Fork de PocketPal AI (MIT License) · Entièrement hors ligne · Gratuit et open source
 >
-> v1.16.1 (143) · llama.cpp 10054 (ac2557c)
+> v2.0.0 (144) · llama.cpp 10054 (ac2557c)

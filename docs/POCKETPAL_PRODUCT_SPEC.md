@@ -319,7 +319,7 @@ NaN 指纹跨设备一致（c≡3 mod 64）→ 判定非设备特定 → fusion 
 
 ### 6.1 当前版本
 
-- **版本号**：1.16.1（版本号四处同步：.version / package.json / Android build.gradle / iOS project.pbxproj）
+- **版本号**：2.0.0（fork 首个自主版本，versionCode 144；版本号四处同步：.version / package.json / Android build.gradle / iOS project.pbxproj）
 - **上游基线**：PocketPal AI v1.16.1（MIT，2026 fork）
 - **模型阵容**：LLM 入选 7 件（Qwen3.5-2B Q8_0+mmproj / 4B Q4_K_M / LFM2.5-2.6B / LFM2.5-8B-A1B / Ministral-3-3B / MiniCPM5-1B 管家）；生图入选 3 件（DreamLite / SD3.5 / Z-Image）
 

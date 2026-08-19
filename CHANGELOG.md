@@ -7,7 +7,10 @@
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-08-19
+
 ### 新增
+- fork 首个自主版本号（2026-08-19）：版本号告别上游 PocketPal AI 遗产（1.16.1）——产品已具备聊天/生图/玩具工坊/记忆绘本/TRPG 冒险/完全开源全新面目，按 semver 定为 2.0.0（versionCode 144）；同步确立版本机制：每次发版四处同步（.version / package.json / build.gradle / pbxproj）+ CHANGELOG 收编定版，开发迭代以构建时间戳区分
 - 聊天页八项体验升级（2026-08-20）：①意图会话级状态机——Session 新增 intent 列（schema v8），首轮 classifyIntent 定值落库后沿用，意图胶囊点按四态选择器为唯一写入口（system 语气注入/胶囊/快照同源）；②助手卡 chrome 双行合并——AssistantTurnFooter 行1 动作/行2 统一指标行（captionS + 数值 brandAccent 600 + `·` 分隔），TurnMetricsRow 删除（每卡一块 chrome）；③placeholder 单源决策表——engineStatus 状态中枢五级优先（含管家 loading 分支「正在加载管家模型…」）；④顶栏紧凑化——新建会话 EditBox→加号、双钮 36px 紧凑触区、右侧行 gap 2；⑤发送钮双态描边——不可用=透明底+outlineVariant 圆形描边（删外层 opacity 包裹）；⑥n_ctx 单一事实源+每模型预调——上下文不足弹窗改写 setModelNCtx（与生成设置页同存储自动同步），加载链按内存 ceiling 沿 CONTEXT_LADDER 预调最大可装档（一次预调持久化）；⑦模型用途标签体系——设置页「用途」多选 chips（写作/代码）写 capabilities，选型升级 listModelsForTask（用户标签>指纹>兜底）弹窗多候选单选；⑧快捷行日记/绘本/读屏裁定不加（各有唯一入口，加入口违锋利原则）
 - PSS 安全预算（2026-08-19 K90 真机血证）：n_ctx 每模型预调天花板取 min(内存 ceiling, PSS_SAFE_BUDGET 4GB)——厂商 PSS 看护（HyperOS 实测 ~6GB 硬杀）是进程存活真正天花板，估算为理论值宁少勿杀；启动审计 auditPerModelNCtxAgainstPss 自愈旧版预调写入的超限档；用户手调不受限（决策可见）
 - 聊天顶栏重构（B18，2026-08-18）：模型胶囊管家感知三档显示（已加载模型→「管家 MiniCPM 1B」→选模型）；选择器卡片化（MODEL_MATRIX 入选说明+徽章+行内加载/卸载+管家禁卸+单槽脚注「加载新模型自动卸载」）
