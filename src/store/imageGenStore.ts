@@ -531,9 +531,27 @@ class ImageGenStore {
    */
   async loadDreamLiteEntry(): Promise<boolean> {
     if (this.modelLoaded) {
-      await this.unloadModel(); // 释放 SD（内部 engineMutex.release()）
+      try {
+        await this.unloadModel(); // 释放 SD（内部 engineMutex.release()）
+      } catch (e) {
+        console.warn('[DreamLite] unload SD failed:', e);
+      }
     }
-    await engineMutex.acquire('image');
+    // 互斥获取（复查 2026-08-20）：释放超时/失败 → 显式失败（落 error），
+    // 不再无限挂起——此前 acquire 在 try 外，reject 会穿透到 handleGenerate
+    // 造成「无失败卡 + taskKind 卡死」的静默断链。
+    try {
+      await engineMutex.acquire('image');
+    } catch (e: any) {
+      const msg = `引擎互斥超时: ${e?.message ?? e}`;
+      console.error('[DreamLite] acquire failed:', e);
+      runInAction(() => {
+        this.loading = false;
+        this.error = msg;
+      });
+      engineStatus.setError('image', msg);
+      return false;
+    }
     runInAction(() => {
       this.loading = true;
       this.error = null;
@@ -586,6 +604,9 @@ class ImageGenStore {
     steps: number,
     prompt: string,
   ): Promise<string | null> {
+    console.info(
+      `[DreamLite] generateDreamLiteEntry(${width}x${height}, steps=${steps}) prompt=${prompt.slice(0, 20)}…`,
+    );
     if (!this.dreamliteLoaded) {
       const ok = await this.loadDreamLiteEntry();
       if (!ok) {

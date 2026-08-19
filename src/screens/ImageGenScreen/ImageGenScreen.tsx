@@ -614,6 +614,9 @@ export const ImageGenScreen: React.FC = observer(() => {
 
   const handleGenerate = async (promptOverride?: string) => {
     const p = (promptOverride ?? prompt).trim();
+    console.info(
+      `[ImageGen] handleGenerate prompt='${p.slice(0, 30)}' isDream=${isDream} selected=${selectedEntry?.manifest.id ?? 'none'} generating=${imageGenStore.generating}`,
+    );
     if (!p) {
       // 复查 2026-08-20：空提示词点「出图」必须显式反馈（不静默）——
       // 此前静默早退导致「有动效无反应」，两台真机稳定复现

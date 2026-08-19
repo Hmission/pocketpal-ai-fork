@@ -18,6 +18,27 @@ const EXCLUSIVE_PAIRS: ReadonlyArray<readonly [EngineKind, EngineKind]> = [
   ['chat', 'image'],
 ];
 
+/** 释放互斥引擎的超时（复查 2026-08-20）：
+ * releaser 挂起（如 native 卸载卡死）时若无限等待，后续 acquire 永久阻塞——
+ * 生图「点出图无反应」的运行时根因候选之一。超时显式失败，不静默。 */
+const RELEASE_TIMEOUT_MS = 30_000;
+
+function withTimeout<T>(p: Promise<T>, ms: number, msg: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(msg)), ms);
+    p.then(
+      v => {
+        clearTimeout(t);
+        resolve(v);
+      },
+      e => {
+        clearTimeout(t);
+        reject(e);
+      },
+    );
+  });
+}
+
 class EngineMutex {
   private current: EngineKind | null = null;
   private releasers: Partial<Record<EngineKind, Releaser>> = {};
@@ -31,17 +52,33 @@ class EngineMutex {
   /**
    * 获取引擎使用权：按互斥矩阵释放所有与目标互斥的引擎，然后占用目标。
    * 串行化，last-one-wins 由调用方自管。
+   * 释放超时 → 置空闲并抛错给当前调用方（显式失败）；链自愈——
+   * 前一个 acquire 的失败不阻塞后续（try/catch 吞 prev）。
    */
   acquire(kind: EngineKind): Promise<void> {
     const prev = this.acquiring;
     this.acquiring = (async () => {
-      await prev;
+      try {
+        await prev;
+      } catch {
+        // 前一个 acquire 已失败（释放超时）：本 acquire 不继承错误，继续执行
+      }
       for (const [a, b] of EXCLUSIVE_PAIRS) {
         const other = a === kind ? b : b === kind ? a : null;
         if (other && this.current === other) {
           const rel = this.releasers[other];
           if (rel) {
-            await rel();
+            try {
+              await withTimeout(
+                rel(),
+                RELEASE_TIMEOUT_MS,
+                `${other} 引擎释放超时（30s），请重启应用重试`,
+              );
+            } catch (e) {
+              // 宁可显式失败也不永久挂起；置空闲避免下次 acquire 再卡
+              this.current = null;
+              throw e;
+            }
           }
           this.current = null;
         }
