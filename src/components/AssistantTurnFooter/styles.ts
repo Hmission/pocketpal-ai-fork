@@ -16,7 +16,8 @@ export const styles = ({theme}: {theme: Theme}) =>
       alignItems: 'center',
       // 固定高度：复制 icon(16) 统一基线，不随内容跳动
       height: 24,
-      gap: 6,
+      // task-6ad §20.4：播放/复制/重新生成间距加大防误触（图标 16px 与 hitSlop 14 不变）
+      gap: 14,
     },
     // 重新生成禁用态（agent 运行中 / 无激活模型）
     actionDisabled: {

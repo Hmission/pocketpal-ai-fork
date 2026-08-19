@@ -432,6 +432,57 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 | 压缩指标段 | `metrics-compacted` |
 | 自动压缩开关 | `auto-compaction-switch` |
 
+## 20. 聊天页 UI 三处优化（2026-08-20，task-6ad）
+
+> 依据：`.qoder/specs/聊天页UI三处优化方案_task-6ad.md`。单一事实源：本节 + 代码载体均为权威。
+> 代码载体：`AssistantAuthorRow`（新建）/ `ChatScreen.renderBubble` / `Message.renderAssistantTurn` /
+> `Bubble`·`ThinkingBubble`·`PendingIndicator`·`HeaderRight`·`AssistantTurnFooter` styles。
+
+### 20.1 垂直排序：模型徽章行上移到思考卡之前
+
+- **抽取共享组件 `AssistantAuthorRow`**（`src/components/AssistantAuthorRow/`，+ styles + index）：承载
+  ① 模型徽章（`message.metadata.modelName` → `getModelDisplayName` 中文简称，brandAccent captionS 600）；
+  ② 意图胶囊（`message.metadata.turnMetrics.intent` 四色 12% 底，点按 `askIntentChoice` → `setSessionIntent` 会话级状态机）。
+  从 `MessageType.Any` 提取，无徽章无意图不渲染；布局 `marginLeft: spacing.sm` / `marginBottom: spacing.xs` / `gap: spacing.xxs`（与现 renderBubble 作者标签行一致）。
+- **`assistant_turn` 渲染器**（`Message.renderAssistantTurn`）：行级顶部（所有 reasoning/content/talent block 之前）
+  插入一行 `<AssistantAuthorRow message={turn} />`，每 turn 仅一次；根除原 legacy 多块路径潜在的徽章重复渲染，单一事实源。
+- **`text` 类消息**（`renderBubble` 路径）保持「徽章 → 卡片」顺序，复用同一组件；`assistant_turn` 与 `text` 共用 `AssistantAuthorRow`，徽章/意图渲染逻辑收口一处。
+- 意图胶囊点击行为原样保留（会话级状态机，IntentPickerHost 根挂载点不变）。
+
+### 20.2 圆角区分：用户右上直角 / 大模型系左上直角（同族同步）
+
+- **语义**：用户发出卡片 = 右上角直角（尾角在右上）；大模型回答系卡片 = 左上角直角（尾角在左上）。
+- **`Bubble/styles.ts` contentContainer**：四角显式拆分（删除 `borderRadius` 统一速记——其会覆盖顶部两角，使直角裁剪失效）；
+  底部两角逻辑保持（`roundBorder` 组内连续）。`overflow: 'hidden'` 已有，直角裁剪自动生效。
+- **覆盖范围**：用户文本消息 / assistant 正文卡片 / legacy text / 图片·文件·自定义消息（共用 contentContainer）全族统一。
+- **`ThinkingBubble/styles.ts` container**：左上直角（`borderTopLeftRadius: 0`）+ 其余三角 `theme.radius.l`；
+  折叠态 `collapsedRow` 无卡片背景，不动。
+- **`PendingIndicator/styles.ts` card**：左上直角（`borderTopLeftRadius: 0`）+ 其余三角 `theme.borders.messageBorderRadius`。
+
+### 20.3 顶栏三控件水平等距
+
+- **`HeaderRight/styles.ts` headerRightContainer**：增加 `gap: 10`，使 模型胶囊 ↔ 加号 = 加号 ↔ 三点 = 10px（与胶囊 paddingHorizontal 8 叠加后视觉等距）；
+  `displayMemUsage` 开启时的 UsageStats 同组生效，属预期。
+
+### 20.4 补充（已确认）：正文卡快捷图标间距加大
+
+- **`AssistantTurnFooter/styles.ts` actionsRow**：`gap: 6 → 14`（播放 / 复制 / 重新生成）；图标 16px 与既有 hitSlop 14 不变，防误触。
+
+### 20.5 testID 登记（组件迁移保持，位置变更）
+
+| testID | 位置 |
+|---|---|
+| assistant-model-badge | `AssistantAuthorRow` 模型徽章（`assistant_turn` / `text` 复用同一组件） |
+| assistant-intent-capsule | `AssistantAuthorRow` 意图胶囊（点按触发会话级状态机） |
+
+### 20.6 约束 / 验证
+
+- 颜色一律走 theme token（品牌黄 `brandAccent` / 意图四色 `theme.colors.*`），禁硬编码；深浅色双模式同族同步。
+- 无 l10n 文案变更，无需 `validate:l10n`。
+- 验证链路：`npx tsc --noEmit` 零错 → `npx jest` 相关套件
+  （`Message.assistantTurn` / `ChatView.assistantTurn` / `ThinkingBubble` / `PendingIndicator` / `HeaderRight` / `ChatHeader` / `AssistantTurnFooter`）全绿 →
+  真机覆盖安装 + 冷启动目测：① 徽章行 → 思考卡 → 正文卡顺序；② 用户卡右上直角、回答卡/思考卡/进度卡左上直角；③ 顶栏三控件间距等距。
+
 ## 变更日志
 
 | 日期 | 版本 | 变更 |
@@ -454,3 +505,4 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 | 2026-08-19 | 4.1 | §19 上下文压缩机制（B19）：发送前预算决策机 + banner「压缩上下文」CTA（选择即记忆）+ 压缩占位卡片 + 指标行「压缩 N」+ 设置页策略三选与自动压缩开关（CONTEXT_COMPACTION_SPEC） |
 | 2026-08-19 | 4.2 | §18.9 进度监控卡卡片化：容器升级 assistant 卡片设计语言（底色+圆角），K90 真机复查「一行文本视觉权重不足」裁定 |
 | 2026-08-20 | 4.3 | §19 B19.1 链路根治（小米 13 DRC 血证，CONTEXT_COMPACTION_SPEC v1.1）：触发线含生成预留(512)、水位双源校准（实测钉底估算漂移）、摘要工作集预算化（min(6000, n_ctx−400)）、满态显式失败（饱和跳过压缩，context-full banner 用户主权，不静默不换引擎） |
+| 2026-08-20 | 4.4 | §20 聊天页 UI 三处优化（task-6ad）：抽取 `AssistantAuthorRow` 单一事实源（徽章/意图上移助手卡顶行，`assistant_turn` 与 `text` 复用）；圆角区分（用户右上直角 / 回答系左上直角，Bubble·ThinkingBubble·PendingIndicator 同族）；顶栏三控件等距（HeaderRight gap 10）；footer 快捷图标间距 6→14 |

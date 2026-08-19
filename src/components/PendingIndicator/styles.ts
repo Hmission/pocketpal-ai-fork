@@ -21,7 +21,11 @@ export const createStyles = (theme: Theme) =>
       paddingVertical: 10,
       maxWidth: '90%',
       backgroundColor: theme.colors.assistantBubbleBackground,
-      borderRadius: theme.borders.messageBorderRadius,
+      // task-6ad §20.2：生成进度卡属大模型系，左上直角（与思考卡/回答卡同族）
+      borderTopLeftRadius: 0,
+      borderTopRightRadius: theme.borders.messageBorderRadius,
+      borderBottomLeftRadius: theme.borders.messageBorderRadius,
+      borderBottomRightRadius: theme.borders.messageBorderRadius,
       overflow: 'hidden',
     },
     row: {

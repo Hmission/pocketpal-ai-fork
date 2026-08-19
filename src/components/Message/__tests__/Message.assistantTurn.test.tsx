@@ -830,5 +830,49 @@ describe('Message — AssistantTurn renderer', () => {
       );
       expect(getAllByTestId('assistant-turn-footer')).toHaveLength(1);
     });
+
+    it('H — author row (badge + intent) renders once at TOP of assistant_turn, BEFORE reasoning/content', () => {
+      const message = makeDerivedTurn(
+        [
+          {
+            reasoningContent: 'Let me think…',
+            content: 'The answer is 42.',
+          },
+        ],
+        {
+          metadata: {
+            modelName: 'qwen2.5-4b-q4',
+            turnMetrics: {intent: 'qa'},
+          },
+        } as any,
+      );
+      const {getByTestId, queryByTestId, UNSAFE_root} = render(
+        <Message
+          message={message}
+          messageWidth={440}
+          onMessagePress={jest.fn()}
+          roundBorder
+          showAvatar
+          showName
+          showStatus
+        />,
+      );
+      // Author row present with both badge + intent testIDs.
+      expect(getByTestId('assistant-author-row')).toBeTruthy();
+      expect(getByTestId('assistant-model-badge')).toBeTruthy();
+      expect(getByTestId('assistant-intent-capsule')).toBeTruthy();
+      // Single source of truth: badge rendered exactly once (no per-block dup).
+      expect(queryByTestId('assistant-model-badge')).toBeTruthy();
+      // Order: author row precedes the reasoning block.
+      const nodes = UNSAFE_root.findAll((n: any) => n.props && n.props.testID);
+      const authorIdx = nodes.findIndex(
+        (n: any) => n.props.testID === 'assistant-author-row',
+      );
+      const reasoningIdx = nodes.findIndex(
+        (n: any) => n.props.testID === 'ContentContainer-reasoning',
+      );
+      expect(authorIdx).toBeGreaterThanOrEqual(0);
+      expect(reasoningIdx).toBeGreaterThan(authorIdx);
+    });
   });
 });

@@ -1,11 +1,12 @@
 import React, {useRef, ReactNode, useState} from 'react';
-import {View, Text, TouchableOpacity} from 'react-native';
+import {View} from 'react-native';
 
 import {observer} from 'mobx-react';
 import {runInAction} from 'mobx';
 import {useNavigation} from '@react-navigation/native';
 
 import {
+  AssistantAuthorRow,
   Bubble,
   ChatView,
   ErrorSnackbar,
@@ -28,8 +29,6 @@ import {hasVideoCapability} from '../../utils/pal-capabilities';
 import {L10nContext} from '../../utils';
 import {resolveReasoningCapability} from '../../utils/reasoningCapability';
 import {MessageType, Theme} from '../../utils/types';
-import {getModelDisplayName} from '../../utils/modelDisplayNames';
-import {withOpacity} from '../../utils/colorUtils';
 import {ErrorState} from '../../utils/errors';
 import {user, assistant} from '../../utils/chat';
 import {useChatScheduler} from '../../hooks/useChatScheduler';
@@ -42,28 +41,12 @@ import {TextMessage} from '../../components/TextMessage';
 import {promptWriter} from '../../services/promptWriter';
 import {imageGenStore} from '../../store/imageGenStore';
 import {engineStatus} from '../../store/engineStatus';
-import {askIntentChoice} from '../../components/ui/IntentPicker';
 import {ROUTES} from '../../utils/navigationConstants';
 
 import {VideoPalScreen} from './VideoPalScreen';
 
-// B18 §17：意图四色胶囊（作者标签行，与模型徽章同高）。
-// 硬编码 hex 收口 DS token：闲聊=中性 / 倾诉=error / 问答=info / 任务=warning。
-const INTENT_LABEL: Record<string, string> = {
-  chat: '闲聊',
-  vent: '倾诉',
-  qa: '问答',
-  task: '任务',
-};
-
-// §18.1 意图胶囊点按：会话级状态机的唯一用户写入口。
-// 选择器取消（null）不改状态；Host 未挂载时 fail-fast 同样不改状态。
-const handleIntentPress = async () => {
-  const next = await askIntentChoice(chatSessionStore.activeSessionIntent);
-  if (next) {
-    await chatSessionStore.setSessionIntent(next);
-  }
-};
+// B18 §17 / §18.1：模型徽章 + 意图胶囊已抽离至 AssistantAuthorRow（单一事实源），
+// ChatScreen.renderBubble 与 Message.renderAssistantTurn 共用。本文件不再内联。
 
 const renderBubble = ({
   child,
@@ -78,73 +61,11 @@ const renderBubble = ({
   scale?: any;
   theme: Theme;
 }) => {
-  // 模型归属徽章：每轮会话显示发出该消息的模型中文简称（brandAccent 小字）
-  const modelName =
-    message.author.id !== user.id
-      ? (message.metadata as {modelName?: string} | undefined)?.modelName
-      : undefined;
-  // B18 §17：意图胶囊从状态栏上移到作者标签行（快照驱动，无快照不渲染）
-  const intent =
-    message.author.id !== user.id
-      ? (
-          message.metadata as
-            | {turnMetrics?: {intent?: string}}
-            | undefined
-        )?.turnMetrics?.intent
-      : undefined;
-  const intentColor =
-    intent === 'vent'
-      ? theme.colors.error
-      : intent === 'qa'
-        ? theme.colors.info
-        : intent === 'task'
-          ? theme.colors.warning
-          : theme.colors.onSurfaceVariant;
   return (
     <View>
-      {modelName || intent ? (
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: theme.spacing.xxs,
-            marginLeft: theme.spacing.sm,
-            marginBottom: theme.spacing.xs,
-          }}>
-          {modelName ? (
-            <Text
-              testID="assistant-model-badge"
-              style={{
-                ...theme.typography.captionS,
-                fontWeight: '600',
-                color: theme.colors.brandAccent,
-              }}>
-              {getModelDisplayName({name: modelName})}
-            </Text>
-          ) : null}
-          {intent && INTENT_LABEL[intent] ? (
-            <TouchableOpacity
-              testID="assistant-intent-capsule"
-              onPress={handleIntentPress}
-              activeOpacity={0.7}
-              style={{
-                backgroundColor: withOpacity(intentColor, 0.12),
-                borderRadius: theme.radius[theme.shapeRoles.pill],
-                paddingHorizontal: theme.spacing.xs,
-                paddingVertical: 1,
-              }}>
-              <Text
-                style={{
-                  ...theme.typography.captionS,
-                  fontWeight: '500',
-                  color: intentColor,
-                }}>
-                {INTENT_LABEL[intent]}
-              </Text>
-            </TouchableOpacity>
-          ) : null}
-        </View>
-      ) : null}
+      {/* task-6ad §20.1：徽章/意图改走单一事实源 AssistantAuthorRow
+          （与 assistant_turn 共用），text 类消息保持「徽章 → 卡片」顺序 */}
+      <AssistantAuthorRow message={message} />
       <Bubble
         child={child}
         message={message}

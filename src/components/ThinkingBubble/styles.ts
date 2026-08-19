@@ -26,7 +26,12 @@ export const createStyles = (theme: Theme) => {
       // collapsed state, the expanded card is rare; the original 16
       // bloated the layout for the common collapsed case.
       marginVertical: 6,
-      borderRadius: theme.radius.l,
+      // task-6ad §20.2：大模型系卡片左上直角（尾角在左上），其余三角保持圆角。
+      // 折叠态 collapsedRow 无卡片背景，不动。
+      borderTopLeftRadius: 0,
+      borderTopRightRadius: theme.radius.l,
+      borderBottomLeftRadius: theme.radius.l,
+      borderBottomRightRadius: theme.radius.l,
       overflow: 'hidden',
       backgroundColor: bubbleBackground,
       borderWidth: 1,

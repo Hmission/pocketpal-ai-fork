@@ -9,6 +9,7 @@ import {useTheme} from '../../hooks';
 
 import styles, {turnBlockStyles} from './styles';
 import {
+  AssistantAuthorRow,
   AssistantTurnFooter,
   Avatar,
   StatusIcon,
@@ -380,6 +381,14 @@ export const Message = observer(
           lastContentStepIdx = stepIdx;
         }
       });
+
+      // task-6ad §20.1：作者标签行（模型徽章 + 意图胶囊）置于所有
+      // reasoning/content/talent block 之前，turn 级仅渲染一次。
+      // 单一事实源 = AssistantAuthorRow（与 text 消息共用），消除
+      // 原 legacy 多块路径潜在的徽章重复渲染。
+      blocks.push(
+        <AssistantAuthorRow key="author-row" message={message} />,
+      );
 
       steps.forEach((step, stepIdx) => {
         // Reasoning and content render as separate blocks, reasoning

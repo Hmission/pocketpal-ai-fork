@@ -19,6 +19,11 @@ export const styles = ({
       backgroundColor: currentUserIsAuthor
         ? theme.colors.authorBubbleBackground
         : theme.colors.assistantBubbleBackground,
+      // task-6ad §20.2 圆角区分：用户右上直角、回答系左上直角（同族同步）。
+      // 四角显式拆分（删 borderRadius 统一速记——其会覆盖顶部两角，使直角失效）。
+      // 底部两角保持原 roundBorder 逻辑（组内连续直角）。overflow:hidden 已有。
+      borderTopLeftRadius: currentUserIsAuthor ? theme.borders.messageBorderRadius : 0,
+      borderTopRightRadius: currentUserIsAuthor ? 0 : theme.borders.messageBorderRadius,
       borderBottomLeftRadius:
         currentUserIsAuthor || roundBorder
           ? theme.borders.messageBorderRadius
@@ -29,7 +34,6 @@ export const styles = ({
           : 0
         : theme.borders.messageBorderRadius,
       borderColor: 'transparent',
-      borderRadius: theme.borders.messageBorderRadius,
       overflow: 'hidden',
     },
     dateHeader0: {
