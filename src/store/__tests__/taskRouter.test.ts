@@ -106,6 +106,16 @@ describe('taskRouter', () => {
     it('防误伤：写代码含「游戏」目标词不被 play 抢占（code 优先）', () => {
       expect(routeTask('帮我写一个游戏的代码').task).toBe('code');
     });
+    it('倒装话术「把贪吃蛇做出来」命中（K90 血证修复）', () => {
+      expect(routeTask('立刻调render_html把贪吃蛇做出来，要能玩。').task).toBe(
+        'play',
+      );
+      expect(routeTask('把贪吃蛇做出来').task).toBe('play');
+    });
+    it('倒装防误伤：无收尾动词不命中', () => {
+      expect(routeTask('昨晚打游戏太晚了').task).toBe('chitchat');
+      expect(routeTask('把游戏截图发我').task).toBe('chitchat');
+    });
   });
 
   describe('adventure 任务（P12 城主，ADVENTURE_SPEC v1）', () => {
