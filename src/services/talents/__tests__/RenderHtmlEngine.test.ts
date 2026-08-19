@@ -88,6 +88,8 @@ describe('RenderHtmlEngine', () => {
       expect(typeof def.function.description).toBe('string');
       expect(def.function.parameters).toBeDefined();
       expect(def.function.parameters.required).toContain('html');
+      // title 必填（成品即藏品：无名成品玩具箱拒收，K90 实证）
+      expect(def.function.parameters.required).toContain('title');
     });
 
     it('description mandates tool use for toy/game requests (3B 真机实证：弱描述模型只吐代码不调工具)', () => {

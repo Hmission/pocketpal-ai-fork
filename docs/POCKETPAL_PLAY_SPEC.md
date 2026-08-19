@@ -104,6 +104,7 @@ relates: [POCKETPAL_PRODUCT_SPEC, POCKETPAL_STARMAP_DOMAINS, POCKETPAL_MODEL_MAT
 | 2026-08-19 | 1.1 | 闭环收口：PLAY-2 文件级滚动淘汰（unlink 出局 html）——名单与文件同生共死 |
 | 2026-08-19 | 1.2 | 闭环 PLAY-3：无显式 Pal 会话的工具兜底（getCurrentCompletionSettings → AIOS 女妖 pact），play/adventure 工具任务不再静默退化 |
 | 2026-08-19 | 1.3 | 磨利 PLAY-1：render_html 工具描述与玩具匠片段首行加调用触发令（玩具请求 MUST call，禁止聊天内吐代码/空谈概念）——K90 真机实证工具在场但模型不调用 |
+| 2026-08-19 | 1.4 | title 升必填（schema required）：K90 实证模型省略 title → 成品不具名 → 玩具箱拒收，「成品即藏品」断链；schema 级契约非兜底 |
 
 ## 关联文档
 

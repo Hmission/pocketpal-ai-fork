@@ -53,7 +53,9 @@ Reply with at most one short sentence what you build`,
           properties: {
             title: {
               type: 'string',
-              description: 'Short label shown above the preview.',
+              description:
+                'REQUIRED short Chinese label (e.g. "贪吃蛇") shown above the ' +
+                'preview and used as the toy chest entry name.',
             },
             html: {
               type: 'string',
@@ -61,7 +63,9 @@ Reply with at most one short sentence what you build`,
                 'Complete, self-contained HTML document or fragment to render.',
             },
           },
-          required: ['html'],
+          // title 必填（2026-08-19 K90 实证：模型省略 title → 成品不具名 →
+          // 玩具箱拒收，「成品即藏品」公理断链）。schema 级契约，非兜底。
+          required: ['html', 'title'],
         },
       },
     };
