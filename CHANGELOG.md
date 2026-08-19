@@ -7,6 +7,10 @@
 
 ## [Unreleased]
 
+### 修复
+- 出图按钮失效根治（2026-08-20，两台真机 + DRC 三重复现）：`onPress={onGenerate}` 直传 async 函数，RN 把 GestureResponderEvent 作为首参传入——`handleGenerate(event)` 入口 `(event ?? prompt).trim()` 抛 TypeError 被 Bridgeless 事件系统静默吞掉（有按压缩放动效但出图零响应）。回归引入点 commit 44689f8 加 `promptOverride?: string` 参数（供 reroll 用），此前无参时 event 被忽略不炸。修复 `onPress={() => onGenerate()}` 显式无参包装 + testID="imagegen-generate"；RNTL fireEvent.press 传 0 参（源码 handler(...data) 实验实锤）与真机必传 event 的系统性盲区——回归防线 `fireEvent.press(el, {nativeEvent: {touches, changedTouches}})` 显式注入 event 模拟真机
+- B19.1 上下文压缩链路根治（2026-08-20，小米 13 DRC 真机血证）：决策 compact 正确但压缩执行死锁（摘要请求与主生成双硬错 Context is full）。6D 排查三条缝隙：估算与实测脱节（banner 用 native 实测 vs 治理用字符估算）、无生成预留可单轮跳满、摘要工作集按字符不限 token 可自身溢出（llama.rn ctx_shift 默认 false 硬错）。根治四项：水位双源校准（resolveWatermark 消费 lastCompletionResult.used 钉底）+ 生成预留（GENERATION_RESERVE=512 触发线含本轮生成预算）+ 摘要工作集预算化（tokenBudgetToMaxChars 1:1 保守折算 min(6000, n_ctx−400)）+ 满态显式失败（饱和跳过压缩直接照发，context-full banner 用户主权，不静默不换引擎——大王裁定换模型不是正道）；撤销错误字符串匹配回退补丁；释放量校验（保护区外全压仍不达缺口诚实 null，target 驱动突破 20 条上限）
+
 ### 改进
 - 进度监控卡卡片化（2026-08-19，CHAT_UI_SPEC §18.9 v4.2）：PendingIndicator 容器升级为 assistant 卡片设计语言（assistantBubbleBackground 底色 + messageBorderRadius 圆角），与聊天流卡片同一视觉族；K90 真机三截图验证
 - 代码/玩具匠终局选型 LFM2.5-2.6B（2026-08-20，大王钦定）：替代 Ministral-3-3B（迭代合规不稳 PLAY-6）；LFM2.5 族工具调用专长 + 1.67GB PSS 安全（LFM8B 5.16GB 被 K90 HyperOS PSS 看护 6GB 硬杀，厂商锁死不可关）；K90 真机三点验收全绿（选型生效 + 加载 2s + 玩具生成落盘）

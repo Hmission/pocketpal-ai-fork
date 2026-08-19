@@ -2,9 +2,11 @@
  * 上下文预算估算测试（批次 A：纯函数核心）。
  */
 import {
+  GENERATION_RESERVE,
   countTokensExact,
   estimateMessageTokens,
   estimateMessagesTokens,
+  resolveWatermark,
 } from '../budget';
 import type {ChatMessage} from '../../../utils/types';
 
@@ -30,9 +32,7 @@ describe('estimateMessagesTokens', () => {
       {role: 'user', content: 'hello'},
     ];
     const total = estimateMessagesTokens(messages);
-    expect(total).toBeGreaterThan(
-      estimateMessageTokens('你好'.repeat(100)) + 4,
-    );
+    expect(total).toBeGreaterThan(estimateMessageTokens('你好'.repeat(100)) + 4);
     // 200（中文） + 8（system 开销） + 2（hello=ceil(5/4)） + 8（user 开销）
     expect(total).toBe(200 + 8 + 2 + 8);
   });
@@ -60,6 +60,27 @@ describe('estimateMessagesTokens', () => {
   });
 });
 
+describe('B19.1 resolveWatermark 水位实测校准', () => {
+  it('无实测基线回退估算', () => {
+    expect(resolveWatermark(1000)).toBe(1000);
+    expect(resolveWatermark(1000, 0)).toBe(1000);
+  });
+
+  it('实测高于估算 → 取实测（估算低估被钉底）', () => {
+    expect(resolveWatermark(3000, 6636)).toBe(6636);
+  });
+
+  it('估算高于实测（压缩后水位回落）→ 取估算', () => {
+    expect(resolveWatermark(5000, 3000)).toBe(5000);
+  });
+});
+
+describe('B19.1 GENERATION_RESERVE', () => {
+  it('预留与默认 n_predict 同阶（512）', () => {
+    expect(GENERATION_RESERVE).toBe(512);
+  });
+});
+
 describe('countTokensExact', () => {
   it('ctx 缺失返回 null（回退轻量估算）', async () => {
     expect(await countTokensExact(undefined, 'hi')).toBeNull();
@@ -67,11 +88,7 @@ describe('countTokensExact', () => {
 
   it('tokenize 返回 tokens 数组长度', async () => {
     const ctx = {
-      tokenize: jest.fn().mockResolvedValue({
-        tokens: [1, 2, 3],
-        has_media: false,
-        bitmap_hashes: [],
-      }),
+      tokenize: jest.fn().mockResolvedValue({tokens: [1, 2, 3], has_media: false, bitmap_hashes: []}),
     } as any;
     expect(await countTokensExact(ctx, 'hi')).toBe(3);
   });

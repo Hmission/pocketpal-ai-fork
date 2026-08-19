@@ -26,6 +26,32 @@ describe('decideContextAction', () => {
         decideContextAction(base({used: 0.8 * 5120, policy: 'ask'})),
       ).not.toBe('send');
     });
+
+    it('B19.1 预留缺省 0 向后兼容：79% 仍 send', () => {
+      expect(
+        decideContextAction(base({used: 0.79 * 5120, policy: 'compact'})),
+      ).toBe('send');
+    });
+  });
+
+  describe('B19.1 生成预留触发线', () => {
+    it('79% + 预留 512 → 触发（单轮无法从阈值下跳满）', () => {
+      // 0.79×5120=4045，+512=4557 ≥ 0.8×5120=4096
+      expect(
+        decideContextAction(
+          base({used: 4045, policy: 'compact', generationReserve: 512}),
+        ),
+      ).toBe('compact');
+    });
+
+    it('预留未跨线仍 send', () => {
+      // 3500 + 512 = 4012 < 4096
+      expect(
+        decideContextAction(
+          base({used: 3500, policy: 'compact', generationReserve: 512}),
+        ),
+      ).toBe('send');
+    });
   });
 
   describe('expand 策略', () => {

@@ -19,7 +19,7 @@ export type ContextPolicy = 'expand' | 'compact' | 'ask';
 export type ContextAction = 'send' | 'expand' | 'compact' | 'ask';
 
 export interface DecideContextInput {
-  /** 组装后（system+召回+消息）估算 token */
+  /** 组装后（system+召回+消息）估算 token（B19.1：建议传 resolveWatermark 校准后的水位） */
   used: number;
   /** 生效 n_ctx（每模型覆盖优先，全局 fallback） */
   nCtx: number;
@@ -29,11 +29,18 @@ export interface DecideContextInput {
   policy: ContextPolicy;
   /** 触发阈值（used/n_ctx），默认 0.8 */
   threshold?: number;
+  /**
+   * B19.1 生成预留：触发线含本轮生成预算（n_predict 同阶），保证触发
+   * 压缩时上下文仍剩足够工作空间（摘要请求 + 本轮回复），单轮无法从
+   * 阈值下直接跳满。缺省 0 向后兼容（banner 同源调用不传）。
+   */
+  generationReserve?: number;
 }
 
 export function decideContextAction(input: DecideContextInput): ContextAction {
   const threshold = input.threshold ?? WARNING_THRESHOLD;
-  if (input.used < input.nCtx * threshold) {
+  const reserve = input.generationReserve ?? 0;
+  if (input.used + reserve < input.nCtx * threshold) {
     return 'send';
   }
   switch (input.policy) {

@@ -93,6 +93,7 @@ beforeEach(() => {
   chatSessionStore.isGenerating = false;
   chatSessionStore.isStopping = false;
   chatSessionStore.lastCompaction = null;
+  chatSessionStore.lastCompletionResult = undefined;
 
   modelStore.context = new LlamaContext(mockLlamaContextParams);
   modelStore.engine = {
@@ -263,6 +264,74 @@ describe('useChatSession 上下文压缩链路（B19）', () => {
     });
 
     expect(mockCompact).not.toHaveBeenCalled();
+  });
+
+  it('B19.1 满态跳过：上轮 contextFull 实测且水位仍满 → 不尝试压缩（死锁防御，走显式失败链路）', async () => {
+    const longMessages = [
+      longUser(0),
+      longAssistant(0),
+      longUser(1),
+      longAssistant(1),
+      longUser(2),
+      longAssistant(2),
+      longUser(3),
+      longAssistant(3),
+    ];
+    stubCurrentSessionMessages(longMessages);
+    runInAction(() => {
+      (chatSessionStore.sessions as any)[0].messages = longMessages;
+      (modelStore as any).perModelContextPolicy = {'model-1': 'compact'};
+      // 上轮 native 实测：contextFull 且水位 = n_ctx（4096）
+      (chatSessionStore as any).lastCompletionResult = {
+        used: 4096,
+        contextFull: true,
+        isRemote: false,
+      };
+    });
+
+    const {result} = renderHook(() =>
+      useChatSession({current: null}, textMessage.author, mockAssistant),
+    );
+    await act(async () => {
+      await result.current.handleSendPress(textMessage);
+    });
+
+    // 满态：摘要请求与主生成都会立即硬错，跳过压缩直接照发
+    // （既有错误链路 + context-full banner 呈现，用户主权选择）
+    expect(mockCompact).not.toHaveBeenCalled();
+  });
+
+  it('B19.1 水位实测校准：估算低于阈值但实测超阈 → 仍触发压缩（估算漂移被钉底）', async () => {
+    // 估算側：短会话（远低于 0.8×4096 阈值）；实测側：上轮 native 实测已超阈
+    stubCurrentSessionMessages([
+      longUser(0),
+      longAssistant(0),
+      longUser(1),
+      longAssistant(1),
+      longUser(2),
+      longAssistant(2),
+      longUser(3),
+      longAssistant(3),
+    ]);
+    runInAction(() => {
+      (modelStore as any).perModelContextPolicy = {'model-1': 'compact'};
+      // 实测水位 3900 + 预留 512 = 4412 ≥ 0.8×4096=3276.8 → 触发
+      (chatSessionStore as any).lastCompletionResult = {
+        used: 3900,
+        contextFull: false,
+        isRemote: false,
+      };
+    });
+    mockCompact.mockResolvedValue(null);
+
+    const {result} = renderHook(() =>
+      useChatSession({current: null}, textMessage.author, mockAssistant),
+    );
+    await act(async () => {
+      await result.current.handleSendPress(textMessage);
+    });
+
+    expect(mockCompact).toHaveBeenCalledTimes(1);
   });
 
   it('远程模型不触发压缩', async () => {

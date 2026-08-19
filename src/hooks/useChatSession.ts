@@ -27,14 +27,21 @@ import {extractAndSaveMemories} from '../services/aiosMemory';
 import {assembleContext} from '../services/aiosMemory/contextAssembler';
 import {getLastRecallInfo} from '../services/aiosMemory/contextAssembler';
 import {getLastWriteTime} from '../services/aiosMemory/conversationLog';
-import {getLastSentiment, classifyIntent} from '../services/aiosMemory/rituals';
+import {
+  getLastSentiment,
+  classifyIntent,
+} from '../services/aiosMemory/rituals';
 import {awaitEngineReady, engineIsBusy} from '../utils/engineReady';
 import {appendConversation} from '../services/aiosMemory/conversationLog';
 import {compactAndFlush} from '../services/aiosMemory/compaction';
 import {maybeClosingSummary, selfCheck} from '../services/aiosMemory/rituals';
 import {saveToy} from '../services/toyChest';
 import {compactSessionAndMark} from '../services/contextCompaction';
-import {estimateMessagesTokens} from '../services/contextCompaction/budget';
+import {
+  estimateMessagesTokens,
+  resolveWatermark,
+  GENERATION_RESERVE,
+} from '../services/contextCompaction/budget';
 import {decideContextAction} from '../services/contextCompaction/decision';
 import {hasModelUpgradeFitting} from '../components/IncreaseContextSheet/fitStatus';
 import {
@@ -204,6 +211,17 @@ const prepareCompletion = async ({
   let compactedCount = 0;
   const activeNCtx = modelStore.activeContextSettings?.n_ctx;
   const activeModelForBudget = modelStore.activeModel;
+  // DRC 诊断：追踪治理决策各分量（B19 真机验证）
+  emit('chat', 'chat.budget_diag', {
+    activeNCtx: activeNCtx ?? null,
+    modelId: activeModelForBudget?.id ?? null,
+    origin: activeModelForBudget?.origin ?? null,
+    autoCompact: modelStore.contextAutoCompaction,
+    policy: activeModelForBudget?.id
+      ? modelStore.getContextPolicy(activeModelForBudget.id)
+      : null,
+    msgCount: messages.length,
+  });
   if (
     activeNCtx &&
     activeNCtx > 0 &&
@@ -225,18 +243,51 @@ const prepareCompletion = async ({
         modelStore.availableMemoryCeiling ?? 0,
       ),
     );
-    const used = estimateMessagesTokens(messages);
+    // B19.1 水位实测校准：字符估算对英文/符号系统性低估，用上一轮 native
+    // 实测（tokens_evaluated + tokens_predicted）钉底，双源取大者。
+    const lastMeasured = chatSessionStore.lastCompletionResult?.used;
+    const used = resolveWatermark(estimateMessagesTokens(messages), lastMeasured);
+    // B19.1 满态跳过（死锁防御）：上轮实测 contextFull 且水位仍满 → 压缩
+    // 的摘要请求与主生成都会立即硬错（llama.rn ctx_shift=false），属预防
+    // 失灵的异常态——跳过压缩直接照发，由既有错误链路 + context-full
+    // banner 呈现，用户主权选择（增大上下文/新会话），不静默不换引擎。
+    const contextSaturated =
+      chatSessionStore.lastCompletionResult?.contextFull === true &&
+      used >= activeNCtx;
+    if (contextSaturated) {
+      emit('chat', 'chat.budget_decision', {
+        used,
+        nCtx: activeNCtx,
+        saturated: true,
+        action: 'send-saturated',
+      });
+    } else {
     const action = decideContextAction({
       used,
       nCtx: activeNCtx,
       canExpand,
+      generationReserve: GENERATION_RESERVE,
       policy: modelStore.getContextPolicy(modelStore.activeModelId),
+    });
+    // DRC 诊断：治理决策结果（B19.1 含水位/实测基线/预留）
+    emit('chat', 'chat.budget_decision', {
+      used,
+      lastMeasured: lastMeasured ?? null,
+      nCtx: activeNCtx,
+      reserve: GENERATION_RESERVE,
+      threshold: used / activeNCtx,
+      canExpand,
+      policy: modelStore.getContextPolicy(modelStore.activeModelId),
+      action,
     });
     if (action === 'compact') {
       const result = await compactSessionAndMark(
         chatSessionStore.activeSessionId ?? '',
         currentMessages,
-        {targetReleaseTokens: Math.max(1, used - activeNCtx * 0.7)},
+        {
+          targetReleaseTokens: Math.max(1, used - activeNCtx * 0.7),
+          nCtx: activeNCtx,
+        },
       );
       if (result) {
         compactedCount = result.compactedCount;
@@ -263,8 +314,12 @@ const prepareCompletion = async ({
           ],
           [...filteredHistory, {role: 'user', content: userMessageContent}],
         );
+      } else {
+        // DRC 诊断：压缩返回 null（选片/释放校验/摘要失败），照发走既有失败链路
+        emit('chat', 'chat.compact_stage', {stage: 'compact-null-send-as-is'});
       }
     }
+    } // else（非满态）结束
   }
 
   // Reseed the read_url exfiltration allowlist for this run; the trust policy
@@ -598,7 +653,9 @@ async function applyEventToStore(
             const used = snapshot?.used ?? 0;
             const recall = getLastRecallInfo();
             return {
-              ctxPct: nCtx ? Math.min(100, Math.round((used / nCtx) * 100)) : 0,
+              ctxPct: nCtx
+                ? Math.min(100, Math.round((used / nCtx) * 100))
+                : 0,
               writeTime: getLastWriteTime() ?? Date.now(),
               recallCount: recall.count,
               recallPreview: recall.preview ?? [],
@@ -786,21 +843,18 @@ export const useChatSession = (
       model: modelStore.activeModel,
     });
 
-    const {
-      cleanCompletionParams,
-      messageInfo,
-      compactedCount: turnCompactedCount,
-    } = await prepareCompletion({
-      imageUris: imageUris || [],
-      message,
-      systemMessages,
-      contextId,
-      assistant,
-      conversationIdRef: conversationIdRef.current,
-      isMultimodalEnabled,
-      l10n,
-      currentMessages,
-    });
+    const {cleanCompletionParams, messageInfo, compactedCount: turnCompactedCount} =
+      await prepareCompletion({
+        imageUris: imageUris || [],
+        message,
+        systemMessages,
+        contextId,
+        assistant,
+        conversationIdRef: conversationIdRef.current,
+        isMultimodalEnabled,
+        l10n,
+        currentMessages,
+      });
 
     currentMessageInfo.current = messageInfo;
 

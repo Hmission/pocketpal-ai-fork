@@ -149,6 +149,31 @@ describe('ImageGenScreen 编排层（P4 对齐）', () => {
     return utils;
   };
 
+  it('真机事件形态回归（2026-08-20 血证）：onPress 收到 GestureResponderEvent 时不得污染 promptOverride——出图必须正常发起', async () => {
+    // 真机 RN 事件分发必把 GestureResponderEvent 作为首参传给 onPress；jest 的
+    // fireEvent.press 默认不传参，拦不住「onPress 直传带参回调」的回归——
+    // 曾导致 handleGenerate(event) → event.trim() TypeError 被事件系统吞掉，
+    // 两台真机「有按压缩放动效但出图无反应」（v144 实锤，注入三重复现）。
+    mockGenerate.mockResolvedValue('file:///tmp/gen_event.png');
+    const {getByPlaceholderText, getByTestId} = await renderAndWaitScan();
+
+    await act(async () => {
+      fireEvent.changeText(
+        getByPlaceholderText('描述你想生成的画面…'),
+        '一只猫',
+      );
+    });
+    await act(async () => {
+      fireEvent.press(getByTestId('imagegen-generate'), {
+        nativeEvent: {touches: [], changedTouches: []},
+      });
+    });
+
+    await waitFor(() => {
+      expect(mockGenerate).toHaveBeenCalledWith(1024, 1024, 4, '一只猫');
+    });
+  });
+
   it('出图流：输入提示词 → 点出图 → DreamLite 单通道（1024²·4 步）→ 入历史', async () => {
     mockGenerate.mockResolvedValue('file:///tmp/gen_1.png');
     const {getByPlaceholderText, getByText} = await renderAndWaitScan();

@@ -3,9 +3,9 @@ doc_id: POCKETPAL_DESIGN_SPEC
 module: root
 type: ssot
 status: active
-version: "3.1"
+version: "3.4"
 created: "2026-08-14"
-updated: "2026-08-19"
+updated: "2026-08-20"
 relates: [DRC_SPEC, POCKETPAL_CHAT_UI_SPEC, POCKETPAL_IMAGEGEN_UI_SPEC, POCKETPAL_UI_INTERACTION_SPEC, POCKETPAL_ICON_SPEC, ADR-0001-ui-ssot-single-source, ADR-0002-imagegen-header-right, ADR-0003-bubble-footer-unification, UI_GATE_VERIFICATION_SOP]
 supersedes: []
 ---
@@ -358,6 +358,7 @@ ScrollView
 | B19 | **DRC 远程调试（开发者预览版诊断面扩展）**：文件双通道远程调试（adb push actionId 命令 → App 白名单执行 store 动作 → results/events.jsonl/state.json 落盘取证），15 动作注册表 + 13 类事件埋点 + StateCompass 域级 STATE_MAP + CP-APP 报错指南针 + 开发机三工具；门控 __E2E__||BuildInfo.isDevSupport（release 运行时恒不激活）；Skill 化挂测试专工链路（母仓 drc-remote-debug） | DRC_SPEC SSOT（docs/DebugRemoteControl/） | tsc/jest 绿 + 真机 6 命令闭环 + e2e spec 实现 | ✅ 已完成（2026-08-19） |
 | B20 | **RealESRGAN 通用图像放大 + 全屏预览交互**：独立通用放大能力（不绑定 DreamLite），双模型内置（x4plus 63MB / animevideov3 2MB）；tiled 推理引擎 + base64 桥传输 + engineMutex 互斥 + UpscalePanel 参数面板；ZoomableImage 全屏查看器（双指缩放 1-4× + 拖动 + 单击关闭 + 浅色 surface 遮罩）——3 轮真机复测闭环（Modal root / worklet 红屏 / onEnd success + Exclusive PhotoZoom 范式） | IMAGE_GEN_UPGRADE_PLAN §6.19 SSOT | tsc/eslint 0 错 + DRC 真机 5 项 + 大王终验通过 | ✅ 已完成（2026-08-20） |
 | B21 | **GitHub 开源发布 + 多玩法品牌定位 + v2.0.0 自主版本机制**：①AboutScreen GitHub 入口（openSource.ts 常量 + Linking，16 语言）；②16 语言 about 文案开源定位升级 + APP_INTRO_COPY 三版式 + README 仓库首页；③git 历史重写 Hmission 身份 + master→main + 仓库创建推送；④开源边界清理（.qoder/aios/governance/lora/adr 等内部资产全历史移除 + .gitignore 收口）；⑤多玩法标语（聊天/生图/玩乐/绘本/冒险全离线）替换「部署大语言模型」旧定位，全链路同步（16 语言/README/APP_INTRO_COPY/AGENTS/PRODUCT_SPEC/GitHub description）；⑥v2.0.0 定版（1.16.1 上游遗产 → 2.0.0，versionCode 144 四处同步）+ bump-version.js 单点命令（jest 5/5）+ tag v2.0.0 | PRODUCT_SPEC §1.1/§6.1 SSOT | tsc 0 错 + jest 8/8 + l10n valid + 真机 dex 取证版本实锤 | ✅ 已完成（2026-08-19~20） |
+| B22 | **上下文压缩链路根治 + 出图按钮失效修复**：①B19.1 压缩执行死锁根治（小米 13 DRC 血证）——水位双源校准（resolveWatermark 消费 lastCompletionResult.used 钉底）+ 生成预留（GENERATION_RESERVE=512）+ 摘要工作集预算化（tokenBudgetToMaxChars 1:1 保守折算）+ 满态显式失败（饱和跳过压缩，context-full banner 用户主权）；②出图按钮 onPress 直传 async 函数致 GestureResponderEvent 污染 promptOverride → TypeError 静默吞掉（两台真机 + DRC 三重复现），修复 `onPress={() => onGenerate()}` 显式无参包装 + testID + RNTL 回归防线（fireEvent.press 显式注入 event 模拟真机） | CONTEXT_COMPACTION_SPEC v1.1 / IMAGEGEN_UI_SPEC v2.1 | tsc 0 错 + jest 24/24 含回归用例 + 双机装机验证 | ✅ 已完成（2026-08-20） |
 
 **批次间依赖**：B1 前置最大（聊天域，含 §8 旧债务 4 项中的 2 项），完成后旧债务全部清零；新债务一律按本表规则补录（批次号 + 验收 + 前置），不允许无批次挂账。
 
@@ -392,7 +393,7 @@ ScrollView
 
 | 日期 | 版本 | 变更 |
 |------|------|------|
-| 2026-08-20 | 3.3 | Gap Ledger 补 B21（GitHub 开源发布 + 多玩法品牌定位 + v2.0.0 自主版本机制）；relates 挂 PRODUCT_SPEC §1.1/§6.1；开源边界清理记录 |
+| 2026-08-20 | 3.4 | B22（上下文压缩链路根治 + 出图按钮失效修复）；IMAGEGEN_UI_SPEC 升 v2.1（onPress 无参包装约束）；CONTEXT_COMPACTION_SPEC v1.1 已同步 |
 | 2026-08-20 | 3.2 | Gap Ledger 补 B20（RealESRGAN 通用图像放大 + 全屏预览交互）；relates 挂 IMAGE_GEN_UPGRADE_PLAN §6.19 |
 | 2026-08-19 | 3.1 | Gap Ledger 补 B19（DRC 远程调试，诊断面扩展）；relates 挂 DRC_SPEC；关联文档补 DebugRemoteControl |
 | 2026-08-14 | 2.0 | Phase 2 规范治理：形状角色表 + 60-30-10 色彩应用 + 子页模板 + 动效目录 |

@@ -5,6 +5,12 @@
  * 发送前，引擎必然空闲），回退管家。独立摘要 prompt，不走回复对话。
  * 结构维度对齐行业实践（Claude auto-compact）：当前目标/关键决策/偏好与
  * 待办/情绪，≤400 字，低温低随机性。
+ *
+ * B19.1 摘要工作集预算化（真机血证 2026-08-20）：摘要输入不再按固定
+ * 6000 字符裁剪——按字符不按 token，英文/markdown/符号内容 tokenize 后
+ * 可超 n_ctx，摘要请求自身溢出（llama.rn ctx_shift 默认 false，prompt
+ * ≥ n_ctx 直接硬错）。maxInputChars 由调用方按「n_ctx − 水位 − 生成预留」
+ * 预算折算传入，保证请求必然放得下——容量约束前置，不靠运行时报错回退。
  */
 import {modelStore} from '../../store';
 import {promptWriter} from '../promptWriter';
@@ -16,11 +22,21 @@ const SUMMARY_SYSTEM =
   '不要复述原话、不要输出思考过程、不要发明不存在的信息。' +
   '用 markdown 列表，不超过 400 字，只输出摘要内容。';
 
+/** 保守折算：最坏 1 字符 = 1 token（中文全命中；英文实际 ~4:1）。 */
+export const CHARS_PER_TOKEN_CONSERVATIVE = 1;
+
+/** token 预算 → 字符裁剪上限（1:1 保守折算，宁少勿溢）。 */
+export function tokenBudgetToMaxChars(tokenBudget: number): number {
+  return Math.max(0, Math.floor(tokenBudget * CHARS_PER_TOKEN_CONSERVATIVE));
+}
+
 export interface SummarizeInput {
   /** 待压缩的对话文本（大王: …\n女妖: … 格式，由编排层拼接） */
   dialogueText: string;
   /** 已有摘要（增量压缩时传入，与新增对话一并概括） */
   priorSummary?: string;
+  /** 摘要输入字符预算（B19.1：调用方按上下文余量折算；缺省回退 6000） */
+  maxInputChars?: number;
 }
 
 /**
@@ -35,12 +51,11 @@ export async function summarizeConversation(
     return null;
   }
   const resolved =
-    engine ??
-    modelStore.engine ??
-    (promptWriter.isLoaded ? promptWriter : null);
+    engine ?? modelStore.engine ?? (promptWriter.isLoaded ? promptWriter : null);
   if (!resolved) {
     return null;
   }
+  const maxChars = input.maxInputChars ?? 6000;
   const userContent = input.priorSummary
     ? `【已有摘要】\n${input.priorSummary}\n\n【新增对话】\n${input.dialogueText}`
     : input.dialogueText;
@@ -50,7 +65,7 @@ export async function summarizeConversation(
       {
         messages: [
           {role: 'system', content: SUMMARY_SYSTEM},
-          {role: 'user', content: userContent.slice(0, 6000)},
+          {role: 'user', content: userContent.slice(0, maxChars)},
         ],
         n_predict: 220,
         temperature: 0.3,

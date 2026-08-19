@@ -257,10 +257,15 @@ export const ComposerPanel: React.FC<ComposerPanelProps> = ({
                 </Text>
               )}
             </TouchableOpacity>
+            {/* onPress 必须显式无参调用（不可直传 onGenerate）：RN 会把 GestureResponderEvent
+                作为首参传入，若直传 handleGenerate(event)，可选参 promptOverride 会收到 event，
+                入口 (promptOverride ?? prompt).trim() 即抛 TypeError 被事件系统吞掉——
+                现象为「有按压缩放动效但出图无反应」（2026-08-20 两台真机 + 注入三重复现） */}
             <TouchableOpacity
               style={[s.button, s.buttonGen]}
               disabled={generating}
-              onPress={onGenerate}>
+              testID="imagegen-generate"
+              onPress={() => onGenerate()}>
               {generating && taskKind === 'gen' ? (
                 <ActivityIndicator
                   size="small"
@@ -277,7 +282,8 @@ export const ComposerPanel: React.FC<ComposerPanelProps> = ({
         <TouchableOpacity
           style={[s.button, !loaded && s.buttonDisabled]}
           disabled={generating || !loaded}
-          onPress={onGenerate}>
+          testID="imagegen-generate"
+          onPress={() => onGenerate()}>
           {generating ? (
             <ActivityIndicator size="small" color={theme.colors.onPrimary} />
           ) : (

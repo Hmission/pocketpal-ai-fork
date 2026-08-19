@@ -3,9 +3,9 @@ doc_id: POCKETPAL_IMAGEGEN_UI_SPEC
 module: root
 type: spec
 status: active
-version: "2.0"
+version: "2.1"
 created: "2026-08-14"
-updated: "2026-08-15"
+updated: "2026-08-20"
 relates: [POCKETPAL_DESIGN_SPEC, ADR-0002-imagegen-header-right]
 ---
 
@@ -58,6 +58,7 @@ relates: [POCKETPAL_DESIGN_SPEC, ADR-0002-imagegen-header-right]
 
 ### 出图按钮显式反馈（复查 2026-08-20 真机回归定稿）
 - **空提示词点「出图」必须显式 toast 提示**（「先输入提示词，再点出图」），不得静默无反应——此前 `if (!p) return` 静默早退导致「有动效无反应」，两台真机稳定复现；显式失败不静默（锋利原则）
+- **onPress 必须显式无参包装**：`onPress={() => onGenerate()}`，禁止 `onPress={onGenerate}` 直传 async 函数——RN 必传 GestureResponderEvent 作为首参，直传导致 `handleGenerate(event)` 入口 `(event ?? prompt).trim()` 抛 TypeError 被 Bridgeless 事件系统静默吞掉（2026-08-20 两台真机 + DRC 三重复现，回归引入点 commit 44689f8 加 promptOverride 参数）
 - **「再次生成」= 当前图同参数重跑**：用任务自带 prompt（与失败页「重试」同源 `handleGenerate(item.prompt)`），不读当前输入框——输入框被清空/编辑预备态清 prompt 后再次生成仍有效
 
 ## 3. 模型下拉规则

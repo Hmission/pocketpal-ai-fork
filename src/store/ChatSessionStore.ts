@@ -777,6 +777,12 @@ class ChatSessionStore {
         this.newChatPalId = undefined;
         this.newChatThinkingOverride = undefined;
         this.newChatReasoningEffort = undefined;
+        // B19.1：快照与会话级 ephemeral 状态随新会话重置（与 setActiveSession /
+        // resetActiveSession 同语义）——否则上一会话的满态实测残留，新会话首条
+        // 消息被误判 saturated（真机血证：欠账会话后新建会话首条被拒）。
+        this.lastCompletionResult = undefined;
+        this.dismissedBannerVariants = new Set();
+        this.consecutiveFullFailures = 0;
       });
     } catch (error) {
       console.error('Failed to create new session:', error);

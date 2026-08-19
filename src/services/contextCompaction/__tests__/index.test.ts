@@ -7,9 +7,15 @@ import {summarizeConversation} from '../summarizer';
 import {appendConversation} from '../../aiosMemory/conversationLog';
 import type {MessageType} from '../../../utils/types';
 
-jest.mock('../summarizer', () => ({
-  summarizeConversation: jest.fn(),
-}));
+jest.mock('../summarizer', () => {
+  // B19.1：tokenBudgetToMaxChars 用真实实现（预算裁剪是被测链路的一部分），
+  // 仅 mock 掉推理 IO（summarizeConversation）。
+  const actual = jest.requireActual('../summarizer');
+  return {
+    ...actual,
+    summarizeConversation: jest.fn(),
+  };
+});
 
 jest.mock('../../aiosMemory/conversationLog', () => ({
   appendConversation: jest.fn().mockResolvedValue(undefined),
@@ -102,6 +108,42 @@ describe('compressSession', () => {
       maxMessages: 4,
     });
     expect(result!.compactedCount).toBe(4);
+  });
+
+  it('B19.1 target 驱动时突破 maxMessages（预算缺口优先，宁多压不欠释放）', async () => {
+    const result = await compressSession({
+      messages: tenMessages(),
+      maxMessages: 2,
+      targetReleaseTokens: 99999, // 不可能达标 → 压完全部可压区间（6 条）
+    });
+    expect(result).toBeNull(); // 全压完仍不达 → 释放量校验返回 null
+  });
+
+  it('B19.1 target 达成时不受 maxMessages 限制', async () => {
+    const result = await compressSession({
+      messages: tenMessages(),
+      maxMessages: 1,
+      // 第 1 条消息约 17 token（含中文+数字），目标 20 需压 2 条
+      targetReleaseTokens: 20,
+    });
+    expect(result!.compactedCount).toBeGreaterThanOrEqual(2);
+  });
+
+  it('B19.1 释放量校验：保护区外全压完仍不达预算缺口 → null（不静默欠释放）', async () => {
+    const result = await compressSession({
+      messages: tenMessages(),
+      targetReleaseTokens: 99999,
+    });
+    expect(result).toBeNull();
+    expect(mockSummarize).not.toHaveBeenCalled();
+  });
+
+  it('B19.1 nCtx 预算裁剪传入 summarizer（min(6000, nCtx-400)）', async () => {
+    await compressSession({messages: tenMessages(), nCtx: 4096});
+    expect(mockSummarize.mock.calls[0][0].maxInputChars).toBe(4096 - 400);
+    mockSummarize.mockClear();
+    await compressSession({messages: tenMessages(), nCtx: 99999});
+    expect(mockSummarize.mock.calls[0][0].maxInputChars).toBe(6000);
   });
 
   it('摘要失败返回 null（不标记不落盘）', async () => {

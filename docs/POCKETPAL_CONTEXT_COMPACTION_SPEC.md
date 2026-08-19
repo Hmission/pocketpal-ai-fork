@@ -3,9 +3,9 @@ doc_id: POCKETPAL_CONTEXT_COMPACTION_SPEC
 module: root
 type: spec
 status: active
-version: "1.0"
+version: "1.1"
 created: "2026-08-19"
-updated: "2026-08-19"
+updated: "2026-08-20"
 relates: [POCKETPAL_CHAT_UI_SPEC, POCKETPAL_MODEL_MATRIX, POCKETPAL_DESIGN_SPEC]
 ---
 
@@ -13,7 +13,7 @@ relates: [POCKETPAL_CHAT_UI_SPEC, POCKETPAL_MODEL_MATRIX, POCKETPAL_DESIGN_SPEC]
 
 # 上下文压缩机制 · SPEC（CONTEXT_COMPACTION_SPEC）
 
-**状态**：active | **版本**：1.0 | **更新**：2026-08-19
+**状态**：active | **版本**：1.1 | **更新**：2026-08-20
 
 > **定位**：本地模型聊天页的上下文治理机制——发送前预算驱动，扩窗优先（内存允许）、
 > 压缩兜底（已到天花板），人机协作、选择记忆（per-model 持久化），全链路可管可控可见。
@@ -25,15 +25,23 @@ relates: [POCKETPAL_CHAT_UI_SPEC, POCKETPAL_MODEL_MATRIX, POCKETPAL_DESIGN_SPEC]
 ## 一、决策机（单状态机，发送前预算驱动）
 
 ```
-发送前组装预算估算（system + 召回 + 消息 ≈ used）
-├─ used < 0.8×n_ctx（WARNING_THRESHOLD，与 banner 同源）→ 正常发送
-└─ used ≥ 0.8×n_ctx → 查策略（per-model 持久化，默认 'ask'）：
+发送前水位 = max(字符估算, 上轮 native 实测 used)（B19.1 双源归一）
+├─ 水位 + 生成预留(512) < 0.8×n_ctx（WARNING_THRESHOLD，与 banner 同源）→ 正常发送
+├─ 上轮实测 contextFull 且水位仍满 → 跳过压缩直接照发（B19.1 满态显式失败：
+│    摘要与主生成都会立即硬错，走既有错误链路 + context-full banner，用户主权）
+└─ 水位 + 预留 ≥ 0.8×n_ctx → 查策略（per-model 持久化，默认 'ask'）：
      ├─ 'expand'：尝试阶梯上一档扩窗（PSS 审计）→ 成功则扩窗；
      │            已到最大档/审计失败 → 自动转压缩（提示条可见）
      ├─ 'compact'：直接压缩最旧消息（发送前无感，snackbar 提示）
      └─ 'ask'：可扩 → 照发（banner CTA 提供选择并记住）；已到天花板 → 直接压缩
 ```
 
+- **B19.1 水位实测校准**：字符估算对英文/markdown/符号系统性低估（真机实证
+  banner 81% 时压缩从未触发），消费上一轮 native 实测水位
+  （tokens_evaluated + tokens_predicted，lastCompletionResult.used）钉底取大者。
+- **B19.1 生成预留**：触发线含本轮生成预算（GENERATION_RESERVE=512，与默认
+  n_predict 同阶）——触发时必然剩余工作空间，单轮无法从阈值下直接跳满；
+  banner ratio 不含预留（用户视角真实占用），提醒与动作共存自洽。
 - **本地模型专属**：REMOTE 模型不压缩（上下文由服务器控制，走既有 context-remote-hedged 分支）。
 - **压缩失败不兜底**：走既有 banner 链路（增窗/新会话），不新增隐藏路径。
 - **策略记忆**：banner CTA 即选择入口——点「增大上下文」记 `expand`、点「压缩旧消息」记 `compact`；
@@ -41,9 +49,15 @@ relates: [POCKETPAL_CHAT_UI_SPEC, POCKETPAL_MODEL_MATRIX, POCKETPAL_DESIGN_SPEC]
 
 ## 二、压缩执行（摘要压缩 Summarize-and-Compact）
 
-1. **选区间**：最旧未压缩消息起，预算缺口（目标释放至 70%）驱动条数，单次 ≤20 条，保护最近 4 条（≈2 轮）。
+1. **选区间**：最旧未压缩消息起，预算缺口（目标释放至 70%）驱动条数；预算缺口
+   驱动时突破单次 ≤20 条上限（宁多压不静默欠释放），保护最近 4 条（≈2 轮）；
+   **B19.1 释放量校验**：保护区外全部压完仍不达预算缺口 → 诚实返回 null
+   （剩余消息自身超预算，如保护区巨型消息），避免「压缩了但预算仍超」的静默失效。
 2. **摘要生成**：当前对话模型（复用 extractAndSaveMemories 引擎选择模式，独立摘要 prompt，
    ≤400 字、温度 0.3、n_predict 220）；多次压缩 = 已有摘要 + 中间消息增量重压（单锚点模型）。
+   **B19.1 摘要工作集预算化**：输入按 min(6000, n_ctx−400 token) 1:1 保守折算裁剪
+   （llama.rn ctx_shift 默认 false，prompt ≥ n_ctx 直接硬错；按字符不限 token 时
+   英文/符号内容可自身溢出）——容量约束前置，不靠运行时报错回退。
 3. **落盘三处**：
    - 会话内：被压消息 `metadata.compacted = true`（原文保留，非破坏性）；
      锚点（首条被压消息）`metadata.compaction = {summary, messageIds, count, ts}`。
@@ -85,3 +99,14 @@ relates: [POCKETPAL_CHAT_UI_SPEC, POCKETPAL_MODEL_MATRIX, POCKETPAL_DESIGN_SPEC]
 - 不做压缩失败兜底链（失败即走既有 banner 增窗/新会话）。
 - 不主动沉淀压缩摘要进记忆库 episode（既有提取/当日摘要覆盖）。
 - 不压缩最近 2 轮与 REMOTE 会话。
+- 不启用 llama.rn ctx_shift（截断不可预测，违背可见性）。
+- 不做满态自动换引擎压缩（B19.1 大王裁定：换模型不是正道；满态走用户主权显式路径）。
+- 不做错误字符串匹配式运行时回退（脆弱且掩盖根因，容量约束前置）。
+
+## 六、B19.1 变更记录（2026-08-20，真机血证链路根治）
+
+小米 13 DRC 实证：决策 compact 正确触发但压缩执行死锁（摘要请求与主生成
+双硬错「Context is full」）。6D 排查定位三条缝隙合流——估算与实测脱节（D5）、
+无生成预留可单轮跳满（D4）、摘要工作集无预算可自身溢出（D3）。根治四项：
+水位双源校准（resolveWatermark）+ 生成预留（GENERATION_RESERVE）+ 摘要
+工作集预算化（tokenBudgetToMaxChars）+ 满态显式失败（饱和跳过，不静默不换引擎）。

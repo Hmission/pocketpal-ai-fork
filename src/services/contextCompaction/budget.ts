@@ -27,6 +27,31 @@ export function estimateMessageTokens(text: string): number {
 /** 单条消息的角色/模板包装开销近似（BOS/EOS + role 标签 + 换行）。 */
 const MESSAGE_OVERHEAD_TOKENS = 8;
 
+/**
+ * B19.1 生成预留（真机血证 2026-08-20）：决策触发线含本轮生成预算，
+ * 保证触发压缩时上下文仍剩足够工作空间（摘要请求 + 本轮回复）。
+ * 与默认 n_predict 同阶；banner 的 WARNING_THRESHOLD 不含预留（用户视角
+ * 真实占用），治理动作等效提前——提醒与动作共存自洽。
+ */
+export const GENERATION_RESERVE = 512;
+
+/**
+ * B19.1 水位实测校准：字符估算对英文/markdown/符号系统性低估（真机实测
+ * 81% banner 时压缩从未触发），而上一轮 native 实测水位
+ * （tokens_evaluated + tokens_predicted，deriveSnapshotFromResult）在
+ * ChatSessionStore.lastCompletionResult 现成可用。水位 = max(估算,
+ * 实测基线)，估算漂移被实测基线钉底——发送前消费事后实测，双源归一。
+ */
+export function resolveWatermark(
+  estimate: number,
+  lastMeasuredUsed?: number,
+): number {
+  if (lastMeasuredUsed === undefined || lastMeasuredUsed <= 0) {
+    return estimate;
+  }
+  return Math.max(estimate, lastMeasuredUsed);
+}
+
 /** 多模态图片 token 近似：llama.rn 默认 image_max_tokens 512（clamp 到 n_ctx）。 */
 const IMAGE_TOKEN_APPROX = 512;
 

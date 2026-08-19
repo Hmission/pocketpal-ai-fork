@@ -1,7 +1,11 @@
 /**
- * 会话摘要生成测试（批次 B：摘要执行）。
+ * 会话摘要生成测试（批次 B：摘要执行 + B19.1 预算裁剪）。
  */
-import {summarizeConversation} from '../summarizer';
+import {
+  CHARS_PER_TOKEN_CONSERVATIVE,
+  summarizeConversation,
+  tokenBudgetToMaxChars,
+} from '../summarizer';
 import {modelStore} from '../../../store';
 import {promptWriter} from '../../promptWriter';
 
@@ -56,12 +60,33 @@ describe('summarizeConversation', () => {
     expect(out).toBeNull();
   });
 
-  it('completion 抛错返回 null', async () => {
+  it('completion 抛错返回 null（容量约束前置，不靠运行时回退）', async () => {
     const engine = {
       completion: jest.fn().mockRejectedValue(new Error('boom')),
       stopCompletion: jest.fn(),
     } as any;
     expect(await summarizeConversation({dialogueText: 'x'}, engine)).toBeNull();
+  });
+
+  it('B19.1 maxInputChars 预算裁剪：输入超预算被截断', async () => {
+    const engine = streamEngine('这是一段足够长的摘要内容');
+    const longDialogue = '大'.repeat(9999);
+    await summarizeConversation(
+      {dialogueText: longDialogue, maxInputChars: 100},
+      engine,
+    );
+    const userContent = engine.completion.mock.calls[0][0].messages[1].content;
+    expect(userContent.length).toBe(100);
+  });
+
+  it('B19.1 预算缺省回退 6000 字符', async () => {
+    const engine = streamEngine('这是一段足够长的摘要内容');
+    await summarizeConversation(
+      {dialogueText: '大'.repeat(9999)},
+      engine,
+    );
+    const userContent = engine.completion.mock.calls[0][0].messages[1].content;
+    expect(userContent.length).toBe(6000);
   });
 
   it('推理中返回 null（不抢引擎）', async () => {
@@ -86,5 +111,13 @@ describe('summarizeConversation', () => {
     const userContent = engine.completion.mock.calls[0][0].messages[1].content;
     expect(userContent).toContain('旧摘要');
     expect(userContent).toContain('新增对话');
+  });
+});
+
+describe('B19.1 tokenBudgetToMaxChars 保守折算', () => {
+  it('1:1 折算（中文最坏 1 字符 = 1 token，宁少勿溢）', () => {
+    expect(CHARS_PER_TOKEN_CONSERVATIVE).toBe(1);
+    expect(tokenBudgetToMaxChars(7792)).toBe(7792);
+    expect(tokenBudgetToMaxChars(0)).toBe(0);
   });
 });

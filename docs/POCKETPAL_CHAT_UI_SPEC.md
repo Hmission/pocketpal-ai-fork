@@ -453,3 +453,4 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 | 2026-08-19 | 4.0 | §18.9 生成进度监控卡：PendingIndicator 升级四要素（阶段标签/总耗时/思考流预览/300s 心跳）——prefill 不再裸三点，引擎真挂有「疑似卡住」提示；run_failed 收尾防永久转圈 |
 | 2026-08-19 | 4.1 | §19 上下文压缩机制（B19）：发送前预算决策机 + banner「压缩上下文」CTA（选择即记忆）+ 压缩占位卡片 + 指标行「压缩 N」+ 设置页策略三选与自动压缩开关（CONTEXT_COMPACTION_SPEC） |
 | 2026-08-19 | 4.2 | §18.9 进度监控卡卡片化：容器升级 assistant 卡片设计语言（底色+圆角），K90 真机复查「一行文本视觉权重不足」裁定 |
+| 2026-08-20 | 4.3 | §19 B19.1 链路根治（小米 13 DRC 血证，CONTEXT_COMPACTION_SPEC v1.1）：触发线含生成预留(512)、水位双源校准（实测钉底估算漂移）、摘要工作集预算化（min(6000, n_ctx−400)）、满态显式失败（饱和跳过压缩，context-full banner 用户主权，不静默不换引擎） |
