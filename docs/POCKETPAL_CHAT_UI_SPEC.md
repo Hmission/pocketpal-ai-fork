@@ -395,4 +395,4 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 | 2026-08-19 | 3.3 | B18 复查锋利化：加载进度行（正在加载·已耗时 Xs）+ 加载期 sheet 驻留/收尾自动关（关闭单点收敛）；徽章集收口［已加载/管家驻场］（「本机不可用」属生图域范式不虚构）；isChatSelectable GGUF+manifest 名单单规则 |
 | 2026-08-20 | 3.4 | §18 聊天页八项升级：意图胶囊会话级状态机（schema v8 + 胶囊点按唯一写入口）；助手卡 chrome 双行合并（删 TurnMetricsRow）；顶栏紧凑化 + 新建会话换加号；发送钮双态描边；placeholder engineStatus 单源决策表；n_ctx 每模型收口 + 预调；模型用途标签 + 弹窗多候选 |
 | 2026-08-20 | 3.5 | 复查闭环（六维审计）：placeholder 第 4 分支硬编码中文收口 l10n（chat.butlerReady，16 语）；生成设置失焦显示与保存同源修正；§18.6 指标/设置分离定稿（BannerRow 读实际加载值）；用途标签/a11y 中文「产品叙事硬编码口径」显式登记 |
-| 2026-08-19 | 3.6 | §18.6 PSS 安全阀：预调天花板 min(ceiling, PSS_SAFE_BUDGET 4GB) + 启动审计自愈超限档——K90 真机实证厂商 PSS 看护 6GB 硬杀，空闲内存 ceiling 不是存活天花板 |
+| 2026-08-20 | 3.6 | §18.6 PSS 安全阀：预调天花板 min(ceiling, PSS_SAFE_BUDGET 4GB) + 启动审计自愈超限档——K90 真机实证厂商 PSS 看护 6GB 硬杀，空闲内存 ceiling 不是存活天花板 |

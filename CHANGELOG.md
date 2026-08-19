@@ -8,6 +8,8 @@
 ## [Unreleased]
 
 ### 新增
+- 聊天页八项体验升级（2026-08-20）：①意图会话级状态机——Session 新增 intent 列（schema v8），首轮 classifyIntent 定值落库后沿用，意图胶囊点按四态选择器为唯一写入口（system 语气注入/胶囊/快照同源）；②助手卡 chrome 双行合并——AssistantTurnFooter 行1 动作/行2 统一指标行（captionS + 数值 brandAccent 600 + `·` 分隔），TurnMetricsRow 删除（每卡一块 chrome）；③placeholder 单源决策表——engineStatus 状态中枢五级优先（含管家 loading 分支「正在加载管家模型…」）；④顶栏紧凑化——新建会话 EditBox→加号、双钮 36px 紧凑触区、右侧行 gap 2；⑤发送钮双态描边——不可用=透明底+outlineVariant 圆形描边（删外层 opacity 包裹）；⑥n_ctx 单一事实源+每模型预调——上下文不足弹窗改写 setModelNCtx（与生成设置页同存储自动同步），加载链按内存 ceiling 沿 CONTEXT_LADDER 预调最大可装档（一次预调持久化）；⑦模型用途标签体系——设置页「用途」多选 chips（写作/代码）写 capabilities，选型升级 listModelsForTask（用户标签>指纹>兜底）弹窗多候选单选；⑧快捷行日记/绘本/读屏裁定不加（各有唯一入口，加入口违锋利原则）
+- PSS 安全预算（2026-08-19 K90 真机血证）：n_ctx 每模型预调天花板取 min(内存 ceiling, PSS_SAFE_BUDGET 4GB)——厂商 PSS 看护（HyperOS 实测 ~6GB 硬杀）是进程存活真正天花板，估算为理论值宁少勿杀；启动审计 auditPerModelNCtxAgainstPss 自愈旧版预调写入的超限档；用户手调不受限（决策可见）
 - 聊天顶栏重构（B18，2026-08-18）：模型胶囊管家感知三档显示（已加载模型→「管家 MiniCPM 1B」→选模型）；选择器卡片化（MODEL_MATRIX 入选说明+徽章+行内加载/卸载+管家禁卸+单槽脚注「加载新模型自动卸载」）
 - 状态栏拆解融合进助手卡（B18）：SessionStatusBar 整行删除；意图四色胶囊上移作者行；每输出指标行（上下文余量·落盘·召回展开·情绪）run_finished 快照 turnMetrics；ctx 中文点按直达生成设置；思考胶囊 24px 视觉同高收敛
 - B18 复查锋利化（08-19）：选择器加载进度行（正在加载·已耗时 Xs）+ 加载期 sheet 驻留/收尾自动关（关闭单点收敛）；isChatSelectable 收口 GGUF+manifest 名单（sd35 baked 工件不再混入聊天选择器）；死代码清除（engineStatus.summary / getLastExtractionCount）
@@ -26,6 +28,7 @@
 - 模型目录双轨架构（ADR-0004 / B15）：HF 等平台下载的模型默认落应用专属规范目录（getExternalFilesDir/models，零权限、Play 合规）；设置页新增「模型目录」入口，自定义目录走系统目录选择器（SAF，只能选文件夹），默认注册 AIOS 共享目录（/sdcard/Documents/AIOS/models）续读存量模型
 
 ### 修复
+- 聊天页八项复查闭环（2026-08-20）：placeholder 决策表第 4 分支硬编码中文收口 l10n（chat.butlerReady 16 语，de/it/et 回退 en）；生成设置失焦显示与保存同源（读 getModelNCtx，修回跳）；GenerationSettingsScreen 测试模拟路径对齐 setModelNCtx 每模型覆盖（banner 不再改全局）；mock chatSessionStore.taskModelChoice 补 play 槽对齐真实 store；intentLoading 测试时间耦合修复（独白路径硬编码日期翻页即挂，改动态今日）
 - 真机反馈五项修复（2026-08-18 二轮）：关于页构建时间独立成行（不再与版本按钮同行溢出）；生图胶囊底色统一为 primary 12%（与聊天页同）；思考开关选中态黑底改标准橙黄底；图片编辑按钮空锚点致真机菜单不弹的根因修复（按钮即锚点，点按弹拍照/相册）
 - n_ctx 每模型独立（2026-08-18）：ModelStore.perModelNCtx 覆盖表（持久化）+ 加载链按模型取生效值；生成设置上下文输入框操作活动模型（标签带模型名）；聊天页状态栏 ctx 胶囊点按直达生成设置
 - 卸载保留快照路径根治（2026-08-18 真机取证）：watermelondb native 实际落私有根目录（getDatabasePath().replace("/databases","")），旧硬编码 files/ 致导出静默失效；改三候选兼容（根目录/files//databases/）导出取先存在者、恢复多写，K90 实证进后台快照落盘 AIOS/database/
