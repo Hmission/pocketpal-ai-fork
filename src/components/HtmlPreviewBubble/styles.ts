@@ -60,7 +60,9 @@ export const createStyles = (
       paddingVertical: 2,
     },
     collapsedWebView: {
-      height: 250,
+      // 基值 480；运行期由 estimatePreviewHeight 按板面高度覆盖
+      // （2026-08-19 K90 血证：250 截断 300×300 游戏画面）。
+      height: 480,
       width: '100%',
       backgroundColor: colors.background,
     },

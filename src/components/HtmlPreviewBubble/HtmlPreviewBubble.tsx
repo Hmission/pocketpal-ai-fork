@@ -27,6 +27,7 @@ import {useTheme} from '../../hooks';
 import {L10nContext} from '../../utils';
 
 import {codeHighlighterPreOverride, createStyles} from './styles';
+import {estimatePreviewHeight} from './previewHeight';
 
 const hapticOptions = {
   enableVibrateFallback: true,
@@ -166,6 +167,10 @@ export const HtmlPreviewBubble: React.FC<HtmlPreviewBubbleProps> = ({
   );
 
   const wrappedHtml = useMemo(() => wrapDocument(html), [html]);
+  // 内容自适应高度（K90 血证 2026-08-19）：250px 硬编码截断 300×300
+  // 棋盘 + 说明（自然高度 ~510px）。按板面高度估算，避免“卡片太小把
+  // 游戏画面截断”再发。
+  const previewHeight = useMemo(() => estimatePreviewHeight(html), [html]);
   const displayTitle =
     title && title.length > 0 ? title : l10n.htmlPreview.defaultTitle;
 
@@ -238,7 +243,7 @@ export const HtmlPreviewBubble: React.FC<HtmlPreviewBubbleProps> = ({
         </View>
         {showCode ? (
           <ScrollView
-            style={[styles.collapsedWebView, styles.codeSurface]}
+            style={[styles.collapsedWebView, styles.codeSurface, {height: previewHeight}]}
             testID="html-preview-code">
             <CodeHighlighter
               hljsStyle={atomOneDark}
@@ -261,7 +266,7 @@ export const HtmlPreviewBubble: React.FC<HtmlPreviewBubbleProps> = ({
             originWhitelist={['about:blank']}
             onShouldStartLoadWithRequest={req => req.url === 'about:blank'}
             scrollEnabled={true}
-            style={styles.collapsedWebView}
+            style={[styles.collapsedWebView, {height: previewHeight}]}
             testID="html-preview-webview"
           />
         )}
