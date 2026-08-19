@@ -91,6 +91,7 @@ relates: [POCKETPAL_PRODUCT_SPEC, POCKETPAL_STARMAP_DOMAINS, POCKETPAL_MODEL_MAT
 | PLAY-3 | 无显式 Pal 的会话拿不到 pact 工具：系统提示词兜底 AIOS 女妖（useChatSession），但 getCurrentCompletionSettings 无兜底——灵魂注入了、手被砍了，play 任务静默退化为纯聊天 | ✅ 已闭环（v1.2）：getCurrentCompletionSettings 无显式 Pal 时兜底 AIOS 女妖 pact（与提示词兜底对仗）——pact.talents 是工具可用性的唯一事实源（2026-08-19 K90 真机实证） |
 | PLAY-4 | 路由双缺陷（2026-08-19 K90 血证）：①意图状态机词表缺玩具词汇→「做个玩具：贪吃蛇」落 'chat'，「轻松俏皮」引导压过工具触发令，3B 角色扮演不调工具；②PLAY_RE 动词表窄→「把贪吃蛇做出来」漏路由 chitchat，引擎卸载时落管家直答（管家无工具→贴代码断链，纯文本无 turnMetrics 快照→胶囊/指标行全灭） | ✅ 已闭环（v1.5）：TASK_MARKERS 补玩具/冒险词表（玩法归 'task'）；PLAY_RE 加倒装子句与弄/搞动词；classifyIntent/taskRouter 单测锁定 |
 | PLAY-5 | 玩具迭代闭环缺失（2026-08-19 大王三问）：改——模型后续轮次拿不到玩具原文（长 html 不常驻上下文）；存——每次 render_html 同 title 堆重复条目无迭代语义；开→改——玩具箱无「继续修改」入口衔接 | ✅ 已闭环（v1.6）：read_html 工具按 title 读回原文（按需读，token 锋利）+ 玩具匠迭代人格（先读回再改、同名覆盖、禁从零重写）；saveToy upsert（同 title 覆盖原 id 置顶=迭代存档，新 title 新建；id 加进程内自增后缀防同毫秒撞车）；玩具箱「继续修改」→ 聊天预填「继续改玩具「X」：」；PLAY_RE 补「改成/升级」迭代子句 |
+| PLAY-6 | 3B 迭代合规不稳（2026-08-19 K90 实证）：「把狸狸水滴贪吃蛇改成红色」未走 read_html 读回覆盖，另造「俄罗斯方块」（非红、新条目） | 观察项不补丁：链路本身通（read_html/saveToy upsert 单测全绿 + 新建落盘真机正常），偏差属 3B 工具链指令合规能力边界；危害有限（偏差=新玩具，不丢数据）。触发令已是最强语气（MUST/NEVER），再磨边际收益低；若后续高频偏差再议（候选：迭代意图路由时预读原文注入上下文，绕开模型自觉） |
 
 ## 八、关联
 
@@ -109,6 +110,7 @@ relates: [POCKETPAL_PRODUCT_SPEC, POCKETPAL_STARMAP_DOMAINS, POCKETPAL_MODEL_MAT
 | 2026-08-19 | 1.4 | title 升必填（schema required）：K90 实证模型省略 title → 成品不具名 → 玩具箱拒收，「成品即藏品」断链；schema 级契约非兖底 |
 | 2026-08-19 | 1.5 | 闭环 PLAY-4 路由双缺陷：意图词表补玩具/冒险词汇（玩法归 'task' 引导与触发令同向）+ PLAY_RE 倒装子句（「把X做出来」）——K90 血证：闲聊引导压触发令 / 漏路由落管家直答贴代码 |
 | 2026-08-19 | 1.6 | 闭环 PLAY-5 玩具迭代：read_html 读回 + saveToy upsert（同 title 覆盖）+ 玩具箱「继续修改」入口 + PLAY_RE 迭代子句——改→存→开全链路，title 即身份 |
+| 2026-08-19 | 1.7 | 登记 PLAY-6：3B 迭代合规不稳观察项（K90 实证偏差不补丁，危害有限）；同波 CHAT_UI_SPEC §18.9 v4.2 进度监控卡卡片化真机验收 |
 
 ## 关联文档
 
