@@ -14,6 +14,7 @@ import {
   CompletionResultSnapshot,
 } from '../utils/completionTypes';
 import {chatSessionRepository} from '../repositories/ChatSessionRepository';
+import {emit} from '../debug/eventStream';
 import {defaultCompletionParams} from '../utils/completionSettingsVersions';
 import {derivedText} from '../utils/chat';
 import {scheduleDbSnapshot} from '../utils/paths';
@@ -591,6 +592,18 @@ class ChatSessionStore {
         );
         message.id = newMessage.id;
         this.scheduleSnapshot();
+        // DRC 事件流（观测不为 SPOF）：用户/助理消息统一出口
+        // author.role 为 'user' 时为用户消息（author.id 不总是 'user'）
+        const isUser = message.author.role === 'user';
+        emit('chat', isUser ? 'chat.user_msg' : 'chat.assistant_msg', {
+            sessionId: this.activeSessionId,
+            messageId: message.id,
+            text:
+              message.type === 'text'
+                ? (message as MessageType.Text).text
+                : message.type,
+          },
+        );
 
         // Update local state
         await this.updateSessionTitle(session);
@@ -950,6 +963,16 @@ class ChatSessionStore {
               ...mergedUpdate,
             } as MessageType.Any;
           });
+          // DRC 事件流（观测不为 SPOF）：流式增量节流合并（throttleKey=messageId）
+          const merged = {...session.messages[index]} as MessageType.Any;
+          const text = derivedText(merged) || (update as any).text || '';
+          if (typeof text === 'string' && text.length > 0) {
+            emit('chat', 'chat.assistant_delta', {
+              sessionId: targetSessionId,
+              messageId: id,
+              text,
+            }, `delta:${id}`);
+          }
         }
       }
     } catch (error) {

@@ -11,6 +11,9 @@ import Clipboard from '@react-native-clipboard/clipboard';
 import * as RNFS from '@dr.pogodin/react-native-fs';
 
 import {AIOS_ROOT} from './paths';
+import {matchFirstError} from '../debug/errorRegistry';
+import {emit} from '../debug/eventStream';
+import {setLastError} from '../debug/stateSnapshot';
 
 export const AIOS_LOGS_DIR = `${AIOS_ROOT}/logs`;
 
@@ -57,6 +60,22 @@ export async function buildErrorReport(
   lines.push(`摘要: ${input.summary}`);
   lines.push(`模块: ${input.scope}`);
   lines.push(`时间: ${new Date().toLocaleString()}`);
+  // DRC 报错指南针（CP-APP-NNN）：定位/导航/深入三字段，未知错误提示录入
+  const compass = matchFirstError(`${input.summary}\n${message}`);
+  if (compass) {
+    lines.push(`指南针: ${compass.cpId}`);
+    lines.push(`导航: ${compass.navigation}`);
+    lines.push(`深入: ${compass.deepDive.join(' | ')}`);
+    setLastError(compass.cpId, input.summary);
+  } else {
+    lines.push('指南针: 未收录（建议登记 docs/DebugRemoteControl/COMPASS_REGISTRY.md）');
+    setLastError('CP-APP-000', input.summary);
+  }
+  emit('error', 'error.reported', {
+    scope: input.scope,
+    summary: input.summary,
+    cpId: compass?.cpId ?? 'CP-APP-000',
+  });
   try {
     lines.push(
       `应用: v${DeviceInfo.getVersion()} (${DeviceInfo.getBuildNumber()})`,

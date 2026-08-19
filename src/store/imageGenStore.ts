@@ -18,6 +18,7 @@ import {
 } from '../services/dreamLiteEngine';
 import {engineMutex} from './engineMutex';
 import {engineStatus} from './engineStatus';
+import {emit} from '../debug/eventStream';
 
 const ImageGen = NativeModules.ImageGen;
 const HISTORY_KEY = '@imagegen_history_v1';
@@ -171,6 +172,12 @@ class ImageGenStore {
         this.progress,
         `采样 ${this.progressText}`,
       );
+      // DRC 事件流：生图进度（1Hz 轮询即节流，throttleKey 防冗余）
+      emit('imagegen', 'imagegen.stage', {
+        progress: this.progress,
+        stage: this.stage,
+        stepTime: this.stepTime,
+      }, 'imagegen.stage');
     } catch {
       /* 快照不可用时静默 */
     }
@@ -483,6 +490,15 @@ class ImageGenStore {
     });
     this.syncPoll();
     engineStatus.setPhase('image', 'running', '准备出图…');
+    emit('imagegen', 'imagegen.start', {
+      prompt,
+      seed,
+      steps: opts.steps ?? 2,
+      cfg: opts.cfg ?? 2.0,
+      width: opts.width ?? 512,
+      height: opts.height ?? 512,
+      modelLabel: opts.modelLabel ?? null,
+    });
     try {
       const result = await ImageGen.txt2img({
         prompt,
@@ -501,17 +517,29 @@ class ImageGenStore {
           this.error = result;
         });
         engineStatus.setError('image', result);
+        emit('imagegen', 'imagegen.failed', {error: result, seed, prompt});
         return null;
       }
       // 历史落盘归编排层任务链（beginTask/finishTask）统一管理，
       // 本方法只负责引擎调用并返回结果 URI。
       engineStatus.setPhase('image', 'ready');
+      emit('imagegen', 'imagegen.done', {
+        uri: `file://${outPath}`,
+        seed,
+        prompt,
+        durationMs: Date.now() - this.genStartedAt,
+      });
       return `file://${outPath}`;
     } catch (e: any) {
       runInAction(() => {
         this.error = `出图失败: ${e?.message ?? e}`;
       });
       engineStatus.setError('image', `出图失败: ${e?.message ?? e}`);
+      emit('imagegen', 'imagegen.failed', {
+        error: `出图失败: ${e?.message ?? e}`,
+        seed,
+        prompt,
+      });
       return null;
     } finally {
       runInAction(() => {
@@ -621,6 +649,13 @@ class ImageGenStore {
       this.stage = 'TE 编码/准备…';
       this.error = null;
     });
+    emit('imagegen', 'imagegen.start', {
+      prompt,
+      width,
+      height,
+      steps,
+      engine: 'dreamlite',
+    });
     try {
       const uri = await generateDreamLite(
         width,
@@ -633,12 +668,29 @@ class ImageGenStore {
             this.progressText = `${st}/${tot}`;
             this.stage = `采样 ${st}/${tot}`;
           });
+          emit('imagegen', 'imagegen.stage', {
+            progress: Math.round((st / tot) * 100),
+            stage: `采样 ${st}/${tot}`,
+          }, 'imagegen.stage');
         },
       );
+      emit('imagegen', 'imagegen.done', {
+        uri,
+        prompt,
+        width,
+        height,
+        steps,
+        engine: 'dreamlite',
+        durationMs: Date.now() - this.genStartedAt,
+      });
       return uri;
     } catch (e: any) {
       runInAction(() => {
         this.error = `DreamLite: ${e?.message ?? e}`;
+      });
+      emit('imagegen', 'imagegen.failed', {
+        error: `DreamLite: ${e?.message ?? e}`,
+        prompt,
       });
       return null;
     } finally {

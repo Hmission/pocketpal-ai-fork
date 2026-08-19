@@ -33,6 +33,7 @@ import {withOpacity} from '../../utils/colorUtils';
 import {ErrorState} from '../../utils/errors';
 import {user, assistant} from '../../utils/chat';
 import {useChatScheduler} from '../../hooks/useChatScheduler';
+import {registerChatSender} from '../../debug';
 import {ActiveTaskBanner} from '../../components/ActiveTaskBanner/ActiveTaskBanner';
 import {ImageTaskActions} from '../../components/ImageTaskActions/ImageTaskActions';
 import {ImageTaskProgress} from '../../components/ImageTaskProgress/ImageTaskProgress';
@@ -260,6 +261,15 @@ export const ChatScreen: React.FC = observer(() => {
   // - write/code → chat 引擎未加载时按能力注册表自动选模型加载，再走常规聊天
   // - chitchat → chat 引擎未加载且管家就绪时，由常驻管家直接回答（启动即就绪）
   const wrappedSendPress = useChatScheduler(handleSendPress);
+
+  // DRC 聊天发送槽（debug/E2E 构建）：ChatScreen 在岗时注册 wrappedSendPress，
+  // 卸载注销——command chat.send 复用完整调度链路（意图路由/管家直答），单一事实源。
+  React.useEffect(() => {
+    registerChatSender(message =>
+      wrappedSendPress({text: message.text} as MessageType.PartialText),
+    );
+    return () => registerChatSender(null);
+  }, [wrappedSendPress]);
 
   // 调度错误卡动作（TaskErrorCard，P0 净化）：重试 = 重新走调度发送原消息；
   // 去模型页 = 排查引导（无模型/加载失败时）

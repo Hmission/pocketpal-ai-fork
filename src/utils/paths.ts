@@ -16,6 +16,13 @@ export const AIOS_MODELS_DIR = `${AIOS_ROOT}/models`;
 export const AIOS_MEMORIES_DIR = `${AIOS_ROOT}/memories`;
 export const AIOS_CONFIG_DIR = `${AIOS_ROOT}/config`;
 export const AIOS_DB_DIR = `${AIOS_ROOT}/database`;
+// DRC 远程调试（Debug Remote Control）：命令队列 + 结果回写 + 事件流/状态快照
+//（DRC_SPEC：开发机 adb 写 commands/ → App 执行 → 结果写 results/ + 事件写 logs/）
+export const AIOS_DRC_DIR = `${AIOS_ROOT}/drc`;
+export const AIOS_DRC_COMMANDS_DIR = `${AIOS_DRC_DIR}/commands`;
+export const AIOS_DRC_RESULTS_DIR = `${AIOS_DRC_DIR}/results`;
+export const AIOS_EVENTS_LOG = `${AIOS_ROOT}/logs/events.jsonl`;
+export const AIOS_STATE_JSON = `${AIOS_ROOT}/logs/state.json`;
 
 // B15 双轨模型目录（ADR-0004）：
 // - DEFAULT_MODELS_DIR：规范默认下载目录（getExternalFilesDir/models），
@@ -97,6 +104,9 @@ export async function ensureAiosDirs(): Promise<void> {
     AIOS_DIARY_DIR,
     AIOS_ALBUM_DIR,
     AIOS_ADVENTURE_DIR,
+    AIOS_DRC_DIR,
+    AIOS_DRC_COMMANDS_DIR,
+    AIOS_DRC_RESULTS_DIR,
   ];
   for (const d of dirs) {
     try {

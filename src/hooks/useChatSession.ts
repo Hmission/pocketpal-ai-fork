@@ -43,6 +43,7 @@ import {
 } from '../utils/chat';
 import {activateKeepAwake, deactivateKeepAwake} from '../utils/keepAwake';
 import {buildErrorReport} from '../utils/errorReport';
+import {emit} from '../debug/eventStream';
 import {showErrorReport} from '../components/ui/ErrorReportDialog';
 import {
   toApiCompletionParams,
@@ -520,6 +521,14 @@ async function applyEventToStore(
         },
       });
       chatSessionStore.recordCompletionSnapshot(snapshot);
+      // DRC 事件流：回合完成（chat.turn_done）
+      emit('chat', 'chat.turn_done', {
+        sessionId: ctx.sessionId,
+        messageId: ctx.messageId,
+        hitMaxTurns: !!event.result.hitMaxTurns,
+        tokensPredicted: snapshot?.tokensPredicted ?? 0,
+        contextFull: !!snapshot?.contextFull,
+      });
       if (event.result.hitMaxTurns) {
         console.warn(
           '[useChatSession] agent run hit maxTurns; surfacing last available content',

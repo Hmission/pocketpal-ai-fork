@@ -53,6 +53,7 @@ import {ErrorReportDialogHost} from './src/components/ui/ErrorReportDialog';
 import {ModelSwitchDialogHost} from './src/components/ui/ModelSwitchDialog';
 import {IntentPickerHost} from './src/components/ui/IntentPicker';
 import {AutomationBridge, BenchmarkRunnerScreen} from './src/__automation__';
+import {DrcBridge} from './src/debug';
 import {
   ChatScreen,
   ModelsScreen,
@@ -356,6 +357,9 @@ const App = observer(() => {
               <MarkdownProvider>
                 <NavigationContainer>
                   <DeepLinkHandler />
+                  {/* DRC 远程调试桥：组件内部按 DRC_ENABLED 自门控
+                   *（__E2E__ || BuildInfo.isDevSupport；release 运行时不激活） */}
+                  <DrcBridge />
                   <BottomSheetModalProvider>
                     <SwitchPoint drawer={<AppDrawer />} />
                     <TTSSetupSheet />

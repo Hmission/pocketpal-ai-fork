@@ -39,6 +39,9 @@ export const readFile = jest.fn(path => {
 export const writeFile = jest.fn(() => {
   return Promise.resolve();
 });
+export const appendFile = jest.fn(() => {
+  return Promise.resolve();
+});
 export const downloadFile = jest.fn();
 // Make DocumentDirectoryPath configurable for tests
 let documentDirectoryPath = '/path/to/documents';
@@ -74,6 +77,7 @@ const RNFS = {
   stopDownload,
   readFile,
   writeFile,
+  appendFile,
   downloadFile,
   DocumentDirectoryPath,
   LibraryDirectoryPath,

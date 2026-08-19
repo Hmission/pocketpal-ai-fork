@@ -9,6 +9,7 @@
  * 锋利原则：只做状态镜像与派生，不驱动任何 native 调用。
  */
 import {makeAutoObservable, runInAction} from 'mobx';
+import {emit} from '../debug/eventStream';
 
 export type EngineKind = 'prompter' | 'chat' | 'image';
 export type EnginePhase = 'idle' | 'loading' | 'ready' | 'running' | 'error';
@@ -36,6 +37,26 @@ class EngineStatus {
     image: fresh(),
   };
 
+  /** 变更订阅（DrcBridge 接线刷新 state.json；观测不为 SPOF，监听器异常静默） */
+  private listeners = new Set<() => void>();
+
+  onChange(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  private notify(): void {
+    for (const fn of this.listeners) {
+      try {
+        fn();
+      } catch {
+        // 监听器异常静默（BT07）
+      }
+    }
+  }
+
   constructor() {
     makeAutoObservable(this);
   }
@@ -55,6 +76,8 @@ class EngineStatus {
         e.stage = '';
       }
     });
+    emit('engine', 'state.change', {kind, phase, stage}, `engine:${kind}`);
+    this.notify();
   }
 
   setProgress(kind: EngineKind, progress: number, stage = ''): void {
@@ -65,6 +88,8 @@ class EngineStatus {
         e.stage = stage;
       }
     });
+    emit('engine', 'state.change', {kind, progress, stage}, `engine:${kind}`);
+    this.notify();
   }
 
   setError(kind: EngineKind, error: string): void {
@@ -74,6 +99,8 @@ class EngineStatus {
       e.error = error;
       e.progress = -1;
     });
+    emit('engine', 'state.change', {kind, phase: 'error', error});
+    this.notify();
   }
 
   /** 当前是否有引擎处于需要用户感知的活跃态（驱动任务卡片显示） */
