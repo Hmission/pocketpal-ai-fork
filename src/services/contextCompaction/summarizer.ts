@@ -40,14 +40,19 @@ export interface SummarizeInput {
 }
 
 /**
- * 生成结构化摘要。引擎不可用/推理中/摘要过短（<8 字）返回 null——
+ * 生成结构化摘要。引擎不可用/摘要过短（<8 字）返回 null——
  * 调用方走既有 banner 链路，不新增兜底。
+ *
+ * 防抢引擎检查仅限自动选引擎路径：显式传入 engine = 调用方已裁决引擎
+ * 可用（B19.1 真机血证：pre-send 自动压缩发生在 handleSendPress 流程内，
+ * 该流程已置 inferencing=true，若一刀切检查会把调度链路自己的摘要请求
+ * 拦死；手动 CTA 不传 engine，仍受检查保护）。
  */
 export async function summarizeConversation(
   input: SummarizeInput,
   engine?: CompletionEngine,
 ): Promise<string | null> {
-  if (modelStore.inferencing) {
+  if (!engine && modelStore.inferencing) {
     return null;
   }
   const resolved =

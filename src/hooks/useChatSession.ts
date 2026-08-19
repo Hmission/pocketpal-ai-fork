@@ -287,6 +287,9 @@ const prepareCompletion = async ({
         {
           targetReleaseTokens: Math.max(1, used - activeNCtx * 0.7),
           nCtx: activeNCtx,
+          // B19.1：显式传入引擎 = 调度链路已裁决引擎可用（summarizer 防抢
+          // 检查对本流程 inferencing=true 免检；手动 CTA 不传仍受保护）
+          engine: modelStore.engine,
         },
       );
       if (result) {

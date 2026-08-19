@@ -89,13 +89,24 @@ describe('summarizeConversation', () => {
     expect(userContent.length).toBe(6000);
   });
 
-  it('推理中返回 null（不抢引擎）', async () => {
+  it('推理中且未显式传引擎返回 null（防抢保护，手动 CTA 路径）', async () => {
     (modelStore as any).inferencing = true;
     const out = await summarizeConversation(
       {dialogueText: 'x'},
       streamEngine('这是一段摘要'),
     );
     expect(out).toBeNull();
+  });
+
+  it('B19.1 显式传引擎 + inferencing=true 不拦（调度链路已裁决，pre-send 压缩自身）', async () => {
+    (modelStore as any).inferencing = true;
+    (modelStore as any).engine = undefined;
+    const engine = streamEngine('这是一段足够长的调度链路摘要');
+    const out = await summarizeConversation(
+      {dialogueText: '被压对话文本'},
+      engine,
+    );
+    expect(out).toBe('这是一段足够长的调度链路摘要');
   });
 
   it('无引擎（当前模型与管家均不可用）返回 null', async () => {
