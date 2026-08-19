@@ -12,7 +12,7 @@
  * 各 Panel 只读 props 渲染；store 状态经 observer 自动联动。
  */
 import * as React from 'react';
-import {View, FlatList} from 'react-native';
+import {View, FlatList, Modal, Text, TouchableOpacity} from 'react-native';
 import {KeyboardAwareScrollView} from 'react-native-keyboard-controller';
 import {observer} from 'mobx-react-lite';
 import {runInAction} from 'mobx';
@@ -50,6 +50,7 @@ import {
 import {ResultPreview} from './components/ResultPreview';
 import {HistoryStrip} from './components/HistoryStrip';
 import {ComposerPanel} from './components/ComposerPanel';
+import {UpscalePanel} from './components/UpscalePanel';
 import {confirmDialog} from '../../components/ui/ConfirmDialog';
 
 export const ImageGenScreen: React.FC = observer(() => {
@@ -66,7 +67,7 @@ export const ImageGenScreen: React.FC = observer(() => {
   const [cfg, setCfg] = React.useState('2');
   const [size, setSize] = React.useState(512);
   const [seed, setSeed] = React.useState(''); // 6.18 空=随机，填数可复现/调试
-    // 08-18 路线 B：运行时 LoRA 开关（默认关=纯 base；multiplier 默认 manifest 值，供强度梯度）
+  // 08-18 路线 B：运行时 LoRA 开关（默认关=纯 base；multiplier 默认 manifest 值，供强度梯度）
   const [loraEnabled, setLoraEnabled] = React.useState(false);
   const [loraMult, setLoraMult] = React.useState('2.0');
   const [scanning, setScanning] = React.useState(false);
@@ -96,6 +97,10 @@ export const ImageGenScreen: React.FC = observer(() => {
   const [editArming, setEditArming] = React.useState(false);
   // 进行中任务类型：'gen'=新生成（预览区空白页动效）｜'edit'=二创当前图（图上叠动效）
   const [taskKind, setTaskKind] = React.useState<'gen' | 'edit' | null>(null);
+  // P6-6：高清放大参数面板显隐（独立通用能力入口）
+  const [upscaleVisible, setUpscaleVisible] = React.useState(false);
+  // 信息条点击：当前查看完整生图参数的任务条目（提示词/耗时/尺寸/模型/种子/步数）
+  const [infoItem, setInfoItem] = React.useState<GeneratedImage | null>(null);
 
   const {toast, toastOpacity, showToast} = useToast();
   // 生成/编辑进行中：三点波浪动效
@@ -698,7 +703,9 @@ export const ImageGenScreen: React.FC = observer(() => {
       // 08-18 路线 B：LoRA 开关开且 manifest 声明才传 lora（关/未声明 = 空串 = 纯 base）
       loraPath:
         loraEnabled && m?.lora ? `${AIOS_MODELS_DIR}/${m.lora}` : undefined,
-      loraMultiplier: loraEnabled ? parseFloat(loraMult) || undefined : undefined,
+      loraMultiplier: loraEnabled
+        ? parseFloat(loraMult) || undefined
+        : undefined,
       modelLabel: m?.label,
     });
     setTaskKind(null);
@@ -762,6 +769,28 @@ export const ImageGenScreen: React.FC = observer(() => {
     }
     const ok = await imageGenStore.saveToAlbum(currentImage);
     showToast(ok ? '已保存 · Pictures/AIOS' : '保存失败，请重试');
+  };
+
+  // P6-6：高清放大确认（参数面板回调）——关闭面板后走任务化 running 页显示进度
+  const handleUpscaleConfirm = async (
+    scale: 2 | 4,
+    style: 'general' | 'anime',
+  ) => {
+    if (!currentImage) {
+      return;
+    }
+    setUpscaleVisible(false);
+    const out = await imageGenStore.upscaleImageEntry(
+      currentImage,
+      scale,
+      style,
+    );
+    showToast(out ? `已放大 ${scale}×` : '放大失败，请重试');
+    if (out) {
+      // 修复：放大结果在 history[0]（第 1 数据页）；previewIndex 0 = 编辑槽（空白上传页），
+      // 此前用 0 导致放大完成后预览窗口空白（2026-08-19 真机实锤）
+      scrollToPreview(1, false);
+    }
   };
 
   const handleDeleteCurrent = () => {
@@ -829,8 +858,10 @@ export const ImageGenScreen: React.FC = observer(() => {
           onOpenFullscreen={() => setFullscreen(true)}
           onCloseFullscreen={() => setFullscreen(false)}
           onSave={handleSave}
+          onUpscale={() => setUpscaleVisible(true)}
           onReroll={handleReroll}
           onDelete={handleDeleteCurrent}
+          onInfoPress={setInfoItem}
           onCopyError={handleCopyError}
           onRetryTask={handleRetryTask}
           onDeleteTask={handleDeleteTask}
@@ -919,6 +950,77 @@ export const ImageGenScreen: React.FC = observer(() => {
         onRowAction={handleRowAction}
         isRowLoaded={isRowLoaded}
       />
+
+      {/* P6-6：高清放大参数面板（独立通用能力，确认即关；进度走任务化 running 页） */}
+      <UpscalePanel
+        visible={upscaleVisible}
+        onClose={() => setUpscaleVisible(false)}
+        onConfirm={handleUpscaleConfirm}
+      />
+
+      {/* 信息条点击：完整生图参数详情（模型/耗时/尺寸/种子/步数/时间/提示词） */}
+      <Modal
+        visible={!!infoItem}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setInfoItem(null)}>
+        <TouchableOpacity
+          style={s.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setInfoItem(null)}>
+          <TouchableOpacity
+            style={s.modalCard}
+            activeOpacity={1}
+            onPress={() => {}}>
+            <Text style={s.modalTitle}>图片参数</Text>
+            {infoItem && (
+              <>
+                <View style={s.modalRow}>
+                  <Text style={s.modalLabel}>模型</Text>
+                  <Text style={s.modalValue} numberOfLines={1}>
+                    {infoItem.modelLabel ?? '未知'}
+                  </Text>
+                </View>
+                <View style={s.modalRow}>
+                  <Text style={s.modalLabel}>耗时</Text>
+                  <Text style={s.modalValue}>
+                    {infoItem.durationMs != null
+                      ? `${(infoItem.durationMs / 1000).toFixed(1)}s`
+                      : '-'}
+                  </Text>
+                </View>
+                <View style={s.modalRow}>
+                  <Text style={s.modalLabel}>尺寸</Text>
+                  <Text style={s.modalValue}>
+                    {infoItem.width}×{infoItem.height}
+                  </Text>
+                </View>
+                <View style={s.modalRow}>
+                  <Text style={s.modalLabel}>种子</Text>
+                  <Text style={s.modalValue}>{infoItem.seed}</Text>
+                </View>
+                <View style={s.modalRow}>
+                  <Text style={s.modalLabel}>步数</Text>
+                  <Text style={s.modalValue}>{infoItem.steps ?? '-'}</Text>
+                </View>
+                <View style={s.modalRow}>
+                  <Text style={s.modalLabel}>时间</Text>
+                  <Text style={s.modalValue}>
+                    {new Date(infoItem.ts).toLocaleString()}
+                  </Text>
+                </View>
+                <Text style={s.modalLabel}>提示词</Text>
+                <Text style={s.modalPrompt}>{infoItem.prompt || '（无）'}</Text>
+              </>
+            )}
+            <TouchableOpacity
+              style={s.modalCloseBtn}
+              onPress={() => setInfoItem(null)}>
+              <Text style={s.modalCloseText}>关闭</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 });

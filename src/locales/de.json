@@ -156,7 +156,14 @@
     "removeRemoteModel": "Entferne {{modelName}} {{serverName}}?",
     "retryConnection": "Wiederholen",
     "enterUrlManually": "URL manuell eingeben",
-    "manageServers": "Server verwalten"
+    "manageServers": "Server verwalten",
+    "contextPolicy": "Kontextrichtlinie",
+    "contextPolicyDescription": "Was tun, wenn der Chat die Kontextgrenze erreicht: zuerst erweitern, wenn der Speicher es erlaubt, alte Nachrichten komprimieren, wenn das Limit erreicht ist, oder jedes Mal fragen.",
+    "contextPolicyExpand": "Erweitern",
+    "contextPolicyCompact": "Komprimieren",
+    "contextPolicyAsk": "Jedes Mal fragen",
+    "contextAutoCompaction": "Automatisch komprimieren",
+    "contextAutoCompactionDescription": "Alte Nachrichten vor dem Senden automatisch komprimieren, wenn das Budget das Limit überschreitet (aus = nur manuell)."
   },
   "memory": {
     "shortWarning": "Speicherwarnung",

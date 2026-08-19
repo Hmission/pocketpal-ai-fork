@@ -22,6 +22,9 @@ interface BannerRowProps {
   // increase CTA's visibility (the sheet owns the actual target).
   canIncrease: boolean;
   onIncreaseContext: () => void;
+  // B19 上下文治理：压缩旧消息 CTA（本地模型专属，远程见 context-remote-hedged
+  // 分支不显示）。点击即显式选择「压缩」并记住策略（setContextPolicy）。
+  onCompactContext: () => void;
   onNewChat: () => void;
 }
 
@@ -79,7 +82,14 @@ const Meter: React.FC<{
  * host.
  */
 export const BannerRow: React.FC<BannerRowProps> = observer(
-  ({messages, htmlPreviewCount, canIncrease, onIncreaseContext, onNewChat}) => {
+  ({
+    messages,
+    htmlPreviewCount,
+    canIncrease,
+    onIncreaseContext,
+    onCompactContext,
+    onNewChat,
+  }) => {
     const theme = useTheme();
     const styles = createStyles({theme});
     const l10n = useContext(L10nContext);
@@ -153,6 +163,15 @@ export const BannerRow: React.FC<BannerRowProps> = observer(
             <Meter ratio={ratio} tint={error} styles={styles} />
           ) : null}
           <View style={styles.bannerActions}>
+            {!isRemote ? (
+              <Button
+                compact
+                mode="text"
+                testID="context-warning-compact"
+                onPress={onCompactContext}>
+                {l10n.chat.contextCompact}
+              </Button>
+            ) : null}
             {canIncrease ? (
               <Button
                 compact
@@ -233,6 +252,15 @@ export const BannerRow: React.FC<BannerRowProps> = observer(
           <Meter ratio={ratio} tint={error} styles={styles} />
         ) : null}
         <View style={styles.bannerActions}>
+          {!isRemote ? (
+            <Button
+              compact
+              mode="text"
+              testID="context-full-compact"
+              onPress={onCompactContext}>
+              {l10n.chat.contextCompact}
+            </Button>
+          ) : null}
           {canIncrease ? (
             <Button
               compact

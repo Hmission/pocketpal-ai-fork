@@ -18,7 +18,7 @@ import {observer} from 'mobx-react';
 import {toJS} from 'mobx';
 import calendar from 'dayjs/plugin/calendar';
 import {Snackbar} from 'react-native-paper';
-import {useIsFocused, useNavigation} from '@react-navigation/native';
+import {useIsFocused} from '@react-navigation/native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {
@@ -257,7 +257,6 @@ export const ChatView = observer(
     const styles = createStyles({theme});
     const insets = useSafeAreaInsets();
     const isFocused = useIsFocused();
-    const navigation = useNavigation<any>();
 
     // ============ REFS ============
     const animationRef = React.useRef(false);
@@ -366,7 +365,9 @@ export const ChatView = observer(
         prevCompaction !== last &&
         last.sessionId === chatSessionStore.activeSessionId
       ) {
-        setCompactionSnackbar(t(l10n.chat.compactionBanner, {count: last.count}));
+        setCompactionSnackbar(
+          t(l10n.chat.compactionBanner, {count: last.count}),
+        );
       }
       // eslint-disable-next-line react-hooks/exhaustive-deps -- MobX observer 使 lastCompaction 响应式
     }, [chatSessionStore.lastCompaction]);
@@ -1181,6 +1182,7 @@ export const ChatView = observer(
         styles.flatList,
         styles.scrollToBottomButton,
         chatMessages,
+        visibleChatMessages,
         renderListEmptyComponent,
         renderListFooterComponent,
         renderListHeaderComponent,
@@ -1242,9 +1244,7 @@ export const ChatView = observer(
           onLayout={onLayout}>
           {/* Header */}
           <View style={styles.headerWrapper}>
-            <ChatHeader
-              onModelPickerPress={() => setIsPickerVisible(true)}
-            />
+            <ChatHeader onModelPickerPress={() => setIsPickerVisible(true)} />
             {headerAccessory}
           </View>
 

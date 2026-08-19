@@ -27,10 +27,7 @@ import {extractAndSaveMemories} from '../services/aiosMemory';
 import {assembleContext} from '../services/aiosMemory/contextAssembler';
 import {getLastRecallInfo} from '../services/aiosMemory/contextAssembler';
 import {getLastWriteTime} from '../services/aiosMemory/conversationLog';
-import {
-  getLastSentiment,
-  classifyIntent,
-} from '../services/aiosMemory/rituals';
+import {getLastSentiment, classifyIntent} from '../services/aiosMemory/rituals';
 import {awaitEngineReady, engineIsBusy} from '../utils/engineReady';
 import {appendConversation} from '../services/aiosMemory/conversationLog';
 import {compactAndFlush} from '../services/aiosMemory/compaction';
@@ -204,13 +201,16 @@ const prepareCompletion = async ({
   // 自动压缩最旧消息（无感，提示条可见）；'ask'/'expand' 照发，banner CTA
   // 提供选择与策略记忆（扩窗可行性单事实源 hasModelUpgradeFitting）；已到
   // 扩窗天花板 → 直接压缩。压缩失败走既有 banner 链路，不新增兜底。
+  let compactedCount = 0;
   const activeNCtx = modelStore.activeContextSettings?.n_ctx;
   const activeModelForBudget = modelStore.activeModel;
   if (
     activeNCtx &&
     activeNCtx > 0 &&
     activeModelForBudget &&
-    activeModelForBudget.origin !== ModelOrigin.REMOTE
+    activeModelForBudget.origin !== ModelOrigin.REMOTE &&
+    // 自动压缩总开关（生成设置页）：关闭则发送前不自动压缩，banner 手动 CTA 仍可用
+    modelStore.contextAutoCompaction !== false
   ) {
     const projectionModel = modelStore.models.find(
       m => m.id === modelStore.activeProjectionModelId,
@@ -239,6 +239,7 @@ const prepareCompletion = async ({
         {targetReleaseTokens: Math.max(1, used - activeNCtx * 0.7)},
       );
       if (result) {
+        compactedCount = result.compactedCount;
         emit('chat', 'chat.context_compacted', {
           sessionId: chatSessionStore.activeSessionId,
           compactedCount: result.compactedCount,
@@ -344,7 +345,7 @@ const prepareCompletion = async ({
     sessionId: chatSessionStore.activeSessionId!,
   };
 
-  return {cleanCompletionParams, messageInfo};
+  return {cleanCompletionParams, messageInfo, compactedCount};
 };
 
 // Per-run TTS streaming state. The runner emits CUMULATIVE content/
@@ -408,6 +409,8 @@ async function applyEventToStore(
     hasImages: boolean;
     isMultimodalEnabled: boolean;
     tts: TtsRunState;
+    // B19：本回合发送前压缩的消息条数（turnMetrics 指标）
+    compactedCount: number;
   },
 ): Promise<void> {
   switch (event.type) {
@@ -595,13 +598,13 @@ async function applyEventToStore(
             const used = snapshot?.used ?? 0;
             const recall = getLastRecallInfo();
             return {
-              ctxPct: nCtx
-                ? Math.min(100, Math.round((used / nCtx) * 100))
-                : 0,
+              ctxPct: nCtx ? Math.min(100, Math.round((used / nCtx) * 100)) : 0,
               writeTime: getLastWriteTime() ?? Date.now(),
               recallCount: recall.count,
               recallPreview: recall.preview ?? [],
               sentimentLabel: getLastSentiment().label,
+              // B19：本回合发送前压缩的消息条数（0 = 未压缩）
+              compactedCount: ctx.compactedCount,
               // §18.1：快照读会话 intent（与胶囊同源），不再读已删的模块变量
               intent: chatSessionStore.activeSessionIntent ?? 'chat',
             };
@@ -783,7 +786,11 @@ export const useChatSession = (
       model: modelStore.activeModel,
     });
 
-    const {cleanCompletionParams, messageInfo} = await prepareCompletion({
+    const {
+      cleanCompletionParams,
+      messageInfo,
+      compactedCount: turnCompactedCount,
+    } = await prepareCompletion({
       imageUris: imageUris || [],
       message,
       systemMessages,
@@ -925,6 +932,7 @@ export const useChatSession = (
           hasImages,
           isMultimodalEnabled,
           tts,
+          compactedCount: turnCompactedCount,
         });
 
         if (performance.now() - lastYieldTs >= YIELD_INTERVAL_MS) {

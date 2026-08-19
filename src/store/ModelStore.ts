@@ -5,7 +5,7 @@ import {v4 as uuidv4} from 'uuid';
 import 'react-native-get-random-values';
 import {makePersistable} from 'mobx-persist-store';
 import * as RNFS from '@dr.pogodin/react-native-fs';
-import {AIOS_MODELS_DIR, DEFAULT_MODELS_DIR} from '../utils/paths';
+import {DEFAULT_MODELS_DIR} from '../utils/paths';
 import {getAllModelDirs} from '../utils/modelDirs';
 import {engineMutex} from './engineMutex';
 import {chatEngineGuard} from '../utils/engineGuard';
@@ -109,6 +109,7 @@ import {
 } from '../utils/memoryEstimator';
 import {CONTEXT_LADDER} from '../utils/bannerVariantResolver';
 import {defaultNCtxForModel} from '../utils/modelContextDefaults';
+import type {ContextPolicy} from '../services/contextCompaction/decision';
 import {loadLlamaModelInfo} from 'llama.rn';
 import {applyModelStoreMethodGroups} from './modelStoreMethods';
 
@@ -198,6 +199,15 @@ class ModelStore {
   // PSS 审计只动 preset/无源（旧版污染）档，用户手调=可见决策=主权，审计不碰。
   perModelNCtxSource: Record<string, 'preset' | 'user'> = {};
 
+  // B19 上下文治理策略（2026-08-19）：每模型 'expand' | 'compact' | 'ask'，
+  // 默认 'ask'。发送前预算决策机消费；banner CTA（增大/压缩）与生成设置页
+  // 写入；persist 持久化——用户的选择被记住，后续免打扰。
+  perModelContextPolicy: Record<string, ContextPolicy> = {};
+
+  // B19 自动压缩总开关（2026-08-19）：关闭后发送前不自动压缩（banner 手动
+  // CTA 仍可用），默认开。生成设置页「上下文策略」段开关。
+  contextAutoCompaction: boolean = true;
+
   context: LlamaContext | undefined = undefined;
 
   engine: CompletionEngine | undefined = undefined;
@@ -266,6 +276,8 @@ class ModelStore {
         'contextInitParams',
         'perModelNCtx',
         'perModelNCtxSource',
+        'perModelContextPolicy',
+        'contextAutoCompaction',
         'lastUsedModelId',
         'wasAutoReleased',
         'lastAutoReleasedModelId',
@@ -443,6 +455,27 @@ class ModelStore {
   getModelNCtx = (modelId?: string | null): number =>
     (modelId && this.perModelNCtx[modelId]) || this.contextInitParams.n_ctx;
 
+  /** B19 上下文治理策略：每模型覆盖优先，无覆盖默认 'ask'（首次触发弹选择）。 */
+  getContextPolicy = (modelId?: string | null): ContextPolicy =>
+    (modelId && this.perModelContextPolicy[modelId]) || 'ask';
+
+  /** B19 策略写入（banner CTA / 设置页），persist 持久化免打扰。 */
+  setContextPolicy = (modelId: string, policy: ContextPolicy) => {
+    runInAction(() => {
+      this.perModelContextPolicy = {
+        ...this.perModelContextPolicy,
+        [modelId]: policy,
+      };
+    });
+  };
+
+  /** B19 自动压缩总开关（设置页），persist 持久化。 */
+  setContextAutoCompaction = (enabled: boolean) => {
+    runInAction(() => {
+      this.contextAutoCompaction = enabled;
+    });
+  };
+
   /**
    * §18.6 每模型预调：无覆盖时写人工策展默认（modelContextDefaults），
    * 一次预调、持久化。策展表取代内存梯子「能装多大给多大」
@@ -459,7 +492,7 @@ class ModelStore {
     }
     this.setModelNCtx(model.id, defaultNCtxForModel(model), 'preset');
   };
-  
+
   /**
    * 策展默认一次归一（2026-08-19）：preset 源超策展默认者降档
    * （旧梯子遗留，如 1B 98304）；user 源不碰（主权）；preset 低于
@@ -2012,8 +2045,10 @@ class ModelStore {
 
     // Get all effective initialization settings BEFORE try block
     // so they're available for error reporting if initialization fails
-    const effectiveSettings =
-      await this.getEffectiveContextInitParams(filePath, model.id);
+    const effectiveSettings = await this.getEffectiveContextInitParams(
+      filePath,
+      model.id,
+    );
 
     try {
       // Create properly versioned ContextInitParams
@@ -2629,7 +2664,6 @@ class ModelStore {
     return this.addHFModel(hfModel, modelFile);
   };
 
-
   /**
    * Scan model dirs for .gguf files (B15 双轨：默认目录 ∪ 自定义目录，去重按文件名).
    * Auto-registers models not yet in the store.
@@ -2760,7 +2794,10 @@ class ModelStore {
             }
           });
           console.log(
-            '[ModelStore] mmproj paired: ' + filename + ' -> ' + target.filename,
+            '[ModelStore] mmproj paired: ' +
+              filename +
+              ' -> ' +
+              target.filename,
           );
         }
       }
@@ -3232,10 +3269,15 @@ class ModelStore {
 
   // 投影模型方法组：实现迁至 modelStoreMethods/projectionMethods.ts（行为零变化）
   getCompatibleProjectionModels!: (modelId: string) => Model[];
-  setDefaultProjectionModel!: (modelId: string, projectionModelId: string) => void;
+  setDefaultProjectionModel!: (
+    modelId: string,
+    projectionModelId: string,
+  ) => void;
   getDefaultProjectionModel!: (modelId: string) => Model | undefined;
   getLLMsUsingProjectionModel!: (projectionModelId: string) => Model[];
-  getDownloadedLLMsUsingProjectionModel!: (projectionModelId: string) => Model[];
+  getDownloadedLLMsUsingProjectionModel!: (
+    projectionModelId: string,
+  ) => Model[];
   hasRequiredProjectionModel!: (model: Model) => boolean;
   getProjectionModelStatus!: (model: Model) => {
     isAvailable: boolean;
@@ -3249,7 +3291,9 @@ class ModelStore {
     dependentModels?: Model[];
   };
   cleanupOrphanedProjectionModel!: (projectionModelId: string) => Promise<void>;
-  cleanupOrphanedProjectionModels!: (projectionModelIds: string[]) => Promise<void>;
+  cleanupOrphanedProjectionModels!: (
+    projectionModelIds: string[],
+  ) => Promise<void>;
   setModelVisionEnabled!: (modelId: string, enabled: boolean) => Promise<void>;
   getModelVisionPreference!: (model: Model) => boolean;
 
@@ -3357,14 +3401,11 @@ class ModelStore {
       // Create the completion promise and register it for safe context release
       // （guard：串行化+冷却窗+重试，防冷却期 HostFunction 异常）
       const completionPromise = chatEngineGuard.run(() =>
-        this.context!.completion(
-          cleanCompletionParams,
-          data => {
-            if (data.token) {
-              params.onToken?.(data.token);
-            }
-          },
-        ),
+        this.context!.completion(cleanCompletionParams, data => {
+          if (data.token) {
+            params.onToken?.(data.token);
+          }
+        }),
       );
 
       // Register the promise so releaseContext can wait for it

@@ -80,6 +80,20 @@ export interface AgentStep {
 export namespace MessageType {
   export type Any = AssistantTurn | Custom | File | Image | Text | Unsupported;
 
+  /**
+   * 会话内摘要压缩元数据（B19 contextCompaction）契约：
+   * - 锚点消息 metadata.compaction：单锚点模型，同一会话至多一条消息持有，
+   *   承载最新摘要（prompt 组装时替代被压区间注入）。
+   * - 其余被压消息 metadata.compacted = true：原文保留（非破坏性），
+   *   prompt 组装时跳过，UI 渲染压缩占位卡片。
+   */
+  export interface CompactionMeta {
+    summary: string;
+    messageIds: string[];
+    count: number;
+    ts: number;
+  }
+
   export type DerivedMessage =
     | DerivedAssistantTurn
     | DerivedCustom

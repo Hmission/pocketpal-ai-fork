@@ -1,3 +1,7 @@
+import type {ContextInitParams, Model} from '../../utils/types';
+import {getModelMemoryRequirement} from '../../utils/memoryEstimator';
+import {CONTEXT_LADDER} from '../../utils/bannerVariantResolver';
+
 export type FitStatus = 'fits' | 'tight' | 'wont_fit';
 
 interface FitStatusDeps {
@@ -40,3 +44,38 @@ export const hasFittingUpgrade = (
       tier <= modelMaxCtx &&
       fitStatusFor(tier) === 'fits',
   );
+
+// 从 Model 直接判定是否存在可行扩窗档（内存估算注入同一 estimator）。
+// 单事实源：ChatView 的 canIncreaseContext CTA 门控与 useChatSession 的
+// 预算决策机（canExpand）共用——扩窗可行性两处永远一致。
+export const hasModelUpgradeFitting = (
+  model: Model,
+  projectionModel: Model | undefined,
+  currentNCtx: number,
+  contextInitParams: ContextInitParams,
+  ceiling: number,
+): boolean => {
+  const modelMaxCtx =
+    model.ggufMetadata?.context_length ??
+    CONTEXT_LADDER[CONTEXT_LADDER.length - 1];
+  const fitStatusFor = makeFitStatusFor({
+    memBytesFor: nCtx => {
+      try {
+        return getModelMemoryRequirement(model, projectionModel, {
+          ...contextInitParams,
+          n_ctx: nCtx,
+        });
+      } catch {
+        return Number.POSITIVE_INFINITY;
+      }
+    },
+    ceiling,
+    totalMemory: 0,
+  });
+  return hasFittingUpgrade(
+    CONTEXT_LADDER,
+    currentNCtx,
+    modelMaxCtx,
+    fitStatusFor,
+  );
+};

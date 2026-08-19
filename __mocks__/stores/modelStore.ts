@@ -27,6 +27,14 @@ class MockModelStore {
   getModelNCtx = (modelId?: string | null): number =>
     (modelId && this.perModelNCtx[modelId]) || this.contextInitParams.n_ctx;
   setModelNCtx: jest.Mock;
+  // B19 上下文治理策略（2026-08-19）：与真实 store 同语义，默认 'ask'
+  perModelContextPolicy: Record<string, 'expand' | 'compact' | 'ask'> = {};
+  getContextPolicy = (modelId?: string | null): 'expand' | 'compact' | 'ask' =>
+    (modelId && this.perModelContextPolicy[modelId]) || 'ask';
+  setContextPolicy: jest.Mock = jest.fn();
+  // B19 自动压缩总开关（默认开）
+  contextAutoCompaction: boolean = true;
+  setContextAutoCompaction: jest.Mock = jest.fn();
   max_threads = 4;
   MIN_CONTEXT_SIZE = 200;
   useAutoRelease = true;
@@ -105,6 +113,9 @@ class MockModelStore {
       addLocalModel: false,
       removeModelByFullPath: false,
       setNContext: false,
+      setModelNCtx: false,
+      setContextPolicy: false,
+      setContextAutoCompaction: false,
       updateUseAutoRelease: false,
 
       setNGPULayers: false,
@@ -158,6 +169,8 @@ class MockModelStore {
     this.removeModelByFullPath = jest.fn();
     this.setNContext = jest.fn();
     this.setModelNCtx = jest.fn();
+    this.setContextPolicy = jest.fn();
+    this.setContextAutoCompaction = jest.fn();
     this.updateUseAutoRelease = jest.fn();
     this.setNoGpuDevices = jest.fn();
     this.setDevices = jest.fn();

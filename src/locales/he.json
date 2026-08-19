@@ -193,7 +193,14 @@
       "consentRevoke": "בטל הסכמה"
     },
     "languageSheetTitle": "שפה",
-    "languageSearchPlaceholder": "חפש שפות"
+    "languageSearchPlaceholder": "חפש שפות",
+    "contextPolicy": "מדיניות הקשר",
+    "contextPolicyDescription": "מה לעשות כשהשיחה מתקרבת למגבלת ההקשר: להרחיב תחילה אם הזיכרון מאפשר, לדחוס הודעות ישנות כשמגיעים למגבלה, או לשאול בכל פעם.",
+    "contextPolicyExpand": "הרחבה",
+    "contextPolicyCompact": "דחיסה",
+    "contextPolicyAsk": "שאל בכל פעם",
+    "contextAutoCompaction": "דחיסה אוטומטית",
+    "contextAutoCompactionDescription": "דחיסה אוטומטית של הודעות ישנות לפני שליחה כשהתקציב חורג מהמגבלה (כבוי = ידני בלבד)."
   },
   "memory": {
     "shortWarning": "אזהרת זיכרון",
@@ -1273,7 +1280,9 @@
       "showResultsAccessibilityLabel": "הצג תוצאות חיפוש ברשת עבור {{query}}",
       "openLinkError": "לא ניתן היה לפתוח את הקישור הזה."
     },
-    "contextFullRemote": "נגמר המקום בשיחה. פתח צ'אט חדש."
+    "contextFullRemote": "נגמר המקום בשיחה. פתח צ'אט חדש.",
+    "contextCompact": "דחיסת הודעות ישנות",
+    "compactionBanner": "{{count}} הודעות ראשוניות נדחסו"
   },
   "benchmark": {
     "title": "מבחן ביצועים",

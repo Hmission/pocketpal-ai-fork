@@ -230,12 +230,12 @@ adb 文件 push/pull 属允许的非 UI 操作；真机过程仍可叠加 scrcpy
 
 其他窗口的智能体要用 DRC 做真机测试，直接读母仓 Skill：`.cursor/skills/drc-remote-debug/SKILL.md`（已挂测试专工啄木鸟链路 v1.1.2）。
 
-最小提示词模板（交给其他窗口智能体照抄）：
+标准调用提示词（交给其他窗口智能体照抄，v3）：
 
-> 小黄鸡真机测试走 DRC 远程调试：读母仓 `.cursor/skills/drc-remote-debug/SKILL.md` 与 pp 仓
-> `docs/DebugRemoteControl/DRC_SPEC.md`。先 `node scripts/drc/drc-push.js system.ping` 探连通，
-> 再按动作表发 actionId（chat.send/nav.go/imagegen.generateDreamLite 等），读
-> `drc/results/<cmdId>.json` + `node scripts/drc/drc-tail.js --last 20` 取证，失败按 CP-APP
-> 编号导航处置。禁止卸载 App，release 包门控恒关不可用。
+> 小黄鸡真机测试走 DRC 远程调试：先读母仓 `.cursor/skills/drc-remote-debug/SKILL.md` 与
+> pp 仓 `docs/DebugRemoteControl/DRC_SPEC.md`，按其中「标准测试序列」执行（system.ping
+> 探连通 → 发 actionId → 读事件流/state.json 取证）。禁止卸载 App；release 包门控恒关。
+
+细节全部收敛在文档（前置/参数/陷阱/CP 处置），提示词不重复。
 
 约束：DRC 驱动的是与用户点按钮同一链路的 store action（非绕 UI 跑 API），操作过程屏幕有真实可见变化，叠加 scrcpy 投屏监督。新增动作先登记 §5 再改代码（BT05）。

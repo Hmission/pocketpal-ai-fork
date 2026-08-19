@@ -387,11 +387,11 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 
 日记/绘本/读屏不属「前缀 chip → 输入 → 发送」形态且各有唯一入口（日记=WorkspaceScreen 浏览、绘本=MemoryScreen 按钮、读屏=ToolScreen 行），加图标 = 入口重复，违锋利原则。快捷行维持四图标。
 
-### 18.9 生成进度监控卡（v4.0，2026-08-19 大王裁定）
+### 18.9 生成进度监控卡（v4.2，2026-08-19 大王裁定）
 
-**问题**：小雾 3B + 思考开启 TTFT 实测 45~226s，旧 PendingIndicator 在 prefill 阶段裸三点无耗时无阶段；引擎真挂时永远转圈——用户无法区分「正在干活 vs 挂了」（K90 血证：16 分钟生成全程无进度反馈）。
+**问题**：小雾 3B + 思考开启 TTFT 实测 45~226s，旧 PendingIndicator 在 prefill 阶段裸三点无耗时无阶段；引擎真挂时永远转圈——用户无法区分「正在干活 vs 挂了」（K90 血证：16 分钟生成全程无进度反馈）。v4.0 落地后真机复查：指示器仍是一行透明文本，视觉权重不足——大王裁定升级为卡片。
 
-**设计**：原位升级 PendingIndicator（头部槽位，不插消息卡——回复气泡本身在流式，插卡=重复污染）。四要素：
+**设计**：原位升级 PendingIndicator（头部槽位，不插消息卡——回复气泡本身在流式，插卡=重复污染）。**v4.2 卡片化**：容器对齐 assistant 卡片设计语言（`assistantBubbleBackground` 底色 + `messageBorderRadius` 圆角 + 内边距），与聊天流卡片同一视觉族。四要素：
 
 | 要素 | 数据源（单一事实源=chatSessionStore） | 说明 |
 |---|---|---|
@@ -403,7 +403,34 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 - **写入入口唯一**：applyEventToStore（run_started=markAgentRunStarted / token+marker+tool= touchAgentRun / run_finished+run_failed=clearAgentRun）；渲染只读，observer 最小化（与 toolCallTokenCount 同策略）。
 - **run_failed 收尾**：失败即 clearAgentRun + reducer 已翻转 status='failed'——进度卡立即退出，杜绝「挂了还在转」误报。
 - **锋利裁剪**：不滚 content（气泡已有 token 流，重复=臃肿）；思考流只在 prefill/streaming 显示，工具/卡住/停止时让位；阈值 300s 定死不配置化（3B 最坏 TTFT 226s 有冗余）。
-- **与生图卡同构**：三点波浪 + 阶段文本 + 耗时，同一视觉语言（ResultPreview/ImageTaskProgress 基准）。
+- **与生图卡同构**：三点波浪 + 阶段文本 + 耗时，同一视觉语言（ResultPreview/ImageTaskProgress 基准）；v4.2 起容器卡片化，与聊天页生图卡片同族。
+
+## 19. 上下文压缩机制（B19，2026-08-19 大王裁定）
+
+> 机制单源：`docs/POCKETPAL_CONTEXT_COMPACTION_SPEC.md`（决策机状态表 + 契约 + 文件清单）。本节只约束**聊天页 UI 表现**。
+
+### 19.1 决策与提示（人机协作）
+- 发送前预算 ≥0.8×n_ctx 时按 per-model 策略治理：`compact` 自动压缩（snackbar 提示）、`expand`/`ask` 照发（banner 提示）。
+- **banner CTA 即选择入口**：context-warning/full 新增「压缩上下文」按钮（本地模型专属，远程不显示），与「增大上下文」「新聊天」并列；点击即显式选择并记住策略（setContextPolicy）。
+- 压缩即时提示：snackbar「已压缩 N 条早期对话」（lastCompaction 消费，4s 自隐）。
+
+### 19.2 压缩占位卡片（CompactedBlock）
+- 锚点消息（metadata.compaction）渲染折叠卡片：折叠态「已压缩 N 条早期对话 ▾」，点按展开摘要全文；非锚点被压消息（compacted）从列表隐藏（原文保留库中）。
+- 视觉：surfaceVariant 底 + outline 细边 + 12px 标题，与气泡层级区分（卡片属系统层，非对话层）。
+
+### 19.3 指标与设置
+- **助手卡指标行**新增「压缩 N」段（turnMetrics.compactedCount，>0 才渲染，老消息不渲染）。
+- **生成设置页**「上下文策略」段：三选（扩充/压缩/每次询问，SegmentedButtons）+ 自动压缩开关（Switch，默认开）。
+
+### 19.4 testID 登记
+| 元素 | testID |
+|---|---|
+| warning 压缩 CTA | `context-warning-compact` |
+| full 压缩 CTA | `context-full-compact` |
+| 压缩占位卡片 | `compacted-block` |
+| 压缩 snackbar | `compaction-snackbar` |
+| 压缩指标段 | `metrics-compacted` |
+| 自动压缩开关 | `auto-compaction-switch` |
 
 ## 变更日志
 
@@ -424,3 +451,5 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 | 2026-08-20 | 3.9 | 发送/停止钮同一按钮语言：StopButton 与 SendButton 同规格（36px + 20px + 圆形衬底，停止=error 红），时态切换不跳变；rightControls gap 8 |
 | 2026-08-19 | 3.8 | 默认 n_ctx 4096→8192（contextInitParams v2.3 迁移仅抬旧默认）+ perModelNCtxSource 源跟踪（审计不碰用户手调）+ 审计覆盖无覆盖模型——大王裁定「默认上下文必须够工具基线」 |
 | 2026-08-19 | 4.0 | §18.9 生成进度监控卡：PendingIndicator 升级四要素（阶段标签/总耗时/思考流预览/300s 心跳）——prefill 不再裸三点，引擎真挂有「疑似卡住」提示；run_failed 收尾防永久转圈 |
+| 2026-08-19 | 4.1 | §19 上下文压缩机制（B19）：发送前预算决策机 + banner「压缩上下文」CTA（选择即记忆）+ 压缩占位卡片 + 指标行「压缩 N」+ 设置页策略三选与自动压缩开关（CONTEXT_COMPACTION_SPEC） |
+| 2026-08-19 | 4.2 | §18.9 进度监控卡卡片化：容器升级 assistant 卡片设计语言（底色+圆角），K90 真机复查「一行文本视觉权重不足」裁定 |

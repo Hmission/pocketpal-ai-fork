@@ -37,6 +37,8 @@ export interface TurnMetrics {
   recallPreview: string[];
   sentimentLabel: string;
   intent: 'chat' | 'vent' | 'qa' | 'task';
+  // B19：本回合发送前压缩的消息条数（老消息无此字段 = 未压缩）
+  compactedCount?: number;
 }
 
 interface AssistantTurnFooterProps {
@@ -207,9 +209,7 @@ export const AssistantTurnFooter: React.FC<AssistantTurnFooterProps> = observer(
                 {i > 0 ? separator(`sep-t-${i}`) : null}
                 <Text>
                   {/* 数字用品牌色强调，标签用辅助灰（文本/数字颜色区分） */}
-                  <Text style={componentStyles.metricsValue}>
-                    {part.value}
-                  </Text>
+                  <Text style={componentStyles.metricsValue}>{part.value}</Text>
                   <Text style={componentStyles.metricsLabel}>
                     {part.suffix}
                   </Text>
@@ -258,6 +258,20 @@ export const AssistantTurnFooter: React.FC<AssistantTurnFooterProps> = observer(
                   </Text>
                 </TouchableOpacity>
                 {separator('sep-m-3')}
+                {/* B19 压缩计数：本回合发送前压缩了 N 条早期消息（0/缺失不渲染） */}
+                {metrics.compactedCount ? (
+                  <>
+                    <View
+                      style={componentStyles.metricsSection}
+                      testID="metrics-compacted">
+                      <Text style={componentStyles.metricsLabel}>压缩</Text>
+                      <Text style={componentStyles.metricsValue}>
+                        {metrics.compactedCount}
+                      </Text>
+                    </View>
+                    {separator('sep-m-4')}
+                  </>
+                ) : null}
                 <Text style={componentStyles.metricsValue}>
                   {metrics.sentimentLabel}
                 </Text>
@@ -268,9 +282,14 @@ export const AssistantTurnFooter: React.FC<AssistantTurnFooterProps> = observer(
 
         {/* 召回片段预览（默认折叠，点按展开） */}
         {recallExpanded && metrics && metrics.recallCount > 0 ? (
-          <View style={componentStyles.recallPreview} testID="metrics-recall-preview">
+          <View
+            style={componentStyles.recallPreview}
+            testID="metrics-recall-preview">
             {metrics.recallPreview.map((frag, i) => (
-              <Text key={i} style={componentStyles.recallText} numberOfLines={2}>
+              <Text
+                key={i}
+                style={componentStyles.recallText}
+                numberOfLines={2}>
                 {frag.slice(0, 100)}
               </Text>
             ))}

@@ -194,6 +194,65 @@ class ImageGenModule(reactContext: ReactApplicationContext) :
   }
 
   /**
+   * P6-6 超分输入解码：保持宽高比 + 防 OOM 采样（两阶段：inJustDecodeBounds 读尺寸 →
+   * inSampleSize 降采样 → 精确缩放到长边=maxSize）。返回 {width, height, rgb}：
+   * rgb 为 0-1 float 平坦数组（HWC 交错），匹配 RealESRGAN ONNX 输入归一化 0-1。
+   * 说明：decodeImageToRgb 强制等比到 size×size 会拉伸非方图，超分通用能力不可用。
+   */
+  @ReactMethod
+  fun decodeImageForUpscale(path: String, maxSize: Int, promise: Promise) {
+    Thread {
+      try {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(path, bounds)
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
+          promise.reject("DECODE_FAIL", "cannot decode $path")
+          return@Thread
+        }
+        val longEdge = maxOf(bounds.outWidth, bounds.outHeight)
+        var sample = 1
+        while (longEdge / (sample * 2) >= maxSize) {
+          sample *= 2
+        }
+        val opts = BitmapFactory.Options().apply { inSampleSize = sample }
+        val src = BitmapFactory.decodeFile(path, opts) ?: run {
+          promise.reject("DECODE_FAIL", "cannot decode $path")
+          return@Thread
+        }
+        val scale = minOf(1f, maxSize.toFloat() / maxOf(src.width, src.height))
+        val nw = maxOf(1, Math.round(src.width * scale))
+        val nh = maxOf(1, Math.round(src.height * scale))
+        val scaled = Bitmap.createScaledBitmap(src, nw, nh, true)
+        if (scaled !== src) {
+          src.recycle()
+        }
+        val pixels = IntArray(nw * nh)
+        scaled.getPixels(pixels, 0, nw, 0, 0, nw, nh)
+        scaled.recycle()
+        // P6-6 复查：WritableArray 3.1M 装箱 double 过 bridge 峰值 ~150MB 有 OOM 风险；
+        // 改 base64 字节串（~4MB）传输，JS 侧 atob 解码为 Float32Array。
+        val bytes = ByteArray(nw * nh * 3)
+        var bi = 0
+        for (p in pixels) {
+          bytes[bi++] = (p shr 16 and 0xFF).toByte()
+          bytes[bi++] = (p shr 8 and 0xFF).toByte()
+          bytes[bi++] = (p and 0xFF).toByte()
+        }
+        val map = Arguments.createMap()
+        map.putInt("width", nw)
+        map.putInt("height", nh)
+        map.putString(
+          "rgb",
+          android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP),
+        )
+        promise.resolve(map)
+      } catch (e: Throwable) {
+        promise.reject("DECODE_FAIL", e.message)
+      }
+    }.start()
+  }
+
+  /**
    * 08-18：GPU renderer 探测（EGL pbuffer 查询 GL_RENDERER）。
    * 用于生图模型设备兼容性分级（Z-Image 仅 Adreno 800 系高端可用，740 级灰置）。
    */

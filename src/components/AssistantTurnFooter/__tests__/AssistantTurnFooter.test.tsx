@@ -179,9 +179,7 @@ describe('AssistantTurnFooter', () => {
         metadata: {},
         steps: [{content: 'half...', partial: true}],
       });
-      const {queryByTestId} = render(
-        <AssistantTurnFooter message={message} />,
-      );
+      const {queryByTestId} = render(<AssistantTurnFooter message={message} />);
       expect(queryByTestId('footer-copy')).toBeNull();
       expect(queryByTestId('footer-regenerate')).toBeNull();
     } finally {
@@ -243,6 +241,28 @@ describe('AssistantTurnFooter', () => {
       expect(getByText('落盘')).toBeTruthy();
       expect(getByText('召回')).toBeTruthy();
       expect(getByText('平稳')).toBeTruthy();
+    });
+
+    it('B19：本回合压缩过旧消息时指标行显示「压缩 N」', () => {
+      const message = baseTurn({
+        metadata: {
+          turnMetrics: {
+            ...turnMetrics,
+            compactedCount: 6,
+          },
+        },
+      });
+      const {getByTestId, getByText} = render(
+        <AssistantTurnFooter message={message} />,
+      );
+      expect(getByTestId('metrics-compacted')).toBeTruthy();
+      expect(getByText('6')).toBeTruthy();
+    });
+
+    it('B19：compactedCount 缺失（未压缩/老消息）不渲染压缩段', () => {
+      const message = baseTurn({metadata: {turnMetrics}});
+      const {queryByTestId} = render(<AssistantTurnFooter message={message} />);
+      expect(queryByTestId('metrics-compacted')).toBeNull();
     });
 
     it('召回段点按展开片段预览', () => {

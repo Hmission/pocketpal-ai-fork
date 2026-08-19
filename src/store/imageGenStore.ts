@@ -16,6 +16,12 @@ import {
   editDreamLite,
   decodeImageToRgb,
 } from '../services/dreamLiteEngine';
+import {
+  ensureSuperResModels,
+  loadSuperRes,
+  unloadSuperRes,
+  upscaleImage,
+} from '../services/superResEngine';
 import {engineMutex} from './engineMutex';
 import {engineStatus} from './engineStatus';
 import {emit} from '../debug/eventStream';
@@ -33,8 +39,10 @@ export interface GeneratedImage {
   steps?: number;
   cfg?: number;
   family?: string;
-  /** 来源：生图结果 or 用户上传（用于编辑的本地图） */
-  kind?: 'generated' | 'upload';
+  /** 来源：生图结果 or 用户上传（用于编辑的本地图） or 高清放大结果 */
+  kind?: 'generated' | 'upload' | 'upscaled';
+  /** 放大任务：源图 URI（running 页背景展示原图 + 半透明进度） */
+  sourceUri?: string;
   /** 生成耗时（ms）与模型标签：预览卡顶部信息条展示 */
   durationMs?: number;
   modelLabel?: string;
@@ -57,6 +65,8 @@ class ImageGenStore {
   dreamliteLoaded = false;
   /** 出图任务是否进行中 */
   generating = false;
+  /** 高清放大任务进行中（UpscalePanel 执行态/防重复触发） */
+  upscaleBusy = false;
   /** 最近一次错误信息 */
   error: string | null = null;
   /** 生成历史（内存态，不持久化） */
@@ -94,7 +104,8 @@ class ImageGenStore {
 
   constructor() {
     makeAutoObservable(this);
-    // 互斥：chat 引擎加载前会调本 releaser 释放 sd/dreamlite 双引擎
+    // 互斥：chat 引擎加载前会调本 releaser 释放 sd/dreamlite 双引擎；
+    // P6-6 复查：超分引擎也纳入（放大中切聊天 → 释放超分防内存叠加/并发）
     engineMutex.register('image', async () => {
       await this.unloadModel();
       if (this.dreamliteLoaded) {
@@ -106,6 +117,11 @@ class ImageGenStore {
         } catch {
           /* releaser 内静默：卸载失败不影响 chat 引擎加载 */
         }
+      }
+      try {
+        await unloadSuperRes();
+      } catch {
+        /* releaser 内静默 */
       }
     });
   }
@@ -173,11 +189,16 @@ class ImageGenStore {
         `采样 ${this.progressText}`,
       );
       // DRC 事件流：生图进度（1Hz 轮询即节流，throttleKey 防冗余）
-      emit('imagegen', 'imagegen.stage', {
-        progress: this.progress,
-        stage: this.stage,
-        stepTime: this.stepTime,
-      }, 'imagegen.stage');
+      emit(
+        'imagegen',
+        'imagegen.stage',
+        {
+          progress: this.progress,
+          stage: this.stage,
+          stepTime: this.stepTime,
+        },
+        'imagegen.stage',
+      );
     } catch {
       /* 快照不可用时静默 */
     }
@@ -668,10 +689,15 @@ class ImageGenStore {
             this.progressText = `${st}/${tot}`;
             this.stage = `采样 ${st}/${tot}`;
           });
-          emit('imagegen', 'imagegen.stage', {
-            progress: Math.round((st / tot) * 100),
-            stage: `采样 ${st}/${tot}`,
-          }, 'imagegen.stage');
+          emit(
+            'imagegen',
+            'imagegen.stage',
+            {
+              progress: Math.round((st / tot) * 100),
+              stage: `采样 ${st}/${tot}`,
+            },
+            'imagegen.stage',
+          );
         },
       );
       emit('imagegen', 'imagegen.done', {
@@ -753,6 +779,96 @@ class ImageGenStore {
   /** 解码上传图（编辑源图 RGB）：engine 层纯工具函数的 store 包装（单通道约束） */
   async decodeEditImage(path: string, size: number): Promise<Float32Array> {
     return decodeImageToRgb(path, size);
+  }
+
+  /**
+   * 高清放大（P6-6 独立通用能力）：内存互斥（先 await 释放 DreamLite/SD）→ 加载超分模型
+   * → tiled 放大 → 新 history 条目（kind='upscaled'）。进度写本 store 单状态机。
+   * 成功返回放大图 URI，失败返回 null（error 已写入 store）。
+   */
+  async upscaleImageEntry(
+    uri: string,
+    scale: 2 | 4,
+    style: 'general' | 'anime',
+  ): Promise<string | null> {
+    // 防重入：放大进行中重复触发直接拒绝（防线在 store，不依赖 UI 层门禁）
+    if (this.upscaleBusy) {
+      return null;
+    }
+    // 内存互斥：超分独占内存，放大前释放 DreamLite/SD（await 等待 native 归还）
+    if (this.dreamliteLoaded) {
+      try {
+        await this.unloadDreamLiteEntry();
+      } catch (e) {
+        console.warn('[SuperRes] unload DreamLite failed:', e);
+      }
+    }
+    if (this.modelLoaded) {
+      try {
+        await this.unloadModel();
+      } catch (e) {
+        console.warn('[SuperRes] unload SD failed:', e);
+      }
+    }
+    const styleLabel = style === 'anime' ? '动漫插画' : '通用写实';
+    const taskId = this.beginTask({
+      uri: '',
+      prompt: `高清放大 ${scale}×（${styleLabel}）`,
+      seed: 0,
+      ts: Date.now(),
+      width: 0,
+      height: 0,
+      modelLabel: 'RealESRGAN',
+      kind: 'upscaled',
+      sourceUri: uri,
+    });
+    runInAction(() => {
+      this.upscaleBusy = true;
+      this.generating = true;
+      this.genStartedAt = Date.now();
+      this.progress = 0;
+      this.progressText = '';
+      this.stepTime = 0;
+      this.stage = '放大: 解码 + 计算中（CPU 较慢，请稍候）';
+      this.error = null;
+    });
+    try {
+      await ensureSuperResModels();
+      await loadSuperRes(style);
+      const r = await upscaleImage(uri, scale, style, pct => {
+        runInAction(() => {
+          this.progress = pct;
+          this.progressText = `${pct}%`;
+          this.stage = `放大 ${pct}%`;
+        });
+      });
+      this.finishTask(taskId, r.uri, {
+        width: r.w,
+        height: r.h,
+        durationMs: Date.now() - this.genStartedAt,
+      });
+      return r.uri;
+    } catch (e: any) {
+      const msg = `放大失败: ${e?.message ?? e}`;
+      runInAction(() => {
+        this.error = msg;
+      });
+      this.failTask(taskId, '放大失败', msg);
+      return null;
+    } finally {
+      runInAction(() => {
+        this.upscaleBusy = false;
+        this.generating = false;
+        this.progress = -1;
+        this.progressText = '';
+        this.stage = '';
+      });
+      try {
+        await unloadSuperRes();
+      } catch {
+        /* 释放失败静默 */
+      }
+    }
   }
 }
 

@@ -226,7 +226,9 @@
       "showResultsAccessibilityLabel": "顯示 {{query}} 的網路搜尋結果",
       "openLinkError": "無法開啟此連結。"
     },
-    "contextFullRemote": "對話空間不足。請開始新對話。"
+    "contextFullRemote": "對話空間不足。請開始新對話。",
+    "contextCompact": "壓縮舊訊息",
+    "compactionBanner": "已壓縮 {{count}} 條早期對話"
   },
   "common": {
     "cancel": "取消",
@@ -1283,7 +1285,14 @@
       "consentRevoke": "撤銷"
     },
     "languageSheetTitle": "語言",
-    "languageSearchPlaceholder": "搜尋語言"
+    "languageSearchPlaceholder": "搜尋語言",
+    "contextPolicy": "上下文策略",
+    "contextPolicyDescription": "對話接近上下文上限時的處理：記憶體允許先擴窗、擴到極限後壓縮舊訊息，或每次詢問。",
+    "contextPolicyExpand": "擴充",
+    "contextPolicyCompact": "壓縮",
+    "contextPolicyAsk": "每次詢問",
+    "contextAutoCompaction": "自動壓縮",
+    "contextAutoCompactionDescription": "發送前預算超閾值時自動壓縮舊訊息（關閉後僅手動）。"
   },
   "storage": {
     "checkFailed": "無法檢查存儲",

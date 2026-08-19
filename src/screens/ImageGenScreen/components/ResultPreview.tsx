@@ -7,6 +7,7 @@ import {
   FlatList,
   Animated,
   Modal,
+  StyleSheet,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native';
@@ -14,6 +15,7 @@ import {
 import {useTheme} from '../../../hooks';
 import {createStyles} from '../styles';
 import {GeneratedImage} from '../../../store/imageGenStore';
+import {ZoomableImage} from './ZoomableImage';
 
 interface ResultPreviewProps {
   /** 横向分页 FlatList ref（编排层持有，用于 scrollToOffset） */
@@ -50,8 +52,12 @@ interface ResultPreviewProps {
   onOpenFullscreen: () => void;
   onCloseFullscreen: () => void;
   onSave: () => void;
+  /** P6-6 高清放大（独立通用能力，对当前成功图可用） */
+  onUpscale: () => void;
   onReroll: () => void;
   onDelete: () => void;
+  /** 信息条点击：弹出完整生图参数（提示词/耗时/尺寸/模型/种子/步数） */
+  onInfoPress: (item: GeneratedImage) => void;
   /** 失败任务页：一键复制完整报错（复制+落盘 AIOS/logs） */
   onCopyError: (item: GeneratedImage) => void;
   /** 失败任务页：同参数重试 */
@@ -96,8 +102,10 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
   onOpenFullscreen,
   onCloseFullscreen,
   onSave,
+  onUpscale,
   onReroll,
   onDelete,
+  onInfoPress,
   onCopyError,
   onRetryTask,
   onDeleteTask,
@@ -169,13 +177,31 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
   const renderItem = ({item}: {item: GeneratedImage}) => {
     const status = item.status ?? 'success';
 
-    // running：空白预览页 + 进度卡
+    // running：空白预览页 + 进度卡（放大任务：原图背景 + 半透明进度，见原图在放大）
     if (status === 'running') {
+      const isUpscale = item.kind === 'upscaled';
+      const title =
+        taskKind === 'edit'
+          ? '正在编辑此图…'
+          : isUpscale
+            ? '正在放大此图…'
+            : '正在生成新图…';
       return (
         <View style={{width: pageW}}>
           <View style={[s.taskPage, {width: pageW}]}>
-            {progressBody(
-              taskKind === 'edit' ? '正在编辑此图…' : '正在生成新图…',
+            {isUpscale && item.sourceUri ? (
+              <>
+                <Image
+                  source={{uri: item.sourceUri}}
+                  style={StyleSheet.absoluteFillObject}
+                  resizeMode="contain"
+                />
+                <View style={[s.genOverlay, s.genOverlayEdit]}>
+                  {progressBody(title)}
+                </View>
+              </>
+            ) : (
+              progressBody(title)
             )}
           </View>
         </View>
@@ -186,7 +212,9 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
     if (status === 'failed') {
       return (
         <View style={{width: pageW}}>
-          <View style={[s.taskPage, {width: pageW}]} testID="imagegen-failed-page">
+          <View
+            style={[s.taskPage, {width: pageW}]}
+            testID="imagegen-failed-page">
             <Text style={s.failedIcon}>⚠</Text>
             <Text style={s.failedTitle}>生成失败</Text>
             <Text style={s.failedSummary} numberOfLines={3}>
@@ -227,28 +255,27 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
             resizeMode="contain"
           />
         </TouchableOpacity>
-        {/* 信息条压在预览图顶部：模型 · 耗时 · 分辨率（DESIGN_SPEC B1 同波定稿） */}
-        {item.kind !== 'upload' ? (
-          <View style={s.infoOverlay} pointerEvents="none">
+        {/* 信息条：预览图顶部胶囊（居中收窄 + 表面色半透明，弱化干扰）；点击弹完整参数 */}
+        <View style={s.infoOverlayWrap} pointerEvents="box-none">
+          <TouchableOpacity
+            style={s.infoOverlay}
+            activeOpacity={0.7}
+            onPress={() => onInfoPress(item)}>
             <Text style={s.infoOverlayText} numberOfLines={1}>
-              {[
-                item.modelLabel,
-                item.durationMs != null
-                  ? `${(item.durationMs / 1000).toFixed(1)}s`
-                  : null,
-                `${item.width}×${item.height}`,
-              ]
-                .filter(Boolean)
-                .join(' · ')}
+              {item.kind !== 'upload'
+                ? [
+                    item.modelLabel,
+                    item.durationMs != null
+                      ? `${(item.durationMs / 1000).toFixed(1)}s`
+                      : null,
+                    `${item.width}×${item.height}`,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')
+                : `上传图 · ${item.width}×${item.height}`}
             </Text>
-          </View>
-        ) : (
-          <View style={s.infoOverlay} pointerEvents="none">
-            <Text style={s.infoOverlayText} numberOfLines={1}>
-              {`上传图 · ${item.width}×${item.height}`}
-            </Text>
-          </View>
-        )}
+          </TouchableOpacity>
+        </View>
       </View>
     );
   };
@@ -336,12 +363,17 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
         </View>
         {showActionRow && (
           <>
-            {/* 操作条定稿三按钮：保存/再次生成/删除；编辑唯一入口=ComposerPanel 底部 */}
+            {/* 操作条定稿四按钮：保存/放大/再次生成/删除；编辑唯一入口=ComposerPanel 底部 */}
             <View style={s.actionRow}>
               <TouchableOpacity
                 style={[s.actionBtn, s.actionSave]}
                 onPress={onSave}>
                 <Text style={s.actionTextOnSuccess}>保存</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.actionBtn, s.actionEdit]}
+                onPress={onUpscale}>
+                <Text style={s.actionTextOnInfo}>放大</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[s.actionBtn, s.actionReuse]}
@@ -358,22 +390,16 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
         )}
       </View>
 
-      {/* 全屏查看 */}
-      <Modal visible={fullscreen} transparent animationType="fade">
-        <View style={s.fullscreenBackdrop}>
-          <TouchableOpacity
-            style={s.fullscreenTouch}
-            onPress={onCloseFullscreen}>
-            {currentImage ? (
-              <Image
-                source={{uri: currentImage}}
-                style={s.fullscreenImage}
-                resizeMode="contain"
-              />
-            ) : null}
-          </TouchableOpacity>
-          <Text style={s.fullscreenHint}>点按关闭</Text>
-        </View>
+      {/* 全屏查看：双指缩放/拖动 + 单击关闭（ZoomableImage，浅色遮罩）；
+          条件渲染：每次打开重新挂载，缩放/位移共享值自动归位 */}
+      <Modal
+        visible={fullscreen}
+        transparent
+        animationType="fade"
+        onRequestClose={onCloseFullscreen}>
+        {fullscreen ? (
+          <ZoomableImage uri={currentImage} onClose={onCloseFullscreen} />
+        ) : null}
       </Modal>
     </>
   );

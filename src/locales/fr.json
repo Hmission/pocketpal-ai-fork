@@ -79,7 +79,14 @@
     "setTokenDescription": "Configurez un token pour accéder aux modèles restreints de Hugging Face.",
     "setTokenButton": "Configurer le token",
     "useHfTokenLabel": "Utiliser le token HF",
-    "useHfTokenDescription": "Activez pour utiliser le token pour les requêtes API. Désactivez si le token cause des problèmes d'authentification."
+    "useHfTokenDescription": "Activez pour utiliser le token pour les requêtes API. Désactivez si le token cause des problèmes d'authentification.",
+    "contextPolicy": "Politique de contexte",
+    "contextPolicyDescription": "Que faire quand la conversation approche de la limite : étendre d'abord si la mémoire le permet, compresser les anciens messages une fois la limite atteinte, ou demander à chaque fois.",
+    "contextPolicyExpand": "Étendre",
+    "contextPolicyCompact": "Compresser",
+    "contextPolicyAsk": "Demander",
+    "contextAutoCompaction": "Compression automatique",
+    "contextAutoCompactionDescription": "Compresser automatiquement les anciens messages avant l'envoi quand le budget dépasse la limite (désactivé = manuel uniquement)."
   },
   "memory": {
     "shortWarning": "Alerte mémoire"
@@ -661,7 +668,9 @@
     "load": "Charger",
     "goToModels": "Aller aux modèles",
     "readyToChat": "Prêt à discuter ? Chargez le dernier modèle utilisé.",
-    "pleaseLoadModel": "Chargez un modèle pour discuter."
+    "pleaseLoadModel": "Chargez un modèle pour discuter.",
+    "contextCompact": "Compresser les anciens messages",
+    "compactionBanner": "{{count}} anciens messages compressés"
   },
   "benchmark": {
     "title": "Benchmark",

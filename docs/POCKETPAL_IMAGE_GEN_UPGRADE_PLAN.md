@@ -856,3 +856,66 @@ CMake 选项链：
 - ANR 根因优化（主线程 input dispatch 阻塞；软件渲染为缓解，根治挂长期）；
 - 小米 13 Z-Image GPU VRAM 硬件上限（requiresHighGpu 灰置=产品边界决策）；
 - RN 上游 weak-ref 修复跟踪（版本升级时消化）。
+
+---
+
+## §6.19 RealESRGAN 通用图像放大能力接入（2026-08-19，本窗口闭环）
+
+### 能力定位
+
+**独立通用图像放大**（不绑定 DreamLite）：任意图片（生成图/上传图/相册照片）2×/4× 放大，模型风格可切换。入口 = ResultPreview 操作条「放大」→ 参数面板 → 进度走任务化 running 页（与生图/编辑 UX 一致）。
+
+### 模型与契约（scripts/aios/export_realesrgan_onnx.py）
+
+- `realesrgan_x4plus.onnx`（RRDBNet, num_block=23, ~63MB fp32，通用写实）；`realesr_animevideov3.onnx`（**SRVGGNetCompact**, num_conv=16, ~2MB，动漫插画）——animevideov3 非 RRDBNet（扁平 body.N + PReLU(64) + PixelShuffle(4)），load_state_dict strict 验证。
+- 契约：输入 [1,3,H,W] float32 0-1；输出 [1,3,4H,4W] 范围 **[-1,1]**（anime PReLU 负半轴）→ 端侧必须 clamp 0-1。
+- 双模型内置 `android/app/src/main/assets/esrgan/`（APK +65MB，RNFS.copyFileAssets 首次复制 + 版本标记）。
+
+### 链路（引擎/桥/状态/UI）
+
+- `src/services/superResEngine.ts`：tiled 推理（256 tile + 16px overlap → 4× 羽化 64px，仅左/上带降权）；输入解码限长边 1024（保证 4× 中间缓冲 ≤4096，uint8 输出峰值 ~50MB）；2× = 4× 结果 box 下采样；ORT 同 DreamLite（CPU + enableCpuMemArena:false）。
+- 桥：`decodeImageForUpscale`（Kotlin）**base64 字节传输**（3.1M 装箱 double 过 bridge 峰值 ~150MB 有 OOM 风险 → 改 ~4MB base64 串 + Hermes atob 解码）；保持宽高比 + inJustDecodeBounds 采样防 OOM。
+- 状态：`upscaleImageEntry`（store 单通道）——内存互斥（先释放 DreamLite/SD）→ 加载超分 → tiled 放大 → 任务化条目（kind='upscaled'）；**防重入守卫**（upscaleBusy，防线在 store 不依赖 UI）。
+- UI：ResultPreview 操作条四按钮（保存/放大/再次生成/删除）；UpscalePanel 纯参数面板（确认即关，进度不重复展示）。
+
+### 复查修复（啄木鸟，2026-08-19）
+
+1. **engineMutex image releaser 纳入 unloadSuperRes**：放大中切聊天不再内存叠加/并发（超分曾游离于互斥矩阵外）。
+2. **bridge 大数组 → base64**：见上（真机 OOM 风险，P0）。
+3. **UpscalePanel 精简**：删 busy/progress/stage 死代码（原方案 A/B 混合残留）。
+4. **upscale 防重入守卫**：store 层防线。
+
+### 计划漂移说明（实现优于计划，文档同步）
+
+- 计划「输入 >1536 降采样」→ 实现解码限 **1024**（1536×4=6144 > 输出上限 4096，矛盾消除，实现更正确）。
+- 计划「新增 upscaleProgress/upscaleStage 字段」→ 实现**复用** progress/stage 单状态机（不分裂状态）。
+
+### 验证
+
+桌面 ORT tiled vs 整图 PSNR 61.25dB（x4plus）/ 52.76dB（anime）无接缝无偏色；tsc/eslint/jest（Panels 17/17）/Gradle assembleProdDebug 全绿；真机装机成功。
+
+### 纯黑根因修复（2026-08-19 追加，啄木鸟）
+
+**现象**：真机放大完成后输出极暗/纯黑图（mean 3.19/255，65% 像素 0），原图正常。
+
+**排查链**：拉取设备输出 PNG 验像素（极暗非全 0）→ 桌面同图复现（非真机问题）→ torch vs ONNX 一致（非导出问题）→ PReLU 独立参数（修了但未解决）→ **获取官方 srvgg_arch.py 对照：SRVGGNetCompact 是残差学习架构，forward 末尾必须 `out += F.interpolate(x, scale_factor=4, mode='nearest')`——漏加 base 时输出只剩接近 0 的残差 → 极暗**。
+
+**修复**：export_realesrgan_onnx.py 补残差连接 + PReLU 改每层独立实例（官方循环内新建）；重导出 ONNX（torch=ORT max diff 0.0，亮度 0.014→0.932）；assets 替换 + ensureSuperResModels 版本标记 .v1→.v2（强制设备重复制，否则装机不覆盖旧模型）。
+
+**教训**：PSNR 只证明 tiled=整图（两者同暗时 PSNR 仍高），**必须检查输出绝对亮度**；架构实现以官方源码为准，勿凭记忆推断；模型文件更新必须联动版本标记。
+
+### 通道序灰色图修复（2026-08-19 再追加，啄木鸟）
+
+**现象**：亮度修复后真机输出仍为灰色（三通道完全相等 161.9/161.9/161.9），且呈格子感；原图彩色（185.7/164.4/125.4）。
+
+**根因**：TS 引擎 blit 把 ORT 输出（NCHW）按 HWC 交错读（`f[(y*ow+x)*3]`）——交错读 NCHW 平面使每像素 R/G/B 取自 channel0 平面相近位置 → 灰色。桌面验证漏网原因：Python 参考版先 transpose 成 HWC 再 blit（与 TS 实现不同构），验证通过但实现错误。
+
+**修复**：blit 按通道平面读 `f[p]/f[plane+p]/f[2*plane+p]`（plane=ow*oh）；验证改用**不对称彩色图**（左红右蓝）判通道（纯均值判据会被对称图/近白图骗过）。
+
+**终验**：桌面左红右蓝图 leftR=254.9/rightB=255.0；真机 DRC 重测输出 RGB mean [189.2,168.8,127.8]（ch-diff 40.9），tile 边界 ratio 0.8-1.07 无格子。
+
+### 遗留
+
+- 真机放大手动验证（生图→放大→参数→进度→结果条目；大图上传放大验证降采样防护）——大王操作，agent 只读旁证。
+- 4× 保存阶段 67MB base64 写文件慢（单次操作，性能已知点非断链）。
+- **性能实测（2026-08-19 真机 logcat 证据）**：x4plus 单 tile 约 24s（tile 10/25 @ 4 分钟），25 tiles 全量约 10 分钟——CPU 物理上限。产品决策：默认模型改 animevideov3（6-block，快约 4 倍，与 DreamLite 动漫插画风格匹配）；x4plus（通用写实）保留可选并标注耗时。后续若需加速：tile 双 session 并行（收益有限，受总算力约束）或降输入限（输出 <4096 违 4× 语义），暂缓。

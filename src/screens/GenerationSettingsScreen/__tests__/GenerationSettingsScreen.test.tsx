@@ -134,6 +134,27 @@ describe('GenerationSettingsScreen', () => {
     });
   });
 
+  it('B19：有活动模型时上下文策略段可切换自动压缩开关', async () => {
+    runInAction(() => {
+      (modelStore as any).activeModelId = 'test-model';
+    });
+    try {
+      const {getByTestId} = render(<GenerationSettingsScreen />, {
+        withSafeArea: true,
+        withNavigation: true,
+      });
+      const autoCompactionSwitch = getByTestId('auto-compaction-switch');
+      await act(async () => {
+        fireEvent(autoCompactionSwitch, 'valueChange', false);
+      });
+      expect(modelStore.setContextAutoCompaction).toHaveBeenCalledWith(false);
+    } finally {
+      runInAction(() => {
+        (modelStore as any).activeModelId = undefined;
+      });
+    }
+  });
+
   it('toggles Auto Offload/Load switch', async () => {
     const {getByTestId} = render(<GenerationSettingsScreen />, {
       withSafeArea: true,

@@ -201,7 +201,9 @@
     "contextPolicyDescription": "What to do when the chat nears the context limit: expand the window first while memory allows, compress old messages once the window is at its limit, or ask each time.",
     "contextPolicyExpand": "Expand",
     "contextPolicyCompact": "Compress",
-    "contextPolicyAsk": "Ask"
+    "contextPolicyAsk": "Ask",
+    "contextAutoCompaction": "Auto-compact",
+    "contextAutoCompactionDescription": "Automatically compress old messages before sending when the budget exceeds the limit (off = manual only)."
   },
   "memory": {
     "shortWarning": "Memory Warning",

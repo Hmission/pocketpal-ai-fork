@@ -224,7 +224,9 @@
       "showResultsAccessibilityLabel": "{{query}}에 대한 웹 검색 결과 표시",
       "openLinkError": "이 링크를 열 수 없어요."
     },
-    "contextFullRemote": "대화 공간이 가득 찼습니다. 새 채팅을 시작해 주세요."
+    "contextFullRemote": "대화 공간이 가득 찼습니다. 새 채팅을 시작해 주세요.",
+    "contextCompact": "이전 메시지 압축",
+    "compactionBanner": "초기 메시지 {{count}}개 압축됨"
   },
   "common": {
     "cancel": "취소",
@@ -1263,7 +1265,14 @@
       "consentRevoke": "동의 철회"
     },
     "languageSheetTitle": "언어",
-    "languageSearchPlaceholder": "언어 검색"
+    "languageSearchPlaceholder": "언어 검색",
+    "contextPolicy": "컨텍스트 정책",
+    "contextPolicyDescription": "대화가 컨텍스트 한도에 가까워지면: 메모리가 허락하면 먼저 확장하고, 한도 도달 후 이전 메시지를 압축하거나 매번 물어봅니다.",
+    "contextPolicyExpand": "확장",
+    "contextPolicyCompact": "압축",
+    "contextPolicyAsk": "매번 물어보기",
+    "contextAutoCompaction": "자동 압축",
+    "contextAutoCompactionDescription": "전송 전 예산이 한도를 초과하면 이전 메시지를 자동 압축합니다(끄기 = 수동만)."
   },
   "storage": {
     "checkFailed": "저장공간 확인 실패",

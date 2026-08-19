@@ -13,7 +13,11 @@ export const createStyles = (theme: any) =>
       padding: 12,
       gap: 10,
     },
-    cardTitle: {...theme.typography.titleS, fontWeight: '600', color: theme.colors.onSurface},
+    cardTitle: {
+      ...theme.typography.titleS,
+      fontWeight: '600',
+      color: theme.colors.onSurface,
+    },
     hint: {...theme.typography.captionM, color: theme.colors.onSurfaceVariant},
     modelChip: {
       flexDirection: 'row',
@@ -134,7 +138,10 @@ export const createStyles = (theme: any) =>
       color: theme.colors.onSurface,
       fontWeight: '600',
     },
-    uploadBigHint: {...theme.typography.captionS, color: theme.colors.onSurfaceVariant},
+    uploadBigHint: {
+      ...theme.typography.captionS,
+      color: theme.colors.onSurfaceVariant,
+    },
     uploadFab: {
       position: 'absolute',
       bottom: 10,
@@ -181,8 +188,14 @@ export const createStyles = (theme: any) =>
       fontWeight: '600',
       marginTop: 4,
     },
-    overlayText: {...theme.typography.captionS, color: theme.colors.onSurfaceVariant},
-    overlayStage: {...theme.typography.captionS, color: theme.colors.onSurfaceVariant},
+    overlayText: {
+      ...theme.typography.captionS,
+      color: theme.colors.onSurfaceVariant,
+    },
+    overlayStage: {
+      ...theme.typography.captionS,
+      color: theme.colors.onSurfaceVariant,
+    },
     // 任务化预览页（running 空白进度页 / failed 报错页）：与图片页同规格方形容器
     taskPage: {
       aspectRatio: 1,
@@ -226,7 +239,10 @@ export const createStyles = (theme: any) =>
       borderWidth: 1,
       borderColor: theme.colors.outline,
     },
-    failedBtnGhostText: {...theme.typography.uiS, color: theme.colors.onSurface},
+    failedBtnGhostText: {
+      ...theme.typography.uiS,
+      color: theme.colors.onSurface,
+    },
     actionRow: {flexDirection: 'row', gap: 8},
     actionBtn: {
       flex: 1,
@@ -265,7 +281,11 @@ export const createStyles = (theme: any) =>
     badgeZ: {color: theme.colors.badgeZImage, fontWeight: '700'},
     badgeDream: {color: theme.colors.badgeDreamlite, fontWeight: '700'},
     // 实验性徽章：警示色（模型可能不可用，与操作按钮橙区分）
-    badgeExp: {color: theme.colors.warning, fontWeight: '700', ...theme.typography.captionS},
+    badgeExp: {
+      color: theme.colors.warning,
+      fontWeight: '700',
+      ...theme.typography.captionS,
+    },
     // D1 顶栏触发胶囊（挂在 IMAGE_GEN headerRight；生图域色 12% 透明底）
     // B5（DESIGN_SPEC §8 Gap Ledger）：headerRight 右缘对齐内容区右边距（16dp）
     // B8 形状纪律：加载按钮=动作 → 圆角矩形（与下方操作按钮同族），直角锚定右缘，
@@ -296,7 +316,10 @@ export const createStyles = (theme: any) =>
       color: theme.colors.onSurface,
       flexShrink: 1,
     },
-    triggerArrow: {...theme.typography.captionS, color: theme.colors.domain.imageGen},
+    triggerArrow: {
+      ...theme.typography.captionS,
+      color: theme.colors.domain.imageGen,
+    },
     triggerLoadBtn: {
       paddingHorizontal: 10,
       paddingVertical: 3,
@@ -334,21 +357,72 @@ export const createStyles = (theme: any) =>
       shadowRadius: 10,
       shadowOffset: {width: 0, height: 6},
     },
-    // 信息条：压在预览图顶部（半透明黑底白字，模型 · 耗时 · 分辨率）
-    infoOverlay: {
+    // 信息条：预览图顶部胶囊（居中收窄 + 表面色半透明，弱化对预览的干扰）
+    // 点击弹完整生图参数（提示词/耗时/尺寸/模型）——onInfoPress 由编排层接
+    infoOverlayWrap: {
       position: 'absolute',
       top: 8,
-      left: 8,
-      right: 8,
-      backgroundColor: 'rgba(0, 0, 0, 0.55)',
-      borderRadius: theme.radius.s,
-      paddingHorizontal: 10,
-      paddingVertical: 4,
+      left: 0,
+      right: 0,
       alignItems: 'center',
     },
+    infoOverlay: {
+      maxWidth: '88%',
+      backgroundColor: theme.colors.surface + 'D9', // 表面色 85% 不透明（浅色弱化）
+      borderRadius: theme.radius.full,
+      paddingHorizontal: 12,
+      paddingVertical: 4,
+    },
     infoOverlayText: {
-      color: '#fff',
+      color: theme.colors.onSurfaceVariant,
       ...theme.typography.captionS,
+    },
+    // 参数详情弹窗（信息条点击）：提示词/耗时/尺寸/模型/种子/步数/时间
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.45)',
+      justifyContent: 'center',
+      padding: 24,
+    },
+    modalCard: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.m,
+      padding: 16,
+      gap: 8,
+    },
+    modalTitle: {
+      ...theme.typography.titleS,
+      color: theme.colors.onSurface,
+      marginBottom: 4,
+    },
+    modalRow: {flexDirection: 'row', gap: 8},
+    modalLabel: {
+      ...theme.typography.captionS,
+      color: theme.colors.onSurfaceVariant,
+      width: 52,
+    },
+    modalValue: {
+      ...theme.typography.captionM,
+      color: theme.colors.onSurface,
+      flex: 1,
+    },
+    modalPrompt: {
+      ...theme.typography.captionM,
+      color: theme.colors.onSurface,
+      lineHeight: 18,
+    },
+    modalCloseBtn: {
+      marginTop: 8,
+      alignSelf: 'flex-end',
+      backgroundColor: theme.colors.primary,
+      borderRadius: theme.radius.s,
+      paddingHorizontal: 16,
+      paddingVertical: 6,
+    },
+    modalCloseText: {
+      ...theme.typography.uiS,
+      color: theme.colors.onPrimary,
+      fontWeight: '600',
     },
     toastBar: {
       position: 'absolute',
@@ -400,7 +474,11 @@ export const createStyles = (theme: any) =>
       alignItems: 'center',
       justifyContent: 'center',
     },
-    historySelText: {color: '#fff', ...theme.typography.titleM, fontWeight: '700'},
+    historySelText: {
+      color: '#fff',
+      ...theme.typography.titleM,
+      fontWeight: '700',
+    },
     button: {
       backgroundColor: theme.colors.primary,
       borderRadius: theme.radius.s,
@@ -410,9 +488,9 @@ export const createStyles = (theme: any) =>
     buttonRow: {flexDirection: 'row', gap: 10},
     buttonEdit: {flex: 1, backgroundColor: theme.colors.info},
     buttonGen: {flex: 1},
-    buttonSecondary: {backgroundColor: theme.colors.surface,},
+    buttonSecondary: {backgroundColor: theme.colors.surface},
     buttonDanger: {backgroundColor: theme.colors.error},
-    buttonDisabled: {backgroundColor: theme.colors.surface,},
+    buttonDisabled: {backgroundColor: theme.colors.surface},
     buttonText: {
       color: theme.colors.onPrimary,
       ...theme.typography.uiM,
@@ -432,7 +510,10 @@ export const createStyles = (theme: any) =>
     },
     inputSmall: {minHeight: 44, padding: 8},
     advToggle: {...theme.typography.uiS, color: theme.colors.primary},
-    promptHint: {...theme.typography.captionS, color: theme.colors.onSurfaceVariant},
+    promptHint: {
+      ...theme.typography.captionS,
+      color: theme.colors.onSurfaceVariant,
+    },
     promptHintWarn: {...theme.typography.captionS, color: theme.colors.error},
     paramRow: {
       flexDirection: 'row',
@@ -440,7 +521,10 @@ export const createStyles = (theme: any) =>
       flexWrap: 'wrap',
       gap: 10,
     },
-    paramLabel: {...theme.typography.captionM, color: theme.colors.onSurfaceVariant},
+    paramLabel: {
+      ...theme.typography.captionM,
+      color: theme.colors.onSurfaceVariant,
+    },
     paramInput: {
       borderWidth: 1,
       borderColor: theme.colors.outline,
@@ -483,15 +567,9 @@ export const createStyles = (theme: any) =>
       marginTop: 2,
     },
     stageText: {...theme.typography.captionS, color: theme.colors.primary},
-    readyText: {...theme.typography.uiS, color: theme.colors.primary, marginTop: 4},
-    fullscreenBackdrop: {flex: 1, backgroundColor: '#000'},
-    fullscreenTouch: {flex: 1, alignItems: 'center', justifyContent: 'center'},
-    fullscreenImage: {width: '100%', height: '100%'},
-    fullscreenHint: {
-      position: 'absolute',
-      bottom: 24,
-      alignSelf: 'center',
-      color: '#fff',
+    readyText: {
       ...theme.typography.uiS,
+      color: theme.colors.primary,
+      marginTop: 4,
     },
   });

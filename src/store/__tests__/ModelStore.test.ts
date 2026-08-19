@@ -166,7 +166,7 @@ describe('ModelStore', () => {
       expect(modelStore.perModelNCtx['preset-ctx-model']).toBe(16384);
       expect(modelStore.perModelNCtxSource['preset-ctx-model']).toBe('preset');
     });
-    
+
     it('已有覆盖不重预调（不覆盖用户手调）', () => {
       runInAction(() => {
         modelStore.largestSuccessfulLoad = 8e9;
@@ -175,7 +175,7 @@ describe('ModelStore', () => {
       (modelStore as any).presetModelNCtxIfAbsent(presetCtxModel);
       expect(modelStore.perModelNCtx['preset-ctx-model']).toBe(4096);
     });
-    
+
     it('ceiling 未知仍写策展默认（策展非内存虚构）', () => {
       runInAction(() => {
         modelStore.largestSuccessfulLoad = undefined;
@@ -196,6 +196,42 @@ describe('ModelStore', () => {
       } as Model;
       (modelStore as any).presetModelNCtxIfAbsent(remote);
       expect(modelStore.perModelNCtx['remote-ctx-model']).toBeUndefined();
+    });
+
+    it('策展预调后 getModelNCtx 生效值即策展档（覆盖优先于全局默认）', () => {
+      runInAction(() => {
+        modelStore.largestSuccessfulLoad = 8e9;
+        modelStore.contextInitParams = {
+          ...modelStore.contextInitParams,
+          n_ctx: 4096, // 旧全局默认（v2.3 污染）
+        };
+      });
+      (modelStore as any).presetModelNCtxIfAbsent(presetCtxModel);
+      // 已加载模型读生效值 = perModelNCtx（策展档 16384），不被全局 4096 覆盖
+      expect(modelStore.getModelNCtx('preset-ctx-model')).toBe(16384);
+      expect(modelStore.getModelNCtx()).toBe(4096); // 无模型回退全局
+    });
+
+    it('B19 上下文治理策略：默认 ask，setContextPolicy 持久写入并读取', () => {
+      runInAction(() => {
+        modelStore.perModelContextPolicy = {};
+      });
+      expect(modelStore.getContextPolicy('any-model')).toBe('ask');
+      expect(modelStore.getContextPolicy()).toBe('ask');
+      modelStore.setContextPolicy('any-model', 'compact');
+      expect(modelStore.getContextPolicy('any-model')).toBe('compact');
+      expect(modelStore.getContextPolicy('other-model')).toBe('ask');
+    });
+
+    it('B19 自动压缩开关：默认开，setContextAutoCompaction 切换并读取', () => {
+      runInAction(() => {
+        (modelStore as any).contextAutoCompaction = true;
+      });
+      expect(modelStore.contextAutoCompaction).toBe(true);
+      modelStore.setContextAutoCompaction(false);
+      expect(modelStore.contextAutoCompaction).toBe(false);
+      modelStore.setContextAutoCompaction(true);
+      expect(modelStore.contextAutoCompaction).toBe(true);
     });
   });
 

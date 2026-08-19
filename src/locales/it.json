@@ -60,7 +60,14 @@
     "effectiveLabel": "efficace",
     "physicalBatchSize": "Dimensione fisica del batch",
     "physicalBatchSizeDescription": "Dimensione fisica del batch: {{physicalBatchSize}}{{effectivePhysicalBatch}}",
-    "cpuThreads": "Thread CPU"
+    "cpuThreads": "Thread CPU",
+    "contextPolicy": "Criterio contesto",
+    "contextPolicyDescription": "Cosa fare quando la chat si avvicina al limite di contesto: prima espandi se la memoria lo consente, comprimi i vecchi messaggi al limite, o chiedi ogni volta.",
+    "contextPolicyExpand": "Espandi",
+    "contextPolicyCompact": "Comprimi",
+    "contextPolicyAsk": "Chiedi",
+    "contextAutoCompaction": "Compressione automatica",
+    "contextAutoCompactionDescription": "Comprimi automaticamente i vecchi messaggi prima dell'invio quando il budget supera il limite (off = solo manuale)."
   },
   "errorReport": {
     "copy": "Copia report errore",

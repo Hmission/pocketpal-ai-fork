@@ -193,7 +193,14 @@
       "consentGivenTitle": "Wyszukiwanie w internecie jest włączone",
       "consentGivenDescription": "Zapytania i odczyty stron mogą opuszczać Twoje urządzenie w sposób opisany powyżej.",
       "consentRevoke": "Cofnij zgodę"
-    }
+    },
+    "contextPolicy": "Polityka kontekstu",
+    "contextPolicyDescription": "Co zrobić, gdy rozmowa zbliża się do limitu kontekstu: najpierw rozszerz, jeśli pamięć pozwala, skompresuj stare wiadomości po osiągnięciu limitu, lub pytaj za każdym razem.",
+    "contextPolicyExpand": "Rozszerz",
+    "contextPolicyCompact": "Kompresuj",
+    "contextPolicyAsk": "Pytaj",
+    "contextAutoCompaction": "Automatyczna kompresja",
+    "contextAutoCompactionDescription": "Automatycznie kompresuj stare wiadomości przed wysłaniem, gdy budżet przekracza limit (wył. = tylko ręcznie)."
   },
   "models": {
     "labels": {
@@ -1599,7 +1606,9 @@
       "searchResultsTitle": "Wyniki wyszukiwania",
       "showResultsAccessibilityLabel": "Pokaż wyniki wyszukiwania w internecie dla {{query}}",
       "openLinkError": "Nie udało się otworzyć tego linku."
-    }
+    },
+    "contextCompact": "Kompresuj stare wiadomości",
+    "compactionBanner": "Skompresowano {{count}} wcześniejszych wiadomości"
   },
   "htmlPreview": {
     "defaultTitle": "Podgląd",

@@ -193,7 +193,14 @@
       "consentRevoke": "Відкликати"
     },
     "languageSheetTitle": "Мова",
-    "languageSearchPlaceholder": "Пошук мов"
+    "languageSearchPlaceholder": "Пошук мов",
+    "contextPolicy": "Політика контексту",
+    "contextPolicyDescription": "Що робити, коли бесіда наближається до ліміту контексту: спершу розширити вікно, якщо пам'ять дозволяє, стиснути старі повідомлення після досягнення ліміту або питати щоразу.",
+    "contextPolicyExpand": "Розширити",
+    "contextPolicyCompact": "Стиснути",
+    "contextPolicyAsk": "Питати",
+    "contextAutoCompaction": "Автостиснення",
+    "contextAutoCompactionDescription": "Автоматично стискати старі повідомлення перед надсиланням, коли бюджет перевищує ліміт (вимк. = лише вручну)."
   },
   "memory": {
     "shortWarning": "Попередження про пам'ять",
@@ -1273,7 +1280,9 @@
       "showResultsAccessibilityLabel": "Показати результати веб-пошуку для {{query}}",
       "openLinkError": "Не вдалося відкрити це посилання."
     },
-    "contextFullRemote": "У розмові закінчилося місце. Почніть новий чат."
+    "contextFullRemote": "У розмові закінчилося місце. Почніть новий чат.",
+    "contextCompact": "Стиснути старі повідомлення",
+    "compactionBanner": "Стиснуто {{count}} ранніх повідомлень"
   },
   "benchmark": {
     "title": "Бенчмарк",

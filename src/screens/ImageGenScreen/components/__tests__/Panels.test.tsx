@@ -280,8 +280,10 @@ describe('ResultPreview', () => {
     onOpenFullscreen: jest.fn(),
     onCloseFullscreen: jest.fn(),
     onSave: jest.fn(),
+    onUpscale: jest.fn(),
     onReroll: jest.fn(),
     onDelete: jest.fn(),
+    onInfoPress: jest.fn(),
     onCopyError: jest.fn(),
     onRetryTask: jest.fn(),
     onDeleteTask: jest.fn(),
@@ -294,7 +296,7 @@ describe('ResultPreview', () => {
     expect(queryByText('删除')).toBeNull();
   });
 
-  it('有当前图时渲染操作条定稿三按钮（保存/再次生成/删除，编辑不在此处）', () => {
+  it('有当前图时渲染操作条定稿四按钮（保存/放大/再次生成/删除，编辑不在此处）', () => {
     const {getByText, queryByText} = wrap(
       <ResultPreview
         {...baseProps}
@@ -303,6 +305,7 @@ describe('ResultPreview', () => {
       />,
     );
     expect(getByText('保存')).toBeTruthy();
+    expect(getByText('放大')).toBeTruthy();
     expect(getByText('再次生成')).toBeTruthy();
     expect(getByText('删除')).toBeTruthy();
     // 编辑唯一入口=ComposerPanel 底部，操作条不再有编辑按钮

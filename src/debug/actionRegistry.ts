@@ -80,7 +80,9 @@ export const drcActions: Record<string, DrcActionDef> = {
     }),
     execute: async params => {
       if (!navSlot) {
-        throw new Error('导航槽未注册：DrcBridge 未挂载在 NavigationContainer 内');
+        throw new Error(
+          '导航槽未注册：DrcBridge 未挂载在 NavigationContainer 内',
+        );
       }
       const {route, params: routeParams} = params as {
         route: string;
@@ -149,7 +151,9 @@ export const drcActions: Record<string, DrcActionDef> = {
         modelLabel?: string;
       };
       if (!imageGenStore.modelLoaded && !imageGenStore.dreamliteLoaded) {
-        throw new Error('生图模型未加载：请先执行 imagegen.loadModel / imagegen.loadDreamLite');
+        throw new Error(
+          '生图模型未加载：请先执行 imagegen.loadModel / imagegen.loadDreamLite',
+        );
       }
       const uri = await imageGenStore.generate(p.prompt, {
         steps: p.steps,
@@ -163,7 +167,9 @@ export const drcActions: Record<string, DrcActionDef> = {
         modelLabel: p.modelLabel,
       });
       if (!uri) {
-        throw new Error(imageGenStore.error ?? '生图失败（详见事件流 imagegen.failed）');
+        throw new Error(
+          imageGenStore.error ?? '生图失败（详见事件流 imagegen.failed）',
+        );
       }
       return {uri};
     },
@@ -257,6 +263,34 @@ export const drcActions: Record<string, DrcActionDef> = {
     },
   },
 
+  'imagegen.upscale': {
+    id: 'imagegen.upscale',
+    domain: 'imagegen',
+    description:
+      'RealESRGAN 通用放大（P6-6）：对指定图片 2×/4× 放大，风格 general/anime；耗时较长（CPU）',
+    paramsSchema: z.object({
+      uri: z.string().min(1),
+      scale: z.union([z.literal(2), z.literal(4)]).optional(),
+      style: z.enum(['general', 'anime']).optional(),
+    }),
+    execute: async params => {
+      const p = params as {
+        uri: string;
+        scale?: 2 | 4;
+        style?: 'general' | 'anime';
+      };
+      const out = await imageGenStore.upscaleImageEntry(
+        p.uri,
+        p.scale ?? 2,
+        p.style ?? 'anime',
+      );
+      if (!out) {
+        throw new Error(imageGenStore.error ?? '放大失败');
+      }
+      return {uri: out};
+    },
+  },
+
   'models.scan': {
     id: 'models.scan',
     domain: 'model',
@@ -277,7 +311,9 @@ export const drcActions: Record<string, DrcActionDef> = {
       const model = modelStore.displayModels.find(m => m.id === modelId);
       if (!model) {
         const available = modelStore.displayModels.map(m => m.id).join(', ');
-        throw new Error(`未找到模型 ${modelId}；可用: ${available || '（无）'}`);
+        throw new Error(
+          `未找到模型 ${modelId}；可用: ${available || '（无）'}`,
+        );
       }
       await modelStore.selectModel(model);
       return {loaded: modelId};
@@ -356,7 +392,9 @@ export async function executeAction(
   if (!def) {
     throw new Error(`未知 actionId: ${actionId}（DRC_SPEC §动作注册表）`);
   }
-  const parsed = def.paramsSchema ? def.paramsSchema.parse(params ?? {}) : params;
+  const parsed = def.paramsSchema
+    ? def.paramsSchema.parse(params ?? {})
+    : params;
   return def.execute(parsed as never);
 }
 

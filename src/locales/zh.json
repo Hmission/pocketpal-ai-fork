@@ -201,7 +201,9 @@
     "contextPolicyDescription": "对话接近上下文上限时的处理：内存允许先扩窗、扩到极限后压缩旧消息，或每次询问。",
     "contextPolicyExpand": "扩充",
     "contextPolicyCompact": "压缩",
-    "contextPolicyAsk": "每次询问"
+    "contextPolicyAsk": "每次询问",
+    "contextAutoCompaction": "自动压缩",
+    "contextAutoCompactionDescription": "发送前预算超阈值时自动压缩旧消息（关闭后仅手动）。"
   },
   "memory": {
     "shortWarning": "内存警告",

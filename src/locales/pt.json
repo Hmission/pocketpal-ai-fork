@@ -193,7 +193,14 @@
       "consentRevoke": "Revogar"
     },
     "serverType": "Tipo de Servidor",
-    "serverTypeHelp": "Detetado automaticamente; altere se estiver errado."
+    "serverTypeHelp": "Detetado automaticamente; altere se estiver errado.",
+    "contextPolicy": "Política de contexto",
+    "contextPolicyDescription": "O que fazer quando a conversa se aproxima do limite de contexto: expandir primeiro se a memória permitir, comprimir mensagens antigas ao atingir o limite, ou perguntar a cada vez.",
+    "contextPolicyExpand": "Expandir",
+    "contextPolicyCompact": "Comprimir",
+    "contextPolicyAsk": "Perguntar",
+    "contextAutoCompaction": "Compressão automática",
+    "contextAutoCompactionDescription": "Comprimir automaticamente mensagens antigas antes do envio quando o orçamento excede o limite (desativado = apenas manual)."
   },
   "memory": {
     "shortWarning": "Aviso de Memória",
@@ -1273,7 +1280,9 @@
       "searchResultsTitle": "Resultados da pesquisa",
       "showResultsAccessibilityLabel": "Mostrar resultados da pesquisa na web para {{query}}",
       "openLinkError": "Não foi possível abrir esta ligação."
-    }
+    },
+    "contextCompact": "Comprimir mensagens antigas",
+    "compactionBanner": "{{count}} mensagens anteriores comprimidas"
   },
   "htmlPreview": {
     "defaultTitle": "Pré-visualização",

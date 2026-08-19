@@ -193,7 +193,14 @@
       "consentRevoke": "Cabut"
     },
     "languageSheetTitle": "Bahasa",
-    "languageSearchPlaceholder": "Cari bahasa"
+    "languageSearchPlaceholder": "Cari bahasa",
+    "contextPolicy": "Kebijakan konteks",
+    "contextPolicyDescription": "Yang dilakukan saat percakapan mendekati batas konteks: perluas jendela dulu jika memori memungkinkan, kompres pesan lama setelah mencapai batas, atau tanya setiap kali.",
+    "contextPolicyExpand": "Perluas",
+    "contextPolicyCompact": "Kompres",
+    "contextPolicyAsk": "Tanya",
+    "contextAutoCompaction": "Kompresi otomatis",
+    "contextAutoCompactionDescription": "Kompresi otomatis pesan lama sebelum dikirim saat anggaran melebihi batas (mati = hanya manual)."
   },
   "memory": {
     "shortWarning": "Peringatan Memori",
@@ -1273,7 +1280,9 @@
       "showResultsAccessibilityLabel": "Tampilkan hasil pencarian web untuk {{query}}",
       "openLinkError": "Gagal membuka tautan ini."
     },
-    "contextFullRemote": "Percakapan sudah penuh. Mulai obrolan baru."
+    "contextFullRemote": "Percakapan sudah penuh. Mulai obrolan baru.",
+    "contextCompact": "Kompres pesan lama",
+    "compactionBanner": "{{count}} pesan awal dikompresi"
   },
   "benchmark": {
     "title": "Benchmark",

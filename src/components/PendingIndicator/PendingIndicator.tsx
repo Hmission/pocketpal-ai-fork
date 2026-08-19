@@ -5,7 +5,7 @@ import {useTheme} from '../../hooks';
 import {L10nContext} from '../../utils';
 import {t} from '../../locales';
 
-import {styles, createCountStyle} from './styles';
+import {createStyles, createCountStyle} from './styles';
 
 import {Theme} from '../../utils/types';
 import type {AgentUiState} from '../../services/agent';
@@ -57,6 +57,7 @@ interface DotProps {
 
 const Dot: React.FC<DotProps> = ({delay, theme}) => {
   const opacity = useRef(new Animated.Value(0.3)).current;
+  const dotStyle = createStyles(theme).dot;
 
   useEffect(() => {
     // 全局动画规范：Animated.loop 一律 JS driver。本组件在工具调用期间持续循环，
@@ -81,7 +82,7 @@ const Dot: React.FC<DotProps> = ({delay, theme}) => {
   return (
     <Animated.View
       style={[
-        styles.dot,
+        dotStyle,
         {
           backgroundColor: theme.colors.onSurfaceVariant,
           opacity,
@@ -146,6 +147,7 @@ export const PendingIndicator: React.FC<PendingIndicatorProps> = ({
 }) => {
   const theme = useTheme();
   const l10n = useContext(L10nContext);
+  const styles = createStyles(theme);
   const countStyle = createCountStyle(theme).count;
 
   const firstTalent = pendingTalentNames?.[0];
@@ -236,7 +238,7 @@ export const PendingIndicator: React.FC<PendingIndicatorProps> = ({
     (agentStatus === 'prefill' || agentStatus === 'streaming_text');
 
   return (
-    <View style={styles.container} testID="pending-indicator">
+    <View style={styles.card} testID="pending-indicator">
       <View style={styles.row}>
         <Dot delay={0} theme={theme} />
         <Dot delay={200} theme={theme} />

@@ -21,6 +21,7 @@ const renderBanner = (
         htmlPreviewCount={0}
         canIncrease={true}
         onIncreaseContext={jest.fn()}
+        onCompactContext={jest.fn()}
         onNewChat={jest.fn()}
         {...props}
       />
@@ -521,5 +522,78 @@ describe('BannerRow', () => {
     const {getByTestId, queryByTestId} = renderBanner({htmlPreviewCount: 4});
     expect(getByTestId('context-full-banner')).toBeTruthy();
     expect(queryByTestId('soft-cap-warning')).toBeNull();
+  });
+
+  describe('B19 压缩 CTA', () => {
+    it('本地模型 warning banner 显示压缩按钮，点击触发 onCompactContext', () => {
+      runInAction(() => {
+        modelStore.activeModelId = 'model-1';
+        modelStore.models = modelsList;
+        (modelStore as any).activeContextSettings = {n_ctx: 4096};
+        chatSessionStore.lastCompletionResult = {
+          used: 3300,
+          contextFull: false,
+          isRemote: false,
+        };
+      });
+      const onCompactContext = jest.fn();
+      const {getByTestId} = renderBanner({onCompactContext});
+      fireEvent.press(getByTestId('context-warning-compact'));
+      expect(onCompactContext).toHaveBeenCalledTimes(1);
+    });
+
+    it('本地模型 full banner 显示压缩按钮（与增大/新聊天并列）', () => {
+      runInAction(() => {
+        modelStore.activeModelId = 'model-1';
+        modelStore.models = modelsList;
+        (modelStore as any).activeContextSettings = {n_ctx: 4096};
+        chatSessionStore.lastCompletionResult = {
+          used: 4096,
+          contextFull: true,
+          isRemote: false,
+        };
+      });
+      const {getByTestId} = renderBanner({canIncrease: true});
+      expect(getByTestId('context-full-compact')).toBeTruthy();
+      expect(getByTestId('context-full-increase')).toBeTruthy();
+      expect(getByTestId('context-full-new-chat')).toBeTruthy();
+    });
+
+    it('远程模型不显示压缩 CTA（上下文由服务器控制）', () => {
+      runInAction(() => {
+        modelStore.activeModelId = 'remote-1';
+        modelStore.models = [
+          {
+            id: 'remote-1',
+            origin: ModelOrigin.REMOTE,
+            serverId: 'srv-1',
+          } as any,
+        ];
+        (modelStore as any).activeContextSettings = undefined;
+        serverStore.servers = [
+          {
+            id: 'srv-1',
+            name: 'llama',
+            url: 'http://localhost:8080',
+            serverType: 'llama.cpp',
+          } as any,
+        ];
+        serverStore.remoteCaps = {'remote-1': {contextLength: 4096}};
+        chatSessionStore.lastCompletionResult = {
+          used: 3300,
+          contextFull: false,
+          isRemote: true,
+        };
+      });
+      const {getByTestId, queryByTestId} = renderBanner();
+      expect(getByTestId('context-warning-banner')).toBeTruthy();
+      expect(queryByTestId('context-warning-compact')).toBeNull();
+
+      runInAction(() => {
+        modelStore.models = [];
+        serverStore.servers = [];
+        serverStore.remoteCaps = {};
+      });
+    });
   });
 });

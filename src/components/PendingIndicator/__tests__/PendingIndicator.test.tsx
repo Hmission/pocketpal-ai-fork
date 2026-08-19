@@ -6,6 +6,7 @@
  * interval 只负责后续刷新，断言 mount 值即可。
  */
 import React from 'react';
+import {StyleSheet} from 'react-native';
 import {render} from '../../../../jest/test-utils';
 import {PendingIndicator} from '../PendingIndicator';
 
@@ -86,5 +87,15 @@ describe('PendingIndicator — 生成进度监控卡（§18.9）', () => {
   it('runStartedAt 为空 → 无耗时后缀（向后兼容）', () => {
     const {queryByTestId} = render(<PendingIndicator />);
     expect(queryByTestId('pending-indicator-suffix')).toBeNull();
+  });
+
+  it('卡片化（v4.2）：容器有底色+圆角，对齐 assistant 卡片设计语言', () => {
+    const {getByTestId} = render(
+      <PendingIndicator agentStatus="prefill" runStartedAt={NOW} />,
+    );
+    const card = getByTestId('pending-indicator');
+    const flat = StyleSheet.flatten(card.props.style);
+    expect(flat.backgroundColor).toBeTruthy();
+    expect(flat.borderRadius).toBeGreaterThan(0);
   });
 });

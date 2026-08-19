@@ -193,7 +193,14 @@
       "consentRevoke": "لغو دسترسی"
     },
     "languageSheetTitle": "زبان",
-    "languageSearchPlaceholder": "جستجوی زبان‌ها"
+    "languageSearchPlaceholder": "جستجوی زبان‌ها",
+    "contextPolicy": "سیاست زمینه",
+    "contextPolicyDescription": "وقتی گفتگو به محدودیت زمینه نزدیک می‌شود: ابتدا پنجره را گسترش دهید اگر حافظه اجازه می‌دهد، سپس پیام‌های قدیمی را فشرده کنید یا هر بار بپرسید.",
+    "contextPolicyExpand": "گسترش",
+    "contextPolicyCompact": "فشرده‌سازی",
+    "contextPolicyAsk": "هر بار بپرس",
+    "contextAutoCompaction": "فشرده‌سازی خودکار",
+    "contextAutoCompactionDescription": "فشرده‌سازی خودکار پیام‌های قدیمی قبل از ارسال وقتی بودجه از حد می‌گذرد (خاموش = فقط دستی)."
   },
   "memory": {
     "shortWarning": "هشدار حافظه",
@@ -1273,7 +1280,9 @@
       "showResultsAccessibilityLabel": "نمایش نتایج جستجوی وب برای {{query}}",
       "openLinkError": "باز کردن این لینک ممکن نشد."
     },
-    "contextFullRemote": "گنجایش گفتگو پر شد. یک چت جدید شروع کنید."
+    "contextFullRemote": "گنجایش گفتگو پر شد. یک چت جدید شروع کنید.",
+    "contextCompact": "فشرده‌سازی پیام‌های قدیمی",
+    "compactionBanner": "{{count}} پیام اولیه فشرده شد"
   },
   "benchmark": {
     "title": "بنچمارک",

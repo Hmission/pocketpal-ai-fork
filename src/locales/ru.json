@@ -224,7 +224,9 @@
       "showResultsAccessibilityLabel": "Показать результаты поиска в интернете по запросу {{query}}",
       "openLinkError": "Не удалось открыть эту ссылку."
     },
-    "contextFullRemote": "Лимит контекста диалога исчерпан. Начните новый чат."
+    "contextFullRemote": "Лимит контекста диалога исчерпан. Начните новый чат.",
+    "contextCompact": "Сжать старые сообщения",
+    "compactionBanner": "Сжато {{count}} ранних сообщений"
   },
   "common": {
     "cancel": "Отмена",
@@ -1263,7 +1265,14 @@
       "consentRevoke": "Отозвать"
     },
     "languageSheetTitle": "Язык",
-    "languageSearchPlaceholder": "Поиск языков"
+    "languageSearchPlaceholder": "Поиск языков",
+    "contextPolicy": "Политика контекста",
+    "contextPolicyDescription": "Что делать, когда беседа приближается к лимиту контекста: сначала расширить окно, если память позволяет, сжать старые сообщения по достижении лимита или спрашивать каждый раз.",
+    "contextPolicyExpand": "Расширить",
+    "contextPolicyCompact": "Сжать",
+    "contextPolicyAsk": "Спрашивать",
+    "contextAutoCompaction": "Автосжатие",
+    "contextAutoCompactionDescription": "Автоматически сжимать старые сообщения перед отправкой, когда бюджет превышает лимит (выкл. = только вручную)."
   },
   "storage": {
     "checkFailed": "Не удалось проверить хранилище",
