@@ -264,7 +264,9 @@ describe('ImageGenScreen 编排层（P4 对齐）', () => {
     });
     await waitFor(() => {
       expect(launchImageLibrary).toHaveBeenCalled();
-      expect(mockDecode).toHaveBeenCalledWith('mock-image-library.jpg', 1024);
+      // 双解码：1024² → UNet cond；512² → TE 视觉通道（ViT）
+      expect(mockDecode).toHaveBeenNthCalledWith(1, 'mock-image-library.jpg', 1024);
+      expect(mockDecode).toHaveBeenNthCalledWith(2, 'mock-image-library.jpg', 512);
     });
     // 源图作为 upload 条目入历史
     await waitFor(() => {
@@ -294,6 +296,7 @@ describe('ImageGenScreen 编排层（P4 对齐）', () => {
         1024,
         4,
         '把背景改成海边',
+        expect.any(Float32Array), // visRgb（512² TE 视觉条件）
       );
     });
     // 二创结果走任务化：finishTask 回填 uri（不再是第二次 pushHistory）

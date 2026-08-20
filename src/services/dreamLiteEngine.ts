@@ -23,14 +23,30 @@ const ImageGenNative = NativeModules.ImageGen;
 const DIR = `${AIOS_ROOT}/dreamlite`;
 const TE_DIM = 2048;
 const DROP_IDX = 34; // generate 模式截断模板前缀 token 数
-const MAX_SEQ = 128; // UNet 条件序列上限（官方 max_sequence_length=200，端侧折中 128）
-const TE_MAX_TOKENS = 200 + DROP_IDX; // 官方 tokenizer max_length：200+34，超出截断
+// 08-21 编辑链路最佳实践对齐（官方 max_sequence_length=200）：
+// generate 200；edit = 64 模板前缀 + 256 视觉 token + ≤200 文本（官方 processor 不截断，端侧文本上限对齐 generate）
+const MAX_SEQ_GEN = 200;
+const TE_MAX_TOKENS = 200 + DROP_IDX; // generate tokenizer max_length：200+34，超出截断
+// 编辑模式 TE 视觉通道（官方 processor 语义）：512² 源图 → patch16 → 32×32 网格 → merge 2×2 → 256 视觉 token
+const VIS_GRID = 32;
+const N_VIS_TOKENS = VIS_GRID * VIS_GRID / 4;
+const IMAGE_PAD_ID = 151655; // <|image_pad|>（Qwen3-VL image_token_index）
+// M-RoPE 位置（te_vision_lm.onnx 固定 seq=520，与导出契约一致）：
+// 前缀 65（64 + <|vision_start|>1）→ 视觉 256（t=65 恒定；h/w=65+idx//16, 65+idx%16）→ 后缀 81 起；pad 区 1
+const VIS_OFFSET = 65;
+const TEXT_RESUME = 81;
+const LLM_GRID = 16;
+const SEQ_EDIT_FIXED = 520;
+const VIS_EMB_ROWS = 1024; // 32×32 patch 样本数
+const VIS_EMB_FLAT = 3 * 2 * 16 * 16; // [c][t][py][px] 展平（temporal_patch=2，静态图补帧）
 
 let unet: ort.InferenceSession | null = null;
 let vae: ort.InferenceSession | null = null;
 let vaeEnc: ort.InferenceSession | null = null;
 let teCtx: LlamaContext | null = null; // 仅用作 Qwen3 tokenizer
-let teOrt: ort.InferenceSession | null = null; // ONNX TE（输出 per-token hidden_states）
+let teOrt: ort.InferenceSession | null = null; // ONNX TE 纯文本（generate，输出 per-token hidden_states）
+let teVisVisual: ort.InferenceSession | null = null; // ONNX TE 视觉（edit：pixel_values → image_embeds，fp32 输出）
+let teVisLm: ort.InferenceSession | null = null; // ONNX TE 融合 LLM（edit：input_ids+image_embeds → hidden_states，fp32）
 
 export const dreamLiteReady = () => !!unet && !!vae;
 
@@ -73,12 +89,30 @@ export async function unloadDreamLite(): Promise<void> {
  * 必须 await 等待 native 真正归还内存；不 await 会导致连续抽卡时旧 session 未释放即叠加新 session → OOM 闪退。 */
 export async function releaseTE(): Promise<void> {
   const ortS = teOrt;
+  const vs = teVisVisual;
+  const lm = teVisLm;
   const ctx = teCtx;
   teOrt = null;
+  teVisVisual = null;
+  teVisLm = null;
   teCtx = null;
   try {
     if (ortS) {
       await ortS.release();
+    }
+  } catch {
+    /* noop */
+  }
+  try {
+    if (vs) {
+      await vs.release();
+    }
+  } catch {
+    /* noop */
+  }
+  try {
+    if (lm) {
+      await lm.release();
     }
   } catch {
     /* noop */
@@ -120,6 +154,34 @@ export async function loadTE(): Promise<void> {
   console.log('[DreamLite] TE fp16 ONNX ready');
 }
 
+/** 加载编辑模式双段 TE ONNX（visual + 融合 LLM）：与 teOrt 互斥（两者不同驻，省 ~4GB 峰值）；
+ * tokenizer 仍用 te_q8.gguf vocab_only。仅编辑路径调用；generate 路径不动（te_fp16.onnx 纯文本，零回归）。 */
+export async function loadTEVision(): Promise<void> {
+  if (teVisLm) {
+    return;
+  }
+  if (teOrt) {
+    await releaseTE(); // 互斥：先释放纯文本 TE，避免双 session 同驻 OOM
+  }
+  console.log('[DreamLite] loading TE vision tokenizer (vocab only) ...');
+  teCtx = await initLlama({
+    model: `${DIR}/te_q8.gguf`,
+    vocab_only: true,
+    n_ctx: 256,
+    n_threads: 4,
+  });
+  // 双段：visual（pixel_values → image_embeds，fp32 输出）→ 融合 LLM（input_ids + image_embeds → hidden_states）
+  teVisVisual = await ort.InferenceSession.create(`${DIR}/te_vision_visual.onnx`, {
+    executionProviders: ['nnapi', 'cpu'],
+    enableCpuMemArena: false,
+  });
+  teVisLm = await ort.InferenceSession.create(`${DIR}/te_vision_lm.onnx`, {
+    executionProviders: ['nnapi', 'cpu'],
+    enableCpuMemArena: false,
+  });
+  console.log('[DreamLite] TE vision ONNX ready');
+}
+
 // flow-matching 动态位移（对齐官方 scheduler.set_timesteps(mu)）
 // 参考 dreamlite_infer_ref.py：mu = calculate_shift(lat*lat//4)，1024² → seq=4096 → mu=1.16
 // 桌面 A/B：与 diffusers FlowMatchEulerDiscreteScheduler 逐值一致（max diff 6e-8）
@@ -154,21 +216,27 @@ function enqueueGen<T>(fn: () => Promise<T>): Promise<T> {
   return run;
 }
 
-// 官方 pipeline_dreamlite_mobile.py prompt_template_encode_edit（纯文本近似：去 vision 占位 token，
-// 桌面实测模板前缀恰好 64 token，与官方 edit_start_idx=64 对齐）
-const EDIT_TEMPLATE =
+// 官方 pipeline_dreamlite_mobile.py prompt_template_encode_edit（含 <|vision_start|> 占位语义，逐字复刻）：
+// 前缀 = system 描述 + user 开始 + <|vision_start|>（桌面实测 64 token，与官方 edit_start_idx=64 对齐）；
+// 中间 = 256 个 <|image_pad|>（视觉 token 位置，hidden 由 ViT 提供）；后缀 = 指令 + 收尾。
+const EDIT_TEMPLATE_PRE =
   '<|im_start|>system\nDescribe the key features of the input image (color, shape, size, ' +
   "texture, objects, background), then explain how the user's text instruction should alter " +
   "or modify the image. Generate a new image that meets the user's requirements while maintaining " +
   'consistency with the original input where appropriate.<|im_end|>\n<|im_start|>user\n' +
-  '{}<|im_end|>\n<|im_start|>assistant\n';
+  '<|vision_start|>';
+const EDIT_TEMPLATE_SUF =
+  '<|vision_end|>\n{}<|im_end|>\n<|im_start|>assistant\n';
 const EDIT_DROP_IDX = 64;
 
-/** 复刻 pipeline encode_prompt：官方模板 + "[Generate]: "/"[Edit]: " 前缀 → TE per-token → drop 前缀 → pad */
+/** 复刻 pipeline encode_prompt：官方模板 + "[Generate]: "/"[Edit]: " 前缀 → TE per-token → drop 前缀 → pad。
+ * edit 模式走双段 teVision（visual + 融合 LLM）：pixelValues 为 512² 源图 [-1,1]（与官方归一化等价），
+ * input_ids 中 256 个 <|image_pad|> 的 hidden 由 ViT 提供 → prompt_embeds 含视觉 token（官方语义）。 */
 export async function encodePrompt(
   prompt: string,
-  maxLen = MAX_SEQ,
+  maxLen = MAX_SEQ_GEN,
   mode: 'generate' | 'edit' = 'generate',
+  pixelValues?: Float32Array,
 ): Promise<{enc: Float32Array; mask: Float32Array} | null> {
   if (!teCtx) {
     return null;
@@ -180,23 +248,64 @@ export async function encodePrompt(
       mode === 'edit'
         ? `[Edit]: A diptych with two side-by-side images of the same scene. Compared to the right side, the left one has ${prompt}`
         : `[Generate]: ${prompt}`;
-    const tpl = mode === 'edit' ? EDIT_TEMPLATE : GEN_TEMPLATE;
-    const text = tpl.replace('{}', inner);
-    const tk = await teCtx!.tokenize(text);
-    const ids: number[] = (tk as any).tokens ?? (tk as any);
-    // 官方 tokenizer: max_length=200+34, truncation → 截断到前 234 token
-    const trimmed = ids.slice(0, TE_MAX_TOKENS);
-    const seq = trimmed.length;
-    if (seq <= dropIdx || !teOrt) {
+    let ids: number[];
+    let real = 0;
+    if (mode === 'edit') {
+      // 逐字复刻官方模板：前缀(含 <|vision_start|>) + 256×image_pad + 后缀(指令)；
+      // 固定 seq=520（te_vision_lm.onnx 导出契约）：指令不足时 pad 0（mask=0 遮住）
+      const preIds = await tokenizeIds(EDIT_TEMPLATE_PRE);
+      const sufIds = await tokenizeIds(EDIT_TEMPLATE_SUF.replace('{}', inner));
+      const textCap = SEQ_EDIT_FIXED - preIds.length - N_VIS_TOKENS;
+      const body = [...preIds, ...Array(N_VIS_TOKENS).fill(IMAGE_PAD_ID), ...sufIds.slice(0, textCap)];
+      real = body.length;
+      ids = body.slice(0, SEQ_EDIT_FIXED).concat(Array(Math.max(0, SEQ_EDIT_FIXED - body.length)).fill(0));
+    } else {
+      const text = GEN_TEMPLATE.replace('{}', inner);
+      const tk = await teCtx!.tokenize(text);
+      // 官方 tokenizer: max_length=200+34, truncation → 截断到前 234 token
+      ids = ((tk as any).tokens ?? (tk as any)).slice(0, TE_MAX_TOKENS);
+    }
+    const seq = ids.length;
+    if (seq <= dropIdx) {
       return null;
     }
-    const ids64 = trimmed.map(v => BigInt(v));
-    const mask64 = trimmed.map(() => BigInt(1));
-    const res: any = await teOrt.run({
-      input_ids: new ort.Tensor('int64', ids64 as any, [1, seq]),
-      attention_mask: new ort.Tensor('int64', mask64 as any, [1, seq]),
-    });
-    const hs = res.hidden_states.data as Float32Array; // [1,seq,2048]
+    const ids64 = ids.map(v => BigInt(v));
+    const mask64 = ids.map((_, i) => BigInt(mode === 'edit' && i >= real ? 0 : 1));
+    let hs: Float32Array;
+    if (mode === 'edit') {
+      if (!teVisVisual || !teVisLm) {
+        return null;
+      }
+      if (!pixelValues || pixelValues.length !== 3 * 512 * 512) {
+        return null; // 视觉条件缺失：显式失败（上层报错），不做纯文本降级
+      }
+      // 视觉段：512² [-1,1] → [1024,1536] patch 数组（官方 processor 契约）→ te_vision_visual.onnx
+      const pv = buildPixelValues(pixelValues);
+      const visRes: any = await teVisVisual.run({
+        pixel_values: new ort.Tensor('float32', pv, [VIS_EMB_ROWS, VIS_EMB_FLAT]),
+        image_grid_thw: new ort.Tensor('int64', [1, VIS_GRID, VIS_GRID] as any, [1, 3]),
+      });
+      const imageEmbeds = visRes.image_embeds.data as Float32Array; // [256,2048] fp32
+      // 融合 LLM：M-RoPE 位置端侧构造（官方 get_rope_index 单图解析式）
+      const posIds = buildPositionIds(real);
+      const res: any = await teVisLm.run({
+        input_ids: new ort.Tensor('int64', ids64 as any, [1, seq]),
+        attention_mask: new ort.Tensor('int64', mask64 as any, [1, seq]),
+        image_embeds: new ort.Tensor('float32', imageEmbeds, [N_VIS_TOKENS, TE_DIM]),
+        image_grid_thw: new ort.Tensor('int64', [1, VIS_GRID, VIS_GRID] as any, [1, 3]),
+        position_ids: new ort.Tensor('int64', posIds as any, [3, 1, seq]),
+      });
+      hs = res.hidden_states.data as Float32Array; // [1,seq,2048]，含视觉 token
+    } else {
+      if (!teOrt) {
+        return null;
+      }
+      const res: any = await teOrt.run({
+        input_ids: new ort.Tensor('int64', ids64 as any, [1, seq]),
+        attention_mask: new ort.Tensor('int64', mask64 as any, [1, seq]),
+      });
+      hs = res.hidden_states.data as Float32Array; // [1,seq,2048]
+    }
     const kept = seq - dropIdx;
     const len = Math.min(kept, maxLen);
     const out = new Float32Array(maxLen * TE_DIM); // zero pad
@@ -208,18 +317,89 @@ export async function encodePrompt(
       }
     }
     console.log(
-      '[DreamLite] TE(ORT) encoded seq=',
+      '[DreamLite] TE encoded seq=',
       seq,
       'kept=',
       len,
       'mode=',
       mode,
+      'vis=',
+      mode === 'edit' ? N_VIS_TOKENS : 0,
     );
     return {enc: out, mask};
   } catch (e) {
     console.log('[DreamLite] TE encode fail', (e as any)?.message);
     return null;
   }
+}
+
+/** llama.rn tokenize → id 数组（特殊 token 如 <|im_start|>/<|vision_start|> 映射为词表 id） */
+async function tokenizeIds(text: string): Promise<number[]> {
+  const tk = await teCtx!.tokenize(text);
+  return (tk as any).tokens ?? (tk as any);
+}
+
+/** 512² 源图 [-1,1]（NCHW 三平面展平）→ 官方 pixel_values 契约 [1024,1536]：
+ * 每样本 = 一个 16×16 patch × [c][t][py][px]（temporal_patch=2 静态图补帧复制，官方 _preprocess 语义）。 */
+function buildPixelValues(visRgb: Float32Array): Float32Array {
+  const out = new Float32Array(VIS_EMB_ROWS * VIS_EMB_FLAT);
+  const side = 512;
+  for (let gh = 0; gh < VIS_GRID; gh++) {
+    for (let gw = 0; gw < VIS_GRID; gw++) {
+      const s = gh * VIS_GRID + gw;
+      let off = s * VIS_EMB_FLAT;
+      for (let c = 0; c < 3; c++) {
+        const plane = c * side * side;
+        for (let py = 0; py < 16; py++) {
+          const row = plane + (gh * 16 + py) * side + gw * 16;
+          for (let px = 0; px < 16; px++) {
+            const v = visRgb[row + px];
+            // [c][t=0/1][py][px]：两帧相同
+            out[off + c * 512 + py * 16 + px] = v;
+            out[off + c * 512 + 256 + py * 16 + px] = v;
+          }
+        }
+      }
+    }
+  }
+  return out;
+}
+
+/** M-RoPE 位置 [3,1,520]（te_vision_lm.onnx 固定 seq，与官方 get_rope_index 单图解析式一致，
+ * 桌面已逐值验证）：前缀 0..64 三轴；视觉 65..320（t=65；h=65+idx//16；w=65+idx%16）；
+ * 后缀 81.. 递增；pad 区（≥real）保持 1。 */
+function buildPositionIds(real: number): number[] {
+  const seq = SEQ_EDIT_FIXED;
+  const pos = new Array<number>(3 * seq).fill(1); // 初始 1（官方 mask=0 位置语义）
+  const setRow = (row: number, i: number, v: number) => {
+    pos[row * seq + i] = v;
+  };
+  for (let i = 0; i < Math.min(65, seq); i++) {
+    setRow(0, i, i);
+    setRow(1, i, i);
+    setRow(2, i, i);
+  }
+  const visEnd = Math.min(65 + N_VIS_TOKENS, seq);
+  for (let i = 65; i < visEnd; i++) {
+    const k = i - 65;
+    setRow(0, i, VIS_OFFSET);
+    setRow(1, i, VIS_OFFSET + Math.floor(k / LLM_GRID));
+    setRow(2, i, VIS_OFFSET + (k % LLM_GRID));
+  }
+  for (let i = visEnd; i < seq; i++) {
+    const v = TEXT_RESUME + (i - visEnd);
+    setRow(0, i, v);
+    setRow(1, i, v);
+    setRow(2, i, v);
+  }
+  if (real < seq) {
+    for (let i = real; i < seq; i++) {
+      setRow(0, i, 1);
+      setRow(1, i, 1);
+      setRow(2, i, 1);
+    }
+  }
+  return pos;
 }
 
 function calculateShift(seq: number): number {
@@ -246,8 +426,10 @@ async function denoise(
   for (let i = 0; i < latents.length; i++) {
     latents[i] = gauss();
   }
-  const enc = encOverride ?? new Float32Array(MAX_SEQ * TE_DIM);
-  const mask = maskOverride ?? new Float32Array(MAX_SEQ);
+  // 序列长度跟随条件实际长度（generate 200 / edit 520），非固定 128
+  const seqLen = encOverride ? encOverride.length / TE_DIM : MAX_SEQ_GEN;
+  const enc = encOverride ?? new Float32Array(seqLen * TE_DIM);
+  const mask = maskOverride ?? new Float32Array(seqLen);
   const tid = new Float32Array([width, height]);
   // 对齐官方：mu-shifted sigmas
   const sigmas = shiftedSigmas(steps, latH * latW);
@@ -271,12 +453,12 @@ async function denoise(
       timestep: new ort.Tensor('float32', [t], [1]),
       encoder_hidden_states: new ort.Tensor('float32', enc, [
         1,
-        MAX_SEQ,
+        seqLen,
         TE_DIM,
       ]),
       encoder_attention_mask: new ort.Tensor('int64', mask64 as any, [
         1,
-        MAX_SEQ,
+        seqLen,
       ]),
       time_ids: new ort.Tensor('float32', tid, [1, 2]),
     };
@@ -387,8 +569,10 @@ export async function decodeImageToRgb(
   return f;
 }
 
-/** 图像编辑：源图 RGB[-1,1] → VAE encode 作条件 → 4 步去噪。
- * prompt 为编辑指令（官方 diptych 语义），可选；无 prompt 时退化为纯图像条件重绘。
+/** 图像编辑：源图 RGB[-1,1] → VAE encode 作条件 → 4 步去噪（官方 edit 语义）。
+ * visRgb 为 512² 源图 [-1,1]（TE 视觉通道输入，与 cond 双解码同源）；
+ * prompt 为编辑指令（官方 diptych 语义文本条件，配合视觉 token 才是完整条件）；
+ * 无 visRgb / 无 prompt / TE 编码失败均显式报错（不降级，链路保持官方语义）。
  * 经 genQueue 串行化（与文生图互斥，TE 生命周期不踩踏）。 */
 export function editDreamLite(
   sourceRgb: Float32Array,
@@ -397,30 +581,31 @@ export function editDreamLite(
   steps = 4,
   onStep?: (step: number, steps: number) => void,
   prompt?: string,
+  visRgb?: Float32Array,
 ): Promise<string> {
   return enqueueGen(async () => {
     if (!unet || !vae || !vaeEnc) {
       throw new Error('DreamLite not loaded');
+    }
+    if (!visRgb || visRgb.length !== 3 * 512 * 512) {
+      throw new Error('编辑缺少 512² 视觉条件（visRgb）');
     }
     const eres = await vaeEnc.run({
       image: new ort.Tensor('float32', sourceRgb, [1, 3, height, width]),
     });
     const cond = eres.latents.data as Float32Array;
     console.log('[DreamLite] source encoded, cond len', cond.length);
-    // 编辑文本条件（官方 [Edit]: diptych 模板，drop 64）；编码完即释放 TE
-    let enc: Float32Array | undefined;
-    let mask: Float32Array | undefined;
-    if (prompt && prompt.trim()) {
-      await loadTE();
-      const r = await encodePrompt(prompt.trim(), MAX_SEQ, 'edit');
-      await releaseTE();
-      if (!r) {
-        throw new Error('TE 编码失败，未生成图片，请重试');
-      }
-      enc = r.enc;
-      mask = r.mask;
+    // 编辑文本条件：全模型 TE（ViT 视觉 token + diptych 指令，drop 64）；编码完即释放 TE
+    if (!prompt || !prompt.trim()) {
+      throw new Error('编辑缺少指令（prompt）');
     }
-    const img = await denoise(cond, width, height, steps, enc, onStep, mask);
+    await loadTEVision();
+    const r = await encodePrompt(prompt.trim(), SEQ_EDIT_FIXED, 'edit', visRgb);
+    await releaseTE();
+    if (!r) {
+      throw new Error('TE 编码失败，未生成图片，请重试');
+    }
+    const img = await denoise(cond, width, height, steps, r.enc, onStep, r.mask);
     return saveRgb(img, width, height);
   });
 }

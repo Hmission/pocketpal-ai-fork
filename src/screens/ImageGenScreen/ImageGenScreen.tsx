@@ -93,6 +93,8 @@ export const ImageGenScreen: React.FC = observer(() => {
   const dreamH = RATIOS[ratio]?.[1] ?? 1024;
   const [editSource, setEditSource] = React.useState<string | null>(null);
   const [editRgb, setEditRgb] = React.useState<Float32Array | null>(null);
+  // 编辑视觉通道条件：512² 源图 [-1,1]（TE ViT 输入，与 editRgb 双解码同源，官方 edit 语义）
+  const [editVisRgb, setEditVisRgb] = React.useState<Float32Array | null>(null);
   const [pageW, setPageW] = React.useState(0);
   // 编辑预备态：已点「编辑」锁定当前预览图，正在输入编辑指令（再点「执行编辑」二创）
   const [editArming, setEditArming] = React.useState(false);
@@ -467,8 +469,11 @@ export const ImageGenScreen: React.FC = observer(() => {
     // 按较大边压缩到支持尺寸
     const sq = Math.min(dreamW, dreamH);
     try {
+      // 双解码：sq² → UNet cond；512² → TE 视觉通道（ViT）
       const rgb = await imageGenStore.decodeEditImage(path, sq);
       setEditRgb(rgb);
+      const visRgb = await imageGenStore.decodeEditImage(path, 512);
+      setEditVisRgb(visRgb);
       // 源图入历史横栏（可点选查看/编辑），并在 0 页编辑槽显示
       imageGenStore.pushHistory({
         uri: `file://${path}`,
@@ -546,11 +551,17 @@ export const ImageGenScreen: React.FC = observer(() => {
       return;
     }
     try {
+      // 双解码：sq² → UNet cond；512² → TE 视觉通道（ViT）
       const rgb = await imageGenStore.decodeEditImage(
         targetUri.replace('file://', ''),
         sq,
       );
       setEditRgb(rgb);
+      const visRgb = await imageGenStore.decodeEditImage(
+        targetUri.replace('file://', ''),
+        512,
+      );
+      setEditVisRgb(visRgb);
       showSnackbar(`已锁定当前图（${sq}×${sq}），输入编辑指令后点「执行编辑」`);
     } catch (e) {
       setEditArming(false);
@@ -573,7 +584,7 @@ export const ImageGenScreen: React.FC = observer(() => {
   };
 
   const handleEditRun = async () => {
-    if (!editRgb) {
+    if (!editRgb || !editVisRgb) {
       return;
     }
     const sq = Math.min(dreamW, dreamH);
@@ -598,7 +609,8 @@ export const ImageGenScreen: React.FC = observer(() => {
       sq,
       sq,
       parseInt(steps, 10) || 4,
-      prompt.trim(), // 编辑指令（官方 diptych 语义文本条件）
+      prompt.trim(), // 编辑指令（官方 diptych 语义文本条件 + ViT 视觉 token）
+      editVisRgb,
     );
     setTaskKind(null);
     if (!uri) {
@@ -612,6 +624,7 @@ export const ImageGenScreen: React.FC = observer(() => {
       return;
     }
     setEditRgb(null);
+    setEditVisRgb(null);
     setEditSource(null);
     imageGenStore.finishTask(taskId, uri, {
       durationMs: Date.now() - startTs,

@@ -728,6 +728,7 @@ class ImageGenStore {
 
   /**
    * DreamLite 图像编辑（单通道）：内部确保引擎已加载；进度写本 store 单状态机。
+   * visRgb 为 512² 源图 [-1,1]（TE 视觉通道条件，与 sourceRgb 双解码同源）。
    * 成功返回图片 URI，失败返回 null（error 已写入 store）。
    */
   async editDreamLiteEntry(
@@ -736,6 +737,7 @@ class ImageGenStore {
     height: number,
     steps: number,
     instruction: string,
+    visRgb?: Float32Array,
   ): Promise<string | null> {
     if (!this.dreamliteLoaded) {
       const ok = await this.loadDreamLiteEntry();
@@ -762,6 +764,7 @@ class ImageGenStore {
           });
         },
         instruction,
+        visRgb,
       );
       return uri;
     } catch (e: any) {

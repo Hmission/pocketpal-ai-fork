@@ -931,3 +931,15 @@ CMake 选项链：
 - 真机放大手动验证（生图→放大→参数→进度→结果条目；大图上传放大验证降采样防护）——大王操作，agent 只读旁证。
 - 4× 保存阶段 67MB base64 写文件慢（单次操作，性能已知点非断链）。
 - **性能实测（2026-08-19 真机 logcat 证据）**：x4plus 单 tile 约 24s（tile 10/25 @ 4 分钟），25 tiles 全量约 10 分钟——CPU 物理上限。产品决策：默认模型改 animevideov3（6-block，快约 4 倍，与 DreamLite 动漫插画风格匹配）；x4plus（通用写实）保留可选并标注耗时。后续若需加速：tile 双 session 并行（收益有限，受总算力约束）或降输入限（输出 <4096 违 4× 语义），暂缓。
+
+### DreamLite 编辑链路最佳实践对齐：TE 视觉通道（2026-08-21）
+
+**复查结论**：编辑出图与源图无关（像新图）根因——① TE 缺视觉通道（export_te_fp16.py 只导出 language_model，官方 edit 模式用 processor 把 512² 源图经 ViT 编码进 prompt_embeds）；② 指令被 128 token 截断（官方 edit 不截断、generate 200）。
+
+**落地（与 diffusers 0.39 官方 pipeline 逐行对齐）**：
+- **双段 ONNX 导出**（.tmp/dreamlite/export_te_vision.py + export_te_vision_lm.py）：
+  - 	e_vision_visual.onnx（660MB fp16）：pixel_values [1024,1536] patch 数组（16×16 patch × [c][t][py][px]，temporal=2 补帧）→ image_embeds [256,2048]（fp32 输出）；fast_pos_embed 静态化（固定 grid）+ eager attention（SDPA+GQA 无法转换）
+  - 	e_vision_lm.onnx（3.29GB fp16）：input_ids + attention_mask + image_embeds + image_grid_thw + **position_ids**（M-RoPE 端侧解析构造，官方 get_rope_index 单图解析式，桌面逐值验证一致）→ hidden_states；固定 seq=520（masked_scatter 依赖使 dynamo 静态化）；patch get_placeholder_mask 校验分支
+- **引擎**：editDreamLite 双解码（1024² cond + 512² 视觉）；encodePrompt edit 分支 = 官方模板（含 vision 占位）+ 256 image_pad + 双段前向；MAX_SEQ generate 128→200、edit 520
+- **验证**：position_ids 与官方逐值一致 ✓；视觉嵌入 cos 0.99994 ✓；LM 直通 A/B cos 0.999999 ✓（视觉 token 输出 0.65 差异为 fp16 固有放大，端侧自洽）；tsc 零错 + jest 全绿（pre-existing invariants 失败除外）
+- **明确不做**：strength/加噪起点（偏离 DMD2 蒸馏分布）、文本描述源图（近似替代）、静默降级

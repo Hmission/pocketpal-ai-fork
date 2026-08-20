@@ -21,12 +21,13 @@ export const DREAMLITE_MANIFEST: ImageGenManifest = {
 export const PROMPT_LIMIT = 120;
 
 // 08-18 修复：提示词按 token 计（原按字符 120 过低——120 字符≈30 tokens 远低于模型上限）
+// 08-21 对齐官方：dreamlite 文本条件上限从 128 提到 200（官方 max_sequence_length=200）
 // 各模型 token 上限（编码器硬限，超出将被截断）：
-//   dreamlite: 128（UNet 条件上限，官方 max_sequence_length=200，本实现 128）
+//   dreamlite: 200（UNet 条件上限，官方 max_sequence_length=200；编辑模式另有 256 视觉 token）
 //   sd3: 77（CLIP-L/G max_length=77，训练/推理一致，引擎 chunk_len=77）
 //   zimage: 256（LLM 编码，宽松）
 export const PROMPT_TOKEN_LIMIT: Record<string, number> = {
-  dreamlite: 128,
+  dreamlite: 200,
   sd3: 77,
   zimage: 256,
 };

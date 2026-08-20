@@ -166,19 +166,24 @@ describe('runEditImageTaskCard（P5 聊天内编辑闭环）', () => {
     (imageGenStore as any).error = null;
   });
 
-  it('编辑成功：解码源图→DreamLite 编辑（1024²·4 步·中文指令直用）→回写结果图', async () => {
-    mockDecode.mockResolvedValue(new Float32Array(4 * 1024 * 1024));
+  it('编辑成功：解码源图（双解码 1024²+512²）→DreamLite 编辑（视觉通道）→回写结果图', async () => {
+    // 双解码：1024² → UNet cond；512² → TE 视觉通道（ViT）
+    mockDecode
+      .mockResolvedValueOnce(new Float32Array(4 * 1024 * 1024))
+      .mockResolvedValueOnce(new Float32Array(3 * 512 * 512));
     mockEdit.mockResolvedValue('file:///tmp/edit_1.png');
 
     await runEditImageTaskCard('file:///tmp/src.png', '把背景改成海边');
 
-    expect(mockDecode).toHaveBeenCalledWith('/tmp/src.png', 1024);
+    expect(mockDecode).toHaveBeenNthCalledWith(1, '/tmp/src.png', 1024);
+    expect(mockDecode).toHaveBeenNthCalledWith(2, '/tmp/src.png', 512);
     expect(mockEdit).toHaveBeenCalledWith(
       expect.any(Float32Array),
       1024,
       1024,
       4,
       '把背景改成海边',
+      expect.any(Float32Array), // visRgb（512² TE 视觉条件）
     );
     // 编辑指令不经过管家英文扩写（diptych 语义文本条件）
     expect(mockWritePrompt).not.toHaveBeenCalled();
@@ -198,7 +203,9 @@ describe('runEditImageTaskCard（P5 聊天内编辑闭环）', () => {
   });
 
   it('编辑失败：回写失败文案 + editTaskFailed（渲染侧出「重试」动作）', async () => {
-    mockDecode.mockResolvedValue(new Float32Array(4 * 1024 * 1024));
+    mockDecode
+      .mockResolvedValueOnce(new Float32Array(4 * 1024 * 1024))
+      .mockResolvedValueOnce(new Float32Array(3 * 512 * 512));
     mockEdit.mockResolvedValue(null);
     (imageGenStore as any).error = '源图解码失败';
 

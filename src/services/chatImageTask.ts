@@ -184,11 +184,23 @@ async function runInlineEditTask(
 ): Promise<InlineImageResult> {
   const sq = 1024; // DreamLite 编辑输出 1024×1024（生图页同款）
   try {
+    // 双解码：1024² → UNet cond（VAE encode）；512² → TE 视觉通道（ViT，官方 edit 语义）
     const rgb = await imageGenStore.decodeEditImage(
       sourceUri.replace('file://', ''),
       sq,
     );
-    const uri = await imageGenStore.editDreamLiteEntry(rgb, sq, sq, 4, instruction);
+    const visRgb = await imageGenStore.decodeEditImage(
+      sourceUri.replace('file://', ''),
+      512,
+    );
+    const uri = await imageGenStore.editDreamLiteEntry(
+      rgb,
+      sq,
+      sq,
+      4,
+      instruction,
+      visRgb,
+    );
     if (!uri) {
       return {uri: null, error: imageGenStore.error ?? '编辑失败', enhanced: null};
     }
