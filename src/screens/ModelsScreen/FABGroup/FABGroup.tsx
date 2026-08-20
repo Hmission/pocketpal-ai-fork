@@ -10,6 +10,7 @@ import {createStyles} from './styles';
 
 interface FABGroupProps {
   onAddHFModel: () => void;
+  onAddModelScopeModel: () => void;
   onAddLocalModel: () => void;
   onAddRemoteModel: () => void;
   onManageServers?: () => void;
@@ -35,6 +36,7 @@ const RemoteIcon = (props: IconComponentProps): React.ReactNode => (
 
 export const FABGroup: React.FC<FABGroupProps> = ({
   onAddHFModel,
+  onAddModelScopeModel,
   onAddLocalModel,
   onAddRemoteModel,
   onManageServers,
@@ -57,6 +59,16 @@ export const FABGroup: React.FC<FABGroupProps> = ({
         style: styles.actionButton,
         onPress: () => {
           onAddHFModel();
+        },
+      },
+      {
+        testID: 'modelscope-fab',
+        icon: 'cloud-download',
+        label: l10n.models.buttons.addFromModelScope,
+        accessibilityLabel: l10n.models.buttons.addFromModelScope,
+        style: styles.actionButton,
+        onPress: () => {
+          onAddModelScopeModel();
         },
       },
       {
@@ -96,6 +108,7 @@ export const FABGroup: React.FC<FABGroupProps> = ({
   }, [
     l10n,
     onAddHFModel,
+    onAddModelScopeModel,
     onAddLocalModel,
     onAddRemoteModel,
     onManageServers,

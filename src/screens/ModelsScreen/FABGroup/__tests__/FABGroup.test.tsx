@@ -10,6 +10,7 @@ import {FABGroup} from '../FABGroup';
 
 describe('FABGroup', () => {
   const mockOnAddHFModel = jest.fn();
+  const mockOnAddModelScopeModel = jest.fn();
   const mockOnAddLocalModel = jest.fn();
   const mockOnAddRemoteModel = jest.fn();
 
@@ -21,6 +22,7 @@ describe('FABGroup', () => {
     const {getByTestId} = render(
       <FABGroup
         onAddHFModel={mockOnAddHFModel}
+        onAddModelScopeModel={mockOnAddModelScopeModel}
         onAddLocalModel={mockOnAddLocalModel}
         onAddRemoteModel={mockOnAddRemoteModel}
       />,
@@ -30,10 +32,11 @@ describe('FABGroup', () => {
     expect(getByTestId('fab-group')).toBeTruthy();
   });
 
-  it('renders all three action buttons (HF, local, remote)', () => {
+  it('renders all four action buttons (HF, ModelScope, local, remote)', () => {
     const {getByTestId} = render(
       <FABGroup
         onAddHFModel={mockOnAddHFModel}
+        onAddModelScopeModel={mockOnAddModelScopeModel}
         onAddLocalModel={mockOnAddLocalModel}
         onAddRemoteModel={mockOnAddRemoteModel}
       />,
@@ -43,6 +46,9 @@ describe('FABGroup', () => {
     // FAB actions are rendered but hidden when FAB is closed; query with
     // includeHiddenElements following the existing ModelsScreen test pattern
     expect(getByTestId('hf-fab', {includeHiddenElements: true})).toBeTruthy();
+    expect(
+      getByTestId('modelscope-fab', {includeHiddenElements: true}),
+    ).toBeTruthy();
     expect(
       getByTestId('local-fab', {includeHiddenElements: true}),
     ).toBeTruthy();
@@ -55,6 +61,7 @@ describe('FABGroup', () => {
     const {getByLabelText} = render(
       <FABGroup
         onAddHFModel={mockOnAddHFModel}
+        onAddModelScopeModel={mockOnAddModelScopeModel}
         onAddLocalModel={mockOnAddLocalModel}
         onAddRemoteModel={mockOnAddRemoteModel}
       />,
@@ -64,6 +71,9 @@ describe('FABGroup', () => {
     // Accessibility labels for screen readers
     expect(
       getByLabelText('Add from Hugging Face', {includeHiddenElements: true}),
+    ).toBeTruthy();
+    expect(
+      getByLabelText('Add from ModelScope', {includeHiddenElements: true}),
     ).toBeTruthy();
     expect(
       getByLabelText('Add Local Model', {includeHiddenElements: true}),

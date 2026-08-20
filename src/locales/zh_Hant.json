@@ -429,7 +429,8 @@
         "tool": "工具設定",
         "imageGen": "生圖",
         "generationSettings": "生成設定",
-        "modelDirs": "模型資料夾"
+        "modelDirs": "模型資料夾",
+        "systemSettings": "系統設定"
       },
       "searchPlaceholder": "搜尋對話",
       "newChat": "新對話",
@@ -814,7 +815,12 @@
       "buildingPage": "建置頁面",
       "calculating": "計算中",
       "lookingUpTime": "檢索時間",
-      "stopping": "停止…"
+      "stopping": "停止…",
+      "stagePreparing": "正在準備…",
+      "stageGenerating": "正在生成…",
+      "stageExecuting": "正在執行工具…",
+      "stageHang": "可能卡住，可點擊停止",
+      "reasoningLabel": "思考中"
     },
     "toolMetrics": {
       "tokens": "{{count}} 個詞元",
@@ -900,6 +906,7 @@
     },
     "buttons": {
       "addFromHuggingFace": "從 Hugging Face 新增",
+      "addFromModelScope": "從 ModelScope 添加",
       "addLocalModel": "新增本地模型",
       "reset": "重置"
     },
@@ -908,6 +915,31 @@
       "menuTitleDownloaded": "已下載模型",
       "menuTitleGrouped": "按模型類型分組",
       "menuTitleReset": "重置模型列表"
+    },
+    "downloadSource": {
+      "title": "選擇下載源",
+      "hf": "Hugging Face",
+      "hfDescription": "huggingface.co · 國際源",
+      "modelscope": "ModelScope 魔搭",
+      "modelscopeDescription": "modelscope.cn · 國內源",
+      "noSource": "暫不支援線上下載",
+      "localImport": "請從本機匯入"
+    },
+    "imageGenCatalog": {
+      "title": "生圖模型",
+      "goImageGen": "前往生圖頁",
+      "downloading": "下載中…",
+      "download": "下載"
+    },
+    "modelScopeAdd": {
+      "title": "從 ModelScope 添加",
+      "repoLabel": "模型倉庫 ID",
+      "repoPlaceholder": "作者/倉庫名，如 Qwen/Qwen2.5-7B-Instruct-GGUF",
+      "lookup": "查詢",
+      "filesTitle": "選擇要下載的 GGUF 檔案",
+      "invalidRepoId": "倉庫 ID 格式應為 作者/倉庫名",
+      "noGgufFiles": "該倉庫沒有 GGUF 檔案",
+      "lookupFailed": "查詢失敗，請檢查倉庫 ID 或網路"
     },
     "modelsResetDialog": {
       "proceedWithReset": "執行重置",
@@ -1251,6 +1283,9 @@
     "retryConnection": "重試",
     "enterUrlManually": "手動輸入網址",
     "manageServers": "管理伺服器",
+    "lightMode": "淺色模式",
+    "systemMode": "跟隨系統",
+    "colorScheme": "色彩模式",
     "ttsAvailability": "文字轉語音",
     "ttsAvailabilityDescription": "朗讀助理回覆。",
     "ttsAvailabilityLowMemoryWarning": "您的裝置記憶體不足 — 這可能會影響功能運作的穩定性。",

@@ -12,6 +12,7 @@ import {
 import {observer} from 'mobx-react-lite';
 import {useNavigation} from '@react-navigation/native';
 import {DrawerNavigationProp} from '@react-navigation/drawer';
+import {ROUTES} from '../../../utils/navigationConstants';
 import {
   Card,
   Icon,
@@ -34,6 +35,12 @@ import {confirmDialog} from '../../../components/ui/ConfirmDialog';
 
 import {uiStore, modelStore, serverStore} from '../../../store';
 import {t} from '../../../locales';
+
+import {guardBeforeDownload} from '../../../utils/downloadGuard';
+import {getAvailableSources} from '../../../utils/downloadSources';
+import {catalogEntryByFilename} from '../../../utils/modelCatalog';
+import {DownloadSourceSheet} from '../DownloadSourceSheet';
+import type {DownloadSource} from '../../../utils/downloadSources';
 
 import {
   Model,
@@ -90,6 +97,7 @@ export const ModelCard: React.FC<ModelCardProps> = observer(
     const [snackbarVisible, setSnackbarVisible] = useState(false); // Snackbar visibility
     const [integrityError, setIntegrityError] = useState<string | null>(null);
     const [isExpanded, setIsExpanded] = useState(false);
+    const [downloadSourceVisible, setDownloadSourceVisible] = useState(false);
 
     // Resolve projection model for memory check (same logic as ModelStore.checkMemoryAndConfirm)
     // Resolve projection model for memory check (same logic as ModelStore.checkMemoryAndConfirm)
@@ -249,6 +257,44 @@ export const ModelCard: React.FC<ModelCardProps> = observer(
     const handleWarningPress = () => {
       setSnackbarVisible(true);
     };
+
+    // 无在线源条目（MiniCPM 管家 / DreamLite 等自制产物）：引导本地导入，
+    // 跳转模型目录页——目录页展示 AIOS 目录位置，用户自行放入文件后
+    // 回模型页下拉刷新即现（锋利：不造死按钮，不给猜的 URL）。
+    const handleLocalImport = useCallback(() => {
+      navigation.navigate(ROUTES.MODEL_DIRS as never);
+    }, [navigation]);
+
+    // 下载前置守卫链（守卫 hook 指南针）：权限 → 源 → 状态 → 存储，任一失败
+    // 显式返回原因；通过后 catalog 条目多源（HF/ModelScope）弹源选择，单源直下。
+    const handleDownloadPress = useCallback(async () => {
+      const guard = await guardBeforeDownload(model);
+      if (!guard.ok) {
+        if (guard.reason === 'no-source') {
+          // 无在线源条目：提示而非死按钮
+          setSnackbarVisible(true);
+        } else if (guard.reason === 'storage') {
+          setSnackbarVisible(true);
+        }
+        // permission：ensureStorageAccess 已弹引导；downloaded/downloading：幂等忽略
+        return;
+      }
+      const entry = catalogEntryByFilename(model.filename);
+      const sources = entry ? getAvailableSources(entry) : [];
+      if (sources.length > 1) {
+        setDownloadSourceVisible(true);
+        return;
+      }
+      modelStore.checkSpaceAndDownload(model.id);
+    }, [model]);
+
+    const handleDownloadSourceSelect = useCallback(
+      (source: DownloadSource) => {
+        setDownloadSourceVisible(false);
+        modelStore.checkSpaceAndDownload(model.id, source);
+      },
+      [model.id],
+    );
 
     const handleProjectionWarningPress = useCallback(() => {
       if (model.defaultProjectionModel) {
@@ -439,17 +485,18 @@ export const ModelCard: React.FC<ModelCardProps> = observer(
 
       if (!isDownloaded) {
         // Not downloaded state
+        const hasNoSource = !model.downloadUrl;
         return (
           <View style={styles.actionButtonsRow}>
             <Button
               testID="download-button"
               icon="download"
               mode="outlined"
-              onPress={() => modelStore.checkSpaceAndDownload(model.id)}
-              disabled={!storageOk}
+              onPress={hasNoSource ? handleLocalImport : handleDownloadPress}
+              disabled={!storageOk || isDownloading}
               style={[
                 styles.primaryActionButton,
-                storageOk
+                storageOk && !hasNoSource
                   ? {
                       backgroundColor: theme.colors.btnDownloadBg,
                       borderColor: theme.colors.btnDownloadBorder,
@@ -460,7 +507,9 @@ export const ModelCard: React.FC<ModelCardProps> = observer(
                     },
               ]}
               textColor={theme.colors.btnDownloadText}>
-              {l10n.models.modelCard.buttons.download}
+              {hasNoSource
+                ? l10n.models.downloadSource.localImport
+                : l10n.models.modelCard.buttons.download}
             </Button>
 
             <TouchableOpacity
@@ -1000,6 +1049,16 @@ export const ModelCard: React.FC<ModelCardProps> = observer(
             (hasProjectionModelWarning &&
               l10n.models.multimodal.projectionMissingWarning)}
         </Snackbar>
+        {/* 下载源选择（多源条目：HF/ModelScope） */}
+        <DownloadSourceSheet
+          visible={downloadSourceVisible}
+          sources={(() => {
+            const entry = catalogEntryByFilename(model.filename);
+            return entry ? getAvailableSources(entry) : [];
+          })()}
+          onDismiss={() => setDownloadSourceVisible(false)}
+          onSelect={handleDownloadSourceSelect}
+        />
       </>
     );
   },

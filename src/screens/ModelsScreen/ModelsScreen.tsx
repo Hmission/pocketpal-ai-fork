@@ -23,6 +23,8 @@ import {ModelCard} from './ModelCard';
 import {createStyles} from './styles';
 import {HFModelSearch} from './HFModelSearch';
 import {ModelAccordion} from './ModelAccordion';
+import {ImageGenCatalogRow} from './ImageGenCatalogRow';
+import {ModelScopeAddSheet} from './ModelScopeAddSheet';
 import {
   DownloadErrorDialog,
   ErrorSnackbar,
@@ -42,6 +44,7 @@ export const ModelsScreen: React.FC = observer(() => {
   const l10n = useContext(L10nContext);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [hfSearchVisible, setHFSearchVisible] = useState(false);
+  const [msSearchVisible, setMsSearchVisible] = useState(false);
   const [isCopyingModel, setIsCopyingModel] = useState(false);
   const [selectedModel, setSelectedModel] = useState<Model | undefined>();
   const [settingsVisible, setSettingsVisible] = useState(false);
@@ -113,8 +116,14 @@ export const ModelsScreen: React.FC = observer(() => {
   const onRefresh = async () => {
     setRefreshing(true);
     await modelStore.refreshDownloadStatuses();
+    await modelStore.refreshCatalogImageGenStatus();
     setRefreshing(false);
   };
+
+  // 生图清单条目状态（挂载刷新；下载完成/前台恢复由 ModelStore 同步）
+  useEffect(() => {
+    modelStore.refreshCatalogImageGenStatus();
+  }, []);
 
   const handleOpenSettings = (model: Model) => {
     setSelectedModel(model);
@@ -389,6 +398,22 @@ export const ModelsScreen: React.FC = observer(() => {
     }))
     .filter(group => group.items.length > 0);
 
+  // 生图清单区（设置-模型 = 全清单可管理）：独立于 LLM 过滤（路由专工）
+  const renderImageGenSection = () => (
+    <View style={styles.imageGenSection}>
+      <Text style={styles.imageGenTitle}>
+        {l10n.models.imageGenCatalog.title}
+      </Text>
+      {modelStore.catalogImageGenEntries.map(({entry, isDownloaded}) => (
+        <ImageGenCatalogRow
+          key={entry.id}
+          entry={entry}
+          isDownloaded={isDownloaded}
+        />
+      ))}
+    </View>
+  );
+
   return (
     <View style={styles.container} testID="models-screen">
       {/* Show Error Snackbar only if no dialog is visible */}
@@ -455,6 +480,7 @@ export const ModelsScreen: React.FC = observer(() => {
             colors={[theme.colors.primary]}
           />
         }
+        ListFooterComponent={renderImageGenSection}
       />
 
       {/* DownloadErrorDialog with Portal for better visibility */}
@@ -480,6 +506,10 @@ export const ModelsScreen: React.FC = observer(() => {
         visible={hfSearchVisible}
         onDismiss={() => setHFSearchVisible(false)}
       />
+      <ModelScopeAddSheet
+        visible={msSearchVisible}
+        onDismiss={() => setMsSearchVisible(false)}
+      />
       <Snackbar
         testID="copy-model-snackbar"
         visible={isCopyingModel}
@@ -489,6 +519,7 @@ export const ModelsScreen: React.FC = observer(() => {
       </Snackbar>
       <FABGroup
         onAddHFModel={() => setHFSearchVisible(true)}
+        onAddModelScopeModel={() => setMsSearchVisible(true)}
         onAddLocalModel={handleAddLocalModel}
         onAddRemoteModel={handleAddRemoteModel}
         onManageServers={handleManageServers}

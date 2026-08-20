@@ -20,14 +20,7 @@ import * as RNFS from '@dr.pogodin/react-native-fs';
 
 import {modelStore, uiStore, serverStore} from '..';
 import {LOOKIE_DEFAULT_MODEL} from '../builtinPalModels';
-import {classify} from '../../services/deviceRules/classify';
-import {getVisionModelSizeBreakdown} from '../../utils/multimodalHelpers';
 import {MODEL_LIST_VERSION} from '../ModelStore';
-import {parseDeviceRules} from '../../services/deviceRules/parse';
-import {fetchRules} from '../../services/deviceRules/rules';
-import {readDeviceSignals} from '../../services/deviceRules/signals';
-import androidBundledRules from '../bundledDeviceRules/rules.android.json';
-import iosBundledRules from '../bundledDeviceRules/rules.ios.json';
 import {t} from '../../locales';
 import {
   getCpuCoreCount,
@@ -69,18 +62,6 @@ jest.mock('../../services/downloads', () => {
     },
   };
 });
-
-// Control the network rules fetch and device-signal read at the module boundary
-// while keeping the real parse/classify. Defaults: no fetched override (bundled
-// floor), mid-tier Android signals.
-jest.mock('../../services/deviceRules/rules', () => ({
-  fetchRules: jest.fn().mockResolvedValue(null),
-}));
-jest.mock('../../services/deviceRules/signals', () => ({
-  readDeviceSignals: jest
-    .fn()
-    .mockResolvedValue({ramBytes: 8 * 1e9, socModel: 'SM8850'}),
-}));
 
 // Mock the HF store
 // jest.mock('../HFStore', () => ({
@@ -453,307 +434,6 @@ describe('ModelStore', () => {
     });
   });
 
-  describe('resolvePresetModels', () => {
-    let savedOS: typeof Platform.OS;
-    beforeAll(() => {
-      savedOS = Platform.OS;
-      Platform.OS = 'android';
-    });
-    afterAll(() => {
-      Platform.OS = savedOS;
-    });
-
-    const midOnlyClassifier = {
-      ramBands: [{id: 'all', maxBytes: null}],
-      tierMatrix: [{ramBand: 'all', socClass: 'mid', tier: 'mid' as const}],
-      socModelToClass: {'Tensor G3': 'mid'},
-    };
-
-    const makeRules = (models: any[]) => ({
-      schemaVersion: '1.2.0-draft',
-      platform: 'android',
-      rulesVersion: '2026-06-10.1',
-      classifier: midOnlyClassifier,
-      tiers: {
-        low: {models: []},
-        mid: {models},
-        high: {models: []},
-        flagship: {models: []},
-      },
-    });
-
-    const signals = {ramBytes: 8 * 1e9, socModel: 'Tensor G3'};
-
-    const llmCandidate = {
-      model: 'gemma-3-1b-it',
-      hfRepo: 'ggml-org/gemma-3-1b-it-GGUF',
-      hfFilename: 'gemma-3-1b-it-Q4_K_M.gguf',
-      params: 999885952,
-      sizeBytes: 806058240,
-    };
-
-    const visionCandidate = {
-      model: 'smolvlm-500m',
-      hfRepo: 'ggml-org/SmolVLM-500M-Instruct-GGUF',
-      hfFilename: 'SmolVLM-500M-Instruct-Q8_0.gguf',
-      params: 500000000,
-      sizeBytes: 500,
-      multimodal: true,
-      mmproj: {
-        hfRepo: 'ggml-org/SmolVLM-500M-Instruct-GGUF',
-        hfFilename: 'mmproj-SmolVLM-500M-Instruct-Q8_0.gguf',
-        sizeBytes: 100,
-        modalities: ['vision'],
-      },
-    };
-
-    it('synthesizes a tier LLM into an origin:HF Model with a derived downloadUrl', () => {
-      const presets = modelStore.resolvePresetModels(
-        makeRules([llmCandidate]) as any,
-        signals as any,
-      );
-      expect(presets).toHaveLength(1);
-      const m = presets[0];
-      expect(m.origin).toBe(ModelOrigin.HF);
-      expect(m.id).toBe(
-        'ggml-org/gemma-3-1b-it-GGUF/gemma-3-1b-it-Q4_K_M.gguf',
-      );
-      expect(m.downloadUrl).toBe(
-        'https://huggingface.co/ggml-org/gemma-3-1b-it-GGUF/resolve/main/gemma-3-1b-it-Q4_K_M.gguf',
-      );
-      expect(m.isRulePreset).toBe(true);
-      expect(m.size).toBe(806058240);
-      expect(m.params).toBe(999885952);
-      // HF-derivable data (oid/lfs) is not baked; it resolves at download.
-      expect(m.hfModelFile?.oid).toBeUndefined();
-      expect(m.hfModelFile?.lfs).toBeUndefined();
-    });
-
-    it('applies the optional display_name, else derives it', () => {
-      const named = {...llmCandidate, displayName: 'My Curated Gemma'};
-      const [withName] = modelStore.resolvePresetModels(
-        makeRules([named]) as any,
-        signals as any,
-      );
-      expect(withName.name).toBe('My Curated Gemma');
-
-      const [derived] = modelStore.resolvePresetModels(
-        makeRules([llmCandidate]) as any,
-        signals as any,
-      );
-      expect(derived.name).not.toBe('My Curated Gemma');
-      expect(derived.name).toBeTruthy();
-    });
-
-    it('expands a multimodal candidate into the LLM plus exactly one projector stub', () => {
-      const presets = modelStore.resolvePresetModels(
-        makeRules([visionCandidate]) as any,
-        signals as any,
-      );
-      const ids = presets.map(m => m.id);
-      expect(ids).toContain(
-        'ggml-org/SmolVLM-500M-Instruct-GGUF/SmolVLM-500M-Instruct-Q8_0.gguf',
-      );
-      expect(ids).toContain(
-        'ggml-org/SmolVLM-500M-Instruct-GGUF/mmproj-SmolVLM-500M-Instruct-Q8_0.gguf',
-      );
-      // One LLM + one projector, never the old multi-quant sibling set.
-      expect(presets).toHaveLength(2);
-      const projectors = presets.filter(m => /\/mmproj/i.test(m.id));
-      expect(projectors).toHaveLength(1);
-    });
-
-    it('dedups a repeated candidate, first wins', () => {
-      const presets = modelStore.resolvePresetModels(
-        makeRules([llmCandidate, llmCandidate]) as any,
-        signals as any,
-      );
-      expect(presets).toHaveLength(1);
-    });
-
-    it('synthesizes the projector stub as a downloadable Model (derived url)', () => {
-      // The vision LLM pairs the projection id; the synthesized sibling must put
-      // the projector Model in the store so _downloadProjectionModelIfNeeded
-      // finds it by id, with a non-empty /resolve/main/ url so
-      // checkSpaceAndDownload does not early-return on !model.downloadUrl.
-      const presets = modelStore.resolvePresetModels(
-        makeRules([visionCandidate]) as any,
-        signals as any,
-      );
-      const proj = presets.find(m =>
-        m.id.endsWith('/mmproj-SmolVLM-500M-Instruct-Q8_0.gguf'),
-      );
-      expect(proj).toBeDefined();
-      expect(proj?.downloadUrl).toBe(
-        'https://huggingface.co/ggml-org/SmolVLM-500M-Instruct-GGUF/resolve/main/mmproj-SmolVLM-500M-Instruct-Q8_0.gguf',
-      );
-    });
-
-    it('carries the projector size on the LLM so the fit check can add it', () => {
-      // min_ram_gb may exclude projector memory; the synthesized mmproj sibling
-      // carries its size so getVisionModelSizeBreakdown adds it to the fit check.
-      const [llm] = modelStore.resolvePresetModels(
-        makeRules([visionCandidate]) as any,
-        signals as any,
-      );
-      const projSibling = llm.hfModel?.siblings?.find(s =>
-        /mmproj/i.test(s.rfilename),
-      );
-      expect(projSibling?.size).toBe(100);
-    });
-
-    it('pairs the LLM stub with its projector stub via defaultProjectionModel', () => {
-      // The LLM stub's defaultProjectionModel must equal the projector stub's id
-      // so the download path (this.models.find(m => m.id === projModelId))
-      // resolves and the projector downloads alongside the LLM.
-      const presets = modelStore.resolvePresetModels(
-        makeRules([visionCandidate]) as any,
-        signals as any,
-      );
-      const llm = presets.find(
-        m =>
-          m.id ===
-          'ggml-org/SmolVLM-500M-Instruct-GGUF/SmolVLM-500M-Instruct-Q8_0.gguf',
-      );
-      const proj = presets.find(m => /\/mmproj/i.test(m.id));
-      expect(llm?.defaultProjectionModel).toBe(proj?.id);
-      expect(llm?.compatibleProjectionModels).toContain(proj?.id);
-    });
-
-    it('feeds the projector size into the fit/space breakdown', () => {
-      // hasEnoughSpace sizes a vision model via getVisionModelSizeBreakdown,
-      // which reads the synthesized mmproj sibling. The projector size must add
-      // to the total so the ~1GB projector enters the pre-download fit check.
-      const [llm] = modelStore.resolvePresetModels(
-        makeRules([visionCandidate]) as any,
-        signals as any,
-      );
-      const breakdown = getVisionModelSizeBreakdown(
-        llm.hfModelFile!,
-        llm.hfModel!,
-      );
-      expect(breakdown.hasProjection).toBe(true);
-      expect(breakdown.projectionSize).toBe(100);
-      expect(breakdown.llmSize).toBe(500);
-      expect(breakdown.totalSize).toBe(600);
-    });
-
-    it('classifies the bundled floor (non-low) when offline', () => {
-      // The bundled path must run rules through classify, not force the low
-      // floor. A mid-tier device + a mid-only tier matrix resolves mid.
-      const tier = classify(
-        signals as any,
-        makeRules([llmCandidate]).classifier as any,
-        'android',
-      );
-      expect(tier).toBe('mid');
-    });
-  });
-
-  describe('bundled offline floor (committed rules.<platform>.json)', () => {
-    let savedOS: typeof Platform.OS;
-    afterEach(() => {
-      Platform.OS = savedOS;
-    });
-    beforeEach(() => {
-      savedOS = Platform.OS;
-    });
-
-    // Projector (mmproj) Models are synthesized from the candidate's explicit
-    // mmproj into a sibling with a derived /resolve/main/ url — so EVERY resolved
-    // preset, LLM and projector alike, has a non-empty downloadUrl and is
-    // downloadable (a vision preset's projector would never download otherwise).
-    const isProjection = (id: string) => /\/mmproj/i.test(id);
-
-    it('android: parses + classifies non-low and resolves origin:HF presets', () => {
-      Platform.OS = 'android';
-      const rules = parseDeviceRules(androidBundledRules);
-      const signals = {ramBytes: 16 * 1e9, socModel: 'SM8850'};
-      const tier = classify(signals as any, rules.classifier, 'android');
-      expect(tier).not.toBe('low');
-      expect(rules.tiers[tier].models.length).toBeGreaterThan(0);
-
-      const presets = modelStore.resolvePresetModels(rules, signals as any);
-      expect(presets.length).toBeGreaterThan(0);
-      for (const m of presets) {
-        expect(m.origin).toBe(ModelOrigin.HF);
-        expect(m.downloadUrl).toContain('/resolve/main/');
-      }
-    });
-
-    it('ios: parses + classifies non-low and resolves origin:HF presets', () => {
-      Platform.OS = 'ios';
-      const rules = parseDeviceRules(iosBundledRules);
-      const signals = {ramBytes: 8 * 1e9, machine: 'iPhone16,1'};
-      const tier = classify(signals as any, rules.classifier, 'ios');
-      expect(tier).not.toBe('low');
-      expect(rules.tiers[tier].models.length).toBeGreaterThan(0);
-
-      const presets = modelStore.resolvePresetModels(rules, signals as any);
-      expect(presets.length).toBeGreaterThan(0);
-      for (const m of presets) {
-        expect(m.origin).toBe(ModelOrigin.HF);
-        expect(m.downloadUrl).toContain('/resolve/main/');
-      }
-    });
-
-    it('every synthesized mmproj projection carries a downloadable url', () => {
-      // Regression lock: the synthesized projector sibling must carry a derived
-      // url so the projector Model is downloadable (checkSpaceAndDownload early-
-      // returns on !downloadUrl). Walk both platforms; require at least one.
-      let sawProjection = false;
-      for (const [os, raw] of [
-        ['android', androidBundledRules],
-        ['ios', iosBundledRules],
-      ] as const) {
-        Platform.OS = os;
-        const rules = parseDeviceRules(raw);
-        const signals = {
-          ramBytes: 16 * 1e9,
-          socModel: 'SM8850',
-          machine: 'iPhone16,1',
-        };
-        // resolvePresetModels classifies internally; one call covers the device's
-        // tier. Materialized projections must each carry a downloadable url.
-        const presets = modelStore.resolvePresetModels(rules, signals as any);
-        for (const m of presets.filter(p => isProjection(p.id))) {
-          sawProjection = true;
-          expect(m.downloadUrl).toContain('/resolve/main/');
-          expect(m.downloadUrl).not.toBe('');
-        }
-      }
-      expect(sawProjection).toBe(true);
-    });
-
-    it('android: resolved LLMs defer oid/lfs to download (none baked)', () => {
-      Platform.OS = 'android';
-      const rules = parseDeviceRules(androidBundledRules);
-      const signals = {ramBytes: 16 * 1e9, socModel: 'SM8850'};
-      const presets = modelStore.resolvePresetModels(rules, signals as any);
-      const llms = presets.filter(m => !isProjection(m.id));
-      expect(llms.length).toBeGreaterThan(0);
-      for (const m of llms) {
-        // Thin stubs carry no baked oid/lfs; they self-heal at download.
-        expect(m.hfModelFile?.oid).toBeUndefined();
-        expect(m.hfModelFile?.lfs).toBeUndefined();
-      }
-    });
-
-    it('all four tiers parse to a non-empty, origin:HF model set on android', () => {
-      const rules = parseDeviceRules(androidBundledRules);
-      for (const tier of ['low', 'mid', 'high', 'flagship'] as const) {
-        expect(rules.tiers[tier].models.length).toBeGreaterThan(0);
-      }
-    });
-
-    it('all four tiers parse to a non-empty, origin:HF model set on ios', () => {
-      const rules = parseDeviceRules(iosBundledRules);
-      for (const tier of ['low', 'mid', 'high', 'flagship'] as const) {
-        expect(rules.tiers[tier].models.length).toBeGreaterThan(0);
-      }
-    });
-  });
-
   describe('preset migration / reconcile', () => {
     let savedOS: typeof Platform.OS;
     beforeAll(() => {
@@ -853,11 +533,6 @@ describe('ModelStore', () => {
     beforeEach(() => {
       savedOS = Platform.OS;
       Platform.OS = 'android';
-      (readDeviceSignals as jest.Mock).mockResolvedValue({
-        ramBytes: 16 * 1e9,
-        socModel: 'SM8850',
-      });
-      (fetchRules as jest.Mock).mockResolvedValue(null);
     });
     afterEach(async () => {
       // resetModels fires an un-awaited loadMissingGGUFMetadata; let it settle
@@ -918,7 +593,7 @@ describe('ModelStore', () => {
     });
   });
 
-  describe('migration with empty preset resolve', () => {
+  describe('migration with catalog preset resolve', () => {
     let savedOS: typeof Platform.OS;
     beforeEach(() => {
       savedOS = Platform.OS;
@@ -928,7 +603,6 @@ describe('ModelStore', () => {
         modelStore.version = undefined;
         modelStore.availableMemoryCeiling = 1;
       });
-      (fetchRules as jest.Mock).mockResolvedValue(null);
     });
     afterEach(async () => {
       // initializeStore fires several un-awaited background tasks; let them
@@ -938,35 +612,13 @@ describe('ModelStore', () => {
       runInAction(() => {
         modelStore.models = [];
       });
-      (readDeviceSignals as jest.Mock).mockResolvedValue({
-        ramBytes: 8 * 1e9,
-        socModel: 'SM8850',
-      });
     });
 
-    it('does not finalize the migration when presets resolve empty', async () => {
-      // A transient signal-read failure makes resolvePresets return [].
-      (readDeviceSignals as jest.Mock).mockRejectedValue(
-        new Error('signals exploded'),
-      );
-
+    it('finalizes the migration once catalog presets resolve non-empty', async () => {
       await modelStore.initializeStore();
 
-      // An empty resolve must not lock in an empty default list: leave the
-      // version unbumped so the migration retries on the next launch.
-      expect(modelStore.version).toBeUndefined();
-    });
-
-    it('finalizes the migration once presets resolve non-empty', async () => {
-      (readDeviceSignals as jest.Mock).mockResolvedValue({
-        ramBytes: 16 * 1e9,
-        socModel: 'SM8850',
-      });
-
-      await modelStore.initializeStore();
-
-      // The bundled floor resolved a non-empty preset list, so the one-time
-      // migration finalizes.
+      // The fixed catalog resolved a non-empty preset list, so the one-time
+      // migration finalizes (catalog is static; no network/signals dependency).
       expect(modelStore.version).toBe(MODEL_LIST_VERSION);
       expect(modelStore.models.some(m => m.isRulePreset === true)).toBe(true);
     });
@@ -1069,82 +721,58 @@ describe('ModelStore', () => {
       savedOS = Platform.OS;
       Platform.OS = 'android';
       modelStore.models = [];
-      modelStore.deviceTier = null;
-      modelStore.rulesVersion = null;
-      (fetchRules as jest.Mock).mockResolvedValue(null);
-      (readDeviceSignals as jest.Mock).mockResolvedValue({
-        ramBytes: 16 * 1e9,
-        socModel: 'SM8850',
-      });
     });
     afterEach(() => {
       Platform.OS = savedOS;
-      (fetchRules as jest.Mock).mockResolvedValue(null);
     });
 
-    it('applies the bundled floor (no fetch) and sets deviceTier/rulesVersion', async () => {
+    it('applies the fixed catalog (no fetch) — full MODEL_MATRIX LLM set', async () => {
       const presets = await (modelStore as any).resolvePresets();
 
-      // The bundled floor populated a non-empty origin:HF preset set without the
-      // network fetch being consulted on this path.
-      expect(fetchRules).not.toHaveBeenCalled();
+      // The fixed catalog materialized the whole MODEL_MATRIX LLM list as
+      // origin:HF stubs with deterministic download URLs (source-less butler
+      // stub excluded from downloadability). No network is consulted.
       expect(presets.length).toBeGreaterThan(0);
       expect(presets.every((m: Model) => m.origin === ModelOrigin.HF)).toBe(
         true,
       );
       expect(presets.every((m: Model) => m.isRulePreset === true)).toBe(true);
-      expect(modelStore.deviceTier).not.toBeNull();
-      expect(modelStore.rulesVersion).toBeTruthy();
-    });
-
-    it('returns [] and completes when bundled parse throws (startup not bricked)', async () => {
-      (readDeviceSignals as jest.Mock).mockRejectedValue(
-        new Error('signals exploded'),
+      expect(
+        presets.some((m: Model) =>
+          m.id.includes('Qwen3.5-2B-Uncensored-HauhauCS-Aggressive-Q8_0.gguf'),
+        ),
+      ).toBe(true);
+      expect(
+        presets.some(
+          (m: Model) => m.filename === 'minicpm5_1b_heretic_q4km.gguf',
+        ),
+      ).toBe(true);
+      // 管家 HF 源已实锤（mradermacher Fable5-V2-Thinking-heretic）：
+      // downloadUrl 为确定性 resolve URL 且远程路径映射到仓库文件名
+      const butler = presets.find(
+        (m: Model) => m.filename === 'minicpm5_1b_heretic_q4km.gguf',
       );
-      await expect((modelStore as any).resolvePresets()).resolves.toEqual([]);
+      expect(butler?.downloadUrl).toContain(
+        'https://huggingface.co/mradermacher/MiniCPM5-1B-Claude-Opus-Fable5-V2-Thinking-heretic-GGUF/resolve/main/',
+      );
+      expect(butler?.downloadUrl).toContain(
+        'MiniCPM5-1B-Claude-Opus-Fable5-V2-Thinking-heretic.Q4_K_M.gguf',
+      );
+      // 有源条目：downloadUrl 为确定性 resolve URL
+      const qwen = presets.find((m: Model) =>
+        m.id.includes('Qwen3.5-2B-Uncensored-HauhauCS-Aggressive-Q8_0.gguf'),
+      );
+      expect(qwen?.downloadUrl).toContain(
+        'https://huggingface.co/HauhauCS/Qwen3.5-2B-Uncensored-HauhauCS-Aggressive/resolve/main/',
+      );
     });
 
-    it('upgrades to fetched rules and reconciles when newer rules arrive', async () => {
-      const fetchedRules = parseDeviceRules({
-        schema_version: '1.2.0-draft',
-        platform: 'android',
-        rules_version: '2999-01-01.1',
-        classifier: {
-          ram_bands: [{id: 'all', max_bytes: null}],
-          tier_matrix: [{ram_band: 'all', soc_class: 'mid', tier: 'mid'}],
-          soc_model_to_class: {SM8850: 'mid'},
-        },
-        tiers: {
-          mid: {
-            candidates: [
-              {
-                model: 'fetched',
-                hf_repo: 'ggml-org/fetched-repo',
-                hf_filename: 'fetched.gguf',
-                size_bytes: 500,
-              },
-            ],
-          },
-        },
-      });
-      (fetchRules as jest.Mock).mockResolvedValue(fetchedRules);
-
-      await (modelStore as any).upgradeToFetchedRules();
-
-      const ids = modelStore.models.map(m => m.id);
-      expect(ids).toContain('ggml-org/fetched-repo/fetched.gguf');
-      expect(modelStore.rulesVersion).toBe('2999-01-01.1');
-    });
-
-    it('leaves the bundled presets in place when the fetch returns null', async () => {
-      modelStore.models = [
-        {...presetModelFixture, origin: ModelOrigin.HF, isRulePreset: true},
-      ];
-      (fetchRules as jest.Mock).mockResolvedValue(null);
-
-      await (modelStore as any).upgradeToFetchedRules();
-
-      expect(modelStore.models).toHaveLength(1);
+    it('returns catalog presets without device signals (no network dependency)', async () => {
+      // resolvePresets no longer reads device signals or the bundled rules;
+      // the static catalog always resolves (startup can never be bricked by
+      // a transient signal-read failure).
+      const presets = await (modelStore as any).resolvePresets();
+      expect(presets.length).toBeGreaterThan(0);
     });
   });
 

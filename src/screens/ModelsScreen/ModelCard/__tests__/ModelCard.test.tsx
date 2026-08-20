@@ -23,6 +23,11 @@ jest.mock('../../../../components/ui/ConfirmDialog', () => ({
   confirmDialog: jest.fn().mockResolvedValue(false),
 }));
 
+// 下载前置守卫链在组件测试中放行（守卫自身有独立套件 downloadGuard.test.ts）
+jest.mock('../../../../utils/downloadGuard', () => ({
+  guardBeforeDownload: jest.fn().mockResolvedValue({ok: true}),
+}));
+
 import {ModelCard} from '../ModelCard';
 import {confirmDialog} from '../../../../components/ui/ConfirmDialog';
 
@@ -120,9 +125,12 @@ describe('ModelCard', () => {
       fireEvent.press(downloadButton);
     });
 
-    expect(modelStore.checkSpaceAndDownload).toHaveBeenCalledWith(
-      basicModel.id,
-    );
+    // 守卫链为异步（guardBeforeDownload → 放行后触发下载），等待完成
+    await waitFor(() => {
+      expect(modelStore.checkSpaceAndDownload).toHaveBeenCalledWith(
+        basicModel.id,
+      );
+    });
   });
 
   it('progress bar is shown when downloading', async () => {

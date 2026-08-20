@@ -194,8 +194,8 @@ relates: [INDEX, POCKETPAL_DESIGN_SPEC, POCKETPAL_MODEL_MATRIX, APP_INTRO_COPY, 
 │   ├── 智能体仪式四件套（开场仪式/意图状态机/收尾协议/自检开关）
 │   └── 记忆/知识库/Workspace/工具 管理页（一域一色）
 ├── 模型管理
-│   ├── 模型列表（LLM/生图双层过滤隔离）
-│   ├── 下载（HF/ModelScope 断点续传）+ UI 导入
+│   ├── 模型列表（LLM/生图双层过滤隔离 + MODEL_MATRIX 代码化 catalog 全清单可管理）
+│   ├── 下载（HF/ModelScope 双源，下载时弹窗选源；✅ 已落地 2026-08-20）+ UI 导入
 │   ├── 目录双轨（规范目录 + SAF 自定义目录）
 │   └── 基准测试（Benchmark）
 └── 系统

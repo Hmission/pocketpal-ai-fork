@@ -44,19 +44,25 @@ import {getOriginalModelName} from '../utils/formatters';
 import type {OnboardingPalModelEntry} from './onboarding/onboardingPals';
 
 import {downloadManager, DownloadCancelledError} from '../services/downloads';
-import {classify, ClassifyPlatform} from '../services/deviceRules/classify';
-import {deriveUrl, parseDeviceRules} from '../services/deviceRules/parse';
-import {fetchRules} from '../services/deviceRules/rules';
-import {readDeviceSignals} from '../services/deviceRules/signals';
-import {
-  DeviceRules,
-  DeviceSignals,
-  RuleCandidate,
-  Tier,
-} from '../services/deviceRules/types';
+import {ensureStorageAccess} from '../utils/androidPermission';
 
-import androidRulesRaw from './bundledDeviceRules/rules.android.json';
-import iosRulesRaw from './bundledDeviceRules/rules.ios.json';
+import {
+  CATALOG_LLM,
+  CATALOG_IMAGEGEN,
+  CatalogFile,
+  CatalogModel,
+  catalogEntryById,
+  catalogEntryByFilename,
+} from '../utils/modelCatalog';
+import {
+  DownloadSource,
+  fileRemotePath,
+  getAvailableSources,
+  repoForSource,
+  resolveDownloadUrl,
+  resolveFileSource,
+} from '../utils/downloadSources';
+import {AIOS_ROOT, AIOS_MODELS_DIR} from '../utils/paths';
 
 // Bump when the migration logic that re-merges the persisted model list
 // changes. Crossing this version runs the one-time prune-and-reconcile.
@@ -160,8 +166,6 @@ function createRemoteModel(params: {
 class ModelStore {
   models: Model[] = [];
   version: number | undefined = undefined; // Persisted version
-  deviceTier: Tier | null = null; // resolved device classification
-  rulesVersion: string | null = null; // provenance of the preset list
   lastScanTime: number | null = null; // last scanLocalModels timestamp
 
   /**
@@ -270,8 +274,6 @@ class ModelStore {
       properties: [
         'models',
         'version',
-        'deviceTier',
-        'rulesVersion',
         'useAutoRelease',
         'contextInitParams',
         'perModelNCtx',
@@ -492,7 +494,7 @@ class ModelStore {
     }
     this.setModelNCtx(model.id, defaultNCtxForModel(model), 'preset');
   };
-
+  
   /**
    * 策展默认一次归一（2026-08-19）：preset 源超策展默认者降档
    * （旧梯子遗留，如 1B 98304）；user 源不碰（主权）；preset 低于
@@ -728,8 +730,8 @@ class ModelStore {
     // Sync download manager with active downloads
     await downloadManager.syncWithActiveDownloads(this.models);
 
-    // Apply the bundled offline floor immediately (no network) so the list is
-    // never empty while a slow rules fetch is in flight, then merge/reconcile.
+    // Resolve the fixed catalog presets (no network, 单一事实源) then
+    // merge/reconcile against persisted models.
     const presets = await this.resolvePresets();
 
     if (storedVersion < MODEL_LIST_VERSION) {
@@ -749,9 +751,8 @@ class ModelStore {
       this.removeInvalidLocalModels();
     }
 
-    // Upgrade past the bundled floor to the online rules override in the
-    // background; reconcile (id-keyed, dedup) folds in any newer set.
-    this.upgradeToFetchedRules();
+    // 在线规则已退役（2026-08-20）：清单 = catalog 固定单一事实源（MODEL_MATRIX 代码化），
+    // 不再拉取上游 device-rules，杜绝清单被上游污染。
 
     await this.initializeGpuSettings(); // Should be awaited to ensure GPU settings are applied before initializing context
 
@@ -783,6 +784,9 @@ class ModelStore {
     // Load missing GGUF metadata for downloaded models (background, non-blocking)
     this.loadMissingGGUFMetadata();
 
+    // 生图清单条目状态刷新（模型页渲染，后台非阻塞）
+    this.refreshCatalogImageGenStatus();
+
     // PSS 安全审计：自愈旧版预调写入的超限 n_ctx 档（估算超 PSS 安全预算
     // 降到最大安全档）——K90 实证超限档生成中被厂商看护硬杀。
     this.auditPerModelNCtxAgainstPss();
@@ -794,75 +798,53 @@ class ModelStore {
     this.checkAndReloadAutoReleasedModel();
   };
 
-  // Synthesize the minimal {hfModel, modelFile} pair the unchanged hfAsModel
-  // reads from a thin candidate, with no network. The deterministic downloadUrl
-  // is set here; HF-derivable data (oid/lfs/templates) resolves at download. A
-  // multimodal candidate's explicit mmproj is synthesized into a sibling so
-  // vision detection pairs the projector and its size enters the fit check.
-  private candidateToPair = (
-    candidate: RuleCandidate,
-  ): {hfModel: HuggingFaceModel; modelFile: ModelFile} => {
-    const modelFile: ModelFile = {
-      rfilename: candidate.hfFilename,
-      url: deriveUrl(candidate.hfRepo, candidate.hfFilename),
-      size: candidate.sizeBytes,
-    };
-    const siblings: ModelFile[] | undefined = candidate.mmproj
-      ? [
-          {rfilename: candidate.hfFilename, size: candidate.sizeBytes},
-          {
-            rfilename: candidate.mmproj.hfFilename,
-            url: deriveUrl(
-              candidate.mmproj.hfRepo,
-              candidate.mmproj.hfFilename,
-            ),
-            size: candidate.mmproj.sizeBytes,
-          },
-        ]
-      : undefined;
-    const hfModel = {
-      id: candidate.hfRepo,
-      author: candidate.hfRepo.split('/')[0],
-      url: `https://huggingface.co/${candidate.hfRepo}`,
-      specs: {gguf: {total: candidate.params ?? 0}},
-      siblings,
-    } as unknown as HuggingFaceModel;
-    return {hfModel, modelFile};
+  // Resolve the preset list from the fixed catalog (MODEL_MATRIX 代码化单一事实源) —
+  // no network, no upstream rules. Populates the full LLM list immediately on
+  // first launch: every catalog entry materializes as a stub (source-less ones
+  // render without a download button), downloaded models are kept as-is by
+  // merge/reconcile keyed on model.id.
+  private resolvePresets = async (): Promise<Model[]> => {
+    try {
+      return this.resolveCatalogPresets();
+    } catch (error) {
+      console.warn('[ModelStore] catalog preset resolution failed:', error);
+      return [];
+    }
   };
 
-  // Materialize the device-tier preset list from rules. Each thin candidate is
-  // turned into the minimal pair hfAsModel reads (candidateToPair), so the
-  // result is origin:HF, identical to an HF-browser add. Multimodal candidates
-  // also push their mmproj projector stub (mirrors addHFModel) so the projection
-  // is resolvable for download. Deduped by model.id (author/repo/filename),
-  // first wins.
-  resolvePresetModels = (
-    rules: DeviceRules,
-    signals: DeviceSignals,
-  ): Model[] => {
-    const tier = classify(
-      signals,
-      rules.classifier,
-      Platform.OS as ClassifyPlatform,
-    );
-    const flat = rules.tiers[tier].models.flatMap(candidate => {
-      const {hfModel, modelFile} = this.candidateToPair(candidate);
-      const llm = hfAsModel(hfModel, modelFile);
-      const named = candidate.displayName
-        ? {...llm, name: candidate.displayName}
-        : llm;
-      if (named.supportsMultimodal) {
-        const projModels = getMmprojFiles(hfModel.siblings || []).map(file =>
-          hfAsModel(hfModel, file),
-        );
-        return [named, ...projModels];
+  // Materialize the full LLM catalog as origin:HF stubs (identical to an
+  // HF-browser add, mirrors the old rules path). Entries with an HF repo get
+  // the deterministic download URL from the first available source; entries
+  // without any online source (e.g. PC-pushed butler) get a source-less stub
+  // so the model is still visible and manageable. Multimodal entries also push
+  // their mmproj projector stub so the projection is resolvable for download.
+  // Deduped by model.id (author/repo/filename), first wins.
+  resolveCatalogPresets = (): Model[] => {
+    const flat: Model[] = [];
+    for (const entry of CATALOG_LLM) {
+      const pair = this.catalogEntryToPair(entry);
+      if (!pair) {
+        flat.push(this.catalogSourceLessStub(entry));
+        continue;
       }
-      return [named];
-    });
-
-    // Dedup on the full model id (author/repo/filename) so two authors sharing a
-    // repo name + filename don't collapse. The id also spans origins, matching a
-    // legacy origin:PRESET download against a new origin:HF rule entry.
+      flat.push({
+        ...hfAsModel(pair.hfModel, pair.modelFile),
+        name: entry.displayName,
+        isRulePreset: true,
+      });
+      for (const extra of entry.extras ?? []) {
+        if (!/mmproj/i.test(extra.name)) {
+          continue;
+        }
+        const projPair = this.catalogEntryToPair(entry, extra);
+        if (projPair) {
+          flat.push({
+            ...hfAsModel(projPair.hfModel, projPair.modelFile),
+            isRulePreset: true,
+          });
+        }
+      }
+    }
     const seen = new Set<string>();
     const presets: Model[] = [];
     for (const model of flat) {
@@ -870,70 +852,204 @@ class ModelStore {
         continue;
       }
       seen.add(model.id);
-      presets.push({...model, isRulePreset: true});
+      presets.push(model);
     }
     return presets;
   };
 
-  // Resolve the preset list from the bundled offline floor only — no network. This
-  // populates the model list immediately on first launch so a slow or hanging
-  // rules fetch can never leave the list empty. The fetched online override is
-  // applied afterwards by upgradeToFetchedRules (fire-and-forget).
-  private resolvePresets = async (): Promise<Model[]> => {
-    try {
-      const signals = await readDeviceSignals();
-      const bundledRaw = Platform.OS === 'ios' ? iosRulesRaw : androidRulesRaw;
-      const rules = parseDeviceRules(bundledRaw);
-      const tier = classify(
-        signals,
-        rules.classifier,
-        Platform.OS as ClassifyPlatform,
-      );
-      runInAction(() => {
-        this.deviceTier = tier;
-        this.rulesVersion = rules.rulesVersion;
-      });
-      return this.resolvePresetModels(rules, signals);
-    } catch (error) {
-      console.warn('[ModelStore] preset resolution failed:', error);
-      return [];
+  // Synthesize the minimal {hfModel, modelFile} pair the unchanged hfAsModel
+  // reads from a catalog entry, with no network. The download URL is pinned to
+  // the first declared source; HF-derivable data (oid/lfs/templates) resolves at
+  // download. An explicit extra file (mmproj) builds its own pair; the main
+  // file + extras form the siblings for vision pairing.
+  private catalogEntryToPair = (
+    entry: CatalogModel,
+    extraFile?: CatalogFile,
+  ): {hfModel: HuggingFaceModel; modelFile: ModelFile} | null => {
+    if (!entry.hfRepo) {
+      return null;
     }
+    const sources = getAvailableSources(entry);
+    const defaultSource: DownloadSource = sources[0] ?? 'hf';
+    const repo = repoForSource(entry, defaultSource) ?? entry.hfRepo;
+    const file = extraFile ?? entry.file;
+    const filename = file.name;
+    const sizeBytes = file.sizeBytes;
+    const modelFile: ModelFile = {
+      rfilename: filename,
+      // 本地落盘名与远程路径解耦：远程改名/子目录由 fileRemotePath 解析
+      url: resolveDownloadUrl(
+        repo,
+        fileRemotePath(file, defaultSource),
+        defaultSource,
+      ),
+      size: sizeBytes,
+    };
+    const siblings: ModelFile[] = [
+      {
+        rfilename: entry.file.name,
+        size: entry.file.sizeBytes,
+        url: resolveDownloadUrl(
+          repo,
+          fileRemotePath(entry.file, defaultSource),
+          defaultSource,
+        ),
+      },
+      ...(entry.extras ?? []).map(f => ({
+        rfilename: f.name,
+        url: resolveDownloadUrl(
+          repo,
+          fileRemotePath(f, defaultSource),
+          defaultSource,
+        ),
+        size: f.sizeBytes,
+      })),
+    ];
+    const hfModel = {
+      id: entry.hfRepo,
+      author: entry.hfRepo.split('/')[0],
+      url: `https://huggingface.co/${entry.hfRepo}`,
+      specs: {gguf: {total: 0}},
+      siblings,
+    } as unknown as HuggingFaceModel;
+    return {hfModel, modelFile};
   };
 
-  // Fetch the online rules override and, if it parses to a usable rule set,
-  // re-classify and reconcile so the list upgrades past the bundled floor. Runs
-  // off the first-population path (fire-and-forget); any failure leaves the
-  // already-applied bundled presets in place.
-  private upgradeToFetchedRules = async (): Promise<void> => {
-    try {
-      const fetched = await fetchRules();
-      if (!fetched) {
-        return;
+  // Source-less catalog entry (no online repo): a stub that is visible and
+  // manageable but has no download URL (download button suppressed by guard).
+  // The filename matches the shared-storage file so scanLocalModels adoptExisting
+  // redirects it once the file is on device.
+  private catalogSourceLessStub = (entry: CatalogModel): Model => {
+    const filename = entry.file.name;
+    const hfModel = {
+      id: `unknown/${filename}`,
+      author: 'unknown',
+      url: '',
+      specs: undefined,
+      siblings: [],
+    } as unknown as HuggingFaceModel;
+    const modelFile: ModelFile = {
+      rfilename: filename,
+      size: entry.file.sizeBytes,
+      url: '',
+    };
+    return {
+      ...hfAsModel(hfModel, modelFile),
+      name: entry.displayName,
+      isRulePreset: true,
+    };
+  };
+
+  // 生图清单条目（模型页渲染，2026-08-20 catalog 对齐）：状态由
+  // refreshCatalogImageGenStatus 刷新（main 文件存在 = 已下载）。生图条目不进
+  // models 数组——与 LLM 列表完全隔离（路由专工：聊天页 LLM-only、生图页
+  // manifest-only，均不触碰）。
+  catalogImageGenEntries: {entry: CatalogModel; isDownloaded: boolean}[] = [];
+
+  // 刷新生图条目下载状态（main 文件存在性探测；ModelsScreen 挂载/下载完成/下拉刷新时调用）
+  refreshCatalogImageGenStatus = async () => {
+    const next: {entry: CatalogModel; isDownloaded: boolean}[] = [];
+    for (const entry of CATALOG_IMAGEGEN) {
+      const dir =
+        entry.file.dir === 'dreamlite'
+          ? `${AIOS_ROOT}/dreamlite`
+          : AIOS_MODELS_DIR;
+      let exists = false;
+      try {
+        exists = await RNFS.exists(`${dir}/${entry.file.name}`);
+      } catch {
+        exists = false;
       }
-      const signals = await readDeviceSignals();
-      const tier = classify(
-        signals,
-        fetched.classifier,
-        Platform.OS as ClassifyPlatform,
-      );
-      runInAction(() => {
-        this.deviceTier = tier;
-        this.rulesVersion = fetched.rulesVersion;
-      });
-      this.reconcilePresets(this.resolvePresetModels(fetched, signals));
-    } catch (error) {
-      console.warn('[ModelStore] fetched-rules upgrade failed:', error);
+      next.push({entry, isDownloaded: exists});
     }
+    runInAction(() => {
+      this.catalogImageGenEntries = next;
+    });
   };
 
-  // Reconcile the freshly-resolved rule presets into the model list. Keyed on the
+  // 生图套件是否任一文件下载中（UI 行内按钮状态）
+  isCatalogEntryDownloading = (entryId: string): boolean => {
+    const entry = catalogEntryById(entryId);
+    if (!entry) {
+      return false;
+    }
+    return [entry.file, ...(entry.extras ?? [])].some(f =>
+      downloadManager.isDownloading(`${entryId}/${f.name}`),
+    );
+  };
+
+  // 生图套件下载：逐文件 startDownload（同一 catalog 源，落 AIOS 共享目录——
+  // 生图页扫描源），单文件失败显式报错并停止（不静默跳过——锋利）。
+  // 跨仓套件（SD3.5/Z-Image companions 分布多仓）按文件解析 repo/远程路径：
+  // 文件在首选源无 repo 时自动回退其余可用源。完成回调刷新条目下载状态。
+  // 权限守卫与 checkSpaceAndDownload 同点挂接（守卫 hook 指南针统一下载入口）。
+  downloadCatalogEntry = async (
+    entryId: string,
+    source: DownloadSource,
+  ): Promise<void> => {
+    const entry = catalogEntryById(entryId);
+    if (!entry) {
+      throw new Error(`Catalog entry not found: ${entryId}`);
+    }
+    if (!(await ensureStorageAccess())) {
+      throw new Error('Storage permission not granted for catalog download');
+    }
+    const files = [entry.file, ...(entry.extras ?? [])];
+    for (const file of files) {
+      const resolved = resolveFileSource(file, entry, source);
+      if (!resolved) {
+        throw new Error(
+          `No download source for catalog file: ${entryId}/${file.name}`,
+        );
+      }
+      const destDir =
+        file.dir === 'dreamlite' ? `${AIOS_ROOT}/dreamlite` : AIOS_MODELS_DIR;
+      const destinationPath = `${destDir}/${file.name}`;
+      const stub = this.catalogFileStub(entry, file, resolved);
+      const authToken =
+        resolved.source === 'hf' && hfStore.shouldUseToken
+          ? hfStore.hfToken
+          : null;
+      await downloadManager.startDownload(stub, destinationPath, authToken);
+    }
+    await this.refreshCatalogImageGenStatus();
+  };
+
+  // 生图套件单文件 stub（id = 条目 id + 文件名，downloadManager 按此跟踪；
+  // rfilename = 本地落盘名，url = 远程 URL——远程改名/子目录由
+  // fileRemotePath 解析，两字段解耦）
+  private catalogFileStub = (
+    entry: CatalogModel,
+    file: CatalogFile,
+    resolved: {source: DownloadSource; repo: string},
+  ): Model => {
+    const hfModel = {
+      id: entry.id,
+      author: resolved.repo.split('/')[0] ?? 'unknown',
+      url: '',
+      specs: undefined,
+      siblings: [],
+    } as unknown as HuggingFaceModel;
+    const modelFile: ModelFile = {
+      rfilename: file.name,
+      size: file.sizeBytes,
+      url: resolveDownloadUrl(
+        resolved.repo,
+        fileRemotePath(file, resolved.source),
+        resolved.source,
+      ),
+    };
+    return hfAsModel(hfModel, modelFile);
+  };
+
+  // Reconcile the freshly-resolved catalog presets into the model list. Keyed on the
   // full model id (author/repo/filename), which spans origins: a downloaded
-  // legacy PRESET and a new origin:HF rule entry share it, so the kept download
-  // suppresses the rule stub (no duplicate card, no re-download).
+  // legacy PRESET and a new origin:HF catalog stub share it, so the kept download
+  // suppresses the stub (no duplicate card, no re-download).
   //
-  // Two-sided so the list stays equal to the current rule set:
-  //  - prune non-downloaded rule-provenance stubs no longer in the fresh set
-  //    (a newer rulesVersion dropped them, or the device re-tiered). Downloaded
+  // Two-sided so the list stays equal to the current catalog set:
+  //  - prune non-downloaded preset-provenance stubs no longer in the fresh set
+  //    (a newer catalog dropped them, or the device re-tiered). Downloaded
   //    models of any origin and user-added HF/LOCAL models are never pruned.
   //  - append the fresh presets not already represented by a kept model.
   reconcilePresets = (presets: Model[]) => {
@@ -955,11 +1071,11 @@ class ModelStore {
   };
 
   mergeModelLists = (presets: Model[] = []) => {
-    // The default list is data-driven: rule-resolved origin:HF presets replace
-    // the old static PRESET array. Keep every downloaded model regardless of
-    // origin, drop non-downloaded PRESET stubs, then reconcile the resolved
-    // presets in by model.id (author/repo/filename, origin-spanning) so a kept
-    // legacy PRESET download suppresses its rule stub.
+    // The default list is data-driven: catalog-resolved origin:HF presets
+    // replace the old static PRESET array. Keep every downloaded model
+    // regardless of origin, drop non-downloaded PRESET stubs, then reconcile
+    // the resolved presets in by model.id (author/repo/filename, origin-spanning)
+    // so a kept legacy PRESET download suppresses its catalog stub.
     const mergedModels = [...this.models].filter(
       model => model.origin !== ModelOrigin.PRESET || model.isDownloaded,
     );
@@ -1095,6 +1211,10 @@ class ModelStore {
       // Coming to foreground - check if we need to reload auto-released model
       await this.checkAndReloadAutoReleasedModel();
       this.reprobeRemoteCapsIfUnknown();
+      // 授权返回后重扫（task-7c3e）：MANAGE 权限在系统设置页授予后回到 App，
+      // 模型列表自动出现，无需重启。
+      this.scanLocalModels();
+      this.refreshCatalogImageGenStatus();
     } else if (this.appState === 'active' && nextAppState === 'inactive') {
       // active → inactive: NO action (per requirements)
       console.log('Active → Inactive: No auto-release action');
@@ -1334,7 +1454,10 @@ class ModelStore {
    * Private method to handle projection model download for vision models
    * @param model The vision model that needs its projection model downloaded
    */
-  private _downloadProjectionModelIfNeeded = async (model: Model) => {
+  private _downloadProjectionModelIfNeeded = async (
+    model: Model,
+    source?: DownloadSource,
+  ) => {
     // Only auto-download for vision models that aren't projection models themselves
     if (
       !model.supportsMultimodal ||
@@ -1368,7 +1491,7 @@ class ModelStore {
 
       try {
         // Download the projection model
-        await this.checkSpaceAndDownload(projModelId);
+        await this.checkSpaceAndDownload(projModelId, source);
       } catch (error) {
         console.error('Failed to auto-download projection model:', error);
         // Don't re-throw - projection model download failure shouldn't fail the main model download
@@ -1377,27 +1500,60 @@ class ModelStore {
     }
   };
 
-  checkSpaceAndDownload = async (modelId: string) => {
+  checkSpaceAndDownload = async (
+    modelId: string,
+    source?: DownloadSource,
+  ) => {
     const model = this.models.find(m => m.id === modelId);
-    // Skip if model is undefined, already downloaded, local or doesn't have a download URL
-    // TODO: we need a better way to handle this. Why this could ever happen?
-    if (
-      !model ||
-      model.isDownloaded ||
-      model.isLocal ||
-      model.origin === ModelOrigin.LOCAL ||
-      !model.downloadUrl
-    ) {
+    if (!model) {
+      throw new Error(`Model not found for download: ${modelId}`);
+    }
+    // 幂等：已下载/本地模型不重复下载（非错误，静默返回）
+    if (model.isDownloaded || model.isLocal || model.origin === ModelOrigin.LOCAL) {
       return;
+    }
+    if (!model.downloadUrl) {
+      throw new Error(`Model has no download URL: ${modelId}`);
     }
 
     try {
+      // 权限守卫（守卫 hook 指南针）：统一下载入口单点挂接，覆盖 ModelCard/
+      // downloadHFModel/双源弹窗全入口；不可读时已弹「所有文件访问」引导。
+      if (!(await ensureStorageAccess())) {
+        throw new Error('Storage permission not granted for model download');
+      }
       const destinationPath = await this.getModelFullPath(model);
       const authToken = hfStore.shouldUseToken ? hfStore.hfToken : null;
-      await downloadManager.startDownload(model, destinationPath, authToken);
+      // 显式源（HF/ModelScope 双源，2026-08-20）：catalog 条目按所选源重建
+      // downloadUrl（远程路径走 fileRemotePath——本地落盘名≠远程名时不可用
+      // 本地名拼 URL，否则 404）；token 守卫在 downloadManager（非 HF 恒不带）。
+      let downloadModel = model;
+      if (source) {
+        const entry = catalogEntryByFilename(model.filename);
+        const file =
+          entry?.file.name === model.filename
+            ? entry.file
+            : entry?.extras?.find(f => f.name === model.filename);
+        const repo = entry ? repoForSource(entry, source) : undefined;
+        if (repo && file) {
+          downloadModel = {
+            ...model,
+            downloadUrl: resolveDownloadUrl(
+              repo,
+              fileRemotePath(file, source),
+              source,
+            ),
+          };
+        }
+      }
+      await downloadManager.startDownload(
+        downloadModel,
+        destinationPath,
+        authToken,
+      );
 
       // For vision models, automatically download the projection model
-      await this._downloadProjectionModelIfNeeded(model);
+      await this._downloadProjectionModelIfNeeded(model, source);
     } catch (err) {
       if (err instanceof DownloadCancelledError) {
         // User cancelled — not a failure. Don't surface an error and don't
@@ -2045,10 +2201,8 @@ class ModelStore {
 
     // Get all effective initialization settings BEFORE try block
     // so they're available for error reporting if initialization fails
-    const effectiveSettings = await this.getEffectiveContextInitParams(
-      filePath,
-      model.id,
-    );
+    const effectiveSettings =
+      await this.getEffectiveContextInitParams(filePath, model.id);
 
     try {
       // Create properly versioned ContextInitParams
@@ -2664,6 +2818,7 @@ class ModelStore {
     return this.addHFModel(hfModel, modelFile);
   };
 
+
   /**
    * Scan model dirs for .gguf files (B15 双轨：默认目录 ∪ 自定义目录，去重按文件名).
    * Auto-registers models not yet in the store.
@@ -2794,10 +2949,7 @@ class ModelStore {
             }
           });
           console.log(
-            '[ModelStore] mmproj paired: ' +
-              filename +
-              ' -> ' +
-              target.filename,
+            '[ModelStore] mmproj paired: ' + filename + ' -> ' + target.filename,
           );
         }
       }
@@ -3269,15 +3421,10 @@ class ModelStore {
 
   // 投影模型方法组：实现迁至 modelStoreMethods/projectionMethods.ts（行为零变化）
   getCompatibleProjectionModels!: (modelId: string) => Model[];
-  setDefaultProjectionModel!: (
-    modelId: string,
-    projectionModelId: string,
-  ) => void;
+  setDefaultProjectionModel!: (modelId: string, projectionModelId: string) => void;
   getDefaultProjectionModel!: (modelId: string) => Model | undefined;
   getLLMsUsingProjectionModel!: (projectionModelId: string) => Model[];
-  getDownloadedLLMsUsingProjectionModel!: (
-    projectionModelId: string,
-  ) => Model[];
+  getDownloadedLLMsUsingProjectionModel!: (projectionModelId: string) => Model[];
   hasRequiredProjectionModel!: (model: Model) => boolean;
   getProjectionModelStatus!: (model: Model) => {
     isAvailable: boolean;
@@ -3291,9 +3438,7 @@ class ModelStore {
     dependentModels?: Model[];
   };
   cleanupOrphanedProjectionModel!: (projectionModelId: string) => Promise<void>;
-  cleanupOrphanedProjectionModels!: (
-    projectionModelIds: string[],
-  ) => Promise<void>;
+  cleanupOrphanedProjectionModels!: (projectionModelIds: string[]) => Promise<void>;
   setModelVisionEnabled!: (modelId: string, enabled: boolean) => Promise<void>;
   getModelVisionPreference!: (model: Model) => boolean;
 
@@ -3401,11 +3546,14 @@ class ModelStore {
       // Create the completion promise and register it for safe context release
       // （guard：串行化+冷却窗+重试，防冷却期 HostFunction 异常）
       const completionPromise = chatEngineGuard.run(() =>
-        this.context!.completion(cleanCompletionParams, data => {
-          if (data.token) {
-            params.onToken?.(data.token);
-          }
-        }),
+        this.context!.completion(
+          cleanCompletionParams,
+          data => {
+            if (data.token) {
+              params.onToken?.(data.token);
+            }
+          },
+        ),
       );
 
       // Register the promise so releaseContext can wait for it

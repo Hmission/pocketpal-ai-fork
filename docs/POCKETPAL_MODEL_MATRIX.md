@@ -23,12 +23,27 @@ relates: [POCKETPAL_DESIGN_SPEC]
 | # | 模型 | 文件 | 量化 | 大小 | 定位 |
 |---|---|---|---|---|---|
 | 1 | Qwen3.5-2B 无限制 | `Qwen3.5-2B-Uncensored-HauhauCS-Aggressive-Q8_0.gguf` | Q8_0 | 2.01 GB | 写作/聊天主力 |
-| 2 | Qwen3.5-2B 视觉伴侣 | `mmproj-Qwen3.5-2B-...-f16.gguf` | f16 | 0.67 GB | 多模态（配对 #1） |
+| 2 | Qwen3.5-2B 视觉伴侣 | `mmproj-Qwen3.5-2B-Uncensored-HauhauCS-Aggressive-f16.gguf` | f16 | 0.67 GB | 多模态（配对 #1） |
 | 3 | Qwen3.5-4B 无限制 | `Qwen3.5-4B-Uncensored-HauhauCS-Aggressive-Q4_K_M.gguf` | Q4_K_M | 2.71 GB | 日用 |
-| 4 | LFM2.5-2.6B | `LFM2.5-2.6B-Q4_K_M.gguf` | Q4_K_M | 1.67 GB | 代码/玩具匠（工具调用优化，低延迟） |
-| 5 | LFM2.5-8B-A1B | `LFM2.5-8B-A1B-Q4_K_M.gguf` | Q4_K_M | 5.16 GB | MoE 大模型（激活~1.5B）；K90 PSS 看护硬杀不可用（2026-08-19 实证） |
-| 6 | Ministral-3-3B | `Ministral-3-3B-Instruct-2512-Q4_K_M.gguf` | Q4_K_M | 2.15 GB | 代码候选（均衡档） |
-| 7 | MiniCPM5-1B 管家 | `minicpm5_1b_heretic_q4km.gguf` | Q4_K_M | ~0.69 GB | 常驻管家（prompter） |
+| 4 | Qwen3.5-4B 视觉伴侣 | `mmproj-Qwen3.5-4B-Uncensored-HauhauCS-Aggressive-BF16.gguf` | BF16 | 0.67 GB | 多模态（配对 #3；2026-08-20 补登，SOP 实测在机） |
+| 5 | LFM2.5-2.6B | `LFM2.5-2.6B-Q4_K_M.gguf` | Q4_K_M | 1.67 GB | 代码/玩具匠（工具调用优化，低延迟） |
+| 6 | LFM2.5-8B-A1B | `LFM2.5-8B-A1B-Q4_K_M.gguf` | Q4_K_M | 5.16 GB | MoE 大模型（激活~1.5B）；K90 PSS 看护硬杀不可用（2026-08-19 实证） |
+| 7 | Ministral-3-3B | `Ministral-3-3B-Instruct-2512-Q4_K_M.gguf` | Q4_K_M | 2.15 GB | 代码候选（均衡档） |
+| 8 | MiniCPM5-1B 管家 | `minicpm5_1b_heretic_q4km.gguf` | Q4_K_M | ~0.69 GB | 常驻管家（prompter） |
+
+> **代码化清单（2026-08-20）**：`src/utils/modelCatalog.ts` 的 `CATALOG_LLM` 为本表唯一代码事实源
+> （模型页全部可管理：未下载显示下载按钮，无源条目显示「请本地导入」→ 模型目录页）。
+> 在线规则已退役（§54 决策）：不再拉取上游 device-rules；代码层已切除（§57 执行：
+> resolvePresetModels/deviceRules 服务目录/bundledDeviceRules JSON/rulesVersion 整条死链删除）。
+> 下载源显式声明（2026-08-20 魔搭 API 实测）：`sources: ['hf']` = 仅 Hugging Face；
+> `['hf','modelscope']` = 双源（下载时弹窗选择）。
+> - **双源**：#5 LFM2.5-2.6B、#6 LFM2.5-8B-A1B、#7 Ministral-3-3B（魔搭同名同文件镜像已验 200）
+> - **仅 HF**：#1-#4 Qwen3.5×2（HauhauCS 魔搭 404 无镜像）、#8 MiniCPM5-1B 管家
+>   （2026-08-20 实锤：GGUF 头部元数据对比 license apache-2.0 + base_model openbmb/MiniCPM5-1B
+>   全同 → 源为 mradermacher/MiniCPM5-1B-Claude-Opus-Fable5-V2-Thinking-heretic-GGUF 的
+>   Q4_K_M（远程名 MiniCPM5-1B-Claude-Opus-Fable5-V2-Thinking-heretic.Q4_K_M.gguf，本地为
+>   早期版本差 1152 字节，落盘名映射）；注意 mradermacher/MiniCPM5-1B-heretic-GGUF 是
+>   K0D3IN base heretic（license agpl-3.0）非 Fable5，勿混；魔搭无镜像）
 
 ## 1.1 任务选型优先级（2026-08-20，listModelsForTask）
 
@@ -47,6 +62,21 @@ relates: [POCKETPAL_DESIGN_SPEC]
 | 1 | DreamLite（小黄鸡端侧） | App 内置 manifest，非文件 | **主线主力**（固定置顶默认选中） |
 | 2 | SD 3.5 Medium | DiT + clip_l/clip_g/vae 四件套 | 🥇 画质升级 |
 | 3 | Z-Image-Turbo | DiT + zimage_llm + ae 三件套 | 🥈 中文场景 + 无审查 |
+
+> **代码化清单（2026-08-20）**：`src/utils/modelCatalog.ts` 的 `CATALOG_IMAGEGEN` 为本表代码事实源
+> （套件文件清单与 §6.1/§6.2 一致；模型页「生图模型」区可管理）。
+> 下载源（2026-08-20 溯源 + 魔搭 resolve 实测 7/7 全 200，非自制）：
+> - **SD 3.5 四件套**：双源。main 来自 city96/stable-diffusion-3.5-medium-gguf
+>   （远程名 `sd3.5_medium-Q4_K_M.gguf`）；clip_l/clip_g 来自 Comfy-Org（HF）/AI-ModelScope（魔搭）
+>   stable-diffusion-3.5-fp8 的 `text_encoders/` 子目录；vae 来自 stabilityai（HF）/AI-ModelScope（魔搭）
+>   stable-diffusion-3.5-medium 的 `vae/` 子目录——跨仓套件按文件声明 repo/远程路径
+> - **Z-Image-Turbo 三件套**：双源。main 来自 leejet/Z-Image-Turbo-GGUF（远程名 `z_image_turbo-Q4_K.gguf`）；
+>   ae 来自 Comfy-Org/z_image_turbo 的 `split_files/vae/`；zimage_llm 文本塔仅魔搭
+>   （unsloth/Qwen3-4B-GGUF，HF 侧文件名不同未验证——选 HF 源时自动回退魔搭下载）
+> - **DreamLite**：部署 ONNX 为自制导出（.tmp/dreamlite 本地导出+量化），HF 无公开 ONNX →
+>   模型页显示「请本地导入」→ 跳模型目录页；原始权重（safetensors）来自作者官方仓库
+>   carlofkl/DreamLite-mobile（2026-08-20 hf-mirror 逐字节验证：unet 780074688 / vae 4903270 /
+>   te 4255140312 与本地 ckpt 全一致）——但 App 生图引擎需要 ONNX 非 safetensors，不开下载
 
 ## 3. 淘汰 / 未选型清单（禁止推送 ❌）
 

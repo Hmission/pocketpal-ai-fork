@@ -56,6 +56,14 @@ class MockModelStore {
     return undefined;
   };
 
+  // 生图清单条目（模型页渲染）：mock 空列表 + 同步刷新
+  catalogImageGenEntries: {entry: unknown; isDownloaded: boolean}[] = [];
+  refreshCatalogImageGenStatus: jest.Mock = jest.fn().mockResolvedValue(
+    undefined,
+  );
+  isCatalogEntryDownloading: jest.Mock = jest.fn().mockReturnValue(false);
+  downloadCatalogEntry: jest.Mock = jest.fn().mockResolvedValue(undefined);
+
   refreshDownloadStatuses: jest.Mock;
   addLocalModel: jest.Mock;
   removeModelByFullPath: jest.Mock;

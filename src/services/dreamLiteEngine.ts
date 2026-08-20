@@ -14,11 +14,13 @@ import * as ort from 'onnxruntime-react-native';
 import * as RNFS from '@dr.pogodin/react-native-fs';
 import {NativeModules} from 'react-native';
 import {initLlama, LlamaContext} from 'llama.rn';
+import {AIOS_ROOT} from '../utils/paths';
 import {encodePng, toBase64} from './pngUtil';
 
 const ImageGenNative = NativeModules.ImageGen;
 
-const DIR = '/sdcard/Documents/AIOS/dreamlite';
+// 与 ModelStore catalog dreamlite 条目同一 AIOS_ROOT 派生（单点路径，防双处硬编码漂移）
+const DIR = `${AIOS_ROOT}/dreamlite`;
 const TE_DIM = 2048;
 const DROP_IDX = 34; // generate 模式截断模板前缀 token 数
 const MAX_SEQ = 128; // UNet 条件序列上限（官方 max_sequence_length=200，端侧折中 128）

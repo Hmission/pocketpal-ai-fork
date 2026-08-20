@@ -33,4 +33,14 @@ export const createStyles = (theme: Theme) =>
       borderRadius: 8,
       marginHorizontal: 2,
     },
+    imageGenSection: {
+      marginTop: theme.spacing.m,
+      paddingHorizontal: theme.spacing.m,
+      paddingBottom: theme.spacing.xl,
+    },
+    imageGenTitle: {
+      ...theme.typography.titleM,
+      color: theme.colors.onSurfaceVariant,
+      marginBottom: theme.spacing.s,
+    },
   });

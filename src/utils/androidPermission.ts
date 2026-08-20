@@ -45,12 +45,16 @@ export async function ensureLegacyStoragePermission() {
 }
 
 /**
- * B13/B15 存储权限（2026-08-15 复盘修订）：
+ * B13/B15 存储权限（2026-08-15 复盘修订；2026-08-20 readDir 探针升级）：
  * 正确设计 = 启动检测 → 缺失才弹 → 系统请求优先 → 永不阻塞扫描。
  *
  * 关键认知：PermissionsAndroid.check 对 MANAGE_EXTERNAL_STORAGE 这类
- * 特殊权限不可靠（可能误报 false）——因此判定用「目录实际可读」
- * （RNFS.exists），check 只用于触发请求。
+ * 特殊权限不可靠（可能误报 false）——因此判定用「目录实际可读」。
+ *
+ * 2026-08-20 探针升级（task-7c3e 根因修复）：可读判定从 RNFS.exists 改为
+ * readDir 探针——Android 11+ scoped storage 下 exists 对无权限目录可能返回
+ * true（目录元数据可见但内容不可读），导致新装不弹引导、列表空。
+ * exists 通过但 readDir 失败必须落入弹窗分支。
  *
  * B15 双轨（ADR-0004）：默认目录（getExternalFilesDir/models）零权限，
  * 恒可读、永不弹窗；自定义目录（含默认注册的 AIOS 共享目录）才需要
@@ -72,11 +76,15 @@ export async function ensureStorageAccess(): Promise<boolean> {
   }
   for (const d of dirs) {
     try {
-      if (await RNFS.exists(d)) {
+      if (await isDirReadable(d)) {
         return true;
       }
       await RNFS.mkdir(d);
-      return true;
+      // mkdir 成功后必须再次 readDir 验证（目录已建但无权限时 mkdir 静默
+      // 成功/失败不定，readDir 才是真实可读性判据）
+      if (await isDirReadable(d)) {
+        return true;
+      }
     } catch {
       // 无权限或父目录缺失，继续检查下一个
     }
@@ -92,12 +100,8 @@ export async function ensureStorageAccess(): Promise<boolean> {
       // ④ 请求后复测实际可读性（同样只测自定义目录）
       const dirsAfter = await getCustomModelDirs();
       for (const d of dirsAfter) {
-        try {
-          if (await RNFS.exists(d)) {
-            return true;
-          }
-        } catch {
-          // 继续检查
+        if (await isDirReadable(d)) {
+          return true;
         }
       }
     } catch {
@@ -112,6 +116,19 @@ export async function ensureStorageAccess(): Promise<boolean> {
 }
 
 /**
+ * readDir 探针：目录真实可读判定（区别于 RNFS.exists 的元数据可见性）。
+ * readDir 成功且返回数组 = 可读；抛错/非数组 = 不可读（权限缺失）。
+ */
+async function isDirReadable(dir: string): Promise<boolean> {
+  try {
+    const entries = await RNFS.readDir(dir);
+    return Array.isArray(entries);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * B15：用户主动添加/读取自定义目录时调用——目录实际可读判定，
  * 不可读则引导「所有文件访问」（与启动检测同一契约，永不短路扫描）。
  */
@@ -119,12 +136,8 @@ export async function ensureCustomDirAccess(dir: string): Promise<boolean> {
   if (Platform.OS !== 'android') {
     return true;
   }
-  try {
-    if (await RNFS.exists(dir)) {
-      return true;
-    }
-  } catch {
-    // 落到引导
+  if (await isDirReadable(dir)) {
+    return true;
   }
   if (Platform.Version >= 30) {
     showManageAccessAlert();

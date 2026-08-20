@@ -202,8 +202,8 @@
     "contextPolicyExpand": "扩充",
     "contextPolicyCompact": "压缩",
     "contextPolicyAsk": "每次询问",
-    "contextAutoCompaction": "自动压缩",
-    "contextAutoCompactionDescription": "发送前预算超阈值时自动压缩旧消息（关闭后仅手动）。"
+    "contextAutoCompaction": "上下文自动压缩",
+    "contextAutoCompactionDescription": "对话接近上下文上限时自动压缩历史消息。"
   },
   "memory": {
     "shortWarning": "内存警告",
@@ -291,8 +291,34 @@
     },
     "buttons": {
       "addFromHuggingFace": "从 Hugging Face 添加",
+      "addFromModelScope": "从 ModelScope 添加",
       "addLocalModel": "添加本地模型",
       "reset": "重置"
+    },
+    "downloadSource": {
+      "title": "选择下载源",
+      "hf": "Hugging Face",
+      "hfDescription": "huggingface.co · 国际源",
+      "modelscope": "ModelScope 魔搭",
+      "modelscopeDescription": "modelscope.cn · 国内源",
+      "noSource": "暂不支持在线下载",
+      "localImport": "请本地导入"
+    },
+    "imageGenCatalog": {
+      "title": "生图模型",
+      "goImageGen": "去生图页",
+      "downloading": "下载中…",
+      "download": "下载"
+    },
+    "modelScopeAdd": {
+      "title": "从 ModelScope 添加",
+      "repoLabel": "模型仓库 ID",
+      "repoPlaceholder": "作者/仓库名，如 Qwen/Qwen2.5-7B-Instruct-GGUF",
+      "lookup": "查询",
+      "filesTitle": "选择要下载的 GGUF 文件",
+      "invalidRepoId": "仓库 ID 格式应为 作者/仓库名",
+      "noGgufFiles": "该仓库没有 GGUF 文件",
+      "lookupFailed": "查询失败，请检查仓库 ID 或网络"
     },
     "modelsHeaderRight": {
       "menuTitleHf": "Hugging Face模型",
@@ -1563,55 +1589,55 @@
       "brand": "小黄鸡"
     },
     "screen1": {
-      "title": "认识您的 Pal。",
-      "titleAccent": "Pal。",
-      "body": "住在您手机里的聪明小伙伴。\n来花一分钟把它们设置好吧。",
-      "cta": "带我去看看",
+      "title": "认识一下你的小伙伴。",
+      "titleAccent": "小伙伴。",
+      "body": "住进你手机的 AI 伙伴——聊天、生图、玩乐、绘本、冒险。\n花一分钟把它们设置好吧。",
+      "cta": "带我看看",
       "eyebrow": "欢迎使用小黄鸡"
     },
     "screen2": {
-      "title": "随时，\n随地。",
-      "body": "您的 Pal 就住在您的手机里。\n不用联网、没有信号也能用——在飞机上、断网时、偏远村庄里都能正常工作。",
-      "highlight": "不用联网、没有信号",
+      "title": "不止\n聊天。",
+      "body": "聊天、生图、讲故事、玩冒险、直接开口说——全部在你的手机上完成。拍的照片还能放大 4 倍更清晰。",
+      "highlight": "全部在你的手机上完成",
       "cta": "下一步",
-      "eyebrow": "理念",
-      "titleAccent": "随时，"
+      "eyebrow": "多种玩法",
+      "titleAccent": "聊天。"
     },
     "screen3": {
-      "title": "更小巧，\n但完全属于您。",
-      "titleAccent": "更小巧，",
-      "body": "手机上的Pal快速又私密——但比云端AI更轻量。把它当成口袋里的小伙伴，而不是无所不知的神谕。",
-      "highlight": "快速又私密",
+      "title": "随时，\n随地。",
+      "titleAccent": "随时，",
+      "body": "不用联网、没有信号也没关系——在飞机上、在电梯里、在偏远村庄，你的小伙伴都还在。\n小而精，比云端大模型轻一点——但快、私密，永远属于你。",
+      "highlight": "不用联网、没有信号",
       "cta": "知道了",
-      "eyebrow": "温馨提示"
+      "eyebrow": "完全离线"
     },
     "screen4": {
-      "title": "任何内容都不会离开您的手机。",
-      "titleAccent": "离开",
-      "body": "无需账户。没有云端。不做追踪。您的对话始终属于您自己。",
+      "title": "一切\n留在你的手机里。",
+      "titleAccent": "留在你的手机里。",
+      "body": "无需账户。没有云端。不做追踪。你的对话和图像，只属于你。\n完全开源——任何人都能查看代码。",
       "highlight": "无需账户。没有云端。不做追踪。",
       "cta": "开始使用",
       "eyebrow": "隐私承诺",
-      "storageNote": "首次启动会请您授予「所有文件访问」权限，仅用于读取模型目录与备份聊天记录，可随时在系统设置中更改。"
+      "storageNote": "首次启动时会请求「所有文件访问权限」——仅用于读取模型文件夹与备份聊天记录。你可随时在系统设置中更改。"
     },
     "screen5": {
-      "title": "您想让 Pal 帮您做什么？",
-      "body": "选一个您想聊的话题 — 我们会为您匹配适合您手机的 Pal。",
+      "title": "你的小伙伴用来做什么？",
+      "body": "选一个你想聊的方向——我们会为你匹配一款适合你手机的小伙伴。",
       "topic": {
-        "smartchat": "智能聊天",
+        "smartchat": "日常聊天",
         "coding": "编程",
-        "education": "教育",
+        "education": "学习成长",
         "roleplay": "角色扮演",
         "creative_writing": "创意写作",
-        "else": "想找点别的？"
+        "else": "都想试试"
       },
       "topicDescription": {
-        "smartchat": "贴心的日常小伙伴",
-        "coding": "写代码、调试、讲解",
+        "smartchat": "聊天、问答、日常陪伴",
+        "coding": "写代码、调 bug、讲原理",
         "education": "学习、讲解、测验",
-        "roleplay": "角色、情景",
-        "creative_writing": "故事、灵感、草稿",
-        "else": "稍后在应用内浏览所有 Pal"
+        "roleplay": "角色、情景、故事",
+        "creative_writing": "故事、灵感、初稿",
+        "else": "进入 App 后可浏览全部小伙伴"
       }
     },
     "screen6": {
@@ -1627,22 +1653,22 @@
         "balanced": "均衡",
         "best": "最佳"
       },
-      "subtitleTemplate": "{{name}} 靠手机上的小型 AI 模型来思考——挑一个适合的吧。",
+      "subtitleTemplate": "{{name}} 靠小型 AI 模型思考，之后随时可以更换。挑一个适合你手机的吧。",
       "pal": {
         "pip": {
-          "body": "我们为您找到了一个完美的 Pal — 贴心的日常小伙伴。够聪明，能应付大多数事情；够轻量，适配任何手机。"
+          "body": "我们为你找到了最对味的小伙伴——友好的日常陪伴。大部分事情都够用，任何手机都带得动。"
         },
         "codie": {
-          "body": "认识一下 Codie — 您本地的结对编程伙伴。读代码、写代码、讲解难点，全程都不会离开您的手机。"
+          "body": "认识一下 Codie——你的本地结对编程伙伴。读代码、写代码、讲清难点，全程不出你的手机。"
         },
         "sage": {
-          "body": "Sage 耐心又好奇，会一步步带您理清思路。一个揣在口袋里的学习搭档。"
+          "body": "Sage 耐心、好奇，会一步步带你理解想法。一个装进口袋的学习搭子。"
         },
         "echo": {
-          "body": "Echo 是个多才多艺的角色扮演伙伴 — 始终入戏、描绘场景，无论您的故事走向何方都紧紧跟随。"
+          "body": "Echo 是全能角色扮演伙伴——不脱离人设、会描绘场景，跟着你的故事走到哪算哪。"
         },
         "muse": {
-          "body": "Muse 帮您写作。提供措辞建议、找准节奏，并保持您独有的语气。"
+          "body": "Muse 帮你写作。给措辞建议、找节奏，同时保住你的语气。"
         }
       }
     }
