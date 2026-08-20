@@ -111,6 +111,9 @@ export async function loadTE(): Promise<void> {
     // 08-20 NNAPI 定稿（大王下令，双设备对照实测）：K90（8 Elite）TE 编码 42.1s→25.9s（-38.5%），
     // 全流程 90.7s→64.3s（-29.1%）；小米 13（8 Gen 2）无收益（ORT 自动回退 CPU，无副作用）。
     // 不支持的算子/设备由 ORT 标准机制回退 CPU（EP 声明式优先序，非自写兜底）——单配置保留，非设备分支。
+        // 08-21 NNAPI 定稿（大王下令，三设备对照实测）：K90（8 Elite）TE 编码 42.1s→25.9s（-38.5%）收益明确；
+    // 小米 13（8 Gen 2）/Mali 平板（天玑 9400+）持平（ORT 自动回退 CPU，无副作用）——单配置保留，非设备分支。
+    // 不支持的算子/设备由 ORT 标准机制回退 CPU（EP 声明式优先序，非自写兜底）。
     executionProviders: ['nnapi', 'cpu'],
     enableCpuMemArena: false,
   });
