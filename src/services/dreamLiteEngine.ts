@@ -108,11 +108,9 @@ export async function loadTE(): Promise<void> {
     n_threads: 4,
   });
   teOrt = await ort.InferenceSession.create(`${DIR}/te_fp16.onnx`, {
-    // 08-20 NNAPI 定稿（大王下令，对照实测）：TE 切 NNAPI EP——编码 42.1s→25.9s（-38.5%），
-    // 全流程 90.7s→64.3s（-29.1%），出图质量无劣化；不支持的算子/设备由 ORT 标准机制回退 CPU。
-        // 08-20 NNAPI 定稿（大王下令，双设备对照实测）：K90（8 Elite）TE 编码 -38.5% 显著收益；
-    // 小米 13（8 Gen 2）无收益（ORT 自动回退 CPU，无副作用）——单配置保留，非设备分支。
-    // 不支持的算子/设备由 ORT 标准机制回退 CPU（EP 声明式优先序，非自写兜底）。
+    // 08-20 NNAPI 定稿（大王下令，双设备对照实测）：K90（8 Elite）TE 编码 42.1s→25.9s（-38.5%），
+    // 全流程 90.7s→64.3s（-29.1%）；小米 13（8 Gen 2）无收益（ORT 自动回退 CPU，无副作用）。
+    // 不支持的算子/设备由 ORT 标准机制回退 CPU（EP 声明式优先序，非自写兜底）——单配置保留，非设备分支。
     executionProviders: ['nnapi', 'cpu'],
     enableCpuMemArena: false,
   });

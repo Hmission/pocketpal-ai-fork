@@ -7,6 +7,9 @@
 
 ## [Unreleased]
 
+### 生图性能
+- DreamLite TE 切 NNAPI EP（K90 实测 TE 编码 -38.5%、全流程 -29.1%；小米 13 持平自动回退，单配置保留）
+
 ### 修复
 - 聊天页 UI 三处优化复查修复（2026-08-20，task-6ad 复查闭环）：① **P0 徽章行 N+1 重复渲染根治**——168823b 在 `Message.renderAssistantTurn` turn 级插入徽章行但 `ChatScreen.renderBubble` 未加类型门控，每个内容块再渲染一行（单块 turn 双徽章）；修复 `message.type !== 'assistant_turn'` 门控，新增 `renderBubble.test.tsx` 三用例防回归（turn 不渲染/text 渲染/用户消息永不渲染，反向验证有效）；② **AssistantAuthorRow 逻辑修正**——author.id 硬编码 `'user'` 改真实 `user.id`（实际 userId='y9d7f8pgn'，原判断恒真致用户消息被误判为助手）、意图选择器初始值从消息快照改会话实时 `activeSessionIntent`（消除行为漂移）、非必要动态 import 改静态（实证 store 无 components 引用、无循环依赖）；③ **顶栏等距度量修正**——初版 gap:10 以触区间距为度量，图标视觉空隙实测 73→99px 越修越大；改 `compactBtnLeft`（alignItems flex-start + marginLeft -6dp 补偿 DotsVerticalIcon viewBox 内留白），真机像素验证胶囊↔加号 35px / 加号↔三点 36px / delta 1px。tsc 零错 + 相关套件全绿
 - 出图按钮失效根治（2026-08-20，两台真机 + DRC 三重复现）：`onPress={onGenerate}` 直传 async 函数，RN 把 GestureResponderEvent 作为首参传入——`handleGenerate(event)` 入口 `(event ?? prompt).trim()` 抛 TypeError 被 Bridgeless 事件系统静默吞掉（有按压缩放动效但出图零响应）。回归引入点 commit 44689f8 加 `promptOverride?: string` 参数（供 reroll 用），此前无参时 event 被忽略不炸。修复 `onPress={() => onGenerate()}` 显式无参包装 + testID="imagegen-generate"；RNTL fireEvent.press 传 0 参（源码 handler(...data) 实验实锤）与真机必传 event 的系统性盲区——回归防线 `fireEvent.press(el, {nativeEvent: {touches, changedTouches}})` 显式注入 event 模拟真机

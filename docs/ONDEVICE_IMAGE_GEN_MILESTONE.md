@@ -27,6 +27,7 @@
 - 端侧 UNet（ONNX/MNN）+ TinyVAE + Qwen-VL TE
 - 经历：黑图回归（sigmas NaN + VAE 缩放因子）→ 修复
 - 默认 1024px 4 步 DMD2 蒸馏，秒级-分钟级出图，最早跑通
+- **2026-08-21 NNAPI 加速**：TE 编码 `executionProviders ['cpu']→['nnapi','cpu']`——K90（8 Elite）TE 42.1s→25.9s（-38.5%）、全流程 90.7s→64.3s（-29.1%）；小米 13（8 Gen 2）持平（ORT 自动回退，无副作用）；单配置保留（SPEEDUP §六）
 
 ### 2.2 SD3.5 Medium（2026-08-16 闭环，最曲折）
 1. **白图根因**（OpenCL 后端）：RMS_NORM+MUL 融合跳过中间 buffer 写入 → split_qkv 的 view 读未初始化内存 → 全 NaN → 白图
