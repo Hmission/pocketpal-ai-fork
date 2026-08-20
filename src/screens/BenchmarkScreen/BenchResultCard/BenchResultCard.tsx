@@ -6,6 +6,7 @@ import {Card, Text, Button, Tooltip} from 'react-native-paper';
 import {useTheme} from '../../../hooks';
 import {L10nContext} from '../../../utils';
 import {t} from '../../../locales';
+import {AlertIcon, LockIcon, WifiOffIcon} from '../../../assets/icons';
 
 import {createStyles} from './styles';
 
@@ -78,16 +79,18 @@ export const BenchResultCard = ({result, onDelete, onShare}: Props) => {
     );
   };
 
+  // 自绘图标（DESIGN_SPEC §12.5 图标铁律）；server 无专属自绘 → alert 兜底（B23 登记）
   const getErrorIcon = () => {
+    const stroke = theme.colors.danger;
     switch (errorType) {
       case 'network':
-        return '📶'; // wifi icon
+        return <WifiOffIcon width={16} height={16} stroke={stroke} />;
       case 'appCheck':
-        return '🔒'; // lock icon
+        return <LockIcon width={16} height={16} stroke={stroke} />;
       case 'server':
-        return '🖥️'; // server icon
+        return <AlertIcon width={16} height={16} stroke={stroke} />;
       default:
-        return '❌'; // generic error icon
+        return <AlertIcon width={16} height={16} stroke={stroke} />;
     }
   };
 

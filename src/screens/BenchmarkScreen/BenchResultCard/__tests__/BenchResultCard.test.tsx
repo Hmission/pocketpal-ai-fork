@@ -232,7 +232,7 @@ describe('BenchResultCard', () => {
     });
 
     await waitFor(() => {
-      expect(getByText(/📶.*No internet connection/)).toBeTruthy();
+      expect(getByText(/No internet connection/)).toBeTruthy();
       expect(getByText('Check connection & retry')).toBeTruthy();
     });
   });
@@ -256,7 +256,7 @@ describe('BenchResultCard', () => {
     });
 
     await waitFor(() => {
-      expect(getByText(/🔒.*App verification failed/)).toBeTruthy();
+      expect(getByText(/App verification failed/)).toBeTruthy();
       expect(getByText('Retry submission')).toBeTruthy();
     });
   });
@@ -280,7 +280,7 @@ describe('BenchResultCard', () => {
     });
 
     await waitFor(() => {
-      expect(getByText(/🖥️.*Our servers are experiencing issues/)).toBeTruthy();
+      expect(getByText(/Our servers are experiencing issues/)).toBeTruthy();
       expect(getByText('Try again later')).toBeTruthy();
     });
   });
@@ -302,7 +302,7 @@ describe('BenchResultCard', () => {
     });
 
     await waitFor(() => {
-      expect(getByText(/❌.*Unknown error occurred/)).toBeTruthy();
+      expect(getByText(/Unknown error occurred/)).toBeTruthy();
       expect(getByText('Retry')).toBeTruthy();
     });
   });

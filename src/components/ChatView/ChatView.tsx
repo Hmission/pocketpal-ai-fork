@@ -84,6 +84,7 @@ import {
 import {
   AlertIcon,
   CopyIcon,
+  EditIcon,
   GridIcon,
   PencilLineIcon,
   RefreshIcon,
@@ -1354,7 +1355,14 @@ export const ChatView = observer(
                   }
                   handleRequestClose();
                 }}>
-                <Text style={styles.viewerEditText}>✏️ 编辑此图片</Text>
+                <Text style={styles.viewerEditText}>
+                  <EditIcon
+                    width={15}
+                    height={15}
+                    stroke={theme.colors.onSurface}
+                  />{' '}
+                  编辑此图片
+                </Text>
               </TouchableOpacity>
             )}
           />

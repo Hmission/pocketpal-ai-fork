@@ -6,7 +6,6 @@ import {
   Text,
   StyleSheet,
   Alert,
-  Modal,
   TextInput,
   Image,
   ScrollView,
@@ -32,6 +31,8 @@ import {AIOS_MEMORIES_DIR} from '../../utils/paths';
 import {useTheme, useStaggerEntry} from '../../hooks';
 import type {Theme} from '../../utils/types';
 import {IconTile} from '../../components/ui';
+import {OverlayCard} from '../../components/ui';
+import {Button as UiButton} from '../../components/ui';
 import {L10nContext} from '../../utils';
 import {HeartIcon} from '../../assets/icons';
 
@@ -331,107 +332,87 @@ export function MemoryScreen({navigation}: any) {
         contentContainerStyle={memories.length === 0 ? styles.emptyList : null}
       />
 
-      {/* 记忆绘本 Modal（P10，ALBUM_SPEC §5） */}
-      <Modal
+      {/* 记忆绘本 Modal（P10，ALBUM_SPEC §5）——OverlayCard 底座（DESIGN_SPEC §12.1） */}
+      <OverlayCard
         visible={albumVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setAlbumVisible(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, styles.albumModalContent]}>
-            <View style={styles.albumHeader}>
-              <Text style={styles.modalTitle}>记忆绘本</Text>
-              <IconButton
-                icon="close"
-                size={20}
-                onPress={() => {
-                  setAlbumVisible(false);
-                  setSelectedAlbum(null);
-                }}
-              />
-            </View>
-
-            {selectedAlbum ? (
-              <ScrollView style={styles.albumDetail}>
-                <Text style={styles.albumWeek}>{selectedAlbum.week} · 本周故事</Text>
-                <Image
-                  source={{uri: selectedAlbum.coverUri}}
-                  style={styles.albumCover}
-                  resizeMode="cover"
-                />
-                <Text style={styles.albumStory}>{selectedAlbum.story}</Text>
-                <Button mode="text" onPress={() => setSelectedAlbum(null)}>
-                  返回相册列表
-                </Button>
-              </ScrollView>
-            ) : albums.length === 0 ? (
-              <View style={styles.albumEmpty}>
-                <Text style={styles.emptyText}>
-                  {albumBusy
-                    ? '正在生成绘本：写故事 → 画封面…'
-                    : '还没有绘本。生成本周绘本：把记忆变成故事，配上 DreamLite 画的封面。'}
-                </Text>
-              </View>
-            ) : (
-              <FlatList
-                data={albums}
-                renderItem={({item}) => (
-                  <List.Item
-                    title={`${item.week} 本周故事`}
-                    description={item.story.replace(/^#.*\n?/, '').slice(0, 60)}
-                    left={() => <List.Icon icon="book-open-variant" />}
-                    onPress={() => setSelectedAlbum(item)}
-                  />
-                )}
-                keyExtractor={item => item.week}
-                ItemSeparatorComponent={Divider}
-                style={styles.albumList}
-              />
-            )}
-
-            {albumError && !selectedAlbum && (
-              <Text style={styles.albumError}>{albumError}</Text>
-            )}
-            {!selectedAlbum && (
-              <Button
-                mode="contained"
-                onPress={handleCreateAlbum}
-                disabled={albumBusy}
-                loading={albumBusy}
-                style={styles.albumCreateBtn}>
-                生成本周绘本
-              </Button>
-            )}
-          </View>
-        </View>
-      </Modal>
-
-      {/* Edit Modal */}
-      <Modal
-        visible={!!editing}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setEditing(null)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>编辑记忆</Text>
-            <TextInput
-              value={editText}
-              onChangeText={setEditText}
-              style={styles.modalInput}
-              multiline
-              autoFocus
-              maxLength={200}
+        onRequestClose={() => {
+          setAlbumVisible(false);
+          setSelectedAlbum(null);
+        }}
+        title="记忆绘本"
+        style={styles.albumModalContent}>
+        {selectedAlbum ? (
+          <ScrollView style={styles.albumDetail}>
+            <Text style={styles.albumWeek}>{selectedAlbum.week} · 本周故事</Text>
+            <Image
+              source={{uri: selectedAlbum.coverUri}}
+              style={styles.albumCover}
+              resizeMode="cover"
             />
-            <View style={styles.modalButtons}>
-              <Button onPress={() => setEditing(null)}>取消</Button>
-              <Button mode="contained" onPress={handleSaveEdit}>
-                保存
-              </Button>
-            </View>
+            <Text style={styles.albumStory}>{selectedAlbum.story}</Text>
+            <UiButton
+              variant="tertiary"
+              label="返回相册列表"
+              onPress={() => setSelectedAlbum(null)}
+            />
+          </ScrollView>
+        ) : albums.length === 0 ? (
+          <View style={styles.albumEmpty}>
+            <Text style={styles.emptyText}>
+              {albumBusy
+                ? '正在生成绘本：写故事 → 画封面…'
+                : '还没有绘本。生成本周绘本：把记忆变成故事，配上 DreamLite 画的封面。'}
+            </Text>
           </View>
-        </View>
-      </Modal>
+        ) : (
+          <FlatList
+            data={albums}
+            renderItem={({item}) => (
+              <List.Item
+                title={`${item.week} 本周故事`}
+                description={item.story.replace(/^#.*\n?/, '').slice(0, 60)}
+                left={() => <List.Icon icon="book-open-variant" />}
+                onPress={() => setSelectedAlbum(item)}
+              />
+            )}
+            keyExtractor={item => item.week}
+            ItemSeparatorComponent={Divider}
+            style={styles.albumList}
+          />
+        )}
+
+        {albumError && !selectedAlbum && (
+          <Text style={styles.albumError}>{albumError}</Text>
+        )}
+        {!selectedAlbum && (
+          <UiButton
+            variant="primary"
+            label="生成本周绘本"
+            onPress={handleCreateAlbum}
+            disabled={albumBusy}
+            style={styles.albumCreateBtn}
+          />
+        )}
+      </OverlayCard>
+
+      {/* Edit Modal —— OverlayCard 底座 */}
+      <OverlayCard
+        visible={!!editing}
+        onRequestClose={() => setEditing(null)}
+        title="编辑记忆"
+        actions={{
+          secondary: {label: '取消', onPress: () => setEditing(null)},
+          primary: {label: '保存', onPress: handleSaveEdit},
+        }}>
+        <TextInput
+          value={editText}
+          onChangeText={setEditText}
+          style={styles.editInput}
+          multiline
+          autoFocus
+          maxLength={200}
+        />
+      </OverlayCard>
     </View>
   );
 }
@@ -497,28 +478,7 @@ const createStyles = (theme: Theme) =>
       textAlign: 'center',
     },
     emptyList: {flex: 1},
-    modalOverlay: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: theme.colors.backdrop,
-      padding: theme.spacing.ml,
-    },
-    modalContent: {
-      backgroundColor: theme.colors.surfaceElevated,
-      // 形状角色：浮层表面 xl(32)（DESIGN_SPEC §4）
-      borderRadius: theme.radius.xl,
-      padding: theme.spacing.ml,
-      width: '100%',
-      elevation: 4,
-    },
-    modalTitle: {
-      ...theme.typography.titleS,
-      fontWeight: 'bold',
-      color: theme.colors.onSurface,
-      marginBottom: theme.spacing.sm,
-    },
-    modalInput: {
+    editInput: {
       borderWidth: theme.stroke.sm,
       borderColor: theme.colors.border,
       borderRadius: theme.radius.s,
@@ -526,20 +486,9 @@ const createStyles = (theme: Theme) =>
       ...theme.typography.bodyS,
       color: theme.colors.onSurface,
       minHeight: 80,
-      marginBottom: theme.spacing.sm,
-    },
-    modalButtons: {
-      flexDirection: 'row',
-      justifyContent: 'flex-end',
-      gap: theme.spacing.s,
     },
     albumModalContent: {
       maxHeight: '80%',
-    },
-    albumHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
     },
     albumList: {
       marginTop: theme.spacing.s,

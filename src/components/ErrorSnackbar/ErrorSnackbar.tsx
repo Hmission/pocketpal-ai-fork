@@ -1,8 +1,8 @@
 import React from 'react';
 import {View} from 'react-native';
 import {Portal, Snackbar, Text} from 'react-native-paper';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
+import {AlertIcon, EyeOffIcon, ShieldMdIcon, WifiOffIcon} from '../../assets/icons';
 import {useTheme} from '../../hooks';
 import {ErrorState} from '../../utils/errors';
 import {createStyles} from './styles';
@@ -30,36 +30,29 @@ export const ErrorSnackbar: React.FC<ErrorSnackbarProps> = ({
 
   const styles = createStyles(theme);
 
-  // Get the appropriate icon based on error code and service
-  const getIcon = () => {
+  // 自绘图标（DESIGN_SPEC §12.5 图标铁律：一律 assets/icons；语义收敛 8→4）
+  const getIcon = (): React.ReactNode => {
+    const iconColor = getIconColor();
     // Service-specific icons for auth errors
     if (error.code === 'authentication' || error.code === 'authorization') {
-      switch (error.service) {
-        case 'huggingface':
-          return 'key-alert'; // Specific icon for HF auth issues
-        case 'firebase':
-          return 'firebase'; // Firebase-specific icon
-        default:
-          return 'shield-alert-outline'; // Generic auth icon
-      }
+      return <ShieldMdIcon testID="icon-shield" width={20} height={20} stroke={iconColor} />;
     }
 
     // For other error types
     switch (error.code) {
       case 'network':
-        return 'wifi-off';
-      case 'storage':
-        return 'harddisk-remove';
-      case 'server':
-        return 'server-off';
+        return <WifiOffIcon testID="icon-wifi-off" width={20} height={20} stroke={iconColor} />;
       case 'multimodal':
-        return 'image-off-outline';
+        return <EyeOffIcon testID="icon-eye-off" width={20} height={20} stroke={iconColor} />;
+      // storage/server 无专属自绘，统一 alert 兜底（B23 登记）
+      case 'storage':
+      case 'server':
       default:
-        return 'alert-circle-outline';
+        return <AlertIcon testID="icon-alert" width={20} height={20} stroke={iconColor} />;
     }
   };
 
-  // Determine the appropriate action based on error type, context, and service
+  // Get the appropriate action based on error type, context, and service
   const getAction = () => {
     // For auth errors, customize based on service
     if (
@@ -71,7 +64,7 @@ export const ErrorSnackbar: React.FC<ErrorSnackbarProps> = ({
       return {
         label,
         onPress: onSettings,
-        labelStyle: {color: theme.colors.secondary},
+        labelStyle: {color: theme.colors.primary},
       };
     }
 
@@ -80,7 +73,7 @@ export const ErrorSnackbar: React.FC<ErrorSnackbarProps> = ({
       return {
         label: 'Report',
         onPress: onReport,
-        labelStyle: {color: theme.colors.secondary},
+        labelStyle: {color: theme.colors.primary},
       };
     }
 
@@ -89,7 +82,7 @@ export const ErrorSnackbar: React.FC<ErrorSnackbarProps> = ({
       return {
         label: 'Retry',
         onPress: onRetry,
-        labelStyle: {color: theme.colors.secondary},
+        labelStyle: {color: theme.colors.primary},
       };
     }
 
@@ -97,7 +90,7 @@ export const ErrorSnackbar: React.FC<ErrorSnackbarProps> = ({
     return {
       label: 'Dismiss',
       onPress: onDismiss,
-      labelStyle: {color: theme.colors.secondary},
+      labelStyle: {color: theme.colors.primary},
     };
   };
 
@@ -135,13 +128,7 @@ export const ErrorSnackbar: React.FC<ErrorSnackbarProps> = ({
         wrapperStyle={styles.wrapper} // Ensure it's above everything
         action={getAction()}>
         <View style={styles.content}>
-          <Icon
-            testID={`icon-${getIcon()}`}
-            name={getIcon()}
-            size={20}
-            color={getIconColor()}
-            style={styles.icon}
-          />
+          {getIcon()}
           <Text style={styles.message}>{error.message}</Text>
         </View>
       </Snackbar>

@@ -18,11 +18,12 @@
  *
  * 挂载：App 根挂载 <ModelSwitchDialogHost />（与 ConfirmDialogHost 同构）。
  * Host 未挂载时返回 {choice:'cancel'}（fail-fast，不执行加载）。
+ *
+ * 渲染底座：ui/OverlayCard（DESIGN_SPEC §12.1）；操作区走 ui/Button。
  */
 import * as React from 'react';
 import {
   ActivityIndicator,
-  Modal,
   ScrollView,
   TouchableOpacity,
   View,
@@ -30,6 +31,9 @@ import {
 } from 'react-native';
 
 import {useTheme} from '../../hooks';
+import {OverlayCard} from './OverlayCard';
+import {Button} from './Button';
+import {CheckMdIcon} from '../../assets/icons';
 
 export type ModelSwitchChoice = 'load' | 'current' | 'cancel';
 
@@ -150,218 +154,160 @@ export const ModelSwitchDialogHost: React.FC = () => {
   };
 
   return (
-    <Modal
+    <OverlayCard
       visible={pending !== null}
-      transparent
-      animationType="fade"
       onRequestClose={() => {
         if (!loading) {
           close({choice: 'cancel'});
         }
-      }}>
-      <TouchableOpacity
-        style={{
-          flex: 1,
-          backgroundColor: 'rgba(0,0,0,0.45)',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: 32,
-        }}
-        activeOpacity={1}
-        onPress={() => {
-          if (!loading) {
-            close({choice: 'cancel'});
-          }
-        }}>
+      }}
+      title={`${TASK_LABEL[pending?.opts.task ?? 'write']}任务选择模型`}>
+      {loading ? (
+        // §18.7 加载态：遮罩保持（交互阻塞），按钮全禁，完成后自动关
         <View
           style={{
-            width: '100%',
-            maxHeight: '80%',
-            backgroundColor: theme.colors.surfaceElevated,
-            borderRadius: theme.radius.ml,
-            padding: theme.spacing.ml,
+            alignItems: 'center',
             gap: theme.spacing.sm,
-            elevation: 4,
-          }}>
+            paddingVertical: theme.spacing.m,
+          }}
+          testID="model-switch-loading">
+          <ActivityIndicator size="small" color={theme.colors.primary} />
           <Text
             style={{
-              ...theme.typography.titleS,
-              fontWeight: '600',
-              color: theme.colors.onSurface,
+              ...theme.typography.bodyS,
+              color: theme.colors.onSurfaceVariant,
             }}>
-            {TASK_LABEL[pending?.opts.task ?? 'write']}任务选择模型
+            正在加载「{picked?.name}」…
           </Text>
-
-          {loading ? (
-            // §18.7 加载态：遮罩保持（交互阻塞），按钮全禁，完成后自动关
-            <View
-              style={{
-                alignItems: 'center',
-                gap: theme.spacing.sm,
-                paddingVertical: theme.spacing.m,
-              }}
-              testID="model-switch-loading">
-              <ActivityIndicator size="small" color={theme.colors.primary} />
-              <Text
-                style={{
-                  ...theme.typography.bodyS,
-                  color: theme.colors.onSurfaceVariant,
-                }}>
-                正在加载「{picked?.name}」…
-              </Text>
-              <Text
-                style={{
-                  ...theme.typography.captionS,
-                  color: theme.colors.onSurfaceVariant,
-                }}>
-                切换会替换当前模型，请稍候
-              </Text>
-            </View>
-          ) : (
-            <>
-              <Text
-                style={{
-                  ...theme.typography.bodyS,
-                  lineHeight: 20,
-                  color: theme.colors.onSurfaceVariant,
-                }}>
-                加载会替换当前模型（数秒等待）。默认推荐第一项。
-              </Text>
-              <ScrollView style={{maxHeight: 280}}>
-                <View style={{gap: theme.spacing.xs}}>
-                  {candidates.map((c, i) => {
-                    const selected = i === pickIdx;
-                    const sizeText = c.size
-                      ? ` · ${(c.size / 1024 ** 3).toFixed(1)} GB`
-                      : '';
-                    return (
-                      <TouchableOpacity
-                        key={c.id}
-                        testID={`model-switch-candidate-${c.id}`}
-                        onPress={() => setPickIdx(i)}
-                        activeOpacity={0.7}
-                        style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          minHeight: 44,
-                          borderRadius: theme.radius.s,
-                          paddingHorizontal: theme.spacing.sm,
-                          borderWidth: theme.stroke.sm,
-                          borderColor: selected
-                            ? theme.colors.primary
-                            : theme.colors.outlineVariant,
-                          backgroundColor: selected
-                            ? theme.colors.primary + '1F' // 12% 主色底（同模型 chip 语言）
-                            : 'transparent',
-                        }}>
-                        <View style={{flex: 1}}>
-                          <Text
-                            style={{
-                              ...theme.typography.uiM,
-                              fontWeight: selected ? '600' : '400',
-                              color: selected
-                                ? theme.colors.primary
-                                : theme.colors.onSurface,
-                            }}
-                            numberOfLines={1}>
-                            {c.name}
-                            <Text
-                              style={{
-                                ...theme.typography.captionS,
-                                color: theme.colors.onSurfaceVariant,
-                              }}>
-                              {sizeText}
-                              {i === 0 ? ' · 推荐' : ''}
-                            </Text>
-                          </Text>
-                          {/* §18.7 一句话推荐说明：差异可决策 */}
-                          {c.note ? (
-                            <Text
-                              style={{
-                                ...theme.typography.captionS,
-                                color: theme.colors.onSurfaceVariant,
-                                marginTop: 2,
-                              }}
-                              numberOfLines={1}>
-                              {c.note}
-                            </Text>
-                          ) : null}
-                        </View>
-                        {selected && (
-                          <Text style={{color: theme.colors.primary}}>✓</Text>
-                        )}
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </ScrollView>
-
-              {loadError ? (
-                <Text
-                  style={{
-                    ...theme.typography.captionS,
-                    color: theme.colors.error,
-                  }}
-                  testID="model-switch-load-error">
-                  {loadError}
-                </Text>
-              ) : null}
-
-              <View
-                style={{
-                  flexDirection: 'row',
-                  gap: theme.spacing.s,
-                  marginTop: theme.spacing.xs,
-                }}>
-                {canKeepCurrent && (
-                  <TouchableOpacity
-                    style={{
-                      flex: 1,
-                      height: 44,
-                      borderRadius: theme.radius.s,
-                      borderWidth: theme.stroke.sm,
-                      borderColor: theme.colors.outline,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                    onPress={() => close({choice: 'current'})}
-                    testID="model-switch-current">
-                    <Text
-                      style={{
-                        ...theme.typography.uiM,
-                        color: theme.colors.onSurface,
-                      }}>
-                      继续当前模型
-                    </Text>
-                  </TouchableOpacity>
-                )}
-                <TouchableOpacity
-                  style={{
-                    flex: 1,
-                    height: 44,
-                    borderRadius: theme.radius.s,
-                    backgroundColor: theme.colors.primary,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                  onPress={handleLoad}
-                  testID="model-switch-load">
-                  <Text
-                    style={{
-                      ...theme.typography.uiM,
-                      color: theme.colors.onPrimary,
-                      fontWeight: '600',
-                    }}>
-                    加载所选模型
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </>
-          )}
+          <Text
+            style={{
+              ...theme.typography.captionS,
+              color: theme.colors.onSurfaceVariant,
+            }}>
+            切换会替换当前模型，请稍候
+          </Text>
         </View>
-      </TouchableOpacity>
-    </Modal>
+      ) : (
+        <>
+          <Text
+            style={{
+              ...theme.typography.bodyS,
+              lineHeight: 20,
+              color: theme.colors.onSurfaceVariant,
+            }}>
+            加载会替换当前模型（数秒等待）。默认推荐第一项。
+          </Text>
+          <ScrollView style={{maxHeight: 280}}>
+            <View style={{gap: theme.spacing.xs}}>
+              {candidates.map((c, i) => {
+                const selected = i === pickIdx;
+                const sizeText = c.size
+                  ? ` · ${(c.size / 1024 ** 3).toFixed(1)} GB`
+                  : '';
+                return (
+                  <TouchableOpacity
+                    key={c.id}
+                    testID={`model-switch-candidate-${c.id}`}
+                    onPress={() => setPickIdx(i)}
+                    activeOpacity={0.7}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      minHeight: 44,
+                      borderRadius: theme.radius.s,
+                      paddingHorizontal: theme.spacing.sm,
+                      borderWidth: theme.stroke.sm,
+                      borderColor: selected
+                        ? theme.colors.primary
+                        : theme.colors.outlineVariant,
+                      backgroundColor: selected
+                        ? theme.colors.primary + '1F' // 12% 主色底（同模型 chip 语言）
+                        : 'transparent',
+                    }}>
+                    <View style={{flex: 1}}>
+                      <Text
+                        style={{
+                          ...theme.typography.uiM,
+                          fontWeight: selected ? '600' : '400',
+                          color: selected
+                            ? theme.colors.primary
+                            : theme.colors.onSurface,
+                        }}
+                        numberOfLines={1}>
+                        {c.name}
+                        <Text
+                          style={{
+                            ...theme.typography.captionS,
+                            color: theme.colors.onSurfaceVariant,
+                          }}>
+                          {sizeText}
+                          {i === 0 ? ' · 推荐' : ''}
+                        </Text>
+                      </Text>
+                      {/* §18.7 一句话推荐说明：差异可决策 */}
+                      {c.note ? (
+                        <Text
+                          style={{
+                            ...theme.typography.captionS,
+                            color: theme.colors.onSurfaceVariant,
+                            marginTop: 2,
+                          }}
+                          numberOfLines={1}>
+                          {c.note}
+                        </Text>
+                      ) : null}
+                    </View>
+                    {selected && (
+                      <CheckMdIcon
+                        width={20}
+                        height={20}
+                        stroke={theme.colors.primary}
+                      />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </ScrollView>
+
+          {loadError ? (
+            <Text
+              style={{
+                ...theme.typography.captionS,
+                color: theme.colors.error,
+              }}
+              testID="model-switch-load-error">
+              {loadError}
+            </Text>
+          ) : null}
+
+          <View
+            style={{
+              flexDirection: 'row',
+              gap: theme.spacing.s,
+              marginTop: theme.spacing.xs,
+            }}>
+            {canKeepCurrent && (
+              <Button
+                variant="secondary"
+                label="继续当前模型"
+                onPress={() => close({choice: 'current'})}
+                testID="model-switch-current"
+                style={{flex: 1}}
+              />
+            )}
+            <Button
+              variant="primary"
+              label="加载所选模型"
+              onPress={handleLoad}
+              testID="model-switch-load"
+              style={{flex: 1}}
+            />
+          </View>
+        </>
+      )}
+    </OverlayCard>
   );
 };
 

@@ -47,7 +47,7 @@ describe('ErrorSnackbar', () => {
     );
 
     // Check that the correct icon is displayed for HF auth error
-    expect(getByTestId('icon-key-alert')).toBeTruthy();
+    expect(getByTestId('icon-shield')).toBeTruthy();
 
     // Check that the error message is displayed
     expect(getByText(l10n.en.errors.hfAuthenticationError)).toBeTruthy();
@@ -101,7 +101,7 @@ describe('ErrorSnackbar', () => {
     );
 
     // Check that the correct icon is displayed for server error
-    expect(getByTestId('icon-server-off')).toBeTruthy();
+    expect(getByTestId('icon-alert')).toBeTruthy();
 
     // Check that the error message is displayed
     expect(getByText('Server unavailable')).toBeTruthy();
@@ -127,7 +127,7 @@ describe('ErrorSnackbar', () => {
     );
 
     // Check that the correct icon is displayed for storage error
-    expect(getByTestId('icon-harddisk-remove')).toBeTruthy();
+    expect(getByTestId('icon-alert')).toBeTruthy();
 
     // Check that the error message is displayed
     expect(getByText('Not enough storage space')).toBeTruthy();
@@ -151,7 +151,7 @@ describe('ErrorSnackbar', () => {
     );
 
     // Check that the default icon is displayed for unknown error
-    expect(getByTestId('icon-alert-circle-outline')).toBeTruthy();
+    expect(getByTestId('icon-alert')).toBeTruthy();
 
     // Check that the error message is displayed
     expect(getByText('Something went wrong')).toBeTruthy();

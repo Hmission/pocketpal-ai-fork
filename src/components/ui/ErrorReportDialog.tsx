@@ -8,18 +8,14 @@
  *（复制完整报告 + 落盘 AIOS/logs，供测试员整段发出）。
  */
 import * as React from 'react';
-import {
-  Modal,
-  ScrollView,
-  TouchableOpacity,
-  View,
-  Text,
-} from 'react-native';
+import {ScrollView, View, Text} from 'react-native';
 
 import {useTheme} from '../../hooks';
 import {copyAndSaveErrorReport} from '../../utils/errorReport';
 import {L10nContext} from '../../utils';
 import {t} from '../../locales';
+import {OverlayCard} from './OverlayCard';
+import {Button} from './Button';
 
 export interface ErrorReportDialogOptions {
   title: string;
@@ -78,126 +74,66 @@ export const ErrorReportDialogHost: React.FC = () => {
   };
 
   return (
-    <Modal
-      visible={pending !== null}
-      transparent
-      animationType="fade"
-      onRequestClose={close}>
-      <TouchableOpacity
+    <OverlayCard visible={pending !== null} onRequestClose={close} title={pending?.title}>
+      <Text
         style={{
-          flex: 1,
-          backgroundColor: 'rgba(0,0,0,0.35)',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: 24,
+          ...theme.typography.bodyS,
+          lineHeight: 20,
+          color: theme.colors.onSurface,
+        }}>
+        {pending?.summary}
+      </Text>
+      <ScrollView
+        style={{
+          maxHeight: 220,
+          backgroundColor: theme.colors.surface,
+          borderRadius: theme.radius.s,
+          borderWidth: 1,
+          borderColor: theme.colors.outline,
         }}
-        activeOpacity={1}
-        onPress={close}>
-        <View
+        testID="error-report-detail">
+        <Text
           style={{
-            width: '100%',
-            maxHeight: '80%',
-            backgroundColor: theme.colors.surfaceElevated,
-            borderRadius: theme.radius.ml,
-            padding: theme.spacing.ml,
-            gap: theme.spacing.sm,
-            elevation: 4,
+            ...theme.typography.captionM,
+            fontFamily: undefined,
+            color: theme.colors.onSurfaceVariant,
+            padding: theme.spacing.s,
           }}>
-          <Text
-            style={{
-              ...theme.typography.titleS,
-              fontWeight: '600',
-              color: theme.colors.error,
-            }}>
-            {pending?.title}
-          </Text>
-          <Text
-            style={{
-              ...theme.typography.bodyS,
-              lineHeight: 20,
-              color: theme.colors.onSurface,
-            }}>
-            {pending?.summary}
-          </Text>
-          <ScrollView
-            style={{
-              maxHeight: 220,
-              backgroundColor: theme.colors.surface,
-              borderRadius: theme.radius.s,
-              borderWidth: 1,
-              borderColor: theme.colors.outline,
-            }}
-            testID="error-report-detail">
-            <Text
-              style={{
-                ...theme.typography.captionM,
-                fontFamily: undefined,
-                color: theme.colors.onSurfaceVariant,
-                padding: theme.spacing.s,
-              }}>
-              {pending?.detail}
-            </Text>
-          </ScrollView>
-          {copiedHint ? (
-            <Text
-              style={{
-                ...theme.typography.captionM,
-                color: theme.colors.primary,
-              }}
-              testID="error-report-copied-hint">
-              {copiedHint}
-            </Text>
-          ) : null}
-          <View
-            style={{
-              flexDirection: 'row',
-              gap: theme.spacing.s,
-              marginTop: theme.spacing.xs,
-            }}>
-            <TouchableOpacity
-              style={{
-                flex: 1,
-                height: 44,
-                borderRadius: theme.radius.s,
-                borderWidth: theme.stroke.sm,
-                borderColor: theme.colors.outline,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-              onPress={close}
-              testID="error-report-close">
-              <Text
-                style={{
-                  ...theme.typography.uiM,
-                  color: theme.colors.onSurface,
-                }}>
-                {l10n.errorReport.close}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={{
-                flex: 1.4,
-                height: 44,
-                borderRadius: theme.radius.s,
-                backgroundColor: theme.colors.primary,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-              onPress={handleCopy}
-              testID="error-report-copy">
-              <Text
-                style={{
-                  ...theme.typography.uiM,
-                  color: theme.colors.onPrimary,
-                  fontWeight: '600',
-                }}>
-                {l10n.errorReport.copy}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </TouchableOpacity>
-    </Modal>
+          {pending?.detail}
+        </Text>
+      </ScrollView>
+      {copiedHint ? (
+        <Text
+          style={{
+            ...theme.typography.captionM,
+            color: theme.colors.primary,
+          }}
+          testID="error-report-copied-hint">
+          {copiedHint}
+        </Text>
+      ) : null}
+      <View
+        style={{
+          flexDirection: 'row',
+          gap: theme.spacing.s,
+          marginTop: theme.spacing.xs,
+        }}>
+        <Button
+          variant="tertiary"
+          label={l10n.errorReport.close}
+          onPress={close}
+          testID="error-report-close"
+          style={{flex: 1}}
+        />
+        <Button
+          variant="primary"
+          label={l10n.errorReport.copy}
+          onPress={handleCopy}
+          testID="error-report-copy"
+          style={{flex: 1.4}}
+        />
+      </View>
+    </OverlayCard>
   );
 };
 

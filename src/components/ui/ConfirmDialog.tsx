@@ -1,7 +1,8 @@
 /**
  * ConfirmDialog — 全局确认弹窗体系（替代系统 Alert.alert 确认框）
  *
- * 统一设计语言：居中卡片式（surface 底色、圆角 12、主色/警示色按钮），
+ * 统一设计语言：居中卡片式（DESIGN_SPEC §12.1 OverlayCard 底座：
+ * backdrop 遮罩 + surfaceElevated + xl 圆角 + elevation 8 + ui/Button 操作区），
  * 深浅色模式自适应，视觉与 App 卡片体系一致（禁用系统黑色半透明弹窗）。
  *
  * 用法（命令式，Promise<boolean>，true=确认）：
@@ -12,9 +13,10 @@
  * Host 未挂载时 confirmDialog 返回 false（fail-fast，破坏性操作不执行）。
  */
 import * as React from 'react';
-import {Modal, TouchableOpacity, View, Text} from 'react-native';
+import {Text} from 'react-native';
 
 import {useTheme} from '../../hooks';
+import {OverlayCard} from './OverlayCard';
 
 export interface ConfirmDialogOptions {
   title: string;
@@ -69,103 +71,31 @@ export const ConfirmDialogHost: React.FC = () => {
     setPending(null);
   };
 
-  const destructive = pending?.opts.destructive ?? false;
-  const confirmColor = destructive ? theme.colors.error : theme.colors.primary;
-  const onConfirmColor = destructive
-    ? theme.colors.onError
-    : theme.colors.onPrimary;
-
   return (
-    <Modal
+    <OverlayCard
       visible={pending !== null}
-      transparent
-      animationType="fade"
-      onRequestClose={() => close(false)}>
-      <TouchableOpacity
+      onRequestClose={() => close(false)}
+      title={pending?.opts.title}
+      actions={{
+        secondary: {
+          label: pending?.opts.cancelText ?? '取消',
+          onPress: () => close(false),
+        },
+        primary: {
+          label: pending?.opts.confirmText ?? '确认',
+          destructive: pending?.opts.destructive ?? false,
+          onPress: () => close(true),
+        },
+      }}>
+      <Text
         style={{
-          flex: 1,
-          backgroundColor: 'rgba(0,0,0,0.35)',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: 32,
-        }}
-        activeOpacity={1}
-        onPress={() => close(false)}>
-        <View
-          style={{
-            width: '100%',
-            backgroundColor: theme.colors.surfaceElevated,
-            borderRadius: theme.radius.ml,
-            padding: theme.spacing.ml,
-            gap: theme.spacing.sm,
-            elevation: 4,
-          }}>
-          <Text
-            style={{
-              ...theme.typography.titleS,
-              fontWeight: '600',
-              color: theme.colors.onSurface,
-            }}>
-            {pending?.opts.title}
-          </Text>
-          <Text
-            style={{
-              ...theme.typography.bodyS,
-              lineHeight: 20,
-              color: theme.colors.onSurfaceVariant,
-            }}>
-            {pending?.opts.message}
-          </Text>
-          <View
-            style={{
-              flexDirection: 'row',
-              gap: theme.spacing.s,
-              marginTop: theme.spacing.xs,
-            }}>
-            <TouchableOpacity
-              style={{
-                flex: 1,
-                height: 44,
-                borderRadius: theme.radius.s,
-                borderWidth: theme.stroke.sm,
-                borderColor: theme.colors.outline,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-              onPress={() => close(false)}
-              testID="confirm-dialog-cancel">
-              <Text
-                style={{
-                  ...theme.typography.uiM,
-                  color: theme.colors.onSurface,
-                }}>
-                {pending?.opts.cancelText ?? '取消'}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={{
-                flex: 1,
-                height: 44,
-                borderRadius: theme.radius.s,
-                backgroundColor: confirmColor,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-              onPress={() => close(true)}
-              testID="confirm-dialog-confirm">
-              <Text
-                style={{
-                  ...theme.typography.uiM,
-                  color: onConfirmColor,
-                  fontWeight: '600',
-                }}>
-                {pending?.opts.confirmText ?? '确认'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </TouchableOpacity>
-    </Modal>
+          ...theme.typography.bodyS,
+          lineHeight: 20,
+          color: theme.colors.onSurfaceVariant,
+        }}>
+        {pending?.opts.message}
+      </Text>
+    </OverlayCard>
   );
 };
 

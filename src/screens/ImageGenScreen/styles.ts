@@ -207,7 +207,6 @@ export const createStyles = (theme: any) =>
       gap: 8,
       overflow: 'hidden',
     },
-    failedIcon: {fontSize: 34, color: theme.colors.danger, fontWeight: '700'},
     failedTitle: {
       ...theme.typography.uiM,
       color: theme.colors.onSurface,
@@ -378,23 +377,7 @@ export const createStyles = (theme: any) =>
       ...theme.typography.captionS,
     },
     // 参数详情弹窗（信息条点击）：提示词/耗时/尺寸/模型/种子/步数/时间
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.45)',
-      justifyContent: 'center',
-      padding: 24,
-    },
-    modalCard: {
-      backgroundColor: theme.colors.surface,
-      borderRadius: theme.radius.m,
-      padding: 16,
-      gap: 8,
-    },
-    modalTitle: {
-      ...theme.typography.titleS,
-      color: theme.colors.onSurface,
-      marginBottom: 4,
-    },
+    // 渲染底座 OverlayCard（DESIGN_SPEC §12.1），本组样式仅保留内容行布局
     modalRow: {flexDirection: 'row', gap: 8},
     modalLabel: {
       ...theme.typography.captionS,
@@ -411,30 +394,6 @@ export const createStyles = (theme: any) =>
       color: theme.colors.onSurface,
       lineHeight: 18,
     },
-    modalCloseBtn: {
-      marginTop: 8,
-      alignSelf: 'flex-end',
-      backgroundColor: theme.colors.primary,
-      borderRadius: theme.radius.s,
-      paddingHorizontal: 16,
-      paddingVertical: 6,
-    },
-    modalCloseText: {
-      ...theme.typography.uiS,
-      color: theme.colors.onPrimary,
-      fontWeight: '600',
-    },
-    toastBar: {
-      position: 'absolute',
-      top: 8,
-      left: 8,
-      right: 8,
-      backgroundColor: 'rgba(0,0,0,0.75)',
-      borderRadius: theme.radius.s,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-    },
-    toastText: {...theme.typography.uiS, color: '#fff'},
     historyHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
@@ -470,14 +429,10 @@ export const createStyles = (theme: any) =>
       right: 0,
       bottom: 0,
       borderRadius: theme.radius.s,
-      backgroundColor: 'rgba(0,0,0,0.5)',
+      // 选中态压暗遮罩：backdrop token（遮罩语义统一）
+      backgroundColor: theme.colors.backdrop,
       alignItems: 'center',
       justifyContent: 'center',
-    },
-    historySelText: {
-      color: '#fff',
-      ...theme.typography.titleM,
-      fontWeight: '700',
     },
     button: {
       backgroundColor: theme.colors.primary,
@@ -486,6 +441,11 @@ export const createStyles = (theme: any) =>
       alignItems: 'center',
     },
     buttonRow: {flexDirection: 'row', gap: 10},
+    // UpscalePanel 内容区（Sheet 载体自带背景/圆角，这里只留内边距与底部安全距）
+    upscaleBody: {
+      padding: 16,
+      paddingBottom: 28,
+    },
     buttonEdit: {flex: 1, backgroundColor: theme.colors.info},
     buttonGen: {flex: 1},
     buttonSecondary: {backgroundColor: theme.colors.surface},

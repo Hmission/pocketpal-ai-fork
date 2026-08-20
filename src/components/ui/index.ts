@@ -72,13 +72,14 @@ export type {
   RadioSectionOption,
 } from './RadioButton';
 
-export {Sheet, SheetActions} from './Sheet';
-export type {SheetProps, ActionConfig, ActionsProps} from './Sheet';
+export {OverlayCard, Actions as OverlayCardActions} from './OverlayCard';
+export type {
+  OverlayCardProps,
+  ActionsProps as OverlayCardActionsProps,
+  ActionConfig,
+} from './OverlayCard';
 
-export {Modal} from './Modal';
-export type {ModalProps} from './Modal';
-
-export {Dialog} from './Dialog';
-export type {DialogProps} from './Dialog';
+export {BannerBar} from './BannerBar';
+export type {BannerBarProps, BannerAction, BannerVariant} from './BannerBar';
 
 export type {CommonDSProps, WithRequiredA11yLabel} from './types';

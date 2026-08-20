@@ -104,7 +104,8 @@ export const ZoomableImage: React.FC<ZoomableImageProps> = ({uri, onClose}) => {
           </Animated.View>
         </GestureDetector>
       ) : null}
-      <Text style={[styles.hint, {color: theme.colors.onSurfaceVariant}]}>
+      <Text
+        style={[styles.hint, theme.typography.captionS, {color: theme.colors.onSurfaceVariant}]}>
         双指缩放 · 拖动移动 · 单击关闭
       </Text>
     </GestureHandlerRootView>
@@ -132,6 +133,5 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 24,
     alignSelf: 'center',
-    fontSize: 12,
   },
 });

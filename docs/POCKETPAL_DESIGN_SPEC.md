@@ -413,6 +413,7 @@ ScrollView
 
 - 底色 `theme.colors.surfaceElevated`（契约化前为 background，已修正）；顶部圆角 xl + elevation 4。
 - 新底部弹层一律走 components/Sheet（@gorhom），禁手写 bottom Modal（UpscalePanel 已迁移）。
+- **必传 snapPoints 或 displayFullHeight**：Android 真机 enableDynamicSizing（动态尺寸）测量失败会导致 Sheet 不可见（2026-08-20 真机实证，UpscalePanel 曾缺省 snapPoints 不弹出）；现有使用点一律显式传参，新增禁止裸 `<Sheet>`。
 
 ### 12.3 横幅三要素（ui/BannerBar 唯一底座）
 
@@ -437,7 +438,16 @@ ScrollView
 
 ### 12.6 全屏查看器豁免（登记）
 
-HtmlPreviewBubble / ResultPreview / TextMessage 图片全屏 / ZoomableImage：手势与业务差异大，不强行统一组件，但遮罩与关闭图标必须走 token（backdrop + XIcon）。新增全屏查看器须在此登记。
+HtmlPreviewBubble / ResultPreview / TextMessage 图片全屏 / ZoomableImage：手势与业务差异大，不强行统一组件，但遮罩与关闭图标必须走 token。现状登记（B23 已收敛）：
+
+| 查看器 | 遮罩 | 关闭 |
+|---|---|---|
+| HtmlPreviewBubble | 整页无遮罩 | CloseIcon + onSurface（既有） |
+| TextMessage 图片全屏 | backdrop | XIcon + 深遮罩恒定白前景 |
+| ZoomableImage（生图全屏） | surface+94%（浅色遮罩，B20 产品决策） | 单击关闭手势 |
+| ResultPreview 编辑按钮 | surfaceElevated 浅色面 | —— |
+
+新增全屏查看器须在此登记。
 
 ## 变更日志
 

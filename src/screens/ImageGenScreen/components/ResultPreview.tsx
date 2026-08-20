@@ -16,6 +16,7 @@ import {useTheme} from '../../../hooks';
 import {createStyles} from '../styles';
 import {GeneratedImage} from '../../../store/imageGenStore';
 import {ZoomableImage} from './ZoomableImage';
+import {AlertTriangleMdIcon} from '../../../assets/icons';
 
 interface ResultPreviewProps {
   /** 横向分页 FlatList ref（编排层持有，用于 scrollToOffset） */
@@ -38,8 +39,6 @@ interface ResultPreviewProps {
   genStartedAt: number;
   stage: string;
   now: number;
-  toast: string | null;
-  toastOpacity: Animated.Value;
   /** 三点波浪动效（useWaveDots） */
   waveDots: Animated.Value[];
   /** 当前预览图（编辑目标/操作条主体） */
@@ -90,8 +89,6 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
   genStartedAt,
   stage,
   now,
-  toast,
-  toastOpacity,
   waveDots,
   currentImage,
   currentItem,
@@ -215,7 +212,11 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
           <View
             style={[s.taskPage, {width: pageW}]}
             testID="imagegen-failed-page">
-            <Text style={s.failedIcon}>⚠</Text>
+            <AlertTriangleMdIcon
+              width={34}
+              height={34}
+              stroke={theme.colors.danger}
+            />
             <Text style={s.failedTitle}>生成失败</Text>
             <Text style={s.failedSummary} numberOfLines={3}>
               {item.errorSummary ?? '未知错误'}
@@ -350,16 +351,6 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
             />
           ) : null}
           {editOverlay}
-          {/* 轻量滚动信息条：保存/编辑等操作的即时反馈，不打断操作 */}
-          {toast ? (
-            <Animated.View
-              pointerEvents="none"
-              style={[s.toastBar, {opacity: toastOpacity}]}>
-              <Text style={s.toastText} numberOfLines={2}>
-                {toast}
-              </Text>
-            </Animated.View>
-          ) : null}
         </View>
         {showActionRow && (
           <>

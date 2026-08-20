@@ -4,7 +4,7 @@
  * Coverage:
  *   - UI layer is observation-free: no file under `src/components/ui/`
  *     imports `mobx`, `mobx-react`, or any store module.
- *   - Sheet / Modal / Dialog compose the `Header` building block.
+ *   - OverlayCard (居中卡弹窗唯一底座，DESIGN_SPEC §12.1) 不自绘标题 markup。
  *   - No production file imports the Paper `Surface` symbol — UI
  *     consumers must import `Surface` from `src/components/ui`.
  */
@@ -81,25 +81,18 @@ describe('UI layer grep invariants', () => {
     });
   });
 
-  describe('Sheet / Modal / Dialog compose the Header building block', () => {
-    const overlayFiles = [
-      path.join(UI, 'Sheet', 'Sheet.tsx'),
-      path.join(UI, 'Modal', 'Modal.tsx'),
-      path.join(UI, 'Dialog', 'Dialog.tsx'),
-    ];
+  describe('OverlayCard is the single centered-card overlay base', () => {
+    const overlayStyles = path.join(UI, 'OverlayCard', 'styles.ts');
 
-    it.each(overlayFiles)(
-      '%s imports Header and renders exactly one <Header ...> JSX tag',
-      file => {
-        const code = stripComments(fs.readFileSync(file, 'utf-8'));
-        // Header must be imported from the sibling UI Header module.
-        expect(code).toMatch(/from\s+['"]\.\.\/Header['"]/);
-        // And used as a JSX tag exactly once (single source of structural
-        // truth — bespoke inline header markup is forbidden alongside it).
-        const headerOpenings = code.match(/<Header(\s|\/|>)/g) ?? [];
-        expect(headerOpenings).toHaveLength(1);
-      },
-    );
+    it('renders the backdrop token and the surface role radius', () => {
+      const styles = stripComments(fs.readFileSync(overlayStyles, 'utf-8'));
+      // 契约（§12.1）：遮罩 backdrop、浮层表面角色 xl、层级 8
+      expect(styles).toMatch(/theme\.colors\.backdrop/);
+      expect(styles).toMatch(/shapeRoles\.surface/);
+      expect(styles).toMatch(/elevation:\s*8/);
+      // 标题由底座以 titleS 渲染，禁止业务侧自绘标题 markup
+      expect(styles).toMatch(/theme\.typography\.titleS/);
+    });
   });
 
   describe('Paper `Surface` is not imported outside the wrap-Paper carve-outs', () => {

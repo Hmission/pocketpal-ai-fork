@@ -1,14 +1,13 @@
 import React, {useContext} from 'react';
-import {Pressable, Text, View} from 'react-native';
+import {View} from 'react-native';
 import {observer} from 'mobx-react';
 import {useNavigation, NavigationProp} from '@react-navigation/native';
 
-import {XIcon} from '../../assets/icons';
+import {BannerBar} from '../ui/BannerBar';
 import {useTheme} from '../../hooks';
 import {modelStore, palStore, uiStore} from '../../store';
 import {L10nContext} from '../../utils';
 import {ROUTES} from '../../utils/navigationConstants';
-import {bannerStyles as createStyles} from './styles';
 
 const formatSize = (bytes: number): string => {
   if (!bytes || bytes <= 0) {
@@ -31,10 +30,11 @@ const formatSize = (bytes: number): string => {
  *     model so the user can resume from the Models screen.
  *   - × icon  → dismisses the banner for this download only. Download
  *     continues. Dismissal clears when the download disappears.
+ *
+ * 渲染底座：ui/BannerBar（DESIGN_SPEC §12.3）；avatar 与 stop pill 为业务专属。
  */
 export const DownloadBanner: React.FC = observer(() => {
   const theme = useTheme();
-  const styles = createStyles(theme);
   const navigation = useNavigation<NavigationProp<any>>();
   const l10n = useContext(L10nContext);
 
@@ -66,62 +66,37 @@ export const DownloadBanner: React.FC = observer(() => {
     '{{count}}',
     String(extraCount),
   );
+  const text = `${title}${extraCount > 0 ? ` +${extraCount}` : ''}${
+    eta ? ` · ${eta}` : ''
+  }`;
 
   return (
-    <View style={styles.root}>
-      <Pressable
-        testID="download-banner"
-        accessibilityRole="button"
-        accessibilityLabel={
-          extraCount > 0
-            ? `${title}, ${eta}, ${extraLabel}`
-            : `${title}, ${eta}`
-        }
-        onPress={() => navigation.navigate(ROUTES.MODELS as never)}
-        style={styles.body}>
+    <BannerBar
+      testID="download-banner"
+      onPress={() => navigation.navigate(ROUTES.MODELS as never)}
+      icon={
         <View
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
-          style={[
-            styles.avatar,
-            pal?.color?.[0] ? {backgroundColor: pal.color[0]} : null,
-          ]}
+          style={{
+            width: 24,
+            height: 24,
+            borderRadius: theme.radius.full,
+            backgroundColor: pal?.color?.[0] ?? theme.colors.surfaceVariant,
+          }}
         />
-        <View style={styles.content}>
-          <View style={styles.titleRow}>
-            <Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">
-              {title}
-            </Text>
-            {extraCount > 0 ? (
-              <View testID="download-banner-extra-badge" style={styles.badge}>
-                <Text style={styles.badgeText}>{`+${extraCount}`}</Text>
-              </View>
-            ) : null}
-            {eta ? <Text style={styles.eta}>{eta}</Text> : null}
-          </View>
-          <View style={styles.track}>
-            <View style={[styles.fill, {width: `${clamped}%`}]} />
-          </View>
-        </View>
-      </Pressable>
-      <Pressable
-        testID="download-banner-stop"
-        accessibilityRole="button"
-        accessibilityLabel={l10n.common.stop}
-        onPress={() => modelStore.cancelDownload(visible.modelId)}
-        style={styles.stop}
-        hitSlop={8}>
-        <Text style={styles.stopText}>{l10n.common.stop}</Text>
-      </Pressable>
-      <Pressable
-        testID="download-banner-dismiss"
-        accessibilityRole="button"
-        accessibilityLabel={l10n.common.dismiss}
-        onPress={() => uiStore.dismissDownloadBanner(visible.modelId)}
-        style={styles.dismiss}
-        hitSlop={8}>
-        <XIcon width={14} height={14} stroke={theme.colors.onSurfaceVariant} />
-      </Pressable>
-    </View>
+      }
+      text={text}
+      progress={clamped}
+      actions={[
+        {
+          label: l10n.common.stop,
+          onPress: () => modelStore.cancelDownload(visible.modelId),
+          testID: 'download-banner-stop',
+        },
+      ]}
+      onDismiss={() => uiStore.dismissDownloadBanner(visible.modelId)}
+      dismissTestID="download-banner-dismiss"
+    />
   );
 });

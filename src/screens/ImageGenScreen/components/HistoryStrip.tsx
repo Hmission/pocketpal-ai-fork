@@ -4,6 +4,7 @@ import {TouchableOpacity, View, Text, Image, FlatList} from 'react-native';
 import {useTheme} from '../../../hooks';
 import {createStyles} from '../styles';
 import {GeneratedImage} from '../../../store/imageGenStore';
+import {CheckMdIcon} from '../../../assets/icons';
 
 interface HistoryStripProps {
   /** 成功任务条目 + 原始历史索引（翻页定位用；running/failed 不入缩略图条） */
@@ -74,7 +75,7 @@ export const HistoryStrip: React.FC<HistoryStripProps> = ({
               )}
               {manageMode && toDelete.includes(item.uri) && (
                 <View style={s.historySel}>
-                  <Text style={s.historySelText}>✓</Text>
+                  <CheckMdIcon width={20} height={20} stroke="#fff" />
                 </View>
               )}
             </TouchableOpacity>

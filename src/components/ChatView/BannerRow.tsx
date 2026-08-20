@@ -1,10 +1,8 @@
 import React, {useContext} from 'react';
-import {View} from 'react-native';
 
 import {observer} from 'mobx-react';
-import {Button, Text} from 'react-native-paper';
 
-import {createStyles} from './styles';
+import {BannerBar} from '../ui/BannerBar';
 
 import {AlertIcon} from '../../assets/icons';
 import {useTheme} from '../../hooks';
@@ -28,11 +26,6 @@ interface BannerRowProps {
   onNewChat: () => void;
 }
 
-// Append an 8-bit alpha to a theme hex color (#RRGGBB or #RRGGBBAA) so the
-// banner sits as a soft wash of the accent rather than a saturated fill.
-const withAlpha = (hex: string, alphaHex: string): string =>
-  (hex.length === 9 ? hex.slice(0, 7) : hex) + alphaHex;
-
 // Heavy-talent name for the full-banner sub-copy: the newest assistant turn's
 // first tool call whose engine declares a recommended context. Declarative
 // only — never moves the banner trigger.
@@ -53,33 +46,11 @@ function deriveHeavyTalentName(
   return undefined;
 }
 
-const Meter: React.FC<{
-  ratio: number;
-  tint: string;
-  styles: ReturnType<typeof createStyles>;
-}> = ({ratio, tint, styles}) => (
-  <View
-    style={styles.bannerMeter}
-    testID="banner-meter"
-    accessibilityElementsHidden
-    importantForAccessibility="no">
-    <View
-      style={[
-        styles.bannerMeterFill,
-        {
-          width: `${Math.max(0, Math.min(1, ratio)) * 100}%`,
-          backgroundColor: tint,
-        },
-      ]}
-    />
-  </View>
-);
-
 /**
  * The single chat-input banner slot. Renders the one variant resolved from the
  * completion snapshot and current model state, or the existing HTML soft-cap
  * sub-case. Dismiss writes back to the store; recovery CTAs are handled by the
- * host.
+ * host. 渲染底座 ui/BannerBar（DESIGN_SPEC §12.3 横幅唯一底座）。
  */
 export const BannerRow: React.FC<BannerRowProps> = observer(
   ({
@@ -91,25 +62,9 @@ export const BannerRow: React.FC<BannerRowProps> = observer(
     onNewChat,
   }) => {
     const theme = useTheme();
-    const styles = createStyles({theme});
     const l10n = useContext(L10nContext);
 
     const error = theme.colors.error;
-    const tint = {
-      warning: {
-        backgroundColor: withAlpha(error, '14'),
-        borderColor: withAlpha(error, '40'),
-      },
-      full: {
-        backgroundColor: withAlpha(error, '22'),
-        borderColor: withAlpha(error, '66'),
-      },
-      neutral: {
-        backgroundColor: theme.colors.surfaceVariant,
-        borderColor: theme.colors.outline,
-      },
-    };
-
     const isRemote = modelStore.activeModel?.origin === ModelOrigin.REMOTE;
 
     const effectiveNCtx = modelStore.activeModelCaps.effectiveContextLength;
@@ -132,89 +87,67 @@ export const BannerRow: React.FC<BannerRowProps> = observer(
 
     if (variant === 'html-soft-cap') {
       return (
-        <View testID="soft-cap-warning" style={styles.softCapBanner}>
-          <Text style={styles.softCapBannerText}>
-            {l10n.chat.softCapWarning}
-          </Text>
-        </View>
+        <BannerBar
+          testID="soft-cap-warning"
+          text={l10n.chat.softCapWarning}
+        />
       );
     }
 
     if (variant === 'context-warning') {
-      const percent = Math.round((ratio ?? 0) * 100);
+      const progress = ratio != null ? ratio * 100 : undefined;
       return (
-        <View
+        <BannerBar
           testID="context-warning-banner"
-          accessibilityRole="alert"
-          accessibilityLiveRegion="polite"
-          style={[styles.banner, tint.warning]}>
-          <View style={styles.bannerHeader}>
-            <AlertIcon width={14} height={14} stroke={error} />
-            <Text style={[styles.bannerText, styles.bannerHeaderText]}>
-              {l10n.chat.contextWarning}
-            </Text>
-            <Text
-              style={[styles.bannerPercent, {color: error}]}
-              testID="banner-percent">
-              {`${percent}%`}
-            </Text>
-          </View>
-          {ratio != null ? (
-            <Meter ratio={ratio} tint={error} styles={styles} />
-          ) : null}
-          <View style={styles.bannerActions}>
-            {!isRemote ? (
-              <Button
-                compact
-                mode="text"
-                testID="context-warning-compact"
-                onPress={onCompactContext}>
-                {l10n.chat.contextCompact}
-              </Button>
-            ) : null}
-            {canIncrease ? (
-              <Button
-                compact
-                mode="text"
-                testID="context-warning-increase"
-                onPress={onIncreaseContext}>
-                {l10n.chat.contextMoreRoom}
-              </Button>
-            ) : null}
-            <Button
-              compact
-              mode="text"
-              testID="context-banner-dismiss"
-              onPress={() =>
-                chatSessionStore.setBannerDismissed('context-warning')
-              }>
-              {l10n.chat.contextBannerDismiss}
-            </Button>
-          </View>
-        </View>
+          variant="warning"
+          icon={<AlertIcon width={14} height={14} stroke={error} />}
+          text={l10n.chat.contextWarning}
+          progress={progress}
+          percent={progress}
+          actions={[
+            ...(!isRemote
+              ? [
+                  {
+                    label: l10n.chat.contextCompact,
+                    onPress: onCompactContext,
+                    testID: 'context-warning-compact',
+                  },
+                ]
+              : []),
+            ...(canIncrease
+              ? [
+                  {
+                    label: l10n.chat.contextMoreRoom,
+                    onPress: onIncreaseContext,
+                    testID: 'context-warning-increase',
+                  },
+                ]
+              : []),
+            {
+              label: l10n.chat.contextBannerDismiss,
+              onPress: () =>
+                chatSessionStore.setBannerDismissed('context-warning'),
+              testID: 'context-banner-dismiss',
+            },
+          ]}
+        />
       );
     }
 
     if (variant === 'context-remote-hedged') {
       return (
-        <View
+        <BannerBar
           testID="context-remote-hedged-banner"
-          accessibilityRole="alert"
-          accessibilityLiveRegion="polite"
-          style={[styles.banner, tint.neutral]}>
-          <Text style={styles.bannerText}>{l10n.chat.contextRemoteHedged}</Text>
-          <View style={styles.bannerActions}>
-            <Button
-              compact
-              mode="text"
-              testID="context-banner-dismiss"
-              onPress={() =>
-                chatSessionStore.setBannerDismissed('context-remote-hedged')
-              }>
-              {l10n.chat.contextBannerDismiss}
-            </Button>
-          </View>
-        </View>
+          text={l10n.chat.contextRemoteHedged}
+          actions={[
+            {
+              label: l10n.chat.contextBannerDismiss,
+              onPress: () =>
+                chatSessionStore.setBannerDismissed('context-remote-hedged'),
+              testID: 'context-banner-dismiss',
+            },
+          ]}
+        />
       );
     }
 
@@ -236,56 +169,45 @@ export const BannerRow: React.FC<BannerRowProps> = observer(
           ? l10n.chat.contextFullEscalated
           : l10n.chat.contextFull;
 
+    const progress = ratio != null ? ratio * 100 : undefined;
     return (
-      <View
+      <BannerBar
         testID="context-full-banner"
-        accessibilityRole="alert"
-        accessibilityLiveRegion="polite"
-        style={[styles.banner, tint.full]}>
-        <View style={styles.bannerHeader}>
-          <AlertIcon width={14} height={14} stroke={error} />
-          <Text style={[styles.bannerText, styles.bannerHeaderText]}>
-            {fullText}
-          </Text>
-        </View>
-        {ratio != null ? (
-          <Meter ratio={ratio} tint={error} styles={styles} />
-        ) : null}
-        <View style={styles.bannerActions}>
-          {!isRemote ? (
-            <Button
-              compact
-              mode="text"
-              testID="context-full-compact"
-              onPress={onCompactContext}>
-              {l10n.chat.contextCompact}
-            </Button>
-          ) : null}
-          {canIncrease ? (
-            <Button
-              compact
-              mode="text"
-              testID="context-full-increase"
-              onPress={onIncreaseContext}>
-              {l10n.chat.contextMoreRoom}
-            </Button>
-          ) : null}
-          <Button
-            compact
-            mode="text"
-            testID="context-full-new-chat"
-            onPress={onNewChat}>
-            {l10n.chat.contextNewChat}
-          </Button>
-          <Button
-            compact
-            mode="text"
-            testID="context-banner-dismiss"
-            onPress={() => chatSessionStore.setBannerDismissed('context-full')}>
-            {l10n.chat.contextBannerDismiss}
-          </Button>
-        </View>
-      </View>
+        variant="error"
+        icon={<AlertIcon width={14} height={14} stroke={error} />}
+        text={fullText}
+        progress={progress}
+        actions={[
+          ...(!isRemote
+            ? [
+                {
+                  label: l10n.chat.contextCompact,
+                  onPress: onCompactContext,
+                  testID: 'context-full-compact',
+                },
+              ]
+            : []),
+          ...(canIncrease
+            ? [
+                {
+                  label: l10n.chat.contextMoreRoom,
+                  onPress: onIncreaseContext,
+                  testID: 'context-full-increase',
+                },
+              ]
+            : []),
+          {
+            label: l10n.chat.contextNewChat,
+            onPress: onNewChat,
+            testID: 'context-full-new-chat',
+          },
+          {
+            label: l10n.chat.contextBannerDismiss,
+            onPress: () => chatSessionStore.setBannerDismissed('context-full'),
+            testID: 'context-banner-dismiss',
+          },
+        ]}
+      />
     );
   },
 );

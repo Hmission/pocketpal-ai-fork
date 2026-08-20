@@ -95,7 +95,8 @@ export const Sheet = forwardRef(
         activeOffsetY={[-1, 1]}
         failOffsetX={[-5, 5]}
         backgroundStyle={{
-          backgroundColor: theme.colors.background,
+          // DESIGN_SPEC §12.2：底部 Sheet 浮层底色 surfaceElevated
+          backgroundColor: theme.colors.surfaceElevated,
         }}
         snapPoints={snapPoints}
         onDismiss={onDismiss}

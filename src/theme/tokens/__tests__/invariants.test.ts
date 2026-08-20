@@ -172,6 +172,8 @@ describe('design-token grep invariants', () => {
       'components/AssistantTurnFooter',
       // §18.4 发送钮双态/停止钮重绘（批次B）：token 表面消费
       'components/StopButton',
+      // B23 浮层与横幅体系收敛：RenameModal 迁 OverlayCard 底座（stroke/radius/typography token）
+      'components/RenameModal',
     ];
     const files = listFiles(SRC).filter(f => {
       const rel = path.relative(SRC, f).replace(/\\/g, '/');

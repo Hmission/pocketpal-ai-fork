@@ -41,7 +41,7 @@ const StaggeredToolRow = ({
             <Text style={styles.titleText}>{name}</Text>
             {name === 'device_control' &&
               (screenReaderOn ? (
-                <Text style={styles.readOnlyBadge}>读屏围观 ✓</Text>
+                <Text style={styles.readOnlyBadge}>读屏围观</Text>
               ) : (
                 <Text style={styles.readOnlyBadgeOff}>读屏围观 · 未授权</Text>
               ))}

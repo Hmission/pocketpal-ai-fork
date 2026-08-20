@@ -12,10 +12,12 @@
  * Host 未挂载时返回 null（fail-fast，不改变状态）。
  */
 import * as React from 'react';
-import {Modal, TouchableOpacity, View, Text} from 'react-native';
+import {TouchableOpacity, View, Text} from 'react-native';
 
 import {useTheme} from '../../hooks';
 import type {IntentKind} from '../../services/aiosMemory/rituals';
+import {OverlayCard} from './OverlayCard';
+import {CheckMdIcon} from '../../assets/icons';
 
 interface PendingPicker {
   current?: IntentKind;
@@ -71,89 +73,59 @@ export const IntentPickerHost: React.FC = () => {
   };
 
   return (
-    <Modal
-      visible={pending !== null}
-      transparent
-      animationType="fade"
-      onRequestClose={() => close(null)}>
-      <TouchableOpacity
-        style={{
-          flex: 1,
-          backgroundColor: 'rgba(0,0,0,0.35)',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: 32,
-        }}
-        activeOpacity={1}
-        onPress={() => close(null)}>
-        <View
-          style={{
-            width: '100%',
-            backgroundColor: theme.colors.surfaceElevated,
-            borderRadius: theme.radius.ml,
-            padding: theme.spacing.ml,
-            gap: theme.spacing.xs,
-            elevation: 4,
-          }}>
-          <Text
+    <OverlayCard visible={pending !== null} onRequestClose={() => close(null)} title="切换聊天状态">
+      {INTENT_OPTIONS.map(opt => {
+        const selected = pending?.current === opt.kind;
+        return (
+          <TouchableOpacity
+            key={opt.kind}
+            testID={`intent-picker-${opt.kind}`}
             style={{
-              ...theme.typography.titleS,
-              fontWeight: '600',
-              color: theme.colors.onSurface,
-              marginBottom: theme.spacing.xxs,
-            }}>
-            切换聊天状态
-          </Text>
-          {INTENT_OPTIONS.map(opt => {
-            const selected = pending?.current === opt.kind;
-            return (
-              <TouchableOpacity
-                key={opt.kind}
-                testID={`intent-picker-${opt.kind}`}
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              minHeight: 44,
+              borderRadius: theme.radius.s,
+              paddingHorizontal: theme.spacing.sm,
+              borderWidth: theme.stroke.sm,
+              borderColor: selected
+                ? theme.colors.primary
+                : theme.colors.outlineVariant,
+              backgroundColor: selected
+                ? theme.colors.primary + '1F' // 12% 主色底（同模型 chip 语言）
+                : 'transparent',
+            }}
+            onPress={() => close(opt.kind)}>
+            <View>
+              <Text
                 style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  minHeight: 44,
-                  borderRadius: theme.radius.s,
-                  paddingHorizontal: theme.spacing.sm,
-                  borderWidth: theme.stroke.sm,
-                  borderColor: selected
+                  ...theme.typography.uiM,
+                  fontWeight: selected ? '600' : '400',
+                  color: selected
                     ? theme.colors.primary
-                    : theme.colors.outlineVariant,
-                  backgroundColor: selected
-                    ? theme.colors.primary + '1F' // 12% 主色底（同模型 chip 语言）
-                    : 'transparent',
-                }}
-                onPress={() => close(opt.kind)}>
-                <View>
-                  <Text
-                    style={{
-                      ...theme.typography.uiM,
-                      fontWeight: selected ? '600' : '400',
-                      color: selected
-                        ? theme.colors.primary
-                        : theme.colors.onSurface,
-                    }}>
-                    {opt.label}
-                  </Text>
-                  <Text
-                    style={{
-                      ...theme.typography.captionS,
-                      color: theme.colors.onSurfaceVariant,
-                    }}>
-                    {opt.desc}
-                  </Text>
-                </View>
-                {selected && (
-                  <Text style={{color: theme.colors.primary}}>✓</Text>
-                )}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </TouchableOpacity>
-    </Modal>
+                    : theme.colors.onSurface,
+                }}>
+                {opt.label}
+              </Text>
+              <Text
+                style={{
+                  ...theme.typography.captionS,
+                  color: theme.colors.onSurfaceVariant,
+                }}>
+                {opt.desc}
+              </Text>
+            </View>
+            {selected && (
+              <CheckMdIcon
+                width={20}
+                height={20}
+                stroke={theme.colors.primary}
+              />
+            )}
+          </TouchableOpacity>
+        );
+      })}
+    </OverlayCard>
   );
 };
 

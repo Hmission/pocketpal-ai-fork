@@ -9,9 +9,7 @@ export const createStyles = (theme: Theme) =>
     content: {
       flexDirection: 'row',
       alignItems: 'center',
-    },
-    icon: {
-      marginRight: 8,
+      gap: 8,
     },
     message: {
       color: theme.colors.onErrorContainer,

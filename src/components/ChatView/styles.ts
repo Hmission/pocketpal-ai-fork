@@ -82,64 +82,6 @@ export const createStyles = ({theme}: {theme: Theme}) =>
       left: 0,
       right: 0,
     },
-    softCapBanner: {
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      backgroundColor: theme.colors.surfaceVariant,
-      borderTopWidth: 1,
-      borderBottomWidth: 1,
-      borderColor: theme.colors.outline,
-    },
-    softCapBannerText: {
-      fontSize: 12,
-      color: theme.colors.onSurfaceVariant,
-      textAlign: 'center' as const,
-    },
-    banner: {
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderTopWidth: 1,
-      borderBottomWidth: 1,
-    },
-    bannerText: {
-      fontSize: 12,
-      lineHeight: 17,
-      color: theme.colors.onSurfaceVariant,
-    },
-    bannerHeader: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      gap: 6,
-    },
-    bannerHeaderText: {
-      flex: 1,
-      flexShrink: 1,
-    },
-    bannerPercent: {
-      fontSize: 12,
-      fontWeight: '600' as const,
-      fontVariant: ['tabular-nums'],
-    },
-    bannerMeter: {
-      height: 4,
-      borderRadius: 2,
-      backgroundColor: theme.colors.surfaceDisabled,
-      overflow: 'hidden' as const,
-      marginTop: 8,
-      alignSelf: 'stretch' as const,
-      width: '100%' as const,
-    },
-    bannerMeterFill: {
-      height: 4,
-      borderRadius: 2,
-    },
-    bannerActions: {
-      flexDirection: 'row' as const,
-      flexWrap: 'wrap' as const,
-      alignItems: 'center' as const,
-      justifyContent: 'flex-end' as const,
-      marginTop: 2,
-    },
     // P5 全屏查看器「编辑此图片」按钮（底部悬浮胶囊，与保存按钮同层）
     viewerEditButton: {
       position: 'absolute' as const,
@@ -148,11 +90,12 @@ export const createStyles = ({theme}: {theme: Theme}) =>
       paddingHorizontal: 24,
       paddingVertical: 10,
       borderRadius: 24,
-      backgroundColor: 'rgba(255, 255, 255, 0.92)',
+      // 浅色浮层：surfaceElevated（全屏查看器浅色面，§12.6 豁免登记）
+      backgroundColor: theme.colors.surfaceElevated,
       zIndex: 1,
     },
     viewerEditText: {
-      color: '#111',
+      color: theme.colors.onSurface,
       fontSize: 15,
       fontWeight: '600' as const,
     },

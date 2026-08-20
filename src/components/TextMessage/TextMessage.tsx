@@ -8,7 +8,6 @@ import {
   Modal,
   Alert,
 } from 'react-native';
-import {IconButton} from 'react-native-paper';
 
 import ParsedText from 'react-native-parsed-text';
 import {
@@ -21,6 +20,7 @@ import {useTheme} from '../../hooks';
 
 import {styles} from './styles';
 import {MarkdownView} from '../MarkdownView';
+import {XIcon} from '../../assets/icons';
 
 import {AgentStep, MessageType} from '../../utils/types';
 import {
@@ -250,13 +250,17 @@ export const TextMessage = ({
         animationType="fade"
         onRequestClose={() => setSelectedImageIndex(null)}>
         <View style={imagePreviewModal}>
-          <IconButton
-            icon="close"
-            size={24}
-            iconColor="white"
+          {/* 全屏查看器关闭钮：自绘 XIcon（DESIGN_SPEC §12.5 图标铁律）；
+              深遮罩上恒定白前景（§12.6 全屏豁免登记） */}
+          <TouchableOpacity
+            testID="image-preview-close"
             style={imagePreviewCloseButton}
             onPress={() => setSelectedImageIndex(null)}
-          />
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={l10n.common.close}>
+            <XIcon width={24} height={24} stroke="#fff" />
+          </TouchableOpacity>
           <Image
             source={{uri: previewUri}}
             style={imagePreviewContent}

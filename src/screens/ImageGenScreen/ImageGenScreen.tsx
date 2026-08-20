@@ -12,10 +12,11 @@
  * 各 Panel 只读 props 渲染；store 状态经 observer 自动联动。
  */
 import * as React from 'react';
-import {View, FlatList, Modal, Text, TouchableOpacity} from 'react-native';
+import {View, FlatList, Text} from 'react-native';
 import {KeyboardAwareScrollView} from 'react-native-keyboard-controller';
 import {observer} from 'mobx-react-lite';
 import {runInAction} from 'mobx';
+import {Snackbar} from 'react-native-paper';
 import {launchImageLibrary} from 'react-native-image-picker';
 import {useNavigation} from '@react-navigation/native';
 
@@ -41,7 +42,6 @@ import {
   SD_RATIOS,
   ModelEntry,
 } from './constants';
-import {useToast} from './hooks/useToast';
 import {useWaveDots} from './hooks/useWaveDots';
 import {
   ModelPickerTrigger,
@@ -52,6 +52,7 @@ import {HistoryStrip} from './components/HistoryStrip';
 import {ComposerPanel} from './components/ComposerPanel';
 import {UpscalePanel} from './components/UpscalePanel';
 import {confirmDialog} from '../../components/ui/ConfirmDialog';
+import {OverlayCard} from '../../components/ui/OverlayCard';
 
 export const ImageGenScreen: React.FC = observer(() => {
   const theme = useTheme();
@@ -102,7 +103,10 @@ export const ImageGenScreen: React.FC = observer(() => {
   // 信息条点击：当前查看完整生图参数的任务条目（提示词/耗时/尺寸/模型/种子/步数）
   const [infoItem, setInfoItem] = React.useState<GeneratedImage | null>(null);
 
-  const {toast, toastOpacity, showToast} = useToast();
+  const [snackbar, setSnackbar] = React.useState<string | null>(null);
+  const showSnackbar = React.useCallback((msg: string) => {
+    setSnackbar(msg);
+  }, []);
   // 生成/编辑进行中：三点波浪动效
   const waveDots = useWaveDots(imageGenStore.generating);
 
@@ -303,7 +307,7 @@ export const ImageGenScreen: React.FC = observer(() => {
       summary: item.errorSummary ?? '生图失败',
       detail: item.errorDetail ?? '',
     });
-    showToast(
+    showSnackbar(
       path
         ? t(l10n.errorReport.copiedSaved, {path})
         : l10n.errorReport.copiedFallback,
@@ -481,7 +485,7 @@ export const ImageGenScreen: React.FC = observer(() => {
       setPrompt(''); // 新源图无历史提示词，清空输入区
       scrollToPreview(0);
       setEditArming(true); // 入槽即进入编辑预备：目标=刚入槽的图
-      showToast(
+      showSnackbar(
         `${toastPrefix}（压缩至 ${sq}×${sq}），输入编辑指令后点「执行编辑」`,
       );
     } catch (e) {
@@ -529,7 +533,7 @@ export const ImageGenScreen: React.FC = observer(() => {
     // 编辑目标 = 当前预览区显示的图：0 页=上传图，历史页=当前历史图
     const targetUri = previewIndex === 0 ? editSource : currentImage;
     if (!targetUri) {
-      showToast('先上传一张本地图片，再输入编辑指令');
+      showSnackbar('先上传一张本地图片，再输入编辑指令');
       await handlePickEditImage();
       return;
     }
@@ -538,7 +542,7 @@ export const ImageGenScreen: React.FC = observer(() => {
     const sq = Math.min(dreamW, dreamH);
     if (previewIndex === 0 && editRgb) {
       // 上传图已在上传时预解码，无需重复
-      showToast(`已锁定当前图（${sq}×${sq}），输入编辑指令后点「执行编辑」`);
+      showSnackbar(`已锁定当前图（${sq}×${sq}），输入编辑指令后点「执行编辑」`);
       return;
     }
     try {
@@ -547,7 +551,7 @@ export const ImageGenScreen: React.FC = observer(() => {
         sq,
       );
       setEditRgb(rgb);
-      showToast(`已锁定当前图（${sq}×${sq}），输入编辑指令后点「执行编辑」`);
+      showSnackbar(`已锁定当前图（${sq}×${sq}），输入编辑指令后点「执行编辑」`);
     } catch (e) {
       setEditArming(false);
       runInAction(() => {
@@ -614,7 +618,7 @@ export const ImageGenScreen: React.FC = observer(() => {
     });
     // 新图在 history[0] → 预览页 1
     scrollToPreview(1);
-    showToast('编辑完成');
+    showSnackbar('编辑完成');
   };
 
   const handleGenerate = async (promptOverride?: string) => {
@@ -625,7 +629,7 @@ export const ImageGenScreen: React.FC = observer(() => {
     if (!p) {
       // 复查 2026-08-20：空提示词点「出图」必须显式反馈（不静默）——
       // 此前静默早退导致「有动效无反应」，两台真机稳定复现
-      showToast('先输入提示词，再点出图');
+      showSnackbar('先输入提示词，再点出图');
       return;
     }
     setEditArming(false); // 出图退出编辑预备态
@@ -669,7 +673,7 @@ export const ImageGenScreen: React.FC = observer(() => {
       });
       // 新图在 history[0] → 预览页 1
       scrollToPreview(1);
-      showToast(`生成完成（${dreamW}×${dreamH}）`);
+      showSnackbar(`生成完成（${dreamW}×${dreamH}）`);
       return;
     }
     const m = selectedEntry?.manifest;
@@ -715,7 +719,7 @@ export const ImageGenScreen: React.FC = observer(() => {
       });
       // 新图在 history[0] → 预览页 1
       scrollToPreview(1);
-      showToast(`生成完成（${size}×${size}）`);
+      showSnackbar(`生成完成（${size}×${size}）`);
     } else {
       await failTaskWithReport(taskId, '生成失败', {
         模型: m?.label,
@@ -768,7 +772,7 @@ export const ImageGenScreen: React.FC = observer(() => {
       return;
     }
     const ok = await imageGenStore.saveToAlbum(currentImage);
-    showToast(ok ? '已保存 · Pictures/AIOS' : '保存失败，请重试');
+    showSnackbar(ok ? '已保存 · Pictures/AIOS' : '保存失败，请重试');
   };
 
   // P6-6：高清放大确认（参数面板回调）——关闭面板后走任务化 running 页显示进度
@@ -785,7 +789,7 @@ export const ImageGenScreen: React.FC = observer(() => {
       scale,
       style,
     );
-    showToast(out ? `已放大 ${scale}×` : '放大失败，请重试');
+    showSnackbar(out ? `已放大 ${scale}×` : '放大失败，请重试');
     if (out) {
       // 修复：放大结果在 history[0]（第 1 数据页）；previewIndex 0 = 编辑槽（空白上传页），
       // 此前用 0 导致放大完成后预览窗口空白（2026-08-19 真机实锤）
@@ -846,8 +850,6 @@ export const ImageGenScreen: React.FC = observer(() => {
           genStartedAt={imageGenStore.genStartedAt}
           stage={imageGenStore.stage}
           now={now}
-          toast={toast}
-          toastOpacity={toastOpacity}
           waveDots={waveDots}
           currentImage={currentImage}
           currentItem={currentItem}
@@ -958,69 +960,65 @@ export const ImageGenScreen: React.FC = observer(() => {
         onConfirm={handleUpscaleConfirm}
       />
 
-      {/* 信息条点击：完整生图参数详情（模型/耗时/尺寸/种子/步数/时间/提示词） */}
-      <Modal
+      {/* 信息条点击：完整生图参数详情（模型/耗时/尺寸/种子/步数/时间/提示词）
+          OverlayCard 底座（DESIGN_SPEC §12.1） */}
+      <OverlayCard
         visible={!!infoItem}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setInfoItem(null)}>
-        <TouchableOpacity
-          style={s.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setInfoItem(null)}>
-          <TouchableOpacity
-            style={s.modalCard}
-            activeOpacity={1}
-            onPress={() => {}}>
-            <Text style={s.modalTitle}>图片参数</Text>
-            {infoItem && (
-              <>
-                <View style={s.modalRow}>
-                  <Text style={s.modalLabel}>模型</Text>
-                  <Text style={s.modalValue} numberOfLines={1}>
-                    {infoItem.modelLabel ?? '未知'}
-                  </Text>
-                </View>
-                <View style={s.modalRow}>
-                  <Text style={s.modalLabel}>耗时</Text>
-                  <Text style={s.modalValue}>
-                    {infoItem.durationMs != null
-                      ? `${(infoItem.durationMs / 1000).toFixed(1)}s`
-                      : '-'}
-                  </Text>
-                </View>
-                <View style={s.modalRow}>
-                  <Text style={s.modalLabel}>尺寸</Text>
-                  <Text style={s.modalValue}>
-                    {infoItem.width}×{infoItem.height}
-                  </Text>
-                </View>
-                <View style={s.modalRow}>
-                  <Text style={s.modalLabel}>种子</Text>
-                  <Text style={s.modalValue}>{infoItem.seed}</Text>
-                </View>
-                <View style={s.modalRow}>
-                  <Text style={s.modalLabel}>步数</Text>
-                  <Text style={s.modalValue}>{infoItem.steps ?? '-'}</Text>
-                </View>
-                <View style={s.modalRow}>
-                  <Text style={s.modalLabel}>时间</Text>
-                  <Text style={s.modalValue}>
-                    {new Date(infoItem.ts).toLocaleString()}
-                  </Text>
-                </View>
-                <Text style={s.modalLabel}>提示词</Text>
-                <Text style={s.modalPrompt}>{infoItem.prompt || '（无）'}</Text>
-              </>
-            )}
-            <TouchableOpacity
-              style={s.modalCloseBtn}
-              onPress={() => setInfoItem(null)}>
-              <Text style={s.modalCloseText}>关闭</Text>
-            </TouchableOpacity>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
+        onRequestClose={() => setInfoItem(null)}
+        title="图片参数"
+        actions={{
+          primary: {label: '关闭', onPress: () => setInfoItem(null)},
+        }}>
+        {infoItem && (
+          <>
+            <View style={s.modalRow}>
+              <Text style={s.modalLabel}>模型</Text>
+              <Text style={s.modalValue} numberOfLines={1}>
+                {infoItem.modelLabel ?? '未知'}
+              </Text>
+            </View>
+            <View style={s.modalRow}>
+              <Text style={s.modalLabel}>耗时</Text>
+              <Text style={s.modalValue}>
+                {infoItem.durationMs != null
+                  ? `${(infoItem.durationMs / 1000).toFixed(1)}s`
+                  : '-'}
+              </Text>
+            </View>
+            <View style={s.modalRow}>
+              <Text style={s.modalLabel}>尺寸</Text>
+              <Text style={s.modalValue}>
+                {infoItem.width}×{infoItem.height}
+              </Text>
+            </View>
+            <View style={s.modalRow}>
+              <Text style={s.modalLabel}>种子</Text>
+              <Text style={s.modalValue}>{infoItem.seed}</Text>
+            </View>
+            <View style={s.modalRow}>
+              <Text style={s.modalLabel}>步数</Text>
+              <Text style={s.modalValue}>{infoItem.steps ?? '-'}</Text>
+            </View>
+            <View style={s.modalRow}>
+              <Text style={s.modalLabel}>时间</Text>
+              <Text style={s.modalValue}>
+                {new Date(infoItem.ts).toLocaleString()}
+              </Text>
+            </View>
+            <Text style={s.modalLabel}>提示词</Text>
+            <Text style={s.modalPrompt}>{infoItem.prompt || '（无）'}</Text>
+          </>
+        )}
+      </OverlayCard>
+
+      {/* 轻量操作反馈（DESIGN_SPEC §12.4：Paper Snackbar 唯一轻提示载体） */}
+      <Snackbar
+        visible={!!snackbar}
+        onDismiss={() => setSnackbar(null)}
+        duration={2500}
+        testID="imagegen-snackbar">
+        {snackbar ?? ''}
+      </Snackbar>
     </View>
   );
 });

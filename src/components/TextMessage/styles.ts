@@ -75,7 +75,8 @@ export const styles = ({
     },
     imagePreviewModal: {
       flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.9)',
+      // 全屏查看器遮罩：backdrop token（DESIGN_SPEC §12.6）
+      backgroundColor: theme.colors.backdrop,
       justifyContent: 'center',
       alignItems: 'center',
     },
