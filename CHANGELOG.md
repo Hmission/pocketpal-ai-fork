@@ -17,6 +17,7 @@
 - 代码/玩具匠终局选型 LFM2.5-2.6B（2026-08-20，大王钦定）：替代 Ministral-3-3B（迭代合规不稳 PLAY-6）；LFM2.5 族工具调用专长 + 1.67GB PSS 安全（LFM8B 5.16GB 被 K90 HyperOS PSS 看护 6GB 硬杀，厂商锁死不可关）；K90 真机三点验收全绿（选型生效 + 加载 2s + 玩具生成落盘）
 
 ### 新增
+- 模型全平台分发闭环（2026-08-20~21，B25）：①魔搭 5 仓 15.1GB——Qwen3.5-2B/4B 与 MiniCPM5-1B 管家镜像上传（zensignGG 账号，与 HF 原仓逐字节一致）+ DreamLite ONNX 自制套件 + 自制 HumanPose LoRA；②HF 3 仓（QDD110 账号 write token）——SD35-HumanPose-LoRA + DreamLite-mobile-ONNX 双平台闭环；③catalog 全条目双源化（Qwen×2/MiniCPM/DreamLite 在线可下载，模型页不再「请本地导入」；自制 LoRA 挂 sd35 条目 extras 双源下载）；④baked/merged GGUF 不装机不分发（大王钦定）；⑤SOP/MODEL_MATRIX 对齐（0.6B 标禁止推送、§6.1 补 mmproj-4B + lora 14→16）；⑥token 管道固化 .env（MODELSCOPE_TOKEN/HF_TOKEN，新窗口免找）——远端 206 字节精确匹配（魔搭 5 仓 + HF 3 仓，全量 ~23GB）
 - RealESRGAN 通用图像放大能力（2026-08-19，独立通用，不绑定 DreamLite）：双模型内置（x4plus 63MB 通用写实 / animevideov3 2MB 动漫插画）；tiled 推理引擎（256 tile + 16px overlap 羽化 + 输入解码限 1024 + 大图防护 4096 上限）；桥传输 base64（3.1M 装箱过桥峰值 ~150MB OOM 风险 → 改 ~4MB base64 串 + 纯 JS 解码器）；engineMutex 互斥纳入；UpscalePanel 纯参数面板 + 任务化进度；DRC 动作 imagegen.upscale
 - 全屏图片查看器 ZoomableImage（2026-08-19→20，3 轮真机复测闭环）：双指捏合缩放（1-4×）+ 拖动平移 + 单击关闭；浅色主题遮罩；Modal 内 GestureHandlerRootView 重新 root；reanimated worklet 指令 + runOnJS；Gesture.Exclusive(composed, tap) 官方 PhotoZoom 范式
 
