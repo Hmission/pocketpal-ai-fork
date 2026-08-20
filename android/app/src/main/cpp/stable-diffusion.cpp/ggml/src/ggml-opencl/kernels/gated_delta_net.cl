@@ -1,3 +1,4 @@
+#pragma OPENCL EXTENSION cl_khr_fp16 : enable  // 08-20 Mali: direct half pointer loads need explicit enable
 #pragma OPENCL EXTENSION cl_khr_subgroups : enable
 
 #ifdef cl_intel_required_subgroup_size

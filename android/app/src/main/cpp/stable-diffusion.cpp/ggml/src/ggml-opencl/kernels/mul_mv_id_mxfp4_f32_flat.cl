@@ -58,6 +58,11 @@ static inline float e8m0_to_fp32(uchar x) {
 #define N_R0_MXFP4 2 // number of rows each subgroup works on
 #define N_SG_MXFP4 2 // number of subgroups in a work group
 #define N_SIMDWIDTH 16 // subgroup size
+#elif defined (MALI_GPU)
+// 08-20 Mali: subgroup size 16, values mirror INTEL_GPU
+#define N_R0_MXFP4 2
+#define N_SG_MXFP4 2
+#define N_SIMDWIDTH 16
 #elif defined (ADRENO_GPU)
 #define N_R0_MXFP4 4
 #define N_SG_MXFP4 1

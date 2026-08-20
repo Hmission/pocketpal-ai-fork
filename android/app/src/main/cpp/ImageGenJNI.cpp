@@ -15,12 +15,19 @@
 #include <cstdlib>
 #include <unistd.h>
 #include <fcntl.h>
+#include <vector>
+#include <dlfcn.h>
 
 #include <android/log.h>
 
 #include "stable-diffusion.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
+
+// 08-20 Mali 支持：枚举 OpenCL GPU 设备名（与 ggml 实际使用的设备一致）。
+// CL 头走相对路径（jni/thirdparty/OpenCL-Headers，SD_OPENCL 补链资产）。
+// 函数经 dlopen 运行时解析（Android 系统自带 libOpenCL.so，避免 ABI 化 stub 链接问题）。
+#include "../jni/thirdparty/OpenCL-Headers/CL/cl.h"
 
 namespace {
 
@@ -29,6 +36,57 @@ sd_ctx_t* g_ctx = nullptr;
 
 // Cached model path (new_sd_ctx needs it each time)
 std::string g_model_path;
+
+// 08-20 Mali 支持：返回首个 OpenCL GPU 设备名（如 "Mali-G925-Immortalis MC12"）。
+// 失败/无 GPU 返回空串，调用方按非 Mali 处理。
+std::string getOpenCLDeviceName() {
+  void* h = dlopen("libOpenCL.so", RTLD_NOW);
+  if (!h) {
+    return "";
+  }
+  using ClGetPlatformIDs = cl_int (*)(cl_uint, cl_platform_id*, cl_uint*);
+  using ClGetDeviceIDs = cl_int (*)(cl_platform_id, cl_device_type, cl_uint, cl_device_id*, cl_uint*);
+  using ClGetDeviceInfo = cl_int (*)(cl_device_id, cl_device_info, size_t, void*, size_t*);
+  auto fPids = (ClGetPlatformIDs)dlsym(h, "clGetPlatformIDs");
+  auto fDids = (ClGetDeviceIDs)dlsym(h, "clGetDeviceIDs");
+  auto fDinf = (ClGetDeviceInfo)dlsym(h, "clGetDeviceInfo");
+  if (!fPids || !fDids || !fDinf) {
+    dlclose(h);
+    return "";
+  }
+  cl_uint n_platforms = 0;
+  if (fPids(0, nullptr, &n_platforms) != CL_SUCCESS || n_platforms == 0) {
+    dlclose(h);
+    return "";
+  }
+  std::vector<cl_platform_id> platforms(n_platforms);
+  if (fPids(n_platforms, platforms.data(), nullptr) != CL_SUCCESS) {
+    dlclose(h);
+    return "";
+  }
+  std::string result;
+  for (cl_platform_id p : platforms) {
+    cl_uint n_devs = 0;
+    if (fDids(p, CL_DEVICE_TYPE_GPU, 0, nullptr, &n_devs) != CL_SUCCESS || n_devs == 0) {
+      continue;
+    }
+    std::vector<cl_device_id> devs(n_devs);
+    if (fDids(p, CL_DEVICE_TYPE_GPU, n_devs, devs.data(), nullptr) != CL_SUCCESS) {
+      continue;
+    }
+    char name[256] = {0};
+    if (fDinf(devs[0], CL_DEVICE_NAME, sizeof(name) - 1, name, nullptr) == CL_SUCCESS) {
+      result = std::string(name);
+      break;
+    }
+  }
+  dlclose(h);
+  return result;
+}
+
+bool isMaliGpu() {
+  return getOpenCLDeviceName().find("Mali") != std::string::npos;
+}
 
 // stderr 重定向取证：ggml-vulkan 关键诊断（失败 pipeline 名/设备信息）走 std::cerr，
 // 而 Android app 进程 stderr 默认被丢弃不进 logcat。dup2 到 AIOS 目录落盘（取证探针，非兜底）。
@@ -257,7 +315,13 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
   const char* model_path_cstr = env->GetStringUTFChars(modelPath, nullptr);
   bool zimage_model = model_path_cstr != nullptr && strstr(model_path_cstr, "z_image") != nullptr;
   env->ReleaseStringUTFChars(modelPath, model_path_cstr);
-  if (zimage_model) {
+  if (isMaliGpu()) {
+    // 08-20 Mali 支持（红米平板）：Mali 走通用 fp32 路径。
+    // Adreno fp16 内核在 Mali 上未验证且有累积精度风险 → DISABLE=1 强制 use_adreno_kernels=false；
+    // xmem 要求 gpu_family==ADRENO，Mali 天然不启用（unset 保持干净）。
+    setenv("GGML_OPENCL_DISABLE_ADRENO_KERNELS", "1", 1);
+    unsetenv("GGML_OPENCL_ADRENO_XMEM_GEMM");
+  } else if (zimage_model) {
     setenv("GGML_OPENCL_DISABLE_ADRENO_KERNELS", "1", 1);
     // 08-20 定稿（feat/zimage-xmem-tiled-verify 实测）：XMEM 必须 unset（真关）。
     // 代码事实：xmem 只看 env 存在性（getenv != nullptr），值 0/1 等效——旧"XMEM=0"从未真正关闭。
@@ -321,6 +385,14 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
   // 单后端无 fallback：Vulkan 挂机风险由 JS 侧 120s 无事件超时判定兜底（干净失败）。
   if (!backend_s.empty()) {
     params.backend = backend_s.c_str();
+  }
+  // 08-20 Mali: 图切段（graph-cut segmented compute）要求 max_vram 预算 > 0 才启用。
+  // 无预算时整个 MMDiT 图一次性分配（PSS 峰值 ~7.5GB）超 HyperOS 单应用 6GB 配额被杀进程；
+  // 给 opencl 预算 2.0GiB → 按层分段执行，峰值降至 ~5.5GB。
+  // 08-20 Mali: mmap 权重文件驻留 + CL buffer 副本双份（实测 PSS 8.2GB）→ 关 mmap 省 ~2.9GB。
+  if (isMaliGpu()) {
+    params.max_vram = "opencl=2.0";
+    params.enable_mmap = false;
   }
   // 6.17 顺序卸载探索结论：Z-Image 6.9GB 对小米13（GPU ~2.8G）是硬件上限，
   // cpu residency + stream_layers + graph-cut 各轮延长存活但仍无法跑通（业界亦不在中低端手机跑 6B DiT）。

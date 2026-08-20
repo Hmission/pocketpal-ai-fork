@@ -64,6 +64,11 @@ typedef struct {
 #define N_DST 1 // number of rows each SIMD group works on
 #define N_SIMDGROUP 2 // number of SIMD groups in a thread group
 #define N_SIMDWIDTH 16 // SIMD group size
+#elif defined (MALI_GPU)
+// 08-20 Mali: subgroup size 16, values mirror INTEL_GPU
+#define N_DST 1
+#define N_SIMDGROUP 2
+#define N_SIMDWIDTH 16
 #elif defined (ADRENO_GPU)
 #define N_DST 1
 #define N_SIMDGROUP 2
