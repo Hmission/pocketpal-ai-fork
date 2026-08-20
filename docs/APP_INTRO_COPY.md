@@ -3,9 +3,9 @@ doc_id: APP_INTRO_COPY
 module: root
 type: copy
 status: active
-version: "1.0"
+version: "1.1"
 created: "2026-08-14"
-updated: "2026-08-15"
+updated: "2026-08-20"
 relates: []
 ---
 
@@ -13,14 +13,15 @@ relates: []
 
 # 小黄鸡（Pocket Chick）App 介绍文案库
 
-> **状态**：进行中 | **维护**：AIOS | **最后更新**：2026-08-15
+> **状态**：进行中 | **维护**：AIOS | **最后更新**：2026-08-20
 > 本文档是 App 对外介绍文案的唯一权威来源（single source of truth）。
 
 ## 维护契约
 
 1. **版本二（标准版）已落地 App 关于页**，文案存储于 `src/locales/*.json` 的 `about` 段（key：`description` / `body` / `featuresTitle` / `features` / `openSourceBody` / `basedOn` / `githubRepoDescription` / `githubButton`），UI 位于 `src/screens/AboutScreen/AboutScreen.tsx`（含 GitHub 仓库入口按钮）。
-2. **改文案 = 改两处**：① `src/locales/*.json`（关于页实际展示） ② 本文档（对外文案存档）。
-3. **新增语言**：参考 `src/locales/index.ts` 的 languageRegistry 注册流程，并同步本文档。
+2. **引导页（onboarding）文案**存储于 `src/locales/*.json` 的 `onboarding` 段，UI 位于 `src/screens/Onboarding/`（Splash + S1~S6）。S5 的 6 个 topic 键与 S6 的 5 个 pal / 3 个 tier 由代码驱动，键集合不可增删，只改内容。
+3. **改文案 = 改两处**：① `src/locales/*.json`（关于页 / 引导页实际展示） ② 本文档（对外文案存档）。
+4. **新增语言**：参考 `src/locales/index.ts` 的 languageRegistry 注册流程，并同步本文档。
 
 ## 版本矩阵
 
@@ -29,13 +30,136 @@ relates: []
 | 版本一：简短版 | 商店简介 / 官网首页 / 宣传物料 | 📋 文档存档 |
 | 版本二：标准版 | App 内"关于"页面正文 | ✅ 已落地（l10n + AboutScreen） |
 | 版本三：极简版 | 一行式签名 / 分享卡片 / 社交简介 | 📋 文档存档 |
+| 引导页文案 | App 初次装机引导（Splash + S1~S6） | ✅ 已落地（l10n `onboarding` 段 + Onboarding 屏） |
 
 ## 语言清单
 
 - **已启用（14）**：zh（简体）、zh_Hant（繁体）、en、ja、ko、fa、he、id、ms、pl、pt、pt_BR、ru、uk
 - **已翻译未注册（2）**：de、fr（l10n 文件已补齐，未加入 languageRegistry）
 - **残缺未启用（2）**：et、it（l10n 文件只有 common 段，待完整翻译后再启用）
+- 引导页（onboarding）段覆盖：14 个已启用语言全部有完整 onboarding 段；de / fr / et / it 无该段，运行时自动回退英文（`en` 为类型基准）
 - 版本号占位：`v2.0.0 (144)` · `llama.cpp 10054 (ac2557c)`（迭代时同步更新）
+
+---
+
+## Onboarding 引导页文案
+
+> **落地位置**：`src/locales/*.json` 的 `onboarding` 段 · **UI**：`src/screens/Onboarding/`（`OnboardingStack.tsx`：SPLASH → STEP_1 ~ STEP_6）
+> **基线语言**：en（类型基准，缺失 key 自动回退英文）/ zh（简体中文）。其余 12 个已启用语言在各自 locale 文件内按同一 key 结构落地。
+> **零 key 增删原则**：本次文案迭代不增删任何 key，S5 的 6 个 topic 键（`smartchat` / `coding` / `education` / `roleplay` / `creative_writing` / `else`）与 S6 的 5 个 pal（`pip` / `codie` / `sage` / `echo` / `muse`）、3 个 tier（`quick` / `balanced` / `best`）由代码驱动，键集合不可变。
+
+### 屏幕结构总览
+
+| 屏 | 组件 | 叙事定位 |
+|---|---|---|
+| Splash | `SplashScreen.tsx` | 品牌亮相：Logo + 品牌名「Pocket Chick / 小黄鸡」 |
+| S1 | `Onboarding1Screen.tsx` | 欢迎页：点明「住进手机的 AI 伙伴」+ 五大玩法（聊天、生图、玩乐、绘本、冒险） |
+| S2 | `Onboarding2Screen.tsx` | 多种玩法页：不止聊天——生图 / 绘本 / 冒险 / 语音 / 拍照放大 4× |
+| S3 | `Onboarding3Screen.tsx` | 完全离线 + 小而精：无网也能用；比云端大模型轻，但快、私密、属于您 |
+| S4 | `Onboarding4Screen.tsx` | 隐私承诺：无账户 / 无云端 / 无追踪 + 完全开源；附存储权限说明（storageNote） |
+| S5 | `Onboarding5Screen.tsx` | 用途选择：6 个 topic chip，点击即进入 S6 |
+| S6 | `Onboarding6Screen.tsx` | 下载模型：按用途展示 pal + 设备信息 + 3 档模型（quick / balanced / best） |
+
+### 文案明细（en / zh 基线）
+
+#### Splash
+
+| key | en | zh |
+|---|---|---|
+| `brand` | Pocket Chick | 小黄鸡 |
+
+#### S1 欢迎页（screen1）
+
+| key | en | zh |
+|---|---|---|
+| `eyebrow` | Welcome to Pocket Chick | 欢迎使用小黄鸡 |
+| `title` + `titleAccent` | Meet your **pals.** | 认识一下你的**小伙伴。** |
+| `body` | Smart little friends that live inside your phone — chat, draw, play, stories, adventure.\nLet's get you set up, it'll take a minute. | 住进你手机的 AI 伙伴——聊天、生图、玩乐、绘本、冒险。\n花一分钟把它们设置好吧。 |
+| `cta` | Show me Around | 带我看看 |
+
+#### S2 多种玩法页（screen2）
+
+| key | en | zh |
+|---|---|---|
+| `eyebrow` | More to explore | 多种玩法 |
+| `title` + `titleAccent` | More than\n**a chat app.** | 不止\n**聊天。** |
+| `body` | Chat, draw pictures, read stories, play adventures, talk to them — all generated right on your phone. Even photos you take can be upscaled 4× sharper. | 聊天、生图、讲故事、玩冒险、直接开口说——全部在你的手机上完成。拍的照片还能放大 4 倍更清晰。 |
+| `highlight` | all generated right on your phone | 全部在你的手机上完成 |
+| `cta` | Next | 下一步 |
+
+#### S3 完全离线 + 小而精（screen3）
+
+| key | en | zh |
+|---|---|---|
+| `eyebrow` | Fully offline | 完全离线 |
+| `title` + `titleAccent` | Anytime,\n**Anywhere.** | 随时，\n**随地。** |
+| `body` | No internet, no signal, no problem — on a plane, in an elevator, in a remote village, your pals are still right there.\nSmall and sharp, a touch lighter than the cloud's big brains — but fast, private, and always yours. | 不用联网、没有信号也没关系——在飞机上、在电梯里、在偏远村庄，你的小伙伴都还在。\n小而精，比云端大模型轻一点——但快、私密，永远属于你。 |
+| `highlight` | No internet, no signal | 不用联网、没有信号 |
+| `cta` | Got it | 知道了 |
+
+#### S4 隐私承诺（screen4）
+
+| key | en | zh |
+|---|---|---|
+| `eyebrow` | Privacy promised | 隐私承诺 |
+| `title` + `titleAccent` | Nothing **leaves** your phone. | 一切\n**留在你的手机里。** |
+| `body` | No accounts. No cloud. No tracking. Your chats and pictures stay yours.\nFully open source — anyone can check the code. | 无需账户。没有云端。不做追踪。你的对话和图像，只属于你。\n完全开源——任何人都能查看代码。 |
+| `highlight` | No accounts. No cloud. No tracking. | 无需账户。没有云端。不做追踪。 |
+| `cta` | Get Started | 开始使用 |
+| `storageNote` | On first launch we ask for "All files access" — used only to read your model folder and back up chats. You can change this anytime in system settings. | 首次启动时会请求「所有文件访问权限」——仅用于读取模型文件夹与备份聊天记录。你可随时在系统设置中更改。 |
+
+#### S5 用途选择（screen5）
+
+| key | en | zh |
+|---|---|---|
+| `title` | What's your pal for? | 你的小伙伴用来做什么？ |
+| `body` | Pick what you'd like to discuss — we'll match a pal that fits your phone. | 选一个你想聊的方向——我们会为你匹配一款适合你手机的小伙伴。 |
+| `topic.smartchat` | Smart Chat | 日常聊天 |
+| `topic.coding` | Coding | 编程 |
+| `topic.education` | Education | 学习成长 |
+| `topic.roleplay` | Roleplay | 角色扮演 |
+| `topic.creative_writing` | Creative Writing | 创意写作 |
+| `topic.else` | Looking for something else? | 都想试试 |
+| `topicDescription.smartchat` | Friendly everyday companion | 聊天、问答、日常陪伴 |
+| `topicDescription.coding` | Code, debug, explain | 写代码、调 bug、讲原理 |
+| `topicDescription.education` | Learn, explain, quiz | 学习、讲解、测验 |
+| `topicDescription.roleplay` | Characters, scenarios | 角色、情景、故事 |
+| `topicDescription.creative_writing` | Stories, ideas, drafts | 故事、灵感、初稿 |
+| `topicDescription.else` | Browse all pals later in the app | 进入 App 后可浏览全部小伙伴 |
+
+#### S6 下载模型（screen6）
+
+| key | en | zh |
+|---|---|---|
+| `cta` | Download {{name}} | 下载 {{name}} |
+| `ctaTemplate` | Download {{name}} ({{size}}) | 下载 {{name}}（{{size}}） |
+| `useTemplate` | Use {{name}} | 使用 {{name}} |
+| `deviceRamSuffix` | GB RAM | GB 内存 |
+| `deviceFreeSuffix` | GB free | GB 可用 |
+| `recommended` | Recommended | 推荐 |
+| `downloaded` | Downloaded | 已下载 |
+| `modelTier.quick` | Quick | 快速 |
+| `modelTier.balanced` | Balanced | 均衡 |
+| `modelTier.best` | Best | 最佳 |
+| `subtitleTemplate` | Your pal runs on a small AI model, and you can switch anytime. Pick one that fits your phone. | 你的小伙伴靠小型 AI 模型思考，之后随时可以更换。挑一个适合你手机的吧。 |
+| `pal.pip.body` | We found a perfect pal for you — a friendly everyday companion. Smart enough for most things, light enough for any phone. | 我们为你找到了最对味的小伙伴——友好的日常陪伴。大部分事情都够用，任何手机都带得动。 |
+| `pal.codie.body` | Meet Codie — your local pair-programmer. Reads code, writes code, explains tricky bits without ever leaving your phone. | 认识一下 Codie——你的本地结对编程伙伴。读代码、写代码、讲清难点，全程不出你的手机。 |
+| `pal.sage.body` | Sage is patient, curious, and walks you through ideas step by step. A study buddy you keep in your pocket. | Sage 耐心、好奇，会一步步带你理解想法。一个装进口袋的学习搭子。 |
+| `pal.echo.body` | Echo is a versatile roleplay companion — stays in character, paints scenes, follows wherever your story leads. | Echo 是全能角色扮演伙伴——不脱离人设、会描绘场景，跟着你的故事走到哪算哪。 |
+| `pal.muse.body` | Muse helps you write. Suggests phrasing, finds the rhythm, and keeps your tone intact. | Muse 帮你写作。给措辞建议、找节奏，同时保住你的语气。 |
+
+### 改动记录（v1.1 · 2026-08-20，对齐 README 最新介绍口径）
+
+| 屏 | 相对上一版的文案改动 |
+|---|---|
+| S1 | `body`：从泛称「聪明的小伙伴」改为点明五大玩法（聊天、生图、玩乐、绘本、冒险），与 README 一句话定位对齐 |
+| S2 | 由「离线页」重排为「多种玩法页」：`eyebrow` The idea→More to explore、`title` 改为「More than a chat app / 不止聊天。」、`body` 改为五大玩法 + 拍照放大 4× |
+| S3 | 原 S2 离线内容迁入并合并「小而精」预期管理：`eyebrow` → Fully offline / 完全离线，`body` 合并「无网场景 + 比云端轻但快、私密、属于你」 |
+| S4 | `body`：补充「图像」覆盖范围与「完全开源——任何人都能查看代码」一句 |
+| S5 | `topic.smartchat` Smart Chat→日常聊天 口径统一、`topic.education` → 学习成长 / Education、`topic.else` → 都想试试 / Looking for something else?；`topicDescription.*` 全部润色为更具体的能力描述 |
+| S6 | `subtitleTemplate`：补充「之后随时可以更换」，消除下载即绑定的误解；其余键不动 |
+
+> 其余 12 个已启用语言（zh_Hant / ja / ko / fa / he / id / ms / pl / pt / pt_BR / ru / uk）按本表 en/zh 基线在各自 locale 文件内同步翻译，key 结构完全一致。
 
 ---
 

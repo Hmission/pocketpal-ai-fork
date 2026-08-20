@@ -1419,14 +1419,14 @@
       "topicDescription": {
         "coding": "Pisz kod, debuguj, wyjaśniaj",
         "education": "Ucz się, wyjaśniaj, sprawdzaj wiedzę",
-        "roleplay": "Postacie, scenariusze",
+        "roleplay": "Postacie, sytuacje",
         "creative_writing": "Opowiadania, pomysły, szkice",
         "else": "Przejrzyj wszystkich Kumpli później w aplikacji",
         "smartchat": "Przyjazny towarzysz na co dzień"
       },
       "body": "Wybierz temat, o którym chcesz porozmawiać – dobierzemy Ci kumpla, który będzie pasował do Twojego telefonu.",
       "topic": {
-        "smartchat": "Inteligentny Czat",
+        "smartchat": "Czat na co dzień",
         "coding": "Programowanie",
         "education": "Edukacja",
         "roleplay": "Odgrywanie ról",
@@ -1448,22 +1448,22 @@
         "balanced": "Zrównoważony",
         "best": "Najlepszy"
       },
-      "subtitleTemplate": "{{name}} myśli za pomocą niewielkiego modelu sztucznej inteligencji na telefonie – wybierz taki, który Ci odpowiada.",
+      "subtitleTemplate": "{{name}} działa na niewielkim modelu AI i możesz przełączać w każdej chwili. Wybierz taki, który pasuje do Twojego telefonu.",
       "pal": {
         "pip": {
-          "body": "Znaleźliśmy dla Ciebie idealnego kumpla - przyjaznego towarzysza na co dzień. Wystarczająco inteligentny, by poradzić sobie z większością zadań, i wystarczająco lekki, by pasować do każdego telefonu."
+          "body": "Znaleźliśmy dla Ciebie idealnego kumpla — przyjaznego towarzysza na co dzień. Wystarczająco sprytny, by poradzić sobie z większością rzeczy, i wystarczająco lekki, by działać na każdym telefonie."
         },
         "codie": {
-          "body": "Poznaj Codie — Twojego lokalnego partnera do programowania. Czyta kod, pisze kod i wyjaśnia skomplikowane fragmenty, nie opuszczając przy tym nigdy Twojego telefonu."
+          "body": "Poznaj Codie — Twojego lokalnego partnera programowania. Czyta kod, pisze kod i wyjaśnia trudne fragmenty, nie opuszczając nigdy Twojego telefonu."
         },
         "sage": {
-          "body": "Sage jest cierpliwy, ciekawy świata i krok po kroku wyjaśnia różne pomysły. To taki kolega do nauki, którego zawsze masz pod ręką."
+          "body": "Sage jest cierpliwy, ciekawy świata i krok po kroku prowadzi przez pomysły. Kolega do nauki, którego trzymasz w kieszeni."
         },
         "echo": {
-          "body": "Echo to wszechstronny towarzysz w grach fabularnych — pozostaje w charakterze swojej postaci, maluje sceny i podąża za Tobą, dokądkolwiek zaprowadzi cię Twoja historia."
+          "body": "Echo to wszechstronny towarzysz w grach fabularnych — pozostaje w charakterze, maluje sceny i podąża za Twoją historią, dokądkolwiek zmierza."
         },
         "muse": {
-          "body": "Muse pomaga w pisaniu. Sugeruje sformułowania, nadaje tekstowi rytm i pozwala zachować odpowiedni ton."
+          "body": "Muse pomaga w pisaniu. Sugeruje sformułowania, znajduje rytm i pozwala zachować Twój ton."
         }
       }
     },
@@ -1471,39 +1471,39 @@
     "skip": "Pomiń",
     "skipForNow": "Na razie pomiń",
     "splash": {
-      "brand": "PocketPal"
+      "brand": "Pocket Chick"
     },
     "screen1": {
       "title": "Poznaj swoich kumpli.",
       "titleAccent": "kumple.",
-      "body": "Sprytni mali przyjaciele, którzy mieszkają w Twoim telefonie.\nZacznijmy konfigurację – to zajmie tylko chwilę.",
+      "body": "Sprytni mali przyjaciele, którzy mieszkają w Twoim telefonie — czat, rysowanie, zabawa, opowieści, przygody.\nZacznijmy konfigurację — to zajmie tylko chwilę.",
       "cta": "Oprowadź mnie",
-      "eyebrow": "Witaj w PocketPal"
+      "eyebrow": "Witaj w Pocket Chick"
     },
     "screen3": {
       "cta": "Rozumiem",
-      "eyebrow": "Uwaga",
-      "title": "Mniejszy,\nale za to Twój.",
-      "titleAccent": "Mniejszy,",
-      "body": "Kumple na Twoim telefonie działają szybko i zapewniają prywatność – ale są mniej rozbudowani niż sztuczna inteligencja w chmurze. Pomyśl o nich raczej jak o kieszonkowych towarzyszach, a nie wszechwiedzących wyroczniach.",
-      "highlight": "szybko i dyskretnie"
+      "eyebrow": "W pełni offline",
+      "title": "Kiedy chcesz,\nGdzie chcesz.",
+      "titleAccent": "Kiedy chcesz,",
+      "body": "Bez internetu, bez zasięgu, bez problemu — w samolocie, w windzie, w odległej wiosce Twoi kumple są wciąż przy Tobie.\nMali i sprytni, odrobinę lżejsi niż wielkie mózgi chmury — ale szybcy, prywatni i zawsze Twoi.",
+      "highlight": "Bez internetu, bez zasięgu"
     },
     "screen4": {
       "title": "Żadne dane nie opuszczają Twojego telefonu.",
       "titleAccent": "opuszcza",
-      "body": "Żadnych kont. Żadnej chmury. Żadnego śledzenia. Twoje rozmowy pozostają wyłącznie Twoje.",
+      "body": "Żadnych kont. Żadnej chmury. Żadnego śledzenia. Twoje czaty i zdjęcia pozostają Twoje.\nW pełni open source — każdy może sprawdzić kod.",
       "highlight": "Żadnych kont. Żadnej chmury. Żadnego śledzenia.",
       "eyebrow": "Gwarancja prywatności",
       "cta": "Zaczynajmy",
       "storageNote": "Przy pierwszym uruchomieniu poprosimy o „Dostęp do wszystkich plików” — tylko do odczytu folderu modeli i kopii zapasowych czatów. Można to zmienić w ustawieniach systemu."
     },
     "screen2": {
-      "title": "Kiedy chcesz,\nGdzie chcesz.",
-      "body": "Twoi Kumple żyją w Twoim telefonie.\nBez internetu, bez zasięgu – działają w samolotach, poza siecią, w odległych wioskach.",
-      "highlight": "Bez internetu, bez sieci",
+      "title": "Więcej niż\naplikacja czatu.",
+      "body": "Czat, rysowanie obrazków, czytanie opowieści, przygody, rozmowy z nimi — wszystko generowane bezpośrednio na Twoim telefonie. Nawet zdjęcia, które zrobisz, można powiększyć 4× wyraźniej.",
+      "highlight": "wszystko generowane bezpośrednio na Twoim telefonie",
       "cta": "Następny",
-      "eyebrow": "Pomysł",
-      "titleAccent": "Kiedy tylko zechcesz,"
+      "eyebrow": "Więcej do odkrycia",
+      "titleAccent": "aplikacja czatu."
     }
   },
   "memory": {

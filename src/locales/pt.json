@@ -1531,35 +1531,35 @@
     "skip": "Ignorar",
     "skipForNow": "Ignorar por agora",
     "splash": {
-      "brand": "PocketPal"
+      "brand": "Pocket Chick"
     },
     "screen1": {
       "title": "Conheça os seus pals.",
-      "body": "Pequenos amigos inteligentes que vivem dentro do seu telemóvel.\nVamos ajudá-lo a configurar - vai levar só um minuto.",
+      "body": "Pequenos amigos inteligentes que vivem dentro do seu telemóvel — conversar, desenhar, brincar, histórias, aventuras.\nVamos configurar — leva só um minuto.",
       "cta": "Mostre-me Como Funciona",
-      "eyebrow": "Bem-vindo ao PocketPal",
+      "eyebrow": "Bem-vindo ao Pocket Chick",
       "titleAccent": "pals."
     },
     "screen2": {
-      "title": "A Qualquer Hora,\nEm Qualquer Lugar.",
-      "body": "Os seus pals vivem dentro do seu telemóvel.\nSem internet, sem sinal - eles funcionam em aviões, fora da rede, em vilarejos remotos.",
-      "highlight": "Sem internet, sem sinal",
+      "title": "Mais do que\num app de chat.",
+      "body": "Conversar, desenhar imagens, ler histórias, viver aventuras, falar com eles — tudo gerado diretamente no seu telemóvel. Até as fotos que tirar podem ser ampliadas 4× mais nítidas.",
+      "highlight": "tudo gerado diretamente no seu telemóvel",
       "cta": "Próximo",
-      "eyebrow": "A ideia",
-      "titleAccent": "A Qualquer Hora,"
+      "eyebrow": "Mais para explorar",
+      "titleAccent": "um app de chat."
     },
     "screen3": {
-      "title": "Menores,\nmas os seus.",
-      "titleAccent": "Menores,",
-      "body": "Os pals no seu telemóvel são rápidos e privados - mas mais leves que a IA na nuvem. Pense num companheiro de bolso, não num oráculo onisciente.",
-      "highlight": "rápidos e privados",
+      "title": "A Qualquer Hora,\nEm Qualquer Lugar.",
+      "titleAccent": "A Qualquer Hora,",
+      "body": "Sem internet, sem sinal, sem problema — num avião, num elevador, numa aldeia remota, os seus pals continuam lá.\nPequenos e astutos, um pouco mais leves que os grandes cérebros da nuvem — mas rápidos, privados e sempre seus.",
+      "highlight": "Sem internet, sem sinal",
       "cta": "Percebi",
-      "eyebrow": "Um aviso"
+      "eyebrow": "Totalmente offline"
     },
     "screen4": {
       "title": "Nada sai do seu telemóvel.",
       "titleAccent": "sai",
-      "body": "Sem contas. Sem nuvem. Sem rastreamento. As suas conversas continuam a serem as suas.",
+      "body": "Sem contas. Sem nuvem. Sem rastreamento. As suas conversas e fotos continuam a ser suas.\nTotalmente open source — qualquer um pode verificar o código.",
       "highlight": "Sem contas. Sem nuvem. Sem rastreamento.",
       "cta": "Começar",
       "eyebrow": "Privacidade garantida",
@@ -1569,7 +1569,7 @@
       "title": "Para que é o seu pal?",
       "body": "Escolha o que gostaria de discutir - vamos combinar um pal que se encaixe no seu telemóvel.",
       "topic": {
-        "smartchat": "Chat Inteligente",
+        "smartchat": "Chat do dia a dia",
         "coding": "Programação",
         "education": "Educação",
         "roleplay": "Interpretação",
@@ -1580,7 +1580,7 @@
         "smartchat": "Companheiro amigável para o dia a dia",
         "coding": "Codifica, depura, explica",
         "education": "Aprenda, explique, faça testes",
-        "roleplay": "Personagens, cenários",
+        "roleplay": "Personagens, situações",
         "creative_writing": "Histórias, ideias, rascunhos",
         "else": "Explore todos os pals depois na app"
       }
@@ -1598,7 +1598,7 @@
         "balanced": "Equilibrado",
         "best": "Melhor"
       },
-      "subtitleTemplate": "{{name}} pensa usando um pequeno modelo de IA no seu telemóvel - escolha um que se encaixe.",
+      "subtitleTemplate": "{{name}} funciona com um pequeno modelo de IA e pode alternar quando quiser. Escolha um que se encaixe no seu telemóvel.",
       "pal": {
         "pip": {
           "body": "Encontramos o pal perfeito para si - um companheiro amigável para o dia a dia. Inteligente o suficiente para a maioria das coisas, leve o suficiente para qualquer telemóvel."

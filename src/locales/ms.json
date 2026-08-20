@@ -1531,35 +1531,35 @@
     "skip": "Langkau",
     "skipForNow": "Langkau buat masa ini",
     "splash": {
-      "brand": "PocketPal"
+      "brand": "Pocket Chick"
     },
     "screen1": {
       "title": "Kenali pal anda.",
       "titleAccent": "pal anda.",
-      "body": "Kawan kecil yang bijak, hidup di dalam telefon anda.\nJom siapkan persediaan - hanya ambil seminit.",
+      "body": "Kawan kecil yang bijak, hidup di dalam telefon anda — bersembang, melukis, bermain, cerita, pengembaraan.\nJom siapkan persediaan — hanya ambil seminit.",
       "cta": "Tunjuk sekeliling",
-      "eyebrow": "Selamat datang ke PocketPal"
+      "eyebrow": "Selamat datang ke Pocket Chick"
     },
     "screen2": {
-      "title": "Bila-bila,\nDi mana-mana.",
-      "body": "Pal anda hidup di dalam telefon anda.\nTanpa internet, tanpa isyarat - mereka berfungsi dalam kapal terbang, jauh dari grid, di kampung terpencil.",
-      "highlight": "Tanpa internet, tanpa isyarat",
+      "title": "Lebih daripada\nAplikasi Sembang.",
+      "body": "Bersembang, melukis gambar, membaca cerita, pengembaraan, bercakap dengan mereka — semuanya dijana terus pada telefon anda. Malah foto yang anda ambil boleh ditambah ketajamannya 4×.",
+      "highlight": "semuanya dijana terus pada telefon anda",
       "cta": "Seterusnya",
-      "eyebrow": "Ideanya",
-      "titleAccent": "Bila-bila,"
+      "eyebrow": "Lagi untuk diterokai",
+      "titleAccent": "Aplikasi Sembang."
     },
     "screen3": {
-      "title": "Lebih kecil,\ntapi milik anda.",
-      "titleAccent": "Lebih kecil,",
-      "body": "Pal pada telefon anda pantas dan peribadi - tetapi lebih ringan daripada AI Awan. Anggap ia teman saku, bukan pakar serba tahu.",
-      "highlight": "pantas dan peribadi",
+      "title": "Bila-bila,\nDi mana-mana.",
+      "titleAccent": "Bila-bila,",
+      "body": "Tanpa internet, tanpa isyarat, tanpa masalah — di dalam kapal terbang, di dalam lif, di kampung terpencil, pal anda masih berada di sana bersama anda.\nKecil dan tajam, sedikit lebih ringan daripada otak awan yang besar — tetapi pantas, peribadi, dan sentiasa milik anda.",
+      "highlight": "Tanpa internet, tanpa isyarat",
       "cta": "Faham",
-      "eyebrow": "Sekadar makluman"
+      "eyebrow": "Sepenuhnya Luar Talian"
     },
     "screen4": {
       "title": "Tiada apa keluar dari telefon anda.",
       "titleAccent": "keluar",
-      "body": "Tiada akaun. Tiada awan. Tiada penjejakan. Perbualan anda kekal milik anda.",
+      "body": "Tiada akaun. Tiada awan. Tiada penjejakan. Perbualan dan foto anda kekal milik anda.\nSepenuhnya sumber terbuka — sesiapa sahaja boleh menyemak kod.",
       "highlight": "Tiada akaun. Tiada awan. Tiada penjejakan.",
       "cta": "Mula",
       "eyebrow": "Privasi terjamin",
@@ -1598,7 +1598,7 @@
         "balanced": "Seimbang",
         "best": "Terbaik"
       },
-      "subtitleTemplate": "{{name}} berfikir menggunakan model AI kecil pada telefon anda - pilih satu yang sesuai.",
+      "subtitleTemplate": "{{name}} berjalan pada model AI kecil, dan anda boleh bertukar bila-bila masa. Pilih satu yang sesuai dengan telefon anda.",
       "pal": {
         "pip": {
           "body": "Kami menemui pal yang sempurna untuk anda - teman harian yang mesra. Cukup bijak untuk kebanyakan perkara, cukup ringan untuk mana-mana telefon."

@@ -1531,35 +1531,35 @@
     "skip": "Lewati",
     "skipForNow": "Lewati untuk sekarang",
     "splash": {
-      "brand": "PocketPal"
+      "brand": "Pocket Chick"
     },
     "screen1": {
       "title": "Temui para pal Anda.",
       "titleAccent": "pal.",
-      "body": "Teman-teman kecil pintar yang tinggal di dalam ponsel Anda.\nMari kita siapkan - akan memakan waktu sebentar.",
+      "body": "Teman-teman kecil pintar yang tinggal di dalam ponsel Anda — mengobrol, menggambar, bermain, cerita, petualangan.\nMari kita siapkan — ini akan memakan waktu sebentar.",
       "cta": "Ajak Berkeliling",
-      "eyebrow": "Selamat Datang di PocketPal"
+      "eyebrow": "Selamat Datang di Pocket Chick"
     },
     "screen2": {
-      "title": "Kapan Saja,\nDi Mana Saja.",
-      "body": "Pal Anda tinggal di dalam ponsel Anda.\nTanpa internet, tanpa sinyal - mereka bekerja di pesawat, di luar jaringan, di desa terpencil.",
-      "highlight": "Tanpa internet, tanpa sinyal",
+      "title": "Lebih dari\nAplikasi Obrolan.",
+      "body": "Mengobrol, menggambar gambar, membaca cerita, petualangan, berbicara dengan mereka — semuanya dihasilkan langsung di ponsel Anda. Bahkan foto yang Anda ambil dapat diperbesar 4× lebih tajam.",
+      "highlight": "semuanya dihasilkan langsung di ponsel Anda",
       "cta": "Lanjut",
-      "eyebrow": "Konsepnya",
-      "titleAccent": "Kapan Saja,"
+      "eyebrow": "Lebih Banyak Lagi",
+      "titleAccent": "Aplikasi Obrolan."
     },
     "screen3": {
-      "title": "Lebih Kecil,\ntapi Milik Anda.",
-      "titleAccent": "Lebih Kecil,",
-      "body": "Pal di ponsel Anda cepat dan pribadi - namun lebih ringan dari AI Cloud. Anggap saja teman saku, bukan oracle yang tahu segalanya.",
-      "highlight": "cepat dan pribadi",
+      "title": "Kapan Saja,\nDi Mana Saja.",
+      "titleAccent": "Kapan Saja,",
+      "body": "Tanpa internet, tanpa sinyal, tanpa masalah — di pesawat, di lift, di desa terpencil, pal Anda tetap di sana bersama Anda.\nKecil dan tajam, sedikit lebih ringan dari otak besar cloud — tapi cepat, pribadi, dan selalu milik Anda.",
+      "highlight": "Tanpa internet, tanpa sinyal",
       "cta": "Mengerti",
-      "eyebrow": "Peringatan"
+      "eyebrow": "Sepenuhnya Offline"
     },
     "screen4": {
       "title": "Tidak ada yang meninggalkan ponsel Anda.",
       "titleAccent": "meninggalkan",
-      "body": "Tanpa akun. Tanpa cloud. Tanpa pelacakan. Percakapan Anda tetap milik Anda.",
+      "body": "Tanpa akun. Tanpa cloud. Tanpa pelacakan. Percakapan dan foto Anda tetap milik Anda.\nSepenuhnya sumber terbuka — siapa saja dapat memeriksa kode.",
       "highlight": "Tanpa akun. Tanpa cloud. Tanpa pelacakan.",
       "cta": "Mulai",
       "eyebrow": "Privasi Terjamin",
@@ -1598,7 +1598,7 @@
         "balanced": "Seimbang",
         "best": "Terbaik"
       },
-      "subtitleTemplate": "{{name}} berpikir menggunakan model AI kecil di ponsel Anda — pilih yang cocok.",
+      "subtitleTemplate": "{{name}} berjalan pada model AI kecil, dan Anda dapat beralih kapan saja. Pilih yang cocok untuk ponsel Anda.",
       "pal": {
         "pip": {
           "body": "Kami menemukan pal yang sempurna untuk Anda — teman sehari-hari yang ramah. Cukup pintar untuk sebagian besar hal, cukup ringan untuk ponsel mana pun."
