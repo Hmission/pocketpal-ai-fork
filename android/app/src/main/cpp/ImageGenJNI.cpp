@@ -259,7 +259,11 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
   env->ReleaseStringUTFChars(modelPath, model_path_cstr);
   if (zimage_model) {
     setenv("GGML_OPENCL_DISABLE_ADRENO_KERNELS", "1", 1);
-    setenv("GGML_OPENCL_ADRENO_XMEM_GEMM", "0", 1);
+    // 08-20 定稿（feat/zimage-xmem-tiled-verify 实测）：XMEM 必须 unset（真关）。
+    // 代码事实：xmem 只看 env 存在性（getenv != nullptr），值 0/1 等效——旧"XMEM=0"从未真正关闭。
+    // K90 实测对比：xmem 存在（=0/=1）时 8 步采样 2033s（39.7 分钟）；xmem 真关后 8 步采样 512.56s，
+    // 全流程 655.5s（10.9 分钟），提速 3.6 倍，nan/inf=0，VAE tiled 112s 稳定（三次真机两次正常出图）。
+    unsetenv("GGML_OPENCL_ADRENO_XMEM_GEMM");
   } else {
     unsetenv("GGML_OPENCL_DISABLE_ADRENO_KERNELS");
     unsetenv("GGML_OPENCL_ADRENO_XMEM_GEMM");
