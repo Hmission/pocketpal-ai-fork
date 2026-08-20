@@ -78,10 +78,12 @@ export const BUILTIN_MANIFESTS: ImageGenManifest[] = [
     // 08-16 已跑通：K90（Adreno 840）8 步 512px 全流程 39.7 分钟，LLM 编码 141s + 采样 nan/inf=0 + VAE 1664MB 直接分配
     // 08-17 大王确认：端侧三模型（DreamLite/SD3.5/Z-Image）均已跑通，去除实验性标记
     // 08-17 顺序卸载探索：Z-Image 6.9GB 对中低端（小米13 GPU~2.8G）是硬件上限，cpu residency+stream_layers 无法跑通 → 仅高端设备
+    // 08-20 XMEM 定稿：xmem 存在（=0/=1）时采样 2033s（39.7 分钟）；unset（真关）后采样 512.56s、
+    // 全流程 655.5s（10.9 分钟，提速 3.6 倍，nan/inf=0，VAE tiled 112s 稳定）
     experimental: false,
     requiresHighGpu: true,
     defaults: {steps: 8, cfg: 1, size: 512, backend: 'OpenCL'},
-    note: '无审查，中文优化；K90 8 步 512px 约 40 分钟；需 6.9GB 权重，仅高端设备（中低端 Adreno 740 级 OpenCL 驱动采样 hang，实测无解）',
+    note: '无审查，中文优化；K90 8 步 512px 约 11 分钟（XMEM 真关，08-20 实测 655s）；需 6.9GB 权重，仅高端设备（中低端 Adreno 740 级 OpenCL 驱动采样 hang，实测无解）',
   },
 ];
 

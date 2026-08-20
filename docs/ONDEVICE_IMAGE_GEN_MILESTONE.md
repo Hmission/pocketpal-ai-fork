@@ -113,11 +113,13 @@
 |---|---|---|---|
 | Adreno 全恢复 | 8 步 19.5 分钟（每步 72s，提速 1.9 倍） | **进程被杀**（XMEM 零拷贝致内存峰值） | ✗ |
 | 只禁 DISABLE（XMEM 开） | 8 步 1169s 无 NaN | **VAE 解码进程被杀**（14:27:30 app died） | ✗ |
-| **双禁用（最终）** | 8 步 2033s 无 NaN | VAE 206s 成功 | ✅ 39.7 分钟 |
+| **双禁用（08-16 最终）** | 8 步 2033s 无 NaN | VAE 206s 成功 | ✅ 39.7 分钟 |
+| **XMEM 真关（08-20 定稿）** | 8 步 512.56s（每步 ~64s）无 NaN | VAE tiled 112.18s 成功 | ✅ **655.5s（10.9 分钟）** |
 
-- Z-Image cross-attn 值域大（±1e4 vs SD3.5 ±7）→ Adreno fp16 内核累积溢出 → step 全 NaN
-- XMEM 零拷贝 → VAE 解码内存峰值超限 → 进程被杀（6.9GB 权重 + 1664MB buffer）
-- **结论**：Z-Image 双禁用保稳定（39.7 分钟）；SD3.5/DreamLite 恢复 Adreno 内核提速
+- **08-20 重大发现**：`GGML_OPENCL_ADRENO_XMEM_GEMM` 只看 env 存在性（`getenv != nullptr`），值 0/1 等效——旧"XMEM=0"从未真正关闭 xmem，双禁用实际是"xmem 开 + Adreno 内核关"。unset（真关）后采样 512.56s（提速 4 倍），全流程 655.5s（提速 3.6 倍）。实现：ImageGenJNI zimage 分支 `unsetenv`（feat/zimage-xmem-tiled-verify）。
+- **质量观察（3 次真机）**：两次正常出图；一次纯灰图（疑抖动）、一次只有背景无主体——偶发，未复现规律，暂不阻塞（后续可关注 tiled overlap 拼接与条件编码偶发）。
+- Z-Image cross-attn 值域大（±1e4 vs SD3.5 ±7）→ Adreno fp16 内核累积溢出 → step 全 NaN（DISABLE=1 保精度保留）
+- **结论**：Z-Image = XMEM 真关 + DISABLE=1 + tiled VAE（10.9 分钟）；SD3.5/DreamLite 恢复 Adreno 内核提速
 
 ### 6.4 最终速度标注（manifest note）
 
