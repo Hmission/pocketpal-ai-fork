@@ -19,19 +19,24 @@ export const styles = ({
       backgroundColor: currentUserIsAuthor
         ? theme.colors.authorBubbleBackground
         : theme.colors.assistantBubbleBackground,
-      // task-6ad §20.2 圆角区分：用户右上直角、回答系左上直角（同族同步）。
-      // 四角显式拆分（删 borderRadius 统一速记——其会覆盖顶部两角，使直角失效）。
-      // 底部两角保持原 roundBorder 逻辑（组内连续直角）。overflow:hidden 已有。
-      borderTopLeftRadius: currentUserIsAuthor ? theme.borders.messageBorderRadius : 0,
-      borderTopRightRadius: currentUserIsAuthor ? 0 : theme.borders.messageBorderRadius,
-      borderBottomLeftRadius:
-        currentUserIsAuthor || roundBorder
+      // 尾角下移（v4.3 同族同步）：用户右下直角、回答系左下直角。
+      // 四角显式拆分（删 borderRadius 统一速记——其会覆盖各角显式值，使直角失效）。
+      // 顶部同侧角保持原 roundBorder 逻辑（组内最后一条形成同侧全直边）。overflow:hidden 已有。
+      borderTopLeftRadius: currentUserIsAuthor
+        ? theme.borders.messageBorderRadius
+        : roundBorder
           ? theme.borders.messageBorderRadius
           : 0,
-      borderBottomRightRadius: currentUserIsAuthor
+      borderTopRightRadius: currentUserIsAuthor
         ? roundBorder
           ? theme.borders.messageBorderRadius
           : 0
+        : theme.borders.messageBorderRadius,
+      borderBottomLeftRadius: currentUserIsAuthor
+        ? theme.borders.messageBorderRadius
+        : 0,
+      borderBottomRightRadius: currentUserIsAuthor
+        ? 0
         : theme.borders.messageBorderRadius,
       borderColor: 'transparent',
       overflow: 'hidden',

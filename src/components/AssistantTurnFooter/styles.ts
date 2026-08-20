@@ -34,6 +34,10 @@ export const styles = ({theme}: {theme: Theme}) =>
       alignItems: 'center',
       flexWrap: 'wrap',
       marginTop: theme.spacing.xxs,
+      // 按钮栏与信息栏之间 hairline 分隔（v4.3，与动作槽 actionsSlot 同分隔语言）
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.colors.outline,
+      paddingTop: theme.spacing.xxs,
     },
     metricsSection: {
       flexDirection: 'row',

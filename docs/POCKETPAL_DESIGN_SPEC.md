@@ -360,6 +360,7 @@ ScrollView
 | B21 | **GitHub 开源发布 + 多玩法品牌定位 + v2.0.0 自主版本机制**：①AboutScreen GitHub 入口（openSource.ts 常量 + Linking，16 语言）；②16 语言 about 文案开源定位升级 + APP_INTRO_COPY 三版式 + README 仓库首页；③git 历史重写 Hmission 身份 + master→main + 仓库创建推送；④开源边界清理（.qoder/aios/governance/lora/adr 等内部资产全历史移除 + .gitignore 收口）；⑤多玩法标语（聊天/生图/玩乐/绘本/冒险全离线）替换「部署大语言模型」旧定位，全链路同步（16 语言/README/APP_INTRO_COPY/AGENTS/PRODUCT_SPEC/GitHub description）；⑥v2.0.0 定版（1.16.1 上游遗产 → 2.0.0，versionCode 144 四处同步）+ bump-version.js 单点命令（jest 5/5）+ tag v2.0.0 | PRODUCT_SPEC §1.1/§6.1 SSOT | tsc 0 错 + jest 8/8 + l10n valid + 真机 dex 取证版本实锤 | ✅ 已完成（2026-08-19~20） |
 | B22 | **上下文压缩链路根治 + 出图按钮失效修复**：①B19.1 压缩执行死锁根治（小米 13 DRC 血证）六项——水位双源校准（resolveWatermark 消费 lastCompletionResult.used 钉底）+ 生成预留（GENERATION_RESERVE=512）+ 摘要工作集预算化（tokenBudgetToMaxChars 1:1 保守折算）+ 满态显式失败（饱和跳过压缩，context-full banner 用户主权，不静默不换引擎）+ 防抢检查限定显式引擎路径（pre-send 压缩自身 inferencing=true 不被 1ms 拦死）+ createNewSession 快照重置（欠账残留不误伤新会话首条）；真机全链路证据链：send-saturated → 87% 触发 → summary-ok(342字) → context_compacted(7条) → 压缩后 5/5 轮 contextFull=false + 循环二次压缩 + footer「压缩 19」计数 UI 可见；②出图按钮 onPress 直传 async 函数致 GestureResponderEvent 污染 promptOverride → TypeError 静默吞掉（两台真机 + DRC 三重复现），修复 `onPress={() => onGenerate()}` 显式无参包装 + testID + RNTL 回归防线（fireEvent.press 显式注入 event 模拟真机） | CONTEXT_COMPACTION_SPEC v1.1 / IMAGEGEN_UI_SPEC v2.1 | tsc 0 错 + jest 52/52（全量 4498）+ 小米 13 DRC 全链路 5/5 验证 | ✅ 已完成（2026-08-20） |
 | B23 | **浮层与横幅体系收敛（单一事实源）**：①§12 契约定稿；②ui/OverlayCard 弹窗底座（4 命令式弹窗 + Memory×2/ImageGen 参数/RenameModal 迁移）；③ui/BannerBar 横幅底座（BannerRow/ActiveTaskBanner/DownloadBanner 收敛，进度条三套合一）；④删除休眠组件 ui/Modal、ui/Sheet、ui/Dialog 与自建 useToast；⑤ErrorSnackbar 图标自绘化 + UpscalePanel 改 Sheet + Sheet 底色 surfaceElevated | §12 定稿 | tsc 0 错 + jest 全绿 + 真机双模式走查（弹窗/横幅/提示面零回归） | ✅ 已完成（2026-08-20） |
+| B24 | **聊天卡片尾角下移 + footer 分隔线（大王裁定）**：消息卡片尾角从顶部移到底部——用户卡右下直角、回答系（正文/思考/进度卡）左下直角（Bubble·Message·ThinkingBubble·PendingIndicator 同族，roundBorder 逻辑镜像至顶部同侧角，组内最后一条形成同侧全直边）；AssistantTurnFooter 按钮栏与信息栏之间加 hairline 分隔横线（与动作槽同分隔语言） | CHAT_UI_SPEC §20.2 v4.6 | tsc 0 错 + jest 58 全绿 + 双机真机像素级验证（小米 13 行扫描：AI 卡左上圆角/左下直角、用户卡右上圆角/右下直角、思考卡左上圆角/左下直角、分割线可见；K90 大王目视确认） | ✅ 已完成（2026-08-20） |
 
 **批次间依赖**：B1 前置最大（聊天域，含 §8 旧债务 4 项中的 2 项），完成后旧债务全部清零；新债务一律按本表规则补录（批次号 + 验收 + 前置），不允许无批次挂账。
 
@@ -453,6 +454,7 @@ HtmlPreviewBubble / ResultPreview / TextMessage 图片全屏 / ZoomableImage：�
 
 | 日期 | 版本 | 变更 |
 |------|------|------|
+| 2026-08-20 | 3.7 | Gap Ledger 补 B24（聊天卡片尾角下移 + footer 分隔线，大王裁定）：用户右下直角 / 回答系左下直角（Bubble·Message·ThinkingBubble·PendingIndicator 同族）+ AssistantTurnFooter 按钮栏与信息栏 hairline 分隔；relates 挂 CHAT_UI_SPEC §20.2 v4.6 |
 | 2026-08-20 | 3.6 | Gap Ledger B22 修订：B19.1 六项根治（补防抢检查限定显式引擎路径 + createNewSession 快照重置）+ 小米 13 DRC 全链路证据链（87% 触发 → summary-ok 342字 → context_compacted 7条 → 5/5 轮 contextFull=false + 压缩19计数） |
 | 2026-08-20 | 3.5 | B23（浮层与横幅体系收敛）：§12 浮层与横幅契约定稿（弹窗四要素/横幅三要素/图标铁律/全屏豁免）；ui/OverlayCard + ui/BannerBar 唯一底座；删除休眠组件 ui/Modal、ui/Sheet、ui/Dialog；轻提示归一 Paper Snackbar |
 | 2026-08-20 | 3.2 | Gap Ledger 补 B20（RealESRGAN 通用图像放大 + 全屏预览交互）；relates 挂 IMAGE_GEN_UPGRADE_PLAN §6.19 |

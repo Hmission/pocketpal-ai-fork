@@ -35,17 +35,25 @@ const styles = ({
         !currentUserIsAuthor || message.type === 'image'
           ? theme.colors.secondary
           : theme.colors.primary,
-      borderBottomLeftRadius:
-        currentUserIsAuthor || roundBorder
+      // 尾角下移（v4.3，与 Bubble 同构）：用户右下直角、回答系左下直角。
+      // 四角显式拆分（删 borderRadius 统一速记——其会覆盖各角显式值，使直角失效）。
+      borderTopLeftRadius: currentUserIsAuthor
+        ? theme.borders.messageBorderRadius
+        : roundBorder
           ? theme.borders.messageBorderRadius
           : 0,
-      borderBottomRightRadius: currentUserIsAuthor
+      borderTopRightRadius: currentUserIsAuthor
         ? roundBorder
           ? theme.borders.messageBorderRadius
           : 0
         : theme.borders.messageBorderRadius,
+      borderBottomLeftRadius: currentUserIsAuthor
+        ? theme.borders.messageBorderRadius
+        : 0,
+      borderBottomRightRadius: currentUserIsAuthor
+        ? 0
+        : theme.borders.messageBorderRadius,
       borderColor: 'transparent',
-      borderRadius: theme.borders.messageBorderRadius,
       overflow: 'hidden',
     },
     dateHeader: {

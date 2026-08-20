@@ -450,15 +450,16 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 - **`renderBubble` 门控（复查定稿 2026-08-20）**：`ChatScreen.renderBubble` 仅对非 `assistant_turn` 消息渲染 `AssistantAuthorRow`（`message.type !== 'assistant_turn'`）——turn 的徽章行已由 `Message.renderAssistantTurn` turn 级渲染一次，若 renderBubble 对每个内容块再渲染即 N+1 重复（P0 修复，`renderBubble.test.tsx` 三用例防回归：turn 不渲染 / text 渲染 / 用户消息永不渲染）。
 - 意图胶囊点击行为原样保留（会话级状态机，IntentPickerHost 根挂载点不变）；**选择器初始值 = 会话实时意图** `chatSessionStore.activeSessionIntent`（与胶囊快照解耦，会话中途切换后点旧消息胶囊高亮当前状态）。
 
-### 20.2 圆角区分：用户右上直角 / 大模型系左上直角（同族同步）
+### 20.2 圆角区分：用户右下直角 / 大模型系左下直角（尾角下移 v4.3）
 
-- **语义**：用户发出卡片 = 右上角直角（尾角在右上）；大模型回答系卡片 = 左上角直角（尾角在左上）。
-- **`Bubble/styles.ts` contentContainer**：四角显式拆分（删除 `borderRadius` 统一速记——其会覆盖顶部两角，使直角裁剪失效）；
-  底部两角逻辑保持（`roundBorder` 组内连续）。`overflow: 'hidden'` 已有，直角裁剪自动生效。
+- **语义**：用户发出卡片 = 右下角直角（尾角在右下）；大模型回答系卡片 = 左下角直角（尾角在左下）。
+  （v4.4 初版为「用户右上 / 回答系左上」，2026-08-20 大王裁定尾角下移：直角随消息流方向收在底部。）
+- **`Bubble/styles.ts` contentContainer**：四角显式拆分（删除 `borderRadius` 统一速记——其会覆盖各角显式值，使直角裁剪失效）；
+  顶部同侧角保持 `roundBorder` 逻辑（组内最后一条形成同侧全直边）。`overflow: 'hidden'` 已有，直角裁剪自动生效。
 - **覆盖范围**：用户文本消息 / assistant 正文卡片 / legacy text / 图片·文件·自定义消息（共用 contentContainer）全族统一。
-- **`ThinkingBubble/styles.ts` container**：左上直角（`borderTopLeftRadius: 0`）+ 其余三角 `theme.radius.l`；
+- **`ThinkingBubble/styles.ts` container**：左下直角（`borderBottomLeftRadius: 0`）+ 其余三角 `theme.radius.l`；
   折叠态 `collapsedRow` 无卡片背景，不动。
-- **`PendingIndicator/styles.ts` card**：左上直角（`borderTopLeftRadius: 0`）+ 其余三角 `theme.borders.messageBorderRadius`。
+- **`PendingIndicator/styles.ts` card**：左下直角（`borderBottomLeftRadius: 0`）+ 其余三角 `theme.borders.messageBorderRadius`。
 
 ### 20.3 顶栏三控件水平等距
 
@@ -484,7 +485,7 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 - 无 l10n 文案变更，无需 `validate:l10n`。
 - 验证链路：`npx tsc --noEmit` 零错 → `npx jest` 相关套件
   （`Message.assistantTurn` / `ChatView.assistantTurn` / `ThinkingBubble` / `PendingIndicator` / `HeaderRight` / `ChatHeader` / `AssistantTurnFooter`）全绿 →
-  真机覆盖安装 + 冷启动目测：① 徽章行 → 思考卡 → 正文卡顺序；② 用户卡右上直角、回答卡/思考卡/进度卡左上直角；③ 顶栏三控件间距等距。
+  真机覆盖安装 + 冷启动目测：① 徽章行 → 思考卡 → 正文卡顺序；② 用户卡右下直角、回答卡/思考卡/进度卡左下直角（v4.6 尾角下移）；③ 顶栏三控件间距等距。
 
 ## 变更日志
 
@@ -509,4 +510,5 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 | 2026-08-19 | 4.2 | §18.9 进度监控卡卡片化：容器升级 assistant 卡片设计语言（底色+圆角），K90 真机复查「一行文本视觉权重不足」裁定 |
 | 2026-08-20 | 4.3 | §19 B19.1 链路根治（小米 13 DRC 血证，CONTEXT_COMPACTION_SPEC v1.1）：触发线含生成预留(512)、水位双源校准（实测钉底估算漂移）、摘要工作集预算化（min(6000, n_ctx−400)）、满态显式失败（饱和跳过压缩，context-full banner 用户主权，不静默不换引擎） |
 | 2026-08-20 | 4.4 | §20 聊天页 UI 三处优化（task-6ad）：抽取 `AssistantAuthorRow` 单一事实源（徽章/意图上移助手卡顶行，`assistant_turn` 与 `text` 复用）；圆角区分（用户右上直角 / 回答系左上直角，Bubble·ThinkingBubble·PendingIndicator 同族）；顶栏三控件等距（HeaderRight gap 10）；footer 快捷图标间距 6→14 |
+| 2026-08-20 | 4.6 | §20.2 尾角下移（大王裁定）：用户右下直角 / 回答系左下直角（Bubble·Message·ThinkingBubble·PendingIndicator 同族，roundBorder 逻辑镜像至顶部同侧角）；AssistantTurnFooter 按钮栏与信息栏之间加 hairline 分隔横线（与动作槽同分隔语言） |
 | 2026-08-20 | 4.5 | §20 复查闭环（task-6ad 全量审计，K90 真机像素验证）：**P0** `ChatScreen.renderBubble` 加 `assistant_turn` 门控（turn 级仅一次，根除徽章行 N+1 重复，新增 `renderBubble.test.tsx` 三用例防回归）；`AssistantAuthorRow` 修正（author.id 硬编码 → 真实 `user.id`、意图选择器初始值改会话实时 `activeSessionIntent`、动态 import 改静态）；§20.3 顶栏等距度量重定义（图标视觉空隙为准，`compactBtnLeft` + `marginLeft -6dp`，真机 35/36px delta=1px） |

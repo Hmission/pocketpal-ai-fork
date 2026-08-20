@@ -96,8 +96,9 @@ describe('PendingIndicator — 生成进度监控卡（§18.9）', () => {
     const card = getByTestId('pending-indicator');
     const flat = StyleSheet.flatten(card.props.style);
     expect(flat.backgroundColor).toBeTruthy();
-    // task-6ad §20.2：四角显式拆分（删 borderRadius 速记），左上直角、
-    // 其余三角 = messageBorderRadius（>0）。改为校验右下角圆角存在。
+    // 尾角下移（v4.3）：四角显式拆分（删 borderRadius 速记），左下直角、
+    // 其余三角 = messageBorderRadius（>0）。校验左下直角 + 右下圆角。
+    expect(flat.borderBottomLeftRadius).toBe(0);
     expect(flat.borderBottomRightRadius).toBeGreaterThan(0);
   });
 });
