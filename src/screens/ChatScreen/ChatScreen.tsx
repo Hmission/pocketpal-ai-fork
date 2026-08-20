@@ -48,7 +48,9 @@ import {VideoPalScreen} from './VideoPalScreen';
 // B18 §17 / §18.1：模型徽章 + 意图胶囊已抽离至 AssistantAuthorRow（单一事实源），
 // ChatScreen.renderBubble 与 Message.renderAssistantTurn 共用。本文件不再内联。
 
-const renderBubble = ({
+// 导出供 renderBubble 门控测试（防回归）：assistant_turn 徽章行由
+// Message.renderAssistantTurn turn 级渲染，此处仅非 turn 消息渲染。
+export const renderBubble = ({
   child,
   message,
   nextMessageInGroup,
@@ -63,9 +65,13 @@ const renderBubble = ({
 }) => {
   return (
     <View>
-      {/* task-6ad §20.1：徽章/意图改走单一事实源 AssistantAuthorRow
-          （与 assistant_turn 共用），text 类消息保持「徽章 → 卡片」顺序 */}
-      <AssistantAuthorRow message={message} />
+      {/* task-6ad §20.1：徽章/意图改走单一事实源 AssistantAuthorRow。
+          assistant_turn 已由 Message.renderAssistantTurn 在 turn 级顶部渲染一次
+          （思考卡之前），此处仅 text/image/file 等非 turn 消息渲染——
+          若对 turn 内容块也渲染，每个内容块都会多出一行徽章（N+1 重复）。 */}
+      {message.type !== 'assistant_turn' ? (
+        <AssistantAuthorRow message={message} />
+      ) : null}
       <Bubble
         child={child}
         message={message}

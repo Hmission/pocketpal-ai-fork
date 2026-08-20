@@ -168,7 +168,8 @@ export const HeaderRight: React.FC = observer(() => {
         anchorPosition="bottom"
         anchor={
           <TouchableOpacity
-            style={styles.compactBtn}
+            // §20.3：三点图标左贴（compactBtnLeft），与加号右留白形成等距空隙
+            style={styles.compactBtnLeft}
             onPress={openMenu}
             testID="menu-button"
             accessibilityRole="button">

@@ -6,7 +6,9 @@ import {useTheme} from '../../hooks';
 import {MessageType} from '../../utils/types';
 import {getModelDisplayName} from '../../utils/modelDisplayNames';
 import {withOpacity} from '../../utils/colorUtils';
+import {user} from '../../utils/chat';
 import {askIntentChoice} from '../ui/IntentPicker';
+import {chatSessionStore} from '../../store';
 import type {IntentKind} from '../../services/aiosMemory/rituals';
 
 import {styles} from './styles';
@@ -21,12 +23,12 @@ const INTENT_LABEL: Record<string, string> = {
 };
 
 // §18.1 意图胶囊点按：会话级状态机的唯一用户写入口。
+// 选择器初始值 = 会话实时意图（activeSessionIntent，与胶囊快照解耦——
+// 会话中途切换后点旧消息胶囊，高亮的是当前会话状态而非过期快照）。
 // 选择器取消（null）不改状态；Host 未挂载时 fail-fast 同样不改状态。
-const handleIntentPress = async (currentIntent: IntentKind | undefined) => {
-  const next = await askIntentChoice(currentIntent);
+const handleIntentPress = async () => {
+  const next = await askIntentChoice(chatSessionStore.activeSessionIntent);
   if (next) {
-    // setSessionIntent 来自 chatSessionStore，延迟到调用处以避免循环依赖
-    const {chatSessionStore} = await import('../../store');
     await chatSessionStore.setSessionIntent(next);
   }
 };
@@ -51,8 +53,9 @@ export const AssistantAuthorRow: React.FC<AssistantAuthorRowProps> = ({
 }) => {
   const theme = useTheme();
 
-  // 非助手消息（用户/系统）不发徽章与意图
-  const isAssistant = message.author.id !== 'user';
+  // 非助手消息（用户/系统）不发徽章与意图：以真实 user.id 判定，
+  // 不硬编码字面量（userId = 'y9d7f8pgn'，硬编码 'user' 会让用户消息恒判为助手）
+  const isAssistant = message.author.id !== user.id;
   const modelName = isAssistant
     ? (message.metadata as {modelName?: string} | undefined)?.modelName
     : undefined;
@@ -89,7 +92,7 @@ export const AssistantAuthorRow: React.FC<AssistantAuthorRowProps> = ({
       {intent && INTENT_LABEL[intent] ? (
         <TouchableOpacity
           testID="assistant-intent-capsule"
-          onPress={() => handleIntentPress(intent as IntentKind | undefined)}
+          onPress={() => handleIntentPress()}
           activeOpacity={0.7}
           style={[
             s.intentCapsule,

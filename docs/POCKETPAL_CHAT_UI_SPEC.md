@@ -447,7 +447,8 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 - **`assistant_turn` 渲染器**（`Message.renderAssistantTurn`）：行级顶部（所有 reasoning/content/talent block 之前）
   插入一行 `<AssistantAuthorRow message={turn} />`，每 turn 仅一次；根除原 legacy 多块路径潜在的徽章重复渲染，单一事实源。
 - **`text` 类消息**（`renderBubble` 路径）保持「徽章 → 卡片」顺序，复用同一组件；`assistant_turn` 与 `text` 共用 `AssistantAuthorRow`，徽章/意图渲染逻辑收口一处。
-- 意图胶囊点击行为原样保留（会话级状态机，IntentPickerHost 根挂载点不变）。
+- **`renderBubble` 门控（复查定稿 2026-08-20）**：`ChatScreen.renderBubble` 仅对非 `assistant_turn` 消息渲染 `AssistantAuthorRow`（`message.type !== 'assistant_turn'`）——turn 的徽章行已由 `Message.renderAssistantTurn` turn 级渲染一次，若 renderBubble 对每个内容块再渲染即 N+1 重复（P0 修复，`renderBubble.test.tsx` 三用例防回归：turn 不渲染 / text 渲染 / 用户消息永不渲染）。
+- 意图胶囊点击行为原样保留（会话级状态机，IntentPickerHost 根挂载点不变）；**选择器初始值 = 会话实时意图** `chatSessionStore.activeSessionIntent`（与胶囊快照解耦，会话中途切换后点旧消息胶囊高亮当前状态）。
 
 ### 20.2 圆角区分：用户右上直角 / 大模型系左上直角（同族同步）
 
@@ -461,8 +462,10 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 
 ### 20.3 顶栏三控件水平等距
 
-- **`HeaderRight/styles.ts` headerRightContainer**：增加 `gap: 10`，使 模型胶囊 ↔ 加号 = 加号 ↔ 三点 = 10px（与胶囊 paddingHorizontal 8 叠加后视觉等距）；
-  `displayMemUsage` 开启时的 UsageStats 同组生效，属预期。
+- **度量基准（复查定稿 2026-08-20）**：等距以「图标间视觉空隙」为度量，**非触区间距**——加号/三点图标在 36px 触区内居中，`gap` 只拉触区间距、图标空隙被触区内部留白放大（初版 gap:10 实测空隙 35px/99px，反而拉大）。
+- **最终方案（真机像素验证 delta=1px）**：`HeaderRight/styles.ts`——`headerRightContainer` 不加 gap；新增 `compactBtnLeft`（三点按钮专用）：`width/height 36` + `alignItems: 'flex-start'`（RN column 容器水平方向由 alignItems 控制，justifyContent 只管垂直）+ `marginLeft: -6`（补偿 DotsVerticalIcon viewBox 内三点居中的左侧空白，dp 单位密度无关）；加号保持 `compactBtn` 居中。
+- **真机实测（K90，1080×2400）**：胶囊↔加号 35px / 加号↔三点 36px / delta 1px（等距达成）。
+- `displayMemUsage` 开启时 UsageStats 同组生效，属预期。
 
 ### 20.4 补充（已确认）：正文卡快捷图标间距加大
 
@@ -506,3 +509,4 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 | 2026-08-19 | 4.2 | §18.9 进度监控卡卡片化：容器升级 assistant 卡片设计语言（底色+圆角），K90 真机复查「一行文本视觉权重不足」裁定 |
 | 2026-08-20 | 4.3 | §19 B19.1 链路根治（小米 13 DRC 血证，CONTEXT_COMPACTION_SPEC v1.1）：触发线含生成预留(512)、水位双源校准（实测钉底估算漂移）、摘要工作集预算化（min(6000, n_ctx−400)）、满态显式失败（饱和跳过压缩，context-full banner 用户主权，不静默不换引擎） |
 | 2026-08-20 | 4.4 | §20 聊天页 UI 三处优化（task-6ad）：抽取 `AssistantAuthorRow` 单一事实源（徽章/意图上移助手卡顶行，`assistant_turn` 与 `text` 复用）；圆角区分（用户右上直角 / 回答系左上直角，Bubble·ThinkingBubble·PendingIndicator 同族）；顶栏三控件等距（HeaderRight gap 10）；footer 快捷图标间距 6→14 |
+| 2026-08-20 | 4.5 | §20 复查闭环（task-6ad 全量审计，K90 真机像素验证）：**P0** `ChatScreen.renderBubble` 加 `assistant_turn` 门控（turn 级仅一次，根除徽章行 N+1 重复，新增 `renderBubble.test.tsx` 三用例防回归）；`AssistantAuthorRow` 修正（author.id 硬编码 → 真实 `user.id`、意图选择器初始值改会话实时 `activeSessionIntent`、动态 import 改静态）；§20.3 顶栏等距度量重定义（图标视觉空隙为准，`compactBtnLeft` + `marginLeft -6dp`，真机 35/36px delta=1px） |
