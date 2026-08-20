@@ -62,6 +62,8 @@ describe('modelCatalog — MODEL_MATRIX 门禁', () => {
         'sd35_clip_g.safetensors',
         'sd35_clip_l.safetensors',
         'sd35_vae.safetensors',
+        // 自制 LoRA（2026-08-20 双平台分发，MODEL_MATRIX §6.1 同步）
+        'lora_humanpose.safetensors',
       ].sort(),
     );
     const zimg = CATALOG_IMAGEGEN.find(m => m.id.includes('z-image'))!;
@@ -149,6 +151,18 @@ describe('modelCatalog — MODEL_MATRIX 门禁', () => {
     );
     const vae = sd35.extras?.find(f => f.name === 'sd35_vae.safetensors');
     expect(vae?.remotePath).toBe('vae/diffusion_pytorch_model.safetensors');
+    // 自制 LoRA（2026-08-20 双平台分发）：manifest 的 lora 字段指向本文件；
+    // baked/merged GGUF 不装机（大王钦定）——catalog 不建条目
+    const lora = sd35.extras?.find(f => f.name === 'lora_humanpose.safetensors');
+    expect(lora).toBeDefined();
+    expect(lora?.sizeBytes).toBe(83138888);
+    expect(lora?.repoBySource).toEqual({
+      hf: 'QDD110/SD35-HumanPose-LoRA',
+      modelscope: 'zensignGG/SD35-HumanPose-LoRA',
+    });
+    expect(sd35.extras?.map(f => f.name)).not.toContain(
+      'sd35_medium_humanpose_baked.gguf',
+    );
 
     const zimg = CATALOG_IMAGEGEN.find(m => m.id.includes('z-image'))!;
     expect(zimg.sources).toEqual(['hf', 'modelscope']);
@@ -160,8 +174,9 @@ describe('modelCatalog — MODEL_MATRIX 门禁', () => {
     expect(ae?.remotePath).toBe('split_files/vae/ae.safetensors');
 
     const dream = CATALOG_IMAGEGEN.find(m => m.id.includes('dreamlite'))!;
-    // 2026-08-20 自制 ONNX 套件上传魔搭（zensignGG 账号）→ 魔搭单源在线下载
-    expect(dream.sources).toEqual(['modelscope']);
+    // 2026-08-20 自制 ONNX 套件双平台分发（魔搭 zensignGG + HF QDD110）→ 双源在线下载
+    expect(dream.sources).toEqual(['hf', 'modelscope']);
+    expect(dream.hfRepo).toBe('QDD110/DreamLite-mobile-ONNX');
     expect(dream.modelscopeRepo).toBe('zensignGG/DreamLite-mobile-ONNX');
   });
 

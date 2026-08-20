@@ -69,18 +69,21 @@ relates: [POCKETPAL_DESIGN_SPEC]
 > **代码化清单（2026-08-20）**：`src/utils/modelCatalog.ts` 的 `CATALOG_IMAGEGEN` 为本表代码事实源
 > （套件文件清单与 §6.1/§6.2 一致；模型页「生图模型」区可管理）。
 > 下载源（2026-08-20 溯源 + 魔搭 resolve 实测 7/7 全 200，非自制）：
-> - **SD 3.5 四件套**：双源。main 来自 city96/stable-diffusion-3.5-medium-gguf
+> - **SD 3.5 四件套 + 自制 LoRA**：双源。main 来自 city96/stable-diffusion-3.5-medium-gguf
 >   （远程名 `sd3.5_medium-Q4_K_M.gguf`）；clip_l/clip_g 来自 Comfy-Org（HF）/AI-ModelScope（魔搭）
 >   stable-diffusion-3.5-fp8 的 `text_encoders/` 子目录；vae 来自 stabilityai（HF）/AI-ModelScope（魔搭）
->   stable-diffusion-3.5-medium 的 `vae/` 子目录——跨仓套件按文件声明 repo/远程路径
+>   stable-diffusion-3.5-medium 的 `vae/` 子目录——跨仓套件按文件声明 repo/远程路径；
+>   lora_humanpose.safetensors 为自制（2026-08-20 双平台分发 zensignGG/SD35-HumanPose-LoRA，
+>   生图页 LoRA 开关挂载，baked/merged GGUF 不装机不分发）
 > - **Z-Image-Turbo 三件套**：双源。main 来自 leejet/Z-Image-Turbo-GGUF（远程名 `z_image_turbo-Q4_K.gguf`）；
 >   ae 来自 Comfy-Org/z_image_turbo 的 `split_files/vae/`；zimage_llm 文本塔仅魔搭
 >   （unsloth/Qwen3-4B-GGUF，HF 侧文件名不同未验证——选 HF 源时自动回退魔搭下载）
 > - **DreamLite**：部署 ONNX 为自制导出（.tmp/dreamlite 本地导出+量化），HF 无公开 ONNX；
 >   原始权重（safetensors）来自作者官方仓库 carlofkl/DreamLite-mobile（2026-08-20 hf-mirror
 >   逐字节验证：unet 780074688 / vae 4903270 / te 4255140312 与本地 ckpt 全一致）。
->   **2026-08-20 魔搭单源上线**：自制套件已上传 zensignGG/DreamLite-mobile-ONNX（6 文件字节级一致，
->   文件名 = 本地落盘名）→ 模型页在线可下载，不再「请本地导入」
+>   **2026-08-20 双平台分发**：自制套件已上传魔搭 zensignGG/DreamLite-mobile-ONNX + HF
+>   QDD110/DreamLite-mobile-ONNX（6 文件字节级一致，文件名 = 本地落盘名）→ 双源在线下载，
+>   不再「请本地导入」
 
 ## 3. 淘汰 / 未选型清单（禁止推送 ❌）
 
@@ -133,13 +136,14 @@ relates: [POCKETPAL_DESIGN_SPEC]
 
 **核对命令**：`adb shell "ls -la /sdcard/Documents/AIOS/models/"` + `adb shell "ls -la /sdcard/Documents/AIOS/dreamlite/"`
 
-### 6.1 models/ 必须 14 个文件（LLM 7 + 生图 7）
+### 6.1 models/ 必须 16 个文件（LLM 8 + 生图 8）
 
 | 文件 | 大小 | 类别 |
 |---|---|---|
 | Qwen3.5-2B-Uncensored-...-Q8_0.gguf | 2.01 GB | LLM |
 | mmproj-Qwen3.5-2B-...-f16.gguf | 0.67 GB | LLM 视觉伴侣 |
 | Qwen3.5-4B-Uncensored-...-Q4_K_M.gguf | 2.71 GB | LLM |
+| mmproj-Qwen3.5-4B-...-BF16.gguf | 0.68 GB | LLM 视觉伴侣（2026-08-20 补录，真机已有） |
 | LFM2.5-2.6B-Q4_K_M.gguf | 1.67 GB | LLM |
 | LFM2.5-8B-A1B-Q4_K_M.gguf | 5.16 GB | LLM |
 | Ministral-3-3B-...-Q4_K_M.gguf | 2.15 GB | LLM |
@@ -148,6 +152,7 @@ relates: [POCKETPAL_DESIGN_SPEC]
 | sd35_clip_l.safetensors | 0.25 GB | 生图 SD3.5 |
 | sd35_clip_g.safetensors | 1.39 GB | 生图 SD3.5 |
 | sd35_vae.safetensors | 0.17 GB | 生图 SD3.5 |
+| lora_humanpose.safetensors | 0.08 GB | 生图 SD3.5 自制 LoRA（2026-08-20 入册，双平台分发） |
 | z_image_turbo_q4_k.gguf | 3.86 GB | 生图 Z-Image |
 | zimage_llm.gguf | 2.50 GB | 生图 Z-Image TE |
 | ae.safetensors | 0.34 GB | 生图 Z-Image VAE |

@@ -207,9 +207,11 @@ export const CATALOG_IMAGEGEN: CatalogModel[] = [
     // 导出 + 量化），HF 无公开 ONNX；原始权重（safetensors）来自作者官方仓库
     // carlofkl/DreamLite-mobile（2026-08-20 hf-mirror 逐字节验证：unet
     // 780074688 / vae 4903270 / te 4255140312 与本地 ckpt 全一致）。
-    // 2026-08-20 自制套件已上传魔搭（zensignGG 账号，6 文件字节级一致）：
-    // zensignGG/DreamLite-mobile-ONNX —— 魔搭单源在线下载，文件名 = 本地落盘名。
-    sources: ['modelscope'],
+    // 2026-08-20 自制套件双平台分发（6 文件字节级一致）：
+    // 魔搭 zensignGG/DreamLite-mobile-ONNX + HF QDD110/DreamLite-mobile-ONNX
+    // —— 双源在线下载，文件名 = 本地落盘名。
+    sources: ['hf', 'modelscope'],
+    hfRepo: 'QDD110/DreamLite-mobile-ONNX',
     modelscopeRepo: 'zensignGG/DreamLite-mobile-ONNX',
     role: '主线主力（4 步 1024px，文生图 + 编辑）',
   },
@@ -252,6 +254,19 @@ export const CATALOG_IMAGEGEN: CatalogModel[] = [
         repoBySource: {
           hf: 'stabilityai/stable-diffusion-3.5-medium',
           modelscope: 'AI-ModelScope/stable-diffusion-3.5-medium',
+        },
+      },
+      // 自制 LoRA（路线 B：独立运行时挂载，multiplier=2.0；生图页开关默认关）。
+      // manifest 的 sd35 条目 lora 字段指向本文件（2026-08-20 双平台分发：
+      // 魔搭 zensignGG/SD35-HumanPose-LoRA + HF QDD110/SD35-HumanPose-LoRA）。
+      // baked/merged GGUF 不装机（大王钦定）——不建条目。
+      {
+        name: 'lora_humanpose.safetensors',
+        sizeBytes: 83138888,
+        dir: 'models',
+        repoBySource: {
+          hf: 'QDD110/SD35-HumanPose-LoRA',
+          modelscope: 'zensignGG/SD35-HumanPose-LoRA',
         },
       },
     ],
