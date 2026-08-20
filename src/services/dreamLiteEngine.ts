@@ -108,7 +108,9 @@ export async function loadTE(): Promise<void> {
     n_threads: 4,
   });
   teOrt = await ort.InferenceSession.create(`${DIR}/te_fp16.onnx`, {
-    executionProviders: ['cpu'],
+    // 08-20 NNAPI 定稿（大王下令，对照实测）：TE 切 NNAPI EP——编码 42.1s→25.9s（-38.5%），
+    // 全流程 90.7s→64.3s（-29.1%），出图质量无劣化；不支持的算子/设备由 ORT 标准机制回退 CPU。
+    executionProviders: ['nnapi', 'cpu'],
     enableCpuMemArena: false,
   });
   console.log('[DreamLite] TE fp16 ONNX ready');
