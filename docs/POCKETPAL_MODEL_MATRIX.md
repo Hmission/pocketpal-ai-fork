@@ -37,13 +37,16 @@ relates: [POCKETPAL_DESIGN_SPEC]
 > resolvePresetModels/deviceRules 服务目录/bundledDeviceRules JSON/rulesVersion 整条死链删除）。
 > 下载源显式声明（2026-08-20 魔搭 API 实测）：`sources: ['hf']` = 仅 Hugging Face；
 > `['hf','modelscope']` = 双源（下载时弹窗选择）。
-> - **双源**：#5 LFM2.5-2.6B、#6 LFM2.5-8B-A1B、#7 Ministral-3-3B（魔搭同名同文件镜像已验 200）
-> - **仅 HF**：#1-#4 Qwen3.5×2（HauhauCS 魔搭 404 无镜像）、#8 MiniCPM5-1B 管家
->   （2026-08-20 实锤：GGUF 头部元数据对比 license apache-2.0 + base_model openbmb/MiniCPM5-1B
->   全同 → 源为 mradermacher/MiniCPM5-1B-Claude-Opus-Fable5-V2-Thinking-heretic-GGUF 的
->   Q4_K_M（远程名 MiniCPM5-1B-Claude-Opus-Fable5-V2-Thinking-heretic.Q4_K_M.gguf，本地为
+> - **双源**：#5 LFM2.5-2.6B、#6 LFM2.5-8B-A1B、#7 Ministral-3-3B（魔搭同名同文件镜像已验 200）、
+>   #1-#4 Qwen3.5×2 与 #8 MiniCPM5-1B 管家（2026-08-20 由 zensignGG 账号镜像上传：
+>   zensignGG/Qwen3.5-2B/4B-Uncensored-HauhauCS-Aggressive-GGUF + zensignGG/MiniCPM5-1B-...-GGUF，
+>   与 HF 原仓逐字节一致；MiniCPM 魔搭文件名 = 本地落盘名，remotePathBySource 按源覆盖）
+> - **仅 HF**：无（2026-08-20 镜像上传后全部双源）
+>   #8 MiniCPM5-1B 管家实锤（2026-08-20：GGUF 头部元数据对比 license apache-2.0 + base_model
+>   openbmb/MiniCPM5-1B 全同 → 源为 mradermacher/MiniCPM5-1B-Claude-Opus-Fable5-V2-Thinking-heretic-GGUF
+>   的 Q4_K_M（远程名 MiniCPM5-1B-Claude-Opus-Fable5-V2-Thinking-heretic.Q4_K_M.gguf，本地为
 >   早期版本差 1152 字节，落盘名映射）；注意 mradermacher/MiniCPM5-1B-heretic-GGUF 是
->   K0D3IN base heretic（license agpl-3.0）非 Fable5，勿混；魔搭无镜像）
+>   K0D3IN base heretic（license agpl-3.0）非 Fable5，勿混）
 
 ## 1.1 任务选型优先级（2026-08-20，listModelsForTask）
 
@@ -73,10 +76,11 @@ relates: [POCKETPAL_DESIGN_SPEC]
 > - **Z-Image-Turbo 三件套**：双源。main 来自 leejet/Z-Image-Turbo-GGUF（远程名 `z_image_turbo-Q4_K.gguf`）；
 >   ae 来自 Comfy-Org/z_image_turbo 的 `split_files/vae/`；zimage_llm 文本塔仅魔搭
 >   （unsloth/Qwen3-4B-GGUF，HF 侧文件名不同未验证——选 HF 源时自动回退魔搭下载）
-> - **DreamLite**：部署 ONNX 为自制导出（.tmp/dreamlite 本地导出+量化），HF 无公开 ONNX →
->   模型页显示「请本地导入」→ 跳模型目录页；原始权重（safetensors）来自作者官方仓库
->   carlofkl/DreamLite-mobile（2026-08-20 hf-mirror 逐字节验证：unet 780074688 / vae 4903270 /
->   te 4255140312 与本地 ckpt 全一致）——但 App 生图引擎需要 ONNX 非 safetensors，不开下载
+> - **DreamLite**：部署 ONNX 为自制导出（.tmp/dreamlite 本地导出+量化），HF 无公开 ONNX；
+>   原始权重（safetensors）来自作者官方仓库 carlofkl/DreamLite-mobile（2026-08-20 hf-mirror
+>   逐字节验证：unet 780074688 / vae 4903270 / te 4255140312 与本地 ckpt 全一致）。
+>   **2026-08-20 魔搭单源上线**：自制套件已上传 zensignGG/DreamLite-mobile-ONNX（6 文件字节级一致，
+>   文件名 = 本地落盘名）→ 模型页在线可下载，不再「请本地导入」
 
 ## 3. 淘汰 / 未选型清单（禁止推送 ❌）
 

@@ -77,8 +77,11 @@ export const CATALOG_LLM: CatalogModel[] = [
         dir: 'models',
       },
     ],
-    sources: ['hf'],
+    // 2026-08-20 魔搭镜像（zensignGG 账号，与 HF 原仓逐字节一致）：
+    // zensignGG/Qwen3.5-2B-Uncensored-HauhauCS-Aggressive-GGUF
+    sources: ['hf', 'modelscope'],
     hfRepo: 'HauhauCS/Qwen3.5-2B-Uncensored-HauhauCS-Aggressive',
+    modelscopeRepo: 'zensignGG/Qwen3.5-2B-Uncensored-HauhauCS-Aggressive-GGUF',
     tierHint: 'low',
     role: '写作/聊天主力',
   },
@@ -98,8 +101,11 @@ export const CATALOG_LLM: CatalogModel[] = [
         dir: 'models',
       },
     ],
-    sources: ['hf'],
+    // 2026-08-20 魔搭镜像（zensignGG 账号，与 HF 原仓逐字节一致）：
+    // zensignGG/Qwen3.5-4B-Uncensored-HauhauCS-Aggressive-GGUF
+    sources: ['hf', 'modelscope'],
     hfRepo: 'HauhauCS/Qwen3.5-4B-Uncensored-HauhauCS-Aggressive',
+    modelscopeRepo: 'zensignGG/Qwen3.5-4B-Uncensored-HauhauCS-Aggressive-GGUF',
     tierHint: 'high',
     role: '日用',
   },
@@ -157,15 +163,23 @@ export const CATALOG_LLM: CatalogModel[] = [
       sizeBytes: 688066528,
       dir: 'models',
       remotePath: 'MiniCPM5-1B-Claude-Opus-Fable5-V2-Thinking-heretic.Q4_K_M.gguf',
+      // 魔搭镜像文件名 = 本地落盘名（HF 远程名不同，需按源覆盖）
+      remotePathBySource: {
+        modelscope: 'minicpm5_1b_heretic_q4km.gguf',
+      },
     },
     // HF 源已实锤（2026-08-20，hf-mirror API + GGUF 头部元数据对比）：
     // mradermacher/MiniCPM5-1B-Claude-Opus-Fable5-V2-Thinking-heretic-GGUF
     // 的 Q4_K_M（general.name 家族一致、license apache-2.0、base_model
     // openbmb/MiniCPM5-1B 全同；本地为早期版本，与当前文件差 1152 字节）。
     // 注意：mradermacher/MiniCPM5-1B-heretic-GGUF 是另一仓库（K0D3IN
-    // base heretic，license agpl-3.0 不符，非 Fable5）——勿用。魔搭无镜像。
-    sources: ['hf'],
+    // base heretic，license agpl-3.0 不符，非 Fable5）——勿用。
+    // 2026-08-20 魔搭镜像（zensignGG 账号，文件名 = 本地落盘名，故
+    // remotePathBySource.modelscope 覆盖 HF 远程名）：
+    // zensignGG/MiniCPM5-1B-Claude-Opus-Fable5-V2-Thinking-heretic-GGUF
+    sources: ['hf', 'modelscope'],
     hfRepo: 'mradermacher/MiniCPM5-1B-Claude-Opus-Fable5-V2-Thinking-heretic-GGUF',
+    modelscopeRepo: 'zensignGG/MiniCPM5-1B-Claude-Opus-Fable5-V2-Thinking-heretic-GGUF',
     tierHint: 'low',
     role: '常驻管家（prompter）',
   },
@@ -192,9 +206,11 @@ export const CATALOG_IMAGEGEN: CatalogModel[] = [
     // 部署 ONNX 为自制导出（.tmp/dreamlite 本地 export_unet_masked_fp16.py 等
     // 导出 + 量化），HF 无公开 ONNX；原始权重（safetensors）来自作者官方仓库
     // carlofkl/DreamLite-mobile（2026-08-20 hf-mirror 逐字节验证：unet
-    // 780074688 / vae 4903270 / te 4255140312 与本地 ckpt 全一致）——但 App
-    // 生图引擎需要 ONNX 非 safetensors，下载原始权重不可用，保持请本地导入。
-    sources: [],
+    // 780074688 / vae 4903270 / te 4255140312 与本地 ckpt 全一致）。
+    // 2026-08-20 自制套件已上传魔搭（zensignGG 账号，6 文件字节级一致）：
+    // zensignGG/DreamLite-mobile-ONNX —— 魔搭单源在线下载，文件名 = 本地落盘名。
+    sources: ['modelscope'],
+    modelscopeRepo: 'zensignGG/DreamLite-mobile-ONNX',
     role: '主线主力（4 步 1024px，文生图 + 编辑）',
   },
   {

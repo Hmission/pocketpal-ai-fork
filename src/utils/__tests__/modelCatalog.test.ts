@@ -110,19 +110,32 @@ describe('modelCatalog — MODEL_MATRIX 门禁', () => {
     expect(byName('Ministral').modelscopeRepo).toBe(
       'unsloth/Ministral-3-3B-Instruct-2512-GGUF',
     );
-    // HauhauCS 魔搭 404 → 仅 HF
-    expect(byName('Qwen3.5-2B').sources).toEqual(['hf']);
-    expect(byName('Qwen3.5-4B').sources).toEqual(['hf']);
+    // HauhauCS 魔搭 404 → 仅 HF（2026-08-20 前）；当日已由 zensignGG 账号镜像上传
+    expect(byName('Qwen3.5-2B').sources).toEqual(['hf', 'modelscope']);
+    expect(byName('Qwen3.5-2B').modelscopeRepo).toBe(
+      'zensignGG/Qwen3.5-2B-Uncensored-HauhauCS-Aggressive-GGUF',
+    );
+    expect(byName('Qwen3.5-4B').sources).toEqual(['hf', 'modelscope']);
+    expect(byName('Qwen3.5-4B').modelscopeRepo).toBe(
+      'zensignGG/Qwen3.5-4B-Uncensored-HauhauCS-Aggressive-GGUF',
+    );
     // MiniCPM 管家：HF 源已实锤（mradermacher Fable5-V2-Thinking-heretic，
-    // GGUF 头部元数据对比 license/base_model 全同）——仅 HF（魔搭无镜像）
-    expect(byName('minicpm5').sources).toEqual(['hf']);
+    // GGUF 头部元数据对比 license/base_model 全同）；2026-08-20 魔搭镜像上传
+    expect(byName('minicpm5').sources).toEqual(['hf', 'modelscope']);
     expect(byName('minicpm5').hfRepo).toBe(
       'mradermacher/MiniCPM5-1B-Claude-Opus-Fable5-V2-Thinking-heretic-GGUF',
     );
-    // 远程名与本地落盘名不同（下载后改名）——remotePath 必须映射
+    expect(byName('minicpm5').modelscopeRepo).toBe(
+      'zensignGG/MiniCPM5-1B-Claude-Opus-Fable5-V2-Thinking-heretic-GGUF',
+    );
+    // 远程名与本地落盘名不同（下载后改名）——remotePath 必须映射；
+    // 魔搭镜像文件名 = 本地落盘名，需按源覆盖
     expect(byName('minicpm5').file.remotePath).toBe(
       'MiniCPM5-1B-Claude-Opus-Fable5-V2-Thinking-heretic.Q4_K_M.gguf',
     );
+    expect(byName('minicpm5').file.remotePathBySource).toEqual({
+      modelscope: 'minicpm5_1b_heretic_q4km.gguf',
+    });
   });
 
   it('生图源：SD3.5/Z-Image 双源（跨仓套件 per-file 映射），DreamLite 无源', () => {
@@ -147,7 +160,9 @@ describe('modelCatalog — MODEL_MATRIX 门禁', () => {
     expect(ae?.remotePath).toBe('split_files/vae/ae.safetensors');
 
     const dream = CATALOG_IMAGEGEN.find(m => m.id.includes('dreamlite'))!;
-    expect(dream.sources).toEqual([]);
+    // 2026-08-20 自制 ONNX 套件上传魔搭（zensignGG 账号）→ 魔搭单源在线下载
+    expect(dream.sources).toEqual(['modelscope']);
+    expect(dream.modelscopeRepo).toBe('zensignGG/DreamLite-mobile-ONNX');
   });
 
   it('id 全局唯一', () => {

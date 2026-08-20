@@ -57,7 +57,7 @@ beforeEach(() => {
   (getCustomModelDirs as jest.Mock).mockResolvedValue([AIOS_DIR]);
   jest
     .spyOn(PermissionsAndroid, 'requestMultiple')
-    .mockResolvedValue({});
+    .mockResolvedValue({} as Awaited<ReturnType<typeof PermissionsAndroid.requestMultiple>>);
   jest.spyOn(PermissionsAndroid, 'check').mockResolvedValue(true);
   jest
     .spyOn(PermissionsAndroid, 'request')
