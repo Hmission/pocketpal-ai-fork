@@ -32,6 +32,7 @@ jest.mock('../../../hooks', () => ({
       onSecondaryContainer: '#424242',
       onError: '#fff',
       pressedStateOpacity: 0.12,
+      shadow: '#000',
     },
     typography: {
       titleS: {fontSize: 16},
@@ -40,7 +41,7 @@ jest.mock('../../../hooks', () => ({
       uiS: {fontSize: 12},
       captionS: {fontSize: 10},
     },
-    radius: {ml: 16, s: 8, xl: 32},
+    radius: {ml: 16, s: 8, xl: 32, xxs: 4},
     spacing: {ml: 16, sm: 12, xs: 4, s: 8, xxs: 2, m: 16, l: 24},
     stroke: {sm: 1},
     shapeRoles: {surface: 'xl'},

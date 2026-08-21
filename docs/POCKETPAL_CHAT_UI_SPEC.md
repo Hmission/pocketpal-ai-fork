@@ -302,6 +302,7 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 ### 16.2 选择器卡片化（与生图页 ModelPickerPanel 同范式）
 
 - 卡片 = 中文简称（参数_量化）+ 徽章［已加载 / 管家驻场］+ 一行入选说明 + 行内「加载/卸载」+ 加载进度行（正在加载 · 已耗时 Xs）；
+- 加载动效（v4.7）：加载期卡片显示三点波浪跳动 + 2% 底条（复用 useWaveDots，与生图任务卡 ImageTaskProgress 同款设计语言）——用户可感知加载在进行而非卡死；
 - 加载期间 sheet 驻留（进度行可见），加载收尾自动关闭；已加载模型纯选择 = 即关。
 - 「本机不可用」徽章属生图域范式（isIncompatible 注入）；聊天域无设备不兼容判定，不虚构死分支（锋利）。
 - 说明单一事实源 `getModelNote()`（modelDisplayNames 注册表），文案取自 MODEL_MATRIX §1 入选理由：
@@ -382,6 +383,7 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 - **选型语义（复查 2026-08-20 大王复核定稿）**：`listModelsForTask` 返回**任务族候选**——用户标签命中 + 文件名指纹命中（去重），**上限 3**；任务族为空才兜底单个最大模型（**不甩全量**，推荐要精不要清单）。每个候选带一句话推荐说明（`candidateNote`：MODEL_MATRIX 定位优先，无定位按大小给「更大更强，但加载更慢 / 均衡档，更快上手」）——差异可决策。`findModelForTask` = 首项兼容面。
 - **弹窗升级**：ModelSwitchDialog 渲染任务族候选（单选，默认选中推荐项，testID `model-switch-candidate-{id}`）+ 一句话说明行 + 继续当前（场景 A）；返回 `{choice, modelId}`。
 - **弹窗内加载（复查定稿，移动端重量级操作最佳实践）**：确认后**弹窗不立即关**——Modal 遮罩保持（全屏模态 → 其他交互天然阻塞，受影响按钮不可操作），内容转「正在加载所选模型…」态；加载完成自动关并恢复；失败在弹窗内显示原因（可取消/重试），**不再插聊天错误卡**（错误归属弹窗，单一承载）。闭环：设置页打标签 → 选型读标签 → 弹窗任务族多候选 → 弹窗内加载 → 会话记住。
+- **加载态动效（v4.7）**：三点波浪 + 2% 底条（与生图任务卡同款，useWaveDots 复用）替代 ActivityIndicator 转圈——遮罩阻塞期用户可感知加载在进行而非卡死。
 
 ### 18.8 快捷行入口裁定（不加）
 
@@ -508,6 +510,7 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 | 2026-08-19 | 4.0 | §18.9 生成进度监控卡：PendingIndicator 升级四要素（阶段标签/总耗时/思考流预览/300s 心跳）——prefill 不再裸三点，引擎真挂有「疑似卡住」提示；run_failed 收尾防永久转圈 |
 | 2026-08-19 | 4.1 | §19 上下文压缩机制（B19）：发送前预算决策机 + banner「压缩上下文」CTA（选择即记忆）+ 压缩占位卡片 + 指标行「压缩 N」+ 设置页策略三选与自动压缩开关（CONTEXT_COMPACTION_SPEC） |
 | 2026-08-19 | 4.2 | §18.9 进度监控卡卡片化：容器升级 assistant 卡片设计语言（底色+圆角），K90 真机复查「一行文本视觉权重不足」裁定 |
+| 2026-08-21 | 4.7 | §16.2/§18.7 模型加载卡片动效统一：选择器卡片与任务切换弹窗加载态升级三点波浪 + 2% 底条（ImageTaskProgress 同款设计语言，useWaveDots 复用；ModelSwitchDialog 移除 ActivityIndicator 统一） |
 | 2026-08-20 | 4.3 | §19 B19.1 链路根治（小米 13 DRC 血证，CONTEXT_COMPACTION_SPEC v1.1）：触发线含生成预留(512)、水位双源校准（实测钉底估算漂移）、摘要工作集预算化（min(6000, n_ctx−400)）、满态显式失败（饱和跳过压缩，context-full banner 用户主权，不静默不换引擎） |
 | 2026-08-20 | 4.4 | §20 聊天页 UI 三处优化（task-6ad）：抽取 `AssistantAuthorRow` 单一事实源（徽章/意图上移助手卡顶行，`assistant_turn` 与 `text` 复用）；圆角区分（用户右上直角 / 回答系左上直角，Bubble·ThinkingBubble·PendingIndicator 同族）；顶栏三控件等距（HeaderRight gap 10）；footer 快捷图标间距 6→14 |
 | 2026-08-20 | 4.6 | §20.2 尾角下移（大王裁定）：用户右下直角 / 回答系左下直角（Bubble·Message·ThinkingBubble·PendingIndicator 同族，roundBorder 逻辑镜像至顶部同侧角）；AssistantTurnFooter 按钮栏与信息栏之间加 hairline 分隔横线（与动作槽同分隔语言） |

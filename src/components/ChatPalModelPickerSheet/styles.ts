@@ -1,5 +1,6 @@
 import {StyleSheet} from 'react-native';
 import {Theme} from '../../utils/types';
+import {withOpacity} from '../../utils/colorUtils';
 
 export const createStyles = ({theme}: {theme: Theme}) =>
   StyleSheet.create({
@@ -155,6 +156,33 @@ export const createStyles = ({theme}: {theme: Theme}) =>
       color: theme.colors.onSurfaceVariant,
       paddingHorizontal: theme.spacing.sm,
       paddingVertical: theme.spacing.xxs,
+    },
+    // 加载中动效（ImageTaskProgress 同款设计语言）：三点波浪 + 2% 底条
+    loadingWrap: {
+      width: '100%',
+    },
+    loadingRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.xs,
+    },
+    loadingDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: theme.colors.primary,
+    },
+    loadingTrack: {
+      marginTop: theme.spacing.xs,
+      height: 6,
+      borderRadius: theme.radius.xxs,
+      backgroundColor: withOpacity(theme.colors.shadow, 0.08),
+      overflow: 'hidden',
+    },
+    loadingFill: {
+      height: '100%',
+      backgroundColor: theme.colors.primary,
+      borderRadius: theme.radius.xxs,
     },
     sheetFootnote: {
       ...theme.typography.captionS,

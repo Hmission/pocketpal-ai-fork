@@ -23,7 +23,7 @@
  */
 import * as React from 'react';
 import {
-  ActivityIndicator,
+  Animated,
   ScrollView,
   TouchableOpacity,
   View,
@@ -31,6 +31,8 @@ import {
 } from 'react-native';
 
 import {useTheme} from '../../hooks';
+import {useWaveDots} from '../../screens/ImageGenScreen/hooks/useWaveDots';
+import {withOpacity} from '../../utils/colorUtils';
 import {OverlayCard} from './OverlayCard';
 import {Button} from './Button';
 import {CheckMdIcon} from '../../assets/icons';
@@ -110,6 +112,9 @@ export const ModelSwitchDialogHost: React.FC = () => {
   // §18.7：加载中（弹窗内完成，遮罩保持阻塞）+ 失败态（可取消/重试）
   const [loading, setLoading] = React.useState(false);
   const [loadError, setLoadError] = React.useState<string | null>(null);
+  // 加载动效（与生图任务卡 ImageTaskProgress 同款）：三点波浪 + 底条，
+  // 加载期跳动提示，用户能感知加载在进行而非卡死。
+  const waveDots = useWaveDots(loading);
 
   React.useEffect(() => {
     listener = (opts, resolve) => {
@@ -163,7 +168,9 @@ export const ModelSwitchDialogHost: React.FC = () => {
       }}
       title={`${TASK_LABEL[pending?.opts.task ?? 'write']}任务选择模型`}>
       {loading ? (
-        // §18.7 加载态：遮罩保持（交互阻塞），按钮全禁，完成后自动关
+        // §18.7 加载态：遮罩保持（交互阻塞），按钮全禁，完成后自动关。
+        // 动效与生图任务卡统一（三点波浪 + 2% 底条）：模型加载无确定进度，
+        // 跳动提示让用户感知加载在进行而非卡死。
         <View
           style={{
             alignItems: 'center',
@@ -171,14 +178,64 @@ export const ModelSwitchDialogHost: React.FC = () => {
             paddingVertical: theme.spacing.m,
           }}
           testID="model-switch-loading">
-          <ActivityIndicator size="small" color={theme.colors.primary} />
-          <Text
+          <View
             style={{
-              ...theme.typography.bodyS,
-              color: theme.colors.onSurfaceVariant,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
             }}>
-            正在加载「{picked?.name}」…
-          </Text>
+            {waveDots.map((dot, i) => (
+              <Animated.View
+                key={i}
+                style={[
+                  {
+                    width: 8,
+                    height: 8,
+                    borderRadius: 4,
+                    backgroundColor: theme.colors.primary,
+                  },
+                  {
+                    transform: [
+                      {
+                        translateY: dot.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0, -6],
+                        }),
+                      },
+                    ],
+                    opacity: dot.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.45, 1],
+                    }),
+                  },
+                ]}
+              />
+            ))}
+            <Text
+              style={{
+                ...theme.typography.bodyS,
+                color: theme.colors.onSurfaceVariant,
+              }}>
+              正在加载「{picked?.name}」…
+            </Text>
+          </View>
+          <View
+            style={{
+              width: '70%',
+              height: 6,
+              borderRadius: theme.radius.xxs,
+              backgroundColor: withOpacity(theme.colors.shadow, 0.08),
+              overflow: 'hidden',
+            }}>
+            <View
+              style={{
+                height: '100%',
+                width: '2%',
+                backgroundColor: theme.colors.primary,
+                borderRadius: theme.radius.xxs,
+              }}
+            />
+          </View>
           <Text
             style={{
               ...theme.typography.captionS,

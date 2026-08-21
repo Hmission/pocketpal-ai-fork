@@ -1,10 +1,18 @@
 import React, {useRef, useEffect} from 'react';
-import {View, Keyboard, Pressable, TouchableOpacity, Text as RNText} from 'react-native';
+import {
+  Animated,
+  View,
+  Keyboard,
+  Pressable,
+  TouchableOpacity,
+  Text as RNText,
+} from 'react-native';
 import {observer} from 'mobx-react';
 import BottomSheet, {BottomSheetScrollView} from '@gorhom/bottom-sheet';
 
 import {useTheme} from '../../hooks';
 import {createStyles} from './styles';
+import {useWaveDots} from '../../screens/ImageGenScreen/hooks/useWaveDots';
 import {modelStore} from '../../store';
 import {CustomBackdrop} from '../Sheet/CustomBackdrop';
 import {getModelSkills, Model} from '../../utils';
@@ -121,6 +129,10 @@ export const ChatPalModelPickerSheet = observer(
       ? Math.max(0, Math.round((nowTs - loadStartedAt) / 1000))
       : 0;
 
+    // 三点波浪动效（与生图任务卡 ImageTaskProgress 同款）：
+    // 加载期跳动提示，用户能感知加载在进行而非卡死。
+    const waveDots = useWaveDots(modelStore.isContextLoading);
+
     // 加载收尾自动关 sheet（进度行使命完成）；state 驱动以触发 effect 重跑
     const [pendingClose, setPendingClose] = React.useState(false);
     useEffect(() => {
@@ -188,9 +200,39 @@ export const ChatPalModelPickerSheet = observer(
                 // 管家本体常驻不占槽；脚注已注明单槽语义。
                 <RNText style={styles.actionDisabled}>卸载禁用</RNText>
               ) : loadingThis ? (
-                <RNText style={styles.actionDisabled}>
-                  正在加载 · 已耗时 {loadElapsedS}s
-                </RNText>
+                <View style={styles.loadingWrap}>
+                  <View style={styles.loadingRow}>
+                    {waveDots.map((dot, i) => (
+                      <Animated.View
+                        key={i}
+                        style={[
+                          styles.loadingDot,
+                          {
+                            transform: [
+                              {
+                                translateY: dot.interpolate({
+                                  inputRange: [0, 1],
+                                  outputRange: [0, -6],
+                                }),
+                              },
+                            ],
+                            opacity: dot.interpolate({
+                              inputRange: [0, 1],
+                              outputRange: [0.45, 1],
+                            }),
+                          },
+                        ]}
+                      />
+                    ))}
+                    <RNText style={styles.actionDisabled}>
+                      正在加载 · 已耗时 {loadElapsedS}s
+                    </RNText>
+                  </View>
+                  {/* 无确定进度（模型加载无 step 上报）：2% 底条，与生图页加载期语义一致 */}
+                  <View style={styles.loadingTrack}>
+                    <View style={[styles.loadingFill, {width: '2%'}]} />
+                  </View>
+                </View>
               ) : isActiveModel ? (
                 // 卸载 = 独立动作（不触发选择），stopPropagation 隔卡片 onPress
                 <TouchableOpacity
@@ -219,7 +261,7 @@ export const ChatPalModelPickerSheet = observer(
           </Pressable>
         );
       },
-      [styles, handleModelSelect, loadElapsedS],
+      [styles, handleModelSelect, loadElapsedS, waveDots],
     );
 
     // If the snapPoints not memoized, the sheet gets closed when the tab is changed for the first time.
