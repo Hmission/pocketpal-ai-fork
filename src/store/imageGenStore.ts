@@ -799,6 +799,12 @@ class ImageGenStore {
     if (this.upscaleBusy) {
       return null;
     }
+    // init 守卫（对齐 generate() 模式）：DRC/外部直调时确保 outDir + history
+    // 已水合——否则 beginTask→persistHistory 会用空 history 覆盖 AsyncStorage
+    // 旧相册记录（2026-08-21 事故：DRC upscale 在生图页未挂载时清掉 11 条历史）
+    if (!this.outDir) {
+      await this.init();
+    }
     // 内存互斥：超分独占内存，放大前释放 DreamLite/SD（await 等待 native 归还）
     if (this.dreamliteLoaded) {
       try {
