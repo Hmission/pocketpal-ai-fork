@@ -276,6 +276,153 @@ export const createStyles = (theme: any) =>
       color: theme.colors.onDanger,
       fontWeight: '600',
     },
+    // 反推紫 #6a1b9a（v4 登记，IMAGEGEN_UI_SPEC §2；与族徽章紫 #8e24aa 区分）
+    actionCaption: {backgroundColor: '#6a1b9a'},
+    actionTextOnCaption: {
+      ...theme.typography.uiS,
+      color: '#ffffff',
+      fontWeight: '600',
+    },
+    // 反推结果卡（v4，IMAGEGEN_UI_SPEC §7.2）
+    captionCard: {
+      margin: 10,
+      borderRadius: theme.radius.s,
+      backgroundColor: theme.colors.surface,
+      borderWidth: 1,
+      borderColor: theme.colors.outline,
+      padding: 10,
+    },
+    captionCardTitle: {
+      ...theme.typography.uiS,
+      color: '#6a1b9a',
+      fontWeight: '700',
+    },
+    captionCardBody: {
+      ...theme.typography.bodyS,
+      color: theme.colors.onSurface,
+      marginTop: 4,
+    },
+    captionCardHint: {
+      ...theme.typography.captionS,
+      color: theme.colors.outline,
+      marginTop: 4,
+      textAlign: 'right',
+    },
+    // 上传图反推 FAB（避开「重新上传」bottom 10 → 44）
+    captionFab: {bottom: 44, backgroundColor: '#6a1b9a'},
+    // ---- 音频工坊（AUDIO_UI_SPEC v1）----
+    audioSegBar: {
+      flexDirection: 'row',
+      gap: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.outline,
+      paddingBottom: 8,
+    },
+    audioSeg: {
+      paddingHorizontal: 14,
+      paddingVertical: 6,
+      borderRadius: theme.radius[theme.shapeRoles.pill],
+    },
+    audioSegActive: {
+      backgroundColor: withOpacity(theme.colors.primary, 0.12),
+    },
+    audioSegText: {
+      ...theme.typography.uiS,
+      color: theme.colors.onSurfaceVariant,
+    },
+    audioSegTextActive: {
+      color: theme.colors.primary,
+      fontWeight: '700',
+    },
+    audioResult: {
+      padding: 10,
+      borderRadius: theme.radius.s,
+      backgroundColor: theme.colors.surface,
+      borderWidth: 1,
+      borderColor: theme.colors.outline,
+      gap: 6,
+    },
+    audioStage: {
+      ...theme.typography.bodyS,
+      color: theme.colors.onSurfaceVariant,
+    },
+    audioResultBtns: {flexDirection: 'row', gap: 8, marginTop: 4},
+    audioBtn: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: theme.radius.s,
+      alignItems: 'center',
+    },
+    audioBtnCopy: {backgroundColor: theme.colors.success},
+    audioBtnSend: {backgroundColor: theme.colors.info},
+    audioBtnDelete: {backgroundColor: theme.colors.danger},
+    audioBtnModel: {backgroundColor: theme.colors.primary},
+    audioBtnText: {
+      ...theme.typography.uiS,
+      color: '#ffffff',
+      fontWeight: '600',
+    },
+    audioStrip: {flexDirection: 'row', gap: 8, overflow: 'hidden'},
+    audioStripItem: {
+      flex: 1,
+      maxWidth: 140,
+      paddingHorizontal: 8,
+      paddingVertical: 6,
+      borderRadius: theme.radius.s,
+      backgroundColor: theme.colors.surface,
+      borderWidth: 1,
+      borderColor: theme.colors.outline,
+    },
+    audioStripText: {...theme.typography.captionS, color: theme.colors.onSurfaceVariant},
+    audioComposer: {gap: 10},
+    audioModelRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 8,
+    },
+    audioVoiceRow: {flexDirection: 'row', flexWrap: 'wrap', gap: 8},
+    audioVoiceChip: {
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: theme.radius[theme.shapeRoles.pill],
+      backgroundColor: theme.colors.surface,
+      borderWidth: 1,
+      borderColor: theme.colors.outline,
+    },
+    audioVoiceChipActive: {
+      borderColor: theme.colors.primary,
+      backgroundColor: withOpacity(theme.colors.primary, 0.1),
+    },
+    audioVoiceText: {
+      ...theme.typography.uiS,
+      color: theme.colors.onSurfaceVariant,
+    },
+    audioVoiceTextActive: {
+      color: theme.colors.primary,
+      fontWeight: '700',
+    },
+    // 工坊 tabBar（IMAGEGEN_UI_SPEC §8，KnowledgeScreen 同款语义）
+    workshopTabBar: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    workshopTab: {
+      paddingHorizontal: 16,
+      paddingVertical: 7,
+      borderRadius: theme.radius[theme.shapeRoles.pill],
+    },
+    workshopTabActive: {
+      backgroundColor: withOpacity(theme.colors.primary, 0.12),
+    },
+    workshopTabText: {
+      ...theme.typography.uiS,
+      color: theme.colors.onSurfaceVariant,
+    },
+    workshopTabTextActive: {
+      color: theme.colors.primary,
+      fontWeight: '700',
+    },
     badgeSd3: {color: theme.colors.badgeSd35, fontWeight: '700'},
     badgeZ: {color: theme.colors.badgeZImage, fontWeight: '700'},
     badgeDream: {color: theme.colors.badgeDreamlite, fontWeight: '700'},
@@ -445,6 +592,57 @@ export const createStyles = (theme: any) =>
     upscaleBody: {
       padding: 16,
       paddingBottom: 28,
+    },
+    // 复刻生图 Sheet（v4，IMAGEGEN_UI_SPEC §7.3）
+    remakeBody: {
+      padding: 16,
+      paddingBottom: 28,
+    },
+    remakeInput: {
+      flex: 1,
+      minWidth: 48,
+      borderWidth: 1,
+      borderColor: theme.colors.outline,
+      borderRadius: theme.radius.s,
+      paddingHorizontal: 8,
+      paddingVertical: 6,
+      color: theme.colors.onSurface,
+      ...theme.typography.bodyS,
+    },
+    remakeInputFull: {
+      borderWidth: 1,
+      borderColor: theme.colors.outline,
+      borderRadius: theme.radius.s,
+      paddingHorizontal: 8,
+      paddingVertical: 6,
+      color: theme.colors.onSurface,
+      ...theme.typography.bodyS,
+    },
+    paramRowWrap: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginBottom: 10,
+    },
+    remakeChip: {
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: theme.radius.s,
+      backgroundColor: theme.colors.surface,
+      borderWidth: 1,
+      borderColor: theme.colors.outline,
+    },
+    remakeChipSelected: {
+      borderColor: theme.colors.primary,
+      backgroundColor: withOpacity(theme.colors.primary, 0.1),
+    },
+    remakeChipText: {
+      ...theme.typography.uiS,
+      color: theme.colors.onSurface,
+    },
+    remakeChipTextSelected: {
+      color: theme.colors.primary,
+      fontWeight: '700',
     },
     buttonEdit: {flex: 1, backgroundColor: theme.colors.info},
     buttonGen: {flex: 1},

@@ -33,18 +33,21 @@ const IMAGE_KEYWORD_RE =
 
 // 写作：动词 + （可跨内容）+ 文体关键词
 // 2026-08-17 补充高频文体词：游记/日记/周记/观后感/影评/散文（P1 真机验证发现缺口）
+// 2026-08-21 WORKSPACE_SPEC：行首续写意图（继续写/续写/接着写/写下去/继续把）独立命中——
+// 「继续写《星海》」类话术不走文体词（项目名非文体），恢复链路凭项目名（recovery.ts）。
 const WRITE_RE =
-  /(?:写|帮我写|撰写)(?:一[篇首段个])?[^。！？!?\n]{0,30}?(?:诗|诗歌|文章|故事|作文|文案|总结|邮件|小说|简历|游记|日记|周记|观后感|影评|散文|散文诗)|\b(?:write|compose|draft)\b.{0,30}\b(?:poem|story|essay|article|email|summary)\b/i;
+  /(?:^(?:继续写|继续创作|续写|接着写|写下去|继续把|接着写下去)|(?:写|帮我写|撰写)(?:一[篇首段个])?[^。！？!?\n]{0,30}?(?:诗|诗歌|文章|故事|作文|文案|总结|邮件|小说|简历|游记|日记|周记|观后感|影评|散文|散文诗)|\b(?:write|compose|draft)\b.{0,30}\b(?:poem|story|essay|article|email|summary)\b)/i;
 
 // 代码：明确的代码意图词（收紧，避免误伤日常 "error" 闲聊）
 const CODE_RE =
   /(?:写|生成|帮我|修复).{0,8}(?:代码|程序|函数|脚本|正则|sql|接口)|\b(?:write|generate|fix|debug)\b.{0,15}\b(?:code|function|script|regex|sql|api)\b/i;
 
 // 快捷前缀（P5 v2）：输入卡快捷按钮预填「图像生成：/图片编辑：」——显式意图引导。
-// 图像生成→image（payload 剥离前缀）；图片编辑无源图无法编辑，不在此路由（显式链路走 scheduler）。
+// 图像生成→image（payload 剥离前缀）；图片编辑无源图无法编辑，不在此路由（显式链路在 scheduler）。
 // 玩具工坊（P8 v1）：快捷按钮预填「做个玩具：」——玩法引导前后端对齐（PLAY_SPEC §2.5）。
 // TRPG 城主（P12 v1.1）：快捷按钮预填「来场冒险：」——冒险玩法引导（ADVENTURE_SPEC §五）。
-const QUICK_PREFIX_RE = /^(图像生成|图片编辑|做个玩具|来场冒险)[:：]\s*/;
+// 写作工作区（2026-08-21 WORKSPACE_SPEC）：显式前缀「新建写作项目：/写作项目：」→ write 路由。
+const QUICK_PREFIX_RE = /^(图像生成|图片编辑|做个玩具|来场冒险|新建写作项目|写作项目)[:：]\s*/;
 
 // 玩具（P8 v1，PLAY_SPEC）：动词 + 玩具/游戏/小玩意类目标词。
 // 收紧避免误伤：目标词仅限可玩品类，不含「代码/程序」（那是 code 域）。
@@ -59,6 +62,17 @@ const PLAY_RE =
 // 收紧避免误伤：需含冒险类关键词，日常「冒险尝试」不命中。
 const ADVENTURE_RE =
   /(?:来场|开个|当|开启|进入|继续)(?:冒险|副本|地牢|dungeon)|冒险模式|一起冒险|城主/i;
+
+// 反推意图（创作工坊 v4，IMAGEGEN_UI_SPEC §7.1）：图片消息上下文中的显式反推词。
+// 路由专工：仅当消息带 imageUris 时由 scheduler 判定（无图不路由），
+// 不进 routeTask 主流程——反推依赖图片上下文，防「反推思路」类闲聊误伤。
+const CAPTION_RE =
+  /(?:反推|提取|扒|还原|生成)\s*(?:提示词|标签|tag)|(?:image\s*)?caption|tagger|prompt\s*extract/i;
+
+/** 反推意图判定（scheduler 在图片消息上下文调用；纯文本消息不适用） */
+export function isCaptionIntent(text: string): boolean {
+  return CAPTION_RE.test(text.trim());
+}
 
 export function routeTask(text: string): TaskSignal {
   const t = text.trim();
@@ -86,6 +100,15 @@ export function routeTask(text: string): TaskSignal {
     const payload = t.slice(quick[0].length).trim();
     if (payload) {
       return {task: 'adventure', payload};
+    }
+    return {task: 'chitchat', payload: t};
+  }
+  // 0.3) 快捷前缀「新建写作项目：/写作项目：」：显式建项意图（WORKSPACE_SPEC v1）。
+  //     剥离后为空直接短路回 chitchat（防「写作项目：」空投）。
+  if (quick && (quick[1] === '新建写作项目' || quick[1] === '写作项目')) {
+    const payload = t.slice(quick[0].length).trim();
+    if (payload) {
+      return {task: 'write', payload};
     }
     return {task: 'chitchat', payload: t};
   }

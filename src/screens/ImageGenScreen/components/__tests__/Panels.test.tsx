@@ -302,6 +302,9 @@ describe('ResultPreview', () => {
     onCloseFullscreen: jest.fn(),
     onSave: jest.fn(),
     onUpscale: jest.fn(),
+    onCaption: jest.fn(),
+    onCopyCaption: jest.fn(),
+    onRemake: jest.fn(),
     onReroll: jest.fn(),
     onDelete: jest.fn(),
     onInfoPress: jest.fn(),
@@ -317,7 +320,7 @@ describe('ResultPreview', () => {
     expect(queryByText('删除')).toBeNull();
   });
 
-  it('有当前图时渲染操作条定稿四按钮（保存/放大/再次生成/删除，编辑不在此处）', () => {
+  it('有当前图时渲染操作条 v4 五按钮（保存/放大/反推/再次生成/删除，编辑不在此处）', () => {
     const {getByText, queryByText} = wrap(
       <ResultPreview
         {...baseProps}
@@ -327,6 +330,7 @@ describe('ResultPreview', () => {
     );
     expect(getByText('保存')).toBeTruthy();
     expect(getByText('放大')).toBeTruthy();
+    expect(getByText('反推')).toBeTruthy();
     expect(getByText('再次生成')).toBeTruthy();
     expect(getByText('删除')).toBeTruthy();
     // 编辑唯一入口=ComposerPanel 底部，操作条不再有编辑按钮
@@ -350,6 +354,40 @@ describe('ResultPreview', () => {
       />,
     );
     expect(getByText(/正在生成新图/)).toBeTruthy();
+  });
+
+  it('caption 任务页：反推结果卡 + 复制/复刻生图/删除三按钮', () => {
+    const captionItem: GeneratedImage = {
+      ...historyItem,
+      uri: 'file:///tmp/cap.png',
+      taskId: 'task_test_caption',
+      kind: 'caption',
+      prompt: 'a cat sitting on a windowsill',
+      status: 'success',
+    };
+    const onCopyCaption = jest.fn();
+    const onRemake = jest.fn();
+    const {getByText, queryByText} = wrap(
+      <ResultPreview
+        {...baseProps}
+        currentImage={captionItem.uri}
+        currentItem={captionItem}
+        history={[captionItem]}
+        onCopyCaption={onCopyCaption}
+        onRemake={onRemake}
+      />,
+    );
+    expect(getByText('✨ 反推提示词')).toBeTruthy();
+    expect(getByText(/a cat sitting/)).toBeTruthy();
+    expect(getByText('复制')).toBeTruthy();
+    expect(getByText('复刻生图')).toBeTruthy();
+    // caption 页无通用五按钮（保存/放大/反推不出现）
+    expect(queryByText('保存')).toBeNull();
+    expect(queryByText('放大')).toBeNull();
+    fireEvent.press(getByText('复制'));
+    expect(onCopyCaption).toHaveBeenCalledWith(captionItem);
+    fireEvent.press(getByText('复刻生图'));
+    expect(onRemake).toHaveBeenCalledWith(captionItem);
   });
 
   it('失败任务页：摘要 + 复制报错/重试/删除按钮', () => {

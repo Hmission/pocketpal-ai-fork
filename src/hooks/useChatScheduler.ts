@@ -1,8 +1,8 @@
 import React from 'react';
 
 import {chatSessionStore, modelStore} from '../store';
-import {routeTask, TaskKind} from '../store/taskRouter';
-import {runImageTaskCard, runEditImageTaskCard} from '../services/chatImageTask';
+import {routeTask, TaskKind, isCaptionIntent} from '../store/taskRouter';
+import {runImageTaskCard, runEditImageTaskCard, runCaptionTaskCard} from '../services/chatImageTask';
 import {findModelForTask, listModelsForTask, candidateNote} from '../store/modelCapabilityRegistry';
 import {getModelDisplayNameWithParams} from '../utils/modelDisplayNames';
 import {engineStatus} from '../store/engineStatus';
@@ -16,6 +16,7 @@ import {askModelSwitch} from '../components/ui/ModelSwitchDialog';
 import {user, assistant} from '../utils/chat';
 import {L10nContext} from '../utils';
 import {MessageType, Model} from '../utils/types';
+import {resolveWritingRecovery, setPendingWorkspaceContext} from '../services/workspace/recovery';
 
 /**
  * useChatScheduler — 任务驱动调度（豆包式闭环，只判不执原则，SPEC §9.3）：
@@ -330,6 +331,25 @@ export const useChatScheduler = (
         return;
       }
 
+      // 反推闭环（创作工坊 v4，IMAGEGEN_UI_SPEC §7.1）：图片消息 + 反推意图词。
+      // 路由专工：isCaptionIntent 仅在图片上下文生效（taskRouter 注释），
+      // 与生图页反推同源能力（同一 runCaptionTask 任务化入画廊）。
+      if (message.imageUris?.length && isCaptionIntent(text)) {
+        await chatSessionStore.addMessageToCurrentSession({
+          id: `u-${Date.now()}`,
+          author: user,
+          createdAt: Date.now(),
+          text,
+          type: 'text',
+          imageUris: message.imageUris,
+        } as MessageType.Text);
+        if (!chatSessionStore.activeSessionId) {
+          return;
+        }
+        await runCaptionTaskCard(message.imageUris[0], text);
+        return;
+      }
+
       const signal = routeTask(text);
       console.info(
         `[Scheduler] task=${signal.task} engine=${modelStore.engine ? 'chat' : 'none'} butler=${promptWriter.isLoaded ? 'ready' : 'off'}`,
@@ -377,6 +397,19 @@ export const useChatScheduler = (
         signal.task === 'play' ||
         signal.task === 'adventure'
       ) {
+        // WORKSPACE_SPEC（2026-08-21）：写作恢复链路——「继续写 X」命中项目 →
+        // 读框架文档注入下次组装（setPendingWorkspaceContext 单次消费）；
+        // 未命中静默放行（模型可自主 init，不新增兜底）。
+        if (signal.task === 'write') {
+          try {
+            const recovery = await resolveWritingRecovery(text);
+            if (recovery) {
+              setPendingWorkspaceContext(recovery);
+            }
+          } catch (e) {
+            console.warn('[Scheduler] writing recovery failed:', e);
+          }
+        }
         const decision = await resolveTaskModel(
           signal.task === 'adventure' ? 'write' : signal.task,
           text,

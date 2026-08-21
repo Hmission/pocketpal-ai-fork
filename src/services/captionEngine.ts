@@ -1,0 +1,137 @@
+/**
+ * captionEngine — 图像反推提示词引擎（创作工坊 P1）
+ *
+ * 链路（单通道，与聊天/生图互斥由 engineMutex 保证）：
+ *   engineMutex.acquire('chat') → 自动释放 prompter/image 槽
+ *   → modelStore.selectModel(反推 VLM)（initContext 自动配对 mmproj → initMultimodal）
+ *   → startImageCompletion({image_paths, prompt})（llama.rn 视觉通道）
+ *   → 收集输出 → manualReleaseContext 释放（懒恢复：下次管家/聊天任务自行重载）
+ *
+ * 模型裁定（2026-08-21 大王确认）：Qwen3.5-4B + mmproj-BF16（MODEL_MATRIX #3/#4，
+ * 社区 2026 验证的 ComfyUI 反推标准组合）；单次 >3 分钟时评估降 2B。
+ * 指令模板：禁思考模式、纯净输出（Qwen3.5-Caption-WebUI 同款语义）。
+ */
+import {modelStore} from '../store';
+import {engineMutex} from '../store/engineMutex';
+import {Model, ModelOrigin, ModelType} from '../utils/types';
+import {isPrompterModelName} from './promptWriter';
+
+/** 反推 VLM 文件名指纹（MODEL_MATRIX §1.2） */
+const CAPTION_MODEL_RE = /qwen3\.5[-_ ]?4b/i;
+
+/** 反推指令（纯净输出：不要解释、不要标签列表） */
+export const CAPTION_INSTRUCTION =
+  'Describe this image with a detailed English prompt suitable for image generation. Output only the prompt itself, no explanations, no prefixes, no tags.';
+
+/** 阶段回调（进度卡阶段文本：加载视觉模型 → 编码图片 → 生成描述） */
+export type CaptionStage = 'find' | 'load' | 'encode' | 'generate' | 'done';
+
+export interface CaptionResult {
+  text: string | null;
+  error: string | null;
+}
+
+/** 反推 VLM 候选（本地已下载模型，排除管家/投影/远程） */
+export function findCaptionModel(): Model | null {
+  return (
+    modelStore.models.find(m => {
+      if (
+        m.origin === ModelOrigin.REMOTE ||
+        m.modelType === ModelType.PROJECTION ||
+        !m.isDownloaded
+      ) {
+        return false;
+      }
+      const name = m.filename || m.name || '';
+      return CAPTION_MODEL_RE.test(name) && !isPrompterModelName(name);
+    }) ?? null
+  );
+}
+
+/** 目标模型是否已是当前激活模型（避免重复加载） */
+export function isCaptionModelActive(): boolean {
+  const active = modelStore.activeModel;
+  if (!active) {
+    return false;
+  }
+  const name = active.filename || active.name || '';
+  return CAPTION_MODEL_RE.test(name) && !isPrompterModelName(name);
+}
+
+/**
+ * 执行一次反推：图片路径 → 反推提示词。
+ * 失败显式抛错（调用方任务化收口），不静默降级。
+ */
+export async function runCaption(
+  imagePath: string,
+  onStage?: (stage: CaptionStage) => void,
+): Promise<CaptionResult> {
+  // 0. chat 槽互斥：自动释放 prompter/image（懒恢复由后续任务触发）
+  await engineMutex.acquire('chat');
+  try {
+    // 1. 模型就绪
+    onStage?.('find');
+    if (!isCaptionModelActive()) {
+      const model = findCaptionModel();
+      if (!model) {
+        throw new Error('反推视觉模型未安装（Qwen3.5-4B + mmproj，见 MODEL_MATRIX §1.2）');
+      }
+      onStage?.('load');
+      await modelStore.selectModel(model);
+    }
+    if (!modelStore.isMultimodalActive) {
+      throw new Error('视觉通道未激活（mmproj 配对失败），请检查模型文件');
+    }
+
+    // 2. 视觉编码 + 生成（startImageCompletion 内部处理 image_url 转换）
+    onStage?.('encode');
+    let text = '';
+    await new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(
+        () => reject(new Error('反推超时（5 分钟），请重试')),
+        5 * 60 * 1000,
+      );
+      modelStore
+        .startImageCompletion({
+          prompt: CAPTION_INSTRUCTION,
+          image_paths: [imagePath],
+          onToken: (token: string) => {
+            onStage?.('generate');
+            text += token;
+          },
+          onComplete: (full: string) => {
+            clearTimeout(timer);
+            if (full) {
+              text = full;
+            }
+            resolve();
+          },
+          onError: (e: Error) => {
+            clearTimeout(timer);
+            reject(e);
+          },
+        })
+        .catch(e => {
+          clearTimeout(timer);
+          reject(e);
+        });
+    });
+
+    const trimmed = text.trim();
+    if (!trimmed) {
+      throw new Error('反推无输出，请重试');
+    }
+    onStage?.('done');
+    return {text: trimmed, error: null};
+  } catch (e) {
+    return {text: null, error: (e as Error)?.message ?? '反推失败'};
+  } finally {
+    // 3. 释放 chat 槽（懒恢复：下一条管家/聊天任务自行重载；显式失败不静默）
+    try {
+      await modelStore.manualReleaseContext();
+    } catch (e) {
+      console.warn('[captionEngine] release context failed:', e);
+    }
+    engineMutex.release();
+  }
+}

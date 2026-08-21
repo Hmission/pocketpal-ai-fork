@@ -251,3 +251,58 @@ export async function runEditImageTaskCard(
     }),
   });
 }
+
+/**
+ * runCaptionTaskCard — 聊天内反推任务卡闭环（创作工坊 v4，IMAGEGEN_UI_SPEC §7.1）。
+ * 与生图页反推同源能力（同一 imageGenStore.runCaptionTask，任务化入画廊），
+ * 聊天侧仅多一层插卡/回写：成功=反推提示词文本卡（可复制），失败=卡片保留重试。
+ */
+export async function runCaptionTaskCard(
+  sourceUri: string,
+  instruction: string,
+): Promise<void> {
+  await chatSessionStore.addMessageToCurrentSession({
+    id: `captiontask-${Date.now()}`,
+    author: assistant,
+    createdAt: Date.now(),
+    text: `✨ 已识别为反推任务，正在分析图片…`,
+    type: 'text',
+    metadata: {
+      captionTask: true,
+      captionSourceUri: sourceUri,
+      captionInstruction: instruction,
+      modelName: '反推 VLM',
+    },
+  } as MessageType.Text);
+  const sessionId = chatSessionStore.activeSessionId;
+  if (!sessionId) {
+    return;
+  }
+  const cardId = chatSessionStore.currentSessionMessages[0]?.id;
+  if (!cardId) {
+    return;
+  }
+
+  const text = await imageGenStore.runCaptionTask(sourceUri);
+  if (text) {
+    await chatSessionStore.updateMessage(cardId, sessionId, {
+      text: `✨ 反推提示词：${text}`,
+      metadata: {
+        captionTask: true,
+        captionResult: text,
+        captionSourceUri: sourceUri,
+        captionInstruction: instruction,
+      },
+    });
+  } else {
+    await chatSessionStore.updateMessage(cardId, sessionId, {
+      text: `⚠️ 反推未完成：${imageGenStore.error ?? '未知错误'}`,
+      metadata: {
+        captionTask: true,
+        captionTaskFailed: true,
+        captionSourceUri: sourceUri,
+        captionInstruction: instruction,
+      },
+    });
+  }
+}

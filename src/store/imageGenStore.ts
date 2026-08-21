@@ -23,6 +23,7 @@ import {
   upscaleImage,
   SRStyle,
 } from '../services/superResEngine';
+import {runCaption, CaptionStage} from '../services/captionEngine';
 import {imageGenTaskRepository} from '../repositories/ImageGenTaskRepository';
 import {engineMutex} from './engineMutex';
 import {engineStatus} from './engineStatus';
@@ -43,8 +44,8 @@ export interface GeneratedImage {
   steps?: number;
   cfg?: number;
   family?: string;
-  /** 来源：生图结果 or 用户上传（用于编辑的本地图） or 高清放大结果 */
-  kind?: 'generated' | 'upload' | 'upscaled';
+  /** 来源：生图结果 or 用户上传（用于编辑的本地图） or 高清放大结果 or 反推任务 or 转写任务 */
+  kind?: 'generated' | 'upload' | 'upscaled' | 'caption' | 'transcribe';
   /** 放大任务：源图 URI（running 页背景展示原图 + 半透明进度） */
   sourceUri?: string;
   /** 生成耗时（ms）与模型标签：预览卡顶部信息条展示 */
@@ -149,6 +150,31 @@ class ImageGenStore {
         this.history = rows;
       });
       await this.migrateAsyncStorageToDb();
+      // 幽灵任务治理（2026-08-21 真机实证）：app 强杀/异常退出后，DB 中
+      // status='running' 的遗留条目水合回来时并无推理进程——原样恢复会
+      // 永久卡在 running 页（空白预览 + 进度卡 + genStartedAt=0 荒谬耗时）。
+      // 锋利哲学：显式失败不静默——统一置 failed（报错页可复制/重试/删除），
+      // 放在迁移之后以覆盖存量源合入的 running 条目。
+      const ghost = this.history.filter(h => h.status === 'running');
+      if (ghost.length > 0) {
+        const patch = {
+          status: 'failed' as const,
+          errorSummary: '生成中断',
+          errorDetail:
+            '应用在上次生成中被强制退出，任务未完成（恢复时标记中断）',
+        };
+        runInAction(() => {
+          this.history = this.history.map(h =>
+            h.status === 'running' ? {...h, ...patch} : h,
+          );
+        });
+        for (const g of ghost) {
+          await imageGenTaskRepository.patchByTaskId(g.taskId, patch);
+        }
+        console.info(
+          `[ImageGenStore] ghost running tasks marked failed: ${ghost.length}`,
+        );
+      }
     } catch (e) {
       console.warn('[ImageGenStore] ready failed (history stays empty):', e);
     }
@@ -371,6 +397,78 @@ class ImageGenStore {
     });
     await imageGenTaskRepository.create(entry);
     return taskId;
+  }
+
+  /**
+   * runCaptionTask — 图像反推任务化（创作工坊 P1，IMAGEGEN_UI_SPEC §7.2）
+   * 入画廊与生图任务同管理：beginTask(running) → 反推 → finishTask 回填
+   * （prompt=反推提示词，uri=原图）／ failTask 报错页。
+   * 返回反推文本（成功）或 null（失败，error 已写 store.error）。
+   */
+  async runCaptionTask(imageUri: string): Promise<string | null> {
+    const path = imageUri.replace('file://', '');
+    const startTs = Date.now();
+    const taskId = await this.beginTask({
+      uri: imageUri,
+      prompt: '',
+      seed: 0,
+      ts: startTs,
+      width: 0,
+      height: 0,
+      family: 'dreamlite',
+      kind: 'caption',
+      modelLabel: '反推 VLM',
+    });
+    runInAction(() => {
+      this.generating = true;
+      this.genStartedAt = startTs;
+      this.progress = -1;
+      this.progressText = '';
+      this.stepTime = 0;
+      this.error = null;
+      this.stage = '查找视觉模型…';
+    });
+    const stageText: Record<CaptionStage, string> = {
+      find: '查找视觉模型…',
+      load: '加载视觉模型…',
+      encode: '编码图片…',
+      generate: '生成描述…',
+      done: '反推完成',
+    };
+    try {
+      const r = await runCaption(path, s => {
+        runInAction(() => {
+          this.stage = stageText[s];
+        });
+      });
+      if (!r.text) {
+        const msg = r.error ?? '反推失败';
+        runInAction(() => {
+          this.error = msg;
+        });
+        await this.failTask(taskId, '反推失败', msg);
+        return null;
+      }
+      await this.finishTask(taskId, imageUri, {
+        prompt: r.text,
+        durationMs: Date.now() - startTs,
+      });
+      return r.text;
+    } catch (e: any) {
+      const msg = `反推异常: ${e?.message ?? e}`;
+      runInAction(() => {
+        this.error = msg;
+      });
+      await this.failTask(taskId, '反推失败', msg);
+      return null;
+    } finally {
+      runInAction(() => {
+        this.generating = false;
+        this.progress = -1;
+        this.progressText = '';
+        this.stage = '';
+      });
+    }
   }
 
   /** 删除单条任务（无文件条目跳过删文件）；B28：DB + 内存 + 文件三删 */

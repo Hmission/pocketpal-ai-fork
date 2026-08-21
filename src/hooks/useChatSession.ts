@@ -37,6 +37,7 @@ import {compactAndFlush} from '../services/aiosMemory/compaction';
 import {maybeClosingSummary, selfCheck} from '../services/aiosMemory/rituals';
 import {saveToy} from '../services/toyChest';
 import {compactSessionAndMark} from '../services/contextCompaction';
+import {consumePendingWorkspaceContext} from '../services/workspace/recovery';
 import {
   estimateMessagesTokens,
   resolveWatermark,
@@ -189,6 +190,8 @@ const prepareCompletion = async ({
     chatMessages.length,
     5,
     sessionIntent,
+    // WORKSPACE_SPEC（2026-08-21）：写作恢复框架注入（单次消费，组装即清）
+    consumePendingWorkspaceContext()?.frameworkText,
   );
   const recalledFragment = assembled.recalledFragments.length
     ? '\n【召回的历史片段】(参考，别全部复述):\n' +

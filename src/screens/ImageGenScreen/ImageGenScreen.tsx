@@ -12,13 +12,14 @@
  * 各 Panel 只读 props 渲染；store 状态经 observer 自动联动。
  */
 import * as React from 'react';
-import {View, FlatList, Text} from 'react-native';
+import {View, FlatList, Text, TouchableOpacity} from 'react-native';
 import {KeyboardAwareScrollView} from 'react-native-keyboard-controller';
 import {observer} from 'mobx-react-lite';
 import {runInAction} from 'mobx';
 import {Snackbar} from 'react-native-paper';
 import {launchImageLibrary} from 'react-native-image-picker';
 import {useNavigation} from '@react-navigation/native';
+import Clipboard from '@react-native-clipboard/clipboard';
 
 import {imageGenStore, GeneratedImage} from '../../store/imageGenStore';
 import {useTheme} from '../../hooks';
@@ -51,6 +52,8 @@ import {ResultPreview} from './components/ResultPreview';
 import {HistoryStrip} from './components/HistoryStrip';
 import {ComposerPanel} from './components/ComposerPanel';
 import {UpscalePanel} from './components/UpscalePanel';
+import {RemakeSheet} from './components/RemakeSheet';
+import {AudioWorkshopTab} from './components/AudioWorkshopTab';
 import {confirmDialog} from '../../components/ui/ConfirmDialog';
 import {OverlayCard} from '../../components/ui/OverlayCard';
 import {SRStyle} from '../../services/superResEngine';
@@ -99,14 +102,19 @@ export const ImageGenScreen: React.FC = observer(() => {
   const [pageW, setPageW] = React.useState(0);
   // 编辑预备态：已点「编辑」锁定当前预览图，正在输入编辑指令（再点「执行编辑」二创）
   const [editArming, setEditArming] = React.useState(false);
-  // 进行中任务类型：'gen'=新生成（预览区空白页动效）｜'edit'=二创当前图（图上叠动效）
-  const [taskKind, setTaskKind] = React.useState<'gen' | 'edit' | null>(null);
+  // 进行中任务类型：'gen'=新生成（预览区空白页动效）｜'edit'=二创当前图（图上叠动效）｜'caption'=反推（图上叠动效）
+  const [taskKind, setTaskKind] = React.useState<'gen' | 'edit' | 'caption' | null>(null);
   // P6-6：高清放大参数面板显隐（独立通用能力入口）
   const [upscaleVisible, setUpscaleVisible] = React.useState(false);
   // 未加载引导弹窗（2026-08-21）：非 Dream 点出图未加载 → 提示 + 展开模型下拉
   const [loadGuideVisible, setLoadGuideVisible] = React.useState(false);
   // 信息条点击：当前查看完整生图参数的任务条目（提示词/耗时/尺寸/模型/种子/步数）
   const [infoItem, setInfoItem] = React.useState<GeneratedImage | null>(null);
+  // 复刻生图 Sheet（v4）：caption 任务「复刻生图」→ 全参数面板
+  const [remakeVisible, setRemakeVisible] = React.useState(false);
+  const [remakeCaptionText, setRemakeCaptionText] = React.useState('');
+  // 工坊双 tab（IMAGEGEN_UI_SPEC §8）：image=生图（现状）｜audio=音频工坊
+  const [workshopTab, setWorkshopTab] = React.useState<'image' | 'audio'>('image');
 
   const [snackbar, setSnackbar] = React.useState<string | null>(null);
   const showSnackbar = React.useCallback((msg: string) => {
@@ -321,8 +329,74 @@ export const ImageGenScreen: React.FC = observer(() => {
 
   // 失败任务页：同参数重试（回填参数后用该任务的提示词重新发起）
   const handleRetryTask = (item: GeneratedImage) => {
+    if (item.kind === 'caption') {
+      // 反推任务重试 = 同图重新反推（IMAGEGEN_UI_SPEC §7.2）
+      if (item.uri) {
+        handleCaptionFrom(item.uri);
+      }
+      return;
+    }
     syncFromParams(item);
     handleGenerate(item.prompt);
+  };
+
+  // 反推当前预览图：0 页=编辑槽上传图，历史页=当前历史图（v4 显式按钮动作）
+  const handleCaptionFrom = async (targetUri: string) => {
+    if (imageGenStore.generating) {
+      return;
+    }
+    setTaskKind('caption'); // 反推动效：叠在当前图上（用户看被反推的图）
+    const text = await imageGenStore.runCaptionTask(targetUri);
+    setTaskKind(null);
+    scrollToPreview(1); // 新任务条目在 history[0] → 预览页 1
+    if (text) {
+      setPrompt(text); // 结果回填 composer（用户可见可改）
+      showSnackbar('反推完成，可复制或复刻生图');
+    } else {
+      showSnackbar('反推失败，详见结果区');
+    }
+  };
+
+  const handleCaption = () => {
+    const targetUri = previewIndex === 0 ? editSource : currentImage;
+    if (!targetUri) {
+      showSnackbar('先上传或生成一张图片，再反推提示词');
+      return;
+    }
+    handleCaptionFrom(targetUri);
+  };
+
+  // 反推结果一键复制（clipboard 纯文本，不落盘）
+  const handleCopyCaption = (item: GeneratedImage) => {
+    Clipboard.setString(item.prompt || '');
+    showSnackbar('反推提示词已复制');
+  };
+
+  // 复刻生图：打开全参数 Sheet（IMAGEGEN_UI_SPEC §7.3）
+  const handleRemake = (item: GeneratedImage) => {
+    setRemakeCaptionText(item.prompt || '');
+    setRemakeVisible(true);
+  };
+
+  // 复刻确认：切生图 tab → 回填目标模型/参数 → 直接触发出图
+  const handleRemakeConfirm = (params: {
+    modelId: string;
+    steps: string;
+    cfg: string;
+    negativePrompt: string;
+    seed: string;
+    ratio: string;
+  }) => {
+    setRemakeVisible(false);
+    setWorkshopTab('image');
+    setSelectedId(params.modelId);
+    setSteps(params.steps);
+    setCfg(params.cfg);
+    setNegativePrompt(params.negativePrompt);
+    setSeed(params.seed);
+    setRatio(params.ratio);
+    setPrompt(remakeCaptionText);
+    handleGenerate(remakeCaptionText);
   };
 
   // 失败任务页：删除该任务条目
@@ -879,6 +953,36 @@ export const ImageGenScreen: React.FC = observer(() => {
   return (
     <View style={s.container}>
       <KeyboardAwareScrollView contentContainerStyle={s.content}>
+        {/* 工坊 tabBar（v4，IMAGEGEN_UI_SPEC §8）：生图 / 音频工坊 */}
+        <View style={s.workshopTabBar}>
+          <TouchableOpacity
+            style={[s.workshopTab, workshopTab === 'image' && s.workshopTabActive]}
+            onPress={() => setWorkshopTab('image')}
+            testID="workshop-tab-image">
+            <Text
+              style={[
+                s.workshopTabText,
+                workshopTab === 'image' && s.workshopTabTextActive,
+              ]}>
+              生图
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[s.workshopTab, workshopTab === 'audio' && s.workshopTabActive]}
+            onPress={() => setWorkshopTab('audio')}
+            testID="workshop-tab-audio">
+            <Text
+              style={[
+                s.workshopTabText,
+                workshopTab === 'audio' && s.workshopTabTextActive,
+              ]}>
+              音频工坊
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {workshopTab === 'image' ? (
+          <>
         {/* ① 结果区 */}
         <ResultPreview
           previewRef={previewRef}
@@ -906,6 +1010,9 @@ export const ImageGenScreen: React.FC = observer(() => {
           onCloseFullscreen={() => setFullscreen(false)}
           onSave={handleSave}
           onUpscale={() => setUpscaleVisible(true)}
+          onCaption={handleCaption}
+          onCopyCaption={handleCopyCaption}
+          onRemake={handleRemake}
           onReroll={handleReroll}
           onDelete={handleDeleteCurrent}
           onInfoPress={setInfoItem}
@@ -973,6 +1080,10 @@ export const ImageGenScreen: React.FC = observer(() => {
           onEditArm={handleEditArm}
           onGenerate={handleGenerate}
         />
+          </>
+        ) : (
+          <AudioWorkshopTab onSnackbar={showSnackbar} />
+        )}
       </KeyboardAwareScrollView>
 
       {/* D1：屏级模型下拉 overlay（scrim 起于 AppBar 下沿，点外收起） */}
@@ -1004,6 +1115,24 @@ export const ImageGenScreen: React.FC = observer(() => {
         visible={upscaleVisible}
         onClose={() => setUpscaleVisible(false)}
         onConfirm={handleUpscaleConfirm}
+      />
+
+      {/* v4：复刻生图全参数面板（IMAGEGEN_UI_SPEC §7.3） */}
+      <RemakeSheet
+        visible={remakeVisible}
+        captionText={remakeCaptionText}
+        available={available}
+        selectedId={selectedId}
+        defaults={{
+          steps,
+          cfg,
+          negativePrompt,
+          seed,
+          ratio,
+          size,
+        }}
+        onClose={() => setRemakeVisible(false)}
+        onConfirm={handleRemakeConfirm}
       />
 
       {/* 未加载引导（2026-08-21）：非 Dream 点出图未加载 → 提示 + 「去加载」展开模型下拉 */}

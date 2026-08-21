@@ -37,6 +37,8 @@ relates: [DRC_SPEC, COMPASS_SYSTEM_SSOT, STATE_COMPASS_ENGINE_SELF_NAVIGATION_SS
 | CP-APP-004 | engine busy / 互斥超时 | 等引擎释放重试；检查未 await 的释放 | src/store/engineMutex.ts | ✅ 已落地 |
 | CP-APP-005 | OpenCL / Vulkan / hang | imagegen 命令显式 backend:"CPU" 回退 | docs/SD35_OPENCL_WHITE_IMAGE_ANALYSIS.md | ✅ 已落地 |
 | CP-APP-006 | ERR_ / 生图失败 / txt2img | 检查 manifest 模型族、LoRA 路径、seed 复现 | docs/POCKETPAL_IMAGE_GEN_UPGRADE_PLAN.md | ✅ 已落地 |
+| CP-APP-007 | 反推失败 / caption 失败 / 视觉模型未加载 | 检查 Qwen3.5+mmproj 在机（MODEL_MATRIX #3/#4）；engineMutex chat 槽释放后重试 | docs/IMAGEGEN_UI_SPEC.md §7（v4） | ✅ 已登记（2026-08-21） |
+| CP-APP-008 | 转写失败 / ASR 失败 / 录音权限 | 检查 SenseVoice 模型在机（MODEL_MATRIX §2.2 A1）；RECORD_AUDIO 权限引导；重试转写 | docs/POCKETPAL_AUDIO_UI_SPEC.md | ✅ 已登记（2026-08-21） |
 
 ## 3. 状态指南针（ST-APP-NNN）
 
@@ -72,8 +74,19 @@ relates: [DRC_SPEC, COMPASS_SYSTEM_SSOT, STATE_COMPASS_ENGINE_SELF_NAVIGATION_SS
 | loading | await_load_finish | 引擎加载中 | false |
 | ready | generate | 引擎就绪 | false |
 | generating | await_sampling | 采样生成中 | false |
+| captioning | await_caption | 反推进行中 | false |
 | done | next_generation | 生成完成 | false |
 | error | investigate_and_retry | 生成错误 | true |
+
+### 3.3.1 audio 域（2026-08-21 音频工坊）
+
+| state | nextAction | label | terminal |
+|---|---|---|---|
+| idle | start_transcribe / speak | 音频空闲 | true |
+| loading | await_load_finish | 语音模型加载中 | false |
+| transcribing | await_transcript | 转写中 | false |
+| speaking | await_playback | 朗读中 | false |
+| error | investigate_and_retry | 音频错误 | true |
 
 ### 3.4 model 域
 
@@ -88,6 +101,16 @@ relates: [DRC_SPEC, COMPASS_SYSTEM_SSOT, STATE_COMPASS_ENGINE_SELF_NAVIGATION_SS
 ## 4. 事件域编号（ST-APP 补充）
 
 事件流（events.jsonl）domain 枚举：app / nav / chat / imagegen / model / engine / error / system。事件类型清单见 DRC_SPEC §3。
+
+## 4.1 产物工作区事件（2026-08-21，WORKSPACE_SPEC v1）
+
+| 事件类型 | 触发点 | payload | 消费方 |
+|---|---|---|---|
+| workspace.writing_doc | WritingDocEngine 写动作（init/append/update 等） | {action, project} | 工作区恢复链路/日志 |
+| workspace.adventure_state | AdventureStateEngine read/append 多文档动作 | {action, doc} | 冒险多文档日志 |
+
+- 格式指南针三字段：定位（触发点）→ 导航（恢复链路）→ 深入（WORKSPACE_SPEC §六）。
+- 玩具域无新事件：toyChest 既有落盘链路不迁移。
 
 ## 5. 退役规则
 

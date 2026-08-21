@@ -972,4 +972,56 @@ describe('input', () => {
       });
     });
   });
+
+  describe('写作快捷入口（WORKSPACE_SPEC v1）', () => {
+    it('点「写作项目」钮 → 前缀 chip 出现 + placeholder 切换', () => {
+      runInAction(() => {
+        modelStore.activeModelId = 'test-model-id';
+      });
+      const {getByLabelText, getByText, getByPlaceholderText} = render(
+        <UserContext.Provider value={user}>
+          <ChatInput
+            {...{
+              onSendPress: jest.fn(),
+              sendButtonVisibilityMode: 'editing',
+            }}
+          />
+        </UserContext.Provider>,
+      );
+      fireEvent.press(getByLabelText('写作项目'));
+      expect(getByText('写作项目：')).toBeTruthy();
+      expect(
+        getByPlaceholderText('描述你想写的故事，例如：星海征途、奇幻冒险…'),
+      ).toBeTruthy();
+    });
+
+    it('发送时拼接「写作项目：」前缀 → 路由 write 任务', () => {
+      runInAction(() => {
+        modelStore.activeModelId = 'test-model-id';
+      });
+      const onSendPress = jest.fn();
+      const {getByLabelText, getByPlaceholderText} = render(
+        <UserContext.Provider value={user}>
+          <ChatInput
+            {...{
+              onSendPress,
+              sendButtonVisibilityMode: 'editing',
+            }}
+          />
+        </UserContext.Provider>,
+      );
+      fireEvent.press(getByLabelText('写作项目'));
+      fireEvent.changeText(
+        getByPlaceholderText('描述你想写的故事，例如：星海征途、奇幻冒险…'),
+        '星海征途',
+      );
+      fireEvent.press(
+        getByLabelText(l10n.en.components.sendButton.accessibilityLabel),
+      );
+      expect(onSendPress).toHaveBeenCalledWith({
+        text: '写作项目：星海征途',
+        type: 'text',
+      });
+    });
+  });
 });

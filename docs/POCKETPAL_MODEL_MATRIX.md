@@ -49,7 +49,6 @@ relates: [POCKETPAL_DESIGN_SPEC]
 >   K0D3IN base heretic（license agpl-3.0）非 Fable5，勿混）
 
 ## 1.1 任务选型优先级（2026-08-20，listModelsForTask）
-
 任务（write/code/play，adventure 归 write，play 归 code）选型返回候选列表，排序：
 
 1. **用户用途标签命中**（设置页打的 capabilities 标签，write 同义键 rewriting/creativity/instructions）——组内 size 降序；
@@ -57,6 +56,15 @@ relates: [POCKETPAL_DESIGN_SPEC]
 3. **其余本地模型** size 降序兜底（越大越强）。
 
 排除：管家模型（prompter 常驻槽）/ projection / 远程模型。候选首项 = 推荐项；弹窗多候选由用户单选（PRODUCT_SPEC §4.9）。
+
+## 1.2 多模态能力映射（2026-08-21 创作工坊立项）
+
+| 能力 | 模型组合 | 引擎 | 入口 |
+|---|---|---|---|
+| 图像反推提示词 | **Qwen3.5-4B + mmproj-BF16（#3/#4）**；单次 >3 分钟时评估降 #1/#2（2B） | llama.rn chat 槽（initMultimodal） | 生图页操作条「反推」+ 聊天页发图反推（同源 captionEngine） |
+
+> 社区 2026 验证：`Qwen3.5-4B-Q4_K_M + mmproj-BF16` 是 ComfyUI 反推节点标准组合（禁思考模式、纯净描述）。
+> 零新增文件：视觉伴侣 #2/#4 已于 2026-08-20 入册装机。
 
 ## 2. 生图入选清单（3 件）
 
@@ -84,6 +92,18 @@ relates: [POCKETPAL_DESIGN_SPEC]
 >   **2026-08-20 双平台分发**：自制套件已上传魔搭 zensignGG/DreamLite-mobile-ONNX + HF
 >   QDD110/DreamLite-mobile-ONNX（6 文件字节级一致，文件名 = 本地落盘名）→ 双源在线下载，
 >   不再「请本地导入」
+
+## 2.2 音频模型清单（2026-08-21 音频工坊立项）
+
+| # | 模型 | 用途 | 大小 | 落盘 | 下载源 |
+|---|---|---|---|---|---|
+| A1 | SenseVoice int8（sherpa-onnx 包） | ASR 转写（中英日韩粤+标点） | 229 MB | `AIOS/audio/` | App 内下载（HF k2-fsa/sherpa-onnx 模型仓库） |
+| A2 | Kokoro-82M FP32（onnx-community） | TTS 朗读（默认） | 330 MB | App documents `tts/kokoro/`（TTSStore 管辖） | App 内下载（HF，TTSStore 既有链路） |
+| A3 | Kitten nano-fp32 | TTS 轻量备选 | 57 MB | App documents `tts/kitten/` | App 内下载（HF，TTSStore 既有链路） |
+| A4 | Supertonic v3 | TTS 高质/多语种 | 380 MB | App documents `tts/supertonic/` | App 内下载（HF，TTSStore 既有链路） |
+
+> 管辖边界：A2-A4 走既有 TTSStore 下载状态机（App 内下载，非手工推送）；A1 新增 `AIOS/audio/` 目录，
+> 装机/补推时按本表核对。推送门禁同 §4（清单外禁推）。
 
 ## 3. 淘汰 / 未选型清单（禁止推送 ❌）
 

@@ -31,7 +31,7 @@ interface ComposerPanelProps {
   hasEditableImage: boolean;
   showAdvanced: boolean;
   generating: boolean;
-  taskKind: 'gen' | 'edit' | null;
+  taskKind: 'gen' | 'edit' | 'caption' | null;
   /** 非 DreamLite 出图按钮的加载前置条件 */
   loaded: boolean;
   /** DreamLite 画幅宽（由 ratio 派生） */

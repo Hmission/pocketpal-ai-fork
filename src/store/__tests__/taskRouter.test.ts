@@ -1,4 +1,4 @@
-import {routeTask} from '../taskRouter';
+import {routeTask, isCaptionIntent} from '../taskRouter';
 
 describe('taskRouter', () => {
   describe('image 任务', () => {
@@ -127,6 +127,37 @@ describe('taskRouter', () => {
     });
   });
 
+  describe('write 续写意图（WORKSPACE_SPEC v1，2026-08-21）', () => {
+    it('「继续写《星海》」行首命中 write（项目名非文体词）', () => {
+      expect(routeTask('继续写《星海》第三章').task).toBe('write');
+    });
+    it('「续写我的小说」命中', () => {
+      expect(routeTask('续写我的小说').task).toBe('write');
+    });
+    it('「接着写下去」命中', () => {
+      expect(routeTask('接着写下去').task).toBe('write');
+    });
+    it('防误伤：句中「明天继续写」不命中（行首锚定）', () => {
+      expect(routeTask('好的，我明天继续写作业').task).toBe('chitchat');
+    });
+  });
+  
+  describe('写作快捷前缀（WORKSPACE_SPEC v1，2026-08-21）', () => {
+    it('「新建写作项目：星海」剥离前缀路由 write', () => {
+      const signal = routeTask('新建写作项目：星海');
+      expect(signal.task).toBe('write');
+      expect(signal.payload).toBe('星海');
+    });
+    it('「写作项目：回忆录」剥离前缀路由 write', () => {
+      const signal = routeTask('写作项目：回忆录');
+      expect(signal.task).toBe('write');
+      expect(signal.payload).toBe('回忆录');
+    });
+    it('「写作项目：」空主体短路回 chitchat（防空投）', () => {
+      expect(routeTask('写作项目：').task).toBe('chitchat');
+    });
+  });
+  
   describe('adventure 任务（P12 城主，ADVENTURE_SPEC v1）', () => {
     it('「来场冒险」命中', () => {
       expect(routeTask('来场冒险').task).toBe('adventure');
@@ -153,6 +184,23 @@ describe('taskRouter', () => {
     });
   });
 
+  describe('isCaptionIntent 反推意图（创作工坊 v4，路由专工）', () => {
+      it('命中「反推提示词」', () => {
+        expect(isCaptionIntent('反推提示词')).toBe(true);
+      });
+      it('命中「提取标签」', () => {
+        expect(isCaptionIntent('帮我提取标签')).toBe(true);
+      });
+      it('命中英文 caption / tagger', () => {
+        expect(isCaptionIntent('generate caption for this image')).toBe(true);
+        expect(isCaptionIntent('use tagger')).toBe(true);
+      });
+      it('防误伤：无图片上下文的日常话术不命中', () => {
+        expect(isCaptionIntent('帮我反推一下这个思路')).toBe(false);
+        expect(isCaptionIntent('你好')).toBe(false);
+      });
+    });
+  
   describe('chitchat 兜底', () => {
     it('普通问候归为闲聊', () => {
       expect(routeTask('你好，今天过得怎么样').task).toBe('chitchat');

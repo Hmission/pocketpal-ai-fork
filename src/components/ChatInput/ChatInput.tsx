@@ -209,11 +209,11 @@ export const ChatInput = observer(
     // 编辑源图状态（P5）：外部受控；发送/取消后由 ChatView 复位
     const [showEditPickerMenu, setShowEditPickerMenu] = React.useState(false);
     const [showEditHint, setShowEditHint] = React.useState(false); // 编辑空指令轻提示
-    // 快捷前缀标签（P5 v3 图标语义）：点「图像生成/图片编辑/做个玩具/来场冒险」→ 输入区顶部显示彩色前缀 chip，
+    // 快捷前缀标签（P5 v3 图标语义）：点「图像生成/图片编辑/做个玩具/来场冒险/写作项目」→ 输入区顶部显示彩色前缀 chip，
     // 不可逐字编辑（× 整体删除，破坏一个字符即失效）；发送时拼接成完整文本（路由/编辑剥离），
     // 模型只收主体。前缀不是输入文本——不占 value，天然绕开受控组件。
     const [quickPrefix, setQuickPrefix] = React.useState<
-      '图像生成' | '图片编辑' | '做个玩具' | '来场冒险' | null
+      '图像生成' | '图片编辑' | '做个玩具' | '来场冒险' | '写作项目' | null
     >(null);
     const isEditMode = chatSessionStore.isEditMode;
 
@@ -670,7 +670,9 @@ export const ChatInput = observer(
                       ? '描述想玩的玩具，例如：贪吃蛇、抽签器…'
                       : quickPrefix === '来场冒险'
                         ? '描述你的冒险开场，例如：地牢、巨龙、宝藏…'
-                        : isVideoCapable
+                        : quickPrefix === '写作项目'
+                          ? '描述你想写的故事，例如：星海征途、奇幻冒险…'
+                          : isVideoCapable
                         ? l10n.video.promptPlaceholder
                         : l10n.components.chatInput.inputPlaceholder
               }
@@ -751,6 +753,24 @@ export const ChatInput = observer(
                 accessibilityRole="button">
                 <Icon
                   name="sword-cross"
+                  size={20}
+                  color={theme.colors.primary}
+                />
+              </TouchableOpacity>
+              {/* 写作工作区（WORKSPACE_SPEC v1）：写作项目引导入口——「写作项目」前缀路由 write 任务（新建/续写） */}
+              <TouchableOpacity
+                testID="writing-quick-gen"
+                style={[styles.quickIconBtn, {opacity: busy ? 0.4 : 1}]}
+                disabled={busy}
+                onPress={() => {
+                  setQuickPrefix('写作项目');
+                  onEditSourceChange?.(null); // 退出编辑模式（若有残留源图）
+                  inputRef.current?.focus();
+                }}
+                accessibilityLabel="写作项目"
+                accessibilityRole="button">
+                <Icon
+                  name="pencil-outline"
                   size={20}
                   color={theme.colors.primary}
                 />

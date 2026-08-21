@@ -32,7 +32,7 @@ interface ResultPreviewProps {
   bootedRef: React.MutableRefObject<boolean>;
   /** 是否已消费启动定位（FlatList 挂载后编排层 scrollToOffset 用） */
   onListReady: () => void;
-  taskKind: 'gen' | 'edit' | null;
+  taskKind: 'gen' | 'edit' | 'caption' | null;
   progress: number;
   progressText: string;
   stepTime: number;
@@ -53,6 +53,12 @@ interface ResultPreviewProps {
   onSave: () => void;
   /** P6-6 高清放大（独立通用能力，对当前成功图可用） */
   onUpscale: () => void;
+  /** 反推当前图提示词（v4：生图成功图/上传图操作条按钮） */
+  onCaption: () => void;
+  /** 反推结果复制（caption 成功页） */
+  onCopyCaption: (item: GeneratedImage) => void;
+  /** 复刻生图（caption 成功页：Sheet 全参数 → 回填 → 出图） */
+  onRemake: (item: GeneratedImage) => void;
   onReroll: () => void;
   onDelete: () => void;
   /** 信息条点击：弹出完整生图参数（提示词/耗时/尺寸/模型/种子/步数） */
@@ -100,6 +106,9 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
   onCloseFullscreen,
   onSave,
   onUpscale,
+  onCaption,
+  onCopyCaption,
+  onRemake,
   onReroll,
   onDelete,
   onInfoPress,
@@ -109,6 +118,9 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
 }) => {
   const theme = useTheme();
   const s = createStyles(theme);
+
+  // 反推结果卡展开态（组件内局部状态；翻页重置）
+  const [captionExpanded, setCaptionExpanded] = React.useState(false);
 
   // 进度卡内容（running 任务页与编辑态 overlay 共用）
   const progressBody = (title: string) => (
@@ -169,6 +181,14 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
       </View>
     ) : null;
 
+  // 反推态动效：同编辑语义，半透明叠在当前图上（用户要看被反推的图）
+  const captionOverlay =
+    generating && taskKind === 'caption' ? (
+      <View style={[s.genOverlay, s.genOverlayEdit]}>
+        {progressBody('正在反推提示词…')}
+      </View>
+    ) : null;
+
   /** FlatList 懒加载分页：只挂载可视页附近（windowSize），避免 50 张全尺寸大图
    *  同时解码导致渲染管线堵塞（HWUI 解码过载 → 全页图片空白）。 */
   const renderItem = ({item}: {item: GeneratedImage}) => {
@@ -177,12 +197,15 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
     // running：空白预览页 + 进度卡（放大任务：原图背景 + 半透明进度，见原图在放大）
     if (status === 'running') {
       const isUpscale = item.kind === 'upscaled';
+      const isCaption = item.kind === 'caption';
       const title =
         taskKind === 'edit'
           ? '正在编辑此图…'
-          : isUpscale
-            ? '正在放大此图…'
-            : '正在生成新图…';
+          : taskKind === 'caption' || isCaption
+            ? '正在反推提示词…'
+            : isUpscale
+              ? '正在放大此图…'
+              : '正在生成新图…';
       return (
         <View style={{width: pageW}}>
           <View style={[s.taskPage, {width: pageW}]}>
@@ -190,6 +213,17 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
               <>
                 <Image
                   source={{uri: item.sourceUri}}
+                  style={StyleSheet.absoluteFillObject}
+                  resizeMode="contain"
+                />
+                <View style={[s.genOverlay, s.genOverlayEdit]}>
+                  {progressBody(title)}
+                </View>
+              </>
+            ) : isCaption && item.uri ? (
+              <>
+                <Image
+                  source={{uri: item.uri}}
                   style={StyleSheet.absoluteFillObject}
                   resizeMode="contain"
                 />
@@ -246,7 +280,8 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
       );
     }
 
-    // success：图片 + 信息条
+    // success：图片 + 信息条；caption 任务追加反推结果卡 + 专属操作条
+    const isCaptionItem = item.kind === 'caption';
     return (
       <View style={{width: pageW}}>
         <TouchableOpacity onPress={onOpenFullscreen}>
@@ -263,20 +298,60 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
             activeOpacity={0.7}
             onPress={() => onInfoPress(item)}>
             <Text style={s.infoOverlayText} numberOfLines={1}>
-              {item.kind !== 'upload'
-                ? [
-                    item.modelLabel,
-                    item.durationMs != null
-                      ? `${(item.durationMs / 1000).toFixed(1)}s`
-                      : null,
-                    `${item.width}×${item.height}`,
-                  ]
+              {isCaptionItem
+                ? ['反推', item.modelLabel, item.durationMs != null ? `${(item.durationMs / 1000).toFixed(1)}s` : null]
                     .filter(Boolean)
                     .join(' · ')
-                : `上传图 · ${item.width}×${item.height}`}
+                : item.kind !== 'upload'
+                  ? [
+                      item.modelLabel,
+                      item.durationMs != null
+                        ? `${(item.durationMs / 1000).toFixed(1)}s`
+                        : null,
+                      `${item.width}×${item.height}`,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')
+                  : `上传图 · ${item.width}×${item.height}`}
             </Text>
           </TouchableOpacity>
         </View>
+        {isCaptionItem ? (
+          <>
+            {/* 反推结果卡（v4，IMAGEGEN_UI_SPEC §7.2）：✨ 反推提示词全文可展开 */}
+            <TouchableOpacity
+              style={s.captionCard}
+              activeOpacity={0.8}
+              onPress={() => setCaptionExpanded(v => !v)}>
+              <Text style={s.captionCardTitle}>✨ 反推提示词</Text>
+              <Text
+                style={s.captionCardBody}
+                numberOfLines={captionExpanded ? undefined : 3}>
+                {item.prompt || '（无输出）'}
+              </Text>
+              <Text style={s.captionCardHint}>
+                {captionExpanded ? '收起 ▲' : '展开 ▼'}
+              </Text>
+            </TouchableOpacity>
+            <View style={s.actionRow}>
+              <TouchableOpacity
+                style={[s.actionBtn, s.actionSave]}
+                onPress={() => onCopyCaption(item)}>
+                <Text style={s.actionTextOnSuccess}>复制</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.actionBtn, s.actionReuse]}
+                onPress={() => onRemake(item)}>
+                <Text style={s.actionTextOnWarning}>复刻生图</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.actionBtn, s.actionDelete]}
+                onPress={onDelete}>
+                <Text style={s.actionTextOnDanger}>删除</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        ) : null}
       </View>
     );
   };
@@ -333,6 +408,13 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
                         onPress={onPickEditImage}>
                         <Text style={s.uploadFabText}>重新上传</Text>
                       </TouchableOpacity>
+                      {/* v4：上传图同样可反推（有图即反推，IMAGEGEN_UI_SPEC §2） */}
+                      <TouchableOpacity
+                        style={[s.uploadFab, s.captionFab]}
+                        onPress={onCaption}
+                        disabled={generating}>
+                        <Text style={s.uploadFabText}>反推</Text>
+                      </TouchableOpacity>
                     </>
                   ) : (
                     <TouchableOpacity
@@ -351,11 +433,11 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
             />
           ) : null}
           {editOverlay}
+          {captionOverlay}
         </View>
-        {showActionRow && (
-          <>
-            {/* 操作条定稿四按钮：保存/放大/再次生成/删除；编辑唯一入口=ComposerPanel 底部 */}
-            <View style={s.actionRow}>
+        {/* 操作条 v4：生图/放大成功图五按钮；caption 任务操作条在页内（守卫：无图/caption 均不渲染） */}
+        {showActionRow && currentItem?.kind !== 'caption' && (
+          <View style={s.actionRow}>
               <TouchableOpacity
                 style={[s.actionBtn, s.actionSave]}
                 onPress={onSave}>
@@ -365,6 +447,12 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
                 style={[s.actionBtn, s.actionEdit]}
                 onPress={onUpscale}>
                 <Text style={s.actionTextOnInfo}>放大</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.actionBtn, s.actionCaption]}
+                onPress={onCaption}
+                disabled={generating}>
+                <Text style={s.actionTextOnCaption}>反推</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[s.actionBtn, s.actionReuse]}
@@ -377,7 +465,6 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
                 <Text style={s.actionTextOnDanger}>删除</Text>
               </TouchableOpacity>
             </View>
-          </>
         )}
       </View>
 
