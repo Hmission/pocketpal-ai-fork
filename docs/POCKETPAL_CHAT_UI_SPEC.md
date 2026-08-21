@@ -381,7 +381,7 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 
 - **用途标签**：ModelSettingsSheet「用途」多选 chips（写作/代码；玩具复用 code 选型不增第三枚），写入 `model.capabilities`（保留非用途键）。chips 文案与弹窗 TASK_LABEL 属「产品叙事硬编码口径」（同 B18 §17 意图标签裁定，2026-08-20 显式登记）。
 - **选型语义（复查 2026-08-20 大王复核定稿）**：`listModelsForTask` 返回**任务族候选**——用户标签命中 + 文件名指纹命中（去重），**上限 3**；任务族为空才兜底单个最大模型（**不甩全量**，推荐要精不要清单）。每个候选带一句话推荐说明（`candidateNote`：MODEL_MATRIX 定位优先，无定位按大小给「更大更强，但加载更慢 / 均衡档，更快上手」）——差异可决策。`findModelForTask` = 首项兼容面。
-- **弹窗升级**：ModelSwitchDialog 渲染任务族候选（单选，默认选中推荐项，testID `model-switch-candidate-{id}`）+ 一句话说明行 + 继续当前（场景 A）；返回 `{choice, modelId}`。
+- **弹窗升级**：ModelSwitchDialog 渲染任务族候选（单选，默认选中推荐项，testID `model-switch-candidate-{id}`）+ 一句话说明行 + 继续当前（场景 A）；返回 `{choice, modelId}`。候选行/加载态模型名走 `getModelDisplayNameWithParams` 中文简称（与选择器同源，不显示原始文件名——K90 真机复查 v4.7）。
 - **弹窗内加载（复查定稿，移动端重量级操作最佳实践）**：确认后**弹窗不立即关**——Modal 遮罩保持（全屏模态 → 其他交互天然阻塞，受影响按钮不可操作），内容转「正在加载所选模型…」态；加载完成自动关并恢复；失败在弹窗内显示原因（可取消/重试），**不再插聊天错误卡**（错误归属弹窗，单一承载）。闭环：设置页打标签 → 选型读标签 → 弹窗任务族多候选 → 弹窗内加载 → 会话记住。
 - **加载态动效（v4.7）**：三点波浪 + 2% 底条（与生图任务卡同款，useWaveDots 复用）替代 ActivityIndicator 转圈——遮罩阻塞期用户可感知加载在进行而非卡死。
 
