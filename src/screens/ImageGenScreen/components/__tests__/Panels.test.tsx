@@ -99,6 +99,8 @@ describe('ComposerPanel', () => {
     isDream: false,
     editArming: false,
     editRgb: null,
+    // 2026-08-21：非 Dream 编辑按钮显示条件（预览区有可编辑图）
+    hasEditableImage: false,
     showAdvanced: false,
     generating: false,
     taskKind: null as 'gen' | 'edit' | null,
@@ -150,13 +152,32 @@ describe('ComposerPanel', () => {
     expect(onGenerate).toHaveBeenCalled();
   });
 
-  it('未加载时出图按钮禁用', () => {
+  it('未加载时出图按钮可点（引导加载由编排层处理，不禁用）', () => {
     const onGenerate = jest.fn();
     const {getByText} = wrap(
       <ComposerPanel {...baseProps} loaded={false} onGenerate={onGenerate} />,
     );
     fireEvent.press(getByText('出图'));
-    expect(onGenerate).not.toHaveBeenCalled();
+    expect(onGenerate).toHaveBeenCalled();
+  });
+
+  it('非 Dream 预览区有图时显示编辑按钮，点击触发 onEditArm；无图不渲染', () => {
+    const onEditArm = jest.fn();
+    const {getByText} = wrap(
+      <ComposerPanel
+        {...baseProps}
+        hasEditableImage={true}
+        onEditArm={onEditArm}
+      />,
+    );
+    expect(getByText('编辑')).toBeTruthy();
+    fireEvent.press(getByText('编辑'));
+    expect(onEditArm).toHaveBeenCalled();
+    // 预览区无图（0 页编辑槽空 + 无历史）时不渲染编辑按钮
+    const {queryByText} = wrap(
+      <ComposerPanel {...baseProps} hasEditableImage={false} />,
+    );
+    expect(queryByText('编辑')).toBeNull();
   });
 
   it('08-18 声明 lora 的模型显示 LoRA 开关，未声明不显示', () => {

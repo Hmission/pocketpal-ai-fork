@@ -103,6 +103,8 @@ export const ImageGenScreen: React.FC = observer(() => {
   const [taskKind, setTaskKind] = React.useState<'gen' | 'edit' | null>(null);
   // P6-6：高清放大参数面板显隐（独立通用能力入口）
   const [upscaleVisible, setUpscaleVisible] = React.useState(false);
+  // 未加载引导弹窗（2026-08-21）：非 Dream 点出图未加载 → 提示 + 展开模型下拉
+  const [loadGuideVisible, setLoadGuideVisible] = React.useState(false);
   // 信息条点击：当前查看完整生图参数的任务条目（提示词/耗时/尺寸/模型/种子/步数）
   const [infoItem, setInfoItem] = React.useState<GeneratedImage | null>(null);
 
@@ -341,6 +343,9 @@ export const ImageGenScreen: React.FC = observer(() => {
   // 行内按钮：加载 / 卸载（卸载二次确认，统一弹窗设计语言）
   const handleRowAction = async (entry: ModelEntry) => {
     setSelectedId(entry.manifest.id);
+    setEditArming(false); // 切模型即退出编辑预备态（同 handleSelectModel）
+    setEditRgb(null);
+    setEditVisRgb(null);
     if (isRowLoaded(entry)) {
       const ok = await confirmDialog({
         title: '卸载模型',
@@ -377,8 +382,12 @@ export const ImageGenScreen: React.FC = observer(() => {
   }, [selectedEntry]);
 
   // 下拉选中：只选中高亮 + 回填参数。不折叠面板、不加载、不切模式（点卡片只是“看参数”）。
+  // 切换模型即退出编辑预备态（目标图/引擎语境已变，防状态残留，2026-08-21）
   const handleSelectModel = (entry: ModelEntry) => {
     setSelectedId(entry.manifest.id);
+    setEditArming(false);
+    setEditRgb(null);
+    setEditVisRgb(null);
   };
 
   // 预览分页跳转：0=编辑槽，i≥1=历史第 i-1 张（任何手动导航均视为已完成启动定位）
@@ -532,6 +541,21 @@ export const ImageGenScreen: React.FC = observer(() => {
     if (imageGenStore.generating) {
       return;
     }
+    // 非 Dream（SD3.5/Z-Image 无编辑引擎）：确认后自动切 DreamLite 并锁定当前图——
+    // 一次点击完成「切模型 + 进编辑预备态」（2026-08-21，入口常驻新手友好）
+    if (!isDream) {
+      const ok = await confirmDialog({
+        title: '编辑需要 DreamLite',
+        message:
+          '当前模型（SD3.5/Z-Image）不支持图像编辑，切换到 DreamLite 继续？',
+        confirmText: '切换并编辑',
+      });
+      if (!ok) {
+        return;
+      }
+      setSelectedId(DREAMLITE_MANIFEST.id);
+      // 不 return：继续走下方锁定流程（切换后编辑预备态一次成型）
+    }
     if (editArming) {
       handleEditRun();
       return;
@@ -644,6 +668,16 @@ export const ImageGenScreen: React.FC = observer(() => {
       // 复查 2026-08-20：空提示词点「出图」必须显式反馈（不静默）——
       // 此前静默早退导致「有动效无反应」，两台真机稳定复现
       showSnackbar('先输入提示词，再点出图');
+      return;
+    }
+    // 未加载引导（2026-08-21，仅非 Dream；DreamLite 点出图自动加载不变）：
+    // 按钮不再灰置，点击弹提示 + 展开模型下拉让用户选模型加载（新手友好）
+    if (!isDream && !loaded) {
+      if (imageGenStore.loading) {
+        showSnackbar('模型加载中，请稍候');
+        return;
+      }
+      setLoadGuideVisible(true);
       return;
     }
     setEditArming(false); // 出图退出编辑预备态
@@ -913,6 +947,7 @@ export const ImageGenScreen: React.FC = observer(() => {
           isDream={isDream}
           editArming={editArming}
           editRgb={editRgb}
+          hasEditableImage={!!editSource || !!currentImage}
           showAdvanced={showAdvanced}
           generating={imageGenStore.generating}
           taskKind={taskKind}
@@ -970,6 +1005,25 @@ export const ImageGenScreen: React.FC = observer(() => {
         onClose={() => setUpscaleVisible(false)}
         onConfirm={handleUpscaleConfirm}
       />
+
+      {/* 未加载引导（2026-08-21）：非 Dream 点出图未加载 → 提示 + 「去加载」展开模型下拉 */}
+      <OverlayCard
+        visible={loadGuideVisible}
+        onRequestClose={() => setLoadGuideVisible(false)}
+        title="需要先加载模型"
+        actions={{
+          primary: {
+            label: '去加载',
+            onPress: () => {
+              setLoadGuideVisible(false);
+              setShowModelDrop(true);
+            },
+          },
+        }}>
+        <Text style={s.modalPrompt}>
+          当前未加载生图模型。请先在上方下拉中选择并加载模型，再点「出图」。
+        </Text>
+      </OverlayCard>
 
       {/* 信息条点击：完整生图参数详情（模型/耗时/尺寸/种子/步数/时间/提示词）
           OverlayCard 底座（DESIGN_SPEC §12.1） */}

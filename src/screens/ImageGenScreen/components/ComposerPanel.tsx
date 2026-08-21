@@ -27,6 +27,8 @@ interface ComposerPanelProps {
   editArming: boolean;
   /** 编辑源图已预解码（执行编辑按钮可用条件） */
   editRgb: Float32Array | null;
+  /** 预览区有可编辑图（0 页编辑槽有图或历史页有图）——非 Dream 下编辑按钮显示条件 */
+  hasEditableImage: boolean;
   showAdvanced: boolean;
   generating: boolean;
   taskKind: 'gen' | 'edit' | null;
@@ -71,6 +73,7 @@ export const ComposerPanel: React.FC<ComposerPanelProps> = ({
   isDream,
   editArming,
   editRgb,
+  hasEditableImage,
   showAdvanced,
   generating,
   taskKind,
@@ -279,17 +282,30 @@ export const ComposerPanel: React.FC<ComposerPanelProps> = ({
         </>
       )}
       {!isDream && (
-        <TouchableOpacity
-          style={[s.button, !loaded && s.buttonDisabled]}
-          disabled={generating || !loaded}
-          testID="imagegen-generate"
-          onPress={() => onGenerate()}>
-          {generating ? (
-            <ActivityIndicator size="small" color={theme.colors.onPrimary} />
-          ) : (
-            <Text style={s.buttonText}>出图</Text>
+        <View style={s.buttonRow}>
+          {/* 非 Dream 编辑入口（2026-08-21）：预览区有图时常驻，点击由编排层
+              确认后自动切 DreamLite（SD3.5/Z-Image 无编辑引擎）；未加载不禁用 */}
+          {hasEditableImage && (
+            <TouchableOpacity
+              style={[s.button, s.buttonEdit]}
+              disabled={generating}
+              onPress={onEditArm}>
+              <Text style={[s.buttonText, s.buttonTextOnInfo]}>编辑</Text>
+            </TouchableOpacity>
           )}
-        </TouchableOpacity>
+          {/* 未加载不再灰置：点击由编排层弹引导（提示+展开模型下拉），新手友好 */}
+          <TouchableOpacity
+            style={[s.button, s.buttonGen]}
+            disabled={generating}
+            testID="imagegen-generate"
+            onPress={() => onGenerate()}>
+            {generating ? (
+              <ActivityIndicator size="small" color={theme.colors.onPrimary} />
+            ) : (
+              <Text style={s.buttonText}>出图</Text>
+            )}
+          </TouchableOpacity>
+        </View>
       )}
       {/* 报错唯一出口 = 预览区 failed 任务页（任务化，2026-08），
           composer 底部不再展示错误文本 */}
