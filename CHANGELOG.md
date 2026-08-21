@@ -22,6 +22,7 @@
 
 ### 改进
 - 生图页新手引导交互闭环（2026-08-21，大王思路裁定，IMAGEGEN_UI_SPEC v4.1）：① 非 Dream（SD3.5/Z-Image）未加载时出图按钮不再灰置禁用——点击弹「需要先加载模型」提示 +「去加载」自动展开模型下拉，一步引导加载（再次生成 / 失败重试同链路自动复用）；② 非 Dream 下预览区有图时创作区常驻「编辑」按钮——点击确认后自动切换 DreamLite + 锁定当前图进入编辑预备态（一次点击闭环）；③ 切换模型即清空编辑预备态（防状态残留）；DreamLite 未加载自动加载引擎行为维持不变
+- 生图页提示形态统一（2026-08-21，大王裁定，IMAGEGEN_UI_SPEC v4.2 + DESIGN_SPEC §12.4 登记）：底部灰色 Snackbar 全量迁移**顶部横幅**——①位置：absolute 压预览区顶部（白卡实底 + 圆角 + elevation，内嵌 BannerBar 语义色 12% wash，非灰底、不挡底部按钮、对比度合规）；②瞬时反馈（生成完成/保存/复制/反推/错误等 15 处 + 音频工坊 8 处）：3s 自动消失 + × 可关闭；③状态引导（「已锁定当前图…」）：**常驻至编辑预备态结束**（editArming 派生渲染，执行编辑/翻页/切模型自动消失）；④语义色：error=红/warning=橙/其余=info 蓝，编辑预备态期间瞬时横幅让位；生图页底部 Snackbar 绝迹，其余页面不扩散
 - 模型加载卡片动效统一（2026-08-21，大王反馈）：聊天页两处模型加载卡片——顶栏选择器卡片（ChatPalModelPickerSheet，原纯文本）与任务切换弹窗加载态（ModelSwitchDialog，原 ActivityIndicator 转圈）——升级为生图任务卡同款动效（三点波浪跳动 + 2% 底条，复用 useWaveDots，JS driver 合规），消除「加载中像卡死」误判；ModelSwitchDialog 移除 ActivityIndicator 统一设计语言；K90 真机复查二次优化——弹窗候选行/加载态模型名改中文简称（getModelDisplayNameWithParams 与选择器同源，替代完整 gguf 文件名）+ 加载态布局重构（三点波浪独立行 + 模型名单行截断防溢出），真机全链路验证通过
 - 进度监控卡卡片化（2026-08-19，CHAT_UI_SPEC §18.9 v4.2）：PendingIndicator 容器升级为 assistant 卡片设计语言（assistantBubbleBackground 底色 + messageBorderRadius 圆角），与聊天流卡片同一视觉族；K90 真机三截图验证
 - 代码/玩具匠终局选型 LFM2.5-2.6B（2026-08-20，大王钦定）：替代 Ministral-3-3B（迭代合规不稳 PLAY-6）；LFM2.5 族工具调用专长 + 1.67GB PSS 安全（LFM8B 5.16GB 被 K90 HyperOS PSS 看护 6GB 硬杀，厂商锁死不可关）；K90 真机三点验收全绿（选型生效 + 加载 2s + 玩具生成落盘）

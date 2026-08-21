@@ -436,6 +436,7 @@ ScrollView
 ### 12.4 轻提示（Paper Snackbar 唯一载体）
 
 - 操作反馈/错误提示一律 Paper Snackbar（ChatView 既有模式）；自建 Animated toast 已删除（useToast）。
+- **生图页例外（2026-08-21 大王裁定登记，B30 复查）**：生图页轻提示全量迁移**顶部横幅**（§12.3 BannerBar overlay 形态：白卡实底 surfaceElevated + xl 圆角 + elevation 4，absolute 压预览区顶部，内嵌语义色 12% wash）——底部 Snackbar 灰色底 + 遮挡底部按钮，在生图页停用；其余页面维持底部 Snackbar。瞬时反馈 3s 自动消失；状态引导（编辑锁定）常驻至状态结束。详见 IMAGEGEN_UI_SPEC §9。
 
 ### 12.5 图标铁律
 
@@ -460,6 +461,7 @@ HtmlPreviewBubble / ResultPreview / TextMessage 图片全屏 / ZoomableImage：�
 
 | 日期 | 版本 | 变更 |
 |------|------|------|
+| 2026-08-21 | 3.13 | §12.4 登记生图页例外（大王裁定）：生图页轻提示全量迁移顶部横幅（BannerBar overlay，白卡实底压预览区顶部，语义色 wash，非灰底）；底部 Snackbar 在生图页停用；relates 挂 IMAGEGEN_UI_SPEC v4.2 |
 | 2026-08-21 | 3.12 | Gap Ledger 补 B30（生图页新手引导，大王思路裁定）：非 Dream 出图未加载引导（弹窗 + 自动展开模型下拉）+ 编辑入口常驻（预览区有图即显示，点击自动切 DreamLite）+ 切模型清编辑预备态；relates 挂 IMAGEGEN_UI_SPEC v4.1 |
 | 2026-08-21 | 3.9 | Gap Ledger 补 B26（放大模型升级与双模型可选，A' 定稿）：anime 高清档换 x4plus_anime_6B（RRDBNet-6 图片级）+ anime_fast 快速档回归（双档可选）+ NNAPI EP + PasSR 不可得实锤；relates 挂 IMAGE_GEN_UPGRADE_PLAN §6.20 |
 | 2026-08-21 | 3.10 | Gap Ledger 补 B27（相册持久化架构对齐 + 数据恢复）：mobx-persist-store 对齐 + 旧 key 迁移 + DRC recoverHistory，relates → IMAGE_GEN_UPGRADE_PLAN §6.21 |

@@ -22,6 +22,7 @@ relates: [POCKETPAL_DESIGN_SPEC, ADR-0002-imagegen-header-right]
 > 版本：v3.1（2026-08-18 真机二轮：顶栏胶囊底色统一为 primary 12%（与聊天页胶囊同设计语言，替代旧 domain.imageGen 粉底））
 > 版本：v4（2026-08-21，创作工坊：页内双 tab（生图/音频工坊）+ 反推能力——操作条五按钮、caption 任务化入画廊、复刻生图 Sheet 全参数；音频工坊见 AUDIO_UI_SPEC）
 > 版本：v4.1（2026-08-21，新手引导：非 Dream 出图未加载不再灰置——点击弹提示 + 展开模型下拉；预览区有图时非 Dream 也常驻「编辑」按钮——点击确认后自动切 DreamLite）
+> 版本：v4.2（2026-08-21，提示形态统一：生图页全部轻提示弃用底部 Paper Snackbar——顶部 BannerBar overlay（白卡实底压预览区顶部，语义色 wash，不挡底部按钮）；编辑锁定提示常驻至预备态结束，其余瞬时 3s 自动消失）
 > 上位规范：POCKETPAL_DESIGN_SPEC.md（UI 域 SSOT）
 
 ## 1. 页面结构（工坊双 tab + 单列三区 + 顶部模型胶囊）
@@ -80,10 +81,22 @@ relates: [POCKETPAL_DESIGN_SPEC, ADR-0002-imagegen-header-right]
 - 状态文案：未加载 / 加载中… / 已就绪
 
 ### 出图按钮显式反馈（复查 2026-08-20 真机回归定稿 + v4.1 新手引导）
-- **空提示词点「出图」必须显式 toast 提示**（「先输入提示词，再点出图」），不得静默无反应——此前 `if (!p) return` 静默早退导致「有动效无反应」，两台真机稳定复现；显式失败不静默（锋利原则）
+- **空提示词点「出图」必须显式横幅提示**（「先输入提示词，再点出图」，v4.2 起顶部横幅），不得静默无反应——此前 `if (!p) return` 静默早退导致「有动效无反应」，两台真机稳定复现；显式失败不静默（锋利原则）
 - **未加载模型不禁用（v4.1）**：非 Dream 未加载时出图按钮**不再灰置**——点击弹「需要先加载模型」OverlayCard（底座 DESIGN_SPEC §12.1）→「去加载」→ 自动展开模型下拉（行内加载按钮）；再次生成 / 失败页重试走同一 handleGenerate 自动复用引导。DreamLite 未加载点出图维持引擎内部自动加载（generateDreamLiteEntry 兜底）
 - **onPress 必须显式无参包装**：`onPress={() => onGenerate()}`，禁止 `onPress={onGenerate}` 直传 async 函数——RN 必传 GestureResponderEvent 作为首参，直传导致 `handleGenerate(event)` 入口 `(event ?? prompt).trim()` 抛 TypeError 被 Bridgeless 事件系统静默吞掉（2026-08-20 两台真机 + DRC 三重复现，回归引入点 commit 44689f8 加 promptOverride 参数）
 - **「再次生成」= 当前图同参数重跑**：用任务自带 prompt（与失败页「重试」同源 `handleGenerate(item.prompt)`），不读当前输入框——输入框被清空/编辑预备态清 prompt 后再次生成仍有效
+
+## 9. 顶部横幅提示（v4.2，大王裁定：弃用底部 Snackbar）
+
+生图页全部轻提示**不再使用底部 Paper Snackbar**（灰色底 + 遮挡底部按钮），统一为**顶部横幅 overlay**：
+
+- **形态**：absolute 定位压在预览区顶部（不占文档流），白卡实底（`surfaceElevated` + xl 圆角 + elevation 4 + 阴影）保证图片上可读性，内嵌 `ui/BannerBar`（DESIGN_SPEC §12.3 语义色 12% wash + hairline，非灰底）
+- **两类展示**：
+  - **瞬时反馈**（生成完成 / 保存 / 复制 / 反推完成 / 错误提示）：3s 自动消失 + × 可关闭
+  - **状态引导**（编辑锁定「已锁定当前图（sq×sq），输入编辑指令后点「执行编辑」」）：**常驻至编辑预备态结束**（执行编辑 / 翻页 / 切模型 / 出图时随 editArming=false 消失）——由 editArming 派生渲染，不占瞬时 state
+- **语义色**：error=红 / warning=橙 / 其余=info 蓝
+- **互斥**：编辑预备态期间只显示常驻锁定横幅，瞬时反馈让位（避免双横幅）
+- 覆盖范围：原 15 处 Snackbar 调用点全部迁移（详见 MASTER_LOG §68）
 
 ## 3. 模型下拉规则
 
