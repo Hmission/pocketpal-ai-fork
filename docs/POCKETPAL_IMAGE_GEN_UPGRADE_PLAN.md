@@ -1003,6 +1003,16 @@ ealesrgan_x4plus_anime_6B.onnx（APK +14.7MB）
 
 **严格同构对照（1024² 25 tiles 2×）**：anime_fast K90 22.3s vs 小米 13 55.4s（2.5×）；anime 高清 K90 67.6s vs 185.0s（2.7×）；general K90 218.5s vs ~370s 外推（~1.7×）——**NNAPI 在 8 Elite 对超分全档生效，conv 密集收益比 TE 更显著**；小米 13 持平（回退 CPU 无副作用）；单配置双设备闭环定稿。画质取证：K90 两档输出 ch-diff 64+ 彩色正常。
 
+### RealCUGAN 调研结论（2026-08-21 登记，立项另议）
+
+**Real-CUGAN**（bilibili/ailab，Apache-2.0 可商用）：动漫超分质量标杆——百万级动漫训练集、级联 U-Net（Cascaded U-Net）架构、2×/3×/4× + 降噪三档 + 保守版、速度约为 x4plus 系 2.2 倍。
+
+**与现状对比**：质量 RealCUGAN > anime_6B（动漫高清档）> animevideov3（快速档）；速度介于两者之间。
+
+**不做原因（锋利边界）**：级联 U-Net 多阶段前向 ≠ 现有单模型前向契约，需新写导出脚本 + 引擎适配 + 逐阶段验证（工作量「新引擎」级别，非换权重）；当时收益排序 NNAPI（已落地，K90 1.7-2.7×）> anime_6B（已落地）> RealCUGAN。
+
+**未来接入成本预估**：① 官方权重 → ONNX（全卷积动态轴可行，导出脚本新写，沿用历史教训：对照官方源码 + 输出绝对亮度检查）；② tiled 引擎加 RealCUGAN 前向路径（羽化/blit 可复用）；③ assets 体积可控（2× ~6MB / 4× ~14MB 量级）；④ 真机双设备验证。
+
 ### 遗留
 
-- 社区权重/RealCUGAN 立项另议
+- 社区权重/RealCUGAN 立项另议（调研结论见上，决策不变）
