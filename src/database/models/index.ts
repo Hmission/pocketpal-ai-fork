@@ -6,6 +6,7 @@ import CachedPal from './CachedPal';
 import UserLibrary from './UserLibrary';
 import SyncStatus from './SyncStatus';
 import LocalPal from './LocalPal';
+import ImageGenTask from './ImageGenTask';
 
 export {
   ChatSession,
@@ -16,4 +17,5 @@ export {
   UserLibrary,
   SyncStatus,
   LocalPal,
+  ImageGenTask,
 };

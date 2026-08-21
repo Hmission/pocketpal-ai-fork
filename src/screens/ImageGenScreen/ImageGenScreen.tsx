@@ -239,7 +239,7 @@ export const ImageGenScreen: React.FC = observer(() => {
         summary,
         extra: {模型: entry.manifest.label},
       });
-      imageGenStore.pushFailedTask(
+      await imageGenStore.pushFailedTask(
         failedTaskBase(entry.manifest.label, entry.manifest.family),
         summary,
         report.detail,
@@ -281,7 +281,7 @@ export const ImageGenScreen: React.FC = observer(() => {
       summary,
       extra: {模型: modelLabel},
     });
-    imageGenStore.pushFailedTask(
+    await imageGenStore.pushFailedTask(
       failedTaskBase(modelLabel),
       summary,
       report.detail,
@@ -301,7 +301,7 @@ export const ImageGenScreen: React.FC = observer(() => {
       error: imageGenStore.error ?? summary,
       extra,
     });
-    imageGenStore.failTask(taskId, report.summary, report.detail);
+    await imageGenStore.failTask(taskId, report.summary, report.detail);
   };
 
   // 失败任务页：一键复制完整报错（复制 + 落盘 AIOS/logs）
@@ -505,7 +505,7 @@ export const ImageGenScreen: React.FC = observer(() => {
         error: e,
         extra: {源图: path},
       });
-      imageGenStore.pushFailedTask(
+      await imageGenStore.pushFailedTask(
         failedTaskBase('DreamLite', 'dreamlite'),
         summary,
         report.detail,
@@ -575,7 +575,7 @@ export const ImageGenScreen: React.FC = observer(() => {
         summary,
         error: e,
       });
-      imageGenStore.pushFailedTask(
+      await imageGenStore.pushFailedTask(
         failedTaskBase('DreamLite', 'dreamlite'),
         summary,
         report.detail,
@@ -592,7 +592,7 @@ export const ImageGenScreen: React.FC = observer(() => {
     const startTs = Date.now();
     const modelLabel = selectedEntry?.manifest.label ?? 'DreamLite';
     // 任务化：先建 running 条目；编辑动效仍叠当前图（taskKind=edit）
-    const taskId = imageGenStore.beginTask({
+    const taskId = await imageGenStore.beginTask({
       uri: '',
       prompt: prompt.trim(),
       seed: Date.now() % 1e9,
@@ -627,7 +627,7 @@ export const ImageGenScreen: React.FC = observer(() => {
     setEditRgb(null);
     setEditVisRgb(null);
     setEditSource(null);
-    imageGenStore.finishTask(taskId, uri, {
+    await imageGenStore.finishTask(taskId, uri, {
       durationMs: Date.now() - startTs,
     });
     // 新图在 history[0] → 预览页 1
@@ -651,7 +651,7 @@ export const ImageGenScreen: React.FC = observer(() => {
     if (isDream) {
       const modelLabel = selectedEntry?.manifest.label ?? 'DreamLite';
       // 任务化：先落 running 任务 → 翻到空白预览页 → 成功回填/失败保留
-      const taskId = imageGenStore.beginTask({
+      const taskId = await imageGenStore.beginTask({
         uri: '',
         prompt: p,
         seed: Date.now() % 1e9,
@@ -682,7 +682,7 @@ export const ImageGenScreen: React.FC = observer(() => {
         scrollToPreview(1);
         return;
       }
-      imageGenStore.finishTask(taskId, uri, {
+      await imageGenStore.finishTask(taskId, uri, {
         durationMs: Date.now() - startTs,
       });
       // 新图在 history[0] → 预览页 1
@@ -694,7 +694,7 @@ export const ImageGenScreen: React.FC = observer(() => {
     const seedNum = seed.trim()
       ? parseInt(seed, 10)
       : Math.floor(Math.random() * 2 ** 31);
-    const taskId = imageGenStore.beginTask({
+    const taskId = await imageGenStore.beginTask({
       uri: '',
       prompt: p,
       seed: seedNum,
@@ -728,7 +728,7 @@ export const ImageGenScreen: React.FC = observer(() => {
     });
     setTaskKind(null);
     if (uri) {
-      imageGenStore.finishTask(taskId, uri, {
+      await imageGenStore.finishTask(taskId, uri, {
         durationMs: Date.now() - startTs,
       });
       // 新图在 history[0] → 预览页 1

@@ -532,7 +532,8 @@ async function saveRgb(
     }
   }
   const png = encodePng(rgb, width, height);
-  const out = `${RNFS.DocumentDirectoryPath}/dreamlite_${Date.now()}.png`;
+  // B28：输出统一到 aios_images/（与 SD 生成/放大同目录，路径单一事实源）
+  const out = `${RNFS.DocumentDirectoryPath}/aios_images/dreamlite_${Date.now()}.png`;
   await RNFS.writeFile(out, toBase64(png), 'base64');
   console.log('[DreamLite] saved', out);
   return `file://${out}`;

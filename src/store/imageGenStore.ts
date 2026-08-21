@@ -6,7 +6,6 @@
  * UI 层（生图 Tab）通过此 store 驱动加载/出图/进度。
  */
 import {makeAutoObservable, runInAction} from 'mobx';
-import {makePersistable} from 'mobx-persist-store';
 import {NativeModules} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as RNFS from '@dr.pogodin/react-native-fs';
@@ -24,12 +23,15 @@ import {
   upscaleImage,
   SRStyle,
 } from '../services/superResEngine';
+import {imageGenTaskRepository} from '../repositories/ImageGenTaskRepository';
 import {engineMutex} from './engineMutex';
 import {engineStatus} from './engineStatus';
 import {emit} from '../debug/eventStream';
 
 const ImageGen = NativeModules.ImageGen;
 const HISTORY_KEY = '@imagegen_history_v1';
+/** B28：B27 时代 mobx-persist-store 存储 key（存量迁移源） */
+const B28_STORAGE_KEY = 'ImageGenStore';
 
 export interface GeneratedImage {
   uri: string;
@@ -71,10 +73,10 @@ class ImageGenStore {
   upscaleBusy = false;
   /** 最近一次错误信息 */
   error: string | null = null;
-  /** 生成历史（内存态；B27 起由 mobx-persist-store 自动持久化，构造即水合） */
+  /** 生成历史（内存态；B28 起由 WatermelonDB image_gen_tasks 表持久化） */
   history: GeneratedImage[] = [];
-  /** B27：水合完成链（makePersistable init + 旧 key 一次性迁移）；写路径先 await 保证写在水合后 */
-  private hydrationDone: Promise<void> = Promise.resolve();
+  /** B28：就绪链（快照恢复 + DB 水合 + 存量迁移）；写路径先 await 保证写在水合后 */
+  private readyPromise: Promise<void> = Promise.resolve();
   /** 聊天意图路由带入的待生成提示词（M6 豆包化） */
   pendingPrompt: string | null = null;
   /** 聊天图片卡片「编辑图片」带入的待编辑源图 URI（2026-08 闭环扩展） */
@@ -128,48 +130,67 @@ class ImageGenStore {
         /* releaser 内静默 */
       }
     });
-    // B27：持久化对齐项目架构（mobx-persist-store，同 UIStore/ModelStore）——
-    // 构造即水合（无 UI 挂载时序依赖）、写自动持久化；水合完成前不写盘，
-    // 磁盘旧数据永不被空数组覆盖（2026-08-21 事故根治：DRC upscale 曾用空
-    // history 覆盖 AsyncStorage 旧相册记录）；水合后链式执行旧 key 一次性迁移
-    this.hydrationDone = makePersistable(this, {
-      name: 'ImageGenStore',
-      properties: ['history'],
-      storage: AsyncStorage,
-    })
-      .then(() => this.migrateLegacyHistory())
-      .catch(e => {
-        // 水合/迁移失败不阻塞写路径（内存态继续可用；磁盘保持上次状态）
-        console.warn('[ImageGenStore] persist hydration failed:', e);
-      });
+    // B28：生图元数据落 WatermelonDB（对齐聊天存储架构，自动获得 B14 整库快照保护）。
+    // 构造即发起就绪链：prepareSharedStorage（快照恢复）→ DB 全量水合 → AsyncStorage 存量迁移。
+    // 写路径先 await ensureReady()——水合/迁移完成后才允许写（2026-08-21 覆盖事故终态根治）
+    this.readyPromise = this.ensureReadyImpl();
   }
 
-  /** B27：水合门禁——所有写持久化路径先 await 本方法，保证写必然在水合/迁移之后 */
-  private async ensureHydrated(): Promise<void> {
-    await this.hydrationDone;
+  /** B28 就绪门禁：所有写持久化路径先 await 本方法 */
+  private async ensureReady(): Promise<void> {
+    await this.readyPromise;
   }
 
-  /** B27：旧版手写持久化 key（@imagegen_history_v1）一次性迁移：读取 → 合并去重 → 移除旧 key */
-  private async migrateLegacyHistory(): Promise<void> {
+  private async ensureReadyImpl(): Promise<void> {
     try {
-      const raw = await AsyncStorage.getItem(HISTORY_KEY);
-      if (!raw) {
-        return;
-      }
-      const legacy = JSON.parse(raw) as GeneratedImage[];
-      if (!Array.isArray(legacy) || legacy.length === 0) {
-        return;
-      }
-      const seen = new Set(this.history.map(h => h.uri || h.taskId));
-      const added = legacy.filter(h => !seen.has(h.uri || h.taskId));
-      const merged = [...added, ...this.history];
+      // 快照恢复门 + DB 全量水合
+      const rows = await imageGenTaskRepository.loadAll();
       runInAction(() => {
-        this.history = merged;
+        this.history = rows;
       });
-      await AsyncStorage.removeItem(HISTORY_KEY);
-      console.info(`[ImageGenStore] legacy history migrated: +${added.length}`);
+      await this.migrateAsyncStorageToDb();
     } catch (e) {
-      console.warn('[ImageGenStore] legacy history migration failed:', e);
+      console.warn('[ImageGenStore] ready failed (history stays empty):', e);
+    }
+  }
+
+  /** B28：AsyncStorage 存量一次性迁移（ImageGenStore key + 旧 @imagegen_history_v1）→ DB → 删 key */
+  private async migrateAsyncStorageToDb(): Promise<void> {
+    try {
+      const sources: GeneratedImage[] = [];
+      for (const key of [B28_STORAGE_KEY, HISTORY_KEY]) {
+        const raw = await AsyncStorage.getItem(key);
+        if (!raw) {
+          continue;
+        }
+        try {
+          const parsed = JSON.parse(raw);
+          const list: GeneratedImage[] = Array.isArray(parsed)
+            ? parsed
+            : Array.isArray(parsed?.history)
+            ? parsed.history
+            : [];
+          sources.push(...list);
+        } catch {
+          /* 单 key 解析失败跳过 */
+        }
+      }
+      if (sources.length === 0) {
+        return;
+      }
+      const seen = new Set(this.history.map(h => h.taskId || h.uri));
+      const added = sources.filter(h => !seen.has(h.taskId || h.uri));
+      if (added.length > 0) {
+        await imageGenTaskRepository.createBatch(added);
+        runInAction(() => {
+          this.history = [...added, ...this.history];
+        });
+        console.info(`[ImageGenStore] AsyncStorage history migrated to DB: +${added.length}`);
+      }
+      await AsyncStorage.removeItem(B28_STORAGE_KEY);
+      await AsyncStorage.removeItem(HISTORY_KEY);
+    } catch (e) {
+      console.warn('[ImageGenStore] AsyncStorage migration failed:', e);
     }
   }
 
@@ -267,9 +288,9 @@ class ImageGenStore {
     } catch {
       /* GPU 探测失败静默 */
     }
-    // B27：history 水合/迁移由 mobx-persist-store（构造即水合 + 旧 key 迁移链）接管，
-    // 不再依赖本 init（UI 挂载时序）——2026-08-21 事故根治
-    await this.ensureHydrated();
+    // B28：history 水合/存量迁移由 WatermelonDB 就绪链（构造即发起）接管，
+    // 不再依赖本 init（UI 挂载时序）——2026-08-21 覆盖事故终态根治
+    await this.ensureReady();
   }
 
   private newTaskId(): string {
@@ -279,89 +300,111 @@ class ImageGenStore {
   /**
    * 任务化单一入口：新建 running 任务（无图，预览区空白页+进度），
    * 返回 taskId；成功 finishTask 回填图，失败 failTask 回填报错。
+   * B28：内存先行（UI 即时反馈）+ DB 落盘（await 保证写在水合后）。
    */
-  beginTask(base: Omit<GeneratedImage, 'taskId' | 'status'>): string {
+  async beginTask(base: Omit<GeneratedImage, 'taskId' | 'status'>): Promise<string> {
+    await this.ensureReady();
     const taskId = this.newTaskId();
-    runInAction(() => {
-      this.history.unshift({...base, taskId, status: 'running'});
-      if (this.history.length > 50) {
-        this.history = this.history.slice(0, 50);
-      }
-    });
-    return taskId;
-  }
-
-  private patchTask(taskId: string, patch: Partial<GeneratedImage>): void {
-    runInAction(() => {
-      const idx = this.history.findIndex(h => h.taskId === taskId);
-      if (idx >= 0) {
-        this.history[idx] = {...this.history[idx], ...patch};
-      }
-    });
-  }
-
-  /** 任务成功：回填图片 URI（+ 可选 durationMs 等补充字段） */
-  finishTask(
-    taskId: string,
-    uri: string,
-    patch?: Partial<GeneratedImage>,
-  ): void {
-    this.patchTask(taskId, {uri, status: 'success', ...patch});
-  }
-
-  /** 任务失败：回填报错摘要/详情，页面保留（测试员可一键复制） */
-  failTask(taskId: string, errorSummary: string, errorDetail: string): void {
-    this.patchTask(taskId, {status: 'failed', errorSummary, errorDetail});
-  }
-
-  /** 非生成类错误（加载失败/缺伴侣文件/解码失败）直接落 failed 任务条目 */
-  pushFailedTask(
-    base: Omit<GeneratedImage, 'taskId' | 'status'>,
-    errorSummary: string,
-    errorDetail: string,
-  ): string {
-    const taskId = this.newTaskId();
-    runInAction(() => {
-      this.history.unshift({
-        ...base,
-        taskId,
-        status: 'failed',
-        errorSummary,
-        errorDetail,
-      });
-      if (this.history.length > 50) {
-        this.history = this.history.slice(0, 50);
-      }
-    });
-    return taskId;
-  }
-
-  /** 删除单条任务（无文件条目跳过删文件） */
-  deleteTask(taskId: string): void {
-    const target = this.history.find(h => h.taskId === taskId);
-    runInAction(() => {
-      this.history = this.history.filter(h => h.taskId !== taskId);
-    });
-    if (target?.uri) {
-      RNFS.unlink(target.uri.replace(/^file:\/\//, '')).catch(() => {});
-    }
-  }
-
-  /** 推入历史（DreamLite/通用），供结果轮播回填参数 */
-  pushHistory(entry: GeneratedImage): void {
+    const entry: GeneratedImage = {...base, taskId, status: 'running'};
     runInAction(() => {
       this.history.unshift(entry);
       if (this.history.length > 50) {
         this.history = this.history.slice(0, 50);
       }
     });
+    await imageGenTaskRepository.create(entry);
+    return taskId;
   }
 
-  /** 删除单条历史（可选删文件；无 uri 条目自动跳过删文件） */
+  private async patchTask(
+    taskId: string,
+    patch: Partial<GeneratedImage>,
+  ): Promise<void> {
+    await this.ensureReady();
+    runInAction(() => {
+      const idx = this.history.findIndex(h => h.taskId === taskId);
+      if (idx >= 0) {
+        this.history[idx] = {...this.history[idx], ...patch};
+      }
+    });
+    await imageGenTaskRepository.patchByTaskId(taskId, patch);
+  }
+
+  /** 任务成功：回填图片 URI（+ 可选 durationMs 等补充字段） */
+  async finishTask(
+    taskId: string,
+    uri: string,
+    patch?: Partial<GeneratedImage>,
+  ): Promise<void> {
+    await this.patchTask(taskId, {uri, status: 'success', ...patch});
+  }
+
+  /** 任务失败：回填报错摘要/详情，页面保留（测试员可一键复制） */
+  async failTask(
+    taskId: string,
+    errorSummary: string,
+    errorDetail: string,
+  ): Promise<void> {
+    await this.patchTask(taskId, {status: 'failed', errorSummary, errorDetail});
+  }
+
+  /** 非生成类错误（加载失败/缺伴侣文件/解码失败）直接落 failed 任务条目 */
+  async pushFailedTask(
+    base: Omit<GeneratedImage, 'taskId' | 'status'>,
+    errorSummary: string,
+    errorDetail: string,
+  ): Promise<string> {
+    await this.ensureReady();
+    const taskId = this.newTaskId();
+    const entry: GeneratedImage = {
+      ...base,
+      taskId,
+      status: 'failed',
+      errorSummary,
+      errorDetail,
+    };
+    runInAction(() => {
+      this.history.unshift(entry);
+      if (this.history.length > 50) {
+        this.history = this.history.slice(0, 50);
+      }
+    });
+    await imageGenTaskRepository.create(entry);
+    return taskId;
+  }
+
+  /** 删除单条任务（无文件条目跳过删文件）；B28：DB + 内存 + 文件三删 */
+  async deleteTask(taskId: string): Promise<void> {
+    await this.ensureReady();
+    const target = this.history.find(h => h.taskId === taskId);
+    runInAction(() => {
+      this.history = this.history.filter(h => h.taskId !== taskId);
+    });
+    await imageGenTaskRepository.removeByTaskId(taskId);
+    if (target?.uri) {
+      RNFS.unlink(target.uri.replace(/^file:\/\//, '')).catch(() => {});
+    }
+  }
+
+  /** 推入历史（DreamLite/通用），供结果轮播回填参数；B28：DB + 内存双写 */
+  async pushHistory(entry: GeneratedImage): Promise<void> {
+    await this.ensureReady();
+    runInAction(() => {
+      this.history.unshift(entry);
+      if (this.history.length > 50) {
+        this.history = this.history.slice(0, 50);
+      }
+    });
+    await imageGenTaskRepository.create(entry);
+  }
+
+  /** 删除单条历史（可选删文件；无 uri 条目自动跳过删文件）；B28：DB + 内存 + 文件三删 */
   async deleteHistory(uris: string[], removeFile = false): Promise<void> {
+    await this.ensureReady();
     runInAction(() => {
       this.history = this.history.filter(h => !uris.includes(h.uri));
     });
+    await imageGenTaskRepository.removeByUris(uris);
     if (removeFile) {
       for (const uri of uris) {
         if (!uri) {
@@ -379,7 +422,7 @@ class ImageGenStore {
   /** B27：相册记录一次性恢复（DRC imagegen.recoverHistory 调用）——扫描磁盘图文件重建
    * legacy 条目并与现有 history 合并去重（uri 唯一）。开发工具性质，非产品兜底机制。 */
   async recoverHistoryFromDisk(): Promise<number> {
-    await this.ensureHydrated();
+    await this.ensureReady();
     const dir = `${RNFS.DocumentDirectoryPath}/aios_images`;
     const root = RNFS.DocumentDirectoryPath;
     const entries: GeneratedImage[] = [];
@@ -413,10 +456,11 @@ class ImageGenStore {
       }
     };
     await scan(dir); // aios_images/gen_* + upscaled_*
-    await scan(root); // files 根目录 dreamlite_*
+    await scan(root); // files 根目录 dreamlite_*（旧路径兼容）
     const seen = new Set(this.history.map(h => h.uri));
     const fresh = entries.filter(e => !seen.has(e.uri));
     if (fresh.length > 0) {
+      await imageGenTaskRepository.createBatch(fresh);
       runInAction(() => {
         this.history = [...fresh, ...this.history].slice(0, 200);
       });
@@ -858,9 +902,9 @@ class ImageGenStore {
     if (this.upscaleBusy) {
       return null;
     }
-    // B27 水合门禁 + init 守卫：DRC/外部直调时先等持久化水合/迁移完成（否则
-    // beginTask 会丢失新条目），再确保 outDir 就绪——2026-08-21 事故根治
-    await this.ensureHydrated();
+    // B28 就绪门禁 + init 守卫：DRC/外部直调时先等 DB 水合/存量迁移完成，
+    // 再确保 outDir 就绪——2026-08-21 覆盖事故终态根治
+    await this.ensureReady();
     if (!this.outDir) {
       await this.init();
     }
@@ -885,7 +929,7 @@ class ImageGenStore {
         : style === 'anime_fast'
           ? '动漫快速'
           : '通用写实';
-    const taskId = this.beginTask({
+    const taskId = await this.beginTask({
       uri: '',
       prompt: `高清放大 ${scale}×（${styleLabel}）`,
       seed: 0,
@@ -916,7 +960,7 @@ class ImageGenStore {
           this.stage = `放大 ${pct}%`;
         });
       });
-      this.finishTask(taskId, r.uri, {
+      await this.finishTask(taskId, r.uri, {
         width: r.w,
         height: r.h,
         durationMs: Date.now() - this.genStartedAt,
@@ -927,7 +971,7 @@ class ImageGenStore {
       runInAction(() => {
         this.error = msg;
       });
-      this.failTask(taskId, '放大失败', msg);
+      await this.failTask(taskId, '放大失败', msg);
       return null;
     } finally {
       runInAction(() => {

@@ -1033,3 +1033,18 @@ ealesrgan_x4plus_anime_6B.onnx（APK +14.7MB）
 
 **锋利边界**：不做启动扫描重建（兜底）；不做磁盘-元数据一致性校验（兜底）；recoverHistory 仅开发工具（DRC_SPEC §5 登记）。
 
+## §6.22 生图元数据落库与文件路径统一（2026-08-21 · B28 最佳实践对齐）
+
+**背景**：B27 把生图元数据对齐到 mobx-persist-store（AsyncStorage）后，最佳实践复盘（大王立项）发现仍两处偏离：① 元数据在 AsyncStorage（JSON 全量/无事务/无备份）而聊天记录在 WatermelonDB + B14 整库快照——两条用户数据待遇不一致；② DreamLite 生成落 files 根目录、SD/放大落 aios_images/——路径分叉。
+
+**升级（B28）**：
+1. **schema v9**：新增 image_gen_tasks 表（uri/prompt/seed/ts/width/height/steps/cfg/family/kind/source_uri/duration_ms/model_label/task_id/status/error_summary/error_detail/created_at）；ImageGenTask 模型注册
+2. **ImageGenTaskRepository**：ensureReady（prepareSharedStorage 快照恢复门，对齐 ChatSessionRepository 竞态门）；loadAll/create/createBatch/patchByTaskId/removeByUris/removeByTaskId（create/update 均包 database.write——WatermelonDB Writer 契约）；**写成功后 scheduleDbSnapshot()**（生图写入触发 B14 快照，与聊天同等级保护）
+3. **store 写路径 DB 双写 async 化**：beginTask/pushFailedTask/patchTask/finishTask/failTask/deleteTask/deleteHistory/pushHistory/recoverHistoryFromDisk 全部 DB + 内存双写；UI 编排层 11 处调用点 await
+4. **AsyncStorage 存量一次性迁移**：ImageGenStore key（B27 数据）+ @imagegen_history_v1（兼容残余）双源 → DB → 删 key
+5. **DreamLite 输出统一** aios_images/dreamlite_*.png（旧路径文件 recover 兼容）
+
+**验证**：tsc 0 错；全量 jest 4486（313 套件全绿，含新增 ImageGenTaskRepository 6 例）；真机小米 13：迁移 50 条 → DB/UI 一致、快照导出 51 条（WAL 回放后字节级一致）、upscale 追加落库；K90：迁移 50 + recover 13（并行窗口磁盘图找回）= 63，UI 相册 (63)。
+
+**锋利边界**：不做文件-元数据一致性校验（兜底）；recoverHistory 保持开发工具性质；聊天侧架构不动（已闭环）。
+

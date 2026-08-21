@@ -11,6 +11,7 @@ import {
   UserLibrary,
   SyncStatus,
   LocalPal,
+  ImageGenTask,
 } from './models';
 
 const adapter = new SQLiteAdapter({
@@ -37,6 +38,7 @@ export const database = new Database({
     UserLibrary,
     SyncStatus,
     LocalPal,
+    ImageGenTask,
   ],
 });
 
@@ -49,4 +51,5 @@ export {
   UserLibrary,
   SyncStatus,
   LocalPal,
+  ImageGenTask,
 };

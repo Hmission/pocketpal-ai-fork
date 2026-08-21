@@ -1,7 +1,7 @@
 import {appSchema, tableSchema} from '@nozbe/watermelondb';
 
 export default appSchema({
-  version: 8,
+  version: 9,
   tables: [
     tableSchema({
       name: 'chat_sessions',
@@ -129,6 +129,30 @@ export default appSchema({
         {name: 'greeting', type: 'string', isOptional: true}, // JSON stringified Pal['greeting']
         {name: 'created_at', type: 'number'},
         {name: 'updated_at', type: 'number'},
+      ],
+    }),
+    // B28：生图任务元数据（对齐聊天存储架构，自动获得 B14 整库快照保护）
+    tableSchema({
+      name: 'image_gen_tasks',
+      columns: [
+        {name: 'uri', type: 'string', isIndexed: true},
+        {name: 'prompt', type: 'string'},
+        {name: 'seed', type: 'number'},
+        {name: 'ts', type: 'number'},
+        {name: 'width', type: 'number'},
+        {name: 'height', type: 'number'},
+        {name: 'steps', type: 'number', isOptional: true},
+        {name: 'cfg', type: 'number', isOptional: true},
+        {name: 'family', type: 'string', isOptional: true},
+        {name: 'kind', type: 'string', isOptional: true}, // 'generated' | 'upload' | 'upscaled'
+        {name: 'source_uri', type: 'string', isOptional: true},
+        {name: 'duration_ms', type: 'number', isOptional: true},
+        {name: 'model_label', type: 'string', isOptional: true},
+        {name: 'task_id', type: 'string', isIndexed: true}, // 业务唯一键
+        {name: 'status', type: 'string'}, // 'running' | 'success' | 'failed'
+        {name: 'error_summary', type: 'string', isOptional: true},
+        {name: 'error_detail', type: 'string', isOptional: true},
+        {name: 'created_at', type: 'number'},
       ],
     }),
   ],

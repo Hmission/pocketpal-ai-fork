@@ -154,5 +154,35 @@ export default schemaMigrations({
         }),
       ],
     },
+    // Migration to version 9: Add image_gen_tasks table
+    // (生图任务元数据落库，B28——对齐聊天存储架构，获得 B14 整库快照保护)
+    {
+      toVersion: 9,
+      steps: [
+        createTable({
+          name: 'image_gen_tasks',
+          columns: [
+            {name: 'uri', type: 'string', isIndexed: true},
+            {name: 'prompt', type: 'string'},
+            {name: 'seed', type: 'number'},
+            {name: 'ts', type: 'number'},
+            {name: 'width', type: 'number'},
+            {name: 'height', type: 'number'},
+            {name: 'steps', type: 'number', isOptional: true},
+            {name: 'cfg', type: 'number', isOptional: true},
+            {name: 'family', type: 'string', isOptional: true},
+            {name: 'kind', type: 'string', isOptional: true},
+            {name: 'source_uri', type: 'string', isOptional: true},
+            {name: 'duration_ms', type: 'number', isOptional: true},
+            {name: 'model_label', type: 'string', isOptional: true},
+            {name: 'task_id', type: 'string', isIndexed: true},
+            {name: 'status', type: 'string'},
+            {name: 'error_summary', type: 'string', isOptional: true},
+            {name: 'error_detail', type: 'string', isOptional: true},
+            {name: 'created_at', type: 'number'},
+          ],
+        }),
+      ],
+    },
   ],
 });
