@@ -292,6 +292,17 @@ export const drcActions: Record<string, DrcActionDef> = {
     },
   },
 
+  'imagegen.recoverHistory': {
+    id: 'imagegen.recoverHistory',
+    domain: 'imagegen',
+    description:
+      '相册记录一次性恢复（B27 开发工具）：扫描磁盘图文件（gen_*/upscaled_*/dreamlite_*）重建 legacy 条目并与现有 history 合并去重——非产品兜底机制',
+    execute: async () => {
+      const recovered = await imageGenStore.recoverHistoryFromDisk();
+      return {recovered, total: imageGenStore.history.length};
+    },
+  },
+
   'models.scan': {
     id: 'models.scan',
     domain: 'model',

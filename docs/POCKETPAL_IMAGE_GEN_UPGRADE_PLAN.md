@@ -1016,3 +1016,20 @@ ealesrgan_x4plus_anime_6B.onnx（APK +14.7MB）
 ### 遗留
 
 - 社区权重/RealCUGAN 立项另议（调研结论见上，决策不变）
+
+## §6.21 相册持久化架构对齐与数据恢复（2026-08-21 · B27 事故驱动升级）
+
+**事故**：DRC `imagegen.upscale` 在生图页未挂载时直调 store → init() 未跑（history 未水合）→ beginTask→persistHistory 用空数组覆盖 AsyncStorage 旧相册记录（8/19-8/20 共 11 条丢失；图文件 100% 完好）。大王发现并定调：修好 + 恢复数据，不做兜底（否决启动扫描重建方案）。
+
+**根因（架构偏离）**：imageGenStore 是项目唯一手写 AsyncStorage 持久化的 store（其余 6 store 统一 mobx-persist-store）——水合依赖 UI 挂载时序 + 全量覆盖写 + 写失败静默，三风险叠加。
+
+**升级（B27）**：
+1. 持久化对齐 `mobx-persist-store`：`makePersistable(this, {name: 'ImageGenStore', properties: ['history'], storage: AsyncStorage})`——构造即水合（无 UI 时序依赖）、写自动持久化（删手写 persistHistory 及 7 处调用）、水合完成前不写盘（磁盘永不被空数组覆盖）
+2. 旧 key `@imagegen_history_v1` 一次性迁移（水合后链式执行：读取 → 合并去重 → 移除旧 key）
+3. 水合门禁 `ensureHydrated()`：upscaleImageEntry 等写路径先 await（水合/迁移完成后才允许写）
+4. DRC `imagegen.recoverHistory`（开发工具，非产品兜底）：扫描磁盘图文件（gen_*/upscaled_*/dreamlite_*）重建 legacy 条目，与现有 history 合并去重（uri 唯一）
+
+**验证**：tsc 0 错；全量 jest 4471（预存 invariants 失败未触碰）；真机小米 13：迁移 5 条 + 恢复 41 条 = 46 → DRC upscale 后 47（追加不覆盖，根因实锤）；K90：迁移 3 条 + 恢复 57 条 = 60。
+
+**锋利边界**：不做启动扫描重建（兜底）；不做磁盘-元数据一致性校验（兜底）；recoverHistory 仅开发工具（DRC_SPEC §5 登记）。
+

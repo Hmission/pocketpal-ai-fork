@@ -168,6 +168,7 @@ StateCompass 五字段与母仓 `STATE_COMPASS` 同构：state（定位）/ next
 | imagegen.loadModel | modelPath/clipL/clipG/llm/vae/backend | 加载 SD 模型 |
 | imagegen.loadDreamLite | - | 加载 DreamLite 引擎（unet/vae/TE） |
 | imagegen.unloadModel | - | 卸载 SD 模型 |
+| imagegen.recoverHistory | - | 相册记录一次性恢复（B27 开发工具：扫描磁盘图文件重建 legacy 条目，非产品兜底）——2026-08-21 登记 |
 | models.scan | - | 扫描本地模型 |
 | models.load | modelId | 加载模型并设为活动（displayModels 内） |
 | models.unload | - | 释放当前活动模型上下文 |

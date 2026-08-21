@@ -6,6 +6,7 @@
  * UI 层（生图 Tab）通过此 store 驱动加载/出图/进度。
  */
 import {makeAutoObservable, runInAction} from 'mobx';
+import {makePersistable} from 'mobx-persist-store';
 import {NativeModules} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as RNFS from '@dr.pogodin/react-native-fs';
@@ -70,8 +71,10 @@ class ImageGenStore {
   upscaleBusy = false;
   /** 最近一次错误信息 */
   error: string | null = null;
-  /** 生成历史（内存态，不持久化） */
+  /** 生成历史（内存态；B27 起由 mobx-persist-store 自动持久化，构造即水合） */
   history: GeneratedImage[] = [];
+  /** B27：水合完成链（makePersistable init + 旧 key 一次性迁移）；写路径先 await 保证写在水合后 */
+  private hydrationDone: Promise<void> = Promise.resolve();
   /** 聊天意图路由带入的待生成提示词（M6 豆包化） */
   pendingPrompt: string | null = null;
   /** 聊天图片卡片「编辑图片」带入的待编辑源图 URI（2026-08 闭环扩展） */
@@ -125,6 +128,49 @@ class ImageGenStore {
         /* releaser 内静默 */
       }
     });
+    // B27：持久化对齐项目架构（mobx-persist-store，同 UIStore/ModelStore）——
+    // 构造即水合（无 UI 挂载时序依赖）、写自动持久化；水合完成前不写盘，
+    // 磁盘旧数据永不被空数组覆盖（2026-08-21 事故根治：DRC upscale 曾用空
+    // history 覆盖 AsyncStorage 旧相册记录）；水合后链式执行旧 key 一次性迁移
+    this.hydrationDone = makePersistable(this, {
+      name: 'ImageGenStore',
+      properties: ['history'],
+      storage: AsyncStorage,
+    })
+      .then(() => this.migrateLegacyHistory())
+      .catch(e => {
+        // 水合/迁移失败不阻塞写路径（内存态继续可用；磁盘保持上次状态）
+        console.warn('[ImageGenStore] persist hydration failed:', e);
+      });
+  }
+
+  /** B27：水合门禁——所有写持久化路径先 await 本方法，保证写必然在水合/迁移之后 */
+  private async ensureHydrated(): Promise<void> {
+    await this.hydrationDone;
+  }
+
+  /** B27：旧版手写持久化 key（@imagegen_history_v1）一次性迁移：读取 → 合并去重 → 移除旧 key */
+  private async migrateLegacyHistory(): Promise<void> {
+    try {
+      const raw = await AsyncStorage.getItem(HISTORY_KEY);
+      if (!raw) {
+        return;
+      }
+      const legacy = JSON.parse(raw) as GeneratedImage[];
+      if (!Array.isArray(legacy) || legacy.length === 0) {
+        return;
+      }
+      const seen = new Set(this.history.map(h => h.uri || h.taskId));
+      const added = legacy.filter(h => !seen.has(h.uri || h.taskId));
+      const merged = [...added, ...this.history];
+      runInAction(() => {
+        this.history = merged;
+      });
+      await AsyncStorage.removeItem(HISTORY_KEY);
+      console.info(`[ImageGenStore] legacy history migrated: +${added.length}`);
+    } catch (e) {
+      console.warn('[ImageGenStore] legacy history migration failed:', e);
+    }
   }
 
   /** 聊天内联生图标志（runImageTaskCard 单链路设置/复位；仅渲染层消费） */
@@ -221,31 +267,9 @@ class ImageGenStore {
     } catch {
       /* GPU 探测失败静默 */
     }
-    // 历史持久化：重启后恢复（图片文件仍在磁盘，仅元数据落盘）；
-    // 旧条目归一 taskId/status；残留 running（跨重启中断）降为 failed。
-    try {
-      const raw = await AsyncStorage.getItem(HISTORY_KEY);
-      if (raw) {
-        const list = JSON.parse(raw) as GeneratedImage[];
-        runInAction(() => {
-          this.history = (Array.isArray(list) ? list : []).map(h => {
-            const status =
-              h.status ?? (h.uri ? ('success' as const) : ('failed' as const));
-            const interrupted = status === 'running';
-            return {
-              ...h,
-              taskId: h.taskId ?? `legacy_${h.ts}_${h.seed}`,
-              status: interrupted ? ('failed' as const) : status,
-              errorSummary: interrupted
-                ? '任务中断（App 重启）'
-                : h.errorSummary,
-            };
-          });
-        });
-      }
-    } catch (e) {
-      console.warn('[ImageGenStore] load history failed:', e);
-    }
+    // B27：history 水合/迁移由 mobx-persist-store（构造即水合 + 旧 key 迁移链）接管，
+    // 不再依赖本 init（UI 挂载时序）——2026-08-21 事故根治
+    await this.ensureHydrated();
   }
 
   private newTaskId(): string {
@@ -264,7 +288,6 @@ class ImageGenStore {
         this.history = this.history.slice(0, 50);
       }
     });
-    this.persistHistory();
     return taskId;
   }
 
@@ -275,7 +298,6 @@ class ImageGenStore {
         this.history[idx] = {...this.history[idx], ...patch};
       }
     });
-    this.persistHistory();
   }
 
   /** 任务成功：回填图片 URI（+ 可选 durationMs 等补充字段） */
@@ -311,7 +333,6 @@ class ImageGenStore {
         this.history = this.history.slice(0, 50);
       }
     });
-    this.persistHistory();
     return taskId;
   }
 
@@ -321,7 +342,6 @@ class ImageGenStore {
     runInAction(() => {
       this.history = this.history.filter(h => h.taskId !== taskId);
     });
-    this.persistHistory();
     if (target?.uri) {
       RNFS.unlink(target.uri.replace(/^file:\/\//, '')).catch(() => {});
     }
@@ -335,14 +355,6 @@ class ImageGenStore {
         this.history = this.history.slice(0, 50);
       }
     });
-    this.persistHistory();
-  }
-
-  /** 历史元数据落盘（fire-and-forget） */
-  private persistHistory() {
-    AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(this.history)).catch(
-      () => {},
-    );
   }
 
   /** 删除单条历史（可选删文件；无 uri 条目自动跳过删文件） */
@@ -350,7 +362,6 @@ class ImageGenStore {
     runInAction(() => {
       this.history = this.history.filter(h => !uris.includes(h.uri));
     });
-    this.persistHistory();
     if (removeFile) {
       for (const uri of uris) {
         if (!uri) {
@@ -363,6 +374,54 @@ class ImageGenStore {
         }
       }
     }
+  }
+
+  /** B27：相册记录一次性恢复（DRC imagegen.recoverHistory 调用）——扫描磁盘图文件重建
+   * legacy 条目并与现有 history 合并去重（uri 唯一）。开发工具性质，非产品兜底机制。 */
+  async recoverHistoryFromDisk(): Promise<number> {
+    await this.ensureHydrated();
+    const dir = `${RNFS.DocumentDirectoryPath}/aios_images`;
+    const root = RNFS.DocumentDirectoryPath;
+    const entries: GeneratedImage[] = [];
+    const scan = async (path: string) => {
+      let names: string[] = [];
+      try {
+        names = (await RNFS.readDir(path)).map(f => f.name);
+      } catch {
+        return; // 目录不存在静默
+      }
+      for (const name of names) {
+        const m = name.match(/^(gen|upscaled|dreamlite)_(\d{13})(?:_(\d+))?\.png$/);
+        if (!m) {
+          continue;
+        }
+        const ts = parseInt(m[2], 10);
+        const kind: 'generated' | 'upscaled' =
+          m[1] === 'upscaled' ? 'upscaled' : 'generated';
+        entries.push({
+          uri: `file://${path}/${name}`,
+          prompt: kind === 'upscaled' ? '高清放大（恢复条目）' : '历史生成（恢复条目）',
+          seed: m[3] ? parseInt(m[3], 10) : ts % 1e9,
+          ts,
+          width: 0,
+          height: 0,
+          modelLabel: kind === 'upscaled' ? 'RealESRGAN' : undefined,
+          kind,
+          taskId: `legacy_${ts}_${name.slice(0, 24)}`,
+          status: 'success' as const,
+        });
+      }
+    };
+    await scan(dir); // aios_images/gen_* + upscaled_*
+    await scan(root); // files 根目录 dreamlite_*
+    const seen = new Set(this.history.map(h => h.uri));
+    const fresh = entries.filter(e => !seen.has(e.uri));
+    if (fresh.length > 0) {
+      runInAction(() => {
+        this.history = [...fresh, ...this.history].slice(0, 200);
+      });
+    }
+    return fresh.length;
   }
 
   /** 存到系统相册（MediaStore → Pictures/AIOS） */
@@ -799,9 +858,9 @@ class ImageGenStore {
     if (this.upscaleBusy) {
       return null;
     }
-    // init 守卫（对齐 generate() 模式）：DRC/外部直调时确保 outDir + history
-    // 已水合——否则 beginTask→persistHistory 会用空 history 覆盖 AsyncStorage
-    // 旧相册记录（2026-08-21 事故：DRC upscale 在生图页未挂载时清掉 11 条历史）
+    // B27 水合门禁 + init 守卫：DRC/外部直调时先等持久化水合/迁移完成（否则
+    // beginTask 会丢失新条目），再确保 outDir 就绪——2026-08-21 事故根治
+    await this.ensureHydrated();
     if (!this.outDir) {
       await this.init();
     }
