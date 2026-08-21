@@ -20,35 +20,58 @@ relates: [POCKETPAL_DESIGN_SPEC, ADR-0002-imagegen-header-right]
 > 版本：v2.1（2026-08-15，预览卡信息条定稿：seed 行从卡片下方移除，改为预览图顶部 overlay「模型 · 耗时 · 分辨率」；顶栏右缘对齐内容区右边距）
 > 版本：v3（2026-08-18，开发者预览版：生成任务化——每次生成/编辑 = 一个持久化任务（running/success/failed 三态预览页）；报错唯一出口 = 预览区 failed 任务页（一键复制完整报错）；顶栏胶囊加 primary 描边）
 > 版本：v3.1（2026-08-18 真机二轮：顶栏胶囊底色统一为 primary 12%（与聊天页胶囊同设计语言，替代旧 domain.imageGen 粉底））
+> 版本：v4（2026-08-21，创作工坊：页内双 tab（生图/音频工坊）+ 反推能力——操作条五按钮、caption 任务化入画廊、复刻生图 Sheet 全参数；音频工坊见 AUDIO_UI_SPEC）
+> 版本：v4.1（2026-08-21，新手引导：非 Dream 出图未加载不再灰置——点击弹提示 + 展开模型下拉；预览区有图时非 Dream 也常驻「编辑」按钮——点击确认后自动切 DreamLite）
 > 上位规范：POCKETPAL_DESIGN_SPEC.md（UI 域 SSOT）
 
-## 1. 页面结构（单列三区 + 顶部模型胶囊）
+## 1. 页面结构（工坊双 tab + 单列三区 + 顶部模型胶囊）
 
 ```
 ┌───────────────────────────────┐
 │ 模型状态胶囊（ModelPickerPanel）│ ← 点文本区展开悬浮下拉；未加载时右侧有「加载」快速按钮
 ├───────────────────────────────┤
+│ [ 生图 ] [ 音频工坊 ]          │ ← 页内 tabBar（复用 KnowledgeScreen 手写 tabBar 先例）
+├───────────────────────────────┤
 │ ① 结果区（ResultPreview）      │ ← 横向分页：[0页编辑槽] + 任务页（running/success/failed 三态）
-│   操作条：保存 / 再次生成 / 删除 │ ← 定稿三按钮（仅成功图；编辑不在此处）
+│   操作条：保存/放大/反推/再次生成/删除 │ ← v4 定稿五按钮（仅成功图）
 │   参数水印                     │
 ├───────────────────────────────┤
-│ ② 相册（HistoryStrip）         │ ← 横向缩略图 + 上传 + [管理]多选删除
+│ ② 相册（HistoryStrip）         │ ← 横向缩略图 + 上传 + [管理]多选删除（含反推任务角标）
 ├───────────────────────────────┤
 │ ③ 创作区（ComposerPanel）      │ ← 提示词（≤120字）+ 折叠高级参数 + 底部按钮
-│   底部按钮：DreamLite=[编辑][出图]；通用SD=[出图]
+│   底部按钮：DreamLite=[编辑][出图]；通用SD=[编辑(预览区有图时)][出图]
 └───────────────────────────────┘
-```
+
+- 双 tab 状态互不干扰：生图 previewIndex / 音频工坊状态独立；切换不卸载（keep mounted）
+- 音频工坊 tab 内部结构见 AUDIO_UI_SPEC v1
 
 ## 2. 按钮组成定稿
 
-### 结果区操作条（三按钮，不多不少）
+### 结果区操作条（v4 五按钮，按任务类型分派）
+
+**生图成功条目**（kind='generated' | 'upscaled'）：
 | 按钮 | 语义色 | 动作 |
 |---|---|---|
 | 保存 | 绿 #2e7d32 | 存入系统相册 Pictures/AIOS |
+| 放大 | 蓝 #1565c0 | 打开 UpscalePanel（P6-6） |
+| 反推 | 紫 #6a1b9a（v4 登记） | 反推当前图提示词（caption 任务） |
 | 再次生成 | 橙 #ef6c00 | 同参数重跑 |
 | 删除 | 红 #c62828 | 删除当前图 |
 
+**上传图（0 页编辑槽）操作条**：`反推(紫) 重新上传`——有图即反推，不区分来源。
+
+**反推任务成功条目**（kind='caption'）：`复制(绿) 复刻生图(橙) 删除(红)`
+
 **编辑按钮不在操作条**——编辑唯一入口 = 创作区底部「编辑」按钮（DreamLite 族），避免双入口心智分裂。
+
+**编辑按钮可见性（v4.1，入口常驻）**：
+- DreamLite：常驻（无图点击 → 提示 + 拉起相册入编辑槽）
+- 通用 SD（SD3.5/Z-Image）：**预览区有可编辑图（0 页编辑槽有图或历史页有图）时同样显示**——点击弹确认「编辑需要 DreamLite」→ 确认后自动切 DreamLite + 锁定当前图 + 进编辑预备态（一次点击闭环）；SD 无编辑引擎，不隐藏入口（功能可见性），改由点按引导切换
+
+### 反推按钮（v4 新增）
+- 语义色：紫 #6a1b9a（与模型族徽章紫 #8e24aa 区分：操作按钮深一档）
+- 可见性：当前预览图存在即显示（生图成功图 / 上传图）；反推进行中禁用（复用 busy 判定防连点）
+- 反推是显式按钮动作（同「图片编辑」语义），不弹窗确认，加载进度可见
 
 ### 模型胶囊
 - 视觉：primary 12% 底 + primary 1px 描边（与聊天顶栏胶囊同一设计语言，v3.1）
@@ -56,8 +79,9 @@ relates: [POCKETPAL_DESIGN_SPEC, ADR-0002-imagegen-header-right]
 - 快速加载按钮：仅「未加载 且 不在加载中」时显示，直接加载当前选中模型，不展开下拉
 - 状态文案：未加载 / 加载中… / 已就绪
 
-### 出图按钮显式反馈（复查 2026-08-20 真机回归定稿）
+### 出图按钮显式反馈（复查 2026-08-20 真机回归定稿 + v4.1 新手引导）
 - **空提示词点「出图」必须显式 toast 提示**（「先输入提示词，再点出图」），不得静默无反应——此前 `if (!p) return` 静默早退导致「有动效无反应」，两台真机稳定复现；显式失败不静默（锋利原则）
+- **未加载模型不禁用（v4.1）**：非 Dream 未加载时出图按钮**不再灰置**——点击弹「需要先加载模型」OverlayCard（底座 DESIGN_SPEC §12.1）→「去加载」→ 自动展开模型下拉（行内加载按钮）；再次生成 / 失败页重试走同一 handleGenerate 自动复用引导。DreamLite 未加载点出图维持引擎内部自动加载（generateDreamLiteEntry 兜底）
 - **onPress 必须显式无参包装**：`onPress={() => onGenerate()}`，禁止 `onPress={onGenerate}` 直传 async 函数——RN 必传 GestureResponderEvent 作为首参，直传导致 `handleGenerate(event)` 入口 `(event ?? prompt).trim()` 抛 TypeError 被 Bridgeless 事件系统静默吞掉（2026-08-20 两台真机 + DRC 三重复现，回归引入点 commit 44689f8 加 promptOverride 参数）
 - **「再次生成」= 当前图同参数重跑**：用任务自带 prompt（与失败页「重试」同源 `handleGenerate(item.prompt)`），不读当前输入框——输入框被清空/编辑预备态清 prompt 后再次生成仍有效
 
@@ -69,7 +93,7 @@ relates: [POCKETPAL_DESIGN_SPEC, ADR-0002-imagegen-header-right]
 - 族徽章彩色：SD3.5 紫 #8e24aa / Z-Image 青 #00838f / DreamLite 粉 #d81b60
 - 选中行仅高亮回填参数，不自动加载（点「加载」按钮才加载）
 
-## 4. 生成/编辑状态机视觉（v3 任务化）
+## 4. 生成/编辑/反推状态机视觉（v3 任务化 + v4 caption）
 
 每次生成/编辑 = 一个持久化任务（taskId 单一 key，AsyncStorage 落盘，重启后失败任务仍在）：
 
@@ -77,7 +101,7 @@ relates: [POCKETPAL_DESIGN_SPEC, ADR-0002-imagegen-header-right]
 - **编辑中**（taskKind=edit）：动效仍低不透明度叠在当前图（底图可见）；running 条目在翻页可见时同规格进度卡。
 - **failed 任务页**：⚠ 图标 + 「生成失败」+ 一句话摘要（numberOfLines 3）+ 「复制报错信息 / 重试 / 删除」三按钮；复制 = errorReport 完整报告（剪贴板 + AIOS/logs 落盘）；重试 = 回填参数后同提示词重新发起。
 - **报错唯一出口**：预览区 failed 任务页；composer 底部不再展示错误文本；加载失败/缺伴侣文件/解码失败同样落 failed 任务条目。
-- **历史横条**：只列 success 条目缩略图（保留原始索引供翻页定位）。
+- **历史横条**：只列 success 条目缩略图（保留原始索引供翻页定位）；caption 条目显示缩略图 + 「反推」角标（复用 upload 角标模式）。
 - **overlay 设计语言**：浅色圆角（助手气泡点缀色 + 高不透明度，borderRadius 8 与卡片统一；深浅色模式自适应），禁用黑色直角矩形
 - **进度指示**：三点波浪呼吸动效（错峰 150ms，纯 Animated + useNativeDriver），禁用圆形 orb 缩放
 - 进度信息：采样 x/y + 步耗时 + 累计秒数 + 当前阶段文本
@@ -95,3 +119,31 @@ relates: [POCKETPAL_DESIGN_SPEC, ADR-0002-imagegen-header-right]
 - 提示词限长 ≤120 字（端侧约束，超限红色警告但可提交）
 - 所有色值走 theme token 或本规范登记的语义色，新增色必须登记本文档
 - testID 稳定：imagegen-quick-load（快速加载）等，e2e 依赖不变
+- 反推链路同样收编 store 单通道（captionEngine 经 imageGenStore 收口），Screen 层零直连
+
+## 7. 反推能力规范（v4）
+
+### 7.1 模型与调度
+- 反推 VLM = Qwen3.5-4B + mmproj-BF16（MODEL_MATRIX #3/#4 已装机；社区 2026 验证反推组合）；单次 >3 分钟时评估降 2B
+- 引擎 = llama.rn chat 槽：`acquire('chat')` 自动释放 prompter/image → 反推 → 释放回管家（懒恢复）
+- 反推 = 显式按钮动作，直接加载 + 进度可见，不弹窗
+- 聊天页发图反推与生图页同源（同一套 captionEngine），入口独立（聊天：图片消息 + 反推意图）
+
+### 7.2 caption 任务化（入画廊，与生图任务同管理）
+- `kind='caption'` 任务条目：running/success/failed 三态 + taskId 持久化（WatermelonDB）
+- running：原图 + 半透明 overlay（taskKind='caption' 同编辑动效）+ 阶段文本（加载视觉模型 → 编码图片 → 生成描述）+ 累计秒数
+- success：原图 + 信息条（`反推 · 模型 · 耗时`）+ 反推结果卡（✨ 反推提示词全文，可展开）+ 操作条三按钮
+- failed：复用报错页三按钮（复制报错 / 重试 / 删除）
+- 结果同时回填 composer 输入框（用户可见可改）
+
+### 7.3 复刻生图 Sheet（全参数）
+- 触发：caption 页「复刻生图」→ 底部 Sheet（DESIGN_SPEC §12.2 Sheet 唯一载体）
+- 参数（全参数可控，遵循「需要动的才暴露」）：生图模型单选（族徽章 + 未加载提示）、画幅档位（RATIOS/SD_RATIOS 分流）、步数、CFG、负面词、seed
+- 确认 → 切回生图 tab → 回填参数 → 直接触发出图（`handleGenerate(captionText)`）
+
+## 8. 工坊 tabBar 规范（v4）
+
+- 位置：结果区上方一行，与模型胶囊垂直分隔
+- 样式：复用 KnowledgeScreen tabBar（TouchableOpacity + tabActive 高亮，primary 色），无动画不花哨
+- tab 集：`[ 生图 ] [ 音频工坊 ]`（v4 定稿，第三个 tab 暂不开放）
+- 切换：keep mounted（不卸载），状态各自独立

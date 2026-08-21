@@ -366,6 +366,7 @@ ScrollView
 | B27 | **相册持久化架构对齐（mobx-persist-store）+ 数据恢复**（2026-08-21 事故驱动）：imageGenStore 手写 AsyncStorage 持久化是项目唯一偏离（水合依赖 UI 挂载时序 + 全量覆盖写）——DRC upscale 直调曾用空 history 覆盖旧相册记录（11 条丢失，图文件完好）；升级：makePersistable 构造即水合 + 写自动持久化 + 水合前不写盘（磁盘永不被空覆盖）；旧 key @imagegen_history_v1 一次性迁移；新增 DRC imagegen.recoverHistory（开发工具，非兜底）——双设备恢复 41+57 条 legacy 记录；upscale 追加不覆盖实锤（46→47） | IMAGE_GEN_UPGRADE_PLAN §6.21 SSOT | tsc 0 + 全量 jest 4471（预存 invariants 失败未触碰）+ 真机双设备恢复验证 | ✅ 已完成（2026-08-21） |
 | B28 | **生图元数据落 WatermelonDB + 文件路径统一**（2026-08-21 大王立项最佳实践对齐）：schema v9 新增 image_gen_tasks 表（列对齐 GeneratedImage）；ImageGenTask 模型 + ImageGenTaskRepository（ensureReady 过 prepareSharedStorage 快照恢复门）；store 写路径 DB 双写 async 化（beginTask/patchTask/finishTask/failTask/pushFailedTask/deleteTask/deleteHistory/pushHistory）；AsyncStorage 存量一次性迁移（ImageGenStore + @imagegen_history_v1 双源）；B14 快照触发补齐（生图写入也 scheduleDbSnapshot——与聊天同等级保护）；DreamLite 输出路径统一 aios_images/；recoverHistory 写入 DB | IMAGE_GEN_UPGRADE_PLAN §6.22 SSOT | tsc 0 + 全量 jest 4486（313 套件全绿）+ 真机双设备：迁移/快照/追加/恢复全验证 | ✅ 已完成（2026-08-21） |
 | B29 | **模型加载卡片动效统一（大王反馈，MASTER_LOG §66）**：聊天页两处模型加载卡片升级三点波浪 + 2% 底条动效——①顶栏选择器 ChatPalModelPickerSheet 加载卡片（原纯文本「正在加载 · 已耗时 Xs」）；②任务切换弹窗 ModelSwitchDialog 加载态（原 ActivityIndicator 转圈，移除统一设计语言）；复用 useWaveDots（JS driver 合规 07a47ed）与生图任务卡 ImageTaskProgress 同款；测试 mock 补 radius.xxs/colors.shadow。K90 真机复查（66.6）：候选行/加载态模型名改中文简称（toDialogCandidates 走 getModelDisplayNameWithParams 与选择器同源）+ 加载态布局重构（三点波浪独立行 + 模型名单行截断）——真机全链路验证通过（候选行简称/加载态动效/自动关弹窗/胶囊切换） | CHAT_UI_SPEC §16.2/§18.7 v4.7 + UI_INTERACTION_SPEC v1.3 | tsc 0 错 + 3 套件 26 用例全绿 + K90 真机全链路 | ✅ 已完成（2026-08-21） |
+| B30 | **生图页新手引导交互闭环（大王思路裁定，MASTER_LOG §67）**：①非 Dream（SD3.5/Z-Image）未加载时出图按钮不再灰置——点击弹「需要先加载模型」OverlayCard +「去加载」自动展开模型下拉（再次生成/失败重试同 handleGenerate 自动复用）；②非 Dream 预览区有可编辑图时创作区常驻「编辑」按钮——点击确认后自动切 DreamLite + 锁定当前图进编辑预备态（一次点击闭环）；③切模型（下拉选中/行内加载）清空编辑预备态与解码缓存（防残留）；DreamLite 未加载自动加载引擎维持不变 | IMAGEGEN_UI_SPEC v4.1 | tsc 0 错 + 生图页 2 套件 25 用例全绿（新增未加载可点/有图显编辑锚定） | ✅ 已完成（2026-08-21） |
 
 **批次间依赖**：B1 前置最大（聊天域，含 §8 旧债务 4 项中的 2 项），完成后旧债务全部清零；新债务一律按本表规则补录（批次号 + 验收 + 前置），不允许无批次挂账。
 
@@ -459,6 +460,7 @@ HtmlPreviewBubble / ResultPreview / TextMessage 图片全屏 / ZoomableImage：�
 
 | 日期 | 版本 | 变更 |
 |------|------|------|
+| 2026-08-21 | 3.12 | Gap Ledger 补 B30（生图页新手引导，大王思路裁定）：非 Dream 出图未加载引导（弹窗 + 自动展开模型下拉）+ 编辑入口常驻（预览区有图即显示，点击自动切 DreamLite）+ 切模型清编辑预备态；relates 挂 IMAGEGEN_UI_SPEC v4.1 |
 | 2026-08-21 | 3.9 | Gap Ledger 补 B26（放大模型升级与双模型可选，A' 定稿）：anime 高清档换 x4plus_anime_6B（RRDBNet-6 图片级）+ anime_fast 快速档回归（双档可选）+ NNAPI EP + PasSR 不可得实锤；relates 挂 IMAGE_GEN_UPGRADE_PLAN §6.20 |
 | 2026-08-21 | 3.10 | Gap Ledger 补 B27（相册持久化架构对齐 + 数据恢复）：mobx-persist-store 对齐 + 旧 key 迁移 + DRC recoverHistory，relates → IMAGE_GEN_UPGRADE_PLAN §6.21 |
 | 2026-08-21 | 3.11 | Gap Ledger 补 B28（生图元数据落库 + 路径统一）：schema v9 / ImageGenTaskRepository / 写路径 DB 双写 / B14 快照补齐 / dreamlite 路径统一，relates → IMAGE_GEN_UPGRADE_PLAN §6.22 |
