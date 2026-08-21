@@ -226,7 +226,13 @@
     },
     "contextFullRemote": "대화 공간이 가득 찼습니다. 새 채팅을 시작해 주세요.",
     "contextCompact": "이전 메시지 압축",
-    "compactionBanner": "초기 메시지 {{count}}개 압축됨"
+    "compactionBanner": "초기 메시지 {{count}}개 압축됨",
+    "butlerThinking": "🐤 병아리 생각 중…",
+    "butlerUpgrade": "만족스럽지 않나요? 더 똑똑한 모델로 바꾸기",
+    "taskErrorTitle": "대화를 계속할 수 없습니다",
+    "taskErrorNoModelDetail": "모델 페이지에서 대화 모델을 다운로드하세요.",
+    "taskErrorLoadFailedDetail": "모델 「{{name}}」 로드에 실패했습니다. 모델 페이지를 확인하세요.",
+    "taskErrorBusyDetail": "모델이 아직 마무리 중입니다. 다시 시도하세요."
   },
   "common": {
     "cancel": "취소",
@@ -261,7 +267,8 @@
     "gallery": "갤러리",
     "error": "오류",
     "stop": "중지",
-    "noResults": "결과 없음"
+    "noResults": "결과 없음",
+    "retry": "재시도"
   },
   "completionParamsLabels": {
     "n_predict": "생성 길이",

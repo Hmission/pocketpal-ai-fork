@@ -32,7 +32,8 @@
     "close": "Close",
     "clear": "Clear All",
     "gallery": "Gallery",
-    "noResults": "No results"
+    "noResults": "No results",
+    "retry": "Retry"
   },
   "settings": {
     "modelInitializationSettings": "Model Initialization Settings",
@@ -1337,7 +1338,13 @@
       "openLinkError": "Couldn't open this link."
     },
     "contextCompact": "Compress old messages",
-    "compactionBanner": "Compressed {{count}} earlier messages."
+    "compactionBanner": "Compressed {{count}} earlier messages.",
+    "butlerThinking": "🐤 Little chick is thinking…",
+    "butlerUpgrade": "Not satisfied? Ask a smarter model",
+    "taskErrorTitle": "Can't continue the conversation",
+    "taskErrorNoModelDetail": "Please download a chat model from the Models page.",
+    "taskErrorLoadFailedDetail": "Failed to load model “{{name}}”. Check the Models page.",
+    "taskErrorBusyDetail": "The model is still winding down. Please try again."
   },
   "htmlPreview": {
     "defaultTitle": "Preview",

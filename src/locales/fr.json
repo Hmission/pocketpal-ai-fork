@@ -24,7 +24,8 @@
     "hours": "heures",
     "minute": "min",
     "minutes": "min",
-    "justNow": "à l'instant"
+    "justNow": "à l'instant",
+    "retry": "Réessayer"
   },
   "settings": {
     "modelInitializationSettings": "Paramètres d'initialisation du modèle",
@@ -670,7 +671,13 @@
     "readyToChat": "Prêt à discuter ? Chargez le dernier modèle utilisé.",
     "pleaseLoadModel": "Chargez un modèle pour discuter.",
     "contextCompact": "Compresser les anciens messages",
-    "compactionBanner": "{{count}} anciens messages compressés"
+    "compactionBanner": "{{count}} anciens messages compressés",
+    "butlerThinking": "🐤 Le poussin réfléchit…",
+    "butlerUpgrade": "Pas satisfait ? Essayez un modèle plus intelligent",
+    "taskErrorTitle": "Impossible de continuer la conversation",
+    "taskErrorNoModelDetail": "Veuillez télécharger un modèle de chat depuis la page Modèles.",
+    "taskErrorLoadFailedDetail": "Échec du chargement du modèle «{{name}}». Vérifiez la page Modèles.",
+    "taskErrorBusyDetail": "Le modèle termine encore son chargement. Réessayez."
   },
   "benchmark": {
     "title": "Benchmark",

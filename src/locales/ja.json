@@ -32,7 +32,8 @@
     "clear": "すべてクリア",
     "gallery": "ギャラリー",
     "stop": "停止",
-    "noResults": "結果がありません"
+    "noResults": "結果がありません",
+    "retry": "再試行"
   },
   "settings": {
     "modelInitializationSettings": "モデル初期化設定",
@@ -1282,7 +1283,13 @@
     },
     "contextFullRemote": "会話の余裕がなくなりました。新しいチャットを始めてください。",
     "contextCompact": "古いメッセージを圧縮",
-    "compactionBanner": "{{count}} 件の初期メッセージを圧縮しました"
+    "compactionBanner": "{{count}} 件の初期メッセージを圧縮しました",
+    "butlerThinking": "🐤 ひよこちゃん考え中…",
+    "butlerUpgrade": "満足できない？もっと賢いモデルに切り替え",
+    "taskErrorTitle": "会話を続行できません",
+    "taskErrorNoModelDetail": "モデルページでチャットモデルをダウンロードしてください。",
+    "taskErrorLoadFailedDetail": "モデル「{{name}}」の読み込みに失敗しました。モデルページをご確認ください。",
+    "taskErrorBusyDetail": "モデルはまだ終了処理中です。もう一度お試しください。"
   },
   "benchmark": {
     "title": "ベンチマーク",

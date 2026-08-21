@@ -3,12 +3,14 @@
  *
  * 任务触发时，从已下载本地模型中选出合适的 chat 模型候选（write/code/play）。
  * 选型排序（MODEL_MATRIX §1.1，用户标签 > 指纹 > 兜底）：
- *   1. chitchat / image：返回空——闲聊永远走管家（启动即就绪），
+ *   1. chitchat / image：返回空——闲聊默认走管家（启动即就绪），
  *      生图走 image 引擎独立槽位，均不在此选型。
- *   2. 用户用途标签命中（§18.7：设置页打的 capabilities 标签，最高优先）
- *   3. DEFAULT_MAP 文件名指纹（MODEL_MATRIX 入选清单：
+ *   2. chat（用户主权升级 2026-08-21）：与 write 同源选型（闲聊语义通用），
+ *      供 butler 卡片「换个更聪明的模型」升级入口使用，chitchat 路由语义不变。
+ *   3. 用户用途标签命中（§18.7：设置页打的 capabilities 标签，最高优先）
+ *   4. DEFAULT_MAP 文件名指纹（MODEL_MATRIX 入选清单：
  *      code→LFM2.5-2.6B、write→Qwen3.5-2B/4B）
- *   4. 其余本地模型按大小降序兜底（越大越强）
+ *   5. 其余本地模型按大小降序兜底（越大越强）
  * 组内一律按 size 降序。排除：管家模型（prompter 常驻槽）、projection 模型。
  * play（P8 玩具工坊）：玩具匠=代码模型，选型复用 code（PLAY_SPEC §2.2）。
  */
@@ -54,15 +56,16 @@ export function candidateNote(model: Model): string {
  *   用户标签命中 + 文件名指纹命中（去重），上限 MAX_CANDIDATES；
  *   无任何命中时才兜底 1 个最大模型（标注说明，不甩全量）。
  * 空数组 = 无可用本地模型（调用方各自显式失败，不兜底）。
+ * 'chat'（2026-08-21 用户主权升级）：与 write 同源选型，chitchat 路由语义不变。
  */
-export function listModelsForTask(task: TaskKind): Model[] {
+export function listModelsForTask(task: TaskKind | 'chat'): Model[] {
   if (task === 'image' || task === 'chitchat') {
-    // 闲聊→管家（useChatScheduler 直答）；生图→image 引擎槽，均不走本选型
+    // 闲聊默认→管家（useChatScheduler 直答）；生图→image 引擎槽，均不走本选型
     return [];
   }
-  // play（玩具匠）复用 code 选型；adventure（城主）复用 write 选型
+  // play（玩具匠）复用 code 选型；adventure（城主）/chat（升级闲聊）复用 write 选型
   const modelTask: 'write' | 'code' =
-    task === 'play' ? 'code' : task === 'adventure' ? 'write' : task;
+    task === 'play' ? 'code' : task === 'adventure' || task === 'chat' ? 'write' : task;
   const candidates = modelStore.availableModels.filter(
     m =>
       m.origin !== ModelOrigin.REMOTE &&
@@ -102,7 +105,8 @@ export function listModelsForTask(task: TaskKind): Model[] {
   return biggest ? [biggest] : [];
 }
 
-/** 单候选兼容面：推荐项 = 候选列表首项；无候选返回 null。 */
-export function findModelForTask(task: TaskKind): Model | null {
+/** 单候选兼容面：推荐项 = 候选列表首项；无候选返回 null。
+ * 'chat'（2026-08-21 用户主权升级）同 listModelsForTask。 */
+export function findModelForTask(task: TaskKind | 'chat'): Model | null {
   return listModelsForTask(task)[0] ?? null;
 }

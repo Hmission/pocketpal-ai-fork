@@ -141,6 +141,12 @@ describe('design-token grep invariants', () => {
       // P0 净化（2026-08-17）：调度错误卡（TaskErrorCard）与任务卡同类，
       // 统一 danger 语义 token 消费（SPEC §3.3 error 叙事落地）
       'components/TaskErrorCard',
+      // L2 用户主权升级（2026-08-21）：管家卡片升级引导行（ButlerUpgradeRow）
+      // 与 TaskErrorCard 同构，primary 语义 chip token 消费
+      'components/ButlerUpgradeRow',
+      // B23 聊天页三处 UI 优化（2026-08-20 168823b）：AssistantAuthorRow 抽离
+      // （作者行+意图胶囊），captionM token 消费——登记遗漏补录（2026-08-21）
+      'components/AssistantAuthorRow',
       // B2：设置页入口中心卡片化（IconTile + 分组 Surface）
       'screens/SettingsScreen',
       // B4：排版升级（displayS 大标题 / numericM 数字强调）

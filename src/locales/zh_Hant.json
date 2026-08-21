@@ -228,7 +228,13 @@
     },
     "contextFullRemote": "對話空間不足。請開始新對話。",
     "contextCompact": "壓縮舊訊息",
-    "compactionBanner": "已壓縮 {{count}} 條早期對話"
+    "compactionBanner": "已壓縮 {{count}} 條早期對話",
+    "butlerThinking": "🐤 小黃雞思考中…",
+    "butlerUpgrade": "回答不滿意？換個更聰明的模型",
+    "taskErrorTitle": "無法繼續對話",
+    "taskErrorNoModelDetail": "請先到模型頁下載對話模型。",
+    "taskErrorLoadFailedDetail": "模型「{{name}}」載入失敗，可到模型頁排查。",
+    "taskErrorBusyDetail": "模型剛載入完仍在收尾，請重試。"
   },
   "common": {
     "cancel": "取消",
@@ -263,7 +269,8 @@
     "clear": "全部清除",
     "gallery": "圖庫",
     "stop": "停止",
-    "noResults": "沒有結果"
+    "noResults": "沒有結果",
+    "retry": "重試"
   },
   "completionParamsLabels": {
     "n_predict": "預測長度",

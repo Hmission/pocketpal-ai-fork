@@ -32,7 +32,8 @@
     "clear": "Kosongkan",
     "gallery": "Galeri",
     "stop": "Henti",
-    "noResults": "Tiada hasil"
+    "noResults": "Tiada hasil",
+    "retry": "Cuba lagi"
   },
   "settings": {
     "modelInitializationSettings": "Tetapan Permulaan Model",
@@ -1282,7 +1283,13 @@
     },
     "contextFullRemote": "Perbualan ini sudah kehabisan ruang. Mulakan sembang baharu.",
     "contextCompact": "Mampat mesej lama",
-    "compactionBanner": "{{count}} mesej awal dimampatkan"
+    "compactionBanner": "{{count}} mesej awal dimampatkan",
+    "butlerThinking": "🐤 Anak ayam berfikir…",
+    "butlerUpgrade": "Tidak puas? Cuba model yang lebih bijak",
+    "taskErrorTitle": "Tidak dapat meneruskan perbualan",
+    "taskErrorNoModelDetail": "Sila muat turun model perbualan dari halaman Model.",
+    "taskErrorLoadFailedDetail": "Gagal memuatkan model «{{name}}». Semak halaman Model.",
+    "taskErrorBusyDetail": "Model masih dalam proses penutupan. Cuba lagi."
   },
   "benchmark": {
     "title": "Tolok Ukur",

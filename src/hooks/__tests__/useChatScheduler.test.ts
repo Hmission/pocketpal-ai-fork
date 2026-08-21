@@ -46,6 +46,9 @@ jest.mock('../../components/ui/ModelSwitchDialog', () => ({
 jest.mock('../../services/aiosMemory', () => ({
   extractAndSaveMemories: jest.fn().mockResolvedValue(undefined),
 }));
+jest.mock('../../services/aiosMemory/butlerContext', () => ({
+  buildButlerContext: jest.fn().mockResolvedValue(''),
+}));
 jest.mock('../../services/aiosMemory/conversationLog', () => ({
   appendConversation: jest.fn().mockResolvedValue(undefined),
 }));
@@ -66,7 +69,12 @@ const msg = (text: string): MessageType.PartialText =>
 const setup = () => {
   const handleSendPress = jest.fn();
   const {result} = renderHook(() => useChatScheduler(handleSendPress));
-  return {wrapped: result.current, handleSendPress};
+  // L2 2026-08-21：hook 返回 {wrappedSendPress, upgradeButlerReply}
+  return {
+    wrapped: result.current.wrappedSendPress,
+    upgrade: result.current.upgradeButlerReply,
+    handleSendPress,
+  };
 };
 
 describe('useChatScheduler', () => {
@@ -156,7 +164,7 @@ describe('useChatScheduler', () => {
       await wrapped(msg('你好呀'));
     });
 
-    expect(mockPromptChat).toHaveBeenCalledWith('你好呀');
+    expect(mockPromptChat).toHaveBeenCalledWith('你好呀', '');
     expect(handleSendPress).not.toHaveBeenCalled();
   });
 
@@ -190,7 +198,7 @@ describe('useChatScheduler', () => {
       await wrapped(msg('你好呀'));
     });
 
-    expect(mockPromptChat).toHaveBeenCalledWith('你好呀');
+    expect(mockPromptChat).toHaveBeenCalledWith('你好呀', '');
     expect(modelStore.selectModel).not.toHaveBeenCalled();
     expect(handleSendPress).not.toHaveBeenCalled();
   });
@@ -363,5 +371,84 @@ describe('useChatScheduler', () => {
       'model-9',
     );
     expect(handleSendPress).toHaveBeenCalled();
+  });
+
+  it('L2 用户主权升级：chat 任务族候选加载成功 → 自动重发同一问题（大模型路径）', async () => {
+    mockFind.mockReturnValue({id: 'model-2', name: '升级模型'});
+    (modelStore.selectModel as jest.Mock).mockImplementation(() => {
+      (modelStore as any).engine = {completion: jest.fn()};
+    });
+    const {upgrade, handleSendPress} = setup();
+
+    await act(async () => {
+      await upgrade('还记得我上次说的项目吗');
+    });
+
+    expect(mockFind).toHaveBeenCalledWith('chat');
+    expect(modelStore.selectModel).toHaveBeenCalledWith(
+      expect.objectContaining({id: 'model-2'}),
+    );
+    expect(mockAwaitReady).toHaveBeenCalled();
+    expect(handleSendPress).toHaveBeenCalledWith(msg('还记得我上次说的项目吗'));
+  });
+
+  it('L2 用户主权升级：无候选 → TaskErrorCard no_model，不重发', async () => {
+    mockFind.mockReturnValue(null);
+    const {upgrade, handleSendPress} = setup();
+
+    await act(async () => {
+      await upgrade('还记得我上次说的项目吗');
+    });
+
+    expect(chatSessionStore.addMessageToCurrentSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          taskError: expect.objectContaining({code: 'no_model'}),
+        }),
+      }),
+    );
+    expect(modelStore.selectModel).not.toHaveBeenCalled();
+    expect(handleSendPress).not.toHaveBeenCalled();
+  });
+
+  it('L2 用户主权升级：加载失败 → 错误卡 load_failed（带模型名），不重发', async () => {
+    mockFind.mockReturnValue({id: 'model-2', name: '升级模型'});
+    (modelStore.selectModel as jest.Mock).mockRejectedValue(
+      new Error('load boom'),
+    );
+    const {upgrade, handleSendPress} = setup();
+
+    await act(async () => {
+      await upgrade('还记得我上次说的项目吗');
+    });
+
+    expect(chatSessionStore.addMessageToCurrentSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          taskError: expect.objectContaining({
+            code: 'load_failed',
+            modelName: '升级模型',
+          }),
+        }),
+      }),
+    );
+    expect(handleSendPress).not.toHaveBeenCalled();
+  });
+
+  it('L1 管家直答：butler 卡片携带 userText（升级入口数据源）', async () => {
+    (promptWriter as any).isLoaded = true;
+    mockPromptChat.mockResolvedValue('管家回复');
+    const {wrapped, handleSendPress} = setup();
+
+    await act(async () => {
+      await wrapped(msg('你好呀'));
+    });
+
+    expect(chatSessionStore.addMessageToCurrentSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({butler: true, userText: '你好呀'}),
+      }),
+    );
+    expect(handleSendPress).not.toHaveBeenCalled();
   });
 });

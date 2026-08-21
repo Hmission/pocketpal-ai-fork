@@ -32,7 +32,8 @@
     "clear": "全部清除",
     "gallery": "图库",
     "stop": "停止",
-    "noResults": "没有结果"
+    "noResults": "没有结果",
+    "retry": "重试"
   },
   "settings": {
     "modelInitializationSettings": "模型初始化设置",
@@ -1337,7 +1338,13 @@
     },
     "contextFullRemote": "对话空间已满，请新建聊天。",
     "contextCompact": "压缩旧消息",
-    "compactionBanner": "已压缩 {{count}} 条早期对话"
+    "compactionBanner": "已压缩 {{count}} 条早期对话",
+    "butlerThinking": "🐤 小鸡思考中…",
+    "butlerUpgrade": "回答不满意？换个更聪明的模型",
+    "taskErrorTitle": "无法继续对话",
+    "taskErrorNoModelDetail": "请先到模型页下载对话模型。",
+    "taskErrorLoadFailedDetail": "模型「{{name}}」加载失败，可到模型页排查。",
+    "taskErrorBusyDetail": "模型刚加载完仍在收尾，请重试。"
   },
   "benchmark": {
     "title": "基准测试",

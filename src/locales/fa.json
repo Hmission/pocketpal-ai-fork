@@ -32,7 +32,8 @@
     "clear": "پاک کردن همه",
     "gallery": "گالری",
     "stop": "توقف",
-    "noResults": "نتیجه‌ای یافت نشد"
+    "noResults": "نتیجه‌ای یافت نشد",
+    "retry": "تلاش مجدد"
   },
   "settings": {
     "modelInitializationSettings": "تنظیمات راه‌اندازی مدل",
@@ -1282,7 +1283,13 @@
     },
     "contextFullRemote": "گنجایش گفتگو پر شد. یک چت جدید شروع کنید.",
     "contextCompact": "فشرده‌سازی پیام‌های قدیمی",
-    "compactionBanner": "{{count}} پیام اولیه فشرده شد"
+    "compactionBanner": "{{count}} پیام اولیه فشرده شد",
+    "butlerThinking": "🐤 جوجه در حال فکر کردن…",
+    "butlerUpgrade": "راضی نیستید؟ مدل هوشمندتری انتخاب کنید",
+    "taskErrorTitle": "ادامه گفتگو ممکن نیست",
+    "taskErrorNoModelDetail": "لطفاً از صفحه مدل‌ها یک مدل گفتگو دانلود کنید.",
+    "taskErrorLoadFailedDetail": "بارگذاری مدل «{{name}}» ناموفق بود. صفحه مدل‌ها را بررسی کنید.",
+    "taskErrorBusyDetail": "مدل هنوز در حال تکمیل است. دوباره تلاش کنید."
   },
   "benchmark": {
     "title": "بنچمارک",

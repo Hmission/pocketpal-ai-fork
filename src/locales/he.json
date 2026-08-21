@@ -32,7 +32,8 @@
     "clear": "נקה הכל",
     "gallery": "גלריה",
     "stop": "עצור",
-    "noResults": "אין תוצאות"
+    "noResults": "אין תוצאות",
+    "retry": "נסה שוב"
   },
   "settings": {
     "modelInitializationSettings": "הגדרות איתחול מודל",
@@ -1282,7 +1283,13 @@
     },
     "contextFullRemote": "נגמר המקום בשיחה. פתח צ'אט חדש.",
     "contextCompact": "דחיסת הודעות ישנות",
-    "compactionBanner": "{{count}} הודעות ראשוניות נדחסו"
+    "compactionBanner": "{{count}} הודעות ראשוניות נדחסו",
+    "butlerThinking": "🐤 האפרוח חושב…",
+    "butlerUpgrade": "לא מרוצה? נסה מודל חכם יותר",
+    "taskErrorTitle": "לא ניתן להמשיך את השיחה",
+    "taskErrorNoModelDetail": "אנא הורד מודל צ'אט מעמוד המודלים.",
+    "taskErrorLoadFailedDetail": "טעינת המודל «{{name}}» נכשלה. בדוק את עמוד המודלים.",
+    "taskErrorBusyDetail": "המודל עדיין מסיים עבודה. נסה שוב."
   },
   "benchmark": {
     "title": "מבחן ביצועים",

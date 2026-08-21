@@ -32,7 +32,8 @@
     "close": "Zamknij",
     "clear": "Wyczyść wszystko",
     "gallery": "Galeria",
-    "noResults": "Brak wyników"
+    "noResults": "Brak wyników",
+    "retry": "Ponów"
   },
   "settings": {
     "modelInitializationSettings": "Ustawienia Inicjalizacji Modelu",
@@ -1608,7 +1609,13 @@
       "openLinkError": "Nie udało się otworzyć tego linku."
     },
     "contextCompact": "Kompresuj stare wiadomości",
-    "compactionBanner": "Skompresowano {{count}} wcześniejszych wiadomości"
+    "compactionBanner": "Skompresowano {{count}} wcześniejszych wiadomości",
+    "butlerThinking": "🐤 Kurczaczek myśli…",
+    "butlerUpgrade": "Niezadowolony? Wypróbuj mądrzejszy model",
+    "taskErrorTitle": "Nie można kontynuować rozmowy",
+    "taskErrorNoModelDetail": "Pobierz model czatu ze strony Modele.",
+    "taskErrorLoadFailedDetail": "Nie udało się wczytać modelu „{{name}}”. Sprawdź stronę Modele.",
+    "taskErrorBusyDetail": "Model wciąż się kończy. Spróbuj ponownie."
   },
   "htmlPreview": {
     "defaultTitle": "Podgląd",

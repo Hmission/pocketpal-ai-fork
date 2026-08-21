@@ -31,7 +31,8 @@
     "ok": "OK",
     "close": "Chiudi",
     "clear": "Cancella Tutto",
-    "gallery": "Galleria"
+    "gallery": "Galleria",
+    "retry": "Riprova"
   },
   "settings": {
     "modelInitializationSettings": "Impostazioni di Inizializzazione del Modello",

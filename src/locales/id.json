@@ -32,7 +32,8 @@
     "clear": "Bersihkan",
     "gallery": "Galeri",
     "stop": "Berhenti",
-    "noResults": "Tidak ada hasil"
+    "noResults": "Tidak ada hasil",
+    "retry": "Coba lagi"
   },
   "settings": {
     "modelInitializationSettings": "Pengaturan Inisialisasi Model",
@@ -1282,7 +1283,13 @@
     },
     "contextFullRemote": "Percakapan sudah penuh. Mulai obrolan baru.",
     "contextCompact": "Kompres pesan lama",
-    "compactionBanner": "{{count}} pesan awal dikompresi"
+    "compactionBanner": "{{count}} pesan awal dikompresi",
+    "butlerThinking": "🐤 Anak ayam berpikir…",
+    "butlerUpgrade": "Tidak puas? Coba model yang lebih pintar",
+    "taskErrorTitle": "Tidak dapat melanjutkan percakapan",
+    "taskErrorNoModelDetail": "Silakan unduh model obrolan dari halaman Model.",
+    "taskErrorLoadFailedDetail": "Gagal memuat model «{{name}}». Periksa halaman Model.",
+    "taskErrorBusyDetail": "Model masih menyelesaikan proses. Coba lagi."
   },
   "benchmark": {
     "title": "Benchmark",

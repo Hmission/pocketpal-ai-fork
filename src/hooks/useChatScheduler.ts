@@ -8,9 +8,12 @@ import {engineStatus} from '../store/engineStatus';
 import {promptWriter} from '../services/promptWriter';
 import {extractAndSaveMemories} from '../services/aiosMemory';
 import {appendConversation} from '../services/aiosMemory/conversationLog';
+import {buildButlerContext} from '../services/aiosMemory/butlerContext';
+import {classifyIntent} from '../services/aiosMemory/rituals';
 import {awaitEngineReady} from '../utils/engineReady';
 import {askModelSwitch} from '../components/ui/ModelSwitchDialog';
 import {user, assistant} from '../utils/chat';
+import {L10nContext} from '../utils';
 import {MessageType, Model} from '../utils/types';
 
 /**
@@ -36,20 +39,21 @@ export function pickResumeModel(task: TaskKind): Model | null {
   return findModelForTask(task);
 }
 
-/** 统一调度错误卡（SPEC §3.3 error 叙事：TaskErrorCard 渲染） */
+/** 统一调度错误卡（SPEC §3.3 error 叙事：TaskErrorCard 渲染）。
+ * 锋利化（2026-08-21）：title/detail 收口到渲染端按 code l10n 单点生成，
+ * 本层只存 code/retryText/可选模型名（避免文案散落调度层）。 */
 async function insertTaskError(
   code: 'no_model' | 'load_failed' | 'busy',
-  title: string,
-  detail: string,
   retryText: string,
+  modelName?: string,
 ): Promise<void> {
   await chatSessionStore.addMessageToCurrentSession({
     id: `err-${Date.now()}`,
     author: assistant,
     createdAt: Date.now(),
-    text: title,
+    text: retryText,
     type: 'text',
-    metadata: {taskError: {code, detail, retryText}},
+    metadata: {taskError: {code, retryText, modelName}},
   } as MessageType.Text);
 }
 
@@ -65,34 +69,19 @@ async function loadCandidate(
   } catch (e) {
     console.error('[Scheduler] selectModel failed:', e);
     engineStatus.setError('chat', '对话模型加载失败');
-    await insertTaskError(
-      'load_failed',
-      '对话模型加载失败',
-      `模型「${candidate.name}」加载失败，可到模型页排查。`,
-      retryText,
-    );
+    await insertTaskError('load_failed', retryText, candidate.name);
     return 'abort';
   }
   if (!modelStore.engine) {
     engineStatus.setError('chat', '对话模型加载失败');
-    await insertTaskError(
-      'load_failed',
-      '对话模型加载失败',
-      `模型「${candidate.name}」加载失败，可到模型页排查。`,
-      retryText,
-    );
+    await insertTaskError('load_failed', retryText, candidate.name);
     return 'abort';
   }
   // 时差双保险之一：native context 收尾轮询等待，避免撞 busy 报错
   const ready = await awaitEngineReady();
   if (!ready) {
     engineStatus.setError('chat', '引擎忙碌，请稍后重试');
-    await insertTaskError(
-      'busy',
-      '模型刚加载完仍在收尾',
-      '模型刚加载完仍在收尾，请重试。',
-      retryText,
-    );
+    await insertTaskError('busy', retryText);
     return 'abort';
   }
   // 加载完成，状态归隐（避免残留；模型状态由顶栏胶囊展示，B18 §16.1）
@@ -128,8 +117,21 @@ async function loadCandidateForDialog(
   engineStatus.setPhase('chat', 'idle');
 }
 
-/** 管家直答（启动即就绪闭环）：插用户消息 + 思考卡 → 管家回复回写 */
-async function butlerReply(text: string): Promise<boolean> {
+/** 管家直答（启动即就绪闭环）：插用户消息 + 思考卡 → 管家回复回写。
+ * L1 记忆读侧闭环（2026-08-21）：回复前组装 buildButlerContext 注入
+ * （今日状态/记忆/召回/意图语气），并对齐会话意图状态机（D1 修复）。 */
+async function butlerReply(
+  text: string,
+  l10n: (typeof import('../locales'))['l10n'][keyof (typeof import('../locales'))['l10n']],
+): Promise<boolean> {
+  // 意图状态机对齐：已有会话意图沿用，无则 classify + 落库（与 useChatSession 同源）
+  let sessionIntent = chatSessionStore.activeSessionIntent;
+  if (!sessionIntent) {
+    sessionIntent = classifyIntent(text);
+    await chatSessionStore.setSessionIntent(sessionIntent);
+  }
+  // 记忆读侧注入（fire-and-forget 组装，失败静默回退纯人设——不阻塞主链）
+  const systemExtra = await buildButlerContext(text, sessionIntent);
   await chatSessionStore.addMessageToCurrentSession({
     id: `u-${Date.now()}`,
     author: user,
@@ -145,15 +147,16 @@ async function butlerReply(text: string): Promise<boolean> {
     id: `butler-${Date.now()}`,
     author: assistant,
     createdAt: Date.now(),
-    text: '🐤 小鸡思考中…',
+    text: l10n.chat.butlerThinking,
     type: 'text',
-    metadata: {butler: true, modelName: '管家小鸡'},
+    // userText 落卡：butler 卡片升级入口（L2）取出重发同一问题
+    metadata: {butler: true, modelName: '管家小鸡', userText: text},
   } as MessageType.Text;
   await chatSessionStore.addMessageToCurrentSession(butlerCardMsg);
   // DB 可能覆写消息 id → 插入后读回真实 id，保证后续 update 命中
   const cardId =
     chatSessionStore.currentSessionMessages[0]?.id ?? butlerCardMsg.id;
-  const reply = await promptWriter.chat(text);
+  const reply = await promptWriter.chat(text, systemExtra);
   const finalText =
     reply ??
     '抱歉，小黄鸡暂时没想到怎么回答。可到模型页加载更强的对话模型。';
@@ -242,12 +245,7 @@ async function resolveTaskModel(
 
   // 场景 B：chat 引擎未加载——候选模型加载（弹窗确认）
   if (!recommended) {
-    await insertTaskError(
-      'no_model',
-      '没有可用的对话模型',
-      '请先到模型页下载对话模型。',
-      text,
-    );
+    await insertTaskError('no_model', text);
     return 'abort';
   }
   // 记住的模型仍在候选 → 直接加载（会话内显式选择不再问）
@@ -281,7 +279,29 @@ async function resolveTaskModel(
 export const useChatScheduler = (
   handleSendPress: (message: MessageType.PartialText) => void | Promise<void>,
 ) => {
-  return React.useCallback(
+  const l10n = React.useContext(L10nContext);
+
+  /** L2 用户主权升级（2026-08-21）：butler 卡片「换个更聪明的模型」点按 →
+   * chat 任务族选型加载 → 成功自动重发同一问题（大模型路径，记忆/工具链完整）。
+   * 失败复用错误卡显式引导；引擎驻留不卸载（防抖动，后续闲聊直达大模型）。 */
+  const upgradeButlerReply = React.useCallback(
+    async (userText: string) => {
+      const candidate = findModelForTask('chat');
+      if (!candidate) {
+        await insertTaskError('no_model', userText);
+        return;
+      }
+      const decision = await loadCandidate(candidate, userText);
+      if (decision === 'abort') {
+        return;
+      }
+      // 自动重发：用户点升级的意图就是「要更好的回答」，重发是意图的自然延续
+      await handleSendPress({text: userText} as MessageType.PartialText);
+    },
+    [handleSendPress],
+  );
+
+  const wrappedSendPress = React.useCallback(
     async (
       message: MessageType.PartialText,
       editSourceUri?: string | null,
@@ -338,16 +358,11 @@ export const useChatScheduler = (
           // 管家未就绪：懒加载一次（启动即就绪补全）；仍失败 → 错误卡引导
           const ok = await promptWriter.ensureLoaded();
           if (!ok) {
-            await insertTaskError(
-              'no_model',
-              '没有可用的对话模型',
-              '请先到模型页下载管家模型或对话模型。',
-              text,
-            );
+            await insertTaskError('no_model', text);
             return;
           }
         }
-        await butlerReply(text);
+        await butlerReply(text, l10n);
         return;
       }
 
@@ -374,6 +389,8 @@ export const useChatScheduler = (
       // 兜底（chitchat 且 chat 引擎已加载——用户显式加载了大模型）：尊重主权直接发送
       handleSendPress(message);
     },
-    [handleSendPress],
+    [handleSendPress, l10n],
   );
+
+  return {wrappedSendPress, upgradeButlerReply};
 };

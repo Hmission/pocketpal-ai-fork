@@ -199,8 +199,10 @@ class PromptWriter {
   /**
    * 通用闲聊（chitchat 兜底）：chat 大模型未加载时，由常驻管家直接回答，
    * 实现“启动即就绪”的产品闭环。
+   * @param systemExtra 可选记忆/今日状态/意图语气附加段（L1 记忆读侧闭环
+   *   2026-08-21：butlerReply 组装 buildButlerContext 注入，空串零影响）
    */
-  async chat(text: string): Promise<string | null> {
+  async chat(text: string, systemExtra = ''): Promise<string | null> {
     if (!this.ctx) {
       const ok = await this.ensureLoaded();
       if (!ok || !this.ctx) {
@@ -215,7 +217,12 @@ class PromptWriter {
         this.ctx!.completion(
           {
             messages: [
-              {role: 'system', content: CHITCHAT_SYSTEM_PROMPT},
+              {
+                role: 'system',
+                content:
+                  CHITCHAT_SYSTEM_PROMPT +
+                  (systemExtra ? `\n\n${systemExtra}` : ''),
+              },
               {role: 'user', content: text},
             ],
             n_predict: 512,

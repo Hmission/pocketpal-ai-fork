@@ -30,7 +30,8 @@
     "ok": "OK",
     "close": "Schließen",
     "clear": "Alles löschen",
-    "gallery": "Galerie"
+    "gallery": "Galerie",
+    "retry": "Erneut versuchen"
   },
   "settings": {
     "modelInitializationSettings": "Einstellungen Modellinitialisierung",

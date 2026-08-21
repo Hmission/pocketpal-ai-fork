@@ -37,6 +37,7 @@ import {ActiveTaskBanner} from '../../components/ActiveTaskBanner/ActiveTaskBann
 import {ImageTaskActions} from '../../components/ImageTaskActions/ImageTaskActions';
 import {ImageTaskProgress} from '../../components/ImageTaskProgress/ImageTaskProgress';
 import {TaskErrorCard} from '../../components/TaskErrorCard/TaskErrorCard';
+import {ButlerUpgradeRow} from '../../components/ButlerUpgradeRow/ButlerUpgradeRow';
 import {TextMessage} from '../../components/TextMessage';
 import {promptWriter} from '../../services/promptWriter';
 import {imageGenStore} from '../../store/imageGenStore';
@@ -86,13 +87,15 @@ export const renderBubble = ({
 // （ADR-0003 同构，不再悬浮卡片外）；驻留引擎秒级复用，走
 // runImageTaskCard / pendingEditSource 单链路。
 // 调度错误卡（TaskErrorCard，P0 净化）：懒切换失败统一 danger 卡 + 重试/去模型页。
+// 管家升级行（ButlerUpgradeRow，L2 2026-08-21）：butler 卡片「换个更聪明的模型」。
 const renderTextMessage = (
   message: MessageType.Text,
   messageWidth: number,
   showName: boolean,
-  taskErrorHandlers?: {
+  handlers?: {
     onRetry: (text: string) => void;
     onGoModels: () => void;
+    onButlerUpgrade: (text: string) => void;
   },
 ) => {
   const meta = (message.metadata ?? {}) as {
@@ -101,6 +104,8 @@ const renderTextMessage = (
     editTask?: boolean;
     editTaskFailed?: boolean;
     taskError?: unknown;
+    butler?: boolean;
+    userText?: string;
   };
   const imageUris = (message as {imageUris?: string[]}).imageUris;
   // 生图任务卡（imageTask）/ 编辑任务卡（editTask，P5）/ 调度错误卡（taskError）共用动作槽
@@ -129,8 +134,13 @@ const renderTextMessage = (
         ) : hasError ? (
           <TaskErrorCard
             message={message as MessageType.Text}
-            onRetry={taskErrorHandlers?.onRetry}
-            onGoModels={taskErrorHandlers?.onGoModels}
+            onRetry={handlers?.onRetry}
+            onGoModels={handlers?.onGoModels}
+          />
+        ) : meta.butler ? (
+          <ButlerUpgradeRow
+            userText={meta.userText ?? ''}
+            onUpgrade={handlers?.onButlerUpgrade ?? (() => {})}
           />
         ) : undefined
       }
@@ -187,7 +197,8 @@ export const ChatScreen: React.FC = observer(() => {
   // - image → 聊天内联闭环（加载引擎→出图→插入图片/错误卡片），不跳转页面
   // - write/code → chat 引擎未加载时按能力注册表自动选模型加载，再走常规聊天
   // - chitchat → chat 引擎未加载且管家就绪时，由常驻管家直接回答（启动即就绪）
-  const wrappedSendPress = useChatScheduler(handleSendPress);
+  // - upgradeButlerReply → 用户主权升级（L2 2026-08-21）：管家卡片「换个更聪明的模型」
+  const {wrappedSendPress, upgradeButlerReply} = useChatScheduler(handleSendPress);
 
   // DRC 聊天发送槽（debug/E2E 构建）：ChatScreen 在岗时注册 wrappedSendPress，
   // 卸载注销——command chat.send 复用完整调度链路（意图路由/管家直答），单一事实源。
@@ -389,6 +400,7 @@ export const ChatScreen: React.FC = observer(() => {
           renderTextMessage(msg, w, showName, {
             onRetry: handleTaskErrorRetry,
             onGoModels: handleTaskErrorGoModels,
+            onButlerUpgrade: upgradeButlerReply,
           })
         }
         messages={chatSessionStore.currentSessionMessages}

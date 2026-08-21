@@ -208,8 +208,12 @@ describe('ChatScreen', () => {
     });
 
     // 管家直答：插用户消息 + 思考卡 → chat 回复回写
+    // L1 2026-08-21：chat 第二参数 = 记忆上下文（今日状态/记忆/召回/意图）
     await waitFor(() => {
-      expect(promptWriter.chat).toHaveBeenCalledWith('今天天气怎么样？');
+      expect(promptWriter.chat).toHaveBeenCalledWith(
+        '今天天气怎么样？',
+        expect.anything(),
+      );
     });
     await waitFor(() => {
       expect(chatSessionStore.addMessageToCurrentSession).toHaveBeenCalledWith(

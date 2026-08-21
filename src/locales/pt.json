@@ -32,7 +32,8 @@
     "close": "Fechar",
     "clear": "Limpar Tudo",
     "gallery": "Galeria",
-    "noResults": "Sem resultados"
+    "noResults": "Sem resultados",
+    "retry": "Tentar novamente"
   },
   "settings": {
     "modelInitializationSettings": "Configurações de Inicialização do Modelo",
@@ -1282,7 +1283,13 @@
       "openLinkError": "Não foi possível abrir esta ligação."
     },
     "contextCompact": "Comprimir mensagens antigas",
-    "compactionBanner": "{{count}} mensagens anteriores comprimidas"
+    "compactionBanner": "{{count}} mensagens anteriores comprimidas",
+    "butlerThinking": "🐤 O pintainho está a pensar…",
+    "butlerUpgrade": "Não está satisfeito? Experimente um modelo mais inteligente",
+    "taskErrorTitle": "Não é possível continuar a conversa",
+    "taskErrorNoModelDetail": "Descarregue um modelo de conversa na página Modelos.",
+    "taskErrorLoadFailedDetail": "Falha ao carregar o modelo «{{name}}». Verifique a página Modelos.",
+    "taskErrorBusyDetail": "O modelo ainda está a concluir. Tente novamente."
   },
   "htmlPreview": {
     "defaultTitle": "Pré-visualização",

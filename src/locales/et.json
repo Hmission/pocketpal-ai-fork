@@ -9,7 +9,8 @@
     "update": "Uuenda",
     "error": "Viga",
     "export": "Ekspordi",
-    "networkError": "Võrguühenduse viga. Palun proovi uuesti."
+    "networkError": "Võrguühenduse viga. Palun proovi uuesti.",
+    "retry": "Proovi uuesti"
   },
   "errorReport": {
     "copy": "Kopeeri veaaruanne",

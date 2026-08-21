@@ -226,7 +226,13 @@
     },
     "contextFullRemote": "Лимит контекста диалога исчерпан. Начните новый чат.",
     "contextCompact": "Сжать старые сообщения",
-    "compactionBanner": "Сжато {{count}} ранних сообщений"
+    "compactionBanner": "Сжато {{count}} ранних сообщений",
+    "butlerThinking": "🐤 Цыплёнок думает…",
+    "butlerUpgrade": "Не довольны? Попробуйте более умную модель",
+    "taskErrorTitle": "Не удаётся продолжить разговор",
+    "taskErrorNoModelDetail": "Пожалуйста, загрузите чат-модель на странице «Модели».",
+    "taskErrorLoadFailedDetail": "Не удалось загрузить модель «{{name}}». Проверьте страницу «Модели».",
+    "taskErrorBusyDetail": "Модель ещё завершает работу. Попробуйте ещё раз."
   },
   "common": {
     "cancel": "Отмена",
@@ -261,7 +267,8 @@
     "clear": "Очистить всё",
     "gallery": "Галерея",
     "stop": "Остановить",
-    "noResults": "Ничего не найдено"
+    "noResults": "Ничего не найдено",
+    "retry": "Повторить"
   },
   "completionParamsLabels": {
     "n_predict": "Длина генерации",

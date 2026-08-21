@@ -32,7 +32,8 @@
     "clear": "Очистити все",
     "gallery": "Галерея",
     "stop": "Зупинити",
-    "noResults": "Нічого не знайдено"
+    "noResults": "Нічого не знайдено",
+    "retry": "Повторити"
   },
   "settings": {
     "modelInitializationSettings": "Налаштування ініціалізації моделі",
@@ -1282,7 +1283,13 @@
     },
     "contextFullRemote": "У розмові закінчилося місце. Почніть новий чат.",
     "contextCompact": "Стиснути старі повідомлення",
-    "compactionBanner": "Стиснуто {{count}} ранніх повідомлень"
+    "compactionBanner": "Стиснуто {{count}} ранніх повідомлень",
+    "butlerThinking": "🐤 Курчатко думає…",
+    "butlerUpgrade": "Не задоволені? Спробуйте розумнішу модель",
+    "taskErrorTitle": "Не вдається продовжити розмову",
+    "taskErrorNoModelDetail": "Будь ласка, завантажте чат-модель на сторінці «Моделі».",
+    "taskErrorLoadFailedDetail": "Не вдалося завантажити модель «{{name}}». Перевірте сторінку «Моделі».",
+    "taskErrorBusyDetail": "Модель ще завершує роботу. Спробуйте ще раз."
   },
   "benchmark": {
     "title": "Бенчмарк",

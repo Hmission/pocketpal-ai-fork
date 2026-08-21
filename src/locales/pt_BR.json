@@ -32,7 +32,8 @@
     "close": "Fechar",
     "clear": "Limpar Tudo",
     "gallery": "Galeria",
-    "noResults": "Nenhum resultado"
+    "noResults": "Nenhum resultado",
+    "retry": "Tentar novamente"
   },
   "settings": {
     "modelInitializationSettings": "Configurações de Inicialização do Modelo",
@@ -1282,7 +1283,13 @@
     },
     "contextFullRemote": "A conversa ficou sem espaço. Comece um novo chat.",
     "contextCompact": "Comprimir mensagens antigas",
-    "compactionBanner": "{{count}} mensagens anteriores comprimidas"
+    "compactionBanner": "{{count}} mensagens anteriores comprimidas",
+    "butlerThinking": "🐤 O pintinho está pensando…",
+    "butlerUpgrade": "Não está satisfeito? Tente um modelo mais inteligente",
+    "taskErrorTitle": "Não é possível continuar a conversa",
+    "taskErrorNoModelDetail": "Baixe um modelo de conversa na página Modelos.",
+    "taskErrorLoadFailedDetail": "Falha ao carregar o modelo «{{name}}». Verifique a página Modelos.",
+    "taskErrorBusyDetail": "O modelo ainda está concluindo. Tente novamente."
   },
   "htmlPreview": {
     "defaultTitle": "Pré-visualização",
