@@ -69,10 +69,12 @@ const AIOS_PAL_DEFAULT_TALENTS: Array<{
   {name: 'adventure_state', necessity: 'optional'},
   // 玩具迭代闭环（PLAY_SPEC v1.6）：改已有玩具前按 title 读回原文
   {name: 'read_html', necessity: 'optional'},
+  // 写作工作区（WORKSPACE_SPEC v1，2026-08-21）：长文产物落盘 + 跨会话续写
+  {name: 'writing_doc', necessity: 'optional'},
 ];
 
-/** pact.schemaVersion 当前版本：v2 = 十工具全量集（v1 九工具 + read_html）。 */
-const PACT_SCHEMA_VERSION = 2;
+/** pact.schemaVersion 当前版本：v3 = 十一工具全量集（v2 十工具 + writing_doc）。 */
+const PACT_SCHEMA_VERSION = 3;
 
 class PalStore {
   // Core pals storage

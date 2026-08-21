@@ -24,6 +24,7 @@ relates: [POCKETPAL_SCREENWATCH_SPEC, POCKETPAL_PLAY_SPEC, POCKETPAL_PRODUCT_SPE
 - **负责**：
   - **adventure 任务路由**：聊天内「来场冒险/开个副本/当城主」→ 选型写作模型（write 指纹）→ 城主开场
   - **adventure_state 工具**：get（读当前状态）/ set（合并更新）/ reset（新冒险清档）——状态 `workspace/adventure/state.json`
+  - **世界档案多文档**（v1.3，WORKSPACE_SPEC）：read/append 按节存取 `世界设定.md / 角色卡.md / 剧情.md`——开档建档、续档先读，正文不预注入上下文（模型按需自取）
   - **城主叙事**：systemPromptFragment 引导模型写剧情 + 自主维护状态（角色卡模板/事件/判定）
 - **不负责**（明确排除）：
   - **不做模型剧团**：多 context 接力辩论（内存账本 ≈7GB 超 12GB 设备安全线 + 换模耗时长）——继续观望，防臃肿闸门
@@ -68,6 +69,8 @@ relates: [POCKETPAL_SCREENWATCH_SPEC, POCKETPAL_PLAY_SPEC, POCKETPAL_PRODUCT_SPE
   - `{action:'get'}` → `{ok, state}`；未开档 → `{ok:false, error:'尚未开档，请先让城主开启冒险'}`
   - `{action:'set', state:{...}}` → 合并写 state.json（模型维护，不校验 schema——状态即规则）
   - `{action:'reset'}` → 删除 state.json（新冒险清档）
+  - `{action:'read', doc, section}`（v1.3，WORKSPACE_SPEC）→ 按节读世界档案；节不存在 → `NO_SECTION` 显式错误；doc 不在白名单（世界设定/角色卡/剧情）→ `UNKNOWN_DOC`（防任意路径写盘）
+  - `{action:'append', doc, section, content}`（v1.3）→ 节尾续写落盘，返回字数回执；超 20KB → `DOC_TOO_LARGE` 显式拒绝（模型开新节）
   - 上限 20KB（防膨胀）
 - **注册**：talents/index.ts `registerDefaultTalents` + 女妖 pact.talents 增 `adventure_state`。
 - **存量对账**（v1.1，D-1 修复）：PalStore `initializeAiosPal` 对存量女妖做 pact 对账——`pact.schemaVersion` 落后时并入默认工具集差集（只补新增，不复活用户手动关闭的工具）；老设备女妖开箱即得新工具。
@@ -102,6 +105,7 @@ relates: [POCKETPAL_SCREENWATCH_SPEC, POCKETPAL_PLAY_SPEC, POCKETPAL_PRODUCT_SPE
 | 2026-08-18 | 1.0 | 首发：adventure 路由 + adventure_state 工具化状态管理 + 城主叙事 |
 | 2026-08-19 | 1.1 | 闭环收口：存量女妖 pact 对账迁移（schemaVersion 差集并入）+ 快捷前缀「来场冒险：」引导 |
 | 2026-08-19 | 1.2 | 工具可用性修复：无显式 Pal 会话兜底 AIOS 女妖 pact（见 PLAY_SPEC v1.2 PLAY-3）——adventure_state 不再因会话未绑 Pal 而缺席 |
+| 2026-08-21 | 1.3 | 世界档案多文档（WORKSPACE_SPEC v1）：read/append 按节存取世界设定/角色卡/剧情 + 白名单防路径写盘 + 城主人设引导建档/续档先读；DRC 埋点 workspace.adventure_state |
 
 ## 关联文档
 

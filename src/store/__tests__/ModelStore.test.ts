@@ -136,15 +136,15 @@ describe('ModelStore', () => {
       });
     });
 
-    it('无覆盖时写人工策展默认（尺寸档 2e9 → 16384）', () => {
+    it('无覆盖时写人工策展默认（尺寸档 2e9 → 24576）', () => {
       runInAction(() => {
         modelStore.largestSuccessfulLoad = 8e9;
         modelStore.availableMemoryCeiling = 8e9;
       });
       (modelStore as any).presetModelNCtxIfAbsent(presetCtxModel);
-      // 策展表取代内存梯子（2026-08-19 大王裁定）：fixture 无规则命中，
-      // size 2e9 落尺寸档 16384。
-      expect(modelStore.perModelNCtx['preset-ctx-model']).toBe(16384);
+      // 策展表取代内存梯子（2026-08-19 大王裁定；2026-08-21 按真实
+      // GGUF 验算重排：fixture 无规则命中，size 2e9 落尺寸档 24576）。
+      expect(modelStore.perModelNCtx['preset-ctx-model']).toBe(24576);
       expect(modelStore.perModelNCtxSource['preset-ctx-model']).toBe('preset');
     });
 
@@ -163,7 +163,7 @@ describe('ModelStore', () => {
         modelStore.availableMemoryCeiling = undefined;
       });
       (modelStore as any).presetModelNCtxIfAbsent(presetCtxModel);
-      expect(modelStore.perModelNCtx['preset-ctx-model']).toBe(16384);
+      expect(modelStore.perModelNCtx['preset-ctx-model']).toBe(24576);
     });
 
     it('REMOTE 模型无本地内存语义，不预调', () => {
@@ -188,8 +188,8 @@ describe('ModelStore', () => {
         };
       });
       (modelStore as any).presetModelNCtxIfAbsent(presetCtxModel);
-      // 已加载模型读生效值 = perModelNCtx（策展档 16384），不被全局 4096 覆盖
-      expect(modelStore.getModelNCtx('preset-ctx-model')).toBe(16384);
+      // 已加载模型读生效值 = perModelNCtx（策展档 24576），不被全局 4096 覆盖
+      expect(modelStore.getModelNCtx('preset-ctx-model')).toBe(24576);
       expect(modelStore.getModelNCtx()).toBe(4096); // 无模型回退全局
     });
 
@@ -225,7 +225,7 @@ describe('ModelStore', () => {
       });
     });
 
-    it('preset 超策展档降档（旧梯子遗留 98304 → 1B 策展 8192）', () => {
+    it('preset 超策展档降档（旧梯子遗留 98304 → 1B 策展 16384）', () => {
       const butler = {
         ...presetModelFixture,
         id: 'minicpm-butler',
@@ -238,7 +238,7 @@ describe('ModelStore', () => {
         modelStore.perModelNCtxSource = {'minicpm-butler': 'preset'};
       });
       modelStore.normalizePresetNCtxToCuratedDefaults();
-      expect(modelStore.perModelNCtx['minicpm-butler']).toBe(8192);
+      expect(modelStore.perModelNCtx['minicpm-butler']).toBe(16384);
     });
 
     it('user 源不碰（主权）', () => {
@@ -261,7 +261,8 @@ describe('ModelStore', () => {
       const m = {
         ...presetModelFixture,
         id: 'low-preset',
-        filename: 'qwen3.5-4b-x.gguf',
+        // 不命中任何规则（避免新策展规则降档），尺寸档 24576 > 8192
+        filename: 'generic-2.5b-q4.gguf',
         size: 2.5e9,
       } as Model;
       modelStore.models = [m];

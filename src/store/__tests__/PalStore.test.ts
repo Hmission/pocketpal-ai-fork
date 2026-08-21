@@ -263,9 +263,10 @@ describe('PalStore', () => {
           'device_control',
           'adventure_state',
           'read_html',
+          'writing_doc',
         ]),
       );
-      expect(pact.schemaVersion).toBe(2);
+      expect(pact.schemaVersion).toBe(3);
     });
 
     it('D-1 pact 对账：schemaVersion 已最新 → 不重复对账（不复活用户手动关闭的工具）', async () => {
@@ -276,7 +277,7 @@ describe('PalStore', () => {
         source: 'local',
         pact: {
           talents: [{name: 'web_search', necessity: 'optional'}], // 用户手动关掉其余工具
-          schemaVersion: 2,
+          schemaVersion: 3,
         },
       };
       (palRepository.getAllPals as jest.Mock).mockResolvedValue([banshee]);

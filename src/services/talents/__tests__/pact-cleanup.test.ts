@@ -142,8 +142,8 @@ describe('PACT cleanup: deriveToolSchemas()', () => {
     expect(talentRegistry.getAll()).toHaveLength(0);
 
     const schemas = deriveToolSchemas();
-    // 默认注册集已随记忆/设备控制/adventure/read_html 工具扩展（2026-08）
-    expect(schemas).toHaveLength(10);
+    // 默认注册集已随记忆/设备控制/adventure/read_html/writing_doc 工具扩展（2026-08）
+    expect(schemas).toHaveLength(11);
 
     const names = schemas.map(s => s.function.name).sort();
     expect(names).toEqual([
@@ -157,6 +157,7 @@ describe('PACT cleanup: deriveToolSchemas()', () => {
       'render_html',
       'search_memory',
       'web_search',
+      'writing_doc',
     ]);
   });
 
@@ -181,8 +182,8 @@ describe('PACT cleanup: deriveToolSchemas()', () => {
       tool_choice: 'auto' as const,
       jinja: true,
     };
-    // 默认注册集已随记忆/设备控制/adventure/read_html 工具扩展（2026-08）
-    expect(completionSettings.tools).toHaveLength(10);
+    // 默认注册集已随记忆/设备控制/adventure/read_html/writing_doc 工具扩展（2026-08）
+    expect(completionSettings.tools).toHaveLength(11);
     expect(completionSettings.tools[0].type).toBe('function');
   });
 });

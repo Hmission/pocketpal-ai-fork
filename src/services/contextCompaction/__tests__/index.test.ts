@@ -102,12 +102,51 @@ describe('compressSession', () => {
     expect(mockSummarize.mock.calls[0][0].priorSummary).toBe('旧摘要');
   });
 
-  it('maxMessages 上限生效', async () => {
+  it('maxMessages 不再限条数（WORKSPACE_SPEC：手动路径压全部可压区间）', async () => {
     const result = await compressSession({
       messages: tenMessages(),
-      maxMessages: 4,
+      maxMessages: 4, // 旧语义已废弃，忽略
     });
-    expect(result!.compactedCount).toBe(4);
+    expect(result!.compactedCount).toBe(6); // 全部可压区间（10-4）
+  });
+
+  it('WORKSPACE_SPEC 裁剪一致性：对话文本超预算时 slice 收缩（被压=进摘要）', async () => {
+    // 7 条消息（3 轮长 + 1 轮短）：可压区间 3 条（u0/a0/u1 各 ~2500 字），
+    // nCtx 8192 → 预算 min(6000, 7792)=6000 字符 → 裁掉 u1 只压 2 条
+    const longMsgs: MessageType.Any[] = [
+      {...userMsg(0), text: '甲'.repeat(2500)} as MessageType.Text,
+      {
+        ...assistantMsg(0),
+        steps: [{content: '乙'.repeat(2500)}],
+      } as MessageType.AssistantTurn,
+      {...userMsg(1), text: '丙'.repeat(2500)} as MessageType.Text,
+      assistantMsg(1),
+      userMsg(2),
+      assistantMsg(2),
+      userMsg(3),
+    ];
+    const result = await compressSession({messages: longMsgs, nCtx: 8192});
+    // 预算 6000 字符只能容纳前 2 条（2500+2500+前缀）→ 被压消息 = 进摘要的消息
+    expect(result!.compactedCount).toBe(2);
+    expect(result!.compactedMessageIds).toEqual(['u0', 'a0']);
+    expect(mockSummarize.mock.calls[0][0].dialogueText.length).toBeLessThanOrEqual(6000);
+    // 超预算的 u1 未被标记（保持可压区间，下轮续压）
+    expect(result!.compactedMessageIds).not.toContain('u1');
+  });
+
+  it('WORKSPACE_SPEC 裁剪后释放不足且无可裁 → 诚实 null（不静默欠释放）', async () => {
+    const longMsgs: MessageType.Any[] = [
+      {...userMsg(0), text: '甲'.repeat(4000)} as MessageType.Text,
+      assistantMsg(0),
+      assistantMsg(1),
+    ];
+    // 首条 4000 字符 + 预算 3696 → 裁到只剩 1 条仍超预算；target 缺口大 → 释放不足
+    const result = await compressSession({
+      messages: longMsgs,
+      nCtx: 4096,
+      targetReleaseTokens: 99999,
+    });
+    expect(result).toBeNull();
   });
 
   it('B19.1 target 驱动时突破 maxMessages（预算缺口优先，宁多压不欠释放）', async () => {

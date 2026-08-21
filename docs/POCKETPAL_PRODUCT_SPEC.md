@@ -290,6 +290,18 @@ NaN 指纹跨设备一致（c≡3 mod 64）→ 判定非设备特定 → fusion 
 - **预调**：模型首次加载且无覆盖时，按设备内存上限沿档位梯取最大可装档（封顶模型训练上下文），一次预调、持久化；只升不降（不覆盖用户手调）、上限未知不虚构。
 - **PSS 安全阀（2026-08-19 K90 真机血证）**：厂商 PSS 看护（HyperOS 实测 6GB 硬杀）与空闲内存无关，才是存活天花板。预调天花板取 min(内存上限, 4GB 安全预算)，启动审计自愈超限档；自动档永不越预算，用户手调不受限（决策可见）。详见 CHAT_UI_SPEC §18.6 v3.6。
 
+### 4.11 产物工作区与上下文治理（2026-08-21，WORKSPACE_SPEC v1）
+
+- **一句话架构**：对话是过程，产物是文档；上下文只放框架指针，正文按需读段；压缩只动过程，永不碰产物；新会话凭记忆索引恢复工作区。
+- **策展表重排（小模型长上下文）**：模型越小 → 上下文越长（KV 便宜 + 速度快），上限 = GGUF `context_length`，预算 = PSS_SAFE_BUDGET 4GB。新策展：MiniCPM5-1B 8192→**16384**、Qwen3.5-2B/LFM2.5-2.6B 16384→**24576**、Ministral-3-3B 8192→**16384**；Qwen3.5-4B 保持（KV 大户审计降档 4096 诚实档）、LFM2.5-8B-A1B 保持（K90 PSS 硬杀不可用）。尺寸档回退：≤1.5GB→16384；≤4GB→24576；更大→12288。门禁：每档 `getModelMemoryRequirement` 验算 ≤4GB + `normalizePresetNCtxToCuratedDefaults` 自动降档 + `auditPerModelNCtxAgainstPss` 兜底（user 源主权不碰）。
+- **产物工作区（三模式同构底座）**：写作/冒险/玩具统一三件协议——目录（`workspace/<domain>/<project>/` 分文档文件）、索引（每域 index.json = [{name, path, updatedAt, progress}]，写后置顶）、分段读取（`## ` 分节只读目标段，单文件 ≤20KB 超限显式拒绝开新章）。实现：`src/services/workspace/`（index.ts + docStore.ts + recovery.ts）。
+- **写作链路闭环（WritingDocEngine）**：与 AdventureStateEngine 同构（TalentEngine + toToolDefinition + engineGuard 串行化 + DRC 埋点）：init/list/new_chapter/read_section/read_all/list_sections/append/update_outline/update_persona 九动作；init 写记忆 fact「在写《X》」；append 返回字数回执不重复正文；女妖 pact.talents 声明 `writing_doc`。
+- **路由与恢复（双触发）**：自动——WRITE_RE 增续写意图（继续写/续写/接着写/写下去）；显式——快捷前缀「新建写作项目：/写作项目：」（剥离后为空短路 chitchat 防误伤）。恢复链路：routeTask 命中 write → 索引命中 → 读框架文档（大纲+人设+progress）注入组装层 → 模型续写；未命中静默。
+- **上下文按需读取**：写作恢复会话首轮框架文档内联注入（大纲+人设，2-4K token），正文/剧情永不预注入——模型经 read_section/read 工具按需取；冒险域引导城主人设主动 read 世界档案自取（不预注入）；`contextAssembler` 新 `workspaceContext` 参数。
+- **压缩策略修正（F）**：①根因——输入截断与标记不一致（超 maxInputChars 先裁 slice 本身再标记，杜绝静默丢失；仍不达缺口诚实 null）；②产物指针——摘要 prompt 对已落盘产物只记「产物已落盘：<文档名>」不复述正文；③手动压缩可压全部可压区间（仅受预算保护）。
+- **冒险/玩具补齐**：AdventureStateEngine 增 read/append（世界设定/角色卡/剧情多文档，白名单防任意路径写盘 + 城主人设引导建档/续档先读）；toyChest 既有单层索引直读不动（read_html/玩具箱即消费端，不建第二份视图）。
+- **文档**：docs/POCKETPAL_WORKSPACE_SPEC.md（四协议 + 域差异表）；COMPASS_REGISTRY 登记 workspace.* 事件；CHANGELOG 收编。
+
 ---
 
 ## 五、技术架构概述

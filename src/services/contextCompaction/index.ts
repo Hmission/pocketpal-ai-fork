@@ -39,7 +39,7 @@ export interface CompressSessionInput {
   messages: MessageType.Any[];
   /** 摘要引擎（缺省自动选择：当前模型 → 管家） */
   engine?: CompletionEngine;
-  /** 单次最多压缩消息条数（无预算缺口时生效，默认 20 ≈ 10 轮） */
+  /** @deprecated 2026-08-21 WORKSPACE_SPEC：手动路径不再限条数（压全部可压区间），仅受摘要输入预算保护。 */
   maxMessages?: number;
   /** 保护最近消息条数（默认 4 ≈ 2 轮） */
   minKeepMessages?: number;
@@ -90,7 +90,6 @@ export async function compressSession(
   const {
     messages,
     engine,
-    maxMessages = 20,
     minKeepMessages = 4,
     targetReleaseTokens,
   } = input;
@@ -108,12 +107,9 @@ export async function compressSession(
   }
 
   // 预算缺口驱动条数：从最旧累积估算 token，达到目标即停（至少 1 条）。
-  // B19.1：target 驱动时条数上限放宽到全部可压区间——maxMessages 仅在
-  // 无预算缺口（手动全量压缩）时生效；缺口达不成时宁多压不静默欠释放。
-  const cap =
-    targetReleaseTokens !== undefined
-      ? endExclusive - startIdx
-      : maxMessages;
+  // 2026-08-21 WORKSPACE_SPEC：手动路径也压全部可压区间（产物已落盘，
+  // 对话只是过程）——maxMessages 不再限条数，仅受摘要输入预算保护。
+  const cap = endExclusive - startIdx;
   let count = 0;
   let accumulated = 0;
   for (let i = startIdx; i < endExclusive; i++) {
@@ -174,6 +170,37 @@ export async function compressSession(
   const maxInputChars = input.nCtx
     ? Math.min(6000, tokenBudgetToMaxChars(input.nCtx - SUMMARY_REQUEST_OVERHEAD_TOKENS))
     : 6000;
+
+  // 2026-08-21 裁剪一致性（WORKSPACE_SPEC）：对话文本超预算时，从尾部
+  // 收缩 slice 本身（被压消息 = 进摘要的消息）——杜绝旧版「标记全压但
+  // 尾部内容没进摘要」的静默丢失。保旧丢新与单锚点增量语义自洽：
+  // 预算不够时只压最旧的几条，剩余留待下轮从锚点续压。
+  let dialogueText = dialogueLines.join('\n');
+  while (slice.length > 1 && dialogueText.length > maxInputChars) {
+    slice.pop();
+    dialogueLines.pop();
+    dialogueText = dialogueLines.join('\n');
+  }
+  if (dialogueLines.length === 0) {
+    return null;
+  }
+  // 裁剪后重算释放量：target 驱动 + 裁剪致释放不足且已无可裁 → 诚实失败
+  const releasedAfterTrim = slice.reduce(
+    (sum, m) => sum + (messageToDialogueText(m) ? estimateMessageTokens(messageToDialogueText(m)!) : 0),
+    0,
+  );
+  if (
+    targetReleaseTokens !== undefined &&
+    releasedAfterTrim < targetReleaseTokens &&
+    startIdx + slice.length >= endExclusive
+  ) {
+    emit('chat', 'chat.compact_stage', {
+      stage: 'release-check-failed-after-trim',
+      releasedAfterTrim,
+      targetReleaseTokens,
+    });
+    return null;
+  }
 
   emit('chat', 'chat.compact_stage', {
     stage: 'summary-start',

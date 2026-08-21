@@ -32,8 +32,8 @@ describe('deriveToolSchemas strict-subset filtering', () => {
 
   it('returns all schemas when talentNames is undefined', () => {
     const schemas = deriveToolSchemas();
-    // 默认注册集已随记忆/设备控制/adventure/read_html 工具扩展（2026-08）
-    expect(schemas).toHaveLength(10);
+    // 默认注册集已随记忆/设备控制/adventure/read_html/writing_doc 工具扩展（2026-08）
+    expect(schemas).toHaveLength(11);
   });
 
   it('includes the internet-search talents in the full set', () => {

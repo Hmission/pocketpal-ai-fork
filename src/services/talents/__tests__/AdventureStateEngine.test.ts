@@ -19,6 +19,7 @@ jest.mock('@dr.pogodin/react-native-fs', () => {
     unlink: jest.fn(async (p: string) => {
       mem.delete(p);
     }),
+    appendFile: jest.fn(async () => undefined),
     mkdir: jest.fn(async () => undefined),
     DocumentDirectoryPath: '/data/user/0/com.pocketpalai/files',
     ExternalStorageDirectoryPath: '/sdcard',
@@ -99,10 +100,10 @@ describe('AdventureStateEngine（P12 TRPG 城主，ADVENTURE_SPEC v1）', () => 
     expect(errMsg(result)).toContain('Unknown action');
   });
 
-  it('ToolDefinition 只暴露 get/set/reset', () => {
+  it('ToolDefinition 暴露 get/set/reset/read/append', () => {
     const def = engine.toToolDefinition();
     const enums = (def.function.parameters.properties.action as any).enum;
-    expect(enums).toEqual(['get', 'set', 'reset']);
+    expect(enums).toEqual(['get', 'set', 'reset', 'read', 'append']);
   });
 
   it('systemPromptFragment 注入城主人设（不破坏叙事）', () => {
@@ -113,5 +114,110 @@ describe('AdventureStateEngine（P12 TRPG 城主，ADVENTURE_SPEC v1）', () => 
     });
     expect(frag).toContain('dungeon master');
     expect(frag).toContain('Never break the fiction');
+  });
+
+  describe('多文档世界档案（WORKSPACE_SPEC v1 read/append）', () => {
+    const DOC = `${AIOS_ADVENTURE_DIR}/世界设定.md`;
+
+    it('append 落盘 + 返回字数回执（不重复正文）', async () => {
+      const result = await engine.execute({
+        action: 'append',
+        doc: '世界设定',
+        section: '黑森林',
+        content: '黑森林常年笼罩迷雾，传说深处有黄金鹿。',
+      });
+      expect(result.type).toBe('text');
+      expect(result.summary).toContain('黑森林');
+      expect(result.summary).toContain('已写入');
+
+      const raw = await RNFS.readFile(DOC, 'utf8');
+      expect(raw).toContain('## 黑森林');
+      expect(raw).toContain('黄金鹿');
+    });
+
+    it('append 同节二次追加：节尾续写不覆盖', async () => {
+      await engine.execute({
+        action: 'append',
+        doc: '剧情',
+        section: '第一章',
+        content: '阿岚走进酒馆。',
+      });
+      await engine.execute({
+        action: 'append',
+        doc: '剧情',
+        section: '第一章',
+        content: '酒馆老板递来一封旧信。',
+      });
+      const raw = await RNFS.readFile(`${AIOS_ADVENTURE_DIR}/剧情.md`, 'utf8');
+      expect(raw.indexOf('酒馆老板递来一封旧信')).toBeGreaterThan(
+        raw.indexOf('阿岚走进酒馆'),
+      );
+      expect(raw.match(/## 第一章/g)).toHaveLength(1);
+    });
+
+    it('read 命中节：只读目标段', async () => {
+      await engine.execute({
+        action: 'append',
+        doc: '世界设定',
+        section: '黑森林',
+        content: '迷雾深处有黄金鹿。',
+      });
+      const result = await engine.execute({
+        action: 'read',
+        doc: '世界设定',
+        section: '黑森林',
+      });
+      expect(result.type).toBe('text');
+      expect(result.summary).toContain('黄金鹿');
+    });
+
+    it('read 节未命中：显式 NO_SECTION（不静默）', async () => {
+      const result = await engine.execute({
+        action: 'read',
+        doc: '角色卡',
+        section: '不存在的人',
+      });
+      expect(result.type).toBe('error');
+      expect(errMsg(result)).toBe('NO_SECTION');
+    });
+
+    it('read/append 白名单外 doc：显式 UNKNOWN_DOC（防任意路径写盘）', async () => {
+      for (const action of ['read', 'append'] as const) {
+        const result = await engine.execute({
+          action,
+          doc: '../../../etc/passwd',
+          section: 'x',
+          content: 'y',
+        });
+        expect(result.type).toBe('error');
+        expect(errMsg(result)).toBe('UNKNOWN_DOC');
+      }
+      expect((RNFS as any).__mem.has('/etc/passwd')).toBe(false);
+    });
+
+    it('append 缺 section/content：显式 EMPTY_CONTENT', async () => {
+      const r1 = await engine.execute({action: 'append', doc: '剧情', section: '第一章'});
+      expect(errMsg(r1)).toBe('EMPTY_CONTENT');
+      const r2 = await engine.execute({action: 'append', doc: '剧情', content: 'x'});
+      expect(errMsg(r2)).toBe('EMPTY_CONTENT');
+    });
+
+    it('read 缺 section：显式 EMPTY_SECTION', async () => {
+      const result = await engine.execute({action: 'read', doc: '剧情'});
+      expect(result.type).toBe('error');
+      expect(errMsg(result)).toBe('EMPTY_SECTION');
+    });
+
+    it('append 超 20KB 显式拒绝：DOC_TOO_LARGE 不落盘', async () => {
+      const result = await engine.execute({
+        action: 'append',
+        doc: '剧情',
+        section: '超长节',
+        content: '字'.repeat(21 * 1024),
+      });
+      expect(result.type).toBe('error');
+      expect(errMsg(result)).toBe('DOC_TOO_LARGE');
+      expect((RNFS as any).__mem.has(`${AIOS_ADVENTURE_DIR}/剧情.md`)).toBe(false);
+    });
   });
 });

@@ -126,8 +126,8 @@ describe('PACT vocabulary audit', () => {
 
     it('returns ToolDefinition array for all registered engines', () => {
       const schemas = deriveToolSchemas();
-      // 默认注册集已随记忆/设备控制/adventure/read_html 工具扩展（2026-08）
-      expect(schemas).toHaveLength(10);
+      // 默认注册集已随记忆/设备控制/adventure/read_html/writing_doc 工具扩展（2026-08）
+      expect(schemas).toHaveLength(11);
       const names = schemas.map(s => s.function.name);
       expect(names).toContain('render_html');
       expect(names).toContain('calculate');
@@ -138,6 +138,8 @@ describe('PACT vocabulary audit', () => {
       expect(names).toContain('note_save');
       expect(names).toContain('device_control');
       expect(names).toContain('read_html');
+      expect(names).toContain('writing_doc');
+      expect(names).toContain('adventure_state');
     });
 
     it('works without prior registerDefaultTalents call', () => {
@@ -145,7 +147,7 @@ describe('PACT vocabulary audit', () => {
       // registerDefaultTalents internally.
       expect(talentRegistry.has('render_html')).toBe(false);
       const schemas = deriveToolSchemas();
-      expect(schemas).toHaveLength(10);
+      expect(schemas).toHaveLength(11);
       expect(talentRegistry.has('render_html')).toBe(true);
     });
   });
