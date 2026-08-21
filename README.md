@@ -121,6 +121,15 @@ cd ios && pod install && open PocketPal.xcodeproj
 - 提交规范：Conventional Commits（见 [CONTRIBUTING.md](CONTRIBUTING.md)）
 - 行为准则：[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 
+## 💬 交流探讨 / Contact
+
+欢迎一起探讨端侧 AI、数字生命玩具，或任何有趣的想法。
+
+Feel free to reach out if you'd like to discuss on-device AI, digital pets, or anything interesting.
+
+- 微信 / WeChat：`YanZhi_CO_Ltd`
+- 邮箱 / Email：[qiaomimi1314@gmail.com](mailto:qiaomimi1314@gmail.com)
+
 ## 🌍 多语言 / Localization
 
 当前启用 14 种语言：简体中文、繁體中文、English、日本語、한국어、فارسی、עברית、Indonesia、Melayu、Polski、Português (PT/BR)、Русский、Українська。
