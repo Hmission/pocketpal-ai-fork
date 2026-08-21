@@ -1,8 +1,9 @@
 import * as React from 'react';
 import {Text, TextInput, TouchableOpacity, View} from 'react-native';
 import {observer} from 'mobx-react-lite';
-import {launchImageLibrary} from 'react-native-image-picker';
+import {pick, types} from '@react-native-documents/picker';
 import Clipboard from '@react-native-clipboard/clipboard';
+import {resolveAudioPath} from '../../../services/asrEngine';
 
 import {audioStore} from '../../../store/audioStore';
 import {imageGenStore} from '../../../store/imageGenStore';
@@ -54,13 +55,18 @@ export const AudioWorkshopTab: React.FC<{
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /** 选音频文件 → 转写任务化 */
+  /** 选音频文件 → 转写任务化（DocumentPicker 选 wav；原生层只收 wav 16k） */
   const handlePickAndTranscribe = async () => {
-    const res = await launchImageLibrary({
-      mediaType: 'mixed',
-      selectionLimit: 1,
-    });
-    const p = res.assets?.[0]?.uri;
+    let res;
+    try {
+      res = await pick({
+        type: [types.audio, 'application/octet-stream'],
+        allowMultiSelection: false,
+      });
+    } catch {
+      return; // 用户取消选择
+    }
+    const p = res[0]?.uri;
     if (!p) {
       return;
     }
@@ -68,7 +74,24 @@ export const AudioWorkshopTab: React.FC<{
       onSnackbar('语音模型未下载，请先下载 SenseVoice');
       return;
     }
-    const text = await audioStore.transcribeTask(p);
+    // DocumentPicker 返回 content:// uri，文件名在编码路径片段里
+    const displayName = decodeURIComponent(
+      (p.split('/').pop() ?? '').split('?')[0] ?? '',
+    );
+    if (!displayName.toLowerCase().endsWith('.wav')) {
+      onSnackbar('请选择 wav 音频文件（16kHz）');
+      return;
+    }
+    onSnackbar('正在准备音频…');
+    let localPath: string;
+    try {
+      localPath = await resolveAudioPath(p);
+    } catch (e) {
+      console.warn('[AudioWorkshop] 音频读取失败:', e);
+      onSnackbar('音频读取失败');
+      return;
+    }
+    const text = await audioStore.transcribeTask(localPath);
     if (text) {
       onSnackbar('转写完成');
     } else {

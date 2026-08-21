@@ -15,7 +15,7 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_IMAGEGEN_UI_SPEC, POCKETPAL_MODEL_MAT
 
 > 单一事实源：创作工坊「音频工坊」tab 的布局、能力、状态机视觉与交互定稿。
 > 任何音频工坊 UI 迭代必须先更新本文档再改代码（文档先行门禁）。
-> 版本：v1（2026-08-21，创作工坊立项：本地 ASR 转写 + 本地 TTS 朗读，离线全闭环）
+> 版本：v1.1（2026-08-21，P2 第二阶段定稿：sherpa-onnx v1.13.6 官方 android 包本地集成 + AsrModule 原生层）
 > 上位规范：POCKETPAL_DESIGN_SPEC.md（UI 域 SSOT）+ POCKETPAL_IMAGEGEN_UI_SPEC.md（工坊 tab 载体）
 
 ## 1. 产品定位
@@ -45,10 +45,12 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_IMAGEGEN_UI_SPEC, POCKETPAL_MODEL_MAT
 
 ## 3. 转写能力（ASR）
 
-### 3.1 引擎与模型
-- 引擎：sherpa-onnx（1.13.4+，ONNX Runtime，与 DreamLite 同栈）；优先官方 RN wrapper，不可用则自写 NativeModule（与 ImageGenModule 同构）
-- 模型：SenseVoice int8（229MB，中英日韩粤 + 自动语种 + 标点），落盘 `AIOS/audio/`
-- 调度：按需加载（音频 tab 内生命周期管理，同 TTS 下载状态机模式）；不入 engineMutex 互斥矩阵（<400MB 可共存）
+### 3.1 引擎与模型（P2 第二阶段定稿，2026-08-21）
+- 引擎：**sherpa-onnx v1.13.6 官方 android 包本地集成**（`sherpa-onnx-v1.13.6-android.tar.bz2`：jniLibs .so + kotlin-api 源码，Windows 免编译）；RN wrapper（npm registry）实勘不可用（镜像源私有包）→ 不依赖 wrapper，自写 NativeModule `AsrModule`（与 ImageGenModule 同构：ReactContextBaseJavaModule + Package 注册）
+- 原生接入：`jniLibs/arm64-v8a/` 落 sherpa .so + kotlin-api（OfflineRecognizer 等 com.k2fsa.sherpa.onnx 类）→ `AsrModule.transcribe(path, promise)` 调 OfflineRecognizer（SenseVoice 非流式，整段转写）
+- 输入：wav 16kHz 16-bit PCM（MediaExtractor/MediaCodec 转码兜底：m4a/mp3 → wav）；ASR 引擎只收 wav 路径
+- 模型：SenseVoice int8（229MB，中英日韩粤 + 自动语种 + 标点），落盘 `AIOS/audio/`（model.int8.onnx + tokens.txt；无 config.yaml，2026-08-21 真机校准）；下载源：hf-mirror.com 国内镜像（作者 csukuangfj 官方仓库，HF 直连被墙，k2-fsa/sherpa-onnx-models 仓库仅 ascend-npu 专用包无 CPU 散包）
+- 调度：按需加载（OfflineRecognizer 单例持有，重复转写复用不重建）；不入 engineMutex 互斥矩阵（<400MB 可共存）
 
 ### 3.2 转写任务化（入画廊，与生图/反推任务同管理）
 - `kind='transcribe'` 任务条目：running/success/failed 三态 + taskId 持久化

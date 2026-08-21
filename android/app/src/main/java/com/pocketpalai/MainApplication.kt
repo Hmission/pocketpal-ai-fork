@@ -34,6 +34,7 @@ class MainApplication : Application(), ReactApplication {
               add(ExternalContentLinkPackage())
               add(DownloadPackage())
               add(ImageGenPackage())
+              add(AsrPackage())
               add(BuildInfoPackage())
               add(ScreenReaderPackage())
             }

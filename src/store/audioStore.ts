@@ -110,9 +110,11 @@ class AudioStore {
         prompt: trimmed,
         durationMs: Date.now() - startTs,
       });
+      console.info('[AudioStore] transcribe ok:', trimmed);
       return trimmed;
     } catch (e: any) {
       const msg = `转写失败：${e?.message ?? e}`;
+      console.info('[AudioStore] transcribeTask failed:', e);
       await imageGenStore.failTask(taskId, '转写失败', msg);
       return null;
     } finally {

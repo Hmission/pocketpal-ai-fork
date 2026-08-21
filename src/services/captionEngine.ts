@@ -19,9 +19,14 @@ import {isPrompterModelName} from './promptWriter';
 /** 反推 VLM 文件名指纹（MODEL_MATRIX §1.2） */
 const CAPTION_MODEL_RE = /qwen3\.5[-_ ]?4b/i;
 
-/** 反推指令（纯净输出：不要解释、不要标签列表） */
+/**
+ * 反推指令（2026-08-21 K90 真机质量观察后优化）：
+ * 原长指令抽象措辞（"Output only the prompt itself..."）致 4B 复述指令本身
+ * （输出 "The user wants a detailed English prompt..."）。改为 one-shot 示例
+ * + 简洁负面清单——小模型遵循短指令 + 可见输出形状最佳。
+ */
 export const CAPTION_INSTRUCTION =
-  'Describe this image with a detailed English prompt suitable for image generation. Output only the prompt itself, no explanations, no prefixes, no tags.';
+  'Describe this image in English for image generation. Example: "a red apple on a wooden table, soft window light, photorealistic". Output only the description of this image, start directly:';
 
 /** 阶段回调（进度卡阶段文本：加载视觉模型 → 编码图片 → 生成描述） */
 export type CaptionStage = 'find' | 'load' | 'encode' | 'generate' | 'done';
