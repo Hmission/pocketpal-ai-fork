@@ -31,6 +31,7 @@ const TE_MAX_TOKENS = 200 + DROP_IDX; // generate tokenizer max_length：200+34�
 const VIS_GRID = 32;
 const N_VIS_TOKENS = VIS_GRID * VIS_GRID / 4;
 const IMAGE_PAD_ID = 151655; // <|image_pad|>（Qwen3-VL image_token_index）
+const VISION_START_ID = 151652; // <|vision_start|>（诊断用：验证 llama.rn 特殊 token 映射）
 // M-RoPE 位置（te_vision_lm.onnx 固定 seq=520，与导出契约一致）：
 // 前缀 65（64 + <|vision_start|>1）→ 视觉 256（t=65 恒定；h/w=65+idx//16, 65+idx%16）→ 后缀 81 起；pad 区 1
 const VIS_OFFSET = 65;
@@ -171,12 +172,14 @@ export async function loadTEVision(): Promise<void> {
     n_threads: 4,
   });
   // 双段：visual（pixel_values → image_embeds，fp32 输出）→ 融合 LLM（input_ids + image_embeds → hidden_states）
+  // 08-21 真机验证：双段 TE 曾用 nnapi EP，出图与桌面（CPU）完全无关（NNAPI 数值失真）；
+  // 桌面同一套 ONNX 三 seed 稳定产出正确编辑——定稿 CPU（编辑链路正确性优先，不做 NNAPI 设备分支）
   teVisVisual = await ort.InferenceSession.create(`${DIR}/te_vision_visual.onnx`, {
-    executionProviders: ['nnapi', 'cpu'],
+    executionProviders: ['cpu'],
     enableCpuMemArena: false,
   });
   teVisLm = await ort.InferenceSession.create(`${DIR}/te_vision_lm.onnx`, {
-    executionProviders: ['nnapi', 'cpu'],
+    executionProviders: ['cpu'],
     enableCpuMemArena: false,
   });
   console.log('[DreamLite] TE vision ONNX ready');
@@ -258,6 +261,19 @@ export async function encodePrompt(
       const textCap = SEQ_EDIT_FIXED - preIds.length - N_VIS_TOKENS;
       const body = [...preIds, ...Array(N_VIS_TOKENS).fill(IMAGE_PAD_ID), ...sufIds.slice(0, textCap)];
       real = body.length;
+      // 08-21 诊断：llama.rn tokenize 对 Qwen3-VL 特殊 token（<|vision_start|>/<|image_pad|>）的映射验证
+      console.log(
+        '[DreamLite] edit tokenize preLen=',
+        preIds.length,
+        'sufLen=',
+        sufIds.length,
+        'hasVisStart=',
+        preIds.includes(VISION_START_ID),
+        'padCnt=',
+        body.filter(v => v === IMAGE_PAD_ID).length,
+        'real=',
+        real,
+      );
       ids = body.slice(0, SEQ_EDIT_FIXED).concat(Array(Math.max(0, SEQ_EDIT_FIXED - body.length)).fill(0));
     } else {
       const text = GEN_TEMPLATE.replace('{}', inner);
@@ -307,7 +323,11 @@ export async function encodePrompt(
       hs = res.hidden_states.data as Float32Array; // [1,seq,2048]
     }
     const kept = seq - dropIdx;
-    const len = Math.min(kept, maxLen);
+    // 08-21 修复：mask/enc 边界用真实 token 数（real-dropIdx），对齐官方 prompt_embeds_mask
+    // （官方 _extract_masked_hidden 先按 attention_mask 提取真实 token 再 drop，pad 区不参与注意力）。
+    // 旧实现用 kept（含 LM 输出的 pad 区 hidden 161 行）→ 注意力被无效 token 污染 → 编辑条件失真
+    const realKept = Math.max(0, real - dropIdx);
+    const len = Math.min(realKept, maxLen);
     const out = new Float32Array(maxLen * TE_DIM); // zero pad
     const mask = new Float32Array(maxLen); // 1=真实 token, 0=pad
     for (let i = 0; i < len; i++) {

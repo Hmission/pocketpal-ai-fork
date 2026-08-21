@@ -938,11 +938,23 @@ CMake 选项链：
 
 **落地（与 diffusers 0.39 官方 pipeline 逐行对齐）**：
 - **双段 ONNX 导出**（.tmp/dreamlite/export_te_vision.py + export_te_vision_lm.py）：
-  - 	e_vision_visual.onnx（660MB fp16）：pixel_values [1024,1536] patch 数组（16×16 patch × [c][t][py][px]，temporal=2 补帧）→ image_embeds [256,2048]（fp32 输出）；fast_pos_embed 静态化（固定 grid）+ eager attention（SDPA+GQA 无法转换）
-  - 	e_vision_lm.onnx（3.29GB fp16）：input_ids + attention_mask + image_embeds + image_grid_thw + **position_ids**（M-RoPE 端侧解析构造，官方 get_rope_index 单图解析式，桌面逐值验证一致）→ hidden_states；固定 seq=520（masked_scatter 依赖使 dynamo 静态化）；patch get_placeholder_mask 校验分支
+  - 	te_vision_visual.onnx（660MB fp16）：pixel_values [1024,1536] patch 数组（16×16 patch × [c][t][py][px]，temporal=2 补帧）→ image_embeds [256,2048]（fp32 输出）；fast_pos_embed 静态化（固定 grid）+ eager attention（SDPA+GQA 无法转换）；**输入契约为 fp32（内部 .half()，与 LM 一致——RN 端只能构造 fp32 tensor）**
+  - 	te_vision_lm.onnx（3.29GB fp16）：input_ids + attention_mask + image_embeds + image_grid_thw + **position_ids**（M-RoPE 端侧解析构造，官方 get_rope_index 单图解析式，桌面逐值验证一致）→ hidden_states；固定 seq=520（masked_scatter 依赖使 dynamo 静态化）；patch get_placeholder_mask 校验分支
 - **引擎**：editDreamLite 双解码（1024² cond + 512² 视觉）；encodePrompt edit 分支 = 官方模板（含 vision 占位）+ 256 image_pad + 双段前向；MAX_SEQ generate 128→200、edit 520
 - **验证**：position_ids 与官方逐值一致 ✓；视觉嵌入 cos 0.99994 ✓；LM 直通 A/B cos 0.999999 ✓（视觉 token 输出 0.65 差异为 fp16 固有放大，端侧自洽）；tsc 零错 + jest 全绿（pre-existing invariants 失败除外）
 - **明确不做**：strength/加噪起点（偏离 DMD2 蒸馏分布）、文本描述源图（近似替代）、静默降级
+
+### 真机终局修复：HWC/NCHW 排布错乱 + mask 边界（2026-08-21，端到端验证闭环）
+
+**现象**：链路全通（双段 TE 编码成功、4 步去噪正常）但出图仍与源图无关（桌面同契约三 seed 稳定正确 → 锁定端侧实现）。
+
+**最终根因（两处）**：
+1. **原生解码排布错**（ImageGenModule.kt decodeImageToRgb）：返回 **HWC 交错**（每像素 R,G,B 连续），而 vae_encoder 与 buildPixelValues 均按 **NCHW 三平面**（[c][y][x]）读取 → 空间条件（VAE cond）+ 视觉条件（TE 视觉）双通道全部错乱 → 模型只剩文本条件自由发挥（=完全无关新图）。修复：原生改为按通道平面输出（R 平面 → G 平面 → B 平面）。
+2. **mask 边界错**（dreamLiteEngine.encodePrompt）：mask/enc 边界用了 `kept`（520-64=456，含 LM 输出的 pad 区 hidden 161 行），官方 prompt_embeds_mask 只标真实 token（real-drop_idx=297）——注意力被 161 个无效 token 污染。修复：边界改 `real-dropIdx`（真实 token），零 pad 区 mask=0。
+
+**排查过程（真机→桌面对照）**：NNAPI EP 数值失真嫌疑（已排除：CPU EP 后仍无关）→ llama.rn 特殊 token 映射嫌疑（已排除：诊断日志 hasVisStart=true、padCnt=256）→ 噪声随机性（已排除：桌面 3 seed 稳定）→ **最终桌面/真机逐段契约比对锁定排布与 mask**。
+
+**终局验证（K90 真机）**：make it snowy → 红苹果保留 + 背景保留 + 雪层添加，与桌面参考图一致 ✓；全流程 ~3.5min（TE 双段 CPU 编码 ~40s + 4 步去噪 ~28s/步）；te_vision_visual/lm 双段定稿 **CPU EP**（NNAPI 曾致数值异常，正确性优先不做设备分支）。
 
 ---
 

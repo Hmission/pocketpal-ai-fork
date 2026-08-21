@@ -168,7 +168,9 @@ class ImageGenModule(reactContext: ReactApplicationContext) :
     )
   }
 
-  /** 解码图片→按较大边压缩到 size×size→归一化 RGB[-1,1] 平坦数组（供 DreamLite 编辑 vae_encoder）。 */
+  /** 解码图片→按较大边压缩到 size×size→归一化 RGB[-1,1] NCHW 三平面平坦数组
+   * （[c][y][x] 通道主序：vae_encoder / TE 视觉 buildPixelValues 均按 NCHW 读；
+   *  旧实现 HWC 交错导致编辑双通道（空间条件+视觉）错乱 → 出图与源图无关）。 */
   @ReactMethod
   fun decodeImageToRgb(path: String, size: Int, promise: Promise) {
     Thread {
@@ -181,10 +183,16 @@ class ImageGenModule(reactContext: ReactApplicationContext) :
         val pixels = IntArray(size * size)
         scaled.getPixels(pixels, 0, size, 0, 0, size, size)
         val arr = Arguments.createArray()
-        for (p in pixels) {
-          arr.pushDouble(((p shr 16 and 0xFF) / 127.5) - 1.0)
-          arr.pushDouble(((p shr 8 and 0xFF) / 127.5) - 1.0)
-          arr.pushDouble(((p and 0xFF) / 127.5) - 1.0)
+        val plane = size * size
+        for (c in 0..2) {
+          val shift = when (c) {
+            0 -> 16
+            1 -> 8
+            else -> 0
+          }
+          for (p in pixels) {
+            arr.pushDouble(((p shr shift and 0xFF) / 127.5) - 1.0)
+          }
         }
         promise.resolve(arr)
       } catch (e: Throwable) {
