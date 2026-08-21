@@ -280,6 +280,7 @@ export async function encodePrompt(
       const tk = await teCtx!.tokenize(text);
       // 官方 tokenizer: max_length=200+34, truncation → 截断到前 234 token
       ids = ((tk as any).tokens ?? (tk as any)).slice(0, TE_MAX_TOKENS);
+      real = ids.length; // generate 无 pad：全部为真实 token（mask 边界 real-dropIdx 依赖此值）
     }
     const seq = ids.length;
     if (seq <= dropIdx) {
