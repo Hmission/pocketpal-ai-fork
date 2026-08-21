@@ -164,7 +164,7 @@ StateCompass 五字段与母仓 `STATE_COMPASS` 同构：state（定位）/ next
 | chat.newSession | title(≤100) | 新建会话 |
 | imagegen.generate | prompt/steps(1-64)/cfg(0-20)/width/height(64-2048)/seed/negativePrompt/loraPath/loraMultiplier(0-2)/modelLabel | SD 生图（需 SD 模型已加载） |
 | imagegen.generateDreamLite | prompt/width/height(64-2048)/steps(1-64) | DreamLite 文生图（4 步 DMD2；未加载时自动加载） |
-| imagegen.upscale | uri/scale(2\|4)/style(general\|anime) | RealESRGAN 通用放大（P6-6，CPU 耗时较长；自动释放 DreamLite/SD） |
+| imagegen.upscale | uri/scale(2\|4)/style(general\|anime\|anime_fast) | RealESRGAN 通用放大（P6-6，CPU 耗时较长；自动释放 DreamLite/SD）；style：通用写实/动漫高清（RRDBNet-6）/动漫快速（animevideov3，快约 4 倍）——2026-08-21 双模型可选登记 |
 | imagegen.loadModel | modelPath/clipL/clipG/llm/vae/backend | 加载 SD 模型 |
 | imagegen.loadDreamLite | - | 加载 DreamLite 引擎（unet/vae/TE） |
 | imagegen.unloadModel | - | 卸载 SD 模型 |

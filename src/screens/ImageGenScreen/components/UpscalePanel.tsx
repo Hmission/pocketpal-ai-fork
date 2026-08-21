@@ -3,12 +3,13 @@ import {Text, TouchableOpacity, View} from 'react-native';
 
 import {Sheet} from '../../../components/Sheet';
 import {useTheme} from '../../../hooks';
+import {SRStyle} from '../../../services/superResEngine';
 import {createStyles} from '../styles';
 
 interface UpscalePanelProps {
   visible: boolean;
   onClose: () => void;
-  onConfirm: (scale: 2 | 4, style: 'general' | 'anime') => void;
+  onConfirm: (scale: 2 | 4, style: SRStyle) => void;
 }
 
 /**
@@ -28,7 +29,7 @@ export const UpscalePanel: React.FC<UpscalePanelProps> = ({
   const theme = useTheme();
   const s = createStyles(theme);
   const [scale, setScale] = React.useState<2 | 4>(2);
-  const [style, setStyle] = React.useState<'general' | 'anime'>('general');
+  const [style, setStyle] = React.useState<SRStyle>('general');
 
   // 每次打开重置默认（2× + 通用写实——通用能力默认通用模型）
   React.useEffect(() => {
@@ -39,19 +40,27 @@ export const UpscalePanel: React.FC<UpscalePanelProps> = ({
   }, [visible]);
 
   return (
-    <Sheet isVisible={visible} onClose={onClose} title="高清放大" snapPoints={['45%']}>
+    <Sheet
+      isVisible={visible}
+      onClose={onClose}
+      title="高清放大"
+      snapPoints={['45%']}>
       <View style={s.upscaleBody}>
         <Text style={s.promptHint}>
-          模型风格（动漫图选动漫插画，推理快约 4 倍）
+          模型风格（动漫图可选高清/快速，快速约 4 倍速度）
         </Text>
         <View style={s.paramRow}>
-          {(['general', 'anime'] as const).map(v => (
+          {(['general', 'anime', 'anime_fast'] as const).map(v => (
             <TouchableOpacity
               key={v}
               style={[s.sizeBtn, style === v && s.sizeBtnSelected]}
               onPress={() => setStyle(v)}>
               <Text style={s.sizeBtnText}>
-                {v === 'general' ? '通用写实' : '动漫插画'}
+                {v === 'general'
+                  ? '通用写实'
+                  : v === 'anime'
+                    ? '动漫高清'
+                    : '动漫快速'}
               </Text>
             </TouchableOpacity>
           ))}

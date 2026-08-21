@@ -5,7 +5,9 @@
  * 独立通用能力（不绑定 DreamLite）：任意图片（生成图/上传图/相册照片）2×/4× 放大。
  * 契约（scripts/aios/export_realesrgan_onnx.py 验证）：
  *  - 输入 [1,3,H,W] float32 归一化 0-1（img/255）
- *  - 输出 [1,3,H*4,W*4] float32 范围约 [-1,1]（animevideov3 PReLU 负半轴）→ 必须 clamp 0-1
+ *  - 输出 [1,3,H*4,W*4] float32，RRDBNet 输出可轻微越界（实测约 [-0.1,1.1]）→ 必须 clamp 0-1
+ * 模型：general=x4plus（RRDBNet-23）/ anime=x4plus_anime_6B（RRDBNet-6 高清）/ anime_fast=animevideov3
+ * （SRVGGNetCompact 快速）——2026-08-21 大王定夺双模型可选：动漫高清 vs 动漫快速（快约 4 倍）
  * 内存纪律：tiled 分块（256 输入 → 1024 输出）+ uint8 输出缓冲，峰值 ~80MB；
  * 放大前需由上层释放 DreamLite/SD 引擎（store 层互斥），本引擎不感知其他引擎。
  */
@@ -16,6 +18,9 @@ import {encodePng, toBase64, base64ToBytes} from './pngUtil';
 
 const ImageGen = NativeModules.ImageGen;
 
+/** 放大风格：通用写实 / 动漫高清（RRDBNet-6 图片级）/ 动漫快速（SRVGGNetCompact 视频级） */
+export type SRStyle = 'general' | 'anime' | 'anime_fast';
+
 const SR_DIR = `${RNFS.DocumentDirectoryPath}/esrgan`;
 const TILE = 256; // 输入 tile 尺寸（4× 后 1024）
 const OVERLAP = 16; // 输入重叠像素（输出羽化带 64px）
@@ -23,11 +28,12 @@ const INPUT_MAX = 1024; // 解码输入长边上限（保证 4× 中间缓冲 �
 const OUT_OV = OVERLAP * 4;
 
 let srSession: ort.InferenceSession | null = null;
-let srStyle: 'general' | 'anime' | null = null;
+let srStyle: SRStyle | null = null;
 
-const FILES: Record<'general' | 'anime', string> = {
+const FILES: Record<SRStyle, string> = {
   general: 'realesrgan_x4plus.onnx',
-  anime: 'realesr_animevideov3.onnx',
+  anime: 'realesrgan_x4plus_anime_6B.onnx',
+  anime_fast: 'realesr_animevideov3.onnx',
 };
 
 export function superResReady(): boolean {
@@ -36,7 +42,7 @@ export function superResReady(): boolean {
 
 /** 从 assets 复制内置模型到可读写目录（首次使用；版本标记避免重复复制） */
 export async function ensureSuperResModels(): Promise<void> {
-  const marker = `${SR_DIR}/.v2`; // v2：animevideov3 残差连接修复（旧 .v1 曾产出极暗图，须强制重复制）
+  const marker = `${SR_DIR}/.v4`; // v4：anime_fast（animevideov3）随双模型可选回归（.v3 装机设备无此文件，须强制重复制）
   try {
     await RNFS.stat(marker);
     return;
@@ -44,14 +50,14 @@ export async function ensureSuperResModels(): Promise<void> {
     /* 未复制 → 继续 */
   }
   await RNFS.mkdir(SR_DIR);
-  for (const f of [FILES.general, FILES.anime]) {
+  for (const f of Object.values(FILES)) {
     await RNFS.copyFileAssets(`esrgan/${f}`, `${SR_DIR}/${f}`);
   }
   await RNFS.writeFile(marker, '1', 'utf8');
 }
 
 /** 加载超分模型（同风格已驻留则复用；换风格先释放再加载） */
-export async function loadSuperRes(style: 'general' | 'anime'): Promise<void> {
+export async function loadSuperRes(style: SRStyle): Promise<void> {
   if (srSession && srStyle === style) {
     return;
   }
@@ -60,7 +66,10 @@ export async function loadSuperRes(style: 'general' | 'anime'): Promise<void> {
   const file = FILES[style];
   console.log(`[SuperRes] loading ${file} ...`);
   srSession = await ort.InferenceSession.create(`${SR_DIR}/${file}`, {
-    executionProviders: ['cpu'],
+    // 08-21 NNAPI 定稿（大王确认 A'，对齐 DreamLite TE 先例）：conv 密集负载，K90（8 Elite）
+    // 预期收益（TE 实测 -38.5%）；其余设备 ORT 标准回退 CPU 无副作用——单配置非设备分支。
+    // 动态 shape（tile 边缘尺寸非 256）若致 NNAPI 分区失败，由 ORT 回退机制整体走 CPU。
+    executionProviders: ['nnapi', 'cpu'],
     graphOptimizationLevel: 'all',
     enableCpuMemArena: false,
   });
@@ -189,7 +198,7 @@ function downsample2(src: Uint8Array, w: number, h: number): Uint8Array {
 export async function upscaleImage(
   path: string,
   scale: 2 | 4,
-  style: 'general' | 'anime',
+  style: SRStyle,
   onProgress?: (pct: number) => void,
 ): Promise<{uri: string; w: number; h: number}> {
   if (!srSession) {

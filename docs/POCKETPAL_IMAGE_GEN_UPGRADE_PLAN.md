@@ -943,3 +943,51 @@ CMake 选项链：
 - **引擎**：editDreamLite 双解码（1024² cond + 512² 视觉）；encodePrompt edit 分支 = 官方模板（含 vision 占位）+ 256 image_pad + 双段前向；MAX_SEQ generate 128→200、edit 520
 - **验证**：position_ids 与官方逐值一致 ✓；视觉嵌入 cos 0.99994 ✓；LM 直通 A/B cos 0.999999 ✓（视觉 token 输出 0.65 差异为 fp16 固有放大，端侧自洽）；tsc 零错 + jest 全绿（pre-existing invariants 失败除外）
 - **明确不做**：strength/加噪起点（偏离 DMD2 蒸馏分布）、文本描述源图（近似替代）、静默降级
+
+---
+
+## §6.20 放大模型升级与 NNAPI 加速（2026-08-21，A' 定稿闭环）
+
+### 背景
+
+大王问询「放大模型是否已是开源+手机端最好」→ 调研结论：① 通用 x4plus 是移动端开源事实标准（无更好轻量替代）；② 动漫 animevideov3 是**视频级**模型，静态图质量低于官方图片级 x4plus_anime_6B（RRDBNet-6）；③ 部署是最大短板（ORT 纯 CPU，general 2× 实测 126s），项目已有 NNAPI EP 先例（DreamLite TE，K90 -38.5%，三设备闭环）；④ PasSR 官方无公开权重（releases/HF/master 实锤）放弃；⑤ RealCUGAN 新架构适配成本高、社区权重许可不明——均不做（锋利边界）。
+
+### 方案 A'（大王确认）
+
+| 项 | 变更 |
+|---|---|
+| anime 模型 | animevideov3（SRVGGNetCompact-16, 2.4MB）→ **x4plus_anime_6B**（RRDBNet-6, 17.1MB fp32），同构同契约引擎零适配 |
+| general 模型 | x4plus 保持（画质最优官方通用；PasSR 无公开权重） |
+| 推理 EP | ['cpu'] → ['nnapi','cpu']（对齐 TE 先例：单配置非设备分支，ORT 标准回退） |
+| assets 标记 | .v2 → .v3（强制设备重复制，防 animevideov3 残影） |
+
+### 变更文件
+
+- scripts/aios/export_realesrgan_onnx.py：main() 增 anime_6B 导出（num_block=6）；animevideov3 标注已退役（保留历史对照）
+- ndroid/app/src/main/assets/esrgan/：删 
+ealesr_animevideov3.onnx，增 
+ealesrgan_x4plus_anime_6B.onnx（APK +14.7MB）
+- src/services/superResEngine.ts：FILES.anime 换名 + EP 改 ['nnapi','cpu'] + 标记 .v3
+
+### 桌面验证（2026-08-21）
+
+- 导出契约自检：4× 输出形状 ✓；anime_6B 输出范围 [0.543,1.074]（轻微越界，to8 clamp 覆盖）
+- 动态轴冒烟：231² / 512×768 / 1×1 全部输出正确、无 NaN（边缘 tile 契约 OK）
+- tiled vs 整图 PSNR 62.47dB（>50 判据，无接缝）；绝对亮度 mean=236.8（与 animevideov3 237.6 一致，无黑图回归）
+- 质量对照：anime_6B 与 animevideov3 亮度分布一致（std 43.5 vs 42.3），静态图质量官方图片级更优
+
+### 真机验证（DRC，待执行）
+
+- 五关门禁：tsc 零错 ✓ / jest 全绿 / Gradle assembleProdDebug / adb install -r 覆盖安装 / DRC 全链路放大 + NNAPI 收益对照（基线：anime 2× 10.7s / 4× 16.4s / general 2× 126s，小米 13 CPU）
+- 风险：NNAPI 对动态 shape（边缘 tile 非 256）支持有限 → ORT 回退 CPU 无副作用；若报错回滚 EP 单点可回滚
+
+### 真机实测修订：双模型可选（2026-08-21 大王定夺）
+
+- **实测数据（小米 13，DRC）**：anime_6B 单 tile ~10s（RRDBNet-6 计算量约为 animevideov3 的 8 倍）→ anime 2× 49.2s / 4× 56.4s；general 2× 133.6s（基线 126s 持平——8 Gen 2 NNAPI 回退 CPU 无副作用，TE 先例同构）
+- **决策**：放大面板 anime 拆双档——nime=动漫高清（x4plus_anime_6B）/ nime_fast=动漫快速（animevideov3，快约 4 倍）；SRStyle 三值 + FILES 三件套 + 标记 .v4 + actionRegistry/DRC_SPEC enum 扩展 + UpscalePanel 三选项
+- **画质取证**：三档输出全部彩色无黑/灰图回归（anime 2×/4× ch-diff 93-95，与源图一致）；anime_6B 目视细节锐利无伪影
+
+### 遗留
+
+- NNAPI 收益设备差异记录（K90 预期收益，其余持平——TE 三设备先例同构）
+- 社区权重/RealCUGAN 立项另议

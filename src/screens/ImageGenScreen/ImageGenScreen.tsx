@@ -53,6 +53,7 @@ import {ComposerPanel} from './components/ComposerPanel';
 import {UpscalePanel} from './components/UpscalePanel';
 import {confirmDialog} from '../../components/ui/ConfirmDialog';
 import {OverlayCard} from '../../components/ui/OverlayCard';
+import {SRStyle} from '../../services/superResEngine';
 
 export const ImageGenScreen: React.FC = observer(() => {
   const theme = useTheme();
@@ -789,10 +790,7 @@ export const ImageGenScreen: React.FC = observer(() => {
   };
 
   // P6-6：高清放大确认（参数面板回调）——关闭面板后走任务化 running 页显示进度
-  const handleUpscaleConfirm = async (
-    scale: 2 | 4,
-    style: 'general' | 'anime',
-  ) => {
+  const handleUpscaleConfirm = async (scale: 2 | 4, style: SRStyle) => {
     if (!currentImage) {
       return;
     }

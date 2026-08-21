@@ -8,6 +8,7 @@
 ## [Unreleased]
 
 ### 生图性能
+- 放大模型升级与双档可选（2026-08-21，A' 定稿，IMAGE_GEN_UPGRADE_PLAN §6.20）：动漫高清档换官方图片级 x4plus_anime_6B（RRDBNet-6 17MB，静态图质量实锤优于视频级 animevideov3，代价单 tile ~10s）；保留 animevideov3 为「动漫快速」档（快约 4 倍）双档可选（SRStyle 三值 + FILES 三件套 + UpscalePanel 三选项）；推理 EP 加 NNAPI（对齐 DreamLite TE 先例，8 Gen 2 回退 CPU 无副作用）；PasSR 无公开权重调查实锤放弃；assets 标记 .v4 强制重复制；真机 DRC 全链路：anime_fast 2× 12.0s / anime 2× 47.3s / 4× 56.4s / general 2× 133.6s，像素取证三档彩色无回归
 - DreamLite TE 切 NNAPI EP（K90 实测 TE 编码 -38.5%、全流程 -29.1%；小米 13 持平自动回退，单配置保留）
 
 ### 修复

@@ -21,6 +21,7 @@ import {
   loadSuperRes,
   unloadSuperRes,
   upscaleImage,
+  SRStyle,
 } from '../services/superResEngine';
 import {engineMutex} from './engineMutex';
 import {engineStatus} from './engineStatus';
@@ -792,7 +793,7 @@ class ImageGenStore {
   async upscaleImageEntry(
     uri: string,
     scale: 2 | 4,
-    style: 'general' | 'anime',
+    style: SRStyle,
   ): Promise<string | null> {
     // 防重入：放大进行中重复触发直接拒绝（防线在 store，不依赖 UI 层门禁）
     if (this.upscaleBusy) {
@@ -813,7 +814,12 @@ class ImageGenStore {
         console.warn('[SuperRes] unload SD failed:', e);
       }
     }
-    const styleLabel = style === 'anime' ? '动漫插画' : '通用写实';
+    const styleLabel =
+      style === 'anime'
+        ? '动漫高清'
+        : style === 'anime_fast'
+          ? '动漫快速'
+          : '通用写实';
     const taskId = this.beginTask({
       uri: '',
       prompt: `高清放大 ${scale}×（${styleLabel}）`,

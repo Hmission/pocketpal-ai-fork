@@ -14,6 +14,7 @@
 import {z} from 'zod';
 import * as RNFS from '@dr.pogodin/react-native-fs';
 
+import {SRStyle} from '../services/superResEngine';
 import {chatSessionStore, modelStore} from '../store';
 import {imageGenStore} from '../store/imageGenStore';
 import {AIOS_EVENTS_LOG} from '../utils/paths';
@@ -267,17 +268,17 @@ export const drcActions: Record<string, DrcActionDef> = {
     id: 'imagegen.upscale',
     domain: 'imagegen',
     description:
-      'RealESRGAN 通用放大（P6-6）：对指定图片 2×/4× 放大，风格 general/anime；耗时较长（CPU）',
+      'RealESRGAN 通用放大（P6-6）：对指定图片 2×/4× 放大，风格 general/anime/anime_fast（动漫高清/快速）；耗时较长（CPU）',
     paramsSchema: z.object({
       uri: z.string().min(1),
       scale: z.union([z.literal(2), z.literal(4)]).optional(),
-      style: z.enum(['general', 'anime']).optional(),
+      style: z.enum(['general', 'anime', 'anime_fast']).optional(),
     }),
     execute: async params => {
       const p = params as {
         uri: string;
         scale?: 2 | 4;
-        style?: 'general' | 'anime';
+        style?: SRStyle;
       };
       const out = await imageGenStore.upscaleImageEntry(
         p.uri,
