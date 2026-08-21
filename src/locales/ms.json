@@ -529,6 +529,8 @@
       "Berfungsi sepenuhnya di luar talian — tanpa rangkaian pun boleh digunakan",
       "Menyokong pelbagai model sumber terbuka — muat turun, tukar dan alih keluar dengan bebas",
       "Penjanaan imej pada peranti — karya anda tidak pernah meninggalkan telefon",
+      "Imej ke prompt — fahami imej dan cipta semula sekali sentuh",
+      "Suara on-peranti lengkap — transkripsi luar talian & sintesis pertuturan",
       "Sumber terbuka sepenuhnya — sumbangan dan pembangunan terbitan dialu-alukan",
       "Ringan dan sedia digunakan"
     ],
@@ -1549,7 +1551,7 @@
     },
     "screen2": {
       "title": "Lebih daripada\nAplikasi Sembang.",
-      "body": "Bersembang, melukis gambar, membaca cerita, pengembaraan, bercakap dengan mereka — semuanya dijana terus pada telefon anda. Malah foto yang anda ambil boleh ditambah ketajamannya 4×.",
+      "body": "Bersembang, melukis, membaca cerita, berpetualang, bercakap dan mendengar jawapannya — semuanya dijana terus pada telefon anda. Foto yang anda ambil boleh dibesarkan 4× atau ditukar semula menjadi prompt.",
       "highlight": "semuanya dijana terus pada telefon anda",
       "cta": "Seterusnya",
       "eyebrow": "Lagi untuk diterokai",

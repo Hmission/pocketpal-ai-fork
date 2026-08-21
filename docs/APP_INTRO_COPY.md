@@ -3,9 +3,9 @@ doc_id: APP_INTRO_COPY
 module: root
 type: copy
 status: active
-version: "1.1"
+version: "1.2"
 created: "2026-08-14"
-updated: "2026-08-20"
+updated: "2026-08-22"
 relates: []
 ---
 
@@ -13,7 +13,7 @@ relates: []
 
 # 小黄鸡（Pocket Chick）App 介绍文案库
 
-> **状态**：进行中 | **维护**：AIOS | **最后更新**：2026-08-20
+> **状态**：进行中 | **维护**：AIOS | **最后更新**：2026-08-22
 > 本文档是 App 对外介绍文案的唯一权威来源（single source of truth）。
 
 ## 维护契约
@@ -83,7 +83,7 @@ relates: []
 |---|---|---|
 | `eyebrow` | More to explore | 多种玩法 |
 | `title` + `titleAccent` | More than\n**a chat app.** | 不止\n**聊天。** |
-| `body` | Chat, draw pictures, read stories, play adventures, talk to them — all generated right on your phone. Even photos you take can be upscaled 4× sharper. | 聊天、生图、讲故事、玩冒险、直接开口说——全部在你的手机上完成。拍的照片还能放大 4 倍更清晰。 |
+| `body` | Chat, draw pictures, read stories, play adventures, talk to them and hear them talk back — all generated right on your phone. Even photos you take can be upscaled 4× or turned back into prompts. | 聊天、生图、讲故事、玩冒险、开口说、听它说——全部在你的手机上完成。拍的照片能放大 4 倍，还能反推成提示词再创作。 |
 | `highlight` | all generated right on your phone | 全部在你的手机上完成 |
 | `cta` | Next | 下一步 |
 
@@ -148,6 +148,16 @@ relates: []
 | `pal.echo.body` | Echo is a versatile roleplay companion — stays in character, paints scenes, follows wherever your story leads. | Echo 是全能角色扮演伙伴——不脱离人设、会描绘场景，跟着你的故事走到哪算哪。 |
 | `pal.muse.body` | Muse helps you write. Suggests phrasing, finds the rhythm, and keeps your tone intact. | Muse 帮你写作。给措辞建议、找节奏，同时保住你的语气。 |
 
+### 改动记录（v1.2 · 2026-08-22，新增音频与图像反推能力介绍）
+
+| 位置 | 相对上一版的文案改动 |
+|---|---|
+| S2 | `body`：玩法清单加入「听它说（语音合成朗读）」与「照片反推成提示词再创作」，与音频工坊 / 图像反推能力对齐 |
+| 版本一（全部 16 语言） | `🎨 本地生图` 后新增 2 个 bullet：🖼️ 图像反推提示词、🔈 离线语音（转写 + 合成） |
+| 版本二（全部 16 语言） | `features` 在「端侧本地生图」后新增 2 条：图像反推提示词、端侧语音全链路 |
+| `about.features`（l10n） | 同步新增上述 2 条特性（zh/zh_Hant/en/ja/ko/fa/he/id/ms/pl/pt/pt_BR/ru/uk 14 个启用语言 + de/fr 翻译存档） |
+| `onboarding.screen2.body`（l10n） | 同步 S2 body 更新（14 个启用语言；de/fr/et/it 无 onboarding 段不涉及） |
+
 ### 改动记录（v1.1 · 2026-08-20，对齐 README 最新介绍口径）
 
 | 屏 | 相对上一版的文案改动 |
@@ -175,6 +185,8 @@ relates: []
 > - 🆓 完全开源：基于 PocketPal AI（MIT License）开发，欢迎 Star 与共建
 > - 📦 多模型自由切换：按需下载、随时卸载
 > - 🎨 本地生图：一句话生成图片，全程端侧完成
+> - 🖼️ 图像反推：看懂图片，反推提示词一键复刻
+> - 🔈 离线语音：语音转写 + 语音合成，听会说会
 
 ### 版本二：标准版
 
@@ -188,6 +200,8 @@ relates: []
 > - 完全离线运行，无网络也能使用
 > - 支持多种开源大模型，自由下载、切换与卸载
 > - 端侧本地生图，创作全程不离开设备
+> - 图像反推提示词：看懂图片，一键复刻再创作
+> - 端侧语音全链路：离线转写 + 语音合成朗读
 > - 完全开源，欢迎贡献与二次开发
 > - 轻量启动，即开即用
 >
@@ -222,6 +236,8 @@ relates: []
 > - 🆓 完全開源：基於 PocketPal AI（MIT License）開發，歡迎 Star 與共建
 > - 📦 多模型自由切換：按需下載、隨時卸載
 > - 🎨 本地生圖：一句話生成圖片，全程端側完成
+> - 🖼️ 圖像反推：看懂圖片，反推提示詞一鍵復刻
+> - 🔈 離線語音：語音轉寫 + 語音合成，聽會說會
 
 ### 版本二：標準版
 
@@ -235,6 +251,8 @@ relates: []
 > - 完全離線運行，無網路也能使用
 > - 支援多種開源大模型，自由下載、切換與卸載
 > - 端側本地生圖，創作全程不離開裝置
+> - 圖像反推提示詞：看懂圖片，一鍵復刻再創作
+> - 端側語音全鏈路：離線轉寫 + 語音合成朗讀
 > - 完全開源，歡迎貢獻與二次開發
 > - 輕量啟動，即開即用
 >
@@ -269,6 +287,8 @@ relates: []
 > - 🆓 Free & open source: built on PocketPal AI (MIT License)
 > - 📦 Many models, free to switch: download and remove anytime
 > - 🎨 On-device image generation: create from a sentence, end to end on your phone
+> - 🖼️ Image-to-prompt: understand any picture, recreate it in one tap
+> - 🔈 On-device voice: offline transcription & speech synthesis
 
 ### Version 2: Standard
 
@@ -282,6 +302,8 @@ relates: []
 > - Fully offline — works without a network
 > - Supports many open-source models — download, switch, and remove freely
 > - On-device image generation — your creations never leave your phone
+> - Image-to-prompt — turn any picture into a generation prompt
+> - Full on-device voice — offline transcription & speech synthesis
 > - Fully open source — contributions and derivative works are welcome
 > - Lightweight — ready to use instantly
 >
@@ -316,6 +338,8 @@ relates: []
 > - 🆓 無料＆オープンソース：PocketPal AI（MIT License）ベース
 > - 📦 多モデル対応：ダウンロード・切替・削除は自由
 > - 🎨 端末内で画像生成：一言で画像を生成、すべて端末内で完結
+> - 🖼️ 画像からプロンプト逆引き：画像を読み取り、ワンタップで再生成
+> - 🔈 端末内音声：オフライン文字起こし & 音声合成
 
 ### バージョン2：スタンダード版
 
@@ -329,6 +353,8 @@ relates: []
 > - 完全オフライン動作 — ネットワークがなくても利用可能
 > - 多数のオープンソースモデルに対応 — 自由にダウンロード・切り替え・削除が可能
 > - 端末内で画像生成 — 創作の過程が端末から離れない
+> - 画像からプロンプト逆引き — 画像を読み取り、ワンタップで再生成
+> - 端末内で完結する音声 — オフライン文字起こし & 音声合成
 > - 軽量で起動が速い
 >
 > **オープンソース**
@@ -362,6 +388,8 @@ relates: []
 > - 🆓 무료 & 오픈소스: PocketPal AI(MIT License) 기반
 > - 📦 다양한 모델 자유 전환: 필요할 때 다운로드, 언제든 제거
 > - 🎨 기기 내 이미지 생성: 한 문장으로 생성, 전 과정 기기에서
+> - 🖼️ 이미지 프롬프트 역추론: 이미지를 읽고 원터치로 재생성
+> - 🔈 기기 내 음성: 오프라인 전사 & 음성 합성
 
 ### 버전 2: 표준 버전
 
@@ -375,6 +403,8 @@ relates: []
 > - 완전 오프라인 실행 — 네트워크 없이도 사용 가능
 > - 다양한 오픈소스 모델 지원 — 자유롭게 다운로드, 전환, 제거 가능
 > - 기기 내 이미지 생성 — 창작 과정이 기기를 떠나지 않음
+> - 이미지에서 프롬프트 역추론 — 이미지를 읽고 원터치로 재생성
+> - 기기 내 음성 완결 — 오프라인 전사 & 음성 합성
 > - 가벼운 시작 — 켜자마자 사용 가능
 >
 > **오픈소스**
@@ -408,6 +438,8 @@ relates: []
 > - 🆓 رایگان و متن‌باز: بر پایه PocketPal AI (مجوز MIT)
 > - 📦 جابه‌جایی آزادانه مدل‌ها: هر وقت دانلود کنید، هر وقت حذف کنید
 > - 🎨 تولید تصویر روی دستگاه: با یک جمله تصویر بسازید
+> - 🖼️ تبدیل تصویر به پرامپت: تصویر را بفهمید و با یک لمس بازآفرینی کنید
+> - 🔈 صدای روی دستگاه: رونویسی آفلاین و سنتز گفتار
 
 ### نسخه ۲: نسخه استاندارد
 
@@ -421,6 +453,8 @@ relates: []
 > - کاملاً آفلاین — بدون شبکه هم کار می‌کند
 > - پشتیبانی از مدل‌های متنوع متن‌باز — دانلود، تغییر و حذف آزادانه
 > - تولید تصویر روی دستگاه — آثار شما هرگز از گوشی خارج نمی‌شوند
+> - تبدیل تصویر به پرامپت — تصویر را بفهمید و با یک لمس بازآفرینی کنید
+> - صوت کامل روی دستگاه — رونویسی آفلاین و سنتز گفتار
 > - سبک و آماده استفاده
 >
 > **متن‌باز**
@@ -454,6 +488,8 @@ relates: []
 > - 🆓 חינם וקוד פתוח: מבוסס על PocketPal AI (רישיון MIT)
 > - 📦 מעבר חופשי בין מודלים: הורידו ומחקו מתי שתרצו
 > - 🎨 יצירת תמונות על המכשיר: צרו תמונה ממשפט אחד
+> - 🖼️ הפיכת תמונה לפרומפט: הבינו את התמונה וצרו אותה מחדש בנגיעה אחת
+> - 🔈 קול על המכשיר: תמלול לא מקוון וסינתזת דיבור
 
 ### גרסה 2: סטנדרטית
 
@@ -467,6 +503,8 @@ relates: []
 > - עבודה מלאה במצב לא מקוון — פועל גם ללא רשת
 > - תמיכה במגוון מודלים בקוד פתוח — הורידו, החליפו והסירו בחופשיות
 > - יצירת תמונות על המכשיר — היצירות שלכם לעולם לא עוזבות את הטלפון
+> - הפיכת תמונה לפרומפט — הבינו את התמונה וצרו אותה מחדש בנגיעה אחת
+> - קול מלא על המכשיר — תמלול לא מקוון וסינתזת דיבור
 > - קל ומהיר להפעלה
 >
 > **קוד פתוח**
@@ -500,6 +538,8 @@ relates: []
 > - 🆓 Gratis & open source: dibangun di atas PocketPal AI (Lisensi MIT)
 > - 📦 Bebas ganti model: unduh dan hapus kapan saja
 > - 🎨 Generasi gambar di perangkat: buat gambar dari satu kalimat
+> - 🖼️ Gambar ke prompt: pahami gambar dan buat ulang sekali sentuh
+> - 🔈 Suara di perangkat: transkripsi offline & sintesis suara
 
 ### Versi 2: Standar
 
@@ -513,6 +553,8 @@ relates: []
 > - Sepenuhnya offline — tetap berfungsi tanpa jaringan
 > - Mendukung banyak model open source — unduh, ganti, dan hapus dengan bebas
 > - Generasi gambar di perangkat — karya Anda tidak pernah meninggalkan ponsel
+> - Gambar ke prompt — pahami gambar dan buat ulang sekali sentuh
+> - Suara on-device lengkap — transkripsi offline & sintesis suara
 > - Ringan dan siap pakai
 >
 > **Sumber Terbuka**
@@ -546,6 +588,8 @@ relates: []
 > - 🆓 Percuma & sumber terbuka: dibina berdasarkan PocketPal AI (Lesen MIT)
 > - 📦 Tukar model dengan bebas: muat turun dan alih keluar bila-bila masa
 > - 🎨 Penjanaan imej pada peranti: cipta imej daripada satu ayat
+> - 🖼️ Imej ke prompt: fahami imej dan cipta semula sekali sentuh
+> - 🔈 Suara pada peranti: transkripsi luar talian & sintesis pertuturan
 
 ### Versi 2: Standard
 
@@ -559,6 +603,8 @@ relates: []
 > - Berfungsi sepenuhnya di luar talian — tanpa rangkaian pun boleh digunakan
 > - Menyokong pelbagai model sumber terbuka — muat turun, tukar dan alih keluar dengan bebas
 > - Penjanaan imej pada peranti — karya anda tidak pernah meninggalkan telefon
+> - Imej ke prompt — fahami imej dan cipta semula sekali sentuh
+> - Suara on-peranti lengkap — transkripsi luar talian & sintesis pertuturan
 > - Ringan dan sedia digunakan
 >
 > **Sumber Terbuka**
@@ -592,6 +638,8 @@ relates: []
 > - 🆓 Darmowe i open source: oparte na PocketPal AI (licencja MIT)
 > - 📦 Swobodna zmiana modeli: pobieraj i usuwaj, kiedy chcesz
 > - 🎨 Generowanie obrazów na urządzeniu: stwórz obraz z jednego zdania
+> - 🖼️ Obraz na prompt: zrozum obraz i odtwórz jednym dotknięciem
+> - 🔈 Głos na urządzeniu: transkrypcja offline i synteza mowy
 
 ### Wersja 2: Standardowa
 
@@ -605,6 +653,8 @@ relates: []
 > - W pełni offline — działa bez sieci
 > - Obsługa wielu modeli open source — swobodnie pobieraj, przełączaj i usuwaj
 > - Generowanie obrazów na urządzeniu — Twoje prace nigdy nie opuszczają telefonu
+> - Obraz na prompt — zrozum obraz i odtwórz jednym dotknięciem
+> - Pełny głos na urządzeniu — transkrypcja offline i synteza mowy
 > - Lekki start — gotowy do użycia od razu
 >
 > **Open Source**
@@ -638,6 +688,8 @@ relates: []
 > - 🆓 Grátis e open source: baseada no PocketPal AI (Licença MIT)
 > - 📦 Troque de modelos livremente: descarregue e remova quando quiser
 > - 🎨 Geração de imagens no dispositivo: crie imagens a partir de uma frase
+> - 🖼️ Imagem para prompt: entenda a imagem e recrie com um toque
+> - 🔈 Voz no dispositivo: transcrição offline e síntese de fala
 
 ### Versão 2: Padrão
 
@@ -651,6 +703,8 @@ relates: []
 > - Totalmente offline — funciona sem rede
 > - Suporta vários modelos de código aberto — descarregue, alterne e remova livremente
 > - Geração de imagens no dispositivo — as suas criações nunca saem do telemóvel
+> - Imagem para prompt — entenda a imagem e recrie com um toque
+> - Voz completa no dispositivo — transcrição offline e síntese de fala
 > - Leve e pronto a usar
 >
 > **Open Source**
@@ -684,6 +738,8 @@ relates: []
 > - 🆓 Grátis e open source: baseado no PocketPal AI (licença MIT)
 > - 📦 Troque de modelos livremente: baixe e remova quando quiser
 > - 🎨 Geração de imagens no dispositivo: crie imagens a partir de uma frase
+> - 🖼️ Imagem para prompt: entenda a imagem e recrie com um toque
+> - 🔈 Voz no dispositivo: transcrição offline e síntese de fala
 
 ### Versão 2: Padrão
 
@@ -697,6 +753,8 @@ relates: []
 > - Totalmente offline — funciona sem rede
 > - Suporta vários modelos de código aberto — baixe, alterne e remova livremente
 > - Geração de imagens no dispositivo — suas criações nunca saem do celular
+> - Imagem para prompt — entenda a imagem e recrie com um toque
+> - Voz completa no dispositivo — transcrição offline e síntese de fala
 > - Leve e pronto para usar
 >
 > **Open Source**
@@ -730,6 +788,8 @@ relates: []
 > - 🆓 Бесплатно и с открытым кодом: на основе PocketPal AI (лицензия MIT)
 > - 📦 Свободная смена моделей: скачивайте и удаляйте когда угодно
 > - 🎨 Генерация изображений на устройстве: создайте изображение по одной фразе
+> - 🖼️ Изображение в промпт: поймите картинку и воссоздайте одним касанием
+> - 🔈 Голос на устройстве: офлайн-транскрипция и синтез речи
 
 ### Версия 2: Стандартная
 
@@ -743,6 +803,8 @@ relates: []
 > - Полностью офлайн — работает без сети
 > - Поддержка множества открытых моделей — свободно скачивайте, переключайте и удаляйте
 > - Генерация изображений на устройстве — ваши работы не покидают телефон
+> - Изображение в промпт — поймите картинку и воссоздайте одним касанием
+> - Полный голос на устройстве — офлайн-транскрипция и синтез речи
 > - Лёгкий запуск — готов к работе сразу
 >
 > **Открытый код**
@@ -776,6 +838,8 @@ relates: []
 > - 🆓 Безкоштовно та з відкритим кодом: на основі PocketPal AI (ліцензія MIT)
 > - 📦 Вільна зміна моделей: завантажуйте та видаляйте будь-коли
 > - 🎨 Генерація зображень на пристрої: створіть зображення за однією фразою
+> - 🖼️ Зображення в промпт: зрозумійте картинку та відтворіть одним дотиком
+> - 🔈 Голос на пристрої: офлайн-транскрипція та синтез мовлення
 
 ### Версія 2: Стандартна
 
@@ -789,6 +853,8 @@ relates: []
 > - Повністю офлайн — працює без мережі
 > - Підтримка багатьох відкритих моделей — вільно завантажуйте, перемикайте та видаляйте
 > - Генерація зображень на пристрої — ваші роботи не покидають телефон
+> - Зображення в промпт — зрозумійте картинку та відтворіть одним дотиком
+> - Повний голос на пристрої — офлайн-транскрипція та синтез мовлення
 > - Легкий запуск — готовий до роботи одразу
 >
 > **Відкритий код**
@@ -822,6 +888,8 @@ relates: []
 > - 🆓 Kostenlos und Open Source: basierend auf PocketPal AI (MIT License)
 > - 📦 Freie Modellwahl: jederzeit herunterladen und entfernen
 > - 🎨 Bildgenerierung auf dem Gerät: erstellen Sie Bilder aus einem Satz
+> - 🖼️ Bild zu Prompt: verstehen Sie das Bild und erstellen Sie mit einem Tipp neu
+> - 🔈 Stimme auf dem Gerät: Offline-Transkription und Sprachsynthese
 
 ### Version 2: Standard
 
@@ -835,6 +903,8 @@ relates: []
 > - Komplett offline — funktioniert ohne Netzwerk
 > - Unterstützt viele Open-Source-Modelle — frei herunterladen, wechseln und entfernen
 > - Bildgenerierung auf dem Gerät — Ihre Kreationen verlassen nie Ihr Telefon
+> - Bild zu Prompt — verstehen Sie das Bild und erstellen Sie mit einem Tipp neu
+> - Komplette Stimme auf dem Gerät — Offline-Transkription und Sprachsynthese
 > - Leichtgewichtig und sofort einsatzbereit
 >
 > **Open Source**
@@ -865,6 +935,8 @@ relates: []
 > - 🆓 Gratuit et open source : basé sur PocketPal AI (licence MIT)
 > - 📦 Changez librement de modèle : téléchargez et supprimez à tout moment
 > - 🎨 Génération d'images sur l'appareil : créez une image à partir d'une phrase
+> - 🖼️ Image vers prompt : comprenez l'image et recréez-la d'une touche
+> - 🔈 Voix sur l'appareil : transcription hors ligne et synthèse vocale
 
 ### Version 2 : Standard
 
@@ -878,6 +950,8 @@ relates: []
 > - Entièrement hors ligne — fonctionne sans réseau
 > - Prend en charge de nombreux modèles open source — téléchargez, changez et supprimez librement
 > - Génération d'images sur l'appareil — vos créations ne quittent jamais votre téléphone
+> - Image vers prompt — comprenez l'image et recréez-la d'une touche
+> - Voix complète sur l'appareil — transcription hors ligne et synthèse vocale
 > - Léger et prêt à l'emploi
 >
 > **Open Source**

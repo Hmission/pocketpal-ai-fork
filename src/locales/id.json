@@ -529,6 +529,8 @@
       "Sepenuhnya offline — tetap berfungsi tanpa jaringan",
       "Mendukung banyak model open source — unduh, ganti, dan hapus dengan bebas",
       "Generasi gambar di perangkat — karya Anda tidak pernah meninggalkan ponsel",
+      "Gambar ke prompt — pahami gambar dan buat ulang sekali sentuh",
+      "Suara on-device lengkap — transkripsi offline & sintesis suara",
       "Sepenuhnya open source — kontribusi dan pengembangan turunan diterima",
       "Ringan dan siap pakai"
     ],
@@ -1549,7 +1551,7 @@
     },
     "screen2": {
       "title": "Lebih dari\nAplikasi Obrolan.",
-      "body": "Mengobrol, menggambar gambar, membaca cerita, petualangan, berbicara dengan mereka — semuanya dihasilkan langsung di ponsel Anda. Bahkan foto yang Anda ambil dapat diperbesar 4× lebih tajam.",
+      "body": "Mengobrol, menggambar, membaca cerita, berpetualang, berbicara dan mendengar jawabannya — semuanya dihasilkan langsung di ponsel Anda. Foto yang Anda ambil bisa diperbesar 4× atau diubah kembali menjadi prompt.",
       "highlight": "semuanya dihasilkan langsung di ponsel Anda",
       "cta": "Lanjut",
       "eyebrow": "Lebih Banyak Lagi",

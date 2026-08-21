@@ -503,6 +503,8 @@
       "W pełni offline — działa bez sieci",
       "Obsługa wielu modeli open source — swobodnie pobieraj, przełączaj i usuwaj",
       "Generowanie obrazów na urządzeniu — Twoje prace nigdy nie opuszczają telefonu",
+      "Obraz na prompt — zrozum obraz i odtwórz jednym dotknięciem",
+      "Pełny głos na urządzeniu — transkrypcja offline i synteza mowy",
       "W pełni open source — kontrybucje i rozwój pochodny mile widziane",
       "Lekki start — gotowy do użycia od razu"
     ],
@@ -1500,7 +1502,7 @@
     },
     "screen2": {
       "title": "Więcej niż\naplikacja czatu.",
-      "body": "Czat, rysowanie obrazków, czytanie opowieści, przygody, rozmowy z nimi — wszystko generowane bezpośrednio na Twoim telefonie. Nawet zdjęcia, które zrobisz, można powiększyć 4× wyraźniej.",
+      "body": "Czat, rysowanie, czytanie historii, przygody, rozmowa i słuchanie odpowiedzi — wszystko generowane bezpośrednio na Twoim telefonie. Zdjęcia można powiększyć 4× lub zamienić z powrotem w prompt.",
       "highlight": "wszystko generowane bezpośrednio na Twoim telefonie",
       "cta": "Następny",
       "eyebrow": "Więcej do odkrycia",

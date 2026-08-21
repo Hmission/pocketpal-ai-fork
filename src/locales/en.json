@@ -558,6 +558,8 @@
       "Fully offline — works without a network",
       "Supports many open-source models — download, switch, and remove freely",
       "On-device image generation — your creations never leave your phone",
+      "Image-to-prompt — turn any picture into a generation prompt",
+      "Full on-device voice — offline transcription & speech synthesis",
       "Fully open source — contributions and derivative works are welcome",
       "Lightweight — ready to use instantly"
     ],
@@ -1604,7 +1606,7 @@
     },
     "screen2": {
       "title": "More than\na chat app.",
-      "body": "Chat, draw pictures, read stories, play adventures, talk to them — all generated right on your phone. Even photos you take can be upscaled 4× sharper.",
+      "body": "Chat, draw pictures, read stories, play adventures, talk to them and hear them talk back — all generated right on your phone. Even photos you take can be upscaled 4× or turned back into prompts.",
       "highlight": "all generated right on your phone",
       "cta": "Next",
       "eyebrow": "More to explore",

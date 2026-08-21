@@ -27,6 +27,36 @@ An open-source AI companion that lives on your phone — chat, image generation,
 
 **English**: Unlike cloud-based chatbots, Pocket Chick runs models entirely on your device — no servers, no internet, and no third party ever sees your conversations. Every question and every reply stays on your phone. The entire project is fully open source on GitHub — fork it, extend it, build your own.
 
+## 💡 项目理念 / Why This Project
+
+这个项目把当前手机端能跑的 AI 能力基本都做了进来：多模型聊天、端侧生图（DreamLite / SD3.5 / Z-Image）、图像编辑、图像反推提示词、4× 超分、离线语音（转写 + 合成）、玩具工坊。跑通这些链路的过程，也是不断踩坑和填坑的过程——下面是部分踩坑记录，如果你也在做端侧 AI，也许能帮你少走弯路。
+
+项目定位是「好玩的数字生命玩具」，刻意不追求生产力——AI 不一定是工具，也可以是伙伴。
+
+**This project packs in nearly every AI capability a phone can run: multi-model chat, on-device image generation (DreamLite / SD3.5 / Z-Image), image editing, image-to-prompt, 4× upscaling, offline voice (STT + TTS), and a toy workshop.** Getting these pipelines to work meant hitting — and fixing — a lot of real-device pitfalls. The table below lists the ones most likely to save you a detour.
+
+Pocket Chick is intentionally not a productivity tool. It's a "digital pet" — AI doesn't have to be a tool; it can be a companion.
+
+## 🕳️ 踩坑记录（节选）/ Pitfalls We Hit (Selected)
+
+> 均为真机（Redmi K90 / 小米 13，Adreno）实测记录，细节见 `docs/`（POCKETPAL_PRODUCT_SPEC §2.5、SD35_OPENCL_WHITE_IMAGE_ANALYSIS、POCKETPAL_MODEL_MATRIX）。
+
+| 坑（现象 / 根因） | 我们的做法 |
+|---|---|
+| Qwen3 TE int8 动态量化毁掉 hidden states 离群通道（余弦相似度 0.17）→ 生图糊图 | TE 改用 fp16 ONNX（余弦 1.0）；若必须量化，验证 kept 区余弦 ≥ 0.97 |
+| DMD2 蒸馏模型 sigmas NaN 溢出 → 纯黑图 | VAE 缩放因子对齐官方 1024 基线 |
+| OpenCL 算子融合（RMS_NORM+MUL）跳写中间 buffer，split_qkv 的 view 读未初始化内存 → 全 NaN 白图 | 先做融合正确性审计，再用 op 级 NaN 检查（GGML_OPENCL_DEBUG_NAN），不先怀疑设备 |
+| 512px VAE 解码 graph 需 1.94GB buffer → OOM | tiled 解码：rel_size=0.5 → 416MB，9 tiles 跑通 |
+| Z-Image cross-attn 值域 ±1e4，Adreno fp16 内核累积溢出 → 白图 | 按模型区分 GPU 策略（manifest note）：SD3.5 恢复 Adreno 内核（提速 4.8–13×），Z-Image 保持双禁用保稳定；排查期曾误全局禁用（XMEM=0 + DISABLE=1），根因确认与 GEMM 无关后已恢复 |
+| Adreno Vulkan 后端 ErrorDeviceLost，社区零成功案例 | 走 OpenCL（ARM 官方推荐路径），Vulkan 不启用 |
+| 量化 embedding（Q6_K）被引擎强制升 F32 → 1483MB 超硬件单次分配上限 → 崩溃 | 改为升 F16（742MB） |
+| HyperOS PSS 看护（6GB 阈值）硬杀进程，n_ctx 档位超预算 | n_ctx 预调天花板取 min(空闲内存, 4GB PSS 安全预算)，启动审计自愈降档 |
+| ONNX/Llama session 释放未 await → 内存叠加 OOM | 异步释放统一 await 收口 |
+
+排查过程中的一个可用经验：出现 NaN 或崩溃时，先对比跨设备的 NaN 指纹（K90 与小米 13 指纹一致 → 不是设备问题），再深入算子层定位，避免在设备差异上白费时间。
+
+**One method that kept working:** when a NaN or crash appeared, we compared NaN fingerprints across devices before blaming the hardware (two different Adreno phones showed the identical fingerprint — not a device issue), then dug into operator-level behavior. Details live in `docs/` (POCKETPAL_PRODUCT_SPEC §2.5, SD35_OPENCL_WHITE_IMAGE_ANALYSIS, POCKETPAL_MODEL_MATRIX).
+
 ## ✨ 功能特性 / Features
 
 | 中文 | English |
@@ -34,9 +64,10 @@ An open-source AI companion that lives on your phone — chat, image generation,
 | 🚫 完全离线运行，无网络也能使用 | Fully offline — works without a network |
 | 📦 支持多种开源大模型，自由下载、切换与卸载 | Supports many open-source models — download, switch, and remove freely |
 | 🎨 端侧本地生图（DreamLite / SD3.5 / Z-Image），创作全程不离开设备 | On-device image generation (DreamLite / SD3.5 / Z-Image) — your creations never leave your phone |
+| 🖼️ 图像反推提示词（Qwen3.5-4B 视觉通道），看懂图片、一键复刻再创作 | Image-to-prompt (Qwen3.5-4B vision) — understand any picture, recreate it in one tap |
 | 🔍 端侧图像放大（RealESRGAN），一键 4× 超分，内置写实 / 动漫双模型 | On-device upscaling (RealESRGAN) — one-tap 4× super-resolution, with photo & anime models |
 | 🖼️ 全屏看图与手势缩放，双指捏合、拖拽、单击关闭 | Full-screen viewer — pinch-to-zoom, pan, tap to close |
-| 🎙️ 离线语音输入，设备端语音转文字，无网也能说话 | Offline voice input — on-device speech-to-text, no network needed |
+| 🎙️ 离线语音全链路：语音转文字 + 语音合成朗读，无网也能说话 | Full on-device voice — offline speech-to-text & text-to-speech, no network needed |
 | 🧠 智能体意图与用途标签，按写作 / 代码等场景智能选型 | Agent intent & capability tags — smart model selection by task (writing / coding) |
 | ⚡ 轻量启动，即开即用 | Lightweight — ready to use instantly |
 | 🌍 多语言界面（14+ 语言） | Localized UI (14+ languages) |
@@ -45,6 +76,9 @@ An open-source AI companion that lives on your phone — chat, image generation,
 ## ✨ 近期亮点 / Recent Highlights
 
 **v2.0.0 以来（2026-08）我们重做了大量体验，下面是面向用户的关键更新：**
+
+- **创作工坊升级**：图像反推提示词（Qwen3.5-4B 视觉通道，图片 → 提示词 → 一键复刻生图）+ 音频工坊（SenseVoice 音频转写 / Kokoro、Supertonic 语音合成），产物统一入画廊管理。
+- **语音朗读**：聊天回复流式朗读，系统音色免安装即用，可选 Kitten / Kokoro / Supertonic 端侧引擎。
 
 - **聊天页体验重做**：意图会话级状态机、助手卡 chrome 合并、顶栏紧凑化、发送钮双态、n_ctx 单一事实源按内存预调、模型用途标签（写作/代码）智能选型。
 - **端侧图像放大**：内置 RealESRGAN（x4plus 写实 / animevideov3 动漫），tiled 推理，可在 App 内直接超分任意图片；配套全屏看图与手势缩放（双指捏合、拖拽、单击关闭）。
@@ -60,6 +94,8 @@ An open-source AI companion that lives on your phone — chat, image generation,
 - **llama.cpp / llama.rn** — GGUF 大模型端侧推理
 - **ONNX Runtime** — DreamLite 端侧图像生成引擎（文生图 + 图像编辑）
 - **@react-native-voice** — 设备端离线语音输入（STT）
+- **@pocketpalai/react-native-speech** — 端侧 TTS 语音合成（Kitten / Kokoro / Supertonic / 系统音色）
+- **sherpa-onnx（SenseVoice）** — 端侧 ASR 音频转写
 - **OpenCL** — Adreno GPU 加速（SD3.5 生成提速至 10.7 分钟级）
 
 ## 📸 截图 / Screenshots

@@ -46,6 +46,7 @@
 - 多玩法品牌标语（2026-08-19~20，大王钦定语）：「住进手机的开源 AI 伙伴——聊天、生图、玩乐、绘本、冒险，多种玩法全部离线运行在您的设备上」替换「部署大语言模型」旧定位；16 语言 about.description + README + APP_INTRO_COPY 三版式 + AGENTS.md + PRODUCT_SPEC §1.1 + GitHub 仓库 description 全链路同步
 - 开源边界清理（2026-08-19~20）：.qoder/settings.json 从全 git 历史清除（filter-repo）+ force push；scripts/aios、scripts/governance、scripts/sd35_lora、docs/adr、docs/_templates 及内部治理文档共 38 文件移除（-4552 行）；.gitignore 扩充 14 条防回潮（只开源工程，不开源开发工具）
 - 版本同步单点命令（2026-08-19~20）：scripts/bump-version.js 一处命令四处同步（.version/package.json/build.gradle/pbxproj，versionCode 自增 +1，同版本显式失败）；jest 5/5；AGENTS.md 发布流程改为「单点命令，禁止手工改」；git tag v2.0.0
+- 对外介绍同步音频 + 图像反推能力（2026-08-22，B31，APP_INTRO_COPY v1.2）：about.features 新增 2 条（图像反推提示词：看懂图片一键复刻再创作 / 端侧语音全链路：离线转写 + 语音合成朗读）×16 语言；开屏引导 S2 玩法清单扩展（「开口说、听它说」+「照片能放大 4 倍，还能反推成提示词再创作」）×14 语言；README 功能表新增图像反推行 + 语音行升级全链路 + 近期亮点/技术栈同步；README 新增「项目理念 / Why This Project」与「🕳️ 踩坑记录（节选）」——9 条真机坑以「坑是什么 + 我们的做法」两列呈现（TE int8 量化毁 hidden states→fp16 ONNX、sigmas NaN 黑图→VAE 缩放对齐、OpenCL 融合跳写→fusion 审计 + op 级 NaN 检查、512px VAE 内存墙→tiled、Z-Image fp16 溢出→按模型区分 GPU 策略、Adreno Vulkan 不可用→OpenCL、embedding 升 F32 超限→F16、HyperOS PSS 硬杀→4GB 安全预算、session 释放未 await→统一 await）+ 方法论（NaN 指纹跨设备对比），供端侧 AI 开发者参考；门禁：l10n:validate 全绿 + tsc 零错 + AboutScreen 3/3
 
 ## [2.0.0] - 2026-08-19
 

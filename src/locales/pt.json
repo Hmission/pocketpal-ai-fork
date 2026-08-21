@@ -529,6 +529,8 @@
       "Totalmente offline — funciona sem rede",
       "Suporta vários modelos de código aberto — descarregue, alterne e remova livremente",
       "Geração de imagens no dispositivo — as suas criações nunca saem do telemóvel",
+      "Imagem para prompt — entenda a imagem e recrie com um toque",
+      "Voz completa no dispositivo — transcrição offline e síntese de fala",
       "Totalmente open source — contribuições e obras derivadas são bem-vindas",
       "Leve e pronto a usar"
     ],
@@ -1549,7 +1551,7 @@
     },
     "screen2": {
       "title": "Mais do que\num app de chat.",
-      "body": "Conversar, desenhar imagens, ler histórias, viver aventuras, falar com eles — tudo gerado diretamente no seu telemóvel. Até as fotos que tirar podem ser ampliadas 4× mais nítidas.",
+      "body": "Conversar, desenhar, ler histórias, viver aventuras, falar e ouvir as respostas — tudo gerado diretamente no seu telemóvel. As fotos que tirar podem ser ampliadas 4× ou transformadas novamente em prompts.",
       "highlight": "tudo gerado diretamente no seu telemóvel",
       "cta": "Próximo",
       "eyebrow": "Mais para explorar",
