@@ -16,7 +16,6 @@ import {View, FlatList, Text, TouchableOpacity} from 'react-native';
 import {KeyboardAwareScrollView} from 'react-native-keyboard-controller';
 import {observer} from 'mobx-react-lite';
 import {runInAction} from 'mobx';
-import {Snackbar} from 'react-native-paper';
 import {launchImageLibrary} from 'react-native-image-picker';
 import {useNavigation} from '@react-navigation/native';
 import Clipboard from '@react-native-clipboard/clipboard';
@@ -56,6 +55,7 @@ import {RemakeSheet} from './components/RemakeSheet';
 import {AudioWorkshopTab} from './components/AudioWorkshopTab';
 import {confirmDialog} from '../../components/ui/ConfirmDialog';
 import {OverlayCard} from '../../components/ui/OverlayCard';
+import {BannerBar} from '../../components/ui/BannerBar';
 import {SRStyle} from '../../services/superResEngine';
 
 export const ImageGenScreen: React.FC = observer(() => {
@@ -116,10 +116,29 @@ export const ImageGenScreen: React.FC = observer(() => {
   // 工坊双 tab（IMAGEGEN_UI_SPEC §8）：image=生图（现状）｜audio=音频工坊
   const [workshopTab, setWorkshopTab] = React.useState<'image' | 'audio'>('image');
 
-  const [snackbar, setSnackbar] = React.useState<string | null>(null);
-  const showSnackbar = React.useCallback((msg: string) => {
-    setSnackbar(msg);
-  }, []);
+  // 顶部横幅（v4.2 大王裁定：生图页轻提示弃用底部 Snackbar——灰色底+挡底部按钮，
+  // 统一顶部 BannerBar overlay；瞬时反馈 3s 自动消失，编辑锁定常驻走 editArming 派生）
+  type BannerMsg = {text: string; variant: 'info' | 'error' | 'warning'};
+  const [banner, setBanner] = React.useState<BannerMsg | null>(null);
+  const bannerTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showBanner = React.useCallback(
+    (text: string, variant: BannerMsg['variant'] = 'info') => {
+      setBanner({text, variant});
+      if (bannerTimer.current) {
+        clearTimeout(bannerTimer.current);
+      }
+      bannerTimer.current = setTimeout(() => setBanner(null), 3000);
+    },
+    [],
+  );
+  React.useEffect(
+    () => () => {
+      if (bannerTimer.current) {
+        clearTimeout(bannerTimer.current);
+      }
+    },
+    [],
+  );
   // 生成/编辑进行中：三点波浪动效
   const waveDots = useWaveDots(imageGenStore.generating);
 
@@ -320,7 +339,7 @@ export const ImageGenScreen: React.FC = observer(() => {
       summary: item.errorSummary ?? '生图失败',
       detail: item.errorDetail ?? '',
     });
-    showSnackbar(
+    showBanner(
       path
         ? t(l10n.errorReport.copiedSaved, {path})
         : l10n.errorReport.copiedFallback,
@@ -351,16 +370,16 @@ export const ImageGenScreen: React.FC = observer(() => {
     scrollToPreview(1); // 新任务条目在 history[0] → 预览页 1
     if (text) {
       setPrompt(text); // 结果回填 composer（用户可见可改）
-      showSnackbar('反推完成，可复制或复刻生图');
+      showBanner('反推完成，可复制或复刻生图');
     } else {
-      showSnackbar('反推失败，详见结果区');
+      showBanner('反推失败，详见结果区', 'error');
     }
   };
 
   const handleCaption = () => {
     const targetUri = previewIndex === 0 ? editSource : currentImage;
     if (!targetUri) {
-      showSnackbar('先上传或生成一张图片，再反推提示词');
+      showBanner('先上传或生成一张图片，再反推提示词', 'warning');
       return;
     }
     handleCaptionFrom(targetUri);
@@ -369,7 +388,7 @@ export const ImageGenScreen: React.FC = observer(() => {
   // 反推结果一键复制（clipboard 纯文本，不落盘）
   const handleCopyCaption = (item: GeneratedImage) => {
     Clipboard.setString(item.prompt || '');
-    showSnackbar('反推提示词已复制');
+    showBanner('反推提示词已复制');
   };
 
   // 复刻生图：打开全参数 Sheet（IMAGEGEN_UI_SPEC §7.3）
@@ -574,7 +593,7 @@ export const ImageGenScreen: React.FC = observer(() => {
       setPrompt(''); // 新源图无历史提示词，清空输入区
       scrollToPreview(0);
       setEditArming(true); // 入槽即进入编辑预备：目标=刚入槽的图
-      showSnackbar(
+      showBanner(
         `${toastPrefix}（压缩至 ${sq}×${sq}），输入编辑指令后点「执行编辑」`,
       );
     } catch (e) {
@@ -637,7 +656,7 @@ export const ImageGenScreen: React.FC = observer(() => {
     // 编辑目标 = 当前预览区显示的图：0 页=上传图，历史页=当前历史图
     const targetUri = previewIndex === 0 ? editSource : currentImage;
     if (!targetUri) {
-      showSnackbar('先上传一张本地图片，再输入编辑指令');
+      showBanner('先上传一张本地图片，再输入编辑指令', 'warning');
       await handlePickEditImage();
       return;
     }
@@ -645,8 +664,7 @@ export const ImageGenScreen: React.FC = observer(() => {
     setPrompt(''); // 编辑指令与生成提示词语义不同，从头输入
     const sq = Math.min(dreamW, dreamH);
     if (previewIndex === 0 && editRgb) {
-      // 上传图已在上传时预解码，无需重复
-      showSnackbar(`已锁定当前图（${sq}×${sq}），输入编辑指令后点「执行编辑」`);
+      // 上传图已在上传时预解码，无需重复（锁定提示 = 顶部常驻横幅，editArming 派生）
       return;
     }
     try {
@@ -661,7 +679,6 @@ export const ImageGenScreen: React.FC = observer(() => {
         512,
       );
       setEditVisRgb(visRgb);
-      showSnackbar(`已锁定当前图（${sq}×${sq}），输入编辑指令后点「执行编辑」`);
     } catch (e) {
       setEditArming(false);
       runInAction(() => {
@@ -730,7 +747,7 @@ export const ImageGenScreen: React.FC = observer(() => {
     });
     // 新图在 history[0] → 预览页 1
     scrollToPreview(1);
-    showSnackbar('编辑完成');
+    showBanner('编辑完成');
   };
 
   const handleGenerate = async (promptOverride?: string) => {
@@ -741,14 +758,14 @@ export const ImageGenScreen: React.FC = observer(() => {
     if (!p) {
       // 复查 2026-08-20：空提示词点「出图」必须显式反馈（不静默）——
       // 此前静默早退导致「有动效无反应」，两台真机稳定复现
-      showSnackbar('先输入提示词，再点出图');
+      showBanner('先输入提示词，再点出图', 'warning');
       return;
     }
     // 未加载引导（2026-08-21，仅非 Dream；DreamLite 点出图自动加载不变）：
     // 按钮不再灰置，点击弹提示 + 展开模型下拉让用户选模型加载（新手友好）
     if (!isDream && !loaded) {
       if (imageGenStore.loading) {
-        showSnackbar('模型加载中，请稍候');
+        showBanner('模型加载中，请稍候', 'warning');
         return;
       }
       setLoadGuideVisible(true);
@@ -795,7 +812,7 @@ export const ImageGenScreen: React.FC = observer(() => {
       });
       // 新图在 history[0] → 预览页 1
       scrollToPreview(1);
-      showSnackbar(`生成完成（${dreamW}×${dreamH}）`);
+      showBanner(`生成完成（${dreamW}×${dreamH}）`);
       return;
     }
     const m = selectedEntry?.manifest;
@@ -841,7 +858,7 @@ export const ImageGenScreen: React.FC = observer(() => {
       });
       // 新图在 history[0] → 预览页 1
       scrollToPreview(1);
-      showSnackbar(`生成完成（${size}×${size}）`);
+      showBanner(`生成完成（${size}×${size}）`);
     } else {
       await failTaskWithReport(taskId, '生成失败', {
         模型: m?.label,
@@ -894,7 +911,10 @@ export const ImageGenScreen: React.FC = observer(() => {
       return;
     }
     const ok = await imageGenStore.saveToAlbum(currentImage);
-    showSnackbar(ok ? '已保存 · Pictures/AIOS' : '保存失败，请重试');
+    showBanner(
+      ok ? '已保存 · Pictures/AIOS' : '保存失败，请重试',
+      ok ? 'info' : 'error',
+    );
   };
 
   // P6-6：高清放大确认（参数面板回调）——关闭面板后走任务化 running 页显示进度
@@ -908,7 +928,7 @@ export const ImageGenScreen: React.FC = observer(() => {
       scale,
       style,
     );
-    showSnackbar(out ? `已放大 ${scale}×` : '放大失败，请重试');
+    showBanner(out ? `已放大 ${scale}×` : '放大失败，请重试', out ? 'info' : 'error');
     if (out) {
       // 修复：放大结果在 history[0]（第 1 数据页）；previewIndex 0 = 编辑槽（空白上传页），
       // 此前用 0 导致放大完成后预览窗口空白（2026-08-19 真机实锤）
@@ -1082,7 +1102,7 @@ export const ImageGenScreen: React.FC = observer(() => {
         />
           </>
         ) : (
-          <AudioWorkshopTab onSnackbar={showSnackbar} />
+          <AudioWorkshopTab onSnackbar={showBanner} />
         )}
       </KeyboardAwareScrollView>
 
@@ -1205,14 +1225,28 @@ export const ImageGenScreen: React.FC = observer(() => {
         )}
       </OverlayCard>
 
-      {/* 轻量操作反馈（DESIGN_SPEC §12.4：Paper Snackbar 唯一轻提示载体） */}
-      <Snackbar
-        visible={!!snackbar}
-        onDismiss={() => setSnackbar(null)}
-        duration={2500}
-        testID="imagegen-snackbar">
-        {snackbar ?? ''}
-      </Snackbar>
+      {/* 顶部横幅（v4.2 大王裁定：生图页轻提示弃用底部 Snackbar——
+          不挡底部按钮、语义色非灰；瞬时反馈 3s / 编辑锁定常驻由 editArming 派生） */}
+      {banner && !editArming ? (
+        <View style={s.bannerWrap} pointerEvents="box-none">
+          <BannerBar
+            variant={banner.variant}
+            text={banner.text}
+            onDismiss={() => setBanner(null)}
+          />
+        </View>
+      ) : null}
+      {editArming ? (
+        <View style={s.bannerWrap} pointerEvents="box-none">
+          <BannerBar
+            variant="info"
+            text={`已锁定当前图（${Math.min(dreamW, dreamH)}×${Math.min(
+              dreamW,
+              dreamH,
+            )}），输入编辑指令后点「执行编辑」`}
+          />
+        </View>
+      ) : null}
     </View>
   );
 });

@@ -56,6 +56,22 @@ export const createStyles = (theme: any) =>
       color: theme.colors.onPrimary,
       fontWeight: '600',
     },
+    // v4.2 顶部横幅 overlay：压预览区顶部（白卡实底保证图片上可读），不挡底部按钮
+    bannerWrap: {
+      position: 'absolute',
+      top: 458,
+      left: 16,
+      right: 16,
+      zIndex: 5,
+      backgroundColor: theme.colors.surfaceElevated,
+      borderRadius: theme.radius.m,
+      overflow: 'hidden',
+      elevation: 4,
+      shadowColor: '#000',
+      shadowOpacity: 0.12,
+      shadowRadius: 8,
+      shadowOffset: {width: 0, height: 2},
+    },
     dropPanel: {
       marginTop: 6,
       backgroundColor: theme.colors.surface,

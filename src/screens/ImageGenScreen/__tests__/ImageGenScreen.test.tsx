@@ -278,6 +278,13 @@ describe('ImageGenScreen 编排层（P4 对齐）', () => {
       );
     });
 
+    // v4.2：编辑预备态顶部常驻横幅（editArming 派生，替代底部 Snackbar）
+    await waitFor(() => {
+      expect(
+        getByText(/已锁定当前图（1024×1024），输入编辑指令后点「执行编辑」/),
+      ).toBeTruthy();
+    });
+
     // 编辑预备态：输入指令后按钮变为「执行编辑」
     await act(async () => {
       fireEvent.changeText(
