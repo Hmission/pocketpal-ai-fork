@@ -987,7 +987,10 @@ ealesrgan_x4plus_anime_6B.onnx（APK +14.7MB）
 - **决策**：放大面板 anime 拆双档——nime=动漫高清（x4plus_anime_6B）/ nime_fast=动漫快速（animevideov3，快约 4 倍）；SRStyle 三值 + FILES 三件套 + 标记 .v4 + actionRegistry/DRC_SPEC enum 扩展 + UpscalePanel 三选项
 - **画质取证**：三档输出全部彩色无黑/灰图回归（anime 2×/4× ch-diff 93-95，与源图一致）；anime_6B 目视细节锐利无伪影
 
+### K90 NNAPI 收益验证闭环（2026-08-21 追加）
+
+**严格同构对照（1024² 25 tiles 2×）**：anime_fast K90 22.3s vs 小米 13 55.4s（2.5×）；anime 高清 K90 67.6s vs 185.0s（2.7×）；general K90 218.5s vs ~370s 外推（~1.7×）——**NNAPI 在 8 Elite 对超分全档生效，conv 密集收益比 TE 更显著**；小米 13 持平（回退 CPU 无副作用）；单配置双设备闭环定稿。画质取证：K90 两档输出 ch-diff 64+ 彩色正常。
+
 ### 遗留
 
-- NNAPI 收益设备差异记录（K90 预期收益，其余持平——TE 三设备先例同构）
 - 社区权重/RealCUGAN 立项另议
