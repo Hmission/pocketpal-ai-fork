@@ -183,6 +183,7 @@ export const ModelSwitchDialogHost: React.FC = () => {
               flexDirection: 'row',
               alignItems: 'center',
               gap: 6,
+              height: 24,
             }}>
             {waveDots.map((dot, i) => (
               <Animated.View
@@ -211,14 +212,17 @@ export const ModelSwitchDialogHost: React.FC = () => {
                 ]}
               />
             ))}
-            <Text
-              style={{
-                ...theme.typography.bodyS,
-                color: theme.colors.onSurfaceVariant,
-              }}>
-              正在加载「{picked?.name}」…
-            </Text>
           </View>
+          <Text
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            style={{
+              ...theme.typography.bodyS,
+              color: theme.colors.onSurfaceVariant,
+              paddingHorizontal: theme.spacing.m,
+            }}>
+            正在加载「{picked?.name}」…
+          </Text>
           <View
             style={{
               width: '70%',

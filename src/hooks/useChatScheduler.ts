@@ -4,6 +4,7 @@ import {chatSessionStore, modelStore} from '../store';
 import {routeTask, TaskKind} from '../store/taskRouter';
 import {runImageTaskCard, runEditImageTaskCard} from '../services/chatImageTask';
 import {findModelForTask, listModelsForTask, candidateNote} from '../store/modelCapabilityRegistry';
+import {getModelDisplayNameWithParams} from '../utils/modelDisplayNames';
 import {engineStatus} from '../store/engineStatus';
 import {promptWriter} from '../services/promptWriter';
 import {extractAndSaveMemories} from '../services/aiosMemory';
@@ -192,7 +193,8 @@ async function resolveTaskModel(
   const toDialogCandidates = () =>
     candidates.map(c => ({
       id: c.id,
-      name: c.name || c.filename || '候选模型',
+      // 中文简称（选择器卡片同款单一事实源）：候选行/加载态不甩完整文件名
+      name: getModelDisplayNameWithParams(c),
       size: c.size,
       // §18.7 一句话推荐说明（MODEL_MATRIX 定位 / 大小档位）
       note: candidateNote(c),
