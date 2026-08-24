@@ -13,6 +13,11 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- 夜间长任务前台服务（ONDEVICE_VIDEO_GEN_ANALYSIS §7.1）：防 Doze/内存配额杀进程 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <!-- 夜间长任务电池/Doze 豁免引导（§7.1 策略 3）：发起系统弹窗请用户忽略电池优化 -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <!-- Needed only for devices running Android 9 (API 28) or lower -->
     <!-- Currently used for storing chat sessions (/Download) -->
@@ -79,6 +84,13 @@ android:requestLegacyExternalStorage="true"
                 android:name="android.accessibilityservice"
                 android:resource="@xml/accessibility_screen_reader" />
         </service>
+
+        <!-- 夜间长任务前台服务（ONDEVICE_VIDEO_GEN_ANALYSIS §7.1）：
+             常驻通知 + PARTIAL_WAKE_LOCK，任务进行中防 Doze/内存配额杀进程 -->
+        <service
+            android:name=".VideoTaskService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <!-- Optional native library for OpenCL (GPU acceleration) -->
         <uses-native-library

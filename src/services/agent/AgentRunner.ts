@@ -13,6 +13,7 @@ import type {
   TokenDelta,
 } from './AgentRunner.types';
 import type {TalentResult} from '../talents/types';
+import {emit} from '../../debug/eventStream';
 
 export const DEFAULT_MAX_TURNS = 5;
 
@@ -124,6 +125,33 @@ function normalizeToolCallIds(
  * captured as `result.type === 'error'`; the outcome is always
  * produced (never thrown) so the loop stays driven by the iterator.
  */
+
+/**
+ * Error-outcome 收口（WORKSPACE_TOOL_ERROR_FEEDBACK_SPEC §3.2/§3.7）：
+ * 1) guide（导航 shot）拼进 responseContent 随 role:'tool' 消息回传模型，
+ *    让模型下一轮能按正确调用示例自纠（定位/导航/深入三字段下沉）；
+ * 2) tool.error 事件落盘供真机复盘取证（观测不为 SPOF，BT07）。
+ */
+function errorOutcome(
+  callId: string,
+  fnName: string,
+  result: Extract<TalentResult, {type: 'error'}>,
+): AgentToolOutcome {
+  emit('chat', 'tool.error', {
+    tool: fnName,
+    errorMessage: result.errorMessage,
+    hasGuide: !!result.guide,
+  });
+  return {
+    callId,
+    toolName: fnName,
+    result,
+    responseContent: result.guide
+      ? `${result.summary}\n\n${result.guide}`
+      : result.summary,
+  };
+}
+
 async function executeOne(
   call: AgentToolCall,
   allowedTalentNames: string[],
@@ -141,7 +169,7 @@ async function executeOne(
       summary,
       errorMessage: summary,
     };
-    return {callId, toolName: fnName, result, responseContent: summary};
+    return errorOutcome(callId, fnName, result);
   }
 
   const handler = talentLookup(fnName);
@@ -152,7 +180,7 @@ async function executeOne(
       summary,
       errorMessage: summary,
     };
-    return {callId, toolName: fnName, result, responseContent: summary};
+    return errorOutcome(callId, fnName, result);
   }
 
   let parsedArgs: Record<string, unknown> = {};
@@ -165,11 +193,14 @@ async function executeOne(
       summary,
       errorMessage: summary,
     };
-    return {callId, toolName: fnName, result, responseContent: summary};
+    return errorOutcome(callId, fnName, result);
   }
 
   try {
     const toolResult = await handler.execute(parsedArgs);
+    if (toolResult.type === 'error') {
+      return errorOutcome(callId, fnName, toolResult);
+    }
     return {
       callId,
       toolName: fnName,
@@ -184,7 +215,7 @@ async function executeOne(
       summary,
       errorMessage: errMsg,
     };
-    return {callId, toolName: fnName, result, responseContent: summary};
+    return errorOutcome(callId, fnName, result);
   }
 }
 

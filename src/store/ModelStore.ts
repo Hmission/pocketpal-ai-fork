@@ -10,6 +10,7 @@ import {getAllModelDirs} from '../utils/modelDirs';
 import {engineMutex} from './engineMutex';
 import {chatEngineGuard} from '../utils/engineGuard';
 import {MMProjRegex} from '../utils/multimodalPatterns';
+import {nightTaskRegistry} from './nightTaskRegistry';
 
 import {computed, makeAutoObservable, runInAction, toJS} from 'mobx';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -53,6 +54,7 @@ import {
   CatalogModel,
   catalogEntryById,
   catalogEntryByFilename,
+  catalogEntryTotalBytes,
 } from '../utils/modelCatalog';
 import {
   DownloadSource,
@@ -946,21 +948,30 @@ class ModelStore {
   // manifest-only，均不触碰）。
   catalogImageGenEntries: {entry: CatalogModel; isDownloaded: boolean}[] = [];
 
-  // 刷新生图条目下载状态（main 文件存在性探测；ModelsScreen 挂载/下载完成/下拉刷新时调用）
+  // 刷新生图条目下载状态（ModelsScreen 挂载/下载完成/下拉刷新时调用）
+  // 2026-08-22 Box 清单项 4 收口1：完成态诚实——main 或任一 companion 缺失
+  // 都不得显示「已下载」（原只看 main，缺 companions 的套件被误报完整）。
+  // 复用 catalog 文件清单（file + extras）逐文件探测，零新逻辑。
   refreshCatalogImageGenStatus = async () => {
     const next: {entry: CatalogModel; isDownloaded: boolean}[] = [];
     for (const entry of CATALOG_IMAGEGEN) {
-      const dir =
-        entry.file.dir === 'dreamlite'
-          ? `${AIOS_ROOT}/dreamlite`
-          : AIOS_MODELS_DIR;
-      let exists = false;
-      try {
-        exists = await RNFS.exists(`${dir}/${entry.file.name}`);
-      } catch {
-        exists = false;
+      const allFiles = [entry.file, ...(entry.extras ?? [])];
+      let allExist = true;
+      for (const file of allFiles) {
+        const dir =
+          file.dir === 'dreamlite' ? `${AIOS_ROOT}/dreamlite` : AIOS_MODELS_DIR;
+        let exists = false;
+        try {
+          exists = await RNFS.exists(`${dir}/${file.name}`);
+        } catch {
+          exists = false;
+        }
+        if (!exists) {
+          allExist = false;
+          break;
+        }
       }
-      next.push({entry, isDownloaded: exists});
+      next.push({entry, isDownloaded: allExist});
     }
     runInAction(() => {
       this.catalogImageGenEntries = next;
@@ -995,16 +1006,58 @@ class ModelStore {
       throw new Error('Storage permission not granted for catalog download');
     }
     const files = [entry.file, ...(entry.extras ?? [])];
-    for (const file of files) {
+    // 单次预扫描驱动「存储守卫 + 去重」（2026-08-22 Box 清单项 4 收口2 + 项 5）：
+    // 生图下载链此前只查权限、不查存储——klein ~7GB 级套件入库前必须先挂存储闸门。
+    // 增量判定 = 未存在文件总和（共享文件 TE zimage_llm.gguf 被 Z-Image/klein 共用，
+    // 已存在则不占新空间，避免"已装 Z-Image 再装 klein"被总量误杀）。单一路径，不双扫。
+    const pending = await (async () => {
+      const list: {
+        file: CatalogFile;
+        destinationPath: string;
+        exists: boolean;
+      }[] = [];
+      for (const file of files) {
+        const destDir =
+          file.dir === 'dreamlite' ? `${AIOS_ROOT}/dreamlite` : AIOS_MODELS_DIR;
+        const destinationPath = `${destDir}/${file.name}`;
+        let exists = false;
+        try {
+          exists = await RNFS.exists(destinationPath);
+        } catch {
+          exists = false;
+        }
+        list.push({file, destinationPath, exists});
+      }
+      return list;
+    })();
+    const pendingBytes = pending
+      .filter(f => !f.exists)
+      .reduce((sum, f) => sum + f.file.sizeBytes, 0);
+    if (pendingBytes > 0) {
+      const freeBytes = await DeviceInfo.getFreeDiskStorage('important');
+      if (pendingBytes > freeBytes) {
+        throw new Error(
+          `Insufficient storage for catalog suite: need ${Math.ceil(
+            pendingBytes / 1073741824,
+          )}GB, free ${Math.round(freeBytes / 1073741824)}GB`,
+        );
+      }
+    }
+    for (const {file, destinationPath, exists} of pending) {
+      if (exists) {
+        // 去重：共享文件已存在则跳过重下，显式日志不静默（不做哈希校验——
+        // 哈希为不存在的损坏场景兜底，锋利：不预支成本）
+        console.log(
+          `[ModelStore] 复用已存在共享文件，跳过下载: ${file.name}`,
+        );
+        continue;
+      }
       const resolved = resolveFileSource(file, entry, source);
       if (!resolved) {
         throw new Error(
           `No download source for catalog file: ${entryId}/${file.name}`,
         );
       }
-      const destDir =
-        file.dir === 'dreamlite' ? `${AIOS_ROOT}/dreamlite` : AIOS_MODELS_DIR;
-      const destinationPath = `${destDir}/${file.name}`;
       const stub = this.catalogFileStub(entry, file, resolved);
       const authToken =
         resolved.source === 'hf' && hfStore.shouldUseToken
@@ -1222,26 +1275,35 @@ class ModelStore {
       // inactive → background: release if enabled
       // Skip for remote models — no native context to release, and
       // releaseContext() would clear the engine with no reload path.
+      // 夜间长任务模式（§7.1）：生图/视频任务进行中不释放——
+      // releaseContext 会释放 image 引擎互斥槽，与长任务抢内存。
       if (
         this.isAutoReleaseEnabled &&
         this.activeModelId &&
-        this.activeModel?.origin !== ModelOrigin.REMOTE
+        this.activeModel?.origin !== ModelOrigin.REMOTE &&
+        !nightTaskRegistry.isBusy
       ) {
         console.log('Inactive → Background: Auto-releasing context');
         this.markAutoReleased(this.activeModelId);
         await this.releaseContext();
+      } else if (nightTaskRegistry.isBusy) {
+        console.log('Inactive → Background: night task active, keep context');
       }
     } else if (this.appState === 'active' && nextAppState === 'background') {
       // active → background: release if enabled (direct transition)
       // Skip for remote models — same reason as above.
+      // 夜间长任务模式（§7.1）：同 inactive 分支，任务进行中不释放。
       if (
         this.isAutoReleaseEnabled &&
         this.activeModelId &&
-        this.activeModel?.origin !== ModelOrigin.REMOTE
+        this.activeModel?.origin !== ModelOrigin.REMOTE &&
+        !nightTaskRegistry.isBusy
       ) {
         console.log('Active → Background: Auto-releasing context');
         this.markAutoReleased(this.activeModelId);
         await this.releaseContext();
+      } else if (nightTaskRegistry.isBusy) {
+        console.log('Active → Background: night task active, keep context');
       }
     }
 

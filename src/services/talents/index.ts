@@ -43,7 +43,7 @@ function createSearchAccess(): SearchAccess {
   return {
     getActiveProvider: () => {
       const id = searchProviderStore.activeProviderId;
-      return createSearchProvider(id, () => searchProviderStore.getKey(id));
+      return createSearchProvider(id);
     },
     canSearch: () => searchProviderStore.canSearch,
     getResultCount: () => searchProviderStore.resultCount,
@@ -103,6 +103,16 @@ export function deriveToolSchemas(talentNames?: string[]): ToolDefinition[] {
  * Fragments are folded into the single leading system message by
  * `assembleMessages`; a talent never emits its own system message.
  */
+
+/**
+ * 全局工具重试纪律（WORKSPACE_TOOL_ERROR_FEEDBACK_SPEC §3.3）：
+ * 工具失败必先修正重试；同一工具连续失败 2 次才可放弃并如实说明。
+ * 失败历史由模型上下文的 role:'tool' 错误消息天然可数，不新增计数状态机。
+ */
+export const TOOL_RETRY_DISCIPLINE =
+  'When a tool returns an error, retry with corrected arguments per the error guidance instead of giving up. ' +
+  'Only after the same tool has failed twice in a row may you skip it; then state honestly in your final answer what was skipped and why.';
+
 export function collectSystemPromptFragments(
   talentNames: string[],
   ctx: Omit<SystemPromptContext, 'activeTalents'>,
@@ -110,11 +120,12 @@ export function collectSystemPromptFragments(
   registerDefaultTalents();
   const wanted = new Set(talentNames);
   const engineCtx: SystemPromptContext = {...ctx, activeTalents: wanted};
-  return talentRegistry
+  const fragments = talentRegistry
     .getAll()
     .filter(engine => wanted.has(engine.name))
     .map(engine => engine.systemPromptFragment?.(engineCtx))
     .filter((fragment): fragment is string => !!fragment && !!fragment.trim());
+  return talentNames.length > 0 ? [...fragments, TOOL_RETRY_DISCIPLINE] : fragments;
 }
 
 /**

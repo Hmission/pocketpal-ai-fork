@@ -56,7 +56,8 @@ export class WebSearchEngine implements TalentEngine {
       return {
         type: 'error',
         summary: `web_search: ${provider.id} not enabled`,
-        errorMessage: `Internet search is not enabled. Accept the disclosure and set an API key for ${provider.id} in Settings → Internet Search.`,
+        errorMessage:
+          'Internet search is not enabled. Enable it in Settings → Internet Search.',
       };
     }
 

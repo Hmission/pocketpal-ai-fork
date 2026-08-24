@@ -170,28 +170,11 @@
     "serverTypeHelp": "Dikesan secara automatik; tukar jika salah.",
     "internetSearch": {
       "title": "Carian Internet",
-      "description": "Biarkan Pals mencari di web dengan alat mereka sendiri. Bawa kunci API anda sendiri — PocketPal tidak sekali-kali menyimpan kunci atau menghalakan pertanyaan anda.",
-      "providerLabel": "Penyedia carian",
-      "providerGated": "Akan datang",
-      "keyLabel": "Kunci API",
-      "keyIsSet": "Kunci telah ditetapkan untuk {{provider}}.",
-      "keyNotSet": "Tiada kunci ditetapkan untuk {{provider}}.",
-      "setKeyButton": "Tetapkan Kunci",
-      "updateKeyButton": "Kemas Kini Kunci",
-      "clearKeyButton": "Kosongkan Kunci",
-      "keyInputPlaceholder": "Tampalkan kunci API {{provider}} anda",
-      "keyUpdateError": "Tidak dapat mengemas kini kunci. Sila cuba lagi.",
-      "showKeyAccessibilityLabel": "Papar kunci API",
-      "hideKeyAccessibilityLabel": "Sembunyikan kunci API",
+      "description": "Carian terbina dalam (Bing + Wikipedia) — tiada kunci API diperlukan, berfungsi apabila peranti dalam talian.",
       "resultCountLabel": "Bilangan hasil setiap carian",
       "resultCountDescription": "Lebih sedikit hasil mengekalkan lebih banyak ruang dalam konteks model.",
-      "consentTitle": "Carian meninggalkan peranti anda",
-      "consentDescription": "Apabila Pal mencari di web, pertanyaan anda dihantar ke penyedia yang dipilih melalui internet. Apabila Pal membaca sesuatu halaman, URL dan kandungan halaman mungkin dihantar ke perkhidmatan pembaca lalai (r.jina.ai) sebaliknya jika penyedia yang dipilih tiada pembaca natif. Kunci dan pertanyaan tidak sekali-kali dihantar ke PocketPal.",
-      "consentAccept": "Saya faham",
-      "consentRequired": "Terima pendedahan di atas untuk menetapkan kunci dan mendayakan carian.",
-      "consentGivenTitle": "Carian web telah didayakan",
-      "consentGivenDescription": "Pertanyaan dan bacaan halaman mungkin meninggalkan peranti anda seperti yang diterangkan di atas.",
-      "consentRevoke": "Batalkan"
+      "enableLabel": "Benarkan carian web",
+      "enableDescription": "Apabila Pal mencari, pertanyaan anda dihantar ke Bing dan Wikipedia. Apabila Pal membaca halaman, URL dan kandungannya dihantar ke r.jina.ai. Pertanyaan tidak pernah dihantar ke aplikasi."
     },
     "languageSheetTitle": "Bahasa",
     "languageSearchPlaceholder": "Cari bahasa",
@@ -871,8 +854,8 @@
         "render_html": "Paparkan dokumen HTML secara sebaris dalam sembang",
         "calculate": "Nilaikan ungkapan matematik",
         "datetime": "Dapatkan tarikh dan masa semasa",
-        "web_search": "Cari di internet untuk maklumat terkini (memerlukan kunci API dalam Tetapan)",
-        "read_url": "Baca keseluruhan kandungan sesuatu halaman web (memerlukan kunci API dalam Tetapan)"
+        "web_search": "Cari maklumat terkini di internet (terbina dalam, tiada kunci API diperlukan)",
+        "read_url": "Baca kandungan penuh halaman web (terbina dalam, tiada kunci API diperlukan)"
       },
       "greeting": {
         "sectionLabel": "Sapaan",

@@ -1,0 +1,8 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<!-- 创造工坊（v5.3 重绘）：画笔 × 扳手 X 交叉（大王裁定：工具工坊语义，替代音符构图）
+     构图：画笔沿主对角线（左下→右上，笔杆+笔尖），扳手沿副对角线（左上→右下，手柄+C形开口弯头），
+     两笔交叉于画布中心 (12,12)，四象限各占一角，互不侵入对方主体 -->
+<path d="M4 20L12 12" stroke="#333333" stroke-width="2" stroke-linecap="round"/>
+<path d="M12 12L15.8 8.2L17 9.6L13.5 10.5" stroke="#333333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M4 4L13.6 13.6L16 13.6A2.4 2.4 0 0 1 16 18.4L13.6 18.4" stroke="#333333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

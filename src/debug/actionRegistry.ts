@@ -17,6 +17,12 @@ import * as RNFS from '@dr.pogodin/react-native-fs';
 import {SRStyle} from '../services/superResEngine';
 import {chatSessionStore, modelStore} from '../store';
 import {imageGenStore} from '../store/imageGenStore';
+import {audioStore} from '../store/audioStore';
+import {transcribeFile} from '../services/asrEngine';
+import {TtsGenEngineId} from '../services/ttsEngine';
+import {KOKORO_VOICES} from '../services/tts/engines/kokoro/voices';
+import {SUPERTONIC_VOICES} from '../services/tts/engines/supertonic/voices';
+import {KITTEN_VOICES} from '../services/tts/engines/kitten/voices';
 import {AIOS_EVENTS_LOG} from '../utils/paths';
 import {DrcDomain} from './drcTypes';
 import {emit} from './eventStream';
@@ -227,7 +233,8 @@ export const drcActions: Record<string, DrcActionDef> = {
   'imagegen.generateDreamLite': {
     id: 'imagegen.generateDreamLite',
     domain: 'imagegen',
-    description: 'DreamLite 文生图（4 步 DMD2 蒸馏；未加载时自动加载）',
+    description:
+      'DreamLite 文生图（4 步 DMD2 蒸馏；未加载时自动加载）——与 UI「出图」按钮同链路：走 beginTask/finishTask 编排（建 running 任务页 + PerfPanel 进度卡可达），非 raw 引擎直调',
     paramsSchema: z.object({
       prompt: z.string().min(1),
       width: z.number().int().min(64).max(2048).optional(),
@@ -241,15 +248,43 @@ export const drcActions: Record<string, DrcActionDef> = {
         height?: number;
         steps?: number;
       };
+      const width = p.width ?? 512;
+      const height = p.height ?? 512;
+      const steps = p.steps ?? 4;
+      // 与 UI「出图」按钮（handleGenerate isDream 分支）同链路：
+      // 先建 running 任务页（PerfPanel 进度卡可达）→ 生成 → 成功回填 / 失败保留报错页。
+      // 消除「同语义双链路」（§75.5 DRC 缺陷根治，DRC_SPEC §9「与用户点按钮同链路」铁律）。
+      const startTs = Date.now();
+      const taskId = await imageGenStore.beginTask({
+        uri: '',
+        prompt: p.prompt,
+        seed: Date.now() % 1e9,
+        ts: Date.now(),
+        width,
+        height,
+        steps,
+        family: 'dreamlite',
+        kind: 'generated',
+        modelLabel: 'DreamLite',
+      });
       const uri = await imageGenStore.generateDreamLiteEntry(
-        p.width ?? 512,
-        p.height ?? 512,
-        p.steps ?? 4,
+        width,
+        height,
+        steps,
         p.prompt,
       );
       if (!uri) {
+        await imageGenStore.failTask(
+          taskId,
+          '生成失败',
+          imageGenStore.error ??
+            'DreamLite 生成失败（详见事件流 imagegen.failed）',
+        );
         throw new Error(imageGenStore.error ?? 'DreamLite 生成失败');
       }
+      await imageGenStore.finishTask(taskId, uri, {
+        durationMs: Date.now() - startTs,
+      });
       return {uri};
     },
   },
@@ -339,6 +374,97 @@ export const drcActions: Record<string, DrcActionDef> = {
     execute: async () => {
       await modelStore.manualReleaseContext();
       return {unloaded: true};
+    },
+  },
+
+  'audio.generateTts': {
+    id: 'audio.generateTts',
+    domain: 'audio',
+    description: 'TTS 音频生成（与音频工坊「生成音频」按钮同链路：audioStore.generateTask）',
+    paramsSchema: z.object({
+      engine: z.enum(['kokoro', 'supertonic', 'kitten']).default('kokoro'),
+      text: z.string().min(1).max(20000),
+      voiceId: z.string().optional(),
+      speed: z.number().min(0.5).max(2).optional(),
+      numSteps: z.number().int().min(1).max(20).optional(),
+    }),
+    execute: async params => {
+      const p = params as {
+        engine?: 'kokoro' | 'supertonic' | 'kitten';
+        text: string;
+        voiceId?: string;
+        speed?: number;
+        numSteps?: number;
+      };
+      const engine = p.engine ?? 'kokoro';
+      const voices =
+        engine === 'kokoro'
+          ? KOKORO_VOICES
+          : engine === 'supertonic'
+          ? SUPERTONIC_VOICES
+          : KITTEN_VOICES;
+      const voice =
+        voices.find(v => v.id === p.voiceId) ?? voices[0] ?? null;
+      if (!voice) {
+        throw new Error(`${engine} 音色列表为空`);
+      }
+      const out = await audioStore.generateTask(engine, p.text, voice, {
+        speed: p.speed ?? 1.0,
+        numSteps: p.numSteps ?? 5,
+      });
+      if (!out) {
+        throw new Error(audioStore.ttsError ?? 'TTS 生成失败');
+      }
+      return {generated: true, text: p.text, voiceId: voice.id, uri: out};
+    },
+  },
+
+  'audio.transcribe': {
+    id: 'audio.transcribe',
+    domain: 'audio',
+    description: '转写 wav 音频文件（SenseVoice，任务化入画廊 kind=transcribe）',
+    paramsSchema: z.object({
+      path: z.string().min(1),
+    }),
+    execute: async params => {
+      const {path} = params as {path: string};
+      const text = await audioStore.transcribeTask(path);
+      if (!text) {
+        throw new Error(audioStore.asrError ?? '转写失败（详见事件流）');
+      }
+      return {text};
+    },
+  },
+
+  'audio.ttsGenerate': {
+    id: 'audio.ttsGenerate',
+    domain: 'audio',
+    description: '生成音频文件（TTS 合成 wav，任务化入画廊 kind=tts）',
+    paramsSchema: z.object({
+      engine: z.enum(['kokoro', 'supertonic']),
+      text: z.string().min(1),
+      voiceId: z.string().min(1),
+      speed: z.number().min(0.5).max(2).optional(),
+      numSteps: z.number().int().min(1).max(20).optional(),
+    }),
+    execute: async params => {
+      const p = params as {
+        engine: TtsGenEngineId;
+        text: string;
+        voiceId: string;
+        speed?: number;
+        numSteps?: number;
+      };
+      const out = await audioStore.generateTask(
+        p.engine,
+        p.text,
+        {id: p.voiceId, name: p.voiceId, engine: p.engine},
+        {speed: p.speed, numSteps: p.numSteps},
+      );
+      if (!out) {
+        throw new Error(audioStore.ttsError ?? '生成失败（详见事件流）');
+      }
+      return {uri: out};
     },
   },
 

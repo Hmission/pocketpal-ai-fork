@@ -24,6 +24,7 @@ import {
   resolveSystemMessages,
 } from '../utils/systemPromptResolver';
 import {extractAndSaveMemories} from '../services/aiosMemory';
+import {RECALL_DISCLAIMER} from '../services/aiosMemory/searchEngine';
 import {assembleContext} from '../services/aiosMemory/contextAssembler';
 import {getLastRecallInfo} from '../services/aiosMemory/contextAssembler';
 import {getLastWriteTime} from '../services/aiosMemory/conversationLog';
@@ -194,7 +195,9 @@ const prepareCompletion = async ({
     consumePendingWorkspaceContext()?.frameworkText,
   );
   const recalledFragment = assembled.recalledFragments.length
-    ? '\n【召回的历史片段】(参考，别全部复述):\n' +
+    ? '\n' +
+      RECALL_DISCLAIMER +
+      '\n' +
       assembled.recalledFragments.join('\n---\n')
     : '';
   const effectiveSystem = assembled.systemPrompt

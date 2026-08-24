@@ -34,7 +34,6 @@ import {
   Menu,
   Divider,
   HFTokenSheet,
-  SearchProviderKeySheet,
   InputSlider,
 } from '../../components';
 
@@ -43,7 +42,6 @@ import {useTheme, useStaggerEntry} from '../../hooks';
 import {createStyles} from './styles';
 
 import {modelStore, uiStore, hfStore, searchProviderStore} from '../../store';
-import type {SearchProviderId} from '../../services/search/types';
 
 import {CacheType} from '../../utils/types';
 import {
@@ -86,13 +84,6 @@ export const GenerationSettingsScreen: React.FC = observer(() => {
   const [showKeyCacheMenu, setShowKeyCacheMenu] = useState(false);
   const [showValueCacheMenu, setShowValueCacheMenu] = useState(false);
   const [showHfTokenDialog, setShowHfTokenDialog] = useState(false);
-  const [showSearchProviderMenu, setShowSearchProviderMenu] = useState(false);
-  const [searchProviderAnchor, setSearchProviderAnchor] = useState<{
-    x: number;
-    y: number;
-  }>({x: 0, y: 0});
-  const [showSearchKeySheet, setShowSearchKeySheet] = useState(false);
-  const searchProviderButtonRef = useRef<View>(null);
   const [gpuSupported, setGpuSupported] = useState(false);
   const [keyCacheAnchor, setKeyCacheAnchor] = useState<{x: number; y: number}>({
     x: 0,
@@ -290,20 +281,7 @@ export const GenerationSettingsScreen: React.FC = observer(() => {
     );
   };
 
-  const handleSearchProviderPress = () => {
-    searchProviderButtonRef.current?.measure(
-      (x, y, width, height, pageX, pageY) => {
-        setSearchProviderAnchor({x: pageX, y: pageY + height});
-        setShowSearchProviderMenu(true);
-      },
-    );
-  };
-
-  const activeSearchProvider = searchProviderStore.providers.find(
-    p => p.id === searchProviderStore.activeProviderId,
-  );
-  const activeSearchProviderId = searchProviderStore.activeProviderId;
-  const searchHasConsent = searchProviderStore.hasConsentedToSearch;
+  const searchEnabled = searchProviderStore.hasConsentedToSearch;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
@@ -989,137 +967,26 @@ export const GenerationSettingsScreen: React.FC = observer(() => {
                     {l10n.settings.internetSearch.description}
                   </Text>
 
-                  {/* First-enable consent gate / revoke affordance */}
-                  {!searchHasConsent ? (
-                    <View
-                      testID="internet-search-consent"
-                      style={styles.consentContainer}>
-                      <Text variant="titleMedium" style={styles.textLabel}>
-                        {l10n.settings.internetSearch.consentTitle}
-                      </Text>
-                      <Text variant="labelSmall" style={styles.textDescription}>
-                        {l10n.settings.internetSearch.consentDescription}
-                      </Text>
-                      <Button
-                        testID="internet-search-consent-accept"
-                        mode="contained"
-                        onPress={() => searchProviderStore.setConsent(true)}
-                        style={styles.consentButton}>
-                        {l10n.settings.internetSearch.consentAccept}
-                      </Button>
-                    </View>
-                  ) : (
-                    <View
-                      testID="internet-search-consent-given"
-                      style={styles.consentContainer}>
-                      <Text variant="titleMedium" style={styles.textLabel}>
-                        {l10n.settings.internetSearch.consentGivenTitle}
-                      </Text>
-                      <Text variant="labelSmall" style={styles.textDescription}>
-                        {l10n.settings.internetSearch.consentGivenDescription}
-                      </Text>
-                      <Button
-                        testID="internet-search-consent-revoke"
-                        mode="outlined"
-                        onPress={() => searchProviderStore.setConsent(false)}
-                        style={styles.consentButton}>
-                        {l10n.settings.internetSearch.consentRevoke}
-                      </Button>
-                    </View>
-                  )}
-
-                  {/* Provider picker */}
+                  {/* Privacy kill-switch — on by default, no key needed */}
                   <Divider style={styles.divider} />
                   <View style={styles.switchContainer}>
                     <View style={styles.textContainer}>
                       <Text variant="titleMedium" style={styles.textLabel}>
-                        {l10n.settings.internetSearch.providerLabel}
+                        {l10n.settings.internetSearch.enableLabel}
+                      </Text>
+                      <Text
+                        variant="labelSmall"
+                        style={styles.textDescription}>
+                        {l10n.settings.internetSearch.enableDescription}
                       </Text>
                     </View>
-                    <View style={styles.menuContainer}>
-                      <Button
-                        ref={searchProviderButtonRef}
-                        testID="search-provider-selector-button"
-                        mode="outlined"
-                        onPress={handleSearchProviderPress}
-                        style={styles.menuButton}
-                        contentStyle={styles.buttonContent}
-                        icon={({size, color}) => (
-                          <Icon
-                            source="chevron-down"
-                            size={size}
-                            color={color}
-                          />
-                        )}>
-                        {activeSearchProvider?.label ?? activeSearchProviderId}
-                      </Button>
-                      <Menu
-                        visible={showSearchProviderMenu}
-                        onDismiss={() => setShowSearchProviderMenu(false)}
-                        anchor={searchProviderAnchor}
-                        selectable>
-                        {searchProviderStore.providers.map(provider => (
-                          <Menu.Item
-                            key={provider.id}
-                            testID={`search-provider-option-${provider.id}`}
-                            disabled={!provider.selectable}
-                            style={styles.menu}
-                            label={
-                              provider.selectable
-                                ? provider.label
-                                : `${provider.label} (${l10n.settings.internetSearch.providerGated})`
-                            }
-                            selected={provider.id === activeSearchProviderId}
-                            onPress={() => {
-                              searchProviderStore.setActiveProvider(
-                                provider.id as SearchProviderId,
-                              );
-                              setShowSearchProviderMenu(false);
-                            }}
-                          />
-                        ))}
-                      </Menu>
-                    </View>
-                  </View>
-
-                  {/* Per-provider BYOK key entry */}
-                  <Divider style={styles.divider} />
-                  <View style={styles.switchContainer}>
-                    <View style={styles.textContainer}>
-                      <Text variant="titleMedium" style={styles.textLabel}>
-                        {l10n.settings.internetSearch.keyLabel}
-                      </Text>
-                      <Text variant="labelSmall" style={styles.textDescription}>
-                        {searchProviderStore.hasKey(activeSearchProviderId)
-                          ? t(l10n.settings.internetSearch.keyIsSet, {
-                              provider:
-                                activeSearchProvider?.label ??
-                                activeSearchProviderId,
-                            })
-                          : t(l10n.settings.internetSearch.keyNotSet, {
-                              provider:
-                                activeSearchProvider?.label ??
-                                activeSearchProviderId,
-                            })}
-                      </Text>
-                      {!searchHasConsent && (
-                        <Text
-                          variant="labelSmall"
-                          style={styles.textDescription}>
-                          {l10n.settings.internetSearch.consentRequired}
-                        </Text>
-                      )}
-                    </View>
-                    <Button
-                      testID="search-provider-key-button"
-                      mode="outlined"
-                      disabled={!searchHasConsent}
-                      onPress={() => setShowSearchKeySheet(true)}
-                      style={styles.menuButton}>
-                      {searchProviderStore.hasKey(activeSearchProviderId)
-                        ? l10n.settings.internetSearch.updateKeyButton
-                        : l10n.settings.internetSearch.setKeyButton}
-                    </Button>
+                    <Switch
+                      testID="internet-search-enable-switch"
+                      value={searchEnabled}
+                      onValueChange={value =>
+                        searchProviderStore.setConsent(value)
+                      }
+                    />
                   </View>
 
                   {/* Result-count control */}
@@ -1352,12 +1219,6 @@ export const GenerationSettingsScreen: React.FC = observer(() => {
         isVisible={showHfTokenDialog}
         onDismiss={() => setShowHfTokenDialog(false)}
         onSave={() => setShowHfTokenDialog(false)}
-      />
-      <SearchProviderKeySheet
-        isVisible={showSearchKeySheet}
-        providerId={activeSearchProviderId}
-        providerLabel={activeSearchProvider?.label ?? activeSearchProviderId}
-        onDismiss={() => setShowSearchKeySheet(false)}
       />
     </SafeAreaView>
   );

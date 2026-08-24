@@ -313,7 +313,15 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
   //  （cross-attn 值域 ±1e4，Adreno fp16 累积溢出）→ 按模型区分：
   //  Z-Image 双禁用（DISABLE=1 保精度 + XMEM=0：xmem 零拷贝致 VAE 解码内存峰值被杀）。
   const char* model_path_cstr = env->GetStringUTFChars(modelPath, nullptr);
-  bool zimage_model = model_path_cstr != nullptr && strstr(model_path_cstr, "z_image") != nullptr;
+  // 08-22 Box 清单项 1 收口（补丁→单点）：Qwen-TE flow-matching 同族判定。
+  // z_image / flux_klein 同为「DiT + Qwen3-4B TE（llm_path 拆分）+ flow matching
+  // + Adreno fp16 累积溢出风险」——采样值域/累积特性同构，必须同组 OpenCL 治理
+  // （DISABLE_ADRENO_KERNELS=1 + XMEM 真关）。原 strstr("z_image") 单串嗅探漏掉
+  // klein → 并入。引擎侧 sd.cpp 张量自动识别 VERSION_FLUX2_KLEIN，无需按名分支。
+  bool qwen_flow_family =
+      model_path_cstr != nullptr &&
+      (strstr(model_path_cstr, "z_image") != nullptr ||
+       strstr(model_path_cstr, "flux_klein") != nullptr);
   env->ReleaseStringUTFChars(modelPath, model_path_cstr);
   if (isMaliGpu()) {
     // 08-20 Mali 支持（红米平板）：Mali 走通用 fp32 路径。
@@ -321,7 +329,7 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
     // xmem 要求 gpu_family==ADRENO，Mali 天然不启用（unset 保持干净）。
     setenv("GGML_OPENCL_DISABLE_ADRENO_KERNELS", "1", 1);
     unsetenv("GGML_OPENCL_ADRENO_XMEM_GEMM");
-  } else if (zimage_model) {
+  } else if (qwen_flow_family) {
     setenv("GGML_OPENCL_DISABLE_ADRENO_KERNELS", "1", 1);
     // 08-20 定稿（feat/zimage-xmem-tiled-verify 实测）：XMEM 必须 unset（真关）。
     // 代码事实：xmem 只看 env 存在性（getenv != nullptr），值 0/1 等效——旧"XMEM=0"从未真正关闭。
@@ -378,8 +386,15 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
   // 探测核数（big.LITTLE 取上限 6 避免小核竞争），fallback 4
   unsigned int hw = std::thread::hardware_concurrency();
   params.n_threads = hw ? std::min(hw, 6u) : 4;
-  params.wtype = SD_TYPE_Q4_K;
-  params.enable_mmap = true;
+  // 08-23 FLUX.2 Klein 修复：拆分式（llm_path 非空 = z_image / flux_klein 家族，模型全为
+  // 已量化 GGUF）→ 保留原生量化，不要强制 wtype=Q4_K 触发逐张量双重量化。
+  // 根因：tensor_should_be_converted 不检查源张量是否已量化，klein Q4_0 全部被单线程
+  // ggml_quantize_chunk 重量化为 Q4_K，K90 实测 28 分钟 / 2.46GB（z_image 原生 Q4_K 免转换仅 333s），
+  // 且 4 步蒸馏模型对权重精度极敏感，Q4_0→Q4_K 双重量化累积误差把 4 步去噪压成周期性纹理。
+  // 单文件（SDXL Turbo 等 f16 safetensors）保留 Q4_K 强制转换以贴合显存。
+  const bool is_split_model = !llm.empty() || !clip_l.empty() || !clip_g.empty();
+  params.wtype             = is_split_model ? SD_TYPE_COUNT : SD_TYPE_Q4_K;
+  params.enable_mmap       = true;
   // P2 后端决策：backend 由 manifest defaults 透传（RN → Kotlin → JNI 一条数据流），
   // JNI 不决策。空则用引擎默认（sd_ctx_params_init 清零 → backend null → CPU）。
   // 单后端无 fallback：Vulkan 挂机风险由 JS 侧 120s 无事件超时判定兜底（干净失败）。

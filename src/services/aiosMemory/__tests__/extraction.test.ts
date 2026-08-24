@@ -67,6 +67,12 @@ describe('aiosMemory 提取（P2 v2 语义）', () => {
         expect(system).toContain('严格排除');
         expect(system).toContain('女妖自己的发言与自述');
         expect(system).toContain('宁缺勿滥');
+        // v3（2026-08-23 三闸·闸1）：排除清单含瞬时状态/时效内容/失败记录三类
+        expect(system).toContain('瞬时状态');
+        expect(system).toContain('时效内容');
+        expect(system).toContain('失败记录');
+        // fact 定义收严：长期稳定（跨天仍成立）
+        expect(system).toContain('跨天仍成立');
         onData({token: '{"memories":[]}'});
       },
     );

@@ -22,6 +22,13 @@ import {
   AiosMemory,
 } from './index';
 
+// ---- 召回免责前缀（2026-08-23 三闸·闸2）----
+// 历史片段注入统一语义：可能已过时，仅作背景参考，防模型把旧记忆当当前事实。
+// 消费方：useChatSession + butlerContext（同构收口，防分叉）。
+// 依据：.qoder/specs/记忆时效性三闸治理方案_task-3g4.md 闸2
+export const RECALL_DISCLAIMER =
+  '【召回的历史片段】(以下是历史记录，可能已过时，仅作背景参考，不得当作当前事实):';
+
 // ---- FTS5 \u5c42 ----
 let fts5Available = false;
 let searchAdapter: any = null;

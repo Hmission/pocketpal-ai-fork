@@ -100,7 +100,8 @@ export class AdventureStateEngine implements TalentEngine {
         return {
           type: 'error',
           summary: `冒险状态写入失败：${(e as Error)?.message ?? '未知错误'}`,
-          errorMessage: 'WRITE_FAILED',
+          // WORKSPACE_TOOL_ERROR_FEEDBACK_SPEC §3.6：禁止吞错，错误是模型自纠原料
+          errorMessage: `WRITE_FAILED: ${(e as Error)?.message ?? 'unknown'}`,
         };
       }
     }

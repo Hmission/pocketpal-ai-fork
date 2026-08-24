@@ -111,4 +111,68 @@ describe('actionRegistry', () => {
       executeAction('imagegen.generateDreamLite', {prompt: ''}),
     ).rejects.toThrow();
   });
+
+  // G1（§77）：DRC generateDreamLite 与 UI「出图」同链路——走 beginTask/finishTask 编排，
+  // 而非 raw generateDreamLiteEntry 直调（§75.5 缺陷根治）。
+  it('imagegen.generateDreamLite 走编排：先建 running 任务页 + 成功回填', async () => {
+    const {imageGenStore} = require('../../store/imageGenStore');
+    const beginTask = jest
+      .spyOn(imageGenStore, 'beginTask')
+      .mockResolvedValue('task-drc-1');
+    const genEntry = jest
+      .spyOn(imageGenStore, 'generateDreamLiteEntry')
+      .mockResolvedValue('file://out.png');
+    const finishTask = jest
+      .spyOn(imageGenStore, 'finishTask')
+      .mockResolvedValue(undefined);
+
+    const data = await executeAction('imagegen.generateDreamLite', {
+      prompt: 'a red apple',
+      width: 256,
+      height: 256,
+      steps: 4,
+    });
+
+    expect(data).toMatchObject({uri: 'file://out.png'});
+    // 编排：先建 running 任务页（PerfPanel 进度卡可达）
+    expect(beginTask).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt: 'a red apple',
+        width: 256,
+        height: 256,
+        steps: 4,
+        family: 'dreamlite',
+        kind: 'generated',
+      }),
+    );
+    expect(genEntry).toHaveBeenCalledWith(256, 256, 4, 'a red apple');
+    expect(finishTask).toHaveBeenCalledWith(
+      'task-drc-1',
+      'file://out.png',
+      expect.objectContaining({durationMs: expect.any(Number)}),
+    );
+  });
+
+  it('imagegen.generateDreamLite 生成失败：failTask 保留报错页', async () => {
+    const {imageGenStore} = require('../../store/imageGenStore');
+    (imageGenStore as any).error = 'DreamLite: engine boom';
+    const beginTask = jest
+      .spyOn(imageGenStore, 'beginTask')
+      .mockResolvedValue('task-drc-2');
+    const genEntry = jest
+      .spyOn(imageGenStore, 'generateDreamLiteEntry')
+      .mockResolvedValue(null);
+    const failTask = jest
+      .spyOn(imageGenStore, 'failTask')
+      .mockResolvedValue(undefined);
+
+    await expect(
+      executeAction('imagegen.generateDreamLite', {prompt: 'x'}),
+    ).rejects.toThrow('DreamLite: engine boom');
+    expect(failTask).toHaveBeenCalledWith(
+      'task-drc-2',
+      '生成失败',
+      'DreamLite: engine boom',
+    );
+  });
 });

@@ -17,6 +17,7 @@ import {createStyles} from '../styles';
 import {GeneratedImage} from '../../../store/imageGenStore';
 import {ZoomableImage} from './ZoomableImage';
 import {AlertTriangleMdIcon} from '../../../assets/icons';
+import {PerfPanel} from './PerfPanel';
 
 interface ResultPreviewProps {
   /** 横向分页 FlatList ref（编排层持有，用于 scrollToOffset） */
@@ -122,8 +123,9 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
   // 反推结果卡展开态（组件内局部状态；翻页重置）
   const [captionExpanded, setCaptionExpanded] = React.useState(false);
 
-  // 进度卡内容（running 任务页与编辑态 overlay 共用）
-  const progressBody = (title: string) => (
+  // 进度卡内容（running 任务页与编辑态 overlay 共用；
+  // showPerf：仅 running 任务页展示跑分面板（ADR-0008），overlay 叠图模式不展示）
+  const progressBody = (title: string, showPerf = false) => (
     <>
       {/* 三点波浪呼吸 */}
       <View style={s.genDotsRow}>
@@ -169,6 +171,7 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
           ▸ {stage}
         </Text>
       ) : null}
+      {showPerf ? <PerfPanel /> : null}
     </>
   );
 
@@ -232,7 +235,7 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
                 </View>
               </>
             ) : (
-              progressBody(title)
+              progressBody(title, true)
             )}
           </View>
         </View>
@@ -280,47 +283,28 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
       );
     }
 
-    // success：图片 + 信息条；caption 任务追加反推结果卡 + 专属操作条
+    // success：图片 + 信息条；caption 任务整卡切换为提示词产物卡（v5，产物区规则）
     const isCaptionItem = item.kind === 'caption';
     return (
       <View style={{width: pageW}}>
-        <TouchableOpacity onPress={onOpenFullscreen}>
-          <Image
-            source={{uri: item.uri}}
-            style={[s.preview, {width: pageW}]}
-            resizeMode="contain"
-          />
-        </TouchableOpacity>
-        {/* 信息条：预览图顶部胶囊（居中收窄 + 表面色半透明，弱化干扰）；点击弹完整参数 */}
-        <View style={s.infoOverlayWrap} pointerEvents="box-none">
-          <TouchableOpacity
-            style={s.infoOverlay}
-            activeOpacity={0.7}
-            onPress={() => onInfoPress(item)}>
-            <Text style={s.infoOverlayText} numberOfLines={1}>
-              {isCaptionItem
-                ? ['反推', item.modelLabel, item.durationMs != null ? `${(item.durationMs / 1000).toFixed(1)}s` : null]
-                    .filter(Boolean)
-                    .join(' · ')
-                : item.kind !== 'upload'
-                  ? [
-                      item.modelLabel,
-                      item.durationMs != null
-                        ? `${(item.durationMs / 1000).toFixed(1)}s`
-                        : null,
-                      `${item.width}×${item.height}`,
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')
-                  : `上传图 · ${item.width}×${item.height}`}
-            </Text>
-          </TouchableOpacity>
-        </View>
         {isCaptionItem ? (
-          <>
-            {/* 反推结果卡（v4，IMAGEGEN_UI_SPEC §7.2）：✨ 反推提示词全文可展开 */}
+          <View style={[s.captionFullPage, {width: pageW}]}>
+            {/* 顶部 banner 胶囊：反推来源（点击弹参数详情 + 回填） */}
+            <View style={s.infoOverlayWrap} pointerEvents="box-none">
+              <TouchableOpacity
+                style={s.infoOverlay}
+                activeOpacity={0.7}
+                onPress={() => onInfoPress(item)}>
+                <Text style={s.infoOverlayText} numberOfLines={1}>
+                  {['反推', item.modelLabel, item.durationMs != null ? `${(item.durationMs / 1000).toFixed(1)}s` : null]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            {/* 提示词产物主体：默认 3 行折叠 + 展开收起 */}
             <TouchableOpacity
-              style={s.captionCard}
+              style={s.captionFullBody}
               activeOpacity={0.8}
               onPress={() => setCaptionExpanded(v => !v)}>
               <Text style={s.captionCardTitle}>✨ 反推提示词</Text>
@@ -333,6 +317,7 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
                 {captionExpanded ? '收起 ▲' : '展开 ▼'}
               </Text>
             </TouchableOpacity>
+            {/* 操作行：复制 / 复刻生图 / 删除 */}
             <View style={s.actionRow}>
               <TouchableOpacity
                 style={[s.actionBtn, s.actionSave]}
@@ -350,8 +335,39 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
                 <Text style={s.actionTextOnDanger}>删除</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        ) : (
+          <>
+            <TouchableOpacity onPress={onOpenFullscreen}>
+              <Image
+                source={{uri: item.uri}}
+                style={[s.preview, {width: pageW}]}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+            {/* 信息条：预览图顶部胶囊（居中收窄 + 表面色半透明，弱化干扰）；点击弹完整参数 */}
+            <View style={s.infoOverlayWrap} pointerEvents="box-none">
+              <TouchableOpacity
+                style={s.infoOverlay}
+                activeOpacity={0.7}
+                onPress={() => onInfoPress(item)}>
+                <Text style={s.infoOverlayText} numberOfLines={1}>
+                  {item.kind !== 'upload'
+                    ? [
+                        item.modelLabel,
+                        item.durationMs != null
+                          ? `${(item.durationMs / 1000).toFixed(1)}s`
+                          : null,
+                        `${item.width}×${item.height}`,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')
+                    : `上传图 · ${item.width}×${item.height}`}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </>
-        ) : null}
+        )}
       </View>
     );
   };

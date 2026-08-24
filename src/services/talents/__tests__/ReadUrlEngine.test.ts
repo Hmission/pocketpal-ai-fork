@@ -6,7 +6,7 @@ import {allowReadUrls, resetReadUrlAllowlist} from '../readUrlAllowlist';
 
 const makeAccess = (overrides: Partial<SearchAccess> = {}): SearchAccess => {
   const provider: SearchProvider = {
-    id: 'tavily',
+    id: 'builtin',
     search: jest.fn().mockResolvedValue([]),
   };
   return {
@@ -39,7 +39,7 @@ describe('ReadUrlEngine', () => {
       title: 'Page',
       text: 'full page body',
     } as PageContent);
-    const provider: SearchProvider = {id: 'exa', search: jest.fn(), read};
+    const provider: SearchProvider = {id: 'builtin', search: jest.fn(), read};
     const access = makeAccess({getActiveProvider: () => provider});
     const result = await new ReadUrlEngine(access).execute({
       url: 'https://e.com/p',
@@ -56,7 +56,7 @@ describe('ReadUrlEngine', () => {
     const readWithDefaultReader = jest
       .fn()
       .mockResolvedValue({url: 'https://e.com/x', text: 'jina body'});
-    const provider: SearchProvider = {id: 'brave', search: jest.fn()};
+    const provider: SearchProvider = {id: 'builtin', search: jest.fn()};
     const access = makeAccess({
       getActiveProvider: () => provider,
       readWithDefaultReader,
@@ -74,7 +74,7 @@ describe('ReadUrlEngine', () => {
     const read = jest
       .fn()
       .mockResolvedValue({url: 'https://e.com/p', text: longBody});
-    const provider: SearchProvider = {id: 'exa', search: jest.fn(), read};
+    const provider: SearchProvider = {id: 'builtin', search: jest.fn(), read};
     const engine = new ReadUrlEngine(
       makeAccess({getActiveProvider: () => provider}),
     );
@@ -106,7 +106,7 @@ describe('ReadUrlEngine', () => {
 
   it('errors when consent is absent even with a key (canSearch=false), before any fetch', async () => {
     const read = jest.fn();
-    const provider: SearchProvider = {id: 'exa', search: jest.fn(), read};
+    const provider: SearchProvider = {id: 'builtin', search: jest.fn(), read};
     const access = makeAccess({
       getActiveProvider: () => provider,
       canSearch: () => false,
@@ -128,12 +128,15 @@ describe('ReadUrlEngine', () => {
     'rejects a non-http(s) or credentialed URL before any fetch (%s)',
     async badUrl => {
       const read = jest.fn();
-      const provider: SearchProvider = {id: 'exa', search: jest.fn(), read};
+      const provider: SearchProvider = {id: 'builtin', search: jest.fn(), read};
       const access = makeAccess({getActiveProvider: () => provider});
       const result = await new ReadUrlEngine(access).execute({url: badUrl});
       expect(result.type).toBe('error');
       if (result.type === 'error') {
         expect(result.summary).toMatch(/only http/i);
+        // WORKSPACE_TOOL_ERROR_FEEDBACK_SPEC §3.4：非 http(s) 错误带导航 shot
+        expect(result.guide).toContain('https://example.com/page');
+        expect(result.guide).toContain('read_section');
       }
       expect(read).not.toHaveBeenCalled();
     },
@@ -145,7 +148,7 @@ describe('ReadUrlEngine', () => {
       title: 'Page',
       text: 'full page body',
     } as PageContent);
-    const provider: SearchProvider = {id: 'exa', search: jest.fn(), read};
+    const provider: SearchProvider = {id: 'builtin', search: jest.fn(), read};
     const access = makeAccess({getActiveProvider: () => provider});
     const result = await new ReadUrlEngine(access).execute({
       url: 'https://e.com/p',
@@ -158,7 +161,7 @@ describe('ReadUrlEngine', () => {
 
   it('returns an error result when the reader throws', async () => {
     const provider: SearchProvider = {
-      id: 'exa',
+      id: 'builtin',
       search: jest.fn(),
       read: jest.fn().mockRejectedValue(new Error('timed out')),
     };
@@ -177,7 +180,7 @@ describe('ReadUrlEngine', () => {
   describe('allowlist enforcement (prompt-injection exfil guard)', () => {
     it('rejects a URL that no search returned and no user wrote, before any fetch', async () => {
       const read = jest.fn();
-      const provider: SearchProvider = {id: 'exa', search: jest.fn(), read};
+      const provider: SearchProvider = {id: 'builtin', search: jest.fn(), read};
       const access = makeAccess({getActiveProvider: () => provider});
       const result = await new ReadUrlEngine(access).execute({
         url: 'https://evil.example.net/?q=conversation-secret',
@@ -191,7 +194,7 @@ describe('ReadUrlEngine', () => {
 
     it('rejects an allowlisted URL mutated with extra query data', async () => {
       const read = jest.fn();
-      const provider: SearchProvider = {id: 'exa', search: jest.fn(), read};
+      const provider: SearchProvider = {id: 'builtin', search: jest.fn(), read};
       const access = makeAccess({getActiveProvider: () => provider});
       const result = await new ReadUrlEngine(access).execute({
         url: 'https://e.com/p?leak=secret',
@@ -208,7 +211,7 @@ describe('ReadUrlEngine', () => {
         url: 'https://e.com/p',
         text: 'body',
       } as PageContent);
-      const provider: SearchProvider = {id: 'exa', search: jest.fn(), read};
+      const provider: SearchProvider = {id: 'builtin', search: jest.fn(), read};
       const access = makeAccess({getActiveProvider: () => provider});
       const result = await new ReadUrlEngine(access).execute({
         url: 'https://e.com/p#conversation-secret',
@@ -225,7 +228,7 @@ describe('ReadUrlEngine', () => {
         url: 'https://fresh.example.org/a',
         text: 'body',
       } as PageContent);
-      const provider: SearchProvider = {id: 'exa', search: jest.fn(), read};
+      const provider: SearchProvider = {id: 'builtin', search: jest.fn(), read};
       const access = makeAccess({getActiveProvider: () => provider});
       const engine = new ReadUrlEngine(access);
 

@@ -3,10 +3,10 @@ doc_id: DRC_COMPASS_REGISTRY
 module: root
 type: registry
 status: active
-version: "1.0"
+version: "1.2"
 created: "2026-08-19"
-updated: "2026-08-19"
-relates: [DRC_SPEC, COMPASS_SYSTEM_SSOT, STATE_COMPASS_ENGINE_SELF_NAVIGATION_SSOT]
+updated: "2026-08-23"
+relates: [DRC_SPEC, COMPASS_SYSTEM_SSOT, STATE_COMPASS_ENGINE_SELF_NAVIGATION_SSOT, WORKSPACE_TOOL_ERROR_FEEDBACK_SPEC, ONDEVICE_VIDEO_GEN_ANALYSIS]
 ---
 
 <!-- D-FORMAT:v3 -->
@@ -39,6 +39,9 @@ relates: [DRC_SPEC, COMPASS_SYSTEM_SSOT, STATE_COMPASS_ENGINE_SELF_NAVIGATION_SS
 | CP-APP-006 | ERR_ / 生图失败 / txt2img | 检查 manifest 模型族、LoRA 路径、seed 复现 | docs/POCKETPAL_IMAGE_GEN_UPGRADE_PLAN.md | ✅ 已落地 |
 | CP-APP-007 | 反推失败 / caption 失败 / 视觉模型未加载 | 检查 Qwen3.5+mmproj 在机（MODEL_MATRIX #3/#4）；engineMutex chat 槽释放后重试 | docs/IMAGEGEN_UI_SPEC.md §7（v4） | ✅ 已登记（2026-08-21） |
 | CP-APP-008 | 转写失败 / ASR 失败 / 录音权限 | 检查 SenseVoice 模型在机（MODEL_MATRIX §2.2 A1）；RECORD_AUDIO 权限引导；重试转写 | docs/POCKETPAL_AUDIO_UI_SPEC.md | ✅ 已登记（2026-08-21） |
+| CP-APP-009 | 工具调用错误 / tool.error / 工具返回 error | 按错误回传中的 guide（正确调用示例）修正参数后重试；同一工具连续失败 2 次才可放弃，并在最终回答中如实说明 | docs/workspace/WORKSPACE_TOOL_ERROR_FEEDBACK_SPEC.md · src/services/agent/AgentRunner.ts | ✅ 已登记（2026-08-22） |
+| CP-APP-010 | VIDEO_TASK_START_FAILED / 前台服务启动失败 / WakeLock / 夜间任务被杀 | 检查 FOREGROUND_SERVICE + FOREGROUND_SERVICE_DATA_SYNC 权限与 service 声明（targetSdk 36 需 foregroundServiceType）；查 logcat 是否被 PSS 看护/内存配额杀（压内存优先于白名单，见 ONDEVICE_VIDEO §7.1） | android/app/.../VideoTaskServiceModule.kt · AndroidManifest.xml · docs/ONDEVICE_VIDEO_GEN_ANALYSIS.md §7.1 | ✅ 已登记（2026-08-23） |
+| CP-APP-011 | TTS 模型未安装完整 / sample_rate does not exist / 生成噪音 | 检查 TTS 模型下载源是否为 sherpa 兼容源（kokoro 需 metadata+tokens.txt、kitten 需 sherpa 官方 v0.1 生成链四件套）；**kitten 生成链下载已补齐（§81，Phase 2 动态枚举 espeak）**，新装机经下载链即可齐备；kokoro 换源=降版本（v1.0→v0.19）+ fork/sherpa 双链耦合，裁定不动，生成链靠 sherpaConvert 下载后转换兜底 | src/services/tts/constants.ts · src/services/tts/engines/kitten/index.ts · docs/internal/POCKETPAL_MODIFICATION_MASTER_LOG.md §74.5/§81 | ✅ 已登记（2026-08-23） |
 
 ## 3. 状态指南针（ST-APP-NNN）
 
@@ -88,6 +91,17 @@ relates: [DRC_SPEC, COMPASS_SYSTEM_SSOT, STATE_COMPASS_ENGINE_SELF_NAVIGATION_SS
 | speaking | await_playback | 朗读中 | false |
 | error | investigate_and_retry | 音频错误 | true |
 
+### 3.3.2 nighttask 域（2026-08-23 夜间长任务模式）
+
+| state | nextAction | label | terminal |
+|---|---|---|---|
+| idle | start_night_task | 无夜间任务 | true |
+| running | await_task_done | 夜间任务运行中（前台服务 + WakeLock） | false |
+| stopping | await_release | 任务结束释放中 | false |
+| error | investigate_and_retry | 夜间任务异常（前台服务/WakeLock） | true |
+
+> 实现：`nightTaskRegistry.isBusy`（JS 侧单一事实源）+ 原生 `VideoTaskService.isRunning`（调试旁证）。事件流 domain 复用 `imagegen`/`system`，不新增 domain 枚举（BT05 稳定）。
+
 ### 3.4 model 域
 
 | state | nextAction | label | terminal |
@@ -108,6 +122,7 @@ relates: [DRC_SPEC, COMPASS_SYSTEM_SSOT, STATE_COMPASS_ENGINE_SELF_NAVIGATION_SS
 |---|---|---|---|
 | workspace.writing_doc | WritingDocEngine 写动作（init/append/update 等） | {action, project} | 工作区恢复链路/日志 |
 | workspace.adventure_state | AdventureStateEngine read/append 多文档动作 | {action, doc} | 冒险多文档日志 |
+| chat.tool.error | AgentRunner.executeOne 工具错误分支 | {tool, errorMessage, hasGuide} | 工具失败复盘取证（模型自纠链路观测） |
 
 - 格式指南针三字段：定位（触发点）→ 导航（恢复链路）→ 深入（WORKSPACE_SPEC §六）。
 - 玩具域无新事件：toyChest 既有落盘链路不迁移。

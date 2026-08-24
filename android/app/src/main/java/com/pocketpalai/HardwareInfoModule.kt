@@ -14,6 +14,7 @@ import javax.microedition.khronos.egl.EGLContext
 import javax.microedition.khronos.egl.EGLDisplay
 import android.app.ActivityManager
 import android.content.Context
+import android.os.Process
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -292,6 +293,221 @@ class HardwareInfoModule(reactContext: ReactApplicationContext) :
       }
     } catch (e: Throwable) {
       0L
+    }
+  }
+
+  // ── ADR-0008 跑分面板：1Hz 性能快照（PSS/CPU/温度）──
+  // PSS 与 HyperOS 看护硬杀同口径（pss threshold:6291456kb 实测）——
+  // 跑分看到的就是系统判死刑的线。
+  // PERF_BENCHMARK_DESIGN P1（2026-08-23）：扩 6 指标——CPU/GPU 频率、
+  // GPU 负载、温度分区（cpu/gpu）、功耗（power_supply）。全部 sysfs 探测 +
+  // 路径缓存 + N/A(-1) 降级，不抛错不阻塞主链路。
+  private var lastCpuNs = 0L
+  private var lastWallMs = 0L
+
+  // GPU sysfs 路径探测缓存（首次快照探测一次，之后复用；null = 不可用）
+  private var gpuBusyPath: String? = null
+  private var gpuFreqPath: String? = null
+  private var gpuPathProbed = false
+
+  /** 探测 GPU 负载/频率 sysfs 节点：Adreno kgsl 优先，次选 devfreq（Mali/MTK） */
+  private fun probeGpuPaths() {
+    if (gpuPathProbed) return
+    gpuPathProbed = true
+    // 1. Adreno（Qualcomm kgsl）：gpubusy = "busy total" 两列；gpuclk 单位 Hz
+    val kgsl = File("/sys/class/kgsl/kgsl-3d0")
+    if (kgsl.isDirectory) {
+      val busy = File(kgsl, "gpubusy")
+      if (busy.exists()) {
+        gpuBusyPath = busy.absolutePath
+        val freq = File(kgsl, "gpuclk").takeIf { it.exists() }
+          ?: File(kgsl, "devfreq/cur_freq").takeIf { it.exists() }
+        freq?.let { gpuFreqPath = it.absolutePath }
+        return
+      }
+    }
+    // 2. devfreq（Mali/MTK）：节点名含 "gpu"；load/utilisation 为纯百分比格式
+    val devfreq = File("/sys/class/devfreq")
+    val gpuNode = try {
+      devfreq.listFiles()?.firstOrNull { it.name.contains("gpu", ignoreCase = true) }
+    } catch (_: Throwable) {
+      null
+    }
+    if (gpuNode != null) {
+      // 仅接受纯数字百分比格式（"@ busy" 周期格式无法归一，诚实降级 N/A）
+      val load = listOf("load", "utilisation", "gpu_load")
+        .map { File(gpuNode, it) }
+        .firstOrNull { it.exists() }
+      if (load != null) {
+        val raw = try { load.readText().trim() } catch (_: Throwable) { "" }
+        val v = raw.toLongOrNull()
+        if (v != null && v in 0..100) {
+          gpuBusyPath = load.absolutePath
+        }
+      }
+      val freq = File(gpuNode, "cur_freq")
+      if (freq.exists()) {
+        gpuFreqPath = freq.absolutePath
+      }
+    }
+  }
+
+  /** GPU 负载%（Adreno gpubusy 两列比值 / devfreq 纯百分比）；-1 = N/A */
+  private fun readGpuLoadPct(): Double {
+    probeGpuPaths()
+    val path = gpuBusyPath ?: return -1.0
+    return try {
+      val raw = File(path).readText().trim()
+      val parts = raw.split(Regex("\\s+"))
+      when {
+        // Adreno gpubusy："busy total" → 比值
+        parts.size >= 2 -> {
+          val busy = parts[0].toLongOrNull() ?: return -1.0
+          val total = parts[1].toLongOrNull() ?: return -1.0
+          if (total > 0L) (busy.toDouble() / total.toDouble() * 100.0).coerceIn(0.0, 100.0) else -1.0
+        }
+        // devfreq 纯百分比
+        parts.size == 1 -> {
+          val v = parts[0].toDoubleOrNull() ?: return -1.0
+          if (v in 0.0..100.0) v else -1.0
+        }
+        else -> -1.0
+      }
+    } catch (_: Throwable) {
+      -1.0
+    }
+  }
+
+  /** GPU 频率 MHz（kgsl gpuclk / devfreq cur_freq，单位 Hz）；-1 = N/A */
+  private fun readGpuFreqMhz(): Double {
+    probeGpuPaths()
+    val path = gpuFreqPath ?: return -1.0
+    return try {
+      val hz = File(path).readText().trim().toLongOrNull() ?: return -1.0
+      if (hz > 0L) hz / 1_000_000.0 else -1.0
+    } catch (_: Throwable) {
+      -1.0
+    }
+  }
+
+  /** 大核当前频率 MHz（scaling_cur_freq 取最大，代表当前性能档）；-1 = N/A */
+  private fun readCurCpuFreqMhz(): Double {
+    return try {
+      var maxKhz = 0L
+      val coreCount = Runtime.getRuntime().availableProcessors().coerceIn(1, 16)
+      for (core in 0 until coreCount) {
+        val node = File("/sys/devices/system/cpu/cpu$core/cpufreq/scaling_cur_freq")
+        if (!node.exists()) continue
+        node.readText().trim().toLongOrNull()?.let { if (it > maxKhz) maxKhz = it }
+      }
+      if (maxKhz > 0L) maxKhz / 1000.0 else -1.0
+    } catch (_: Throwable) {
+      -1.0
+    }
+  }
+
+  /** 按类型关键字读 thermal_zone 分区温度（type 含 keyword 的最大有效值）；-1 = N/A */
+  private fun readThermalTempByTypeC(keyword: String): Double {
+    return try {
+      val zones = File("/sys/class/thermal")
+        .listFiles { f -> f.name.startsWith("thermal_zone") }
+        ?: return -1.0
+      var max = -1.0
+      for (zone in zones) {
+        val typeNode = File(zone, "type")
+        val tempNode = File(zone, "temp")
+        if (!typeNode.exists() || !tempNode.exists()) continue
+        val type = try { typeNode.readText().trim().lowercase() } catch (_: Throwable) { continue }
+        if (!type.contains(keyword)) continue
+        val raw = tempNode.readText().trim().toDoubleOrNull() ?: continue
+        val celsius = raw / 1000.0
+        if (celsius > 0.0 && celsius <= 150.0 && celsius > max) {
+          max = celsius
+        }
+      }
+      max
+    } catch (_: Throwable) {
+      -1.0
+    }
+  }
+
+  /** 功耗 mW（battery current_now[μA] × voltage_now[μV] / 1e9）；
+   *  读数异常（>60W 或 ≤0）或不可读 → -1 N/A（部分 OEM 拦截 sysfs） */
+  private fun readPowerMw(): Double {
+    return try {
+      val base = File("/sys/class/power_supply/battery")
+      val curUa = File(base, "current_now").readText().trim().toDoubleOrNull() ?: return -1.0
+      val voltUv = File(base, "voltage_now").readText().trim().toDoubleOrNull() ?: return -1.0
+      val mw = kotlin.math.abs(curUa) * kotlin.math.abs(voltUv) / 1_000_000_000.0
+      if (mw > 0.0 && mw <= 60_000.0) mw else -1.0
+    } catch (_: Throwable) {
+      -1.0
+    }
+  }
+
+  override fun getPerfSnapshot(promise: Promise) {
+    try {
+      val snapshot = Arguments.createMap()
+
+      // PSS：优先 totalPss（与看护口径一致）；低版本回退 Debug.getPss()
+      val pssKb = try {
+        val m = Debug.MemoryInfo()
+        Debug.getMemoryInfo(m)
+        m.totalPss.toLong()
+      } catch (_: Throwable) {
+        Debug.getPss().toLong()
+      }
+      snapshot.putDouble("pssKb", pssKb.toDouble())
+      snapshot.putDouble("rssKb", readVmRssKb().toDouble())
+
+      // CPU：本进程 CPU 时间差分 / 墙钟（单核百分比，多核可超 100）
+      val nowNs = Process.getElapsedCpuTime()
+      val nowMs = System.currentTimeMillis()
+      val cpuPct = if (lastCpuNs > 0L && nowMs > lastWallMs) {
+        val wallDelta = (nowMs - lastWallMs) * 1_000_000L
+        if (wallDelta > 0L) {
+          (nowNs - lastCpuNs).toDouble() / wallDelta.toDouble() * 100.0
+        } else 0.0
+      } else 0.0
+      lastCpuNs = nowNs
+      lastWallMs = nowMs
+      snapshot.putDouble("cpuPct", cpuPct)
+
+      // 温度：thermal_zone 最大有效值（毫摄氏度 → ℃）；-1 = N/A
+      snapshot.putDouble("tempC", readMaxThermalTempC())
+      // P1 扩展指标（sysfs 探测 + N/A(-1) 降级，详见 PERF_BENCHMARK_DESIGN §3.2）
+      snapshot.putDouble("cpuFreqMhz", readCurCpuFreqMhz())
+      snapshot.putDouble("gpuLoadPct", readGpuLoadPct())
+      snapshot.putDouble("gpuFreqMhz", readGpuFreqMhz())
+      snapshot.putDouble("tempCpuC", readThermalTempByTypeC("cpu"))
+      snapshot.putDouble("tempGpuC", readThermalTempByTypeC("gpu"))
+      snapshot.putDouble("powerMw", readPowerMw())
+
+      promise.resolve(snapshot)
+    } catch (e: Exception) {
+      promise.reject("ERROR", e.message)
+    }
+  }
+
+  private fun readMaxThermalTempC(): Double {
+    return try {
+      val zones = File("/sys/class/thermal")
+        .listFiles { f -> f.name.startsWith("thermal_zone") }
+        ?: return -1.0
+      var max = -1.0
+      for (zone in zones) {
+        val node = File(zone, "temp")
+        if (!node.exists()) continue
+        val raw = node.readText().trim().toDoubleOrNull() ?: continue
+        val celsius = raw / 1000.0
+        // 过滤无效读数（0 与 >150℃ 视为不可信）
+        if (celsius > 0.0 && celsius <= 150.0 && celsius > max) {
+          max = celsius
+        }
+      }
+      max
+    } catch (e: Throwable) {
+      -1.0
     }
   }
 

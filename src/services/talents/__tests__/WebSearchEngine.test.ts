@@ -13,7 +13,7 @@ const hit = (overrides: Partial<SearchHit> = {}): SearchHit => ({
 
 const makeAccess = (overrides: Partial<SearchAccess> = {}): SearchAccess => {
   const provider: SearchProvider = {
-    id: 'tavily',
+    id: 'builtin',
     search: jest.fn().mockResolvedValue([hit()]),
   };
   return {
@@ -38,7 +38,7 @@ describe('WebSearchEngine', () => {
 
   it('returns a structured search result of budgeted hits on success', async () => {
     const provider: SearchProvider = {
-      id: 'tavily',
+      id: 'builtin',
       search: jest
         .fn()
         .mockResolvedValue([
@@ -69,7 +69,7 @@ describe('WebSearchEngine', () => {
 
   it('errors when consent is absent even though a key is present (canSearch=false)', async () => {
     const search = jest.fn().mockResolvedValue([hit()]);
-    const provider: SearchProvider = {id: 'tavily', search};
+    const provider: SearchProvider = {id: 'builtin', search};
     const access = makeAccess({
       getActiveProvider: () => provider,
       canSearch: () => false,
@@ -81,7 +81,7 @@ describe('WebSearchEngine', () => {
 
   it('wraps the result menu in untrusted-data markers', async () => {
     const provider: SearchProvider = {
-      id: 'tavily',
+      id: 'builtin',
       search: jest.fn().mockResolvedValue([hit({title: 'Mars'})]),
     };
     const access = makeAccess({getActiveProvider: () => provider});
@@ -94,7 +94,7 @@ describe('WebSearchEngine', () => {
 
   it('returns an error result on no results', async () => {
     const provider: SearchProvider = {
-      id: 'tavily',
+      id: 'builtin',
       search: jest.fn().mockResolvedValue([]),
     };
     const access = makeAccess({getActiveProvider: () => provider});
@@ -110,7 +110,7 @@ describe('WebSearchEngine', () => {
 
   it('returns an error result when the provider throws (timeout/transport)', async () => {
     const provider: SearchProvider = {
-      id: 'tavily',
+      id: 'builtin',
       search: jest.fn().mockRejectedValue(new Error('timed out')),
     };
     const access = makeAccess({getActiveProvider: () => provider});
@@ -147,7 +147,7 @@ describe('WebSearchEngine', () => {
 
   it('serves a second identical query from the in-session cache (no network)', async () => {
     const search = jest.fn().mockResolvedValue([hit()]);
-    const provider: SearchProvider = {id: 'tavily', search};
+    const provider: SearchProvider = {id: 'builtin', search};
     const access = makeAccess({getActiveProvider: () => provider});
     const engine = new WebSearchEngine(access);
     await engine.execute({query: 'mars'});
@@ -160,7 +160,7 @@ describe('WebSearchEngine', () => {
       .fn()
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([hit({title: 'Mars'})]);
-    const provider: SearchProvider = {id: 'tavily', search};
+    const provider: SearchProvider = {id: 'builtin', search};
     const access = makeAccess({getActiveProvider: () => provider});
     const engine = new WebSearchEngine(access);
 
@@ -184,7 +184,7 @@ describe('WebSearchEngine', () => {
       .fn()
       .mockResolvedValueOnce([hit({url: longUrl})])
       .mockResolvedValueOnce([hit({title: 'Mars', url: 'https://m.com'})]);
-    const provider: SearchProvider = {id: 'tavily', search};
+    const provider: SearchProvider = {id: 'builtin', search};
     const access = makeAccess({getActiveProvider: () => provider});
     const engine = new WebSearchEngine(access);
 
@@ -198,7 +198,7 @@ describe('WebSearchEngine', () => {
 
   it('anchors recency by stamping the retrieval date in the results header', async () => {
     const provider: SearchProvider = {
-      id: 'tavily',
+      id: 'builtin',
       search: jest.fn().mockResolvedValue([hit({title: 'Mars'})]),
     };
     const access = makeAccess({getActiveProvider: () => provider});
@@ -213,7 +213,7 @@ describe('WebSearchEngine', () => {
 
   it('formats each hit as a markdown bullet (title/date/snippet/url, no numbering)', async () => {
     const provider: SearchProvider = {
-      id: 'tavily',
+      id: 'builtin',
       search: jest.fn().mockResolvedValue([
         hit({
           title: 'Mars',
@@ -240,7 +240,7 @@ describe('WebSearchEngine', () => {
 
   it('falls back to the URL as the title and omits the snippet line when empty', async () => {
     const provider: SearchProvider = {
-      id: 'tavily',
+      id: 'builtin',
       search: jest
         .fn()
         .mockResolvedValue([
@@ -260,7 +260,7 @@ describe('WebSearchEngine', () => {
     const allowlist = require('../readUrlAllowlist');
     allowlist.resetReadUrlAllowlist();
     const provider: SearchProvider = {
-      id: 'tavily',
+      id: 'builtin',
       search: jest
         .fn()
         .mockResolvedValue([hit({url: 'https://found.example.com/a'})]),
@@ -279,7 +279,7 @@ describe('WebSearchEngine', () => {
     const spy = jest.spyOn(budget, 'setCachedHits');
     const oversized = 'x'.repeat(5000);
     const provider: SearchProvider = {
-      id: 'tavily',
+      id: 'builtin',
       search: jest.fn().mockResolvedValue([hit({snippet: oversized})]),
     };
     const access = makeAccess({getActiveProvider: () => provider});

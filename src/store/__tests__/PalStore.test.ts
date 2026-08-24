@@ -422,7 +422,86 @@ describe('PalStore', () => {
       expect(pip).toBeDefined();
       expect(pip?.type).toBe('local');
       expect(pip?.defaultModel).toBeUndefined();
+      // 基础工具集五件套（含 web_search）随 Pip 创建声明，开箱即用。
+      expect(pip?.pact?.schemaVersion).toBe(3);
+      expect(pip?.pact?.talents.map(t => t.name)).toEqual([
+        'web_search',
+        'read_url',
+        'calculate',
+        'datetime',
+        'render_html',
+      ]);
       expect(palRepository.createPal).toHaveBeenCalledTimes(1);
+    });
+
+    it('reconciles a legacy Pip (no pact) by diff-union of the base toolset', async () => {
+      const legacyPip: Pal = {
+        ...mockPal,
+        id: 'pip-legacy',
+        name: 'Pip',
+        source: 'local',
+        type: 'local',
+      } as any;
+      runInAction(() => {
+        palStore.pals = [legacyPip];
+      });
+      (palRepository.updatePal as jest.Mock).mockImplementation(
+        async (_id: string, updates: any) => ({
+          ...legacyPip,
+          ...updates,
+        }),
+      );
+
+      await callInitializePipPal();
+
+      expect(palRepository.updatePal).toHaveBeenCalledTimes(1);
+      const [, updates] = (palRepository.updatePal as jest.Mock).mock
+        .calls[0];
+      expect(updates.pact.schemaVersion).toBe(3);
+      expect(updates.pact.talents.map((t: {name: string}) => t.name)).toEqual([
+        'web_search',
+        'read_url',
+        'calculate',
+        'datetime',
+        'render_html',
+      ]);
+    });
+
+    it('does not resurrect tools a user turned off (diff-union, not reset)', async () => {
+      const pipWithPartialTools: Pal = {
+        ...mockPal,
+        id: 'pip-partial',
+        name: 'Pip',
+        source: 'local',
+        type: 'local',
+        pact: {
+          talents: [{name: 'web_search', necessity: 'optional'}],
+          schemaVersion: 2,
+        },
+      } as any;
+      runInAction(() => {
+        palStore.pals = [pipWithPartialTools];
+      });
+      (palRepository.updatePal as jest.Mock).mockImplementation(
+        async (_id: string, updates: any) => ({
+          ...pipWithPartialTools,
+          ...updates,
+        }),
+      );
+
+      await callInitializePipPal();
+
+      const [, updates] = (palRepository.updatePal as jest.Mock).mock
+        .calls[0];
+      const names = updates.pact.talents.map((t: {name: string}) => t.name);
+      expect(names).toContain('web_search');
+      expect(names).toEqual([
+        'web_search',
+        'read_url',
+        'calculate',
+        'datetime',
+        'render_html',
+      ]);
     });
 
     it('is a no-op when Pip is already present', async () => {
@@ -448,6 +527,10 @@ describe('PalStore', () => {
         source: 'local',
         type: 'local',
         defaultModel: boundModel,
+        pact: {
+          talents: [{name: 'web_search', necessity: 'optional'}],
+          schemaVersion: 3,
+        },
       } as any;
       runInAction(() => {
         palStore.pals = [existingPip];

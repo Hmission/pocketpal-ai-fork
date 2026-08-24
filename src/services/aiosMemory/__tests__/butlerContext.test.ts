@@ -17,6 +17,9 @@ jest.mock('../index', () => ({
 }));
 jest.mock('../searchEngine', () => ({
   searchMemory: jest.fn(),
+  // 三闸·闸2（2026-08-23）：召回免责前缀真实值，验证消费方拼接语义
+  RECALL_DISCLAIMER:
+    '【召回的历史片段】(以下是历史记录，可能已过时，仅作背景参考，不得当作当前事实):',
 }));
 
 const mockToday = buildTodayState as jest.Mock;
@@ -38,6 +41,9 @@ describe('buildButlerContext', () => {
     expect(ctx).toContain('【今日状态】2026-08-21 星期五');
     expect(ctx).toContain('【你对大王的记忆】');
     expect(ctx).toContain('【召回的历史片段】');
+    // 三闸·闸2：召回前缀含时效免责语义（历史可能已过时，不得当作当前事实）
+    expect(ctx).toContain('可能已过时');
+    expect(ctx).toContain('不得当作当前事实');
     expect(ctx).toContain('【当前状态：闲聊】');
     expect(ctx.indexOf('今日状态')).toBeLessThan(ctx.indexOf('你对大王的记忆'));
     expect(ctx.indexOf('你对大王的记忆')).toBeLessThan(

@@ -70,7 +70,8 @@ export type DrcDomain =
   | 'model'
   | 'engine'
   | 'error'
-  | 'system';
+  | 'system'
+  | 'audio';
 
 /**
  * 状态指南针五字段（母仓 STATE_COMPASS 同构，六维矩阵 D5 态维度）：

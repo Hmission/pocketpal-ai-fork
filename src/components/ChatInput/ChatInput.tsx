@@ -6,6 +6,9 @@ import {
   Animated,
   TouchableOpacity,
   Alert,
+  NativeModules,
+  PermissionsAndroid,
+  Platform,
   ScrollView,
   Image,
 } from 'react-native';
@@ -35,6 +38,7 @@ import {createStyles} from './styles';
 import {chatSessionStore, modelStore, palStore} from '../../store';
 import {promptWriter} from '../../services/promptWriter';
 import {imageGenStore} from '../../store/imageGenStore';
+import {audioStore} from '../../store/audioStore';
 
 import {MessageType} from '../../utils/types';
 import {L10nContext, UserContext} from '../../utils';
@@ -315,12 +319,48 @@ export const ChatInput = observer(
       };
     }, []);
 
-    // 语音按钮：录音中点击=停止（保留已识别文字）；空闲点击=开始识别
-    const handleVoiceToggle = () => {
+    // 语音按钮：SenseVoice 已就绪 → 本地录音→本地转写（离线，B33）；否则回退系统识别。
+    // localAsrRef 标记本次会话走本地录音（stop 时区分停止路径，避免异步 state 竞态）。
+    const localAsrRef = React.useRef(false);
+    const handleVoiceToggle = async () => {
       if (isListening) {
-        Voice.stop().catch(() => {});
         setIsListening(false);
+        if (localAsrRef.current) {
+          localAsrRef.current = false;
+          try {
+            const p = await NativeModules.AudioRecord.stopRecording();
+            if (p) {
+              const text = await audioStore.transcribeTask(p);
+              if (text) {
+                handleChangeText(text);
+              }
+            }
+          } catch (e) {
+            console.warn('[ChatInput] local ASR stop failed:', e);
+          }
+        } else {
+          Voice.stop().catch(() => {});
+        }
         return;
+      }
+      // 本地优先：SenseVoice 模型就绪时走离线识别链路
+      if (audioStore.asrState === 'ready') {
+        try {
+          if (Platform.OS === 'android') {
+            const granted = await PermissionsAndroid.request(
+              PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+            );
+            if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+              return;
+            }
+          }
+          await NativeModules.AudioRecord.startRecording();
+          localAsrRef.current = true;
+          setIsListening(true);
+          return;
+        } catch (e) {
+          console.warn('[ChatInput] local ASR start failed, fallback to system:', e);
+        }
       }
       Voice.start(undefined, {
         EXTRA_LANGUAGE_MODEL: 'LANGUAGE_MODEL_FREE_FORM',
@@ -532,9 +572,9 @@ export const ChatInput = observer(
       user &&
       !isVideoCapable && // Hide send button for video-capable pals
       (sendButtonVisibilityMode === 'always' || value.trim());
-    // 语音输入按钮：输入为空且系统识别服务可用时顶替发送钮；一打字即变回发送
+    // 语音输入按钮：输入为空时顶替发送钮；系统识别服务可用或本地 ASR（SenseVoice）就绪均可显示；一打字即变回发送
     const showVoiceButton =
-      isVoiceSupported &&
+      (isVoiceSupported || audioStore.asrState === 'ready') &&
       user &&
       !isVideoCapable &&
       !isCameraActive &&

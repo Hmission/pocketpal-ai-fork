@@ -11,7 +11,7 @@
  */
 import {buildMemoryFragment} from './index';
 import {buildTodayState, intentGuidance, IntentKind} from './rituals';
-import {searchMemory} from './searchEngine';
+import {searchMemory, RECALL_DISCLAIMER} from './searchEngine';
 
 export async function buildButlerContext(
   userText: string,
@@ -29,7 +29,7 @@ export async function buildButlerContext(
   const recalled = await searchMemory(userText, 3);
   if (recalled.length > 0) {
     parts.push(
-      '【召回的历史片段】(参考，别全部复述):\n' + recalled.join('\n---\n'),
+      RECALL_DISCLAIMER + '\n' + recalled.join('\n---\n'),
     );
   }
   const guidance = intentGuidance(intent);

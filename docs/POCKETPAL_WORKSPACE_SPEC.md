@@ -3,10 +3,10 @@ doc_id: POCKETPAL_WORKSPACE_SPEC
 module: root
 type: spec
 status: active
-version: "1.0"
+version: "1.1"
 created: "2026-08-21"
-updated: "2026-08-21"
-relates: [POCKETPAL_PRODUCT_SPEC, POCKETPAL_ADVENTURE_SPEC, POCKETPAL_PLAY_SPEC, POCKETPAL_CONTEXT_COMPACTION_SPEC]
+updated: "2026-08-22"
+relates: [POCKETPAL_PRODUCT_SPEC, POCKETPAL_ADVENTURE_SPEC, POCKETPAL_PLAY_SPEC, POCKETPAL_CONTEXT_COMPACTION_SPEC, WORKSPACE_TOOL_ERROR_FEEDBACK_SPEC]
 ---
 
 <!-- D-FORMAT:v3 -->
@@ -142,3 +142,4 @@ src/services/workspace/docStore.ts，文档以 `## 标题` 分节（markdown）�
 - [TRPG 城主玩法](./POCKETPAL_ADVENTURE_SPEC.md)（spec，P12）
 - [玩具工坊玩法](./POCKETPAL_PLAY_SPEC.md)（spec，P8）
 - [上下文压缩 SPEC](./POCKETPAL_CONTEXT_COMPACTION_SPEC.md)（spec，B19.1）
+- [工具错误回传协议](./workspace/WORKSPACE_TOOL_ERROR_FEEDBACK_SPEC.md)（spec，2026-08-22：错误回传三字段 + 重试纪律 + guide 契约）

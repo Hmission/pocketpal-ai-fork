@@ -152,6 +152,101 @@ describe('runAgent', () => {
     expect((finished[0] as any).outcome.responseContent).toBe('4');
   });
 
+  it('#2b error outcome with guide → responseContent carries the navigation shot', async () => {
+    const engine = makeScriptedEngine({
+      scripts: [
+        {
+          tokens: [],
+          result: {
+            text: '',
+            content: '',
+            tool_calls: [
+              {
+                id: 'call-err',
+                type: 'function',
+                function: {
+                  name: 'read_url',
+                  arguments: '{"url":"file:///x"}',
+                },
+              },
+            ],
+          },
+        },
+        {
+          tokens: [{content: 'ok'}],
+          result: {text: 'ok', content: 'ok'},
+        },
+      ],
+    });
+    const readUrl = makeTalent('read_url', () => ({
+      type: 'error' as const,
+      summary: 'read_url: only http(s) URLs are allowed',
+      errorMessage: 'read_url: only http(s) URLs are allowed',
+      guide: '正确示例：{"url":"https://example.com/page"}。',
+    }));
+    const events = await collect(
+      runAgent({
+        engine,
+        initialParams: baseParams,
+        allowedTalentNames: ['read_url'],
+        talentLookup: name => (name === 'read_url' ? readUrl : undefined),
+        messageId: 'msg',
+        triggerMarkers: [],
+      }),
+    );
+    const finished = events.filter(e => e.type === 'tool_call_finished');
+    expect(finished).toHaveLength(1);
+    const outcome = (finished[0] as any).outcome;
+    // WORKSPACE_TOOL_ERROR_FEEDBACK_SPEC §3.2: 定位 + 导航一起回传模型
+    expect(outcome.responseContent).toContain(
+      'read_url: only http(s) URLs are allowed',
+    );
+    expect(outcome.responseContent).toContain('https://example.com/page');
+  });
+
+  it('#2c error outcome without guide → responseContent stays the bare summary', async () => {
+    const engine = makeScriptedEngine({
+      scripts: [
+        {
+          tokens: [],
+          result: {
+            text: '',
+            content: '',
+            tool_calls: [
+              {
+                id: 'call-err2',
+                type: 'function',
+                function: {name: 'datetime', arguments: '{}'},
+              },
+            ],
+          },
+        },
+        {
+          tokens: [],
+          result: {text: 'done', content: 'done'},
+        },
+      ],
+    });
+    const dt = makeTalent('datetime', () => ({
+      type: 'error' as const,
+      summary: 'datetime failed',
+      errorMessage: 'DATETIME_FAILED',
+    }));
+    const events = await collect(
+      runAgent({
+        engine,
+        initialParams: baseParams,
+        allowedTalentNames: ['datetime'],
+        talentLookup: name => (name === 'datetime' ? dt : undefined),
+        messageId: 'msg',
+        triggerMarkers: [],
+      }),
+    );
+    const finished = events.filter(e => e.type === 'tool_call_finished');
+    expect(finished).toHaveLength(1);
+    expect((finished[0] as any).outcome.responseContent).toBe('datetime failed');
+  });
+
   it('#3 tool call but second turn yields no further tool_calls → run finishes after follow-up', async () => {
     // Note: the runner does not consult `requiresModelResponse`; it always
     // performs a follow-up turn after tool calls and only exits the loop

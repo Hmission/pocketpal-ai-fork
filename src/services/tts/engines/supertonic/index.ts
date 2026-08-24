@@ -17,6 +17,7 @@ import {
   TTS_PARENT_SUBDIR,
 } from '../../constants';
 import {ttsRuntime} from '../../runtime';
+import {convertUnicodeIndexer, convertVoiceStyle} from '../../sherpaConvert';
 import {createEngineStreamingHandle} from '../../streamingHandle';
 import type {
   Engine,
@@ -250,6 +251,23 @@ export class SupertonicEngine implements Engine {
             ),
           );
         }
+      }
+
+      // B36：sherpa 生成链路需要二进制 .bin（json 是播放链路的格式）；
+      // 失败不阻断（播放链路不依赖转换产物）。
+      try {
+        await convertUnicodeIndexer(
+          this.getFilePath('unicode_indexer.json'),
+          this.getFilePath('unicode_indexer.bin'),
+        );
+        for (const voice of SUPERTONIC_VOICES) {
+          await convertVoiceStyle(
+            this.getFilePath(`${voice.id}.json`),
+            this.getFilePath(`${voice.id}.bin`),
+          );
+        }
+      } catch (convertErr) {
+        console.warn('[SupertonicEngine] sherpa bin conversion failed:', convertErr);
       }
 
       // Manifest WITH baseUrl — if any voice files failed to download

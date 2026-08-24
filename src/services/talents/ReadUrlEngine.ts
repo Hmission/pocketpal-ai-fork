@@ -43,7 +43,14 @@ export class ReadUrlEngine implements TalentEngine {
 
     if (!isAllowedReadUrl(url)) {
       const summary = 'read_url: only http(s) URLs are allowed';
-      return {type: 'error', summary, errorMessage: summary};
+      return {
+        type: 'error',
+        summary,
+        errorMessage: summary,
+        guide:
+          'read_url 只接受完整的 http(s) 网页 URL，正确示例：{"url":"https://example.com/page"}。' +
+          '本地文件路径（如 file://…、/storage/…）不是 URL；读取本地文档请用 read_section / read_html。',
+      };
     }
 
     if (!this.access.canSearch()) {
@@ -60,7 +67,13 @@ export class ReadUrlEngine implements TalentEngine {
     if (!isReadUrlAllowed(url)) {
       const summary =
         'read_url: this URL is not from a web_search result or a user message in this conversation. Copy the URL exactly as the user wrote it or as shown in web_search results, or run web_search first.';
-      return {type: 'error', summary, errorMessage: summary};
+      return {
+        type: 'error',
+        summary,
+        errorMessage: summary,
+        guide:
+          '此 URL 不在本轮会话可见范围内。先运行 web_search 获取结果，或原样复制用户消息中写出的链接，再调用 read_url。',
+      };
     }
 
     // Fetch the canonical URL, not the raw argument: allowlist matching
@@ -112,7 +125,7 @@ export class ReadUrlEngine implements TalentEngine {
       function: {
         name: 'read_url',
         description:
-          'Fetch the full text of one web page. Use this directly when the user gives you a URL to read — no search needed first. Also use it after web_search when a snippet mentions the answer but does not fully contain it. Pass the exact URL as the user wrote it or as shown in a web_search result. Do not invent URLs.',
+          'Fetch the full text of one web page. Use this directly when the user gives you a URL to read — no search needed first. Also use it after web_search when a snippet mentions the answer but does not fully contain it. Pass the exact URL as the user wrote it or as shown in a web_search result. Do not invent URLs. The URL must be a complete http:// or https:// web address; local file paths (file:// or /storage/…) are NOT URLs and cannot be read here.',
         parameters: {
           type: 'object',
           properties: {

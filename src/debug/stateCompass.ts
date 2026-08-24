@@ -49,6 +49,12 @@ export const STATE_MAP: Record<DrcDomain, Record<string, StateDef>> = {
   nav: {},
   system: {},
   error: {},
+  audio: {
+    idle: {state: 'idle', nextAction: 'pick_audio_task', label: '音频空闲', terminal: true},
+    transcribing: {state: 'transcribing', nextAction: 'await_transcribe', label: '转写中', terminal: false},
+    generating: {state: 'generating', nextAction: 'await_synthesis', label: '生成音频中', terminal: false},
+    error: {state: 'error', nextAction: 'investigate_and_retry', label: '音频错误', terminal: true},
+  },
 };
 
 /** 未知状态降级（母仓 BT07：观测不为 SPOF，不抛异常） */

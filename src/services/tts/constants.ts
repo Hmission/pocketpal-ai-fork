@@ -66,6 +66,8 @@ export const SUPERTONIC_MODEL_FILES = [
   {name: 'vector_estimator.onnx', urlPath: 'onnx/vector_estimator.onnx'},
   {name: 'vocoder.onnx', urlPath: 'onnx/vocoder.onnx'},
   {name: 'unicode_indexer.json', urlPath: 'onnx/unicode_indexer.json'},
+  // B34：tts.json（模型描述）为 sherpa Validate 必填（缺它报 "exactly one tts model"）
+  {name: 'tts.json', urlPath: 'onnx/tts.json'},
 ] as const;
 
 /** Name of the voices manifest generated locally after model download. */
@@ -77,7 +79,7 @@ export const SUPERTONIC_VOICES_MANIFEST_FILENAME = 'voices-manifest.json';
  * (Supertone/supertonic-3). Feeds the disk-space preflight (`estimated * 1.2`),
  * so it must be >= the real total, not just a UI label. ~380 MB.
  */
-export const SUPERTONIC_MODEL_ESTIMATED_BYTES = 398_352_949;
+export const SUPERTONIC_MODEL_ESTIMATED_BYTES = 398_361_202;
 
 // ---------------------------------------------------------------------------
 // Kokoro (FP32 variant)
@@ -135,14 +137,55 @@ export const KITTEN_MODEL_BASE_URL =
   'https://huggingface.co/palshub/kitten-tts-nano-0.8-fp32/resolve/main';
 
 /**
- * Kitten files: the ONNX model (saved locally as `kitten.onnx`) and the
- * voices manifest JSON. The IPA dict is downloaded separately via
- * `TTS_DICT_URL` into the same directory.
+ * Kitten Phase 1 files (fork playback chain): the ONNX model (saved locally
+ * as `kitten.onnx`) and the voices manifest JSON. The IPA dict is downloaded
+ * separately via `TTS_DICT_URL` into the same directory.
+ *
+ * B37/§81：fork 播放链与 sherpa 生成链文件集互不兼容（见 KITTEN_SHERPA_*）——
+ * palshub 0.8-fp32 模型仅 fork 播放链消费，sherpa 生成链另有 Phase 2 文件。
  */
 export const KITTEN_MODEL_FILES = [
   {name: 'kitten.onnx', urlPath: 'kitten_tts_nano_v0_8.onnx'},
   {name: 'voices-manifest.json', urlPath: 'voices-manifest.json'},
 ] as const;
 
-/** Estimated total size of the Kitten model bundle (~57 MB + dict). */
-export const KITTEN_MODEL_ESTIMATED_BYTES = 57 * 1024 * 1024;
+// ---------------------------------------------------------------------------
+// Kitten sherpa generation chain (Phase 2) — B37/§81
+// ---------------------------------------------------------------------------
+
+/**
+ * HuggingFace repo for the sherpa-onnx compatible Kitten model
+ * (official csukuangfj v0.1 fp16). The palshub 0.8 model produces pure
+ * low-frequency noise through the sherpa generation chain (verified via
+ * onnxruntime direct inference, MASTER_LOG §74.2) — the generation chain
+ * therefore uses this official model under a distinct local name
+ * (`kitten_sherpa.onnx`), keeping the fork playback chain untouched.
+ */
+export const KITTEN_SHERPA_MODEL_ID = 'csukuangfj/kitten-nano-en-v0_1-fp16';
+
+/** Base URL for the sherpa generation-chain files. */
+export const KITTEN_SHERPA_BASE_URL =
+  `https://huggingface.co/${KITTEN_SHERPA_MODEL_ID}/resolve/main`;
+
+/**
+ * Fixed sherpa generation-chain files. `model.fp16.onnx` is saved locally as
+ * `kitten_sherpa.onnx` to avoid colliding with the fork playback chain's
+ * `kitten.onnx`. The `espeak-ng-data/` phonemizer data directory (~119 files)
+ * is enumerated dynamically via the HF tree API at download time — do NOT
+ * hardcode the file list here.
+ */
+export const KITTEN_SHERPA_FILES = [
+  {name: 'kitten_sherpa.onnx', urlPath: 'model.fp16.onnx'},
+  {name: 'voices.bin', urlPath: 'voices.bin'},
+  {name: 'tokens.txt', urlPath: 'tokens.txt'},
+] as const;
+
+/** Local + remote directory for sherpa's espeak-ng phonemizer data. */
+export const KITTEN_SHERPA_ESPEAK_DIR = 'espeak-ng-data';
+
+/**
+ * Estimated total size of the Kitten bundle: Phase 1 (~57 MB model + 3.5 MB
+ * dict) + Phase 2 (23.8 MB sherpa onnx + ~18 MB espeak-ng-data). Feeds the
+ * disk-space preflight (`estimated * 1.2`), so it must be >= the real total.
+ */
+export const KITTEN_MODEL_ESTIMATED_BYTES = 100 * 1024 * 1024;

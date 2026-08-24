@@ -2,32 +2,25 @@ import {createSearchProvider, readWithDefaultReader} from '../index';
 import type {SearchProviderId} from '../types';
 
 describe('createSearchProvider', () => {
-  it('builds the adapter matching each provider id', () => {
-    const ids: SearchProviderId[] = ['tavily', 'brave', 'exa', 'parallel'];
+  it('builds the built-in composite engine', () => {
+    const ids: SearchProviderId[] = ['builtin'];
     for (const id of ids) {
-      expect(createSearchProvider(id, () => 'k').id).toBe(id);
+      expect(createSearchProvider(id).id).toBe(id);
     }
   });
 
-  it('wires the key accessor lazily into the adapter', async () => {
+  it('built-in engine searches without any key (no keycheck path)', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: false,
-      status: 401,
-      json: () => Promise.resolve({}),
+      status: 429,
+      text: () => Promise.resolve(''),
     });
-    let key = '';
-    const provider = createSearchProvider('tavily', () => key);
-    // No key yet → adapter throws "key not set" without a network call.
-    await expect(provider.search('q', {maxResults: 3})).rejects.toThrow(
-      /key not set/i,
-    );
-    expect(global.fetch).not.toHaveBeenCalled();
-    // Accessor is read inside search() (lazy) — later key is picked up.
-    key = 'now-set';
-    await expect(provider.search('q', {maxResults: 3})).rejects.toThrow(
-      /failed/i,
-    );
-    expect(global.fetch).toHaveBeenCalledTimes(1);
+    // No key concept exists — the engine goes straight to the network and
+    // surfaces transport errors instead of a "key not set" gate.
+    await expect(
+      createSearchProvider('builtin').search('q', {maxResults: 3}),
+    ).rejects.toThrow(/failed/i);
+    expect(global.fetch).toHaveBeenCalled();
   });
 });
 

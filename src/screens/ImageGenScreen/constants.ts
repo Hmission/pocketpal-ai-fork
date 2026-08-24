@@ -4,6 +4,7 @@ import {ImageGenManifest} from '../../utils/imageGenManifest';
 export const FAMILY_BADGE: Record<ImageGenManifest['family'], string> = {
   zimage: 'Z-Image',
   sd3: 'SD3.5',
+  flux: 'FLUX.2',
   classic: '',
   dreamlite: 'DreamLite',
 };
@@ -15,7 +16,7 @@ export const DREAMLITE_MANIFEST: ImageGenManifest = {
   family: 'dreamlite',
   main: '',
   defaults: {steps: 4, cfg: 1, size: 1024},
-  note: '统一文生图 + 图像编辑，4 步 1024px 约 25s',
+  note: '何时选：默认主力，文生图 + 图像编辑一体，最快出图。体积：套件约 6.4GB（unet 1.56 + TE 1.71 + te_fp16.data 3.20 + vae×2）。适配：全设备（ONNX 引擎，4 步 1024px 约 25s）',
 };
 
 export const PROMPT_LIMIT = 120;
@@ -26,10 +27,12 @@ export const PROMPT_LIMIT = 120;
 //   dreamlite: 200（UNet 条件上限，官方 max_sequence_length=200；编辑模式另有 256 视觉 token）
 //   sd3: 77（CLIP-L/G max_length=77，训练/推理一致，引擎 chunk_len=77）
 //   zimage: 256（LLM 编码，宽松）
+//   flux: 256（Qwen3-4B TE 与 zimage 同源同限，08-22 klein 接入）
 export const PROMPT_TOKEN_LIMIT: Record<string, number> = {
   dreamlite: 200,
   sd3: 77,
   zimage: 256,
+  flux: 256,
 };
 
 /** 粗估 token 数：英文 ~4 字符/token，中文 1 字符/token（BPE 近似，供输入提示） */

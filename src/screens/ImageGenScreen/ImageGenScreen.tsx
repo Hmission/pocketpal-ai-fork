@@ -12,7 +12,7 @@
  * 各 Panel 只读 props 渲染；store 状态经 observer 自动联动。
  */
 import * as React from 'react';
-import {View, FlatList, Text, TouchableOpacity} from 'react-native';
+import {View, FlatList, Text, TouchableOpacity, ActivityIndicator} from 'react-native';
 import {KeyboardAwareScrollView} from 'react-native-keyboard-controller';
 import {observer} from 'mobx-react-lite';
 import {runInAction} from 'mobx';
@@ -21,6 +21,9 @@ import {useNavigation} from '@react-navigation/native';
 import Clipboard from '@react-native-clipboard/clipboard';
 
 import {imageGenStore, GeneratedImage} from '../../store/imageGenStore';
+import {audioStore} from '../../store/audioStore';
+import {ttsStore} from '../../store/TTSStore';
+import {TtsGenEngineId} from '../../services/ttsEngine';
 import {useTheme} from '../../hooks';
 import {AIOS_MODELS_DIR} from '../../utils/paths';
 import {L10nContext} from '../../utils';
@@ -51,12 +54,36 @@ import {ResultPreview} from './components/ResultPreview';
 import {HistoryStrip} from './components/HistoryStrip';
 import {ComposerPanel} from './components/ComposerPanel';
 import {UpscalePanel} from './components/UpscalePanel';
-import {RemakeSheet} from './components/RemakeSheet';
 import {AudioWorkshopTab} from './components/AudioWorkshopTab';
 import {confirmDialog} from '../../components/ui/ConfirmDialog';
 import {OverlayCard} from '../../components/ui/OverlayCard';
 import {BannerBar} from '../../components/ui/BannerBar';
 import {SRStyle} from '../../services/superResEngine';
+
+/** v5.3：图片类任务判定（相册/启动定位共用）——音频内容（transcribe/tts）不属相册 */
+const isImageKind = (kind?: string): boolean =>
+  ['generated', 'upload', 'upscaled', 'caption'].includes(kind ?? 'generated');
+
+/** 生成引擎三选（B35：顶栏胶囊切换；B36：屏级 overlay 下拉 + 行内下载/删除） */
+const GEN_ENGINES: {
+  id: TtsGenEngineId;
+  label: string;
+  size: string;
+  note: string;
+}[] = [
+  {id: 'kokoro', label: 'Kokoro', size: '330MB', note: '多音色 · 默认'},
+  {id: 'supertonic', label: 'Supertonic', size: '380MB', note: '31 语种'},
+  {id: 'kitten', label: 'Kitten', size: '57MB', note: '轻量快速 · 配额安全'},
+];
+
+/** 引擎下载状态（与 TTSStore 三引擎状态机镜像） */
+const engineState = (id: TtsGenEngineId) =>
+  id === 'kokoro'
+    ? ttsStore.kokoroDownloadState
+    : id === 'supertonic'
+      ? ttsStore.supertonicDownloadState
+      : ttsStore.kittenDownloadState;
+
 
 export const ImageGenScreen: React.FC = observer(() => {
   const theme = useTheme();
@@ -110,11 +137,25 @@ export const ImageGenScreen: React.FC = observer(() => {
   const [loadGuideVisible, setLoadGuideVisible] = React.useState(false);
   // 信息条点击：当前查看完整生图参数的任务条目（提示词/耗时/尺寸/模型/种子/步数）
   const [infoItem, setInfoItem] = React.useState<GeneratedImage | null>(null);
-  // 复刻生图 Sheet（v4）：caption 任务「复刻生图」→ 全参数面板
-  const [remakeVisible, setRemakeVisible] = React.useState(false);
-  const [remakeCaptionText, setRemakeCaptionText] = React.useState('');
   // 工坊双 tab（IMAGEGEN_UI_SPEC §8）：image=生图（现状）｜audio=音频工坊
   const [workshopTab, setWorkshopTab] = React.useState<'image' | 'audio'>('image');
+  // B35：音频顶栏引擎选择下拉显隐（模型只在顶栏）
+  const [showAudioEngineDrop, setShowAudioEngineDrop] = React.useState(false);
+  // 顶栏音频胶囊状态点：当前引擎就绪
+  const audioHeaderReady = React.useMemo(() => {
+    const st =
+      audioStore.genEngine === 'kokoro'
+        ? ttsStore.kokoroDownloadState
+        : audioStore.genEngine === 'supertonic'
+          ? ttsStore.supertonicDownloadState
+          : ttsStore.kittenDownloadState;
+    return st === 'ready';
+  }, [
+    audioStore.genEngine,
+    ttsStore.kokoroDownloadState,
+    ttsStore.kittenDownloadState,
+    ttsStore.supertonicDownloadState,
+  ]);
 
   // 顶部横幅（v4.2 大王裁定：生图页轻提示弃用底部 Snackbar——灰色底+挡底部按钮，
   // 统一顶部 BannerBar overlay；瞬时反馈 3s 自动消失，编辑锁定常驻走 editArming 派生）
@@ -175,7 +216,8 @@ export const ImageGenScreen: React.FC = observer(() => {
     scanModels();
   }, [scanModels]);
 
-  // 启动定位：有历史直接显示最新一张（页 1），无历史停在 0 页编辑槽
+  // 启动定位：有图片历史直接显示最新一张（页 1），无历史停在 0 页编辑槽
+  // v5.3：跳过音频条目（transcribe/tts）——启动定位到首个图片类条目，避免转写结果污染提示词/预览
   React.useEffect(() => {
     if (
       bootedRef.current ||
@@ -184,10 +226,20 @@ export const ImageGenScreen: React.FC = observer(() => {
     ) {
       return;
     }
+    const firstImage = imageGenStore.history.find(h =>
+      isImageKind(h.kind),
+    );
+    if (!firstImage) {
+      return;
+    }
     bootedRef.current = true;
-    setPreviewIndexSync(1);
-    previewRef.current?.scrollToOffset({offset: pageW, animated: false});
-    syncFromParams(imageGenStore.history[0]);
+    const idx = imageGenStore.history.indexOf(firstImage);
+    setPreviewIndexSync(idx + 1);
+    previewRef.current?.scrollToOffset({
+      offset: idx * pageW,
+      animated: false,
+    });
+    syncFromParams(firstImage);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imageGenStore.history.length, pageW]);
 
@@ -391,31 +443,12 @@ export const ImageGenScreen: React.FC = observer(() => {
     showBanner('反推提示词已复制');
   };
 
-  // 复刻生图：打开全参数 Sheet（IMAGEGEN_UI_SPEC §7.3）
+  // 复刻生图（v5：RemakeSheet 删除，提示词已回填 composer，直接切生图 tab 出图；
+  // 参数调整走高级参数卡——模型在顶栏，IMAGEGEN_UI_SPEC §7.3）
   const handleRemake = (item: GeneratedImage) => {
-    setRemakeCaptionText(item.prompt || '');
-    setRemakeVisible(true);
-  };
-
-  // 复刻确认：切生图 tab → 回填目标模型/参数 → 直接触发出图
-  const handleRemakeConfirm = (params: {
-    modelId: string;
-    steps: string;
-    cfg: string;
-    negativePrompt: string;
-    seed: string;
-    ratio: string;
-  }) => {
-    setRemakeVisible(false);
     setWorkshopTab('image');
-    setSelectedId(params.modelId);
-    setSteps(params.steps);
-    setCfg(params.cfg);
-    setNegativePrompt(params.negativePrompt);
-    setSeed(params.seed);
-    setRatio(params.ratio);
-    setPrompt(remakeCaptionText);
-    handleGenerate(remakeCaptionText);
+    setPrompt(item.prompt || '');
+    handleGenerate(item.prompt || '');
   };
 
   // 失败任务页：删除该任务条目
@@ -474,6 +507,35 @@ export const ImageGenScreen: React.FC = observer(() => {
     }
   }, [selectedEntry]);
 
+  // B36：音频引擎行内动作（未就绪下载 / 就绪删除；删除二次确认——与生图模型卸载同一交互）
+  const handleAudioEngineAction = async (id: TtsGenEngineId, ready: boolean) => {
+    if (!ready) {
+      if (id === 'kokoro') {
+        await ttsStore.downloadKokoro();
+      } else if (id === 'supertonic') {
+        await ttsStore.downloadSupertonic();
+      } else {
+        await ttsStore.downloadKitten();
+      }
+      return;
+    }
+    const e = GEN_ENGINES.find(x => x.id === id);
+    const ok = await confirmDialog({
+      title: '删除引擎',
+      message: `确定删除「${e?.label ?? id}」吗？模型文件将被移除（可重新下载）。`,
+    });
+    if (!ok) {
+      return;
+    }
+    if (id === 'kokoro') {
+      await ttsStore.deleteKokoro();
+    } else if (id === 'supertonic') {
+      await ttsStore.deleteSupertonic();
+    } else {
+      await ttsStore.deleteKitten();
+    }
+  };
+
   // 下拉选中：只选中高亮 + 回填参数。不折叠面板、不加载、不切模式（点卡片只是“看参数”）。
   // 切换模型即退出编辑预备态（目标图/引擎语境已变，防状态残留，2026-08-21）
   const handleSelectModel = (entry: ModelEntry) => {
@@ -491,7 +553,11 @@ export const ImageGenScreen: React.FC = observer(() => {
     previewRef.current?.scrollToOffset({offset: idx * pageW, animated});
   };
 
-  // 回填该历史图的提示词/参数（预览翻页与历史缩略图点击共用）
+  // 开发项3：PNG 内嵌真实生成参数——覆盖令牌（防慢文件读覆盖后翻页的回填）
+  const metaSyncSeq = React.useRef(0);
+  // 回填该历史图的提示词/参数（预览翻页与历史缩略图点击共用）。
+  // 两段式回填：DB 字段即时打底；PNG 内嵌 aios.gen meta 异步覆盖「真实生成参数」
+  // （比 DB 字段更贴近真实出图；无 meta→旧图/外部图→保留 DB 字段，不报错不占位）。
   const syncFromParams = (item: {
     uri: string;
     prompt: string;
@@ -527,6 +593,20 @@ export const ImageGenScreen: React.FC = observer(() => {
     if (item.cfg) {
       setCfg(String(item.cfg));
     }
+    // 异步覆盖：PNG 内嵌真实参数（仅数值类 steps/cfg/seed；prompt 以 DB 为准，
+    // meta 内 prompt 可能被 512 字节截断，覆盖会让用户看到缩水提示词）
+    const seq = ++metaSyncSeq.current;
+    void imageGenStore.readPngMetaFile(item.uri).then(meta => {
+      if (!meta || metaSyncSeq.current !== seq) {
+        return;
+      }
+      if (meta.steps != null) {
+        setSteps(String(meta.steps));
+      }
+      if (meta.cfg != null) {
+        setCfg(String(meta.cfg));
+      }
+    });
   };
 
   // FlatList（重新）挂载完成（onLayout，布局已就绪，scrollToOffset 必然生效）：
@@ -945,20 +1025,88 @@ export const ImageGenScreen: React.FC = observer(() => {
     scrollToPreview(0, false);
   };
 
-  // D1：模型触发胶囊挂到 AppBar headerRight（回收内容区顶部空间，预览顶到顶栏）
+  // v5 顶栏一行：返回 | 创造工坊标题+tab 胶囊（headerTitle）｜ 上下文操作随 tab 切换（headerRight）
   React.useEffect(() => {
     navigation.setOptions({
-      headerRight: () => (
-        <ModelPickerTrigger
-          selectedEntry={selectedEntry}
-          loaded={loaded}
-          loading={genLoading}
-          scanning={scanning}
-          showModelDrop={showModelDrop}
-          onToggleDrop={() => setShowModelDrop(v => !v)}
-          onQuickLoad={handleQuickLoad}
-        />
+      // v5.3：缩小返回箭头与标题间距一个汉字（16px，titleS 字号）
+      headerTitleContainerStyle: {marginLeft: -16},
+      headerTitle: () => (
+        <View style={s.headerTitleRow}>
+          <Text style={s.headerTitleText} numberOfLines={1}>
+            创造工坊
+          </Text>
+          <View style={s.workshopSlider}>
+            {/* v5.1 高亮滑块：absolute 跟随当前段（image=0，audio='50%'），无动画 */}
+            <View
+              style={[
+                s.workshopSliderThumb,
+                workshopTab === 'audio' && {left: '50%'},
+              ]}
+            />
+            <TouchableOpacity
+              style={s.workshopSliderSeg}
+              onPress={() =>
+                workshopTab !== 'image' && setWorkshopTab('image')
+              }
+              testID="workshop-tab-image">
+              <Text
+                style={[
+                  s.workshopSliderText,
+                  workshopTab === 'image' && s.workshopSliderTextActive,
+                ]}>
+                生图
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={s.workshopSliderSeg}
+              onPress={() =>
+                workshopTab !== 'audio' && setWorkshopTab('audio')
+              }
+              testID="workshop-tab-audio">
+              <Text
+                style={[
+                  s.workshopSliderText,
+                  workshopTab === 'audio' && s.workshopSliderTextActive,
+                ]}>
+                音频
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       ),
+      headerRight: () =>
+        workshopTab === 'image' ? (
+          <ModelPickerTrigger
+            selectedEntry={selectedEntry}
+            loaded={loaded}
+            loading={genLoading}
+            scanning={scanning}
+            showModelDrop={showModelDrop}
+            onToggleDrop={() => setShowModelDrop(v => !v)}
+            onQuickLoad={handleQuickLoad}
+          />
+        ) : (
+          <View style={s.triggerWrap}>
+            <TouchableOpacity
+              style={s.triggerPill}
+              onPress={() => setShowAudioEngineDrop(v => !v)}
+              testID="header-audio-model">
+              <Text style={s.triggerText} numberOfLines={1}>
+                {GEN_ENGINES.find(e => e.id === audioStore.genEngine)?.label ??
+                  'Kokoro'}
+              </Text>
+              <View
+                style={[
+                  s.audioHeaderDot,
+                  audioHeaderReady && s.audioHeaderDotReady,
+                ]}
+              />
+              <Text style={s.triggerArrow}>
+                {showAudioEngineDrop ? '▴' : '▾'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ),
     });
   }, [
     navigation,
@@ -968,39 +1116,14 @@ export const ImageGenScreen: React.FC = observer(() => {
     scanning,
     showModelDrop,
     handleQuickLoad,
+    workshopTab,
+    audioHeaderReady,
+    showAudioEngineDrop,
   ]);
 
   return (
     <View style={s.container}>
       <KeyboardAwareScrollView contentContainerStyle={s.content}>
-        {/* 工坊 tabBar（v4，IMAGEGEN_UI_SPEC §8）：生图 / 音频工坊 */}
-        <View style={s.workshopTabBar}>
-          <TouchableOpacity
-            style={[s.workshopTab, workshopTab === 'image' && s.workshopTabActive]}
-            onPress={() => setWorkshopTab('image')}
-            testID="workshop-tab-image">
-            <Text
-              style={[
-                s.workshopTabText,
-                workshopTab === 'image' && s.workshopTabTextActive,
-              ]}>
-              生图
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[s.workshopTab, workshopTab === 'audio' && s.workshopTabActive]}
-            onPress={() => setWorkshopTab('audio')}
-            testID="workshop-tab-audio">
-            <Text
-              style={[
-                s.workshopTabText,
-                workshopTab === 'audio' && s.workshopTabTextActive,
-              ]}>
-              音频工坊
-            </Text>
-          </TouchableOpacity>
-        </View>
-
         {workshopTab === 'image' ? (
           <>
         {/* ① 结果区 */}
@@ -1041,11 +1164,16 @@ export const ImageGenScreen: React.FC = observer(() => {
           onDeleteTask={handleDeleteTask}
         />
 
-        {/* ② 历史区（只列成功任务缩略图；保留原始索引供翻页定位） */}
+        {/* ② 历史区（只列成功任务缩略图；保留原始索引供翻页定位）
+            v5.3：相册只收图片类任务（generated/upload/upscaled/caption），音频内容（transcribe/tts）由音频 tab 历史卡承载 */}
         <HistoryStrip
           items={imageGenStore.history
             .map((item, index) => ({item, index}))
-            .filter(({item}) => (item.status ?? 'success') === 'success')}
+            .filter(
+              ({item}) =>
+                (item.status ?? 'success') === 'success' &&
+                isImageKind(item.kind),
+            )}
           manageMode={manageMode}
           toDelete={toDelete}
           onUpload={handlePickEditImage}
@@ -1130,6 +1258,73 @@ export const ImageGenScreen: React.FC = observer(() => {
         isRowLoaded={isRowLoaded}
       />
 
+      {/* B36：音频引擎选择下拉（复用生图 ModelPicker 屏级 overlay 交互模式，弃 Menu） */}
+      {workshopTab === 'audio' && showAudioEngineDrop ? (
+        <View style={s.dropOverlay} pointerEvents="box-none">
+          <TouchableOpacity
+            style={s.dropBackdrop}
+            activeOpacity={1}
+            onPress={() => setShowAudioEngineDrop(false)}
+          />
+          <View style={s.dropPanelAbs}>
+            {GEN_ENGINES.map(e => {
+              const st = engineState(e.id);
+              const ready = st === 'ready';
+              const downloading = st === 'downloading';
+              const active = audioStore.genEngine === e.id;
+              return (
+                <View
+                  key={e.id}
+                  style={[s.modelRow, active && s.modelRowSelected]}>
+                  <TouchableOpacity
+                    style={s.modelRowMain}
+                    onPress={() => {
+                      audioStore.setGenEngine(e.id);
+                      setShowAudioEngineDrop(false);
+                    }}>
+                    <Text style={s.modelName} numberOfLines={1}>
+                      {e.label}（{e.size}）
+                      {ready
+                        ? ' · 已就绪'
+                        : downloading
+                          ? ' · 下载中'
+                          : ' · 未下载'}
+                    </Text>
+                    <Text style={s.modelNote} numberOfLines={1}>
+                      {e.note}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[s.rowActionBtn, ready && s.rowActionBtnUnload]}
+                    disabled={downloading || audioStore.ttsGenerating}
+                    onPress={() => handleAudioEngineAction(e.id, ready)}>
+                    {downloading ? (
+                      <ActivityIndicator
+                        size="small"
+                        color={theme.colors.onPrimary}
+                      />
+                    ) : (
+                      <Text
+                        style={[
+                          s.rowActionText,
+                          ready && s.rowActionTextUnload,
+                        ]}>
+                        {ready ? '删除' : '下载'}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
+            <Text style={s.readyText}>
+              {audioHeaderReady
+                ? `✓ ${GEN_ENGINES.find(e => e.id === audioStore.genEngine)?.label} 已就绪，可以生成音频`
+                : '选择引擎后点「生成音频」；未就绪引擎请先下载'}
+            </Text>
+          </View>
+        </View>
+      ) : null}
+
       {/* P6-6：高清放大参数面板（独立通用能力，确认即关；进度走任务化 running 页） */}
       <UpscalePanel
         visible={upscaleVisible}
@@ -1137,23 +1332,7 @@ export const ImageGenScreen: React.FC = observer(() => {
         onConfirm={handleUpscaleConfirm}
       />
 
-      {/* v4：复刻生图全参数面板（IMAGEGEN_UI_SPEC §7.3） */}
-      <RemakeSheet
-        visible={remakeVisible}
-        captionText={remakeCaptionText}
-        available={available}
-        selectedId={selectedId}
-        defaults={{
-          steps,
-          cfg,
-          negativePrompt,
-          seed,
-          ratio,
-          size,
-        }}
-        onClose={() => setRemakeVisible(false)}
-        onConfirm={handleRemakeConfirm}
-      />
+      {/* v5：复刻生图 Sheet 删除——复刻参数走高级参数卡 + 直接出图（IMAGEGEN_UI_SPEC §7.3） */}
 
       {/* 未加载引导（2026-08-21）：非 Dream 点出图未加载 → 提示 + 「去加载」展开模型下拉 */}
       <OverlayCard
@@ -1182,6 +1361,20 @@ export const ImageGenScreen: React.FC = observer(() => {
         title="图片参数"
         actions={{
           primary: {label: '关闭', onPress: () => setInfoItem(null)},
+          ...(infoItem?.kind === 'caption'
+            ? {
+                secondary: {
+                  label: '回填到输入框',
+                  onPress: () => {
+                    if (infoItem?.prompt) {
+                      setPrompt(infoItem.prompt);
+                    }
+                    setInfoItem(null);
+                    showBanner('反推提示词已回填输入框');
+                  },
+                },
+              }
+            : {}),
         }}>
         {infoItem && (
           <>

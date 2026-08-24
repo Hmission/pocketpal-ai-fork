@@ -94,6 +94,8 @@ describe('WritingDocEngine（WORKSPACE_SPEC v1）', () => {
       content: big,
     });
     expect(errMsg(r)).toBe('DOC_TOO_LARGE');
+    // WORKSPACE_TOOL_ERROR_FEEDBACK_SPEC §3.4：超限带 new_chapter 导航
+    expect((r as any).guide).toContain('new_chapter');
   });
 
   it('new_chapter：开新章 + 重复章节拒绝', async () => {
@@ -170,6 +172,53 @@ describe('WritingDocEngine（WORKSPACE_SPEC v1）', () => {
     expect(errMsg(await engine.execute({action: 'fly'}))).toBe(
       'Unknown action: fly',
     );
+  });
+
+  it('未 init 直接写：PROJECT_NOT_FOUND + init 导航（非兜底）', async () => {
+    const r = await engine.execute({
+      action: 'append',
+      project: '不存在的项目',
+      doc: '正文-第一章',
+      section: '第一章',
+      content: '正文',
+    });
+    expect(r.type).toBe('error');
+    if (r.type === 'error') {
+      expect(r.errorMessage).toBe('PROJECT_NOT_FOUND');
+      // WORKSPACE_TOOL_ERROR_FEEDBACK_SPEC §3.5：导航给 init 正确调用示例
+      expect(r.guide).toContain('init');
+      expect(r.guide).toContain('"title"');
+    }
+    // 未 init 不产生任何文件（无隐式建目录，协议非兜底）
+    expect(Object.keys(mem)).toHaveLength(0);
+    // 同样拦截 update_outline / update_persona / new_chapter
+    expect(
+      errMsg(await engine.execute({action: 'update_outline', project: '不存在的项目', content: 'x'})),
+    ).toBe('PROJECT_NOT_FOUND');
+    expect(
+      errMsg(await engine.execute({action: 'update_persona', project: '不存在的项目', content: 'x'})),
+    ).toBe('PROJECT_NOT_FOUND');
+    expect(
+      errMsg(await engine.execute({action: 'new_chapter', project: '不存在的项目', chapter: '第一章'})),
+    ).toBe('PROJECT_NOT_FOUND');
+    // 读动作同样拦截（真机实证：NO_DOC/NO_SECTION 无导航会让模型烧光 maxTurns）
+    expect(
+      errMsg(await engine.execute({action: 'read_section', project: '不存在的项目', doc: '正文-第一章', section: '第一章'})),
+    ).toBe('PROJECT_NOT_FOUND');
+    expect(
+      errMsg(await engine.execute({action: 'read_all', project: '不存在的项目', doc: '大纲'})),
+    ).toBe('PROJECT_NOT_FOUND');
+    expect(
+      errMsg(await engine.execute({action: 'list_sections', project: '不存在的项目', doc: '大纲'})),
+    ).toBe('PROJECT_NOT_FOUND');
+  });
+
+  it('未知动作带 guide：枚举 + JSON 示例', async () => {
+    const r = await engine.execute({action: 'fly'});
+    if (r.type === 'error') {
+      expect(r.guide).toContain('init');
+      expect(r.guide).toContain('"action":"list"');
+    }
   });
 
   it('toToolDefinition 契约：name/参数/required', () => {

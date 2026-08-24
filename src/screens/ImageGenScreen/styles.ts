@@ -213,13 +213,15 @@ export const createStyles = (theme: any) =>
       color: theme.colors.onSurfaceVariant,
     },
     // 任务化预览页（running 空白进度页 / failed 报错页）：与图片页同规格方形容器
+    // padding 16→10：跑分面板（PerfPanel）向预览图宽度靠拢「稍微宽一些」，
+    // 仍不超出预览卡片宽度（面板 = pageW-20 < 预览图 pageW）。
     taskPage: {
       aspectRatio: 1,
       borderRadius: theme.radius.s,
       backgroundColor: theme.colors.surface,
       alignItems: 'center',
       justifyContent: 'center',
-      padding: 16,
+      padding: 10,
       gap: 8,
       overflow: 'hidden',
     },
@@ -300,6 +302,19 @@ export const createStyles = (theme: any) =>
       fontWeight: '600',
     },
     // 反推结果卡（v4，IMAGEGEN_UI_SPEC §7.2）
+    // v5 产物区整卡切换：反推提示词全卡（占满结果区，banner + 主体 + 操作行）
+    captionFullPage: {
+      aspectRatio: 1,
+      padding: 16,
+      justifyContent: 'space-between',
+    },
+    captionFullBody: {
+      borderRadius: theme.radius.s,
+      backgroundColor: theme.colors.surface,
+      borderWidth: 1,
+      borderColor: theme.colors.outline,
+      padding: 10,
+    },
     captionCard: {
       margin: 10,
       borderRadius: theme.radius.s,
@@ -358,6 +373,19 @@ export const createStyles = (theme: any) =>
       borderColor: theme.colors.outline,
       gap: 6,
     },
+    /** B36：结果区三态整卡（running 波浪 / failed 报错页居中布局，对齐生图 taskPage 语义） */
+    audioResultStage: {
+      minHeight: 150,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 14,
+    },
+    /** B36：历史卡选中态（结果区联动高亮，对齐生图相册缩略图选中语义） */
+    audioHistoryCardActive: {
+      borderColor: theme.colors.primary,
+      borderWidth: 2,
+    },
     audioStage: {
       ...theme.typography.bodyS,
       color: theme.colors.onSurfaceVariant,
@@ -371,26 +399,114 @@ export const createStyles = (theme: any) =>
     },
     audioBtnCopy: {backgroundColor: theme.colors.success},
     audioBtnSend: {backgroundColor: theme.colors.info},
+    audioBtnShare: {backgroundColor: theme.colors.info},
     audioBtnDelete: {backgroundColor: theme.colors.danger},
     audioBtnModel: {backgroundColor: theme.colors.primary},
-    audioBtnText: {
+    advancedToggle: {
+      paddingVertical: 6,
+      alignSelf: 'flex-start',
+    },
+    advancedToggleText: {
       ...theme.typography.uiS,
-      color: '#ffffff',
+      color: theme.colors.primary,
       fontWeight: '600',
     },
-    audioStrip: {flexDirection: 'row', gap: 8, overflow: 'hidden'},
-    audioStripItem: {
-      flex: 1,
-      maxWidth: 140,
-      paddingHorizontal: 8,
-      paddingVertical: 6,
+    advancedBox: {
+      gap: 8,
+      padding: 10,
       borderRadius: theme.radius.s,
       backgroundColor: theme.colors.surface,
       borderWidth: 1,
       borderColor: theme.colors.outline,
     },
-    audioStripText: {...theme.typography.captionS, color: theme.colors.onSurfaceVariant},
+    ttsSliderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    ttsSliderValue: {
+      ...theme.typography.uiS,
+      color: theme.colors.onSurfaceVariant,
+    },
+    audioBtnText: {
+      ...theme.typography.uiS,
+      color: '#ffffff',
+      fontWeight: '600',
+    },
+    /** B35：音频历史横条（B38 方形卡：对齐生图相册 72px 方形缩略图，点击加载预览窗口） */
+    audioHistoryStrip: {
+      gap: 8,
+      paddingVertical: 2,
+    },
+    audioHistoryCard: {
+      width: 72,
+      height: 72,
+      padding: 6,
+      borderRadius: theme.radius.s,
+      backgroundColor: theme.colors.surface,
+      borderWidth: 1,
+      borderColor: theme.colors.outline,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 2,
+    },
+    audioHistoryIcon: {
+      fontSize: 20,
+    },
+    audioHistoryText: {
+      ...theme.typography.captionS,
+      color: theme.colors.onSurfaceVariant,
+      textAlign: 'center',
+      fontSize: 10,
+    },
     audioComposer: {gap: 10},
+    /** B33：生成输入框单行视觉；B38：默认两行（minHeight 66——怕用户找不到输入处） */
+    audioGenInput: {minHeight: 66, maxHeight: 110},
+    /** B38：播放器预览窗口（方形大卡，对齐生图预览窗口规格） */
+    audioPlayerCard: {
+      borderRadius: theme.radius.s,
+      backgroundColor: theme.colors.surface,
+      borderWidth: 1,
+      borderColor: theme.colors.outline,
+      padding: 14,
+      gap: 10,
+      minHeight: 230,
+      justifyContent: 'center',
+    },
+    audioPlayerCenter: {alignItems: 'center', gap: 8},
+    audioPlayBig: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: theme.colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    audioPlayBigIcon: {
+      fontSize: 26,
+      color: '#ffffff',
+      fontWeight: '700',
+    },
+    audioPlayerTitle: {
+      ...theme.typography.uiM,
+      color: theme.colors.onSurface,
+      fontWeight: '600',
+      textAlign: 'center',
+    },
+    audioPlayerMeta: {
+      ...theme.typography.captionS,
+      color: theme.colors.onSurfaceVariant,
+    },
+    audioTimeline: {gap: 2},
+    audioSlider: {width: '100%', height: 36},
+    audioTimeRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+    },
+    audioTimeText: {
+      ...theme.typography.captionS,
+      color: theme.colors.onSurfaceVariant,
+    },
     audioModelRow: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -418,30 +534,62 @@ export const createStyles = (theme: any) =>
       color: theme.colors.primary,
       fontWeight: '700',
     },
-    // 工坊 tabBar（IMAGEGEN_UI_SPEC §8，KnowledgeScreen 同款语义）
-    workshopTabBar: {
+    // v5.1 工坊滑块按钮（IMAGEGEN_UI_SPEC §8）：单容器两段文字 + 高亮滑块（absolute 无动画）
+    // 点未选中段 = 切换，点选中段 = 不动（防误触反复横跳）；比双胶囊窄约 1/3
+    workshopSlider: {
       flexDirection: 'row',
-      gap: 8,
-    },
-    workshopTab: {
-      paddingHorizontal: 16,
-      paddingVertical: 7,
+      marginLeft: 8,
       borderRadius: theme.radius[theme.shapeRoles.pill],
+      backgroundColor: withOpacity(theme.colors.primary, 0.08),
     },
-    workshopTabActive: {
+    // 高亮滑块：absolute 跟随当前段（left 由 workshopTab 派生 0 | '50%'）
+    workshopSliderThumb: {
+      position: 'absolute',
+      top: 0,
+      bottom: 0,
+      width: '50%',
+      borderRadius: theme.radius[theme.shapeRoles.pill],
       backgroundColor: withOpacity(theme.colors.primary, 0.12),
     },
-    workshopTabText: {
+    workshopSliderSeg: {
+      // v5.3：再收窄至 36（原 48）——两字 24px（uiS）+ 左右总留白 12px（大王：留一个字符空间即可甚至不留）
+      width: 36,
+      paddingVertical: 6,
+      alignItems: 'center',
+      borderRadius: theme.radius[theme.shapeRoles.pill],
+    },
+    workshopSliderText: {
       ...theme.typography.uiS,
       color: theme.colors.onSurfaceVariant,
     },
-    workshopTabTextActive: {
+    workshopSliderTextActive: {
       color: theme.colors.primary,
       fontWeight: '700',
+    },
+    // v5 顶栏一行：标题 + tab 胶囊（headerTitle 内）
+    headerTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    headerTitleText: {
+      ...theme.typography.titleS,
+      color: theme.colors.onSurface,
+      maxWidth: 96,
+    },
+    // v5.5 顶栏音频胶囊：与生图 triggerPill 同一设计语言（B38 消灭双胶囊风格）；就绪点内嵌保留
+    audioHeaderDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: theme.colors.outlineVariant,
+    },
+    audioHeaderDotReady: {
+      backgroundColor: theme.colors.success,
     },
     badgeSd3: {color: theme.colors.badgeSd35, fontWeight: '700'},
     badgeZ: {color: theme.colors.badgeZImage, fontWeight: '700'},
     badgeDream: {color: theme.colors.badgeDreamlite, fontWeight: '700'},
+    badgeFlux: {color: theme.colors.badgeFlux, fontWeight: '700'},
     // 实验性徽章：警示色（模型可能不可用，与操作按钮橙区分）
     badgeExp: {
       color: theme.colors.warning,
@@ -466,8 +614,10 @@ export const createStyles = (theme: any) =>
       backgroundColor: withOpacity(theme.colors.primary, 0.12),
       borderRadius: theme.radius.full,
       paddingVertical: 4,
-      paddingHorizontal: 10,
-      maxWidth: 180,
+      paddingHorizontal: 8,
+      // v5.1：maxWidth 180→120（缩短 1/3）——模型名超长截断；flexShrink 让「加载」按钮永不收缩
+      maxWidth: 120,
+      flexShrink: 1,
       // 标准橙黄描边：与聊天顶栏模型胶囊同一处理
       borderWidth: 1,
       borderColor: theme.colors.primary,
@@ -488,6 +638,8 @@ export const createStyles = (theme: any) =>
       // B8 形状纪律：动作=圆角矩形（radius.s），不再用胶囊
       borderRadius: theme.radius[theme.shapeRoles.inputSmall],
       backgroundColor: theme.colors.primary,
+      // v5.1：永不收缩（模型名超长时也不挤压加载按钮，大王红线）
+      flexShrink: 0,
     },
     triggerLoadText: {
       ...theme.typography.captionS,
@@ -745,5 +897,270 @@ export const createStyles = (theme: any) =>
       ...theme.typography.uiS,
       color: theme.colors.primary,
       marginTop: 4,
+    },
+    // ADR-0008 跑分式性能面板（IMAGEGEN_UI_SPEC §9）
+    perfPanel: {
+      marginTop: 10,
+      alignSelf: 'stretch',
+      backgroundColor: withOpacity(theme.colors.shadow, 0.05),
+      borderRadius: theme.radius.m,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      gap: 8,
+    },
+    perfHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    perfTitle: {
+      ...theme.typography.uiS,
+      color: theme.colors.onSurfaceVariant,
+      fontWeight: '600',
+    },
+    perfPssBig: {
+      ...theme.typography.titleM,
+      fontWeight: '700',
+    },
+    // v2 折叠头指标胶囊横排（CPU/GPU/温/功耗，安兔兔式实时指标行压缩形态）
+    perfCapsuleRow: {
+      flexDirection: 'row',
+      gap: 4,
+      flexShrink: 1,
+    },
+    perfCapsule: {
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: theme.radius[theme.shapeRoles.pill],
+      backgroundColor: withOpacity(theme.colors.onSurface, 0.06),
+    },
+    perfCapsuleText: {
+      ...theme.typography.captionS,
+      color: theme.colors.onSurfaceVariant,
+    },
+    perfDeviceNote: {
+      ...theme.typography.captionS,
+      color: theme.colors.onSurfaceVariant,
+      opacity: 0.7,
+      marginTop: 2,
+    },
+    perfBody: {gap: 6, marginTop: 6},
+    // v2 叠加线切换行：chips 横滑 + 右端峰值文字
+    perfOverlayRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    perfChipsScroll: {flexGrow: 0},
+    perfOverlayChip: {
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      marginRight: 4,
+      borderRadius: theme.radius[theme.shapeRoles.pill],
+      borderWidth: 1,
+      borderColor: theme.colors.outline,
+    },
+    perfOverlayChipActive: {
+      backgroundColor: theme.colors.primary,
+      borderColor: theme.colors.primary,
+    },
+    perfOverlayChipText: {
+      ...theme.typography.captionS,
+      color: theme.colors.onSurfaceVariant,
+    },
+    perfOverlayChipTextActive: {color: '#ffffff', fontWeight: '600'},
+    perfPeak: {
+      ...theme.typography.captionS,
+      color: theme.colors.onSurfaceVariant,
+      marginLeft: 'auto',
+    },
+    // v2 迷你曲线条：横向压扁 40pt（卡片下半截空间约束）
+    perfMiniChart: {
+      height: 40,
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      gap: 1,
+      overflow: 'hidden',
+      justifyContent: 'center',
+    },
+    perfBar: {width: 2, borderRadius: 1},
+    perfChartEmpty: {
+      ...theme.typography.captionM,
+      color: theme.colors.onSurfaceVariant,
+    },
+    // v3 指标行：自适应换行（全部指标 + 历史入口可见，不再横向滚动被裁切）。
+    // 卡片加宽后（见 taskPage padding 收窄）每行可容纳 4 项，8 项折 2 行，
+    // 根治「最底下一行显示不全」。
+    perfMetricsRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'center',
+      gap: 4,
+    },
+    perfMetric: {
+      gap: 1,
+      width: 62,
+    },
+    perfMetricLabel: {
+      ...theme.typography.captionS,
+      color: theme.colors.onSurfaceVariant,
+    },
+    perfMetricValue: {
+      ...theme.typography.uiS,
+      color: theme.colors.onSurface,
+      fontWeight: '600',
+    },
+    perfHistoryBtn: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      alignSelf: 'center',
+      borderRadius: theme.radius[theme.shapeRoles.pill],
+      backgroundColor: withOpacity(theme.colors.primary, 0.12),
+    },
+    perfHistoryBtnText: {
+      ...theme.typography.uiS,
+      color: theme.colors.primary,
+      fontWeight: '600',
+    },
+    // v2 回放 Modal（PerfHistoryModal）
+    perfModalBackdrop: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.45)',
+      justifyContent: 'flex-end',
+    },
+    perfModalCard: {
+      backgroundColor: theme.colors.surfaceElevated,
+      borderTopLeftRadius: theme.radius.l,
+      borderTopRightRadius: theme.radius.l,
+      padding: 16,
+      maxHeight: '82%',
+      gap: 10,
+    },
+    perfModalHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    perfModalBackBtn: {
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: theme.radius.s,
+      backgroundColor: withOpacity(theme.colors.onSurface, 0.06),
+    },
+    perfModalBackText: {
+      ...theme.typography.uiS,
+      color: theme.colors.primary,
+      fontWeight: '600',
+    },
+    perfModalTitle: {
+      ...theme.typography.uiM,
+      color: theme.colors.onSurface,
+      fontWeight: '600',
+      flexShrink: 1,
+    },
+    perfModalEmpty: {
+      ...theme.typography.uiS,
+      color: theme.colors.onSurfaceVariant,
+      textAlign: 'center',
+      paddingVertical: 20,
+    },
+    perfSessionRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 10,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.outline,
+    },
+    perfSessionTitle: {
+      ...theme.typography.uiS,
+      color: theme.colors.onSurface,
+      fontWeight: '600',
+      flexShrink: 1,
+    },
+    perfSessionMeta: {
+      ...theme.typography.captionS,
+      color: theme.colors.onSurfaceVariant,
+    },
+    perfReplayBody: {gap: 10},
+    perfReplayCursorRow: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      justifyContent: 'space-between',
+    },
+    perfReplayPss: {
+      ...theme.typography.titleL,
+      fontWeight: '700',
+      color: theme.colors.primary,
+    },
+    perfReplayCursorMeta: {
+      ...theme.typography.captionS,
+      color: theme.colors.onSurfaceVariant,
+    },
+    perfReplayChart: {
+      height: 120,
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      gap: 1,
+      overflow: 'hidden',
+      justifyContent: 'center',
+    },
+    perfReplayBar: {width: 2, borderRadius: 1},
+    perfPlayBtn: {
+      alignSelf: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 6,
+      borderRadius: theme.radius[theme.shapeRoles.pill],
+      backgroundColor: theme.colors.primary,
+    },
+    perfPlayBtnText: {
+      ...theme.typography.uiS,
+      color: '#ffffff',
+      fontWeight: '600',
+    },
+    perfStatGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    perfStatCell: {
+      flexBasis: '30%',
+      gap: 2,
+      padding: 8,
+      borderRadius: theme.radius.s,
+      backgroundColor: withOpacity(theme.colors.onSurface, 0.04),
+    },
+    perfStatCellLabel: {
+      ...theme.typography.captionS,
+      color: theme.colors.onSurfaceVariant,
+    },
+    perfStatCellValue: {
+      ...theme.typography.uiM,
+      color: theme.colors.onSurface,
+      fontWeight: '700',
+    },
+    // 跑分卡：左侧总分圆 + 右侧分项（Geekbench 式）
+    perfScoreCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 14,
+      padding: 12,
+      borderRadius: theme.radius.m,
+      backgroundColor: withOpacity(theme.colors.primary, 0.08),
+    },
+    perfScoreTotal: {alignItems: 'center', gap: 2},
+    perfScoreTotalNum: {
+      ...theme.typography.displayM,
+      fontWeight: '800',
+      color: theme.colors.primary,
+    },
+    perfScoreTotalLabel: {
+      ...theme.typography.captionS,
+      color: theme.colors.onSurfaceVariant,
+    },
+    perfScoreItems: {gap: 3, flexShrink: 1},
+    perfScoreItem: {
+      ...theme.typography.uiS,
+      color: theme.colors.onSurface,
     },
   });

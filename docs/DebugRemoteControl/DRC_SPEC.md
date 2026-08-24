@@ -3,9 +3,9 @@ doc_id: DRC_SPEC
 module: root
 type: spec
 status: active
-version: "1.1"
+version: "1.2"
 created: "2026-08-19"
-updated: "2026-08-19"
+updated: "2026-08-23"
 relates: [COMPASS_SYSTEM_SSOT, STATE_COMPASS_ENGINE_SELF_NAVIGATION_SSOT, POCKETPAL_CHAT_UI_SPEC]
 ---
 
@@ -119,6 +119,7 @@ relates: [COMPASS_SYSTEM_SSOT, STATE_COMPASS_ENGINE_SELF_NAVIGATION_SSOT, POCKET
 | chat | chat.assistant_msg | 同上（assistant） | sessionId/messageId/text |
 | chat | chat.assistant_delta | ChatSessionStore.updateMessage / updateActiveStepStreaming（节流 300ms/消息，text=累计内容） | sessionId/messageId/text |
 | chat | chat.turn_done | useChatSession run_finished | sessionId/messageId/hitMaxTurns/tokensPredicted/contextFull |
+| chat | chat.tool.error | AgentRunner.executeOne 工具错误分支（WORKSPACE_TOOL_ERROR_FEEDBACK_SPEC §3.7） | tool/errorMessage/hasGuide |
 | imagegen | imagegen.start | imageGenStore.generate / generateDreamLiteEntry | prompt/seed/steps/cfg/width/height |
 | imagegen | imagegen.stage | pullSnapshot（SD 1Hz）与 DreamLite 采样回调（节流） | progress/stage/stepTime |
 | imagegen | imagegen.done | generate / generateDreamLiteEntry 成功 | uri/seed/prompt/durationMs |
@@ -163,7 +164,7 @@ StateCompass 五字段与母仓 `STATE_COMPASS` 同构：state（定位）/ next
 | chat.switchPal | palId | 切换会话 Pal |
 | chat.newSession | title(≤100) | 新建会话 |
 | imagegen.generate | prompt/steps(1-64)/cfg(0-20)/width/height(64-2048)/seed/negativePrompt/loraPath/loraMultiplier(0-2)/modelLabel | SD 生图（需 SD 模型已加载） |
-| imagegen.generateDreamLite | prompt/width/height(64-2048)/steps(1-64) | DreamLite 文生图（4 步 DMD2；未加载时自动加载） |
+| imagegen.generateDreamLite | prompt/width/height(64-2048)/steps(1-64) | DreamLite 文生图（4 步 DMD2；未加载时自动加载）——**与 UI「出图」按钮同链路**：走 beginTask/scrollToPreview/finishTask 编排（建 running 任务页 + PerfPanel 进度卡可达），非 raw 引擎直调（2026-08-23 编排对齐，MASTER_LOG §77） |
 | imagegen.upscale | uri/scale(2\|4)/style(general\|anime\|anime_fast) | RealESRGAN 通用放大（P6-6，CPU 耗时较长；自动释放 DreamLite/SD）；style：通用写实/动漫高清（RRDBNet-6）/动漫快速（animevideov3，快约 4 倍）——2026-08-21 双模型可选登记 |
 | imagegen.loadModel | modelPath/clipL/clipG/llm/vae/backend | 加载 SD 模型 |
 | imagegen.loadDreamLite | - | 加载 DreamLite 引擎（unet/vae/TE） |
@@ -172,6 +173,7 @@ StateCompass 五字段与母仓 `STATE_COMPASS` 同构：state（定位）/ next
 | models.scan | - | 扫描本地模型 |
 | models.load | modelId | 加载模型并设为活动（displayModels 内） |
 | models.unload | - | 释放当前活动模型上下文 |
+| audio.generateTts | engine(kokoro/supertonic/kitten)/text/voiceId/speed/numSteps | TTS 音频生成（与音频工坊「生成音频」按钮同链路：audioStore.generateTask；voiceId 缺省用引擎首音色；kitten 为 HyperOS 配额内轻量引擎）——2026-08-22 登记 |
 
 ## 6. 门控与安全
 

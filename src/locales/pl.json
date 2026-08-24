@@ -172,28 +172,11 @@
     "languageSearchPlaceholder": "Wyszukaj języki",
     "internetSearch": {
       "title": "Wyszukiwanie w internecie",
-      "description": "Pozwól Kumplom przeszukiwać internet za pomocą własnych narzędzi. Użyj własnego klucza API — PocketPal nigdy nie przechowuje Twoich kluczy ani nie przekazuje Twoich zapytań.",
-      "providerLabel": "Dostawca wyszukiwania",
-      "providerGated": "Wkrótce",
-      "keyLabel": "Klucz API",
-      "keyIsSet": "Klucz dla {{provider}} jest ustawiony.",
-      "keyNotSet": "Brak klucza dla {{provider}}.",
-      "setKeyButton": "Ustaw klucz",
-      "updateKeyButton": "Zaktualizuj klucz",
-      "clearKeyButton": "Wyczyść klucz",
-      "keyInputPlaceholder": "Wklej swój klucz API dla {{provider}}",
-      "keyUpdateError": "Nie udało się zaktualizować klucza. Spróbuj ponownie.",
-      "showKeyAccessibilityLabel": "Pokaż klucz API",
-      "hideKeyAccessibilityLabel": "Ukryj klucz API",
+      "description": "Wbudowane wyszukiwanie (Bing + Wikipedia) — bez klucza API, działa, gdy urządzenie jest online.",
       "resultCountLabel": "Liczba wyników na wyszukiwanie",
       "resultCountDescription": "Mniej wyników zostawia więcej miejsca w kontekście modelu.",
-      "consentTitle": "Wyszukiwania opuszczają Twoje urządzenie",
-      "consentDescription": "Gdy Kumpel przeszukuje internet, Twoje zapytanie jest wysyłane przez internet do wybranego dostawcy. Gdy Kumpel odczytuje stronę, jej adres URL i zawartość mogą zostać wysłane do domyślnej usługi odczytu (r.jina.ai), jeśli wybrany dostawca nie ma własnego mechanizmu odczytu. Klucze i zapytania nigdy nie są wysyłane do PocketPal.",
-      "consentAccept": "Rozumiem",
-      "consentRequired": "Zaakceptuj powyższą informację, aby ustawić klucz i włączyć wyszukiwanie.",
-      "consentGivenTitle": "Wyszukiwanie w internecie jest włączone",
-      "consentGivenDescription": "Zapytania i odczyty stron mogą opuszczać Twoje urządzenie w sposób opisany powyżej.",
-      "consentRevoke": "Cofnij zgodę"
+      "enableLabel": "Zezwól na wyszukiwanie w sieci",
+      "enableDescription": "Gdy Pal szuka, Twoje zapytanie jest wysyłane do Bing i Wikipedii. Gdy Pal czyta stronę, jej adres URL i treść są wysyłane do r.jina.ai. Zapytania nigdy nie są wysyłane do aplikacji."
     },
     "contextPolicy": "Polityka kontekstu",
     "contextPolicyDescription": "Co zrobić, gdy rozmowa zbliża się do limitu kontekstu: najpierw rozszerz, jeśli pamięć pozwala, skompresuj stare wiadomości po osiągnięciu limitu, lub pytaj za każdym razem.",
@@ -832,8 +815,8 @@
         "render_html": "Wyświetlanie dokumentów HTML bezpośrednio w czacie",
         "calculate": "Obliczanie wyrażeń matematycznych",
         "datetime": "Pobierz aktualną datę i godzinę",
-        "web_search": "Przeszukiwanie internetu w poszukiwaniu aktualnych informacji (wymaga klucza API w Ustawieniach)",
-        "read_url": "Odczyt pełnej zawartości strony internetowej (wymaga klucza API w Ustawieniach)"
+        "web_search": "Szukaj aktualnych informacji w internecie (wbudowane, bez klucza API)",
+        "read_url": "Czytaj pełną treść strony internetowej (wbudowane, bez klucza API)"
       },
       "greeting": {
         "sectionLabel": "Przywitanie",

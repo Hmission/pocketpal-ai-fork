@@ -1,6 +1,9 @@
 /** Provider-agnostic search types — no provider-specific field crosses this boundary. */
 
-export type SearchProviderId = 'tavily' | 'brave' | 'exa' | 'parallel';
+/**
+ * Single built-in engine (Bing + Wikipedia fallback) — no API key needed.
+ */
+export type SearchProviderId = 'builtin';
 
 export interface SearchHit {
   title: string;
@@ -24,8 +27,8 @@ export interface SearchOptions {
 }
 
 /**
- * Adapter contract: read the BYOK key lazily inside search()/read(), and throw
- * on transport/auth/no-key/timeout — never return a silent empty.
+ * Adapter contract: search()/read() throw on transport/timeout/empty —
+ * never return a silent empty. No key management: built-in engines only.
  */
 export interface SearchProvider {
   readonly id: SearchProviderId;

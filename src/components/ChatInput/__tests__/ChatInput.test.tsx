@@ -32,6 +32,15 @@ jest.mock('react-native-image-picker', () => ({
   launchImageLibrary: jest.fn(),
 }));
 
+// B33：本地 ASR 入口接入后，测试环境固定 asrState 为未安装（语音按钮显隐仍由系统 Voice 可用性决定）
+jest.mock('../../../store/audioStore', () => ({
+  audioStore: {
+    asrState: 'not_installed',
+    refreshAsrState: jest.fn(),
+    transcribeTask: jest.fn(),
+  },
+}));
+
 jest.spyOn(Alert, 'alert');
 
 const renderScrollable = () => <ScrollView />;

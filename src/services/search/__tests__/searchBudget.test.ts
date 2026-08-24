@@ -199,30 +199,29 @@ describe('in-session cache', () => {
   beforeEach(() => resetSearchCache());
 
   it('returns undefined on a miss', () => {
-    expect(getCachedHits('tavily', 'q', 3)).toBeUndefined();
+    expect(getCachedHits('builtin', 'q', 3)).toBeUndefined();
   });
 
   it('returns cached hits on a hit keyed by provider+query+maxResults', () => {
     const hits = [hit()];
-    setCachedHits('tavily', 'mars', 3, hits);
-    expect(getCachedHits('tavily', 'mars', 3)).toBe(hits);
-    expect(getCachedHits('brave', 'mars', 3)).toBeUndefined();
-    expect(getCachedHits('tavily', 'moon', 3)).toBeUndefined();
-    expect(getCachedHits('tavily', 'mars', 5)).toBeUndefined();
+    setCachedHits('builtin', 'mars', 3, hits);
+    expect(getCachedHits('builtin', 'mars', 3)).toBe(hits);
+    expect(getCachedHits('builtin', 'moon', 3)).toBeUndefined();
+    expect(getCachedHits('builtin', 'mars', 5)).toBeUndefined();
   });
 
   it('resetSearchCache clears entries', () => {
-    setCachedHits('tavily', 'q', 3, [hit()]);
+    setCachedHits('builtin', 'q', 3, [hit()]);
     resetSearchCache();
-    expect(getCachedHits('tavily', 'q', 3)).toBeUndefined();
+    expect(getCachedHits('builtin', 'q', 3)).toBeUndefined();
   });
 
   it('evicts the oldest entry once the cap is exceeded', () => {
     // Cap is 50; the 51st distinct key evicts the oldest.
     for (let i = 0; i < 51; i++) {
-      setCachedHits('tavily', `q${i}`, 3, [hit()]);
+      setCachedHits('builtin', `q${i}`, 3, [hit()]);
     }
-    expect(getCachedHits('tavily', 'q0', 3)).toBeUndefined();
-    expect(getCachedHits('tavily', 'q50', 3)).toBeDefined();
+    expect(getCachedHits('builtin', 'q0', 3)).toBeUndefined();
+    expect(getCachedHits('builtin', 'q50', 3)).toBeDefined();
   });
 });

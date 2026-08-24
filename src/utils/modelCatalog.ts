@@ -315,6 +315,52 @@ export const CATALOG_IMAGEGEN: CatalogModel[] = [
     modelscopeRepo: 'leejet/Z-Image-Turbo-GGUF',
     role: '中文场景 + 无审查（仅高端 Adreno GPU）',
   },
+  {
+    id: 'flux-klein-4b/flux_klein_4b_q4_0.gguf',
+    category: 'imagegen',
+    displayName: 'FLUX.2 Klein 4B (Q4_0)',
+    file: {
+      name: 'flux_klein_4b_q4_0.gguf',
+      sizeBytes: 2460378560,
+      dir: 'models',
+      remotePath: 'flux-2-klein-4b-Q4_0.gguf',
+    },
+    extras: [
+      // TE 复用 Z-Image 的 zimage_llm.gguf（Qwen3-4B-Q4_K_M，与 klein 官方
+      // qwen_3_4b.safetensors 同源——官方 8.05GB 全精度端侧不可用，必须 GGUF；
+      // Z-Image 已实测端侧 fp16/Adreno 无 nan/inf 累积溢出）。去重：与 Z-Image
+      // 共享同一落盘文件，downloadCatalogEntry 按文件名跳过已存在（08-22 项 5）。
+      // 仅魔搭（与 Z-Image zimage_llm 同声明：HF 侧文件名不同未验证，选 HF 自动回退魔搭）
+      {
+        name: 'zimage_llm.gguf',
+        sizeBytes: 2497281312,
+        dir: 'models',
+        remotePath: 'Qwen3-4B-Q4_K_M.gguf',
+        repoBySource: {modelscope: 'unsloth/Qwen3-4B-GGUF'},
+      },
+      // flux2-vae 与 Z-Image ae.safetensors 非同文件（08-22 HF API 实锤：
+      // 336211292B/oid 868fe7b3 ≠ 335304388B/oid afc8e282），独立文件不去重。
+      // BFL 官方仓 401（gated）弃用，用 Comfy-Org 重打包（双源 resolve 200 验证）。
+      {
+        name: 'flux2_vae.safetensors',
+        sizeBytes: 336211292,
+        dir: 'models',
+        remotePath: 'split_files/vae/flux2-vae.safetensors',
+        repoBySource: {
+          hf: 'Comfy-Org/vae-text-encorder-for-flux-klein-4b',
+          modelscope: 'Comfy-Org/vae-text-encorder-for-flux-klein-4b',
+        },
+      },
+    ],
+    // 非自制：leejet GGUF 量化（sd.cpp 官方工具链，Q4_0 端侧首选；leejet 仓仅
+    // Q4_0/Q8_0 两档无 Q4_K_M）+ unsloth Qwen3-4B 文本塔（复用 Z-Image）+ Comfy-Org VAE
+    //（2026-08-22 双源 resolve 全 200 实锤，MODEL_MATRIX §2 #4 同步）
+    sources: ['hf', 'modelscope'],
+    hfRepo: 'leejet/FLUX.2-klein-4B-GGUF',
+    modelscopeRepo: 'leejet/FLUX.2-klein-4B-GGUF',
+    tierHint: 'flagship',
+    role: '画质天花板（4 步极速，中英文原生，仅高端 Adreno GPU）',
+  },
 ];
 
 /** 全量清单（模型页 = 本数组全量可管理） */

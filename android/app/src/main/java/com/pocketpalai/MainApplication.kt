@@ -35,6 +35,9 @@ class MainApplication : Application(), ReactApplication {
               add(DownloadPackage())
               add(ImageGenPackage())
               add(AsrPackage())
+              add(TtsPackage())
+              add(AudioRecordPackage())
+              add(VideoTaskServicePackage())
               add(BuildInfoPackage())
               add(ScreenReaderPackage())
             }

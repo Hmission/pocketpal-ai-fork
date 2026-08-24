@@ -50,3 +50,10 @@ relates: [POCKETPAL_DESIGN_SPEC]
 - 组件内一律显式传 `width`/`height`（如 16/18/20），或依赖 SVG 默认 24
 - 颜色必须传 `stroke={theme.colors.xxx}`（fill 型传 `fill=`）
 - 新增图标若为 stroke 型，直接按 24×24 + sw 2 绘制，零缩放
+## 五、WorkshopIcon（创造工坊入口，2026-08-22 登记，v5.3 意象更新）
+
+- 用途：抽屉「创造工坊」入口图标（替代原画图 CameraIcon）
+- 意象：**画笔 + 扳手 X 交叉**（v5.3 大王裁定：两工具交叉成 X，替代音符——工具工坊语义；画笔沿主对角线、扳手沿副对角线，交叉点居中，互不侵入对方主体）
+- 规格：SVG stroke 语义色 primary，20×20（与「+ 新对话」PlusIcon 22 对齐）；全描边 2px 同族（round cap/join）
+- 归属：assets/icons 自绘体系，命名 WorkshopIcon
+

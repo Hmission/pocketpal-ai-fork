@@ -152,7 +152,9 @@ export const ModelPickerDropdown: React.FC<DropdownProps> = ({
                             ? s.badgeSd3
                             : item.manifest.family === 'dreamlite'
                               ? s.badgeDream
-                              : s.badgeZ
+                              : item.manifest.family === 'flux'
+                                ? s.badgeFlux
+                                : s.badgeZ
                         }>
                         [{FAMILY_BADGE[item.manifest.family]}]{' '}
                       </Text>

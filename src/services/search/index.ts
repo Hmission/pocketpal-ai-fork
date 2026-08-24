@@ -1,9 +1,6 @@
 import type {SearchProvider, SearchProviderId, PageContent} from './types';
 import {fetchText} from './providers/http';
-import {TavilyProvider} from './providers/tavily';
-import {BraveProvider} from './providers/brave';
-import {ExaProvider} from './providers/exa';
-import {ParallelProvider} from './providers/parallel';
+import {BuiltinProvider} from './providers/builtin';
 
 export type {
   SearchProvider,
@@ -21,20 +18,13 @@ export {
   resetSearchCache,
 } from './searchBudget';
 
-/** Wires each adapter to a key accessor so it reads its BYOK key lazily, without importing the store. */
+/** Built-in composite engine (Bing + Wikipedia) — no key accessor needed. */
 export const createSearchProvider = (
   id: SearchProviderId,
-  getKey: () => string,
 ): SearchProvider => {
   switch (id) {
-    case 'tavily':
-      return new TavilyProvider(getKey);
-    case 'brave':
-      return new BraveProvider(getKey);
-    case 'exa':
-      return new ExaProvider(getKey);
-    case 'parallel':
-      return new ParallelProvider(getKey);
+    case 'builtin':
+      return new BuiltinProvider();
   }
 };
 

@@ -66,13 +66,14 @@ relates: [POCKETPAL_DESIGN_SPEC]
 > 社区 2026 验证：`Qwen3.5-4B-Q4_K_M + mmproj-BF16` 是 ComfyUI 反推节点标准组合（禁思考模式、纯净描述）。
 > 零新增文件：视觉伴侣 #2/#4 已于 2026-08-20 入册装机。
 
-## 2. 生图入选清单（3 件）
+## 2. 生图入选清单（4 件）
 
 | # | 模型 | 说明 | 定位 |
 |---|---|---|---|
 | 1 | DreamLite（小黄鸡端侧） | App 内置 manifest，非文件 | **主线主力**（固定置顶默认选中） |
 | 2 | SD 3.5 Medium | DiT + clip_l/clip_g/vae 四件套 | 🥇 画质升级 |
 | 3 | Z-Image-Turbo | DiT + zimage_llm + ae 三件套 | 🥈 中文场景 + 无审查 |
+| 4 | FLUX.2 Klein 4B (Q4_0) | DiT + flux2_vae（TE 复用 zimage_llm） | 🥉 画质天花板（4 步极速，仅高端 Adreno） |
 
 > **代码化清单（2026-08-20）**：`src/utils/modelCatalog.ts` 的 `CATALOG_IMAGEGEN` 为本表代码事实源
 > （套件文件清单与 §6.1/§6.2 一致；模型页「生图模型」区可管理）。
@@ -86,6 +87,16 @@ relates: [POCKETPAL_DESIGN_SPEC]
 > - **Z-Image-Turbo 三件套**：双源。main 来自 leejet/Z-Image-Turbo-GGUF（远程名 `z_image_turbo-Q4_K.gguf`）；
 >   ae 来自 Comfy-Org/z_image_turbo 的 `split_files/vae/`；zimage_llm 文本塔仅魔搭
 >   （unsloth/Qwen3-4B-GGUF，HF 侧文件名不同未验证——选 HF 源时自动回退魔搭下载）
+> - **FLUX.2 Klein 4B（2026-08-22 新增，Box 清单 P0）**：双源。main 来自 leejet/FLUX.2-klein-4B-GGUF
+>   （远程名 `flux-2-klein-4b-Q4_0.gguf`，2460378560 B，Q4_0——leejet 仓仅 Q4_0/Q8_0 两档，无 Q4_K_M；
+>   Q4_0 与 Z-Image 同 sd.cpp 工具链转换，端侧首选）；vae 来自 Comfy-Org/vae-text-encorder-for-flux-klein-4b
+>   的 `split_files/vae/flux2-vae.safetensors`（336211292 B，落盘名 `flux2_vae.safetensors`；
+>   BFL 官方仓 black-forest-labs/FLUX.2-klein-4B 为 401 gated 弃用，2026-08-22 双源 resolve 200 实锤）；
+>   **TE 复用 Z-Image 的
+>   `zimage_llm.gguf`**（Qwen3-4B-Q4_K_M，与 klein 官方 qwen_3_4b.safetensors 同源——官方是 8.05GB 全精度，
+>   端侧只能用 GGUF 量化；Z-Image 已实测该 TE 端侧 fp16/Adreno 无 nan/inf 累积溢出，08-20 数据）。
+>   **VAE 与 Z-Image 的 ae.safetensors 非同文件**（flux2-vae 336211292 B / oid 868fe7b3 ≠ ae 335304388 B /
+>   oid afc8e282，2026-08-22 HF API 实锤），不可去重。
 > - **DreamLite**：部署 ONNX 为自制导出（.tmp/dreamlite 本地导出+量化），HF 无公开 ONNX；
 >   原始权重（safetensors）来自作者官方仓库 carlofkl/DreamLite-mobile（2026-08-20 hf-mirror
 >   逐字节验证：unet 780074688 / vae 4903270 / te 4255140312 与本地 ckpt 全一致）。
@@ -176,6 +187,11 @@ relates: [POCKETPAL_DESIGN_SPEC]
 | z_image_turbo_q4_k.gguf | 3.86 GB | 生图 Z-Image |
 | zimage_llm.gguf | 2.50 GB | 生图 Z-Image TE |
 | ae.safetensors | 0.34 GB | 生图 Z-Image VAE |
+
+> **FLUX.2 Klein 不入预置推送包（2026-08-22）**：`requiresHighGpu` 仅高端 Adreno 可用，
+> 走 App 内在线下载（§2 #4，模型页「生图模型」区），不占备用机黄金标准 16 件。
+> 其 TE 复用上表 `zimage_llm.gguf`（不新增文件）；新增落盘仅 `flux_klein_4b_q4_0.gguf` +
+> `flux2_vae.safetensors` 两文件（App 下载后落 models/，装机核对时出现属正常，不冲突）。
 
 ### 6.2 dreamlite/ 必须 6 个文件（含 TE，真实文本条件）
 

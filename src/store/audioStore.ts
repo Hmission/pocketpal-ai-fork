@@ -13,17 +13,30 @@ import {makeAutoObservable, runInAction} from 'mobx';
 
 import {imageGenStore} from './imageGenStore';
 import {ttsStore} from './TTSStore';
+import {promptWriter} from '../services/promptWriter';
 import {getAllEngines, Voice} from '../services/tts';
 import {
   downloadSenseVoice,
   isSenseVoiceInstalled,
   transcribeFile,
 } from '../services/asrEngine';
+import {
+  playTtsFile,
+  pausePlayFile,
+  resumePlayFile,
+  seekPlayFile,
+  stopTtsPlay,
+  synthesizeToFile,
+  TtsGenEngineId,
+  TtsSynthOptions,
+} from '../services/ttsEngine';
 
 /** ASR 模型下载状态机（与 TTS 下载状态机同构） */
 export type AsrDownloadState = 'not_installed' | 'downloading' | 'ready' | 'error';
 
 class AudioStore {
+  /** 生成引擎选择（顶栏胶囊 + 生成段共享，B35：模型只在顶栏） */
+  genEngine: TtsGenEngineId = 'kokoro';
   /** 转写进行中（结果区动效驱动） */
   transcribing = false;
   /** 转写阶段文本（加载语音模型 → 转写中 → 标点恢复） */
@@ -32,12 +45,20 @@ class AudioStore {
   asrState: AsrDownloadState = 'not_installed';
   /** ASR 下载进度（0-100） */
   asrProgress = 0;
+  /** 最近一次转写/生成失败原因（DRC 取证与诊断） */
+  asrError: string | null = null;
+  ttsError: string | null = null;
   /** 朗读中文本（结果区展示） */
   speakingText = '';
 
   constructor() {
     makeAutoObservable(this);
     void this.refreshAsrState();
+  }
+
+  /** 切换生成引擎（顶栏胶囊选中即生效） */
+  setGenEngine(engine: TtsGenEngineId): void {
+    this.genEngine = engine;
   }
 
   /** ASR 模型状态刷新（文件系统为事实源） */
@@ -77,13 +98,14 @@ class AudioStore {
 
   /**
    * 转写任务化（入画廊）：beginTask(running) → 转写 → finishTask
-   * （prompt=转写文本，uri 空）／ failTask 报错页。
+   * （prompt=转写文本）／ failTask 报错页。
+   * B36：源音频路径存入 uri 字段（failed 页重试可复用同源重发）。
    * 返回转写文本（成功）或 null（失败）。
    */
   async transcribeTask(audioPath: string): Promise<string | null> {
     const startTs = Date.now();
     const taskId = await imageGenStore.beginTask({
-      uri: '',
+      uri: audioPath,
       prompt: '',
       seed: 0,
       ts: startTs,
@@ -106,7 +128,7 @@ class AudioStore {
       if (!trimmed) {
         throw new Error('转写无输出');
       }
-      await imageGenStore.finishTask(taskId, '', {
+      await imageGenStore.finishTask(taskId, audioPath, {
         prompt: trimmed,
         durationMs: Date.now() - startTs,
       });
@@ -115,6 +137,9 @@ class AudioStore {
     } catch (e: any) {
       const msg = `转写失败：${e?.message ?? e}`;
       console.info('[AudioStore] transcribeTask failed:', e);
+      runInAction(() => {
+        this.asrError = msg;
+      });
       await imageGenStore.failTask(taskId, '转写失败', msg);
       return null;
     } finally {
@@ -125,7 +150,68 @@ class AudioStore {
     }
   }
 
-  // ---- TTS 视图编排（复用 TTSStore，仅镜像状态供 UI 读取）----
+  // ---- TTS 视图编排（复用 TTSStore，仅镜像状态供 UI 读取）+ 生成任务化 ----
+
+  /** 生成进行中（结果区动效驱动） */
+  ttsGenerating = false;
+  /** 生成阶段文本 */
+  ttsStage = '';
+
+  // ---- B38 播放器预览窗口状态机（MediaPlayer + JS 500ms 轮询） ----
+
+  /** 当前播放产物 uri（null = 无播放） */
+  playingUri: string | null = null;
+  /** 播放位置 ms（时间轴轮询写入） */
+  playPosition = 0;
+  /** 总时长 ms（playFile resolve） */
+  playDuration = 0;
+  /** 播放中（暂停/停止/播完 = false） */
+  isPlaying = false;
+
+  /** 播放/暂停切换（同一 uri 暂停续播；不同 uri 切源重播） */
+  async togglePlay(uri: string): Promise<void> {
+    if (this.playingUri === uri && this.isPlaying) {
+      await pausePlayFile();
+      runInAction(() => {
+        this.isPlaying = false;
+      });
+      return;
+    }
+    if (this.playingUri === uri && !this.isPlaying) {
+      await resumePlayFile();
+      runInAction(() => {
+        this.isPlaying = true;
+      });
+      return;
+    }
+    await stopTtsPlay();
+    const duration = await playTtsFile(uri);
+    runInAction(() => {
+      this.playingUri = uri;
+      this.playPosition = 0;
+      this.playDuration = duration;
+      this.isPlaying = true;
+    });
+  }
+
+  /** 时间轴拖动跳播（ms） */
+  async seekTo(ms: number): Promise<void> {
+    await seekPlayFile(ms);
+    runInAction(() => {
+      this.playPosition = ms;
+    });
+  }
+
+  /** 停止并复位播放器 */
+  async stopPlayback(): Promise<void> {
+    await stopTtsPlay();
+    runInAction(() => {
+      this.playingUri = null;
+      this.playPosition = 0;
+      this.playDuration = 0;
+      this.isPlaying = false;
+    });
+  }
 
   /** 引擎列表（含安装态；UI 模型管理行） */
   get engines() {
@@ -184,6 +270,78 @@ class AudioStore {
     runInAction(() => {
       this.speakingText = '';
     });
+  }
+
+  /**
+   * 生成音频文件任务（kind='tts' 入画廊，与转写同构：running/success/failed）。
+   * 产物 = AIOS/audio/output/tts_{ts}.wav（共享存储，用户可见）。
+   *
+   * @returns 产物绝对路径（成功）或 null（失败，任务已置 failed）
+   */
+  async generateTask(
+    engine: TtsGenEngineId,
+    text: string,
+    voice: Voice,
+    opts: TtsSynthOptions = {},
+  ): Promise<string | null> {
+    const trimmed = text.trim();
+    if (!trimmed) {
+      return null;
+    }
+    // B34：生成前释放管家模型（promptWriter）腾内存——kokoro fp32 加载峰值
+    // 与管家同驻会超 HyperOS 单应用配额被系统杀进程（K90/小米13 双机血证）；
+    // 聊天调度链路会自动 ensureLoaded 懒加载恢复，无感。
+    await promptWriter.release();
+    const startTs = Date.now();
+    const taskId = await imageGenStore.beginTask({
+      uri: '',
+      prompt: trimmed,
+      seed: 0,
+      ts: startTs,
+      width: 0,
+      height: 0,
+      family: 'tts',
+      kind: 'tts',
+      modelLabel:
+        engine === 'kokoro'
+          ? 'Kokoro'
+          : engine === 'supertonic'
+          ? 'Supertonic'
+          : 'Kitten',
+    });
+    runInAction(() => {
+      this.ttsGenerating = true;
+      this.ttsStage = `正在合成（${voice.name}）…`;
+    });
+    try {
+      const outPath = await synthesizeToFile(engine, trimmed, voice.id, {
+        ...opts,
+        onStage: stage => {
+          runInAction(() => {
+            this.ttsStage = stage;
+          });
+        },
+      });
+      await imageGenStore.finishTask(taskId, outPath, {
+        prompt: trimmed,
+        durationMs: Date.now() - startTs,
+      });
+      console.info('[AudioStore] tts generate ok:', outPath);
+      return outPath;
+    } catch (e: any) {
+      const msg = `生成失败：${e?.message ?? e}`;
+      console.info('[AudioStore] generateTask failed:', e);
+      runInAction(() => {
+        this.ttsError = msg;
+      });
+      await imageGenStore.failTask(taskId, '生成失败', msg);
+      return null;
+    } finally {
+      runInAction(() => {
+        this.ttsGenerating = false;
+        this.ttsStage = '';
+      });
+    }
   }
 }
 

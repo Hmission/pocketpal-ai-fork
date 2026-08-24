@@ -117,6 +117,28 @@ describe('记忆治理（批次 9-2）', () => {
     expect(mockCompletion).not.toHaveBeenCalled();
   });
 
+  it('GOVERN_SYSTEM 含删除指令：瞬时状态/时效内容/失败记录/自述（三闸·闸3）', async () => {
+    (RNFS.exists as jest.Mock).mockResolvedValue(true);
+    (RNFS.readFile as jest.Mock).mockResolvedValue(
+      JSON.stringify(makeMemories(15)),
+    );
+
+    mockCompletion.mockImplementation(
+      async (params: any, onData: (d: {token: string}) => void) => {
+        const system = params.messages[0].content as string;
+        expect(system).toContain('4. 删除');
+        expect(system).toContain('瞬时状态');
+        expect(system).toContain('时效内容');
+        expect(system).toContain('失败记录');
+        expect(system).toContain('女妖自述与寒暄');
+        onData({token: '[]'});
+      },
+    );
+
+    await governMemories();
+    expect(mockCompletion).toHaveBeenCalledTimes(1);
+  });
+
   it('日志轮转：删除 90 天前的对话日志', async () => {
     const oldDate = new Date(Date.now() - 100 * 24 * 60 * 60 * 1000)
       .toISOString()

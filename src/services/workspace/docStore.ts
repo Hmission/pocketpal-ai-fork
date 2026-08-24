@@ -167,7 +167,9 @@ export async function updateSection(
 }
 
 async function writeChecked(path: string, next: string): Promise<DocWriteResult> {
-  const bytes = Buffer.byteLength(next, 'utf8');
+  // Hermes 无 Node Buffer（真机实证 WRITE_FAILED: Property 'Buffer' doesn't exist）——
+  // 用 TextEncoder 数 UTF-8 字节（RN 0.82 Hermes 内置，jest Node 亦可用）。
+  const bytes = new TextEncoder().encode(next).length;
   if (bytes > MAX_DOC_BYTES) {
     return {ok: false, error: 'DOC_TOO_LARGE', bytes};
   }

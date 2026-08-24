@@ -170,28 +170,11 @@
     "serverTypeHelp": "自動検出されます。誤っている場合は変更してください。",
     "internetSearch": {
       "title": "インターネット検索",
-      "description": "Palが自分のツールでウェブを検索できるようにします。APIキーはご自身のものをご用意ください。PocketPalがキーを保持したり、クエリを中継したりすることは一切ありません。",
-      "providerLabel": "検索プロバイダー",
-      "providerGated": "近日公開",
-      "keyLabel": "APIキー",
-      "keyIsSet": "{{provider}}のキーが設定されています。",
-      "keyNotSet": "{{provider}}のキーは設定されていません。",
-      "setKeyButton": "キーを設定",
-      "updateKeyButton": "キーを更新",
-      "clearKeyButton": "キーをクリア",
-      "keyInputPlaceholder": "{{provider}}のAPIキーを貼り付けてください",
-      "keyUpdateError": "キーを更新できませんでした。もう一度お試しください。",
-      "showKeyAccessibilityLabel": "APIキーを表示",
-      "hideKeyAccessibilityLabel": "APIキーを非表示",
+      "description": "内蔵検索（Bing + Wikipedia）— API キー不要、端末がオンラインならすぐ使えます。",
       "resultCountLabel": "検索ごとの結果数",
       "resultCountDescription": "結果数を減らすと、モデルのコンテキストに余裕が生まれます。",
-      "consentTitle": "検索はデバイスの外に送信されます",
-      "consentDescription": "Palがウェブを検索すると、クエリはインターネット経由で選択したプロバイダーに送信されます。Palがページを読み取る際、選択したプロバイダーに独自のリーダーがない場合は、代わりにURLとページの内容がデフォルトのリーダーサービス（r.jina.ai）に送信されることがあります。キーとクエリがPocketPalに送信されることは一切ありません。",
-      "consentAccept": "理解しました",
-      "consentRequired": "キーを設定して検索を有効にするには、上記の説明に同意してください。",
-      "consentGivenTitle": "ウェブ検索が有効になっています",
-      "consentGivenDescription": "上記のとおり、クエリとページの読み取りがデバイスの外に送信されることがあります。",
-      "consentRevoke": "取り消す"
+      "enableLabel": "ウェブ検索を許可",
+      "enableDescription": "Pal が検索すると、クエリは Bing と Wikipedia に送信されます。Pal がページを読むと、URL とコンテンツは r.jina.ai に送信されます。クエリがアプリに送信されることはありません。"
     },
     "languageSheetTitle": "言語",
     "languageSearchPlaceholder": "言語を検索",
@@ -871,8 +854,8 @@
         "render_html": "HTMLドキュメントをチャット内にインライン表示します",
         "calculate": "数式を計算します",
         "datetime": "現在の日付と時刻を取得します",
-        "web_search": "最新情報をインターネットで検索します（設定でAPIキーが必要です）",
-        "read_url": "ウェブページの全内容を読み取ります（設定でAPIキーが必要です）"
+        "web_search": "最新情報をインターネットで検索（内蔵、API キー不要）",
+        "read_url": "ウェブページの全文を読む（内蔵、API キー不要）"
       },
       "greeting": {
         "sectionLabel": "あいさつ",

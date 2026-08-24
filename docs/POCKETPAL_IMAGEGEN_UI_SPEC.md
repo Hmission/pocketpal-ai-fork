@@ -3,9 +3,9 @@ doc_id: POCKETPAL_IMAGEGEN_UI_SPEC
 module: root
 type: spec
 status: active
-version: "2.1"
+version: "5.5"
 created: "2026-08-14"
-updated: "2026-08-20"
+updated: "2026-08-23"
 relates: [POCKETPAL_DESIGN_SPEC, ADR-0002-imagegen-header-right]
 ---
 
@@ -23,28 +23,43 @@ relates: [POCKETPAL_DESIGN_SPEC, ADR-0002-imagegen-header-right]
 > 版本：v4（2026-08-21，创作工坊：页内双 tab（生图/音频工坊）+ 反推能力——操作条五按钮、caption 任务化入画廊、复刻生图 Sheet 全参数；音频工坊见 AUDIO_UI_SPEC）
 > 版本：v4.1（2026-08-21，新手引导：非 Dream 出图未加载不再灰置——点击弹提示 + 展开模型下拉；预览区有图时非 Dream 也常驻「编辑」按钮——点击确认后自动切 DreamLite）
 > 版本：v4.2（2026-08-21，提示形态统一：生图页全部轻提示弃用底部 Paper Snackbar——顶部 BannerBar overlay（白卡实底压预览区顶部，语义色 wash，不挡底部按钮）；编辑锁定提示常驻至预备态结束，其余瞬时 3s 自动消失）
+> 版本：v5.1（2026-08-22，顶栏滑块按钮：生图/音频双 tab 胶囊合并为单滑块（toggle，点文字段切换、点选中段不动）；模型胶囊缩短 1/3（maxWidth 180→120）保证「加载」按钮永可见）
+> 版本：v5.2（2026-08-22 大王反馈收窄）：滑块分段 56→48px/段（两段总宽 96）；抽屉入口文案「画图」→「创造工坊」（zh）/「Studio」（en）/「創造工坊」（zh-Hant，其余语言回退 en）；workshop.svg 重绘（全描边 2px 同族，画笔斜置 + 音符流出于笔尖的对角构图，替代原实心圆散构图）
+> 版本：v5.3（2026-08-22 B35 大王裁定）：① workshop.svg 再次重绘——**画笔 × 扳手 X 交叉**（大王：两工具交叉成 X，替代音符；画笔沿主对角线、扳手沿副对角线，交叉点居中，互不侵入对方主体）；② 音频历史条改**横向滚动**（对齐本页相册 HistoryStrip 模式，转写/生成两段隔离）；③ 音频引擎选择**移入顶栏胶囊**（对齐本页模型胶囊语义，高级参数不含模型红线扩展至音频 tab）；④ 转写结果卡对齐反推卡（3 行折叠 + 展开全文 + 三按钮操作条）
+> 版本：v5.4（2026-08-22 B36 大王复查）：① **音频引擎选择弃 Menu → 复用本页 ModelPicker 屏级 overlay 交互**（同页双交互模式消灭，dropOverlay/dropBackdrop/dropPanelAbs + 行内下载/删除）；② 音频结果区升级**整卡三态**（running 波浪 / success 全文卡 / failed 三按钮，对齐本页 taskPage 语义）；③ 音频历史条点击**联动结果区切换**（对齐相册翻页联动）；④ 音频 composer 模型管理行删除（三行冗余状态文本 → 并入顶栏下拉行内）——详见 AUDIO_UI_SPEC v1.5
+> 版本：v5.5（2026-08-23 B38 大王复查·多模态统一）：① **音频顶栏胶囊弃独立风格 → 与本页 triggerPill 同一设计语言**（primary 12% 底 + full 圆角 + primary 1px 描边 + onSurface 文字 + ▾，就绪点内嵌）——同页不再并存两套胶囊风格；② 音频产物区升级**播放器预览窗口**（方形大卡 + 播放/暂停 + 时间轴跳播 + 时长，对齐本页预览窗口规格）；③ 音频历史卡改**方形卡**（对齐本页相册缩略图 72px 方形），点击加载预览窗口——详见 AUDIO_UI_SPEC v1.7
 > 上位规范：POCKETPAL_DESIGN_SPEC.md（UI 域 SSOT）
 
-## 1. 页面结构（工坊双 tab + 单列三区 + 顶部模型胶囊）
+## 1. 页面结构（创造工坊 + 顶栏一行 + 单列三区 + 产物区整卡切换）v5
 
 ```
-┌───────────────────────────────┐
-│ 模型状态胶囊（ModelPickerPanel）│ ← 点文本区展开悬浮下拉；未加载时右侧有「加载」快速按钮
-├───────────────────────────────┤
-│ [ 生图 ] [ 音频工坊 ]          │ ← 页内 tabBar（复用 KnowledgeScreen 手写 tabBar 先例）
-├───────────────────────────────┤
-│ ① 结果区（ResultPreview）      │ ← 横向分页：[0页编辑槽] + 任务页（running/success/failed 三态）
-│   操作条：保存/放大/反推/再次生成/删除 │ ← v4 定稿五按钮（仅成功图）
-│   参数水印                     │
-├───────────────────────────────┤
-│ ② 相册（HistoryStrip）         │ ← 横向缩略图 + 上传 + [管理]多选删除（含反推任务角标）
-├───────────────────────────────┤
-│ ③ 创作区（ComposerPanel）      │ ← 提示词（≤120字）+ 折叠高级参数 + 底部按钮
-│   底部按钮：DreamLite=[编辑][出图]；通用SD=[编辑(预览区有图时)][出图]
-└───────────────────────────────┘
+┌─────────────────────────────────────────────┐
+│ 返回 │ 创造工坊 │ 滑块[生图|音频] │ 上下文操作    │ ← 顶栏一行（滑块在顶栏，上下文随 tab 切换）
+│                                            │     生图：模型胶囊(短) + 加载 ｜ 音频：音频操作
+├─────────────────────────────────────────────┤
+│ ① 结果区（ResultPreview）= 产物区（整卡切换）  │ ← 按任务类型整卡渲染，不做图+文字双区
+│    - 生图/编辑：图片（全卡，现状）             │
+│    - 反推：提示词卡（✨反推提示词全文+展开收起   │
+│       + 顶部 banner 胶囊「反推·模型·耗时」      │
+│       + 操作行 复制/复刻生图/删除）            │
+│    - 未来视频：视频播放器（同一产物区）         │
+│    - 信息条/参数水印（现状）                   │
+├─────────────────────────────────────────────┤
+│ ② 相册（HistoryStrip）：横向缩略图 + 上传 + 管理 │
+├─────────────────────────────────────────────┤
+│ ③ 创作区（ComposerPanel）：提示词 + 高级参数卡   │
+│    高级参数卡（默认折叠）：画幅/步数/CFG/负面/种子 │ ← 不含模型（模型只在顶栏）
+│    底部按钮：[编辑][出图]                      │
+└─────────────────────────────────────────────┘
+```
 
-- 双 tab 状态互不干扰：生图 previewIndex / 音频工坊状态独立；切换不卸载（keep mounted）
-- 音频工坊 tab 内部结构见 AUDIO_UI_SPEC v1
+> v5.5：音频 tab 顶栏胶囊 = 引擎选择（**与本页 triggerPill 同一设计语言** + 就绪点，屏级 overlay 下拉三选 + 行内下载/删除）；音频历史条 = 横向滚动**方形卡**（转写/生成两段隔离，点击加载预览窗口，见 AUDIO_UI_SPEC v1.7）
+
+- 一屏原则：产物卡 + 相册条 + composer 主按钮始终可见（升级前结构回归）
+- tab 状态互不干扰：生图 previewIndex / 音频工坊状态独立；切换不卸载（keep mounted）
+- 音频工坊 tab 内部结构：AUDIO_UI_SPEC v1.4
+- 入口：抽屉「创造工坊」（WorkshopIcon 画笔+扳手 X 交叉，v5.3 替代原「画图」CameraIcon）
+
 
 ## 2. 按钮组成定稿
 
@@ -76,6 +91,7 @@ relates: [POCKETPAL_DESIGN_SPEC, ADR-0002-imagegen-header-right]
 
 ### 模型胶囊
 - 视觉：primary 12% 底 + primary 1px 描边（与聊天顶栏胶囊同一设计语言，v3.1）
+- 宽度：maxWidth 120（v5.1 缩短 1/3，原 180）——模型名超长截断（numberOfLines 1 + flexShrink）；「加载」按钮 flexShrink:0 永不收缩，始终可见（大王红线）
 - 文本区（点击）：展开悬浮下拉（盖住下方内容，点外收起）
 - 快速加载按钮：仅「未加载 且 不在加载中」时显示，直接加载当前选中模型，不展开下拉
 - 状态文案：未加载 / 加载中… / 已就绪
@@ -145,18 +161,55 @@ relates: [POCKETPAL_DESIGN_SPEC, ADR-0002-imagegen-header-right]
 ### 7.2 caption 任务化（入画廊，与生图任务同管理）
 - `kind='caption'` 任务条目：running/success/failed 三态 + taskId 持久化（WatermelonDB）
 - running：原图 + 半透明 overlay（taskKind='caption' 同编辑动效）+ 阶段文本（加载视觉模型 → 编码图片 → 生成描述）+ 累计秒数
-- success：原图 + 信息条（`反推 · 模型 · 耗时`）+ 反推结果卡（✨ 反推提示词全文，可展开）+ 操作条三按钮
+- success：**预览卡整卡切换为提示词卡**（产物区规则）：
+  - 顶部 banner 胶囊：`反推 · 模型 · 耗时`（infoOverlay 形态，点击弹参数详情：模型/耗时/提示词全文 + 「回填到输入框」按钮）
+  - 主体：✨ 反推提示词全文（默认 2-3 行折叠 + 展开收起）
+  - 操作行：复制 / 复刻生图 / 删除
 - failed：复用报错页三按钮（复制报错 / 重试 / 删除）
-- 结果同时回填 composer 输入框（用户可见可改）
+- 结果同时自动回填 composer 主输入框（用户可见可改，直接点「出图」= 复刻）
+- 反推输入图回看：任务信息条 + 画廊缩略图（任务存输入图引用，不占预览卡空间）
 
-### 7.3 复刻生图 Sheet（全参数）
-- 触发：caption 页「复刻生图」→ 底部 Sheet（DESIGN_SPEC §12.2 Sheet 唯一载体）
-- 参数（全参数可控，遵循「需要动的才暴露」）：生图模型单选（族徽章 + 未加载提示）、画幅档位（RATIOS/SD_RATIOS 分流）、步数、CFG、负面词、seed
-- 确认 → 切回生图 tab → 回填参数 → 直接触发出图（`handleGenerate(captionText)`）
+### 7.3 复刻生图（v5 并入高级参数卡，RemakeSheet 删除）
+- 触发：反推产物卡「复刻生图」→ 提示词已回填主输入框，展开高级参数卡调整（默认取 composer 当前值，遵循「需要动的才暴露」）
+- 参数：画幅档位（RATIOS/SD_RATIOS 分流）/ 步数 / CFG / 负面词 / seed（**不含模型**——模型只在顶栏，切模型=顶栏胶囊）
+- 确认 → 直接点「出图」（handleGenerate(captionText)），不再弹 Sheet
 
-## 8. 工坊 tabBar 规范（v4）
 
-- 位置：结果区上方一行，与模型胶囊垂直分隔
-- 样式：复用 KnowledgeScreen tabBar（TouchableOpacity + tabActive 高亮，primary 色），无动画不花哨
-- tab 集：`[ 生图 ] [ 音频工坊 ]`（v4 定稿，第三个 tab 暂不开放）
-- 切换：keep mounted（不卸载），状态各自独立
+## 8. 工坊顶栏一行规范（v5.1，滑块按钮替代双 tab 胶囊）
+
+- 位置：AppBar 一行（返回 | 标题「创造工坊」| 滑块按钮 | 上下文操作），不再有独立 tabBar 行
+- **滑块按钮（v5.2 再收窄）**：单控件 toggle——同一 pill 容器内「生图 | 音频」两段文字，高亮滑块背景跟随当前 tab（absolute 定位，无动画）；**点未选中段 = 切换，点选中段 = 不动**（防误触反复横跳）；容器整体一个视觉单元，分段宽度 48px/段（v5.2 由 56 收窄——大王反馈原宽度过宽）
+- testID 零变更：workshop-tab-image / workshop-tab-audio 保留在文字段（DESIGN_SPEC §11）
+- 上下文操作随 tab 切换：
+  - 生图：模型胶囊（maxWidth 120，模型名截断）+ 「加载」按钮（flexShrink:0 永可见，现状语义保留）
+  - 音频：音频引擎胶囊（**与生图 triggerPill 同一设计语言**：primary 12% 底 + full 圆角 + primary 1px 描边 + onSurface 文字 + ▾；就绪点内嵌；v5.5 弃独立 audioHeaderCapsule 风格；点击展开屏级 overlay 下拉——复用 ModelPickerDropdown 交互模式，行内 = 引擎名+大小+状态点 + 下载/删除按钮；SenseVoice 状态与下载在 tab 内转写段）
+- 红线：模型选择不出现在高级参数卡/其他位置（只在顶栏）
+
+## 9. 性能面板（专业跑分式监控，2026-08-23，ADR-0008 + PERF_BENCHMARK_DESIGN v0.2）
+
+生成/加载期间实时显示本机资源占用（跑分软件式玩法，大王定调）：
+
+- **位置与形态**：running 任务页进度卡内（三点波浪 + 进度信息下方）的**横版紧凑布局**（v2 大王裁定：卡片下半截空间，非竖状全屏）；加载期（loading）同样显示；**默认展开**（打开即见实时数据），点按折叠头可收起
+- **数据源**：`HardwareInfo.getPerfSnapshot()`（1Hz，与进度轮询同频）——PSS（Debug.getMemoryInfo().totalPss，与 HyperOS 看护硬杀同口径，主指标）+ CPU%（本进程 CPU 时间差分）+ CPU 频率（大核 scaling_cur_freq）+ GPU 负载%（Adreno kgsl gpubusy / Mali devfreq 平台探测）+ GPU 频率 + 温度分区（thermal_zone type 分 cpu/gpu）+ 功耗（power_supply current×voltage，部分设备 N/A）+ 步耗时（已有 stepTime）；NPU 利用率无标准 API → 设备小字显型号（诚实模式，不编造）；所有新指标平台探测 + 失败 N/A（-1 → UI 显 `--`），不报错不兜底
+- **视觉（横版三行）**：
+  - 折叠头一行：`性能 ▾` + PSS 大字（GB，一位小数，阈值色 >5GB 黄 / >6GB 红）+ 指标胶囊横排（CPU% GPU% 温度 功耗）+ 设备小字（SoC 型号）
+  - 迷你曲线条：PSS 历史（最近 60 点，横向压扁 ~40pt，6GB 满量程）右端接峰值/跑分卡；叠加线 [CPU][GPU][温度][功耗] 点按切换
+  - 指标行：横向排列 CPU%/GPU%/频率/温度/功耗/步耗时（放不下横向滚动）+ `[历史 ▷]` 入口
+  - 数据缺失（未就绪）：显示 `--`，不报错不兜底文案
+- **落盘与回放**（PERF_BENCHMARK_DESIGN）：任务级 JSONL（`DocumentDirectory/perf/perf_<taskId>.jsonl`，首行 meta）——任务开始建文件、1Hz append、结束补 summary；`[历史 ▷]` → PerfHistoryModal（列表 → 回放曲线 + 统计卡 + 跑分卡）；保留最近 50 条
+- **生命周期**：轮询随 syncPoll 启停（generating/loading 驱动）；停止时清空实时历史（落盘数据独立保留）
+- **红线**：零新依赖（RN View 自绘 + sysfs/系统 API，无图表库）；Screen 层零直连，数据经 imageGenStore 单通道；颜色走 theme token + 本规范登记语义色
+- **testID**：perf-panel / perf-expand / perf-pss / perf-cpu / perf-temp / perf-gpu / perf-history
+
+### 9.1 跑分卡分数体系（PERF_BENCHMARK_DESIGN §4.3）
+
+```
+综合分 = w1×内存安全 + w2×温控 + w3×稳定性（无 stepTime 数据时三项）；有同模型速度基线时加 w4×速度
+  内存安全：(6GB - PSS峰值)/6GB×100（距硬杀线余量，负值归 0）
+  温控：100 - 温升率(°C/min)×10（起点→峰值）
+  稳定性：PSS均值/PSS峰值×100（峰均比反向，3DMark 式）
+```
+
+每次任务结束产出跑分卡（分项 + 综合），历史按综合分排行（Geekbench 式）。
+
+

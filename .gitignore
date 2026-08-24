@@ -152,6 +152,16 @@ scripts/agent/
 /k90_*
 /scrcpy*
 /红米K90*
+# 气泡样式取证（crop_*）/ 生图 boot 采样（v*）/ 渲染层级取证（g*/h*）散落根目录，随取证窗口生灭，不入库
+/crop_*
+/v[0-9]*.png
+/g[0-9]*.*
+/h[0-9]*.png
+/h*.xml
+# 真机压测 / 会话 dump 取证产物
+/debug-output/
+# WorkBuddy 工作区元数据（多窗口并行开发本地态，不入库）
+.workbuddy/
 __pycache__/
 
 # 开发者预览版分发产物（大文件不入库）

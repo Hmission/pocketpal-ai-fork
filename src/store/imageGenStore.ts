@@ -5,7 +5,7 @@
  * 聊天前需 unloadModel() 释放内存（SDXL Q4 ~2.5GB）。
  * UI 层（生图 Tab）通过此 store 驱动加载/出图/进度。
  */
-import {makeAutoObservable, runInAction} from 'mobx';
+import {makeAutoObservable, reaction, runInAction} from 'mobx';
 import {NativeModules} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as RNFS from '@dr.pogodin/react-native-fs';
@@ -24,10 +24,42 @@ import {
   SRStyle,
 } from '../services/superResEngine';
 import {runCaption, CaptionStage} from '../services/captionEngine';
+import {
+  pngWithMeta,
+  readPngMetaBytes,
+  base64ToBytes,
+  toBase64,
+  PngGenMeta,
+} from '../services/pngUtil';
 import {imageGenTaskRepository} from '../repositories/ImageGenTaskRepository';
 import {engineMutex} from './engineMutex';
+import {nightTaskRegistry} from './nightTaskRegistry';
+import {perfRecorder} from '../services/perf/perfRecorder';
+
+const VideoTaskService = NativeModules.VideoTaskService;
+// 电池优化豁免引导进程内只发起一次（§7.1 策略 3）：首次长任务未豁免时弹系统弹窗，
+// 用户拒绝后不再重复打扰（前台服务 + WakeLock 仍生效，豁免仅为增强）。
+let batteryOptOutRequested = false;
+/** 夜间任务启动前的电池/Doze 豁免引导（fire-and-forget，不阻断主链路） */
+function requestBatteryOptOutIfNeeded(): void {
+  if (batteryOptOutRequested) {
+    return;
+  }
+  VideoTaskService?.isIgnoringBatteryOptimizations
+    ?.()
+    ?.then((ignoring: boolean) => {
+      if (!ignoring) {
+        batteryOptOutRequested = true;
+        VideoTaskService?.requestBatteryOptOut?.().catch(() => {});
+      }
+    })
+    .catch(() => {});
+}
 import {engineStatus} from './engineStatus';
 import {emit} from '../debug/eventStream';
+import NativeHardwareInfo, {
+  PerfSnapshot,
+} from '../specs/NativeHardwareInfo';
 
 const ImageGen = NativeModules.ImageGen;
 const HISTORY_KEY = '@imagegen_history_v1';
@@ -45,7 +77,7 @@ export interface GeneratedImage {
   cfg?: number;
   family?: string;
   /** 来源：生图结果 or 用户上传（用于编辑的本地图） or 高清放大结果 or 反推任务 or 转写任务 */
-  kind?: 'generated' | 'upload' | 'upscaled' | 'caption' | 'transcribe';
+  kind?: 'generated' | 'upload' | 'upscaled' | 'caption' | 'transcribe' | 'tts';
   /** 放大任务：源图 URI（running 页背景展示原图 + 半透明进度） */
   sourceUri?: string;
   /** 生成耗时（ms）与模型标签：预览卡顶部信息条展示 */
@@ -108,6 +140,12 @@ class ImageGenStore {
   backend: string | null = null;
   /** 08-18：GPU renderer（设备兼容性分级：requiresHighGpu 模型在 740 级灰置） */
   gpuRenderer = '';
+  /** ADR-0008 跑分面板：最近一次性能快照（PSS/CPU/温度，1Hz） */
+  perf: PerfSnapshot | null = null;
+  /** ADR-0008 跑分面板：PSS 曲线历史（最近 60 点，1 分钟窗口） */
+  perfHistory: PerfSnapshot[] = [];
+  /** 夜间长任务模式：reaction disposer（loading/generating 翻转 → 注册表 + 前台服务） */
+  private nightTaskReaction: (() => void) | null = null;
 
   constructor() {
     makeAutoObservable(this);
@@ -135,6 +173,35 @@ class ImageGenStore {
     // 构造即发起就绪链：prepareSharedStorage（快照恢复）→ DB 全量水合 → AsyncStorage 存量迁移。
     // 写路径先 await ensureReady()——水合/迁移完成后才允许写（2026-08-21 覆盖事故终态根治）
     this.readyPromise = this.ensureReadyImpl();
+
+    // 夜间长任务模式（ONDEVICE_VIDEO_GEN_ANALYSIS §7.1）：
+    // 长任务（loading/generating）进行中 → 注册表置 busy + 启动前台服务（防 Doze/内存配额杀进程）。
+    // reaction 一处覆盖全部生图入口（5 个 generate*Entry）+ 未来视频生成，无需逐点埋 begin/end。
+    // 计数语义：loading 与 generating 视为同一任务的两个阶段，用「布尔翻转」而非「每字段独立计数」，
+    // 避免 loading→generating→done 的相位切换造成计数错乱。
+    this.nightTaskReaction = reaction(
+      () => this.loading || this.generating,
+      busy => {
+        // ADR-0008 跑分面板：1Hz 轮询随 loading/generating 翻转自动启停。
+        // reaction 一处覆盖全部生图入口——含 DreamLite generateDreamLiteEntry/
+        // editDreamLiteEntry/upscaleImageEntry/runCaptionTask 这些「引擎已驻留、
+        // 直接 generating=true 但不经过 loadDreamLiteEntry」的路径。
+        // 根治：跑分卡恒显 --（此前 poll 只在 load/SD generate 路径手动 syncPoll，
+        // 驻留态生成从不触发轮询 → perf 恒 null）。
+        this.syncPoll();
+        if (busy) {
+          nightTaskRegistry.begin();
+          VideoTaskService?.start?.().catch(() => {});
+          // 电池/Doze 豁免引导（§7.1 策略 3）：未豁免时发起系统弹窗（进程内一次，不阻断生图）
+          requestBatteryOptOutIfNeeded();
+        } else if (nightTaskRegistry.isBusy) {
+          nightTaskRegistry.end();
+          if (!nightTaskRegistry.isBusy) {
+            VideoTaskService?.stop?.().catch(() => {});
+          }
+        }
+      },
+    );
   }
 
   /** B28 就绪门禁：所有写持久化路径先 await 本方法 */
@@ -236,9 +303,41 @@ class ImageGenStore {
     } else if (!active && this.pollTimer) {
       clearInterval(this.pollTimer);
       this.pollTimer = null;
+      // ADR-0008：轮询停止即清空跑分历史（下次生成重新计）
+      runInAction(() => {
+        this.perf = null;
+        this.perfHistory = [];
+      });
     }
   }
   private async pullSnapshot() {
+    // ADR-0008：性能快照与引擎快照**互不拖累**——perf 先独立更新：
+    // 引擎快照（getGenSnapshot）任一步骤抛错/超时都不影响跑分数据（否则面板恒 --）。
+    const perf = await NativeHardwareInfo.getPerfSnapshot().catch(() => null);
+    if (perf) {
+      runInAction(() => {
+        this.perf = perf;
+        this.perfHistory = [...this.perfHistory, perf].slice(-60);
+      });
+      // P3 落盘：任务进行中随快照追加轨迹（fire-and-forget，不阻塞轮询节奏）
+      if (perfRecorder.isActive) {
+        void perfRecorder.append({
+          ts: Date.now(),
+          pssKb: perf.pssKb,
+          rssKb: perf.rssKb,
+          cpuPct: perf.cpuPct,
+          tempC: perf.tempC,
+          cpuFreqMhz: perf.cpuFreqMhz ?? -1,
+          gpuLoadPct: perf.gpuLoadPct ?? -1,
+          gpuFreqMhz: perf.gpuFreqMhz ?? -1,
+          tempCpuC: perf.tempCpuC ?? -1,
+          tempGpuC: perf.tempGpuC ?? -1,
+          powerMw: perf.powerMw ?? -1,
+          stepTime: this.stepTime,
+          stage: this.stage,
+        });
+      }
+    }
     try {
       const s = await ImageGen.getGenSnapshot();
       // 干净失败：生成中 120s 无引擎事件（心跳停）→ 判定 native 采样 hang。
@@ -339,6 +438,13 @@ class ImageGenStore {
       }
     });
     await imageGenTaskRepository.create(entry);
+    // P3 落盘：任务开始建轨迹文件（fire-and-forget，生图主链路不受影响）
+    void perfRecorder.begin({
+      taskId,
+      taskType: base.kind ?? 'generated',
+      modelLabel: base.modelLabel,
+      startedAt: Date.now(),
+    });
     return taskId;
   }
 
@@ -363,6 +469,7 @@ class ImageGenStore {
     patch?: Partial<GeneratedImage>,
   ): Promise<void> {
     await this.patchTask(taskId, {uri, status: 'success', ...patch});
+    void perfRecorder.finish('success');
   }
 
   /** 任务失败：回填报错摘要/详情，页面保留（测试员可一键复制） */
@@ -372,6 +479,38 @@ class ImageGenStore {
     errorDetail: string,
   ): Promise<void> {
     await this.patchTask(taskId, {status: 'failed', errorSummary, errorDetail});
+    void perfRecorder.finish('failed');
+  }
+
+  /**
+   * PNG 内嵌生成参数（开发项3 写入单点）：读回已落盘 PNG → 插 aios.gen tEXt 块 → 回写。
+   * pngWithMeta 是插块非重编码（IDAT 像素零改动），C 族（JNI stbi_write_png 产物）与
+   * JS 族（DreamLite/超分 encodePng 产物）共用本函数——双写盘路径收口为一。
+   * 增强非本体：注入失败显式 warn，PNG 照常可用（方案 §D4 裁定）。
+   */
+  private async injectGenMeta(uri: string, meta: PngGenMeta): Promise<void> {
+    try {
+      const path = uri.replace(/^file:\/\//, '');
+      const b64 = await RNFS.readFile(path, 'base64');
+      const withMeta = pngWithMeta(base64ToBytes(b64), meta);
+      await RNFS.writeFile(path, toBase64(withMeta), 'base64');
+    } catch (e) {
+      console.warn('[ImageGenStore] PNG meta 注入失败（图本体不受影响）:', e);
+    }
+  }
+
+  /**
+   * 读回 PNG 内嵌生成参数（开发项3 读回）：返回 null = 无 meta（旧图/外部图），
+   * 调用方回落 DB 字段，不报错（方案 §D6 裁定）。
+   */
+  async readPngMetaFile(uri: string): Promise<PngGenMeta | null> {
+    try {
+      const path = uri.replace(/^file:\/\//, '');
+      const b64 = await RNFS.readFile(path, 'base64');
+      return readPngMetaBytes(base64ToBytes(b64));
+    } catch {
+      return null;
+    }
   }
 
   /** 非生成类错误（加载失败/缺伴侣文件/解码失败）直接落 failed 任务条目 */
@@ -752,6 +891,18 @@ class ImageGenStore {
         prompt,
         durationMs: Date.now() - this.genStartedAt,
       });
+      // 开发项3：PNG 内嵌真实生成参数（异步增强，不阻塞出图返回）
+      void this.injectGenMeta(`file://${outPath}`, {
+        prompt,
+        modelId: opts.modelLabel ?? this.loadedModelId ?? '',
+        steps: opts.steps ?? 2,
+        cfg: opts.cfg ?? 2.0,
+        seed,
+        width: opts.width ?? 512,
+        height: opts.height ?? 512,
+        backend: this.backend ?? 'CPU',
+        durationMs: Date.now() - this.genStartedAt,
+      });
       return `file://${outPath}`;
     } catch (e: any) {
       runInAction(() => {
@@ -911,6 +1062,18 @@ class ImageGenStore {
         engine: 'dreamlite',
         durationMs: Date.now() - this.genStartedAt,
       });
+      // 开发项3：PNG 内嵌真实生成参数（DreamLite flow matching：cfg=1 固定、无显式 seed）
+      void this.injectGenMeta(uri, {
+        prompt,
+        modelId: 'dreamlite',
+        steps,
+        cfg: 1,
+        seed: null,
+        width,
+        height,
+        backend: 'ONNX',
+        durationMs: Date.now() - this.genStartedAt,
+      });
       return uri;
     } catch (e: any) {
       runInAction(() => {
@@ -968,6 +1131,18 @@ class ImageGenStore {
         instruction,
         visRgb,
       );
+      // 开发项3：PNG 内嵌真实生成参数（编辑通道：prompt=指令，cfg=1 固定、无显式 seed）
+      void this.injectGenMeta(uri, {
+        prompt: instruction,
+        modelId: 'dreamlite',
+        steps,
+        cfg: 1,
+        seed: null,
+        width,
+        height,
+        backend: 'ONNX',
+        durationMs: Date.now() - this.genStartedAt,
+      });
       return uri;
     } catch (e: any) {
       runInAction(() => {
@@ -1061,6 +1236,18 @@ class ImageGenStore {
       await this.finishTask(taskId, r.uri, {
         width: r.w,
         height: r.h,
+        durationMs: Date.now() - this.genStartedAt,
+      });
+      // 开发项3：PNG 内嵌真实生成参数（超分通道：无采样步数/CFG/seed，steps=null）
+      void this.injectGenMeta(r.uri, {
+        prompt: `高清放大 ${scale}×（${styleLabel}）`,
+        modelId: 'RealESRGAN',
+        steps: null,
+        cfg: null,
+        seed: null,
+        width: r.w,
+        height: r.h,
+        backend: 'ONNX',
         durationMs: Date.now() - this.genStartedAt,
       });
       return r.uri;

@@ -33,7 +33,7 @@ yarn install              # 安装依赖
 yarn start                # 启动 Metro
 npx tsc --noEmit          # 类型检查（改代码后必跑）
 npx jest <path>           # 单测（jest.config.js 配置覆盖率门槛）
-yarn validate:l10n        # 多语言 JSON 校验
+yarn l10n:validate        # 多语言 JSON 校验
 yarn verify:fonts         # 字体子集校验（新增语言必跑）
 ```
 
@@ -46,6 +46,13 @@ Conventional Commits（Husky commitlint 强制）：
 - `docs:` 文档变更
 - `chore:` 重构 / 工具 / 配置变更
 - `refactor:` `test:` `perf:` 等按常规
+
+## Git 仓库铁律（2026-08-24 pack 丢失事故复盘）
+
+- **提交 ≠ 落袋，push 才闭环**：本地 commit 只是暂存；本地 pack 文件一旦丢失（本仓 2026-08-24 凌晨 3 个 `.pack` 全丢，23 个未推送提交对象全灭），未推送内容即无法按原 SHA 恢复。提交后必须尽快 push；多窗口并行开发每窗口收口即 push，禁止积压超过一天。
+- **工作仓库禁止历史重写/对象清理**：`git filter-repo`、`git gc --aggressive`、`git prune`、手工删 `.git/objects/pack/*` 一律禁止在 F:\pp 工作仓库执行；确需历史重写时先在 `git bundle` 全量备份后再操作。
+- **动 git 前先备份**：任何 reset/init/fetch-重建 类操作前，先 tar 工作区（排除 node_modules/.tmp/build 产物）到仓库外（`F:\backups\`）。
+- **恢复预案**：远程 origin（Hmission/pocketpal-ai-fork）是第一恢复源；`git reflog` + `filter-repo/commit-map` + `commit-graph` 是本地审计线索（对象丢失后仅作记录，不作恢复源）。
 
 ## 多语言维护
 

@@ -13,6 +13,7 @@ import {
   TTS_DICT_URL,
   TTS_PARENT_SUBDIR,
 } from '../../constants';
+import {generateKokoroTokensTxt} from '../../sherpaConvert';
 import {ttsRuntime} from '../../runtime';
 import {createEngineStreamingHandle} from '../../streamingHandle';
 import type {Engine, StreamingHandle, Voice} from '../../types';
@@ -199,6 +200,17 @@ export class KokoroEngine implements Engine {
           ),
         );
       }
+    }
+
+    // B36：sherpa 生成链路需要 tokens.txt（tokenizer.json 是 HF 格式，sherpa 不认）；
+    // 播放链路仍消费 tokenizer.json，两份文件并存。失败不阻断（不影响播放）。
+    try {
+      await generateKokoroTokensTxt(
+        this.getFilePath('tokenizer.json'),
+        this.getFilePath('tokens.txt'),
+      );
+    } catch (convertErr) {
+      console.warn('[KokoroEngine] tokens.txt generation failed:', convertErr);
     }
 
     // Write voices manifest pointing at the voices/ directory.

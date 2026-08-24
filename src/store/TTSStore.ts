@@ -24,6 +24,7 @@ import {
   pickThinkingPlaceholder,
 } from '../services/tts/thinkingStripper';
 import {chatSessionStore} from './ChatSessionStore';
+import {nightTaskRegistry} from './nightTaskRegistry';
 
 /**
  * Discriminated union describing what the store is currently doing.
@@ -259,6 +260,12 @@ export class TTSStore {
 
   private handleAppStateChange = (nextAppState: AppStateStatus) => {
     if (nextAppState === 'background') {
+      // 夜间长任务模式（§7.1）：生图/视频任务进行中不释放 TTS 引擎——
+      // 避免长任务后台运行期间引擎反复 stop/release/reload 的 churn。
+      if (nightTaskRegistry.isBusy) {
+        console.log('[TTSStore] background: night task active, keep engine');
+        return;
+      }
       // Stop in-flight audio AND release the active engine's native
       // resources (200-450 MB depending on engine). Re-init is lazy on
       // the next play after foreground.

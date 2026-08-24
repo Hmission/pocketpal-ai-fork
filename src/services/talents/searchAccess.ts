@@ -7,8 +7,9 @@ import type {SearchProvider, PageContent} from '../search/types';
 export interface SearchAccess {
   getActiveProvider(): SearchProvider;
   /**
-   * True only when the user has consented AND the active provider has a key.
-   * Consent is enforced here, not just in the Settings UI.
+   * True only when the user has enabled search. The built-in engine needs no
+   * key, so this is a pure privacy switch — enforced here, not just in the
+   * Settings UI.
    */
   canSearch(): boolean;
   getResultCount(): number;

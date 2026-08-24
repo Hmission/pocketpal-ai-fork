@@ -14,6 +14,9 @@ export interface WebSearchResultItem {
  * - `type: 'error'` means the engine failed; errorMessage describes what went wrong.
  * `summary` is always present and is what gets fed back to the model as the
  * `{role: 'tool', content}` payload on subsequent turns.
+ * - Optional `guide` on error results (WORKSPACE_TOOL_ERROR_FEEDBACK_SPEC §3.1):
+ *   correct-call navigation (定位/导航/深入) appended to `responseContent` so
+ *   the model can self-correct instead of giving up. Engines own their guides.
  */
 export type TalentResult =
   | {type: 'html'; html: string; title?: string; summary: string}
@@ -25,7 +28,7 @@ export type TalentResult =
       summary: string;
     }
   | {type: 'audio'; audioUri: string; summary: string}
-  | {type: 'error'; summary: string; errorMessage: string};
+  | {type: 'error'; summary: string; errorMessage: string; guide?: string};
 
 /** OpenAI function-calling tool schema shape. */
 export interface ToolDefinition {

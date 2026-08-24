@@ -12,6 +12,7 @@ import {
   listProjects,
   touchProject,
   sanitizeProjectName,
+  findProject,
 } from '../workspace';
 import {
   appendSection,
@@ -37,6 +38,14 @@ import {emit} from '../../debug/eventStream';
  */
 export class WritingDocEngine implements TalentEngine {
   readonly name = 'writing_doc';
+
+  /** 导航指引（WORKSPACE_TOOL_ERROR_FEEDBACK_SPEC §3.4）：错误回传给模型的正确调用示例。 */
+  private static readonly GUIDE_INIT =
+    '写作项目尚不存在，先用 init 创建：{"action":"init","title":"<项目名>","genre":"<体裁，可省略>"}；或先 list 查看已有项目。';
+  private static readonly GUIDE_NEW_CHAPTER =
+    '章节文件已到 20KB 上限，用 new_chapter 开新章：{"action":"new_chapter","project":"<项目名>","chapter":"<新章名>"}，再对新章 append。';
+  private static readonly GUIDE_ACTION =
+    'writing_doc 支持的动作：init / list / new_chapter / read_section / read_all / list_sections / append / update_outline / update_persona。示例：{"action":"list"}。';
 
   /** 文档名 → 文件名（doc 参数如「大纲」「人设」「正文-第一章」）。 */
   private docFile(project: string, doc: string): string {
@@ -75,6 +84,7 @@ export class WritingDocEngine implements TalentEngine {
           action +
           '」。',
         errorMessage: `Unknown action: ${action}`,
+        guide: WritingDocEngine.GUIDE_ACTION,
       };
     }
 
@@ -90,6 +100,13 @@ export class WritingDocEngine implements TalentEngine {
       }
       // 框架修订固定写各自文档（不随 args.doc 漂移）
       if (action === 'update_outline') {
+        if (!(await findProject('writing', project))) {
+          return this.err(
+            'PROJECT_NOT_FOUND',
+            `写作项目「${project}」不存在。先创建或查看已有项目。`,
+            WritingDocEngine.GUIDE_INIT,
+          );
+        }
         const file = this.docFileSafe(project, '大纲');
         if (!file) {
           return this.err('INVALID_ARG', 'project 名称含非法字符。');
@@ -97,6 +114,13 @@ export class WritingDocEngine implements TalentEngine {
         return await this.updateFrame(file, project, '大纲', String(args.content ?? ''));
       }
       if (action === 'update_persona') {
+        if (!(await findProject('writing', project))) {
+          return this.err(
+            'PROJECT_NOT_FOUND',
+            `写作项目「${project}」不存在。先创建或查看已有项目。`,
+            WritingDocEngine.GUIDE_INIT,
+          );
+        }
         const file = this.docFileSafe(project, '人设');
         if (!file) {
           return this.err('INVALID_ARG', 'project 名称含非法字符。');
@@ -108,6 +132,21 @@ export class WritingDocEngine implements TalentEngine {
       if (!file) {
         return this.err('INVALID_ARG', 'project/doc 名称含非法字符。');
       }
+      // 读动作同样要求项目存在（真机实证：NO_DOC/NO_SECTION 无导航会让模型
+      // 瞎猜 5 轮烧光 maxTurns+contextFull）——统一 PROJECT_NOT_FOUND + init 导航
+      if (
+        action === 'read_section' ||
+        action === 'read_all' ||
+        action === 'list_sections'
+      ) {
+        if (!(await findProject('writing', project))) {
+          return this.err(
+            'PROJECT_NOT_FOUND',
+            `写作项目「${project}」不存在。先创建或查看已有项目。`,
+            WritingDocEngine.GUIDE_INIT,
+          );
+        }
+      }
       if (action === 'read_section') {
         return await this.readSection(file, args);
       }
@@ -118,13 +157,20 @@ export class WritingDocEngine implements TalentEngine {
         return await this.listSections(file);
       }
       if (action === 'append') {
+        if (!(await findProject('writing', project))) {
+          return this.err(
+            'PROJECT_NOT_FOUND',
+            `写作项目「${project}」不存在。先创建或查看已有项目。`,
+            WritingDocEngine.GUIDE_INIT,
+          );
+        }
         return await this.append(file, project, args);
       }
     } catch (e) {
       return {
         type: 'error',
         summary: `写作工作区操作失败：${(e as Error)?.message ?? '未知错误'}`,
-        errorMessage: 'WRITE_FAILED',
+        errorMessage: `WRITE_FAILED: ${(e as Error)?.message ?? 'unknown'}`,
       };
     }
 
@@ -192,6 +238,13 @@ export class WritingDocEngine implements TalentEngine {
     const chapter = String(args.chapter ?? '').trim();
     if (!project || !chapter) {
       return this.err('INVALID_ARG', 'new_chapter 需要 project 与 chapter 参数。');
+    }
+    if (!(await findProject('writing', project))) {
+      return this.err(
+        'PROJECT_NOT_FOUND',
+        `写作项目「${project}」不存在。先创建或查看已有项目。`,
+        WritingDocEngine.GUIDE_INIT,
+      );
     }
     const file = this.docFileSafe(project, `正文-${chapter}`);
     if (!file) {
@@ -269,6 +322,7 @@ export class WritingDocEngine implements TalentEngine {
             `「${section}」节已到 ${MAX_DOC_BYTES / 1024}KB 上限，本次未写入。` +
             '用 new_chapter 开新章继续写，别把长文塞进旧章。',
           errorMessage: 'DOC_TOO_LARGE',
+          guide: WritingDocEngine.GUIDE_NEW_CHAPTER,
         };
       }
       return this.err(result.error ?? 'WRITE_FAILED', '写入失败，内容未落盘。');
@@ -308,8 +362,8 @@ export class WritingDocEngine implements TalentEngine {
     };
   }
 
-  private err(errorMessage: string, summary: string): TalentResult {
-    return {type: 'error', summary, errorMessage};
+  private err(errorMessage: string, summary: string, guide?: string): TalentResult {
+    return {type: 'error', summary, errorMessage, guide};
   }
 
   toToolDefinition(): ToolDefinition {

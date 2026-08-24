@@ -8,7 +8,7 @@
  */
 import * as RNFS from '@dr.pogodin/react-native-fs';
 
-export type ModelFamily = 'zimage' | 'sd3' | 'classic' | 'dreamlite';
+export type ModelFamily = 'zimage' | 'sd3' | 'flux' | 'classic' | 'dreamlite';
 
 export interface ImageGenManifest {
   id: string;
@@ -66,7 +66,7 @@ export const BUILTIN_MANIFESTS: ImageGenManifest[] = [
     loraMultiplier: 2.0,
     experimental: false,
     defaults: {steps: 10, cfg: 4.5, size: 512, backend: 'OpenCL'},
-    note: 'MMDiT；OpenCL K90 (Adreno 840) 10 步 512px 约 10 分钟；小米 13 约 40 分钟（含 tiled VAE）；Mali 平板 4 步 ~10.4 分钟（fp32 通用路径，2026-08-20）',
+    note: '何时选：均衡画质，速度/内存折中，支持 LoRA 挂角色。体积：套件约 3.7GB（主模型 1.79 + clip_l 0.25 + clip_g 1.39 + vae 0.17 + LoRA 0.08）。适配：全设备（K90 10 步 512px ~10 分钟；小米 13 ~40 分钟含 tiled VAE；Mali 平板 4 步 ~10.4 分钟 fp32 路径）',
   },
   {
     id: 'z-image-turbo-q4',
@@ -85,7 +85,31 @@ export const BUILTIN_MANIFESTS: ImageGenManifest[] = [
     experimental: false,
     requiresHighGpu: true,
     defaults: {steps: 8, cfg: 1, size: 512, backend: 'OpenCL'},
-    note: '无审查，中文优化；K90 8 步 512px 约 11 分钟（XMEM 真关，08-20 实测 655s）；需 6.9GB 权重，仅高端设备（中低端 Adreno 740 级 OpenCL 驱动采样 hang，实测无解）',
+    note: '何时选：中文提示词优化 + 无审查场景。体积：套件约 6.9GB（主模型 3.86 + Qwen3-4B TE 2.50 + ae 0.34；TE 与 FLUX.2 Klein 共享不重下）。适配：仅高端 Adreno（K90 8 步 512px ~11 分钟，08-20 XMEM 真关实测 655s；中低端 740 级驱动采样 hang，实测无解）',
+  },
+  {
+    id: 'flux-klein-4b',
+    label: 'FLUX.2 Klein (Q4_0)',
+    family: 'flux',
+    main: 'flux_klein_4b_q4_0.gguf',
+    companions: {
+      // TE 复用 Z-Image 的 zimage_llm.gguf（Qwen3-4B-Q4_K_M，与 klein 官方 qwen_3_4b
+      // 同源；官方是 8.05GB 全精度，端侧必须 GGUF 量化；Z-Image 已实测端侧无 nan/inf）
+      llm: 'zimage_llm.gguf',
+      // flux2-vae 与 Z-Image ae.safetensors 非同文件（oid 不同，08-22 HF API 实锤），独立
+      vae: 'flux2_vae.safetensors',
+    },
+    // 08-22 Box 清单 P0 接入（FLUX.2 klein 4B Distilled，4 步 1024px，Apache 2.0 可商用）：
+    // 采样契约（sd.cpp docs/flux2.md L45）cfg=1.0 / steps=4 / 引擎默认 sampling-method；
+    // 与 Z-Image 同族（DiT + Qwen TE + flow matching + fp16 累积风险）→ JNI 并入 zimage
+    // OpenCL 治理组（DISABLE_ADRENO_KERNELS=1 + XMEM 真关）；DiT Q4_0 2.46GB + VAE 0.34GB，
+    // TE 复用不重下；requiresHighGpu 复刻 Z-Image（4B DiT + 4B TE 同常驻量级，Mali 未验证）
+    experimental: false,
+    requiresHighGpu: true,
+    // 08-24 根因隔离实验（临时）：OpenCL 出马赛克纹理 → 切 CPU 对照，
+    // 正常出图 = Adreno OpenCL Q4_0 内核定罪；仍纹理 = leejet Q4_0 量化定罪。验完回滚 'OpenCL'。
+    defaults: {steps: 4, cfg: 1, size: 512, backend: 'CPU'},
+    note: '何时选：画质天花板，4 步极速，中英文原生。体积：DiT 2.46 + VAE 0.34 ≈ 2.8GB（TE 与 Z-Image 共享不重下）。适配：仅高端 Adreno（速度待 K90 实测回填；4B DiT + 4B TE 同常驻，Mali 未验证）',
   },
 ];
 

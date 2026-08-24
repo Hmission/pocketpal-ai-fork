@@ -750,8 +750,8 @@
         "render_html": "채팅 내 HTML 문서 인라인 렌더링",
         "calculate": "수학 표현식 계산",
         "datetime": "현재 날짜와 시간 가져오기",
-        "web_search": "최신 정보를 인터넷에서 검색 (설정에서 API 키 필요)",
-        "read_url": "웹 페이지의 전체 내용 읽기 (설정에서 API 키 필요)"
+        "web_search": "최신 정보를 인터넷에서 검색(내장, API 키 불필요)",
+        "read_url": "웹 페이지 전체 내용 읽기(내장, API 키 불필요)"
       },
       "greeting": {
         "removePromptLabel": "프롬프트 제거",
@@ -1250,28 +1250,11 @@
     "serverTypeHelp": "자동으로 감지된 설정입니다. 틀린 부분이 있다면 변경해 주세요.",
     "internetSearch": {
       "title": "인터넷 검색",
-      "description": "Pal이 자체 도구로 웹을 검색할 수 있도록 해보세요. 본인의 API 키만 가져오시면 됩니다 — PocketPal은 사용자의 키를 저장하거나 쿼리를 라우팅하지 않습니다.",
-      "providerLabel": "검색 제공자",
-      "providerGated": "출시 예정",
-      "keyLabel": "API 키",
-      "keyIsSet": "{{provider}}의 키가 설정되었습니다.",
-      "keyNotSet": "{{provider}}의 키가 설정되지 않았습니다.",
-      "setKeyButton": "키 설정",
-      "updateKeyButton": "키 업데이트",
-      "clearKeyButton": "키 삭제",
-      "keyInputPlaceholder": "{{provider}}의 API 키를 붙여넣으세요",
-      "keyUpdateError": "키를 업데이트하지 못했어요. 다시 시도해 주세요.",
-      "showKeyAccessibilityLabel": "API 키 표시",
-      "hideKeyAccessibilityLabel": "API 키 숨기기",
+      "description": "내장 검색(Bing + Wikipedia) — API 키 불필요, 기기가 온라인이면 바로 사용할 수 있습니다.",
       "resultCountLabel": "검색당 결과 수",
       "resultCountDescription": "결과가 적을수록 모델의 컨텍스트에 더 많은 공간이 유지됩니다.",
-      "consentTitle": "검색어는 기기 외부로 전송됩니다",
-      "consentDescription": "Pal이 웹을 검색하면 여러분의 검색어가 인터넷을 통해 선택한 제공자로 전송돼요. Pal이 페이지를 읽을 때, 선택한 제공자에 자체 리더가 없으면 URL과 페이지 내용이 대신 기본 리더 서비스(r.jina.ai)로 전송될 수 있어요. 키와 검색어는 절대 PocketPal로 전송되지 않아요.",
-      "consentAccept": "확인했습니다",
-      "consentRequired": "키를 설정하고 검색을 활성화하려면 위 고지에 동의해 주세요.",
-      "consentGivenTitle": "웹 검색이 활성화됨",
-      "consentGivenDescription": "위에서 설명한 대로 쿼리와 페이지 읽기 결과가 기기를 벗어날 수 있습니다.",
-      "consentRevoke": "동의 철회"
+      "enableLabel": "웹 검색 허용",
+      "enableDescription": "Pal이 검색하면 쿼리가 Bing과 Wikipedia로 전송됩니다. Pal이 페이지를 읽으면 URL과 내용이 r.jina.ai로 전송됩니다. 쿼리는 앱으로 전송되지 않습니다."
     },
     "languageSheetTitle": "언어",
     "languageSearchPlaceholder": "언어 검색",

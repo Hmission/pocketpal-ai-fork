@@ -170,28 +170,11 @@
     "languageSearchPlaceholder": "Pesquisar idiomas",
     "internetSearch": {
       "title": "Pesquisa na Internet",
-      "description": "Permita que os Pals pesquisem na web com as suas próprias ferramentas. Traga a sua própria chave de API — o PocketPal nunca guarda as suas chaves nem encaminha as suas pesquisas.",
-      "providerLabel": "Fornecedor de pesquisa",
-      "providerGated": "Em breve",
-      "keyLabel": "Chave de API",
-      "keyIsSet": "Chave definida para {{provider}}.",
-      "keyNotSet": "Nenhuma chave definida para {{provider}}.",
-      "setKeyButton": "Definir Chave",
-      "updateKeyButton": "Atualizar Chave",
-      "clearKeyButton": "Limpar Chave",
-      "keyInputPlaceholder": "Cole a sua chave de API {{provider}}",
-      "keyUpdateError": "Não foi possível atualizar a chave. Tente novamente.",
-      "showKeyAccessibilityLabel": "Mostrar chave de API",
-      "hideKeyAccessibilityLabel": "Ocultar chave de API",
+      "description": "Pesquisa integrada (Bing + Wikipédia) — sem chave de API, funciona sempre que o dispositivo estiver online.",
       "resultCountLabel": "Resultados por pesquisa",
       "resultCountDescription": "Menos resultados deixam mais espaço no contexto do modelo.",
-      "consentTitle": "As pesquisas saem do seu dispositivo",
-      "consentDescription": "Quando um Pal pesquisa na web, a sua pesquisa é enviada ao fornecedor selecionado através da internet. Quando um Pal lê uma página, o URL e o conteúdo da página podem, em alternativa, ser enviados a um serviço de leitura predefinido (r.jina.ai) caso o fornecedor selecionado não tenha leitor nativo. As chaves e as pesquisas nunca são enviadas ao PocketPal.",
-      "consentAccept": "Compreendo",
-      "consentRequired": "Aceite o aviso acima para definir uma chave e ativar a pesquisa.",
-      "consentGivenTitle": "A pesquisa na web está ativada",
-      "consentGivenDescription": "As pesquisas e as leituras de páginas podem sair do seu dispositivo conforme descrito acima.",
-      "consentRevoke": "Revogar"
+      "enableLabel": "Permitir pesquisa na web",
+      "enableDescription": "Quando um Pal pesquisa, sua consulta é enviada ao Bing e à Wikipédia. Quando um Pal lê uma página, seu URL e conteúdo são enviados ao r.jina.ai. As consultas nunca são enviadas ao aplicativo."
     },
     "serverType": "Tipo de Servidor",
     "serverTypeHelp": "Detetado automaticamente; altere se estiver errado.",
@@ -889,8 +872,8 @@
         "render_html": "Renderizar documentos HTML diretamente no chat",
         "calculate": "Avaliar expressões matemáticas",
         "datetime": "Obter a data e hora atuais",
-        "web_search": "Pesquisar na internet por informações atuais (requer chave de API nas Configurações)",
-        "read_url": "Ler o conteúdo completo de uma página web (requer chave de API nas Configurações)"
+        "web_search": "Pesquisar informações atualizadas na internet (integrado, sem chave de API)",
+        "read_url": "Ler o conteúdo completo de uma página da web (integrado, sem chave de API)"
       },
       "greeting": {
         "sectionLabel": "Saudação",
