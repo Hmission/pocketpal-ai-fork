@@ -10,7 +10,7 @@ import {
 
 import {useTheme} from '../../../hooks';
 import {createStyles} from '../styles';
-import {estimateTokens, RATIOS, SD_RATIOS} from '../constants';
+import {DREAM_EDIT_SIZE, estimateTokens, RATIOS, SD_RATIOS} from '../constants';
 
 interface ComposerPanelProps {
   prompt: string;
@@ -34,9 +34,6 @@ interface ComposerPanelProps {
   taskKind: 'gen' | 'edit' | 'caption' | null;
   /** 非 DreamLite 出图按钮的加载前置条件 */
   loaded: boolean;
-  /** DreamLite 画幅宽（由 ratio 派生） */
-  dreamW: number;
-  dreamH: number;
   /** 08-18 修复：当前模型提示词 token 上限（编码器硬限，超出将被截断） */
   tokenLimit: number;
   /** 08-18 路线 B：当前模型是否声明了独立 LoRA（manifest.lora 非空） */
@@ -78,8 +75,6 @@ export const ComposerPanel: React.FC<ComposerPanelProps> = ({
   generating,
   taskKind,
   loaded,
-  dreamW,
-  dreamH,
   tokenLimit,
   hasLora,
   loraEnabled,
@@ -149,8 +144,8 @@ export const ComposerPanel: React.FC<ComposerPanelProps> = ({
           {isDream ? (
             editArming ? (
               <Text style={s.promptHint}>
-                编辑输出 {Math.min(dreamW, dreamH)}×{Math.min(dreamW, dreamH)}{' '}
-                正方形（按较大边压缩）
+                编辑输出 {DREAM_EDIT_SIZE}×{DREAM_EDIT_SIZE}{' '}
+                正方形（编辑固定契约，与画幅无关）
               </Text>
             ) : (
               <View style={s.paramRow}>
@@ -239,8 +234,8 @@ export const ComposerPanel: React.FC<ComposerPanelProps> = ({
         <>
           {editArming && (
             <Text style={s.promptHint}>
-              已锁定当前预览图（{Math.min(dreamW, dreamH)}×
-              {Math.min(dreamW, dreamH)}），编辑指令见上方输入框
+              已锁定当前预览图（{DREAM_EDIT_SIZE}×
+              {DREAM_EDIT_SIZE}），编辑指令见上方输入框
             </Text>
           )}
           <View style={s.buttonRow}>

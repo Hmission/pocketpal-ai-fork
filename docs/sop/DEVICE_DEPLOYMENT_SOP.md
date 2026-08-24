@@ -54,7 +54,7 @@ relates: [POCKETPAL_MODEL_MATRIX, DOC_MANAGEMENT]
 | 6 | unet_fp16.onnx | 782363583 | `F:\pp\.tmp\dreamlite\onnx\` |
 | 7 | unet_masked.onnx | 1561735173 | `F:\pp\.tmp\dreamlite\onnx\` |
 | 8 | unet_masked_fp16.onnx | 781865120 | `F:\pp\.tmp\dreamlite\onnx\` |
-| 9 | vae_decoder.onnx | 4912510 | `F:\pp\.tmp\dreamlite\onnx\` |
+| 9 | vae_decoder.onnx | 4912510 | `F:\pp\.tmp\dreamlite\onnx\vae_dyn.onnx` **改名**（必须是动态形状版：输入 [1,4,h,w]；静态版写死 [1,4,128,128]，非方形画幅会在 VAE 解码报 invalid dimensions，2026-08-24 三机排查定论） |
 | 10 | vae_encoder.onnx | 4910603 | `F:\pp\.tmp\dreamlite\onnx\` |
 
 ### 1.3 其余目录

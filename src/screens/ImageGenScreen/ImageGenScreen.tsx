@@ -39,6 +39,7 @@ import {
 
 import {createStyles} from './styles';
 import {
+  DREAM_EDIT_SIZE,
   DREAMLITE_MANIFEST,
   PROMPT_TOKEN_LIMIT,
   RATIOS,
@@ -649,8 +650,8 @@ export const ImageGenScreen: React.FC = observer(() => {
   const ingestEditSource = async (rawUri: string, toastPrefix = '已选图') => {
     const path = rawUri.replace('file://', '');
     setEditSource(path);
-    // 按较大边压缩到支持尺寸
-    const sq = Math.min(dreamW, dreamH);
+    // 08-24 编辑单契约：固定 1024²（官方最小方形训练桶），不再跟随画幅取 min 边
+    const sq = DREAM_EDIT_SIZE;
     try {
       // 双解码：sq² → UNet cond；512² → TE 视觉通道（ViT）
       const rgb = await imageGenStore.decodeEditImage(path, sq);
@@ -742,7 +743,7 @@ export const ImageGenScreen: React.FC = observer(() => {
     }
     setEditArming(true);
     setPrompt(''); // 编辑指令与生成提示词语义不同，从头输入
-    const sq = Math.min(dreamW, dreamH);
+    const sq = DREAM_EDIT_SIZE;
     if (previewIndex === 0 && editRgb) {
       // 上传图已在上传时预解码，无需重复（锁定提示 = 顶部常驻横幅，editArming 派生）
       return;
@@ -783,7 +784,7 @@ export const ImageGenScreen: React.FC = observer(() => {
     if (!editRgb || !editVisRgb) {
       return;
     }
-    const sq = Math.min(dreamW, dreamH);
+    const sq = DREAM_EDIT_SIZE;
     const startTs = Date.now();
     const modelLabel = selectedEntry?.manifest.label ?? 'DreamLite';
     // 任务化：先建 running 条目；编辑动效仍叠当前图（taskKind=edit）
@@ -1207,8 +1208,6 @@ export const ImageGenScreen: React.FC = observer(() => {
           generating={imageGenStore.generating}
           taskKind={taskKind}
           loaded={loaded}
-          dreamW={dreamW}
-          dreamH={dreamH}
           tokenLimit={
             PROMPT_TOKEN_LIMIT[selectedEntry?.manifest.family ?? 'sd3'] ?? 256
           }
@@ -1433,10 +1432,7 @@ export const ImageGenScreen: React.FC = observer(() => {
         <View style={s.bannerWrap} pointerEvents="box-none">
           <BannerBar
             variant="info"
-            text={`已锁定当前图（${Math.min(dreamW, dreamH)}×${Math.min(
-              dreamW,
-              dreamH,
-            )}），输入编辑指令后点「执行编辑」`}
+            text={`已锁定当前图（${DREAM_EDIT_SIZE}×${DREAM_EDIT_SIZE}），输入编辑指令后点「执行编辑」`}
           />
         </View>
       ) : null}

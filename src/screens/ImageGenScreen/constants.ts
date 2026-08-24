@@ -21,6 +21,11 @@ export const DREAMLITE_MANIFEST: ImageGenManifest = {
 
 export const PROMPT_LIMIT = 120;
 
+// 08-24 编辑输出单契约：DreamLite 编辑固定 1024×1024（官方最小方形训练桶）。
+// 旧实现 sq=min(画幅) 跟随画幅（2:3→832²、9:16→768²）均为桶外方形 → 糊图风险；
+// 与聊天内联编辑（chatImageTask）/相册封面（albumBook）的 1024² 统一为单点契约。
+export const DREAM_EDIT_SIZE = 1024;
+
 // 08-18 修复：提示词按 token 计（原按字符 120 过低——120 字符≈30 tokens 远低于模型上限）
 // 08-21 对齐官方：dreamlite 文本条件上限从 128 提到 200（官方 max_sequence_length=200）
 // 各模型 token 上限（编码器硬限，超出将被截断）：

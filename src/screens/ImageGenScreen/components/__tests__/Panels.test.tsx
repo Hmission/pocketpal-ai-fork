@@ -105,8 +105,6 @@ describe('ComposerPanel', () => {
     generating: false,
     taskKind: null as 'gen' | 'edit' | null,
     loaded: true,
-    dreamW: 1024,
-    dreamH: 1024,
     // 08-18 修复：token 上限（sd3=77，按模型传）
     tokenLimit: 77,
     // 08-18 路线 B：LoRA 开关（默认关，manifest 声明时显示）
@@ -197,6 +195,19 @@ describe('ComposerPanel', () => {
     expect(getByText('2:3')).toBeTruthy();
     expect(getByText('512×768')).toBeTruthy();
   });
+
+  it('08-24 编辑预备态文案固定 1024×1024，不随画幅漂移', () => {
+    const {getByText} = wrap(
+      <ComposerPanel
+        {...baseProps}
+        isDream={true}
+        editArming={true}
+        ratio="2:3"
+        showAdvanced={true}
+      />,
+    );
+    expect(getByText(/编辑输出 1024×1024/)).toBeTruthy();
+  });
 });
 
 describe('ModelPickerTrigger（D1 顶栏胶囊）', () => {
@@ -264,7 +275,8 @@ describe('ModelPickerDropdown（D1 屏级下拉）', () => {
       <ModelPickerDropdown {...baseProps} showModelDrop={true} />,
     );
     expect(getByText(/DreamLite Mobile/)).toBeTruthy();
-    expect(getByText(/统一文生图/)).toBeTruthy();
+    // 08-24：note 文案已迭代（旧断言「统一文生图」为存量腐化），断言现行文案关键句
+    expect(getByText(/文生图 \+ 图像编辑一体/)).toBeTruthy();
     expect(getAllByText('加载').length).toBeGreaterThanOrEqual(1);
   });
 });

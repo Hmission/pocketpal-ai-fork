@@ -65,6 +65,9 @@ export const BUILTIN_MANIFESTS: ImageGenManifest[] = [
     lora: 'lora_humanpose.safetensors',
     loraMultiplier: 2.0,
     experimental: false,
+    // 8-24 A 线探针结论（负）：Vulkan 在 K Pad 加载成功但 TE 编码即崩（ggml-vulkan.cpp:7539
+    // descriptor_set_idx 断言，关不关 graph-cut 都崩）——sd.cpp Runner 动态图与 ggml-vulkan
+    // 描述符生命周期不兼容，非配置可解。回滚 'OpenCL'（SD_VULKAN 编译保留休眠，探针对照用）。
     defaults: {steps: 10, cfg: 4.5, size: 512, backend: 'OpenCL'},
     note: '何时选：均衡画质，速度/内存折中，支持 LoRA 挂角色。体积：套件约 3.7GB（主模型 1.79 + clip_l 0.25 + clip_g 1.39 + vae 0.17 + LoRA 0.08）。适配：全设备（K90 10 步 512px ~10 分钟；小米 13 ~40 分钟含 tiled VAE；Mali 平板 4 步 ~10.4 分钟 fp32 路径）',
   },
@@ -109,7 +112,10 @@ export const BUILTIN_MANIFESTS: ImageGenManifest[] = [
     // 08-24 根因隔离实验（临时）：OpenCL 出马赛克纹理 → 切 CPU 对照，
     // 正常出图 = Adreno OpenCL Q4_0 内核定罪；仍纹理 = leejet Q4_0 量化定罪。验完回滚 'OpenCL'。
     defaults: {steps: 4, cfg: 1, size: 512, backend: 'CPU'},
-    note: '何时选：画质天花板，4 步极速，中英文原生。体积：DiT 2.46 + VAE 0.34 ≈ 2.8GB（TE 与 Z-Image 共享不重下）。适配：仅高端 Adreno（速度待 K90 实测回填；4B DiT + 4B TE 同常驻，Mali 未验证）',
+    // 08-24 画幅如实化：官方蒸馏契约是 1MP（4 步 1024px），但 klein 尚无端侧完整出图实测
+    //（backend 根因隔离实验中），端侧暂与 SD3.5/Z-Image 同走 512 级档位（SD_RATIOS，内存约束）。
+    // 待 backend 稳定 + K90 实测后，再决策是否升 1024 档（升档前必有真机出图证据，不凭官方文案预设）。
+    note: '何时选：画质天花板，4 步极速，中英文原生。体积：DiT 2.46 + VAE 0.34 ≈ 2.8GB（TE 与 Z-Image 共享不重下）。适配：仅高端 Adreno（端侧暂走 512 级档位，官方 1024px 契约待实测后升档；4B DiT + 4B TE 同常驻，Mali 未验证）',
   },
 ];
 
