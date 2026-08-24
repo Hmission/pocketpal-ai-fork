@@ -32,6 +32,29 @@
   },
   "benchmark": {
     "title": "基準",
+    "suite": {
+      "startButton": "一鍵跑分（推理 · 生圖 · 耐久 3 輪）",
+      "runningDefault": "基準測試進行中…",
+      "runningHint": "真實負載跑分：會自動切換到聊天頁與生圖頁，請保持螢幕常亮",
+      "abort": "終止",
+      "gotIt": "知道了",
+      "rankPrefix": "段位",
+      "shareButton": "分享跑分卡",
+      "shareFailed": "分享暫不可用，稍後再試",
+      "hudRunning": "基準測試進行中",
+      "caseProgress": "測試 {{index}}/3 · {{case}}",
+      "labels": {
+        "total": "綜合",
+        "inferSpeed": "推理速度",
+        "genSpeed": "生圖速度",
+        "endurance": "溫控耐久",
+        "memSafe": "記憶體安全",
+        "thermal": "溫控",
+        "stability": "穩定性",
+        "totalTime": "總時長",
+        "legacy": "舊協議"
+      }
+    },
     "modelSelector": {
       "prompt": "選擇模型",
       "noModels": "尚未下載任何模型"

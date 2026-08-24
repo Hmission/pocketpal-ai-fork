@@ -1,6 +1,6 @@
 # 专业跑分面板设计（PERF_BENCHMARK_DESIGN）
 
-> 状态：**四阶段已落地（待真机验证）** | 版本：0.3 | 2026-08-23
+> 状态：**v0.6 代码落地（W1-W6 完成，待真机验证）** | 版本：0.6 | 2026-08-24
 > 定位：生图/视频「跑分软件」玩法升级——从 4 指标实时面板 → 专业多维跑分 + 数据落盘回放
 > 方法论：写轮眼（同行调研）+ 自学习（内部基线实证）
 > v0.2：面板形态修正——嵌于预览卡片下半截的**横版紧凑布局**（md 图表，弃竖状全屏/图片原型）
@@ -172,6 +172,119 @@ interface PerfSnapshotV2 {
 - [DEV_BACKLOG](./DEV_BACKLOG.md)（项 1 面板实测，本设计为扩展项）
 - [ONDEVICE_VIDEO_GEN_ANALYSIS §7](./ONDEVICE_VIDEO_GEN_ANALYSIS.md)（玩具定位依据）
 
+## 十、演出层升级与基准测试总控（v0.5，2026-08-24 大王裁定）
+
+> 产品洞察：跑分是安慰剂，**过程才是药效**——手机性能过剩，用户跑分买的是「我的手机很厉害、我很有眼光」的自我确认。数字要动、图谱要帅、色彩要丰富。分享不发公网，能发朋友圈即可。
+> 本章为 W2-W6 执行 SSOT；经 6D 洋葱排查（UI→状态→执行→协议→回传→模型）收敛，零新建 store、零新协议。
+
+### 10.1 6D 排查结论（锋利裁剪依据）
+
+| 层 | 发现 | 收敛决策 |
+|---|---|---|
+| D1 UI | 入口=设置页入口中心（`settings-item-benchmark`）；抽屉已是纯会话中心 | 入口不动 |
+| D2 状态 | `BenchmarkStore` 已存在（mobx-persist-store） | 扩展不新建：瞬态编排字段不入持久化 `properties` |
+| D3 执行 | ① 祖传 `bench()` 合成负载无头不可见，与「自动导航可见过程」裁定冲突；② `RNDeviceInfo.getUsedMemory` 与 NativeHardwareInfo PSS 双内存通道 | ① 砍 bench()+pp/tg 高级参数，用例=真实负载；② 统一 PSS 单通道 |
+| D4 协议 | 云提交链：`api/benchmark.ts` + `uiStore.benchmarkShareDialog` + `submitted/markAsSubmitted` | 整体砍除（不发公网）；`BenchmarkResult` 扩展不新建类型 |
+| D5 回传 | 诚实模式（N/A='--'）已就位 | 不动；旧版结果诚实标「旧协议」，不洗数据 |
+| D6 模型 | 引擎层禁区（llama.rn / ONNX JNI） | 零触碰 |
+
+### 10.2 演出红线（全局）
+
+1. **升级不重造**：聊天页=`AssistantTurnFooter`（CHAT_UI_SPEC §18.2 双行）+`PendingIndicator`（§18.9）；生图页=`PerfPanel`（本文档 §6，预览卡片内不溢出）；基准页=`BenchmarkScreen` 原地改造。
+2. **演出层不动数据层**：数值全部来自真实采集（1Hz PerfSnapshot / perfRecorder / perfScore），动效只做呈现；可夸张呈现、绝不造假。
+3. **动画纪律**：一律 Animated JS driver（全局规范）；重渲染图谱（雷达/热力）500ms 节流门控；JS 帧 <16ms（G5 验收）。
+4. **零新依赖**：自绘图表（RN View / 手绘路径），不引图表库/动效库。
+
+### 10.3 统一数字动效引擎（PerfMotion，W2）
+
+`src/components/PerfMotion/`（组件层，非 store），三页共用：
+
+| 能力 | 规格 |
+|---|---|
+| AnimatedNumber | 300ms「追」式缓动插值（新快照到达后数值追赶真实值）；**保留真实毛刺**（不平滑抹抖，抖动=活着） |
+| odometer 翻滚 | 关键大数字（综合分 / tok/s）逐位滚动 |
+| 揭幕动画 | 0 狂飙→最终值（ease-out）→定住瞬间光圈 + `react-native-haptic-feedback`（复用现有依赖） |
+| 首帧门控 | 速率类数字在首个有效事件（首 token / 首步）前显 `--`，不演假数 |
+
+### 10.4 聊天页跑分感（W3，升级既有两面）
+
+- **AssistantTurnFooter 行2**（指标行）：数值接 AnimatedNumber；tok/s 段加 24px 迷你速率条（跑分图示）；布局/分隔符/点按交互（ctx 直达、召回展开）不变。
+- **PendingIndicator**（§18.9 监控卡）：卡顶 2px 阶段色条（prefill 蓝=info / 工具期紫=domain.tools，既有 token）+ 心跳微波形（5 根错峰小条，卡住/停止时平坦隐去——诚实）+ 工具期实时速率（toolCallTokenCount 差分 / 1s 既有心跳 interval，不新增定时器）；保留三点动画、300s 心跳卡住语义、run_failed 收尾。
+  - **落地收敛（W3）**：①流式期监控卡本就隐藏（门控既有），故阶段色收敛为二态、速率只在工具期差分成立后显示；②tok/s 主视觉归 footer 行2（完成态时序链），不造假场景。
+
+### 10.5 生图页跑分感（W4，PerfPanel 留预览卡片内）
+
+- 40pt 条形迷你图 → **折线 + 渐变面积图**（自绘，满宽贴卡片缘，峰值点打标）；卡片宽度/下半截高度红线不变。
+- 全数字接 AnimatedNumber（PSS 大字/胶囊四指标/指标行七项）；胶囊按负载分档变色（>=60 橙逼近 / >=85 红危险，阈值色语义同源）。
+- ~~步耗时迷你进度环~~ **落地收敛（W4）：砍除**——单步进度无分母数据，画环必造假（诚实红线）；步耗时接 AnimatedNumber 追式缓动已足够演出。
+- 面积图阈值线：PSS 叠加时画 5GB 逼近线（橙虚线）+ 6GB 硬杀线（红虚线）——把「安全率」画进图里；`syncPoll`（v0.4 挂 nightTaskReaction）数据链路零改动。
+- 横屏形态同步验证（面板为横版紧凑布局）。
+
+### 10.6 色彩扩编（登记 IMAGEGEN_UI_SPEC §9 语义色注册表）
+
+| 色 | 值 | 语义 |
+|---|---|---|
+| CPU 青 | #4FC3F7 | 保留（已有） |
+| GPU 绿 | #81C784 | 保留（已有） |
+| 温度橙 | #F5A623 | 保留（PERF_WARN） |
+| 功耗紫 | #BA68C8 | 保留（已有） |
+| 速率强调色 | theme brandAccent | 新增：tok/s 迷你条/速率数字 |
+| 跑分金 | **复用 brandAccent**（浅 #FFB300 / 深 #FFC54D，已有 token） | 综合分/段位主视觉——锋利裁定：不造新 token，避免与速率强调色双色分裂 |
+| 阶段色 | **复用既有 token**：info（prefill 蓝）/ domain.tools（工具期紫） | 新增：PendingIndicator 阶段色条——锋利收敛：流式期监控卡隐藏故无第三态，不造新 token |
+- 阈值语义不变：>5GB 橙 / >6GB 红（theme.colors.error）；深浅双模式验证；禁裸 hex 散落（全部登记）。
+
+### 10.7 基准测试总控台（W5，改造 BenchmarkScreen + 扩展 BenchmarkStore）
+
+**砍除清单（整体）**：`src/api/benchmark.ts`、`uiStore.benchmarkShareDialog`（字段+setter）、`submitted/markAsSubmitted`、分享提交 Dialog 链、`bench()` 调用 + 高级参数 Dialog/滑杆（pp/tg/pl/nr）、`RNDeviceInfo` 内存轮询；l10n 与测试同步清理。
+
+**三用例（编排状态机在 BenchmarkStore 瞬态字段）**：
+
+| 用例 | 场景 | 引擎 | 主指标 | 演出 |
+|---|---|---|---|---|
+| 推理速度 | 自动导航聊天页，固定 prompt 真实流式 | 现有时序链（metadata.timings） | tok/s + TTFT | 心电图波形 + 翻滚数字 |
+| 生图速度 | 自动导航生图页，固定负载 | 现有 generate 链 | 步耗时 | 折线面积图 + 进度环 |
+| 温控耐久 | 生图用例连跑 N 轮 | 同上 | 温升率/降频时刻 | 热力色带 + 可终止 |
+
+- 随采指标：PSS 峰值/安全率/峰均比由 `perfRecorder` 伴随采集（**不单设内存用例**——锋利裁剪）。
+- 自动导航横幅：「测试 N/3 · 切换 XX 赛道…」；被征用页顶部挂「基准测试进行中」HUD 条。
+- 结果页：**四轴雷达**（= perfScore 四分：内存安全/速度/温控/稳定性，SSOT 不造新公式）→ 揭幕 → 综合分 → 段位（走地鸡/战斗鸡/神鸡）→ 跑分卡。
+- 边界：与 e2e `BenchmarkRunnerScreen`（__E2E__ 独占，`benchmarkActive`）互不干涉；`start-test-button` / `settings-item-benchmark` testID 契约保留（e2e selectors 依赖）。
+- `BenchmarkResult` 扩展：新增 `suiteCase/tokAvg/stepAvg/pssPeakKb/tempRise/scoreParts`；旧 pp/tg 字段可选保留，旧结果标「旧协议」（诚实，不洗数据）。
+- **模型加载时长不入分**：用例直跑当前已加载模型；无模型时引导加载，加载时长单列显示。
+- **温控耐久**：热量事前告知 + 随时可终止。
+
+### 10.8 标准负载契约（全链只读，W1 定稿）
+
+| 项 | 值 |
+|---|---|
+| 聊天用例 prompt | 「用一段话介绍小黄鸡。」（固定，不改写不追加） |
+| 聊天用例模型 | 当前已加载激活模型（不切换） |
+| 生图用例引擎 | DreamLite（当前挂载参数） |
+| 生图用例规格 | 512×512 · 默认步数 · seed=42 |
+| 耐久轮数 | N=3（温升采样起点→每轮结束） |
+| 分数口径 | perfScore §4.3 公式（不新增分项） |
+
+### 10.9 跑分卡分享（W6，全链路新建——全仓当前无 Share 通道，生图分享已移除）
+
+- 卡面 = 设备型号 + 四轴雷达 + 分项 + 综合分 + 日期（**零用户内容**：无 prompt、无聊天文本）。
+- 渲染：SVG → `src/services/pngUtil.encodePng`（既有纯 JS 编码）。
+- 通道：RN 内置 `Share` + FileProvider（W6 前置验证门禁；不可行则降级存相册 + Snackbar 引导，诚实告知）。
+- 成绩全部本地（benchmarkStore 持久化）：「别人的跑分偷你数据，我们的成绩只住你手机里」。
+
+### 10.10 执行波次与指南针登记
+
+| 波 | 内容 | 验收 |
+|---|---|---|
+| W1 | 本文档定稿 + COMPASS/星图登记 + CHAT_UI_SPEC/IMAGEGEN_UI_SPEC/DESIGN_SPEC 版本追加 | 文档治理无告警 |
+| W2 | PerfMotion（AnimatedNumber + odometer + 揭幕）+ 单测 | G1+G2 |
+| W3 | 聊天页（footer 行2 + PendingIndicator） | G1+G2 + 真机 token 流走查 |
+| W4 | 生图页（折线面积图 + 全数字动效 + 色彩登记） | G1+G2 + 真机生图走查（卡片内不溢出） |
+| W5 | 总控台（改造 + 编排 + 砍除清单） | G3+G4 装机 |
+| W6 | 跑分卡分享 + G5 + MASTER_LOG/CHANGELOG/SPEC 闭环 + commit & push | 五关全绿 + 浅深双模式截图 |
+
+- 指南针：新增 **CP-APP-012**（基准编排中断 / 跑分卡渲染失败 / 分享不可用）。
+- 星图：新增 **benchmark 域**（总控台 + PerfMotion + 跨 chat/imageGen 编排）。
+
 ## 变更日志
 
 | 日期 | 版本 | 变更 |
@@ -179,3 +292,6 @@ interface PerfSnapshotV2 {
 | 2026-08-23 | 0.1 | 首发：写轮眼同行调研（安兔兔/Geekbench/3DMark/PerfDog）+ 自学习缺口实证 + 四阶段方案 |
 | 2026-08-23 | 0.2 | 面板形态修正：嵌于预览卡片下半截的横版紧凑布局（折叠头一行 + 迷你曲线条 + 横向指标行），弃竖状全屏图/图片原型，全 md 图表 |
 | 2026-08-23 | 0.3 | **四阶段全部落地**（长链执行）：P1 HardwareInfoModule 六指标 sysfs 探测；P2 PerfPanel 横版化（胶囊行/叠加线/指标行/设备小字）；P3 perfRecorder JSONL 落盘 + store 生命周期接线；P4 PerfHistoryModal 回放（播放光标/统计卡/跑分卡）+ perfScore 分数体系。门禁：tsc 0 / jest 23 新增全绿 / Gradle SUCCESS；待真机验证（K90 GPU 负载/功耗读数 + 落盘回放） |
+| 2026-08-24 | 0.4 | 三修：①实时数据恒 `--` 根治（syncPoll 挂入 nightTaskReaction）；②卡片加宽（taskPage padding 16→10）；③底行显示不全根治（flexWrap 换行网格） |
+| 2026-08-24 | 0.5 | **演出层升级与基准测试总控规划定稿**（§10）：6D 排查收敛——零新建 store（扩展 BenchmarkStore）、砍 bench() 合成负载与双内存通道、砍云提交链、用例 4→3、雷达 4 轴对齐 perfScore；PerfMotion 统一动效引擎；标准负载契约；CP-APP-012 + 星图 benchmark 域登记；W1-W6 波次 |
+| 2026-08-24 | 0.6 | **W1-W6 代码全部落地**：①PerfMotion 三件（AnimatedNumber 追式缓动首帧锚定不演假动画 / OdometerNumber 逐位翻滚 / ScoreReveal 揭幕+光圈+震动，跑分金复用 brandAccent 不造新 token）；②聊天页 footer 行2 数值接动效 + tok/s 迷你速率条；PendingIndicator 阶段色条（info/domain.tools 二态）+ 心跳波形（卡住平坦）+ 工具期差分速率；③PerfPanel 折线渐变面积图（5/6GB 阈值虚线 + 峰值打标）+ 全数字动效 + 胶囊负载分档变色（砍步耗时环：无分母不画假环）；④总控台：benchmarkOrchestrator 三用例真实负载（复用 registerChatSender 槽 + imageGenStore.generate，零新链路）+ 四轴雷达 + 段位 + HUD 条（聊天/生图页挂载）；砍除链落地：api/benchmark.ts 删除、UIStore.benchmarkShareDialog 删除、bench()/高级参数/双内存通道删除、旧协议诚实标记；⑤跑分卡分享：纯 JS 像素光栅化（七段码 + 5×7 点阵，零依赖零用户内容）+ RN 内置 Share（url+文本双带）；⑥l10n：benchmark.suite 段 en/zh/zh_Hant 落地，其余语言自动回退英文（既有机制）。门禁：tsc 0 / jest 新增 40+ 全绿 / l10n validate 通过；全量回归仅 modelCatalog 旧基线恒败（已登记）。待真机验证（套件全流程 + 分享 + 浅深双模式） |

@@ -10,6 +10,7 @@ import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
 import {CopyIcon, RefreshIcon} from '../../assets/icons';
 import {useTheme} from '../../hooks';
 import {PlayButton} from '../TextMessage/PlayButton';
+import {AnimatedNumber} from '../PerfMotion';
 import {isSpeakableMessage} from '../../utils/speakable';
 import {ROUTES} from '../../utils/navigationConstants';
 
@@ -25,6 +26,18 @@ const hapticOptions = {
   enableVibrateFallback: true,
   ignoreAndroidSystemSettings: false,
 };
+
+// tok/s 迷你速率条满量程（B39 跑分图示）：端侧 3B 级典型上限，
+// 仅作显示归一（演出层），不影响数值本身。
+const RATE_FULL_SCALE = 30;
+
+/** timing 段（B39）：数值 + 格式化同源，渲染接 AnimatedNumber 追式缓动 */
+interface TimingPart {
+  kind: 'msPerToken' | 'tokPerSec' | 'ttft';
+  numValue: number;
+  format: (n: number) => string;
+  suffix: string;
+}
 
 /**
  * 每输出指标快照（run_finished 写入 metadata.turnMetrics）。
@@ -112,28 +125,41 @@ export const AssistantTurnFooter: React.FC<AssistantTurnFooterProps> = observer(
 
     const componentStyles = styles({theme});
 
-    // Build timing parts: {value, suffix} 拆分数字与标签，数字用品牌色强调
-    const timingParts: Array<{value: string; suffix: string}> = [];
-    const pushTiming = (tplKey: string, value: string) => {
+    // Build timing parts（B39）：{numValue, format, suffix} 同源拆分，
+    // 数字用品牌色强调 + 追式缓动；tok/s 段额外带迷你速率条（跑分图示）
+    const timingParts: TimingPart[] = [];
+    const pushTiming = (
+      kind: TimingPart['kind'],
+      tplKey: string,
+      numValue: number,
+      format: (n: number) => string,
+    ) => {
+      const value = format(numValue);
       const full = t(tplKey, {value});
-      timingParts.push({value, suffix: full.replace(value, '')});
+      timingParts.push({kind, numValue, format, suffix: full.replace(value, '')});
     };
     if (timings?.predicted_per_token_ms != null) {
       pushTiming(
+        'msPerToken',
         l10n.components.bubble.msPerToken,
-        timings.predicted_per_token_ms.toFixed(),
+        timings.predicted_per_token_ms,
+        n => n.toFixed(),
       );
     }
     if (timings?.predicted_per_second != null) {
       pushTiming(
+        'tokPerSec',
         l10n.components.bubble.tokensPerSec,
-        timings.predicted_per_second.toFixed(2),
+        timings.predicted_per_second,
+        n => n.toFixed(2),
       );
     }
     if (timings?.time_to_first_token_ms != null) {
       pushTiming(
+        'ttft',
         l10n.components.bubble.ttft,
-        String(timings.time_to_first_token_ms),
+        timings.time_to_first_token_ms,
+        n => String(Math.round(n)),
       );
     }
 
@@ -207,13 +233,37 @@ export const AssistantTurnFooter: React.FC<AssistantTurnFooterProps> = observer(
             {timingParts.map((part, i) => (
               <React.Fragment key={`timing-${i}`}>
                 {i > 0 ? separator(`sep-t-${i}`) : null}
-                <Text>
-                  {/* 数字用品牌色强调，标签用辅助灰（文本/数字颜色区分） */}
-                  <Text style={componentStyles.metricsValue}>{part.value}</Text>
-                  <Text style={componentStyles.metricsLabel}>
-                    {part.suffix}
+                <View style={componentStyles.metricsSection}>
+                  {part.kind === 'tokPerSec' ? (
+                    // 迷你速率条（B39 跑分图示）：24px 轨道 + 品牌色填充，
+                    // 宽度按满量程归一（显示层，不改数值）
+                    <View style={componentStyles.rateBarTrack}>
+                      <View
+                        style={[
+                          componentStyles.rateBarFill,
+                          {
+                            width: Math.max(
+                              2,
+                              Math.min(part.numValue / RATE_FULL_SCALE, 1) * 24,
+                            ),
+                          },
+                        ]}
+                        testID="metrics-rate-bar"
+                      />
+                    </View>
+                  ) : null}
+                  <Text>
+                    {/* 数字用品牌色强调 + 追式缓动，标签用辅助灰 */}
+                    <AnimatedNumber
+                      value={part.numValue}
+                      format={part.format}
+                      style={componentStyles.metricsValue}
+                    />
+                    <Text style={componentStyles.metricsLabel}>
+                      {part.suffix}
+                    </Text>
                   </Text>
-                </Text>
+                </View>
               </React.Fragment>
             ))}
             {metrics ? (

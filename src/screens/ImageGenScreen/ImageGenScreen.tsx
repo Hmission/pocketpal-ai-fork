@@ -52,6 +52,7 @@ import {
   ModelPickerDropdown,
 } from './components/ModelPickerPanel';
 import {ResultPreview} from './components/ResultPreview';
+import {BenchmarkHudBar} from '../../components/BenchmarkHudBar';
 import {HistoryStrip} from './components/HistoryStrip';
 import {ComposerPanel} from './components/ComposerPanel';
 import {UpscalePanel} from './components/UpscalePanel';
@@ -1125,6 +1126,8 @@ export const ImageGenScreen: React.FC = observer(() => {
   return (
     <View style={s.container}>
       <KeyboardAwareScrollView contentContainerStyle={s.content}>
+        {/* B39：套件征用本页时的基准测试 HUD（非运行态 null） */}
+        <BenchmarkHudBar />
         {workshopTab === 'image' ? (
           <>
         {/* ① 结果区 */}

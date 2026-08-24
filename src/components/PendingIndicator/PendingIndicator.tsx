@@ -55,6 +55,36 @@ interface DotProps {
   theme: Theme;
 }
 
+/**
+ * 心跳微波形（B39 跑分感，PERF_BENCHMARK_DESIGN §10.4）：
+ * 5 根错峰起伏小条——「手机在干活」的心电图证据。
+ * 卡住/停止时由调用态隐去（心跳平坦 = 诚实语义）。
+ */
+const WaveBar: React.FC<{delay: number; color: string}> = ({delay, color}) => {
+  const h = useRef(new Animated.Value(3)).current;
+  useEffect(() => {
+    // 全局动画规范：Animated.loop 一律 JS driver
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(h, {
+          toValue: 10,
+          duration: 350,
+          delay,
+          useNativeDriver: false,
+        }),
+        Animated.timing(h, {toValue: 3, duration: 350, useNativeDriver: false}),
+      ]),
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [h, delay]);
+  return (
+    <Animated.View
+      style={{width: 2, borderRadius: 1, backgroundColor: color, height: h}}
+    />
+  );
+};
+
 const Dot: React.FC<DotProps> = ({delay, theme}) => {
   const opacity = useRef(new Animated.Value(0.3)).current;
   const dotStyle = createStyles(theme).dot;
@@ -160,10 +190,16 @@ export const PendingIndicator: React.FC<PendingIndicatorProps> = ({
   lastEventRef.current = lastAgentEventAt;
   const [elapsedSec, setElapsedSec] = useState(0);
   const [stalled, setStalled] = useState(false);
+  // 工具期实时速率（B39）：toolCallTokenCount 差分 / 1s 心跳 interval，
+  // 不新增定时器；流式期监控卡本就隐藏（门控既有），不造假场景。
+  const prevTokenCountRef = useRef(toolCallTokenCount);
+  const [tokenRate, setTokenRate] = useState(0);
   useEffect(() => {
     if (runStartedAt == null) {
       setElapsedSec(0);
       setStalled(false);
+      setTokenRate(0);
+      prevTokenCountRef.current = toolCallTokenCount;
       return;
     }
     const startedAt = runStartedAt;
@@ -172,10 +208,16 @@ export const PendingIndicator: React.FC<PendingIndicatorProps> = ({
       setElapsedSec(Math.floor((now - startedAt) / 1000));
       const last = lastEventRef.current;
       setStalled(last != null && now - last > STALL_MS);
+      // interval 1s → 差分即 tok/s（真实采集，不平滑）
+      setTokenRate(Math.max(0, toolCallTokenCount - prevTokenCountRef.current));
+      prevTokenCountRef.current = toolCallTokenCount;
     };
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
+    // toolCallTokenCount 经 ref 同步（首帧同步），不入依赖避免 interval 重建；
+    // 基准只在 tick() 内推进——差分即真实速率，外部重置会让速率恒 0
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runStartedAt]);
 
   // Build the label suffix.
@@ -210,6 +252,10 @@ export const PendingIndicator: React.FC<PendingIndicatorProps> = ({
         t(l10n.components.toolMetrics.elapsed, {seconds: elapsedSec}),
       );
     }
+    // 实时速率（B39）：差分 >0 才显，单位语言中立（同 GB/°C 惯例）
+    if (tokenRate > 0) {
+      parts.push(`≈${tokenRate} tok/s`);
+    }
     suffix = parts.join(' · ');
   } else {
     const key = stageLabelKey(agentStatus ?? 'idle');
@@ -237,9 +283,31 @@ export const PendingIndicator: React.FC<PendingIndicatorProps> = ({
     reasoningTail.length > 0 &&
     (agentStatus === 'prefill' || agentStatus === 'streaming_text');
 
+  // 阶段色（B39）：prefill 蓝（info）→ 工具期紫（domain.tools），
+  // 全部既有 token 不造新色；流式期监控卡隐藏故无第三态。
+  const stageColor = inToolCallMode
+    ? theme.colors.domain.tools
+    : theme.colors.info;
+  // 心跳波形：卡住/停止时平坦（诚实），活跃时起伏（活着）
+  const showWave = !isStopping && !stalled && runStartedAt != null;
+
   return (
     <View style={styles.card} testID="pending-indicator">
+      {/* 阶段色条：卡顶 2px，一眼分辨模型在哪个赛道 */}
+      <View
+        style={[styles.stageBar, {backgroundColor: stageColor}]}
+        testID="pending-indicator-stage-bar"
+      />
       <View style={styles.row}>
+        {showWave && (
+          <View
+            style={styles.wave}
+            testID="pending-indicator-wave">
+            {[0, 1, 2, 3, 4].map(i => (
+              <WaveBar key={i} delay={i * 120} color={stageColor} />
+            ))}
+          </View>
+        )}
         <Dot delay={0} theme={theme} />
         <Dot delay={200} theme={theme} />
         <Dot delay={400} theme={theme} />

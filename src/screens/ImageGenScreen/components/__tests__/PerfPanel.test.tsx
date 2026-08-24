@@ -115,11 +115,52 @@ describe('PerfPanel（v2 横版专业面板）', () => {
     runInAction(() => {
       imageGenStore.perf = FULL_SNAP;
     });
-    const {getByText, queryByText} = render(<PerfPanel />);
-    expect(getByText('88%')).toBeTruthy(); // 指标行默认可见
+    const {getAllByText, getByText, queryByText} = render(<PerfPanel />);
+    // B39：胶囊与指标行各有一个 88%（数字独立成节点）
+    expect(getAllByText('88%').length).toBeGreaterThanOrEqual(2);
     fireEvent.press(getByText(/性能/));
     expect(queryByText('840M')).toBeNull(); // 收起
     fireEvent.press(getByText(/性能/));
-    expect(getByText('840M')).toBeTruthy(); // 再展开
+    expect(getAllByText('840M').length).toBeGreaterThanOrEqual(1); // 再展开
+  });
+
+  // ── B39 演出层（PERF_BENCHMARK_DESIGN §10.5）──
+  it('面积图容器在场（含 N/A 点不崩溃，落底不编造）', () => {
+    runInAction(() => {
+      imageGenStore.perf = FULL_SNAP;
+      imageGenStore.perfHistory = [
+        FULL_SNAP,
+        {...FULL_SNAP, gpuLoadPct: -1}, // N/A 点
+        {...FULL_SNAP, pssKb: 4.8 * GB},
+      ];
+    });
+    const {getByTestId} = render(<PerfPanel />);
+    expect(getByTestId('perf-area-chart')).toBeTruthy();
+  });
+
+  it('胶囊负载分档变色：70% → 橙逼近档；87.5% → 红危险档', () => {
+    const colorsOf = (cpuPct: number, label: string): string[] => {
+      runInAction(() => {
+        imageGenStore.perf = {...FULL_SNAP, cpuPct};
+      });
+      const {getAllByText, unmount} = render(<PerfPanel />);
+      const colors = getAllByText(label).flatMap((n: any) =>
+        (Array.isArray(n.props.style) ? n.props.style : [n.props.style]).map(
+          (s: any) => s?.color,
+        ),
+      );
+      unmount();
+      return colors;
+    };
+    expect(colorsOf(70, '70%')).toContain('#F5A623'); // PERF_WARN 橙
+    expect(colorsOf(87.5, '88%')).toContain('#FF653F'); // theme.error 红（浅模式）
+  });
+
+  it('PSS 大字接追式缓动：首帧锚定真实值（不演假动画）', () => {
+    runInAction(() => {
+      imageGenStore.perf = FULL_SNAP;
+    });
+    const {getByTestId} = render(<PerfPanel />);
+    expect(getByTestId('perf-pss').props.children).toBe('4.2 GB');
   });
 });

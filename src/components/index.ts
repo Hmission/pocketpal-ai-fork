@@ -36,6 +36,7 @@ export * from './LanguageSelector';
 export * from './LoadingBubble';
 export * from './MarkdownView';
 export * from './PendingIndicator';
+export * from './PerfMotion';
 export * from './Menu';
 export * from './Message';
 export * from './ModelsHeaderRight';

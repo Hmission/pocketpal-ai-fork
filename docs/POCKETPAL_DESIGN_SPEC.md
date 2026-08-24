@@ -3,9 +3,9 @@ doc_id: POCKETPAL_DESIGN_SPEC
 module: root
 type: ssot
 status: active
-version: "3.4"
+version: "3.20"
 created: "2026-08-14"
-updated: "2026-08-20"
+updated: "2026-08-24"
 relates: [DRC_SPEC, POCKETPAL_CHAT_UI_SPEC, POCKETPAL_IMAGEGEN_UI_SPEC, POCKETPAL_UI_INTERACTION_SPEC, POCKETPAL_ICON_SPEC, ADR-0001-ui-ssot-single-source, ADR-0002-imagegen-header-right, ADR-0003-bubble-footer-unification, UI_GATE_VERIFICATION_SOP]
 supersedes: []
 ---
@@ -375,6 +375,8 @@ ScrollView
 | B36 | **创造工坊全面对齐生图 tab（大王复查，2026-08-22）**：①引擎选择弃 Menu → 复用 ModelPicker 屏级 overlay 交互（dropOverlay/dropBackdrop/dropPanelAbs + 行内下载/删除，同页双交互模式消灭）；②结果区升级整卡三态（running 三点波浪进度卡（useWaveDots 复用）/ success 全文卡 / failed ⚠ 摘要 + 复制报错/重试/删除——兑现 AUDIO_UI_SPEC §2「整卡切换」）；③历史条点击联动结果区切换（对齐相册翻页联动）；④composer 模型管理行删除（三行冗余状态文本 → 引擎状态/动作并入顶栏下拉行内）；⑤m4a/mp3 转码删条（锋利：不做兜底转码，JS 显式只收 wav） | IMAGEGEN_UI_SPEC v5.4 + AUDIO_UI_SPEC v1.5 | tsc 0 错 + jest 全绿 + Gradle SUCCESS + K90 真机复查 | ✅ 已完成（2026-08-22） |
 | B38 | **创造工坊多模态统一（大王复查·播放器洞察，2026-08-23，IMAGEGEN_UI_SPEC v5.5 + AUDIO_UI_SPEC v1.7）**：①音频顶栏胶囊弃独立 audioHeaderCapsule 风格 → 与生图 triggerPill 同一设计语言（primary 12% 底 + full 圆角 + primary 1px 描边 + onSurface 文字 + ▾，就绪点内嵌）——同页双胶囊风格消灭；②音频结果区升级**播放器预览窗口**（方形大卡对齐生图预览规格：中央播放/暂停 + 时间轴拖动跳播 + 当前/总时长 mm:ss）——原生 TtsModule MediaPlayer 扩展 seekTo/pause/resume/getPosition + JS 500ms 轮询，无新依赖；③历史卡改**方形卡**（对齐生图相册 72px 方形缩略图），**点击 = 加载到预览窗口**（不直接播放/复制，操作归预览窗口）——多模态统一：生图=缩略图→大图预览，音频=方形卡→播放器预览，转写=方形卡→文本预览；④生成输入框默认两行（minHeight 44→66，怕用户找不到输入处）；⑤转写段同构（方形卡 + 点击加载文本预览） | IMAGEGEN_UI_SPEC v5.5 + AUDIO_UI_SPEC v1.7 | tsc 0 错 + jest 全绿 + Gradle SUCCESS + K90 真机（播放器跳播/时间轴/暂停/胶囊统一/方形卡） | ✅ 已完成（2026-08-23） |
 
+| B39 | **跑分演出升级与基准测试总控（大王裁定：跑分是安慰剂，过程才是药效，2026-08-24，PERF_BENCHMARK_DESIGN §10 v0.5）**：PerfMotion 统一动效引擎（AnimatedNumber 追式缓动/odometer 翻滚/揭幕动画，三页共用）；聊天页 footer 行2 + PendingIndicator 跑分感升级（不重造）；生图页 PerfPanel 折线面积图 + 全数字动效（卡片内不溢出）；基准页原地改造三用例总控台（砍祖传 bench() 合成负载/云提交链/双内存通道，用例=真实负载跨页自动导航）；四轴雷达对齐 perfScore + 跑分卡本地分享（不发公网）；6D 排查收敛零新建 store | PERF_BENCHMARK_DESIGN §10 SSOT | tsc/jest 全绿 + 五关门禁 + 真机浅深双模式 | 🔵 执行中（2026-08-24） |
+
 **批次间依赖**：B1 前置最大（聊天域，含 §8 旧债务 4 项中的 2 项），完成后旧债务全部清零；新债务一律按本表规则补录（批次号 + 验收 + 前置），不允许无批次挂账。
 
 ## 9. 可访问性（v3 新增）
@@ -476,6 +478,7 @@ HtmlPreviewBubble / ResultPreview / TextMessage 图片全屏 / ZoomableImage：�
 | 2026-08-22 | 3.15 | Gap Ledger 补 B32（创造工坊顶栏滑块 + 模型胶囊缩短 1/3 + 音频链路修复：onnxruntime 全链 1.27.0 + sherpa 1.13.4）+ B33（音频扩面登记：录音输入/重生成/聊天页本地 ASR）；§11 testID 表补 workshop-tab-image/audio（v5.1 滑块语义零变更）；relates 挂 IMAGEGEN_UI_SPEC v5.1 + AUDIO_UI_SPEC v1.2 |
 | 2026-08-22 | 3.18 | Gap Ledger 补 B36（创造工坊全面对齐生图 tab，大王复查）：引擎选择弃 Menu 复用 ModelPicker 屏级 overlay + 结果区整卡三态 + 历史联动 + 模型管理行并入顶栏下拉 + m4a 转码删条；B32/B35 状态翻 ✅ 已完成（真机证据链补录）；relates 挂 IMAGEGEN_UI_SPEC v5.4 + AUDIO_UI_SPEC v1.5 |
 | 2026-08-23 | 3.19 | Gap Ledger 补 B38（创造工坊多模态统一，大王复查·播放器洞察）：音频胶囊统一 triggerPill 设计语言 + 播放器预览窗口（时间轴/跳播/暂停，MediaPlayer 扩展 + 500ms 轮询）+ 历史方形卡点击加载预览 + 输入框默认两行；relates 挂 IMAGEGEN_UI_SPEC v5.5 + AUDIO_UI_SPEC v1.7 |
+| 2026-08-24 | 3.20 | Gap Ledger 补 B39（跑分演出升级与基准测试总控，大王裁定：跑分是安慰剂过程才是药效）：6D 排查收敛——零新建 store（扩展 BenchmarkStore）、砍 bench()/云提交/双内存通道、用例 4→3、雷达 4 轴对齐 perfScore；PerfMotion 动效引擎 + 三页演出层升级 + 跑分卡本地分享；relates 挂 PERF_BENCHMARK_DESIGN v0.5 §10 + CHAT_UI_SPEC v4.8 + IMAGEGEN_UI_SPEC v5.6 |
 | 2026-08-21 | 3.12 | Gap Ledger 补 B30（生图页新手引导，大王思路裁定）：非 Dream 出图未加载引导（弹窗 + 自动展开模型下拉）+ 编辑入口常驻（预览区有图即显示，点击自动切 DreamLite）+ 切模型清编辑预备态；relates 挂 IMAGEGEN_UI_SPEC v4.1 |
 | 2026-08-21 | 3.9 | Gap Ledger 补 B26（放大模型升级与双模型可选，A' 定稿）：anime 高清档换 x4plus_anime_6B（RRDBNet-6 图片级）+ anime_fast 快速档回归（双档可选）+ NNAPI EP + PasSR 不可得实锤；relates 挂 IMAGE_GEN_UPGRADE_PLAN §6.20 |
 | 2026-08-21 | 3.10 | Gap Ledger 补 B27（相册持久化架构对齐 + 数据恢复）：mobx-persist-store 对齐 + 旧 key 迁移 + DRC recoverHistory，relates → IMAGE_GEN_UPGRADE_PLAN §6.21 |

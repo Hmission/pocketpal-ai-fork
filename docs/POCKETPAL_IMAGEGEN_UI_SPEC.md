@@ -3,9 +3,9 @@ doc_id: POCKETPAL_IMAGEGEN_UI_SPEC
 module: root
 type: spec
 status: active
-version: "5.5"
+version: "5.6"
 created: "2026-08-14"
-updated: "2026-08-23"
+updated: "2026-08-24"
 relates: [POCKETPAL_DESIGN_SPEC, ADR-0002-imagegen-header-right]
 ---
 
@@ -28,6 +28,7 @@ relates: [POCKETPAL_DESIGN_SPEC, ADR-0002-imagegen-header-right]
 > 版本：v5.3（2026-08-22 B35 大王裁定）：① workshop.svg 再次重绘——**画笔 × 扳手 X 交叉**（大王：两工具交叉成 X，替代音符；画笔沿主对角线、扳手沿副对角线，交叉点居中，互不侵入对方主体）；② 音频历史条改**横向滚动**（对齐本页相册 HistoryStrip 模式，转写/生成两段隔离）；③ 音频引擎选择**移入顶栏胶囊**（对齐本页模型胶囊语义，高级参数不含模型红线扩展至音频 tab）；④ 转写结果卡对齐反推卡（3 行折叠 + 展开全文 + 三按钮操作条）
 > 版本：v5.4（2026-08-22 B36 大王复查）：① **音频引擎选择弃 Menu → 复用本页 ModelPicker 屏级 overlay 交互**（同页双交互模式消灭，dropOverlay/dropBackdrop/dropPanelAbs + 行内下载/删除）；② 音频结果区升级**整卡三态**（running 波浪 / success 全文卡 / failed 三按钮，对齐本页 taskPage 语义）；③ 音频历史条点击**联动结果区切换**（对齐相册翻页联动）；④ 音频 composer 模型管理行删除（三行冗余状态文本 → 并入顶栏下拉行内）——详见 AUDIO_UI_SPEC v1.5
 > 版本：v5.5（2026-08-23 B38 大王复查·多模态统一）：① **音频顶栏胶囊弃独立风格 → 与本页 triggerPill 同一设计语言**（primary 12% 底 + full 圆角 + primary 1px 描边 + onSurface 文字 + ▾，就绪点内嵌）——同页不再并存两套胶囊风格；② 音频产物区升级**播放器预览窗口**（方形大卡 + 播放/暂停 + 时间轴跳播 + 时长，对齐本页预览窗口规格）；③ 音频历史卡改**方形卡**（对齐本页相册缩略图 72px 方形），点击加载预览窗口——详见 AUDIO_UI_SPEC v1.7
+> 版本：v5.6（2026-08-24 B39 跑分演出升级规划，PERF_BENCHMARK_DESIGN §10 v0.5）：§9 跑分面板演出层升级定稿——① 40pt 条形迷你图 → **折线+渐变面积图**（自绘满宽贴卡片缘，峰值打标，卡片内不溢出红线不变）；② 全数字接 PerfMotion AnimatedNumber（PSS 大字/胶囊/指标行）+ 胶囊负载分档变色 + 步耗时进度环；③ §9 语义色注册表扩编：速率强调色 + 跑分金均**复用既有 brandAccent token**（不造新色，避免双金分裂），阈值语义不变（>5GB 橙/>6GB 红）；数据链路（syncPoll/perfRecorder/perfScore）零改动——详见 PERF_BENCHMARK_DESIGN §10.5/10.6
 > 上位规范：POCKETPAL_DESIGN_SPEC.md（UI 域 SSOT）
 
 ## 1. 页面结构（创造工坊 + 顶栏一行 + 单列三区 + 产物区整卡切换）v5

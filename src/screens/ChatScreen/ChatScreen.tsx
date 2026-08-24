@@ -32,6 +32,7 @@ import {MessageType, Theme} from '../../utils/types';
 import {ErrorState} from '../../utils/errors';
 import {user, assistant} from '../../utils/chat';
 import {useChatScheduler} from '../../hooks/useChatScheduler';
+import {BenchmarkHudBar} from '../../components/BenchmarkHudBar';
 import {registerChatSender} from '../../debug';
 import {ActiveTaskBanner} from '../../components/ActiveTaskBanner/ActiveTaskBanner';
 import {ImageTaskActions} from '../../components/ImageTaskActions/ImageTaskActions';
@@ -393,6 +394,8 @@ export const ChatScreen: React.FC = observer(() => {
   // 助手卡 AssistantTurnFooter 统一指标行），顶栏下无重复状态条。
   return (
     <>
+      {/* B39：套件征用本页时的基准测试 HUD（非运行态 null） */}
+      <BenchmarkHudBar />
       <ChatView
         headerAccessory={<ActiveTaskBanner />}
         renderBubble={args => renderBubble({...args, theme})}

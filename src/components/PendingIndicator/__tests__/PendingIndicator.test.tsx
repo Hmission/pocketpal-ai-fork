@@ -101,4 +101,61 @@ describe('PendingIndicator — 生成进度监控卡（§18.9）', () => {
     expect(flat.borderBottomLeftRadius).toBe(0);
     expect(flat.borderBottomRightRadius).toBeGreaterThan(0);
   });
+
+  // ── B39 跑分感（PERF_BENCHMARK_DESIGN §10.4）──
+  it('阶段色条常驻：一眼分辨模型在哪个赛道', () => {
+    const {getByTestId} = render(
+      <PendingIndicator agentStatus="prefill" runStartedAt={NOW} />,
+    );
+    expect(getByTestId('pending-indicator-stage-bar')).toBeTruthy();
+  });
+
+  it('活跃时心跳波形在场（活着的证据）', () => {
+    const {getByTestId} = render(
+      <PendingIndicator
+        agentStatus="prefill"
+        runStartedAt={NOW}
+        lastAgentEventAt={NOW}
+      />,
+    );
+    expect(getByTestId('pending-indicator-wave')).toBeTruthy();
+  });
+
+  it('卡住时心跳平坦（诚实：波形隐去）', () => {
+    const {queryByTestId} = render(
+      <PendingIndicator
+        agentStatus="prefill"
+        runStartedAt={NOW - 330000}
+        lastAgentEventAt={NOW - 301000}
+      />,
+    );
+    expect(queryByTestId('pending-indicator-wave')).toBeNull();
+  });
+
+  it('停止中心跳平坦（收尾不演）', () => {
+    const {queryByTestId} = render(
+      <PendingIndicator
+        agentStatus="prefill"
+        isStopping
+        runStartedAt={NOW}
+        lastAgentEventAt={NOW}
+      />,
+    );
+    expect(queryByTestId('pending-indicator-wave')).toBeNull();
+  });
+
+  it('工具期首帧速率不演假数（差分未成立时不带 tok/s）', () => {
+    const {getByText} = render(
+      <PendingIndicator
+        pendingTalentNames={['render_html']}
+        toolCallTokenCount={42}
+        agentStatus="generating_tool_call"
+        runStartedAt={NOW}
+        lastAgentEventAt={NOW}
+      />,
+    );
+    expect(getByText(/Building page · 42 tokens/).props.children).not.toContain(
+      'tok/s',
+    );
+  });
 });

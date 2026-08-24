@@ -1341,6 +1341,29 @@
   },
   "benchmark": {
     "title": "Benchmark",
+    "suite": {
+      "startButton": "Run Full Benchmark (LLM · Image · Endurance ×3)",
+      "runningDefault": "Benchmark running…",
+      "runningHint": "Real-workload benchmark: it will switch to Chat and ImageGen pages automatically. Keep the screen on.",
+      "abort": "Stop",
+      "gotIt": "Got it",
+      "rankPrefix": "Rank",
+      "shareButton": "Share Score Card",
+      "shareFailed": "Share unavailable right now, try again later",
+      "hudRunning": "Benchmark running",
+      "caseProgress": "Test {{index}}/3 · {{case}}",
+      "labels": {
+        "total": "Total",
+        "inferSpeed": "LLM Speed",
+        "genSpeed": "Image Speed",
+        "endurance": "Endurance",
+        "memSafe": "Memory Safety",
+        "thermal": "Thermal",
+        "stability": "Stability",
+        "totalTime": "Total Time",
+        "legacy": "Legacy protocol"
+      }
+    },
     "modelSelector": {
       "prompt": "Select Model",
       "noModels": "No models downloaded"

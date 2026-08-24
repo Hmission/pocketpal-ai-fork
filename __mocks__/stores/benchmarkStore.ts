@@ -36,4 +36,32 @@ export const benchmarkStore = {
   markAsSubmitted: mockMarkAsSubmitted,
   getResultsByModel: mockGetResultsByModel,
   latestResult: mockResult,
+  // ── B39 套件编排（瞬态）──
+  suiteRunning: false,
+  suiteCaseIndex: -1,
+  suiteBanner: '',
+  suiteError: null as string | null,
+  startSuite: jest.fn(function (this: any) {
+    this.suiteRunning = true;
+    this.suiteCaseIndex = 0;
+    this.suiteError = null;
+  }),
+  setCase: jest.fn(function (this: any, index: number, banner: string) {
+    this.suiteCaseIndex = index;
+    this.suiteBanner = banner;
+  }),
+  failSuite: jest.fn(function (this: any, message: string) {
+    this.suiteRunning = false;
+    this.suiteCaseIndex = -1;
+    this.suiteBanner = '';
+    this.suiteError = message;
+  }),
+  endSuite: jest.fn(function (this: any) {
+    this.suiteRunning = false;
+    this.suiteCaseIndex = -1;
+    this.suiteBanner = '';
+  }),
+  clearSuiteError: jest.fn(function (this: any) {
+    this.suiteError = null;
+  }),
 };

@@ -66,10 +66,6 @@ export class UIStore {
   // 关 = 停止快照导出并删除已有快照（用户主动清数据语义）。
   persistUserData = true;
 
-  benchmarkShareDialog = {
-    shouldShow: true,
-  };
-
   // Warning state for chat-related warnings (like multimodal warnings)
   chatWarning: ErrorState | null = null;
 
@@ -134,7 +130,6 @@ export class UIStore {
         'autoNavigatetoChat',
         'displayMemUsage',
         'selfCheckEnabled',
-        'benchmarkShareDialog',
         'persistUserData',
         '_language',
         'toolCompatWarnedModels',
@@ -220,12 +215,6 @@ export class UIStore {
   setPersistUserData(value: boolean) {
     runInAction(() => {
       this.persistUserData = value;
-    });
-  }
-
-  setBenchmarkShareDialogPreference(shouldShow: boolean) {
-    runInAction(() => {
-      this.benchmarkShareDialog.shouldShow = shouldShow;
     });
   }
 

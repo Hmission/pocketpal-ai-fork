@@ -42,6 +42,7 @@ relates: [DRC_SPEC, COMPASS_SYSTEM_SSOT, STATE_COMPASS_ENGINE_SELF_NAVIGATION_SS
 | CP-APP-009 | 工具调用错误 / tool.error / 工具返回 error | 按错误回传中的 guide（正确调用示例）修正参数后重试；同一工具连续失败 2 次才可放弃，并在最终回答中如实说明 | docs/workspace/WORKSPACE_TOOL_ERROR_FEEDBACK_SPEC.md · src/services/agent/AgentRunner.ts | ✅ 已登记（2026-08-22） |
 | CP-APP-010 | VIDEO_TASK_START_FAILED / 前台服务启动失败 / WakeLock / 夜间任务被杀 | 检查 FOREGROUND_SERVICE + FOREGROUND_SERVICE_DATA_SYNC 权限与 service 声明（targetSdk 36 需 foregroundServiceType）；查 logcat 是否被 PSS 看护/内存配额杀（压内存优先于白名单，见 ONDEVICE_VIDEO §7.1） | android/app/.../VideoTaskServiceModule.kt · AndroidManifest.xml · docs/ONDEVICE_VIDEO_GEN_ANALYSIS.md §7.1 | ✅ 已登记（2026-08-23） |
 | CP-APP-011 | TTS 模型未安装完整 / sample_rate does not exist / 生成噪音 | 检查 TTS 模型下载源是否为 sherpa 兼容源（kokoro 需 metadata+tokens.txt、kitten 需 sherpa 官方 v0.1 生成链四件套）；**kitten 生成链下载已补齐（§81，Phase 2 动态枚举 espeak）**，新装机经下载链即可齐备；kokoro 换源=降版本（v1.0→v0.19）+ fork/sherpa 双链耦合，裁定不动，生成链靠 sherpaConvert 下载后转换兜底 | src/services/tts/constants.ts · src/services/tts/engines/kitten/index.ts · docs/internal/POCKETPAL_MODIFICATION_MASTER_LOG.md §74.5/§81 | ✅ 已登记（2026-08-23） |
+| CP-APP-012 | 基准编排中断 / 用例卡死 / 跑分卡渲染失败 / 分享不可用 | 查 benchmarkStore 编排状态机是否复位（用例结束/失败必须 reset，不留半态）；分享走 FileProvider 门禁，不可用降级存相册+诚实提示；数值 N/A 不编造 | docs/PERF_BENCHMARK_DESIGN.md §10 · src/store/BenchmarkStore.ts | ✅ 已登记（2026-08-24） |
 
 ## 3. 状态指南针（ST-APP-NNN）
 

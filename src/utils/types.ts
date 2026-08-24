@@ -857,7 +857,34 @@ export interface BenchmarkResult {
   uuid: string;
   submitted?: boolean;
   initSettings?: ContextInitParams | LegacyContextInitParams;
+  // ── B39 新协议（PERF_BENCHMARK_DESIGN §10.7）：真实负载套件 ──
+  /** 有值 = 新协议（真实负载）；缺失 = 旧协议（bench() 合成，诚实标「旧协议」） */
+  suiteCase?: BenchmarkSuiteCase;
+  /** 套件结果块（新协议；分项口径 = perfScore，不造新公式） */
+  suite?: {
+    /** LLM 用例：真实流式 tok/s（metadata.timings.predicted_per_second） */
+    tokAvg?: number;
+    /** LLM 用例：首 token 延迟 ms */
+    ttftMs?: number;
+    /** 生图用例：平均步耗时 s */
+    stepAvg?: number;
+    /** PSS 峰值 kb（与 HyperOS 硬杀同口径） */
+    pssPeakKb?: number;
+    /** 耐久用例：温升 °C（起点→终点） */
+    tempRiseC?: number;
+    /** 四轴分项 + 综合分（结构同 PerfScoreCard，内联避免跨层依赖） */
+    score: {
+      memory: number;
+      thermal: number;
+      stability: number;
+      speed: number | null;
+      total: number;
+    };
+  };
 }
+
+/** 基准套件用例（新协议）：suite = 套件汇总条目 */
+export type BenchmarkSuiteCase = 'llm' | 'gen' | 'endurance' | 'suite';
 
 export type DeviceInfo = {
   model: string;

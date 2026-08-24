@@ -1,16 +1,21 @@
+/**
+ * BenchmarkScreen — 基准测试总控台（B39 v2，PERF_BENCHMARK_DESIGN §10.7）
+ *
+ * 三用例真实负载套件（推理速度→生图速度→温控耐久），编排器自动导航到
+ * 聊天页/生图页让过程可见；结果页 = 四轴雷达（perfScore 口径）+ 揭幕综合分
+ * + 段位。不发公网（云提交链已整体砍除），成绩全部本地。
+ *
+ * testID 契约保留：start-test-button（e2e selectors 依赖）。
+ */
 import {View, ScrollView} from 'react-native';
-import React, {useState, useCallback, useContext} from 'react';
+import React, {useState, useContext} from 'react';
 
-import {v4 as uuidv4} from 'uuid';
 import {observer} from 'mobx-react';
-import RNDeviceInfo from 'react-native-device-info';
-import Slider from '@react-native-community/slider';
+import {NavigationContext} from '@react-navigation/native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import {Text, Button, Card, ActivityIndicator, Icon} from 'react-native-paper';
+import {Text, Button, Card, ActivityIndicator} from 'react-native-paper';
 
-import {submitBenchmark} from '../../api/benchmark';
-
-import {Menu, Dialog, Checkbox} from '../../components';
+import {Menu, Dialog} from '../../components';
 
 import {useTheme} from '../../hooks';
 import {L10nContext} from '../../utils';
@@ -19,84 +24,44 @@ import {t} from '../../locales';
 import {createStyles} from './styles';
 import {DeviceInfoCard} from './DeviceInfoCard';
 import {BenchResultCard} from './BenchResultCard';
+import {BenchRadar} from './BenchRadar';
+import {ScoreReveal} from '../../components/PerfMotion';
 
-import {modelStore, benchmarkStore, uiStore} from '../../store';
+import {modelStore, benchmarkStore} from '../../store';
+import {benchmarkOrchestrator} from '../../services/benchmarkOrchestrator';
+import {shareScoreCard} from '../../services/benchShare';
 
-import type {DeviceInfo, Model} from '../../utils/types';
-import {BenchmarkConfig, BenchmarkResult, ModelOrigin} from '../../utils/types';
+import type {Model} from '../../utils/types';
+import {ModelOrigin} from '../../utils/types';
 
-const DEFAULT_CONFIGS: BenchmarkConfig[] = [
-  {pp: 512, tg: 128, pl: 1, nr: 3, label: 'Default'},
-  {pp: 128, tg: 32, pl: 1, nr: 3, label: 'Fast'},
-];
-
-const getBinarySteps = (min: number, max: number): number[] => {
-  const steps: number[] = [];
-  let current = min;
-  while (current <= max) {
-    steps.push(current);
-    current *= 2;
+/** 段位（综合分三分位）：中文展示 + ASCII 像素卡双口径 */
+function rankOf(total: number): {cn: string; ascii: string} {
+  if (total >= 75) {
+    return {cn: '神鸡', ascii: 'GOD CHICK'};
   }
-  return steps;
-};
-
-const BENCHMARK_PARAMS_METADATA = {
-  pp: {
-    validation: {min: 64, max: 4096},
-    descriptionKey:
-      'Number of prompt processing tokens (max: physical batch size)',
-    steps: getBinarySteps(64, 4096),
-  },
-  tg: {
-    validation: {min: 32, max: 2048},
-    descriptionKey: 'Number of text generation tokens',
-    steps: getBinarySteps(32, 2048),
-  },
-  pl: {
-    validation: {min: 1, max: 4},
-    descriptionKey: 'Pipeline parallel size',
-    steps: [1, 2, 3, 4],
-  },
-  nr: {
-    validation: {min: 1, max: 10},
-    descriptionKey: 'Number of repetitions',
-    steps: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-  },
-};
+  if (total >= 50) {
+    return {cn: '战斗鸡', ascii: 'FIGHTER CHICK'};
+  }
+  return {cn: '走地鸡', ascii: 'FREE RANGE CHICK'};
+}
 
 export const BenchmarkScreen: React.FC = observer(() => {
-  const [isRunning, setIsRunning] = useState(false);
-  const [selectedConfig, setSelectedConfig] = useState<BenchmarkConfig>(
-    DEFAULT_CONFIGS[0],
-  );
   const [showModelMenu, setShowModelMenu] = useState(false);
   const [selectedModel, setSelectedModel] = useState<Model | null>(null);
-  const [showAdvancedDialog, setShowAdvancedDialog] = useState(false);
   const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
   const [pendingDeleteTimestamp, setPendingDeleteTimestamp] = useState<
     string | null
   >(null);
   const [deleteAllConfirmVisible, setDeleteAllConfirmVisible] = useState(false);
-  const [deviceInfo, setDeviceInfo] = useState<DeviceInfo | null>(null);
-  const [showShareDialog, setShowShareDialog] = useState(false);
-  const [showDetails, setShowDetails] = useState(false);
-  const [dontShowAgain, setDontShowAgain] = useState(false);
-  const [pendingShareResult, setPendingShareResult] =
-    useState<BenchmarkResult | null>(null);
-  const [shareError, setShareError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [shareBusy, setShareBusy] = useState(false);
+  const [shareNotice, setShareNotice] = useState<string | null>(null);
 
   const theme = useTheme();
   const styles = createStyles(theme);
   const l10n = useContext(L10nContext);
-
-  const handleSliderChange = (name: string, value: number) => {
-    setSelectedConfig(prev => ({
-      ...prev,
-      [name]: value,
-      label: 'Custom',
-    }));
-  };
+  // 直读 NavigationContext（同 AssistantTurnFooter 模式）：无导航上下文（单测等）
+  // 时优雅降级，应用内永远有导航容器，编排入口不丢。
+  const navigation = useContext(NavigationContext);
 
   const handleModelSelect = async (model: Model) => {
     setShowModelMenu(false);
@@ -114,103 +79,6 @@ export const BenchmarkScreen: React.FC = observer(() => {
     }
   };
 
-  const trackPeakMemoryUsage = async () => {
-    try {
-      const total = await RNDeviceInfo.getTotalMemory();
-      const used = await RNDeviceInfo.getUsedMemory();
-      const percentage = (used / total) * 100;
-      return {total, used, percentage};
-    } catch (error) {
-      console.error('Failed to fetch memory stats:', error);
-      return null;
-    }
-  };
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const stopBenchmark = async () => {
-    if (modelStore.context) {
-      try {
-        // TODO: This is not working for bench.
-        await modelStore.context.stopCompletion();
-      } catch (error) {
-        console.error('Error stopping benchmark:', error);
-      }
-    }
-  };
-
-  const runBenchmark = async () => {
-    if (!modelStore.context || !modelStore.activeModel) {
-      return;
-    }
-
-    setIsRunning(true);
-    let peakMemoryUsage: NonNullable<
-      BenchmarkResult['peakMemoryUsage']
-    > | null = null;
-    let memoryCheckInterval: ReturnType<typeof setInterval> | undefined;
-    const startTime = Date.now();
-
-    try {
-      // Start memory tracking
-      memoryCheckInterval = setInterval(async () => {
-        const currentUsage = await trackPeakMemoryUsage();
-        if (
-          currentUsage &&
-          (!peakMemoryUsage ||
-            currentUsage.percentage > peakMemoryUsage.percentage)
-        ) {
-          peakMemoryUsage = currentUsage;
-        }
-      }, 1000);
-
-      const {speedPp: ppAvg, speedTg: tgAvg} = await modelStore.context.bench(
-        selectedConfig.pp,
-        selectedConfig.tg,
-        selectedConfig.pl,
-        selectedConfig.nr,
-      );
-      const modelDesc = modelStore.context.model.desc;
-      const modelSize = modelStore.context.model.size;
-      const modelNParams = modelStore.context.model.nParams;
-
-      const wallTimeMs = Date.now() - startTime;
-
-      const result: BenchmarkResult = {
-        config: selectedConfig,
-        modelDesc,
-        modelSize,
-        modelNParams,
-        ppAvg,
-        ppStd: 0,
-        tgAvg,
-        tgStd: 0,
-        timestamp: new Date().toISOString(),
-        modelId: modelStore.activeModel.id,
-        modelName: modelStore.activeModel.name,
-        oid: modelStore.activeModel.hfModelFile?.oid,
-        rfilename: modelStore.activeModel.hfModelFile?.rfilename,
-        filename: modelStore.activeModel.filename,
-        peakMemoryUsage: peakMemoryUsage || undefined,
-        wallTimeMs,
-        uuid: uuidv4(),
-        initSettings: modelStore.activeContextSettings,
-      };
-
-      benchmarkStore.addResult(result);
-    } catch (error) {
-      if (error instanceof Error) {
-        console.error('Benchmark error:', error);
-      }
-    } finally {
-      clearInterval(memoryCheckInterval);
-      setIsRunning(false);
-    }
-  };
-
-  const handlePresetSelect = (config: BenchmarkConfig) => {
-    setSelectedConfig(config);
-  };
-
   const handleDeleteResult = (timestamp: string) => {
     setPendingDeleteTimestamp(timestamp);
     setDeleteConfirmVisible(true);
@@ -224,78 +92,52 @@ export const BenchmarkScreen: React.FC = observer(() => {
     setPendingDeleteTimestamp(null);
   };
 
-  const handleDeleteAll = () => {
-    setDeleteAllConfirmVisible(true);
-  };
-
-  const handleConfirmDeleteAll = () => {
-    benchmarkStore.clearResults();
-    setDeleteAllConfirmVisible(false);
-  };
-
-  const handleDeviceInfo = useCallback((info: DeviceInfo) => {
-    setDeviceInfo(info);
-  }, []);
-
-  const handleShareResult = async (result: BenchmarkResult) => {
-    if (!deviceInfo) {
-      throw new Error('Device information not available');
-    }
-    if (result.submitted) {
-      throw new Error('This benchmark has already been submitted');
-    }
-    try {
-      const response = await submitBenchmark(deviceInfo, result);
-      console.log('Benchmark submitted successfully:', response);
-      benchmarkStore.markAsSubmitted(result.uuid);
-    } catch (error) {
-      console.error('Failed to submit benchmark:', error);
-      throw error;
-    }
-  };
-
-  const handleSharePress = async (result: BenchmarkResult) => {
-    if (!uiStore.benchmarkShareDialog.shouldShow) {
-      await handleShareResult(result);
-      return;
-    }
-    setPendingShareResult(result);
-    setShowShareDialog(true);
-  };
-
-  const handleConfirmShare = async () => {
-    if (dontShowAgain) {
-      uiStore.setBenchmarkShareDialogPreference(false);
-    }
-    setIsSubmitting(true);
-    try {
-      if (pendingShareResult) {
-        await handleShareResult(pendingShareResult);
-      }
-      setShowShareDialog(false);
-      setPendingShareResult(null);
-    } catch (error) {
-      setShareError(
-        error instanceof Error ? error.message : 'Failed to share benchmark',
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const getMaxPPValue = () => {
-    if (!modelStore.activeContextSettings) {
-      return BENCHMARK_PARAMS_METADATA.pp.validation.max;
-    }
-    return Math.min(
-      modelStore.activeContextSettings.n_ubatch,
-      BENCHMARK_PARAMS_METADATA.pp.validation.max,
-    );
-  };
-
   const localModels = modelStore.availableModels.filter(
     m => m.origin !== ModelOrigin.REMOTE,
   );
+
+  const handleShareCard = async () => {
+    const s = benchmarkStore.results.find(r => r.suiteCase === 'suite')?.suite;
+    if (!s) {
+      return;
+    }
+    setShareBusy(true);
+    setShareNotice(null);
+    const {status} = await shareScoreCard({
+      total: s.score.total,
+      memory: s.score.memory,
+      thermal: s.score.thermal,
+      stability: s.score.stability,
+      speed: s.score.speed,
+      rank: rankOf(s.score.total).ascii,
+      date: new Date().toISOString().slice(0, 10),
+    });
+    setShareBusy(false);
+    if (status === 'failed') {
+      // 诚实提示（不静默）：图片已落盘缓存，可稍后重试或从文件管理器分享
+      setShareNotice(l10n.benchmark.suite.shareFailed);
+    }
+  };
+
+  const {suiteRunning, suiteBanner, suiteError, suiteCaseIndex} =
+    benchmarkStore;
+  // 横幅：用例 key → l10n 标签（服务层不绑 l10n，展示层单点映射）
+  const CASE_LABEL_KEY: Record<string, string> = {
+    llm: 'inferSpeed',
+    gen: 'genSpeed',
+    endurance: 'endurance',
+  };
+  const labels = l10n.benchmark.suite
+    .labels as Record<string, string>;
+  const bannerText =
+    suiteRunning && suiteBanner && CASE_LABEL_KEY[suiteBanner]
+      ? t(l10n.benchmark.suite.caseProgress, {
+          index: String(suiteCaseIndex + 1),
+          case: labels[CASE_LABEL_KEY[suiteBanner]] ?? suiteBanner,
+        })
+      : l10n.benchmark.suite.runningDefault;
+  // 最新套件结果 → 揭幕 + 雷达（结果页语义：挂载即演一次）
+  const latestSuite = benchmarkStore.results.find(r => r.suiteCase === 'suite');
 
   const renderModelSelector = () => (
     <Menu
@@ -308,9 +150,7 @@ export const BenchmarkScreen: React.FC = observer(() => {
           mode="outlined"
           onPress={() => setShowModelMenu(true)}
           contentStyle={styles.modelSelectorContent}
-          icon={({color}) => (
-            <Icon source="chevron-down" size={24} color={color} />
-          )}>
+          icon="chevron-down">
           {selectedModel?.name ||
             modelStore.activeModel?.name ||
             l10n.benchmark.modelSelector.prompt}
@@ -337,268 +177,116 @@ export const BenchmarkScreen: React.FC = observer(() => {
     </Menu>
   );
 
-  const renderSlider = ({
-    name,
-    testId,
-  }: {
-    name: keyof typeof BENCHMARK_PARAMS_METADATA;
-    testId?: string;
-  }) => {
-    const metadata = BENCHMARK_PARAMS_METADATA[name];
-    let steps = metadata.steps;
-
-    if (name === 'pp') {
-      const maxValue = getMaxPPValue();
-      steps = steps.filter(step => step <= maxValue);
-    }
-
-    const stepIndex = steps.indexOf(selectedConfig[name]);
-
-    return (
-      <View style={styles.settingItem}>
-        <Text variant="labelSmall" style={styles.settingLabel}>
-          {name.toUpperCase()}
-        </Text>
-        <Slider
-          testID={testId ?? `${name}-slider`}
-          style={styles.slider}
-          minimumValue={0}
-          maximumValue={steps.length - 1}
-          step={1}
-          value={stepIndex}
-          onValueChange={index => {
-            const value = steps[Math.round(index)];
-            handleSliderChange(name, value);
-          }}
-          thumbTintColor={theme.colors.primary}
-          minimumTrackTintColor={theme.colors.primary}
-        />
-        <View style={styles.sliderDescriptionContainer}>
-          <Text style={styles.description}>
-            {metadata.descriptionKey}
-            {name === 'pp' && modelStore.activeContextSettings && (
-              <Text style={styles.maxValueHint}>
-                {' '}
-                {t(l10n.benchmark.messages.modelMaxValue, {
-                  maxValue: getMaxPPValue().toString(),
-                })}
-              </Text>
-            )}
-          </Text>
-          <Text style={styles.settingValue}>{selectedConfig[name]}</Text>
-        </View>
-      </View>
-    );
-  };
-
-  const renderAdvancedSettings = () => (
-    <Dialog
-      testID="advanced-settings-dialog"
-      visible={showAdvancedDialog}
-      onDismiss={() => setShowAdvancedDialog(false)}
-      title={l10n.benchmark.dialogs.advancedSettings.title}
-      scrollable
-      actions={[
-        {
-          label: l10n.benchmark.buttons.done,
-          onPress: () => setShowAdvancedDialog(false),
-        },
-      ]}>
-      <View>
-        <Text variant="titleMedium" style={styles.sectionTitle}>
-          {l10n.benchmark.dialogs.advancedSettings.testProfile}
-        </Text>
-        <View style={styles.presetContainer}>
-          {DEFAULT_CONFIGS.map((config, index) => (
-            <Button
-              key={index}
-              mode={selectedConfig === config ? 'contained' : 'outlined'}
-              onPress={() => handlePresetSelect(config)}
-              style={styles.presetButton}>
-              {config.label}
-            </Button>
-          ))}
-        </View>
-
-        <Text variant="titleMedium" style={styles.sectionTitle}>
-          {l10n.benchmark.dialogs.advancedSettings.customParameters}
-        </Text>
-        <Text variant="bodySmall" style={styles.advancedDescription}>
-          {l10n.benchmark.dialogs.advancedSettings.description}
-        </Text>
-        <View style={styles.slidersContainer}>
-          {renderSlider({name: 'pp'})}
-          {renderSlider({name: 'tg'})}
-          {renderSlider({name: 'nr'})}
-        </View>
-      </View>
-    </Dialog>
-  );
-
-  const renderWarningMessage = () => (
-    <View style={styles.warningContainer}>
-      <Text variant="bodySmall" style={styles.warningText}>
-        {l10n.benchmark.messages.testWarning}
-      </Text>
-    </View>
-  );
-
-  const renderShareDialog = () => (
-    <Dialog
-      testID="share-benchmark-dialog"
-      visible={showShareDialog}
-      onDismiss={() => {
-        setShowShareDialog(false);
-        setPendingShareResult(null);
-      }}
-      title={l10n.benchmark.dialogs.shareResults.title}
-      scrollable
-      actions={[
-        {
-          testID: 'share-benchmark-dialog-cancel-button',
-          label: l10n.benchmark.buttons.cancel,
-          onPress: () => {
-            setShowShareDialog(false);
-            setPendingShareResult(null);
-            setShareError(null);
-          },
-          disabled: isSubmitting,
-        },
-        {
-          testID: 'share-benchmark-dialog-confirm-button',
-          label: isSubmitting
-            ? l10n.benchmark.buttons.sharing
-            : l10n.benchmark.buttons.share,
-          onPress: handleConfirmShare,
-          mode: 'contained',
-          loading: isSubmitting,
-          disabled: isSubmitting,
-        },
-      ]}>
-      <Text variant="bodyMedium" style={styles.dialogSection}>
-        {l10n.benchmark.dialogs.shareResults.sharedDataTitle}
-      </Text>
-      <View style={styles.dialogList}>
-        <Text variant="bodyMedium">
-          {l10n.benchmark.dialogs.shareResults.deviceAndModelInfo}
-        </Text>
-        <Text variant="bodyMedium">
-          {l10n.benchmark.dialogs.shareResults.performanceMetrics}
-        </Text>
-      </View>
-
-      <Button
-        testID="share-benchmark-dialog-view-raw-data-button"
-        mode="text"
-        onPress={() => setShowDetails(!showDetails)}
-        icon={showDetails ? 'chevron-up' : 'chevron-down'}
-        style={styles.detailsButton}>
-        {showDetails
-          ? l10n.benchmark.buttons.hideRawData
-          : l10n.benchmark.buttons.viewRawData}
-      </Button>
-
-      {showDetails && pendingShareResult && deviceInfo && (
-        <View
-          testID="share-benchmark-dialog-raw-data-container"
-          style={styles.detailsContainer}>
-          <Text variant="bodySmall" style={styles.codeBlock}>
-            {JSON.stringify(
-              {
-                deviceInfo,
-                benchmark: pendingShareResult,
-              },
-              null,
-              2,
-            )}
-          </Text>
-        </View>
-      )}
-
-      {shareError && <Text style={styles.errorText}>{shareError}</Text>}
-
-      <View style={styles.checkboxContainer}>
-        <Checkbox
-          testID="dont-show-again-checkbox"
-          checked={dontShowAgain}
-          onPress={() => setDontShowAgain(!dontShowAgain)}
-        />
-        <Text
-          variant="bodySmall"
-          style={styles.checkboxLabel}
-          onPress={() => setDontShowAgain(!dontShowAgain)}>
-          {l10n.benchmark.dialogs.shareResults.dontShowAgain}
-        </Text>
-      </View>
-    </Dialog>
-  );
-
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView style={styles.scrollView}>
         <Card elevation={0} style={styles.card}>
           <Card.Content>
-            <DeviceInfoCard onDeviceInfo={handleDeviceInfo} />
+            <DeviceInfoCard />
             {renderModelSelector()}
 
-            {modelStore.loadingModel ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator
-                  testID="loading-indicator-model-init"
-                  size="large"
-                />
-                <Text style={styles.loadingText}>
-                  {l10n.benchmark.messages.initializingModel}
+            {/* ── 总控区：一键跑分 / 进行中横幅 / 失败诚实报错 ── */}
+            {suiteRunning ? (
+              <View style={styles.loadingContainer} testID="suite-running">
+                <ActivityIndicator testID="loading-indicator-benchmark" size="large" />
+                <Text style={styles.warningText}>{bannerText}</Text>
+                <Text variant="bodySmall" style={styles.description}>
+                  {l10n.benchmark.suite.runningHint}
                 </Text>
+                <Button
+                  mode="text"
+                  onPress={() => benchmarkOrchestrator.abort()}
+                  testID="suite-abort-button">
+                  {l10n.benchmark.suite.abort}
+                </Button>
               </View>
             ) : (
               <>
-                {!modelStore.context ? (
-                  <Text style={styles.warning}>
-                    {l10n.benchmark.messages.pleaseSelectModel}
-                  </Text>
-                ) : (
-                  <>
+                {suiteError ? (
+                  <View
+                    style={styles.warningContainer}
+                    testID="suite-error">
+                    <Text variant="bodySmall" style={styles.warningText}>
+                      {suiteError}
+                    </Text>
                     <Button
-                      testID="advanced-settings-button"
                       mode="text"
-                      onPress={() => setShowAdvancedDialog(true)}
-                      icon="tune"
-                      style={styles.advancedButton}>
-                      {l10n.benchmark.buttons.advancedSettings}
+                      compact
+                      onPress={() => benchmarkStore.clearSuiteError()}>
+                      {l10n.benchmark.suite.gotIt}
                     </Button>
-
-                    {!isRunning && renderWarningMessage()}
-
-                    <Button
-                      testID="start-test-button"
-                      mode="contained"
-                      onPress={runBenchmark}
-                      disabled={isRunning}
-                      style={styles.button}>
-                      {isRunning
-                        ? l10n.benchmark.buttons.runningTest
-                        : l10n.benchmark.buttons.startTest}
-                    </Button>
-
-                    {isRunning && (
-                      <View style={styles.loadingContainer}>
-                        <ActivityIndicator
-                          testID="loading-indicator-benchmark"
-                          size="large"
-                        />
-                        <Text style={styles.warningText}>
-                          {l10n.benchmark.messages.keepScreenOpen}
-                        </Text>
-                      </View>
-                    )}
-
-                    {renderAdvancedSettings()}
-                  </>
-                )}
+                  </View>
+                ) : null}
+                <Button
+                  testID="start-test-button"
+                  mode="contained"
+                  onPress={() =>
+                    benchmarkOrchestrator.start({
+                      navigate: route => navigation?.navigate(route as never),
+                    })
+                  }
+                  disabled={suiteRunning}
+                  style={styles.button}>
+                  {l10n.benchmark.suite.startButton}
+                </Button>
+                <View style={styles.warningContainer}>
+                  <Text variant="bodySmall" style={styles.warningText}>
+                    {l10n.benchmark.messages.testWarning}
+                  </Text>
+                </View>
               </>
             )}
 
+            {/* ── 结果页：四轴雷达 + 揭幕综合分 + 段位（最新套件结果）── */}
+            {latestSuite?.suite && !suiteRunning ? (
+              <View style={styles.resultsCard} testID="suite-reveal">
+                <ScoreReveal
+                  value={latestSuite.suite.score.total}
+                  color={theme.colors.brandAccent}
+                  fontSize={44}
+                  testID="suite-total-reveal"
+                />
+                <Text
+                  style={[
+                    styles.resultLabel,
+                    {color: theme.colors.brandAccent, textAlign: 'center'},
+                  ]}
+                  testID="suite-rank">
+                  {l10n.benchmark.suite.rankPrefix} ·{' '}
+                  {rankOf(latestSuite.suite.score.total).cn}
+                </Text>
+                <View style={{alignItems: 'center', marginVertical: 8}}>
+                  <BenchRadar
+                    score={latestSuite.suite.score}
+                    color={theme.colors.brandAccent}
+                    gridColor={theme.colors.outlineVariant}
+                    textColor={theme.colors.onSurfaceVariant}
+                    testID="suite-radar"
+                  />
+                </View>
+                {/* 分享跑分卡：像素风 PNG + 系统分享（不发公网） */}
+                <Button
+                  testID="share-score-card"
+                  mode="outlined"
+                  icon="share"
+                  loading={shareBusy}
+                  disabled={shareBusy}
+                  onPress={handleShareCard}
+                  style={styles.button}>
+                  {l10n.benchmark.suite.shareButton}
+                </Button>
+                {shareNotice ? (
+                  <Text
+                    variant="bodySmall"
+                    style={[styles.resultLabel, {textAlign: 'center'}]}
+                    testID="share-notice">
+                    {shareNotice}
+                  </Text>
+                ) : null}
+              </View>
+            ) : null}
+
+            {/* ── 成绩列表（全部本地，旧协议诚实标记）── */}
             {benchmarkStore.results.length > 0 && (
               <View style={styles.resultsCard}>
                 <View style={styles.resultsHeader}>
@@ -608,7 +296,7 @@ export const BenchmarkScreen: React.FC = observer(() => {
                   <Button
                     testID="clear-all-button"
                     mode="text"
-                    onPress={handleDeleteAll}
+                    onPress={() => setDeleteAllConfirmVisible(true)}
                     icon="delete"
                     compact>
                     {l10n.benchmark.buttons.clearAll}
@@ -619,7 +307,6 @@ export const BenchmarkScreen: React.FC = observer(() => {
                     <BenchResultCard
                       result={result}
                       onDelete={handleDeleteResult}
-                      onShare={handleSharePress}
                     />
                   </View>
                 ))}
@@ -657,13 +344,14 @@ export const BenchmarkScreen: React.FC = observer(() => {
                 {
                   testID: 'clear-all-dialog-confirm-button',
                   label: l10n.benchmark.buttons.clearAll,
-                  onPress: handleConfirmDeleteAll,
+                  onPress: () => {
+                    benchmarkStore.clearResults();
+                    setDeleteAllConfirmVisible(false);
+                  },
                 },
               ]}>
               <Text>{l10n.benchmark.dialogs.clearAllResults.message}</Text>
             </Dialog>
-
-            {renderShareDialog()}
           </Card.Content>
         </Card>
       </ScrollView>

@@ -974,16 +974,11 @@ export const createStyles = (theme: any) =>
       color: theme.colors.onSurfaceVariant,
       marginLeft: 'auto',
     },
-    // v2 迷你曲线条：横向压扁 40pt（卡片下半截空间约束）
+    // B39 图表容器：折线渐变面积图 60pt（替代 v2 条形 40pt，卡片下半截空间预算内）
     perfMiniChart: {
-      height: 40,
-      flexDirection: 'row',
-      alignItems: 'flex-end',
-      gap: 1,
+      height: 60,
       overflow: 'hidden',
-      justifyContent: 'center',
     },
-    perfBar: {width: 2, borderRadius: 1},
     perfChartEmpty: {
       ...theme.typography.captionM,
       color: theme.colors.onSurfaceVariant,

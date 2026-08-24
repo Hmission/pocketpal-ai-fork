@@ -40,6 +40,10 @@ let chatSenderSlot: ChatSender | null = null;
 export function registerChatSender(fn: ChatSender | null): void {
   chatSenderSlot = fn;
 }
+/** 取当前聊天发送槽（B39 基准套件复用完整调度链；无槽返 null，调用方诚实报错） */
+export function getChatSender(): ChatSender | null {
+  return chatSenderSlot;
+}
 
 /** 动作定义 */
 export interface DrcActionDef {

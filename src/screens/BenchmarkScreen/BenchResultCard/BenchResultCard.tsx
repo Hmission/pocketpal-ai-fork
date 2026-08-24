@@ -1,121 +1,47 @@
-import React, {useState, useContext} from 'react';
-import {View, Linking} from 'react-native';
+/**
+ * BenchResultCard — 跑分结果卡（B39 v2，PERF_BENCHMARK_DESIGN §10.7）
+ *
+ * 新协议（suiteCase 有值）：真实负载套件——综合分 + tok/s + 步耗时 +
+ * PSS 峰值 + 温升 + 总时长；旧协议（无 suiteCase）：pp/tg 合成负载，
+ * 诚实标「旧协议」，不洗数据。云提交链整体砍除（不发公网裁定）——
+ * 成绩全部本地：「别人的跑分偷你数据，我们的成绩只住你手机里」。
+ */
+import React, {useContext} from 'react';
+import {View} from 'react-native';
 
-import {Card, Text, Button, Tooltip} from 'react-native-paper';
+import {Card, Text, Button} from 'react-native-paper';
 
 import {useTheme} from '../../../hooks';
 import {L10nContext} from '../../../utils';
-import {t} from '../../../locales';
-import {AlertIcon, LockIcon, WifiOffIcon} from '../../../assets/icons';
 
 import {createStyles} from './styles';
 
 import {BenchmarkResult} from '../../../utils/types';
 import {formatBytes, formatNumber} from '../../../utils';
-import {NetworkError, AppCheckError, ServerError} from '../../../utils/errors';
 
 type Props = {
   result: BenchmarkResult;
   onDelete: (timestamp: string) => void;
-  onShare: (result: BenchmarkResult) => Promise<void>;
 };
 
-type ErrorType = 'network' | 'appCheck' | 'server' | 'generic' | null;
+const formatDuration = (ms: number) => {
+  if (ms < 1000) {
+    return `${ms}ms`;
+  }
+  const seconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(seconds / 60);
+  if (minutes > 0) {
+    return `${minutes}m ${seconds % 60}s`;
+  }
+  return `${seconds}s`;
+};
 
-export const BenchResultCard = ({result, onDelete, onShare}: Props) => {
+export const BenchResultCard = ({result, onDelete}: Props) => {
   const theme = useTheme();
   const styles = createStyles(theme);
   const l10n = useContext(L10nContext);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [errorType, setErrorType] = useState<ErrorType>(null);
-
-  const handleSubmit = async () => {
-    setIsSubmitting(true);
-    setSubmitError(null);
-    setErrorType(null);
-
-    try {
-      await onShare(result);
-    } catch (error) {
-      if (error instanceof NetworkError) {
-        setErrorType('network');
-        setSubmitError(error.message);
-      } else if (error instanceof AppCheckError) {
-        setErrorType('appCheck');
-        setSubmitError(error.message);
-      } else if (error instanceof ServerError) {
-        setErrorType('server');
-        setSubmitError(error.message);
-      } else {
-        setErrorType('generic');
-        setSubmitError(
-          error instanceof Error
-            ? error.message
-            : l10n.benchmark.benchmarkResultCard.errors.failedToSubmit,
-        );
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const formatDuration = (ms: number) => {
-    if (ms < 1000) {
-      return `${ms}ms`;
-    }
-    const seconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(seconds / 60);
-    if (minutes > 0) {
-      const remainingSeconds = seconds % 60;
-      return `${minutes}m ${remainingSeconds}s`;
-    }
-    return `${seconds}s`;
-  };
-
-  const openLeaderboard = () => {
-    Linking.openURL(
-      'https://huggingface.co/spaces/a-ghorbani/ai-phone-leaderboard',
-    );
-  };
-
-  // 自绘图标（DESIGN_SPEC §12.5 图标铁律）；server 无专属自绘 → alert 兜底（B23 登记）
-  const getErrorIcon = () => {
-    const stroke = theme.colors.danger;
-    switch (errorType) {
-      case 'network':
-        return <WifiOffIcon width={16} height={16} stroke={stroke} />;
-      case 'appCheck':
-        return <LockIcon width={16} height={16} stroke={stroke} />;
-      case 'server':
-        return <AlertIcon width={16} height={16} stroke={stroke} />;
-      default:
-        return <AlertIcon width={16} height={16} stroke={stroke} />;
-    }
-  };
-
-  const getRetryText = () => {
-    switch (errorType) {
-      case 'network':
-        return l10n.benchmark.benchmarkResultCard.errors.networkRetry;
-      case 'appCheck':
-        return l10n.benchmark.benchmarkResultCard.errors.appCheckRetry;
-      case 'server':
-        return l10n.benchmark.benchmarkResultCard.errors.serverRetry;
-      default:
-        return l10n.benchmark.benchmarkResultCard.errors.genericRetry;
-    }
-  };
-
-  const getErrorStyle = () => {
-    if (!errorType) {
-      return styles.errorGeneric;
-    }
-
-    const capitalized = errorType.charAt(0).toUpperCase() + errorType.slice(1);
-
-    return styles[`error${capitalized}`] || styles.errorGeneric;
-  };
+  const labels = l10n.benchmark.suite.labels;
+  const suite = result.suite;
 
   return (
     <Card elevation={0} style={styles.resultCard}>
@@ -125,11 +51,17 @@ export const BenchResultCard = ({result, onDelete, onShare}: Props) => {
             <Text variant="titleSmall" style={styles.modelName}>
               {result.modelName}
             </Text>
-            <Text style={styles.modelMeta}>
-              {formatBytes(result.modelSize)} •{' '}
-              {formatNumber(result.modelNParams, 2, true, false)}{' '}
-              {l10n.benchmark.benchmarkResultCard.modelMeta.params}
-            </Text>
+            {suite ? (
+              <Text style={styles.modelMeta}>
+                {new Date(result.timestamp).toLocaleString()}
+              </Text>
+            ) : (
+              <Text style={styles.modelMeta}>
+                {formatBytes(result.modelSize)} •{' '}
+                {formatNumber(result.modelNParams, 2, true, false)}{' '}
+                {l10n.benchmark.benchmarkResultCard.modelMeta.params}
+              </Text>
+            )}
           </View>
           <Button
             testID="delete-result-button"
@@ -142,232 +74,109 @@ export const BenchResultCard = ({result, onDelete, onShare}: Props) => {
           </Button>
         </View>
 
-        <View style={styles.configContainer}>
-          <View style={styles.configBar}>
-            <Text variant="labelSmall">
-              {l10n.benchmark.benchmarkResultCard.config.title}
-            </Text>
-            <Text style={styles.configText}>
-              {t(l10n.benchmark.benchmarkResultCard.config.format, {
-                pp: result.config.pp.toString(),
-                tg: result.config.tg.toString(),
-                pl: result.config.pl.toString(),
-                nr: result.config.nr.toString(),
-              })}
-            </Text>
-          </View>
-
-          {result.initSettings && (
-            <View style={styles.configBar}>
-              <Text variant="labelSmall">
-                {l10n.benchmark.benchmarkResultCard.modelSettings.title}
-              </Text>
-              <View style={styles.configTextContainer}>
-                <Text style={styles.configText}>
-                  {t(l10n.benchmark.benchmarkResultCard.modelSettings.context, {
-                    context: (result.initSettings.n_ctx || 0).toString(),
-                  })}{' '}
-                  •{' '}
-                  {t(l10n.benchmark.benchmarkResultCard.modelSettings.batch, {
-                    batch: (result.initSettings.n_batch || 0).toString(),
-                  })}{' '}
-                  •{' '}
-                  {t(l10n.benchmark.benchmarkResultCard.modelSettings.ubatch, {
-                    ubatch: (result.initSettings.n_ubatch || 0).toString(),
-                  })}
-                </Text>
-                <Text style={styles.configText}>
-                  {t(
-                    l10n.benchmark.benchmarkResultCard.modelSettings.cpuThreads,
-                    {
-                      threads: (result.initSettings.n_threads || 0).toString(),
-                    },
-                  )}{' '}
-                  •{' '}
-                  {t(
-                    l10n.benchmark.benchmarkResultCard.modelSettings.gpuLayers,
-                    {
-                      layers: (
-                        result.initSettings.n_gpu_layers || 0
-                      ).toString(),
-                    },
-                  )}
-                  {(result.initSettings as any).devices &&
-                    (result.initSettings as any).devices.length > 0 && (
-                      <>
-                        {' '}
-                        •{' '}
-                        {t(
-                          l10n.benchmark.benchmarkResultCard.modelSettings
-                            .device,
-                          {
-                            device: (result.initSettings as any).devices.join(
-                              ', ',
-                            ),
-                          },
-                        )}
-                      </>
-                    )}
-                </Text>
-                <Text style={styles.configText}>
-                  {/* Flash Attention Type */}
-                  {(() => {
-                    // Handle both legacy flash_attn (boolean) and new flash_attn_type (string)
-                    const flashAttnType =
-                      (result.initSettings as any).flash_attn_type ??
-                      ((result.initSettings as any).flash_attn ? 'on' : 'off');
-
-                    if (flashAttnType === 'off') {
-                      return l10n.benchmark.benchmarkResultCard.modelSettings
-                        .flashAttentionDisabled;
-                    } else if (flashAttnType === 'on') {
-                      return l10n.benchmark.benchmarkResultCard.modelSettings
-                        .flashAttentionEnabled;
-                    } else {
-                      // 'auto'
-                      return l10n.benchmark.benchmarkResultCard.modelSettings
-                        .flashAttentionEnabled;
-                    }
-                  })()}{' '}
-                  •{' '}
-                  {t(
-                    l10n.benchmark.benchmarkResultCard.modelSettings.cacheTypes,
-                    {
-                      cacheK: (
-                        result.initSettings.cache_type_k || 'unknown'
-                      ).toString(),
-                      cacheV: (
-                        result.initSettings.cache_type_v || 'unknown'
-                      ).toString(),
-                    },
-                  )}
-                </Text>
-              </View>
-            </View>
-          )}
-        </View>
-
-        <View style={styles.resultsContainer}>
-          <View style={styles.resultRow}>
-            <View style={styles.resultItem}>
-              <Text style={styles.resultValue}>
-                {result.ppAvg?.toFixed(2)}
-                <Text style={styles.resultUnit}>
-                  {' '}
-                  {l10n.benchmark.benchmarkResultCard.results.tokensPerSecond}
-                </Text>
-              </Text>
-              <Text style={styles.resultLabel}>
-                {l10n.benchmark.benchmarkResultCard.results.promptProcessing}
-              </Text>
-            </View>
-            <View style={styles.resultItem}>
-              <Text style={styles.resultValue}>
-                {result.tgAvg?.toFixed(2)}
-                <Text style={styles.resultUnit}>
-                  {' '}
-                  {l10n.benchmark.benchmarkResultCard.results.tokensPerSecond}
-                </Text>
-              </Text>
-              <Text style={styles.resultLabel}>
-                {l10n.benchmark.benchmarkResultCard.results.tokenGeneration}
-              </Text>
-            </View>
-          </View>
-
-          {(result.wallTimeMs || result.peakMemoryUsage) && (
+        {suite ? (
+          // ── 新协议：套件汇总（口径 = perfScore，综合分主视觉）──
+          <View style={styles.resultsContainer} testID="suite-result">
             <View style={styles.resultRow}>
-              {result.wallTimeMs && (
+              <View style={styles.resultItem}>
+                <Text
+                  style={[styles.resultValue, {color: theme.colors.brandAccent}]}>
+                  {suite.score.total}
+                  <Text style={styles.resultUnit}> 分</Text>
+                </Text>
+                <Text style={styles.resultLabel}>{labels.total}</Text>
+              </View>
+              {suite.tokAvg != null && (
+                <View style={styles.resultItem}>
+                  <Text style={styles.resultValue}>
+                    {suite.tokAvg.toFixed(1)}
+                    <Text style={styles.resultUnit}> tok/s</Text>
+                  </Text>
+                  <Text style={styles.resultLabel}>{labels.inferSpeed}</Text>
+                </View>
+              )}
+              {suite.stepAvg != null && (
+                <View style={styles.resultItem}>
+                  <Text style={styles.resultValue}>
+                    {suite.stepAvg.toFixed(1)}
+                    <Text style={styles.resultUnit}> s/步</Text>
+                  </Text>
+                  <Text style={styles.resultLabel}>{labels.genSpeed}</Text>
+                </View>
+              )}
+            </View>
+            <View style={styles.resultRow}>
+              <View style={styles.resultItem}>
+                <Text style={styles.resultValue}>
+                  {suite.score.memory}
+                </Text>
+                <Text style={styles.resultLabel}>{labels.memSafe}</Text>
+              </View>
+              <View style={styles.resultItem}>
+                <Text style={styles.resultValue}>
+                  {suite.score.thermal}
+                </Text>
+                <Text style={styles.resultLabel}>{labels.thermal}</Text>
+              </View>
+              <View style={styles.resultItem}>
+                <Text style={styles.resultValue}>
+                  {suite.score.stability}
+                </Text>
+                <Text style={styles.resultLabel}>{labels.stability}</Text>
+              </View>
+              {result.wallTimeMs != null && (
                 <View style={styles.resultItem}>
                   <Text style={styles.resultValue}>
                     {formatDuration(result.wallTimeMs)}
                   </Text>
-                  <Text style={styles.resultLabel}>
-                    {l10n.benchmark.benchmarkResultCard.results.totalTime}
-                  </Text>
-                </View>
-              )}
-              {result.peakMemoryUsage && (
-                <View style={styles.resultItem}>
-                  <Text style={styles.resultValue}>
-                    {result.peakMemoryUsage.percentage.toFixed(1)}%
-                  </Text>
-                  <Text style={styles.resultLabel}>
-                    {l10n.benchmark.benchmarkResultCard.results.peakMemory}
-                  </Text>
-                  <Text style={styles.resultStd}>
-                    {formatBytes(result.peakMemoryUsage.used, 0)} /{' '}
-                    {formatBytes(result.peakMemoryUsage.total, 0)}
-                  </Text>
+                  <Text style={styles.resultLabel}>{labels.totalTime}</Text>
                 </View>
               )}
             </View>
-          )}
-          <Text style={styles.timestamp}>
-            {new Date(result.timestamp).toLocaleString()}
-          </Text>
-        </View>
-
-        <View style={styles.footer}>
-          {result.submitted ? (
-            <View style={styles.shareContainer}>
-              <Text variant="bodySmall" style={styles.submittedText}>
-                {l10n.benchmark.benchmarkResultCard.actions.submittedText}{' '}
-                <Text onPress={openLeaderboard} style={styles.leaderboardLink}>
-                  {l10n.benchmark.benchmarkResultCard.actions.leaderboardLink}
+          </View>
+        ) : (
+          // ── 旧协议：bench() 合成负载（诚实标「旧协议」，不洗数据）──
+          <View style={styles.resultsContainer}>
+            <View style={styles.configContainer}>
+              <View style={styles.configBar}>
+                <Text variant="labelSmall">
+                  {l10n.benchmark.benchmarkResultCard.config.title}
                 </Text>
-              </Text>
-            </View>
-          ) : !result.oid ? (
-            <Tooltip
-              title={
-                l10n.benchmark.benchmarkResultCard.actions.cannotShareTooltip
-              }>
-              <View style={styles.tooltipContainer}>
-                <Text variant="bodySmall" style={styles.disabledText}>
-                  {l10n.benchmark.benchmarkResultCard.actions.cannotShare}
+                <Text style={styles.configText}>
+                  PP {result.config.pp} · TG {result.config.tg} · NR{' '}
+                  {result.config.nr} · {labels.legacy}
                 </Text>
-                <Text style={styles.infoIcon}>ⓘ</Text>
               </View>
-            </Tooltip>
-          ) : (
-            <View style={styles.actionContainer}>
-              <Button
-                testID="submit-benchmark-button"
-                mode="outlined"
-                onPress={handleSubmit}
-                loading={isSubmitting}
-                disabled={isSubmitting}
-                icon="share"
-                compact
-                style={styles.submitButton}>
-                {l10n.benchmark.benchmarkResultCard.actions.submitButton}
-              </Button>
-              <Text
-                variant="bodySmall"
-                onPress={openLeaderboard}
-                style={styles.leaderboardLink}>
-                {l10n.benchmark.benchmarkResultCard.actions.viewLeaderboard}
-              </Text>
             </View>
-          )}
-        </View>
-
-        {submitError && (
-          <View style={[styles.errorContainer, getErrorStyle()]}>
-            <Text style={styles.errorText}>
-              {getErrorIcon()} {submitError}
+            <View style={styles.resultRow}>
+              <View style={styles.resultItem}>
+                <Text style={styles.resultValue}>
+                  {result.ppAvg?.toFixed(2)}
+                  <Text style={styles.resultUnit}>
+                    {' '}
+                    {l10n.benchmark.benchmarkResultCard.results.tokensPerSecond}
+                  </Text>
+                </Text>
+                <Text style={styles.resultLabel}>
+                  {l10n.benchmark.benchmarkResultCard.results.promptProcessing}
+                </Text>
+              </View>
+              <View style={styles.resultItem}>
+                <Text style={styles.resultValue}>
+                  {result.tgAvg?.toFixed(2)}
+                  <Text style={styles.resultUnit}>
+                    {' '}
+                    {l10n.benchmark.benchmarkResultCard.results.tokensPerSecond}
+                  </Text>
+                </Text>
+                <Text style={styles.resultLabel}>
+                  {l10n.benchmark.benchmarkResultCard.results.tokenGeneration}
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.timestamp}>
+              {new Date(result.timestamp).toLocaleString()}
             </Text>
-            {errorType && (
-              <Button
-                mode="text"
-                onPress={handleSubmit}
-                disabled={isSubmitting || errorType === 'server'}
-                compact
-                style={styles.retryButton}>
-                {getRetryText()}
-              </Button>
-            )}
           </View>
         )}
       </Card.Content>

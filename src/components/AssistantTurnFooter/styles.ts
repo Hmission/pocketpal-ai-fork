@@ -59,6 +59,20 @@ export const styles = ({theme}: {theme: Theme}) =>
       color: theme.colors.outlineVariant,
       marginHorizontal: theme.spacing.xs,
     },
+    // tok/s 迷你速率条（B39 跑分图示）：24px 轨道 + 品牌色填充，
+    // 与数值同源（宽度按满量程归一，显示层不改数值）
+    rateBarTrack: {
+      width: 24,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: theme.colors.surfaceContainerHighest,
+      overflow: 'hidden',
+    },
+    rateBarFill: {
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: theme.colors.brandAccent,
+    },
     // 召回片段预览（默认折叠，点按展开）
     recallPreview: {
       marginTop: theme.spacing.xxs,

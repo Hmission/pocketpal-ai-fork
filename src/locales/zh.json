@@ -1333,6 +1333,29 @@
   },
   "benchmark": {
     "title": "基准测试",
+    "suite": {
+      "startButton": "一键跑分（推理 · 生图 · 耐久 3 轮）",
+      "runningDefault": "基准测试进行中…",
+      "runningHint": "真实负载跑分：会自动切换到聊天页与生图页，请保持屏幕常亮",
+      "abort": "终止",
+      "gotIt": "知道了",
+      "rankPrefix": "段位",
+      "shareButton": "分享跑分卡（朋友圈见）",
+      "shareFailed": "分享暂不可用，稍后再试",
+      "hudRunning": "基准测试进行中",
+      "caseProgress": "测试 {{index}}/3 · {{case}}",
+      "labels": {
+        "total": "综合",
+        "inferSpeed": "推理速度",
+        "genSpeed": "生图速度",
+        "endurance": "温控耐久",
+        "memSafe": "内存安全",
+        "thermal": "温控",
+        "stability": "稳定性",
+        "totalTime": "总时长",
+        "legacy": "旧协议"
+      }
+    },
     "modelSelector": {
       "prompt": "选择模型",
       "noModels": "未下载任何模型"

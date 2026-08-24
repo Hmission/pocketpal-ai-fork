@@ -3,9 +3,9 @@ doc_id: POCKETPAL_CHAT_UI_SPEC
 module: root
 type: spec
 status: active
-version: "2.2"
+version: "4.8"
 created: "2026-08-14"
-updated: "2026-08-16"
+updated: "2026-08-24"
 relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-footer-unification]
 ---
 
@@ -511,6 +511,7 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 | 2026-08-19 | 4.1 | §19 上下文压缩机制（B19）：发送前预算决策机 + banner「压缩上下文」CTA（选择即记忆）+ 压缩占位卡片 + 指标行「压缩 N」+ 设置页策略三选与自动压缩开关（CONTEXT_COMPACTION_SPEC） |
 | 2026-08-19 | 4.2 | §18.9 进度监控卡卡片化：容器升级 assistant 卡片设计语言（底色+圆角），K90 真机复查「一行文本视觉权重不足」裁定 |
 | 2026-08-21 | 4.7 | §16.2/§18.7 模型加载卡片动效统一：选择器卡片与任务切换弹窗加载态升级三点波浪 + 2% 底条（ImageTaskProgress 同款设计语言，useWaveDots 复用；ModelSwitchDialog 移除 ActivityIndicator 统一） |
+| 2026-08-24 | 4.8 | §18.2/§18.9 跑分演出升级规划定稿（B39，PERF_BENCHMARK_DESIGN §10 v0.5）：AssistantTurnFooter 行2 指标行数值接 PerfMotion AnimatedNumber + tok/s 段加 24px 迷你速率条（首 token 后才启动）；PendingIndicator 加实时 tok/s 跳动 + 心跳微波形 + 阶段色（prefill 蓝/streaming 绿/tool 紫）——升级不重造，双行结构/三点动画/300s 心跳卡住语义不变 |
 | 2026-08-20 | 4.3 | §19 B19.1 链路根治（小米 13 DRC 血证，CONTEXT_COMPACTION_SPEC v1.1）：触发线含生成预留(512)、水位双源校准（实测钉底估算漂移）、摘要工作集预算化（min(6000, n_ctx−400)）、满态显式失败（饱和跳过压缩，context-full banner 用户主权，不静默不换引擎） |
 | 2026-08-20 | 4.4 | §20 聊天页 UI 三处优化（task-6ad）：抽取 `AssistantAuthorRow` 单一事实源（徽章/意图上移助手卡顶行，`assistant_turn` 与 `text` 复用）；圆角区分（用户右上直角 / 回答系左上直角，Bubble·ThinkingBubble·PendingIndicator 同族）；顶栏三控件等距（HeaderRight gap 10）；footer 快捷图标间距 6→14 |
 | 2026-08-20 | 4.6 | §20.2 尾角下移（大王裁定）：用户右下直角 / 回答系左下直角（Bubble·Message·ThinkingBubble·PendingIndicator 同族，roundBorder 逻辑镜像至顶部同侧角）；AssistantTurnFooter 按钮栏与信息栏之间加 hairline 分隔横线（与动作槽同分隔语言） |
