@@ -74,7 +74,7 @@ export const SessionSearchBar: React.FC<SessionSearchBarProps> = ({
           testID="drawer-imagegen-button"
           accessibilityLabel={l10n.components.sidebarContent.imageGenEntry}
           hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-          {/* 图标 20x20 与「+ 新对话」PlusIcon(22) 水平对齐（v5：创造工坊入口 WorkshopIcon 画笔+音符） */}
+          {/* 图标 20x20 与「+ 新对话」PlusIcon(22) 水平对齐（v5.4：创造工坊入口 WorkshopIcon 魔法棒+星芒） */}
           <WorkshopIcon stroke={theme.colors.primary} width={20} height={20} />
           <Text style={styles.imageGenEntryText}>
             {l10n.components.sidebarContent.imageGenEntry}
