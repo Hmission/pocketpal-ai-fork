@@ -38,6 +38,7 @@ typedef struct {
 #define N_SIMDWIDTH 16 // SIMD group size
 #elif defined (MALI_GPU)
 // 08-20 Mali: subgroup size 16, values mirror INTEL_GPU
+// 8-24 B1 var1 measured & REVERTED: N_SIMDGROUP=2 gave 114.5 vs 113 s/step (no gain).
 #define N_DST 4
 #define N_SIMDGROUP 1
 #define N_SIMDWIDTH 16
@@ -118,6 +119,83 @@ kernel void kernel_mul_mv_q4_K_f32(
     uchar * sc8 = (uchar *)sc16;
 
     for (int ib = ix; ib < nb; ib += BLOCK_STRIDE) {
+#ifdef PP_MALI_FP16_GEMM
+        // 8-24 B2: fp16 multiply + fp32 accumulate (Mali fp16 pipe = 2x fp32 rate).
+        // Products and short dots stay in half; ALL long-range sums (sumf, sumy,
+        // scale-weighted combines) stay in float -- no half accumulation anywhere.
+        half yl_h[16];
+        half yh_h[16];
+        half4 sumy_h = (half4)(0);
+        for (int i = 0; i < 8; ++i) {
+            yl_h[i+0] = (half)y4[i+0];
+            sumy_h.s0 += yl_h[i+0];
+
+            yl_h[i+8] = (half)y4[i+32];
+            sumy_h.s1 += yl_h[i+8];
+
+            yh_h[i+0] = (half)y4[i+128];
+            sumy_h.s2 += yh_h[i+0];
+
+            yh_h[i+8] = (half)y4[i+160];
+            sumy_h.s3 += yh_h[i+8];
+        }
+        float4 sumy = (float4)(sumy_h.s0, sumy_h.s1, sumy_h.s2, sumy_h.s3);
+
+        global ushort * sc = (global ushort *)x[ib].scales + iq;
+        global ushort * q1 = (global ushort *)x[ib].qs + 16 * iq + 4 * ir;
+        global half     * dh = &x[ib].d;
+
+        for (int row = 0; row < N_DST; row++) {
+            sc16[0] = sc[0] & kmask1;
+            sc16[1] = sc[2] & kmask1;
+            sc16[2] = ((sc[4] >> 0) & kmask2) | ((sc[0] & kmask3) >> 2);
+            sc16[3] = ((sc[4] >> 4) & kmask2) | ((sc[2] & kmask3) >> 2);
+
+            global ushort * q2 = q1 + 32;
+
+            half dall_h = dh[0];
+
+            float4 acc1 = {0.f, 0.f, 0.f, 0.f};
+            float4 acc2 = {0.f, 0.f, 0.f, 0.f};
+            for (int i = 0; i < 8; i += 2) {
+                // B2 rev3 (clean): half4 multiply, float4 accumulate.
+                // Nibbles pre-shifted to 0..15; the original raw-mask bit shifts
+                // (0x0F00/0x00F0/0xF000) are exactly cancelled by the original
+                // combine factors (1/256, 1/16), so with shifted nibbles every
+                // lane simply takes its group scale (sc8[0]/sc8[1]/sc8[4]/sc8[5]).
+                // rev1 lessons: no nibble "-8" (dmin term already owns the min);
+                // no scalar half ops (Mali codegen pathology); fp32 accumulation only.
+                ushort u = q1[i/2];
+                half4 w14 = dall_h * (half4)(
+                    (half)(u & 0x000F),        (half)((u >> 8) & 0x000F),
+                    (half)((u >> 4) & 0x000F), (half)((u >> 12) & 0x000F));
+                half4 y14 = (half4)(yl_h[i+0], yl_h[i+1], yl_h[i+8], yl_h[i+9]);
+                acc1 += convert_float4(y14 * w14);
+
+                ushort v = q2[i/2];
+                half4 w24 = dall_h * (half4)(
+                    (half)(v & 0x000F),        (half)((v >> 8) & 0x000F),
+                    (half)((v >> 4) & 0x000F), (half)((v >> 12) & 0x000F));
+                half4 y24 = (half4)(yh_h[i+0], yh_h[i+1], yh_h[i+8], yh_h[i+9]);
+                acc2 += convert_float4(y24 * w24);
+            }
+
+            // dmin term + scale combine stay in fp32 (exact original semantics).
+            float dmin = dh[1];
+            sumf[row] += (acc1.s0 + acc1.s1) * sc8[0] +
+                         (acc1.s2 + acc1.s3) * sc8[1] +
+                         (acc2.s0 + acc2.s1) * sc8[4] +
+                         (acc2.s2 + acc2.s3) * sc8[5] -
+                         dmin * (sumy.s0 * sc8[2] + sumy.s1 * sc8[3] + sumy.s2 * sc8[6] + sumy.s3 * sc8[7]);
+
+            q1 += nb01/2;
+            sc += nb01/2;
+            dh += nb01/2;
+        }
+
+        y4 += BLOCK_STRIDE * QK_K;
+    }
+#else
         float4 sumy = {0.f, 0.f, 0.f, 0.f};
         for (int i = 0; i < 8; ++i) {
             yl[i+0] = y4[i+0];
@@ -173,6 +251,7 @@ kernel void kernel_mul_mv_q4_K_f32(
 
         y4 += BLOCK_STRIDE * QK_K;
     }
+#endif // PP_MALI_FP16_GEMM guard end (for-loop shared)
 
     global float * dst_f32 = (global float *) dst + im*ne0*ne1 + r1*ne0;
 

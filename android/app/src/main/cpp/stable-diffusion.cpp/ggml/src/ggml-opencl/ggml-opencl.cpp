@@ -37,6 +37,8 @@
 #include <charconv>
 #include <mutex>
 #include <regex>
+#include <tuple>      // 8-25 探针：[CLPROF] 聚合排序
+#include <algorithm>  // 8-25 探针：std::sort
 
 #undef MIN
 #undef MAX
@@ -695,6 +697,8 @@ struct ggml_backend_opencl_context {
 
     std::vector<ProfilingInfo> profiling_info;
     std::vector<ProfilingInfo> profiling_results;
+    // 8-25 深水区探针：编译期保留 GGML_OPENCL_PROFILING，运行期由 env GGML_OPENCL_PROFILE 门控（不设零开销）。
+    bool profiling_enabled = false;
 
     void flush_profiling_batch() {
         if (profiling_info.empty()) {
@@ -750,8 +754,42 @@ struct ggml_backend_opencl_context {
             return;
         }
 
+        // 8-25：Android app CWD 不可写 → 输出目录走 env（默认 AIOS 共享目录，与取证日志同盘）。
+        std::string out_dir = "/sdcard/Documents/AIOS";
+        if (const char * env_dir = getenv("GGML_OPENCL_PROFILE_OUT")) {
+            out_dir = env_dir;
+        }
+
+        // 算子级聚合 top-N 直接进 logcat（GGML_LOG → ImageGen tag，免 pull 文件）。
+        {
+            std::map<std::string, std::pair<size_t, cl_ulong>> agg; // name -> {count, total_ns}
+            for (const ProfilingInfo & info : profiling_results) {
+                auto & a = agg[info.kernel_name];
+                a.first++;
+                a.second += info.cmd_duration_ns;
+            }
+            std::vector<std::tuple<cl_ulong, size_t, std::string>> sorted;
+            for (const auto & kv : agg) {
+                sorted.emplace_back(kv.second.second, kv.second.first, kv.first);
+            }
+            std::sort(sorted.begin(), sorted.end(),
+                      [](const auto & a, const auto & b) { return std::get<0>(a) > std::get<0>(b); });
+            double total_ms = 0;
+            for (const auto & t : sorted) total_ms += std::get<0>(t) / 1e6;
+            GGML_LOG_INFO("[CLPROF] === kernel time top %zu (total %.1f ms, %zu calls) ===\n",
+                          sorted.size(), total_ms, profiling_results.size());
+            size_t shown = 0;
+            for (const auto & t : sorted) {
+                if (shown++ >= 25) break;
+                GGML_LOG_INFO("[CLPROF] %8.2f ms (%5.1f%%) x%-6zu %s\n",
+                              std::get<0>(t) / 1e6,
+                              total_ms > 0 ? 100.0 * (std::get<0>(t) / 1e6) / total_ms : 0.0,
+                              std::get<1>(t), std::get<2>(t).c_str());
+            }
+        }
+
         // Dump a csv
-        FILE * fperf = fopen("cl_profiling.csv", "w");
+        FILE * fperf = fopen((out_dir + "/cl_profiling.csv").c_str(), "w");
         if (!fperf) {
             GGML_LOG_ERROR("Failed to open cl_profiling.csv\n");
             return;
@@ -769,7 +807,7 @@ struct ggml_backend_opencl_context {
         fclose(fperf);
 
         // Dump a simple chrome trace
-        FILE * ftrace = fopen("cl_trace.json", "w");
+        FILE * ftrace = fopen((out_dir + "/cl_trace.json").c_str(), "w");
         if (!ftrace) {
             GGML_LOG_ERROR("Failed to open cl_trace.json\n");
             return;
@@ -820,6 +858,23 @@ struct ggml_backend_opencl_context {
                 }
                 local_aligned[d] = ls;
             }
+            if (profiling_enabled) {
+                // 8-25 探针：Mali 分支同样挂事件计时（否则探针失真）。
+                cl_event evt;
+                cl_int err = clEnqueueNDRangeKernel(queue, kernel, work_dim, NULL, global_work_size, local_aligned, 0, NULL, &evt);
+                if (err != CL_SUCCESS) {
+                    GGML_LOG_ERROR("ggml_opencl: enqueue FAILED err=%d dims=%u global=%zux%zux%zu local=%zux%zux%zu\n", err, work_dim,
+                        global_work_size[0], work_dim > 1 ? global_work_size[1] : 1, work_dim > 2 ? global_work_size[2] : 1,
+                        local_aligned[0], work_dim > 1 ? local_aligned[1] : 1, work_dim > 2 ? local_aligned[2] : 1);
+                    throw std::runtime_error("OpenCL enqueue failed");
+                }
+                profiling_info.emplace_back();
+                populateProfilingInfo(profiling_info.back(), evt, kernel, work_dim, global_work_size, local_aligned, tensor);
+                if (profiling_info.size() >= 2048) {
+                    flush_profiling_batch();
+                }
+                return;
+            }
             cl_int err = clEnqueueNDRangeKernel(queue, kernel, work_dim, NULL, global_work_size, local_aligned, 0, NULL, NULL);
             if (err != CL_SUCCESS) {
                 GGML_LOG_ERROR("ggml_opencl: enqueue FAILED err=%d dims=%u global=%zux%zux%zu local=%zux%zux%zu\n", err, work_dim,
@@ -830,18 +885,20 @@ struct ggml_backend_opencl_context {
             return;
         }
 #ifdef GGML_OPENCL_PROFILING
-        cl_event evt;
-        CL_CHECK(clEnqueueNDRangeKernel(queue, kernel, work_dim, NULL, global_work_size, local_work_size, 0, NULL, &evt));
+        if (profiling_enabled) {
+            cl_event evt;
+            CL_CHECK(clEnqueueNDRangeKernel(queue, kernel, work_dim, NULL, global_work_size, local_work_size, 0, NULL, &evt));
 
-        profiling_info.emplace_back();
-        populateProfilingInfo(profiling_info.back(), evt, kernel, work_dim, global_work_size, local_work_size, tensor);
-        if (profiling_info.size() >= 2048) {
-            flush_profiling_batch();
+            profiling_info.emplace_back();
+            populateProfilingInfo(profiling_info.back(), evt, kernel, work_dim, global_work_size, local_work_size, tensor);
+            if (profiling_info.size() >= 2048) {
+                flush_profiling_batch();
+            }
+            return;
         }
-#else
+#endif
         GGML_UNUSED(tensor);
         CL_CHECK(clEnqueueNDRangeKernel(queue, kernel, work_dim, NULL, global_work_size, local_work_size, 0, NULL, NULL));
-#endif
     }
 
 #ifdef GGML_OPENCL_USE_ADRENO_KERNELS
@@ -1077,6 +1134,16 @@ static void load_cl_kernels(ggml_backend_opencl_context *backend_ctx) {
     if (backend_ctx->gpu_family == GPU_FAMILY::MALI) {
         // 08-20 Mali: INTEL_GPU/ADRENO_GPU 宏由驱动扩展定义，Mali 两者皆无 → 显式传入
         compile_opts += " -DMALI_GPU";
+        // 8-24 B2: q4_k GEMM 半精度变体（fp16 乘法 + fp32 累加，无半精度长程累加）。
+        // env 门控：不设即原 fp32 通用路径；实测负收益/精度崩坏即删 env 回退。
+        if (getenv("GGML_OPENCL_MALI_FP16_GEMM") != nullptr) {
+            compile_opts += " -DPP_MALI_FP16_GEMM";
+        }
+        // 8-25 B2-correct：[CLPROF] 实锤热点是 mul_mm_q4_k/q5_k_f32_l4_lm（71%）——
+        // tiled GEMM 半精度变体（half 缓冲 + half 乘法 + fp32 累加），同样 env 门控。
+        if (getenv("GGML_OPENCL_MALI_FP16_LM") != nullptr) {
+            compile_opts += " -DPP_MALI_FP16_LM";
+        }
     }
 
     if (backend_ctx->adreno_use_large_buffer) {
@@ -4273,7 +4340,12 @@ static ggml_backend_opencl_context * ggml_cl_init(ggml_backend_dev_t dev) {
     //)));
     cl_command_queue_properties command_queue_props = 0;
 #ifdef GGML_OPENCL_PROFILING
-    command_queue_props |= CL_QUEUE_PROFILING_ENABLE;
+    // 8-25：运行期门控——设 GGML_OPENCL_PROFILE=1 才开 profiling 队列（生产零开销）。
+    backend_ctx->profiling_enabled = (getenv("GGML_OPENCL_PROFILE") != nullptr);
+    if (backend_ctx->profiling_enabled) {
+        command_queue_props |= CL_QUEUE_PROFILING_ENABLE;
+        GGML_LOG_INFO("ggml_opencl: operator-level profiling ENABLED (B-line deep probe)\n");
+    }
 #endif
     CL_CHECK((backend_ctx->queue = clCreateCommandQueue(context, device, command_queue_props, &err), err));
 
@@ -15240,6 +15312,7 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
                 ndst = 4;
             } else {
                 // 08-20 Mali: mirror INTEL (subgroup size 16)
+                // 8-24 B1 var1 reverted after measurement (N_SIMDGROUP=2: 114.5 vs 113 s/step, no gain).
                 nth0 = 16;
                 nth1 = 1;
                 ndst = 4;

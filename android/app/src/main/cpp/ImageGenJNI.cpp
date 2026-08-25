@@ -329,6 +329,18 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
     // xmem 要求 gpu_family==ADRENO，Mali 天然不启用（unset 保持干净）。
     setenv("GGML_OPENCL_DISABLE_ADRENO_KERNELS", "1", 1);
     unsetenv("GGML_OPENCL_ADRENO_XMEM_GEMM");
+    // 8-25 转正：Mali 提速变体默认开启（实测收益后转正，非实验态）。
+    // tiled GEMM 半精度（mul_mm_q4_k/q5_k/f32_f32_l4_lm，采样热点 71%+7.6%）：
+    // half 缓冲 + half 乘法 + fp32 累加。实测：512² 69→24.2 s/步（2.86x），
+    // 512×768 113→33 s/步（3.42x），画质无损（§90.8/90.9）。
+    // 回退：删本行即原 fp32 路径（env 门控，代码保留）。
+    setenv("GGML_OPENCL_MALI_FP16_LM", "1", 1);
+    // mul_mv_q4_k_f32 flat 变体：[CLPROF] 实锤只占 0.1%，不开（锋利：不留零收益开关；
+    // 代码门控保留，未来若 flat 路径占比变化可再启用）。
+    // 8-24 提速攻坚 A 线（Vulkan 探针）：GGML_VK_DISABLE_F16 是 Adreno 740 虚报
+    // shaderFloat16 的补丁（f16acc pipeline 创建必败）；Mali 驱动能力上报诚实，
+    // Vulkan 路线的收益面恰在 fp16 → 解除。coopmat/intdot/bf16 禁用保留（Mali 本就无此扩展，无害空操作）。
+    unsetenv("GGML_VK_DISABLE_F16");
   } else if (qwen_flow_family) {
     setenv("GGML_OPENCL_DISABLE_ADRENO_KERNELS", "1", 1);
     // 08-20 定稿（feat/zimage-xmem-tiled-verify 实测）：XMEM 必须 unset（真关）。
@@ -340,6 +352,7 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
     unsetenv("GGML_OPENCL_DISABLE_ADRENO_KERNELS");
     unsetenv("GGML_OPENCL_ADRENO_XMEM_GEMM");
   }
+  // 变体切换期曾用独立缓存目录防污染；转正后回主目录。
   setenv("GGML_OPENCL_KERNEL_CACHE_DIR", "/data/data/com.pocketpal/files/cl-cache", 0);
   dbg_log("==== loadModel begin ====");
   dbg_mem("loadModel entry");
@@ -405,8 +418,21 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
   // 无预算时整个 MMDiT 图一次性分配（PSS 峰值 ~7.5GB）超 HyperOS 单应用 6GB 配额被杀进程；
   // 给 opencl 预算 2.0GiB → 按层分段执行，峰值降至 ~5.5GB。
   // 08-20 Mali: mmap 权重文件驻留 + CL buffer 副本双份（实测 PSS 8.2GB）→ 关 mmap 省 ~2.9GB。
+  // 8-24 A 线（Vulkan 探针）：预算键按后端分派。实测发现 ggml-vulkan 与 graph-cut 分段执行不兼容
+  // （ggml-vulkan.cpp:7539 descriptor_set_idx 越界 GGML_ASSERT）——Vulkan 路径不给预算（不分段，
+  // 整图一次性分配）；权重 3.89GB + 关 mmap 单份驻留 ≈5.6GB，在 6GB 配额边缘，OOM 则取证另立内存治理项。
+  // OpenCL 维持原配置不变（分段 + 关 mmap）。
   if (isMaliGpu()) {
-    params.max_vram = "opencl=2.0";
+    if (std::strcmp(backend_s.c_str(), "Vulkan") == 0) {
+      params.max_vram = nullptr;
+    } else {
+      // 8-24 B1 变量2 实测：预算 3.0 使 MMDiT 分段 26→1，步速 113→110s/步（-2.7%，
+      // 边际非大头但 5.35GB 内存安全存活）保留；变量3：MMDiT flash attention。
+      params.max_vram = "opencl=3.0";
+    }
+    // 8-24 B1 变量3 实测并回滚：diffusion_flash_attn=true 使稳态步 110→126 s/步（全链路 1245→1376s，
+    // 慢 10%）——OpenCL 通用 flash attention 在 Mali 无专用快路径，开销反噬；出图虽 OK 但值域扩宽（±16 vs ±6）。
+    params.diffusion_flash_attn = false;
     params.enable_mmap = false;
   }
   // 6.17 顺序卸载探索结论：Z-Image 6.9GB 对小米13（GPU ~2.8G）是硬件上限，

@@ -32,11 +32,14 @@ set(SD_WEBM OFF CACHE BOOL "" FORCE)
 set(SD_CUDA OFF CACHE BOOL "" FORCE)
 set(SD_METAL OFF CACHE BOOL "" FORCE)
 # P2 单后端（6.16 修正）：arm64-v8a 启用 OpenCL（Adreno 专用内核 + xmem GEMM）。
-# Vulkan 编译资产保留 dormant（if SD_VULKAN 守卫），一行可重启用。
-# 决策依据：互联网调研 ggml-vulkan on Adreno 零成功案例；OpenCL 多个独立成功案例 + ARM 官方推荐。
+# 8-24 天玑提速攻坚 A 线：SD_VULKAN 唤醒（双后端同包，运行时由 manifest backend 单点决策选一，
+# 非并行不混用）。依据：当初禁用结论（ggml-vulkan on Adreno 零成功案例）不适用于 Mali——
+# Vulkan 是 ARM 主场，Mali Vulkan 驱动质量远优于其 OpenCL；探针负结果一行关回。
 if (ANDROID_ABI STREQUAL "arm64-v8a")
-    set(SD_VULKAN OFF CACHE BOOL "" FORCE)
+    set(SD_VULKAN ON CACHE BOOL "" FORCE)
     set(SD_OPENCL ON CACHE BOOL "" FORCE)
+    # 8-25 深水区探针：编译入算子级 profiling 代码，运行期由 env GGML_OPENCL_PROFILE 门控（不设零开销）。
+    set(GGML_OPENCL_PROFILING ON CACHE BOOL "" FORCE)
 else()
     set(SD_VULKAN OFF CACHE BOOL "" FORCE)
     set(SD_OPENCL OFF CACHE BOOL "" FORCE)
