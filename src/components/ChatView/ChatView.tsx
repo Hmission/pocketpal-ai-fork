@@ -898,11 +898,12 @@ export const ChatView = observer(
       agentStatus === 'generating_tool_call' ||
       agentStatus === 'executing_tool';
     // The PendingIndicator covers every dead zone: prefill (initial
-    // and follow-up), generating_tool_call, executing_tool. Hidden in
-    // streaming_text and done so it doesn't compete with the visible
-    // token stream / final footer.
+    // and follow-up), generating_tool_call, executing_tool. B41：流式期也亮，
+    // 遥测行 + 迷你折线让用户看到设备在烧电路（跑分是本体）；不再与
+    // token 流互斥。隐藏仅限 done。
     const isPending =
       agentStatus === 'prefill' ||
+      agentStatus === 'streaming_text' ||
       agentStatus === 'generating_tool_call' ||
       agentStatus === 'executing_tool' ||
       // Keep the indicator visible during the user-initiated stop

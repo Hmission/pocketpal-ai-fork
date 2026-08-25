@@ -176,6 +176,8 @@ describe('design-token grep invariants', () => {
       'screens/ModelDirsScreen',
       // B18 §17 → §18.2：每输出指标行并入 AssistantTurnFooter（双行合并），token 表面消费
       'components/AssistantTurnFooter',
+      // B40/B41 跑分仪式卡：PendingIndicator 遥测行 + 迷你折线，token 表面消费（跑分是本体）
+      'components/PendingIndicator',
       // §18.4 发送钮双态/停止钮重绘（批次B）：token 表面消费
       'components/StopButton',
       // B23 浮层与横幅体系收敛：RenameModal 迁 OverlayCard 底座（stroke/radius/typography token）

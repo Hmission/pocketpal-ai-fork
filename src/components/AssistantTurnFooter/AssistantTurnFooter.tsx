@@ -14,7 +14,7 @@ import {AnimatedNumber, OdometerNumber} from '../PerfMotion';
 import {
   PerfAreaChart,
   type PerfSeriesSpec,
-} from '../../screens/ImageGenScreen/components/PerfAreaChart';
+} from '../PerfAreaChart';
 import type {ChatTurnPerfSummary} from '../../services/perf/chatTurnPerf';
 import {isSpeakableMessage} from '../../utils/speakable';
 import {ROUTES} from '../../utils/navigationConstants';

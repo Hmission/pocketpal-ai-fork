@@ -71,6 +71,11 @@ export const createStyles = (theme: Theme) =>
     perfSep: {
       color: theme.colors.outlineVariant,
     },
+    // B41 迷你折线容器：满宽不越卡片边界，高度由 PerfAreaChart height 定。
+    perfChartWrap: {
+      marginTop: theme.spacing.xs,
+      overflow: 'hidden',
+    },
   });
 
 export const createCountStyle = (theme: Theme) =>

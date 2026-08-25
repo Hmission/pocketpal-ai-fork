@@ -158,6 +158,14 @@ async function butlerReply(
   // DB 可能覆写消息 id → 插入后读回真实 id，保证后续 update 命中
   const cardId =
     chatSessionStore.currentSessionMessages[0]?.id ?? butlerCardMsg.id;
+  // B41 跑分感：管家直答绕过 agent 状态机，这里手动点亮「思考中」态，
+  // 让 PendingIndicator 遥测卡（内存/CPU/温度 + 迷你折线）亮起（跑分是本体）。
+  chatSessionStore.setAgentUiState({
+    status: 'prefill',
+    pendingTalentNames: [],
+    hitMaxTurns: false,
+  });
+  chatSessionStore.markAgentRunStarted();
   const reply = await promptWriter.chat(text, systemExtra);
   const finalText =
     reply ??
@@ -165,6 +173,13 @@ async function butlerReply(
   await chatSessionStore.updateMessage(cardId, sessionId, {
     text: finalText,
   });
+  // B41：管家答完，复位状态机熄灭遥测卡（与 agent run_finished 同源收尾）。
+  chatSessionStore.setAgentUiState({
+    status: 'done',
+    pendingTalentNames: [],
+    hitMaxTurns: false,
+  });
+  chatSessionStore.clearAgentRun();
   // AIOS 记忆（P2 真机复测 2026-08-17 修复）：管家直答绕过了 useChatSession 的
   // run_finished 钩子（提取/对话日志都挂在那里）→ 此处补接，否则管家模式记忆永不落盘。
   // 提取引擎会回退到管家自身（aiosMemory 内 modelStore.engine ?? promptWriter）。

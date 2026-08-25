@@ -1,15 +1,18 @@
 /**
- * PerfAreaChart — 折线 + 渐变面积图（PERF_BENCHMARK_DESIGN §10.5，B39 / B40 多层）
+ * PerfAreaChart — 折线 + 渐变面积图（PERF_BENCHMARK_DESIGN §10.5，B39/B40 多层）
  *
- * 替代 v0.2 的 40pt 条形迷你图：满宽贴卡片缘、峰值点打标、
- * PSS 叠加时绘制 5GB 逼近线（橙）与 6GB 硬杀线（红）——阈值语义不变。
+ * 共享遥测折线组件，被生图页（PerfPanel）、聊天待回复卡（PendingIndicator）、
+ * 回复卡展开层（AssistantTurnFooter）三处复用——单一事实源，故置于
+ * components 共享层（B41：消除 components→screens 依赖倒置）。
+ *
+ * 满宽贴卡片缘、峰值点打标、PSS 叠加时绘制 5GB 逼近线（橙）与 6GB 硬杀线
+ * （红）——阈值语义不变。
  *
  * B40 多层叠加：`series` 传入多条曲线规格（各自满量程归一 + 分色），
  * 一次看全 PSS/CPU/GPU/温度/功耗 的叠加走势（大王诉求：折线不止一层）。
  * 多层模式画彩色折线不画渐变面积（避免 5 层面积糊成一团）。
  *
- * 纪律：react-native-svg（既有依赖，零新增）；数据经 imageGenStore
- * 单通道；N/A 点落底不编造。
+ * 纪律：react-native-svg（既有依赖，零新增）；N/A 点落底不编造。
  */
 import * as React from 'react';
 import {View} from 'react-native';
@@ -24,7 +27,7 @@ import {
   Svg,
 } from 'react-native-svg';
 
-import type {PerfSnapshot} from '../../../specs/NativeHardwareInfo';
+import type {PerfSnapshot} from '../specs/NativeHardwareInfo';
 
 export type PerfOverlay = 'pss' | 'cpu' | 'gpu' | 'temp' | 'power';
 

@@ -26,7 +26,7 @@ import {
   PerfAreaChart,
   type PerfOverlay,
   type PerfSeriesSpec,
-} from './PerfAreaChart';
+} from '../../../components/PerfAreaChart';
 
 /** 阈值：>5GB 橙（逼近）/ >6GB 红（HyperOS 看护硬杀线，K90 实测 6291456kb） */
 const PERF_WARN_KB = 5 * 1024 * 1024;

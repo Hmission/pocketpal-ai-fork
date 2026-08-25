@@ -6,8 +6,11 @@ import {useTheme} from '../../hooks';
 import {L10nContext} from '../../utils';
 import {t} from '../../locales';
 import {modelStore} from '../../store';
-import NativeHardwareInfo from '../../specs/NativeHardwareInfo';
+import NativeHardwareInfo, {
+  type PerfSnapshot,
+} from '../../specs/NativeHardwareInfo';
 import {AnimatedNumber} from '../PerfMotion';
+import {PerfAreaChart} from '../PerfAreaChart';
 
 import {createStyles, createCountStyle} from './styles';
 
@@ -231,11 +234,14 @@ export const PendingIndicator: React.FC<PendingIndicatorProps> = observer(({
 
   // 实时遥测（B40 仪式卡）：待回复卡驻留期间 1Hz 采样（PSS/CPU/温度）——
   // 仪式感 = 设备在烧电路的活证据；N/A 诚实显 --，不造假。
+  // B41：perfHistory 滚动缓冲（最近 60 点）驱动迷你折线，跑分是本体。
+  const PERF_MAX_PSS_KB = 6 * 1024 * 1024;
   const [perfNow, setPerfNow] = useState<{
     pssGb: number;
     cpuPct: number;
     tempC: number;
   } | null>(null);
+  const [perfHistory, setPerfHistory] = useState<PerfSnapshot[]>([]);
   useEffect(() => {
     let alive = true;
     const sample = async () => {
@@ -249,6 +255,7 @@ export const PendingIndicator: React.FC<PendingIndicatorProps> = observer(({
           cpuPct: s.cpuPct,
           tempC: s.tempC,
         });
+        setPerfHistory(h => [...h, s].slice(-60));
       } catch {
         if (alive) {
           setPerfNow(null);
@@ -383,6 +390,21 @@ export const PendingIndicator: React.FC<PendingIndicatorProps> = observer(({
           style={styles.perfValue}
         />
       </Text>
+      {/* B41 迷你折线：等待的每一秒都有曲线在跑（跑分是本体）。
+          复用生图页同款 PerfAreaChart，PSS 主图 + 5/6GB 阈值线。 */}
+      {perfHistory.length > 1 && (
+        <View style={styles.perfChartWrap} testID="pending-indicator-chart">
+          <PerfAreaChart
+            history={perfHistory}
+            overlay="pss"
+            max={PERF_MAX_PSS_KB}
+            color={stageColor}
+            warnColor="#F5A623"
+            dangerColor={theme.colors.error}
+            height={44}
+          />
+        </View>
+      )}
       {showReasoning && (
         <Text
           style={styles.reasoning}

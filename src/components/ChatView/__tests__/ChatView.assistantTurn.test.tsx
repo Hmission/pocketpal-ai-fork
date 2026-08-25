@@ -355,15 +355,15 @@ describe('ChatView — abort with partial content', () => {
 describe('ChatView — dead-zone phase walk via PendingIndicator', () => {
   // The PendingIndicator is owned by ChatView and gated on
   // `chatSessionStore.agentUiState.status`. It appears in every status
-  // EXCEPT streaming_text and done. Drive the status across the table
-  // and assert testID presence / absence per phase.
+  // EXCEPT done（B41：流式期也亮，遥测卡让用户看到设备在烧电路）。
+  // Drive the status across the table and assert testID presence / absence.
   const phases: Array<{label: string; status: any; visible: boolean}> = [
     {label: 'idle (no run)', status: 'idle', visible: false},
     {label: 'phase 2 / 7: prefill', status: 'prefill', visible: true},
     {
-      label: 'phase 3 / 8: streaming_text',
+      label: 'phase 3 / 8: streaming_text (B41 遥测卡亮)',
       status: 'streaming_text',
-      visible: false,
+      visible: true,
     },
     {
       label: 'phase 4: generating_tool_call',
@@ -398,15 +398,10 @@ describe('ChatView — dead-zone phase walk via PendingIndicator', () => {
     },
   );
 
-  it('PendingIndicator no-flicker: streaming_text → re-render after rapid token bursts keeps indicator hidden', () => {
-    // Wiring test. The reducer-level test (agentStateReducer.test.ts
-    // PendingIndicator no-flicker invariant) proves the predicate
-    // stays stable; this test proves ChatView wires the predicate
-    // to the indicator correctly. We simulate the user-perceived
-    // worst case: status starts in streaming_text (we already
-    // crossed prefill → streaming_text on the first token), then
-    // re-renders happen on every subsequent token. The indicator
-    // must stay hidden across all re-renders.
+  it('PendingIndicator no-flicker: streaming_text → re-render after rapid token bursts keeps indicator stable', () => {
+    // Wiring test. B41：流式期遥测卡常驻。模拟用户感知的最坏情况：
+    // status 停留在 streaming_text（首 token 已跨入），每个后续 token 都触发
+    // re-render。遥测卡必须全程稳定在场（不闪烁不消失）。
     runInAction(() => {
       chatSessionStore.agentUiState = {
         status: 'streaming_text',
@@ -419,7 +414,7 @@ describe('ChatView — dead-zone phase walk via PendingIndicator', () => {
       <ChatView messages={[turn]} onSendPress={jest.fn()} user={user} />,
       {withNavigation: true, withBottomSheetProvider: true},
     );
-    expect(queryByTestId('pending-indicator')).toBeNull();
+    expect(queryByTestId('pending-indicator')).toBeTruthy();
 
     // 10 simulated re-renders, each representing a token landing.
     // The status remains streaming_text the whole time (no flips
@@ -437,9 +432,9 @@ describe('ChatView — dead-zone phase walk via PendingIndicator', () => {
           user={user}
         />,
       );
-      // Indicator MUST remain hidden across every frame — no
+      // Indicator MUST remain present across every frame — no
       // flicker is observable.
-      expect(queryByTestId('pending-indicator')).toBeNull();
+      expect(queryByTestId('pending-indicator')).toBeTruthy();
     }
   });
 });
