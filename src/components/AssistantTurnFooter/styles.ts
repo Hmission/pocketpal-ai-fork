@@ -73,6 +73,21 @@ export const styles = ({theme}: {theme: Theme}) =>
       borderRadius: 2,
       backgroundColor: theme.colors.brandAccent,
     },
+    // B40 §11.3 指标图形化展开层：双层曲线 + 摘要行，占满卡片宽不越界；
+    // 顶部 hairline 与指标行同分隔语言（无描边类 AI 风）。
+    perfExpand: {
+      marginTop: theme.spacing.xxs,
+      paddingTop: theme.spacing.xxs,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.colors.outline,
+    },
+    perfExpandStats: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      gap: theme.spacing.s,
+      marginTop: theme.spacing.xxs,
+    },
     // 召回片段预览（默认折叠，点按展开）
     recallPreview: {
       marginTop: theme.spacing.xxs,

@@ -389,4 +389,70 @@ describe('AssistantTurnFooter', () => {
       expect(queryByText('Cut off — likely context full')).toBeNull();
     });
   });
+
+  describe('B40 §11.3 指标图形化展开层（回合遥测）', () => {
+    const GB = 1024 * 1024;
+    const mkPoint = (
+      ts: number,
+      pssKb: number,
+      cpuPct: number,
+      tempC: number,
+    ) => ({
+      ts,
+      pssKb,
+      rssKb: pssKb * 0.8,
+      cpuPct,
+      tempC,
+      cpuFreqMhz: 3000,
+      gpuLoadPct: -1,
+      gpuFreqMhz: -1,
+      tempCpuC: -1,
+      tempGpuC: -1,
+      powerMw: -1,
+      stepTime: 0,
+      stage: 'chat-turn',
+    });
+    const turnPerfFixture = {
+      points: [
+        mkPoint(1000, 4 * GB, 70, 38),
+        mkPoint(2000, 5 * GB, 90, 40),
+        mkPoint(3000, 4.5 * GB, 80, 41),
+      ],
+      pssPeakKb: 5 * GB,
+      avgCpuPct: 80,
+      tempRiseC: 3,
+      durationMs: 3200,
+    };
+
+    it('有回合遥测 → 展开钥在场；无遥测的旧消息诚实不显', () => {
+      const withPerf = baseTurn({metadata: {turnPerf: turnPerfFixture}});
+      const {getByTestId} = render(<AssistantTurnFooter message={withPerf} />);
+      expect(getByTestId('footer-perf-toggle')).toBeTruthy();
+
+      const legacy = baseTurn({
+        metadata: {timings: {predicted_per_second: 12}},
+      });
+      const {queryByTestId} = render(<AssistantTurnFooter message={legacy} />);
+      expect(queryByTestId('footer-perf-toggle')).toBeNull();
+    });
+
+    it('点开展开层：双层曲线 + 峰值/温升摘要 + tok/s 翻滚数字', () => {
+      const message = baseTurn({
+        metadata: {
+          timings: {predicted_per_second: 12.34},
+          turnPerf: turnPerfFixture,
+        },
+      });
+      const {getByTestId, queryByTestId, getByText} = render(
+        <AssistantTurnFooter message={message} />,
+      );
+      expect(queryByTestId('footer-perf-expand')).toBeNull(); // 默认折叠
+      fireEvent.press(getByTestId('footer-perf-toggle'));
+      expect(getByTestId('footer-perf-expand')).toBeTruthy();
+      expect(getByTestId('footer-perf-chart')).toBeTruthy();
+      expect(getByTestId('footer-perf-toks')).toBeTruthy();
+      expect(getByText(/峰值 5.0G/)).toBeTruthy();
+      expect(getByText(/3 采样点/)).toBeTruthy();
+    });
+  });
 });

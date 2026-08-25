@@ -37,6 +37,7 @@ import {appendConversation} from '../services/aiosMemory/conversationLog';
 import {compactAndFlush} from '../services/aiosMemory/compaction';
 import {maybeClosingSummary, selfCheck} from '../services/aiosMemory/rituals';
 import {saveToy} from '../services/toyChest';
+import {chatTurnPerf} from '../services/perf/chatTurnPerf';
 import {compactSessionAndMark} from '../services/contextCompaction';
 import {consumePendingWorkspaceContext} from '../services/workspace/recovery';
 import {
@@ -484,6 +485,8 @@ async function applyEventToStore(
       // persist here — the message was added before the run started.
       // 生成进度监控卡：总耗时起算 + 心跳归位（§18.9）。
       chatSessionStore.markAgentRunStarted();
+      // B40 §11.2：回合遥测起采（1Hz，内存态）。
+      chatTurnPerf.begin();
       return;
     case 'step_started':
       await chatSessionStore.pushAgentStep(ctx.messageId, ctx.sessionId, {
@@ -633,10 +636,14 @@ async function applyEventToStore(
       // （否则永久转圈 = 「在干活」误报，2026-08-19 K90 血证）。
       // 状态翻转见 agentStateReducer run_failed → done。
       chatSessionStore.clearAgentRun();
+      // B40：失败回合丢弃遥测残迹。
+      chatTurnPerf.cancel();
       return;
     case 'run_finished': {
       // 生成进度监控卡：字段复位（§18.9）。
       chatSessionStore.clearAgentRun();
+      // B40 §11.2：冻结本轮遥测摘要（≥2 点才有，否则 null 不画）。
+      const turnPerf = chatTurnPerf.finish();
       // Final timings + observability for hit-max-turns. Kept here
       // (not in the runner) because timings are an observability
       // concern of the hook, not the runner.
@@ -675,6 +682,9 @@ async function applyEventToStore(
               intent: chatSessionStore.activeSessionIntent ?? 'chat',
             };
           })(),
+          // B40 §11.2：回合遥测附到消息（内存态，随消息生命周期），
+          // 供 footer 「▾ 图」展开层；无轨迹的旧消息诚实不渲染。
+          ...(turnPerf ? {turnPerf} : {}),
           ...(event.result.hitMaxTurns ? {hitMaxTurns: true} : {}),
         },
       });

@@ -10,7 +10,12 @@ import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
 import {CopyIcon, RefreshIcon} from '../../assets/icons';
 import {useTheme} from '../../hooks';
 import {PlayButton} from '../TextMessage/PlayButton';
-import {AnimatedNumber} from '../PerfMotion';
+import {AnimatedNumber, OdometerNumber} from '../PerfMotion';
+import {
+  PerfAreaChart,
+  type PerfSeriesSpec,
+} from '../../screens/ImageGenScreen/components/PerfAreaChart';
+import type {ChatTurnPerfSummary} from '../../services/perf/chatTurnPerf';
 import {isSpeakableMessage} from '../../utils/speakable';
 import {ROUTES} from '../../utils/navigationConstants';
 
@@ -30,6 +35,11 @@ const hapticOptions = {
 // tok/s 迷你速率条满量程（B39 跑分图示）：端侧 3B 级典型上限，
 // 仅作显示归一（演出层），不影响数值本身。
 const RATE_FULL_SCALE = 30;
+
+// footer 展开层图表语义色（与 PerfPanel 同登记，IMAGEGEN_UI_SPEC §9）
+const PERF_WARN_COLOR = '#F5A623';
+const PERF_CPU_COLOR = '#4FC3F7';
+const PERF_FOOTER_MAX_KB = 6 * 1024 * 1024; // PSS 满量程 = 6GB 硬杀线
 
 /** timing 段（B39）：数值 + 格式化同源，渲染接 AnimatedNumber 追式缓动 */
 interface TimingPart {
@@ -89,12 +99,18 @@ export const AssistantTurnFooter: React.FC<AssistantTurnFooterProps> = observer(
     // 优雅降级为纯展示；应用内永远有导航容器，入口不丢。
     const navigation = useContext(NavigationContext);
     const [recallExpanded, setRecallExpanded] = useState(false);
+    // B40 §11.3：指标图形化展开层开关（文本为主，点开看图）
+    const [perfExpanded, setPerfExpanded] = useState(false);
 
     const {timings, interrupted, truncationLikely, completionResult} =
       message.metadata || {};
     const metrics = (
       message.metadata as {turnMetrics?: TurnMetrics} | undefined
     )?.turnMetrics;
+    // B40 §11.2：回合遥测（内存态，仅新回合消息有；旧消息无 = 诚实不渲染）
+    const turnPerf = (
+      message.metadata as {turnPerf?: ChatTurnPerfSummary} | undefined
+    )?.turnPerf;
 
     // 复制/重新生成按钮可见性：内容非空且（已完成 或 当前非流式中）。
     // 完成度单一事实源 = isFinalMessage（PlayButton 同源）。
@@ -109,7 +125,14 @@ export const AssistantTurnFooter: React.FC<AssistantTurnFooterProps> = observer(
     // 朗读按钮独立决定 footer 显示：仅可朗读消息（TTS 可用 + 内容判定）
     // 无 chrome 字段时也渲染 footer，承载 PlayButton。
     const speakable = ttsStore.isTTSAvailable && isSpeakableMessage(message);
-    if (!timings && !metrics && !actionsReady && !interrupted && !speakable) {
+    if (
+      !timings &&
+      !metrics &&
+      !turnPerf &&
+      !actionsReady &&
+      !interrupted &&
+      !speakable
+    ) {
       return null;
     }
 
@@ -175,7 +198,8 @@ export const AssistantTurnFooter: React.FC<AssistantTurnFooterProps> = observer(
       ? new Date(metrics.writeTime).toLocaleTimeString().slice(0, 5)
       : '';
 
-    const hasMetricsRow = timingParts.length > 0 || Boolean(metrics);
+    const hasMetricsRow =
+      timingParts.length > 0 || Boolean(metrics) || Boolean(turnPerf);
     const separator = (key: string) => (
       <Text key={key} style={componentStyles.metricsSeparator}>
         ·
@@ -327,6 +351,67 @@ export const AssistantTurnFooter: React.FC<AssistantTurnFooterProps> = observer(
                 </Text>
               </>
             ) : null}
+            {/* B40 §11.3：图形展开钥（仅本回合有遥测时显；文本为主，点开看图） */}
+            {turnPerf ? (
+              <>
+                {timingParts.length > 0 || metrics
+                  ? separator('sep-perf')
+                  : null}
+                <TouchableOpacity
+                  style={componentStyles.metricsSection}
+                  onPress={() => setPerfExpanded(v => !v)}
+                  testID="footer-perf-toggle"
+                  hitSlop={{top: 8, bottom: 8, left: 4, right: 4}}>
+                  <Text style={componentStyles.metricsLabel}>
+                    {perfExpanded ? '▴ 图' : '▾ 图'}
+                  </Text>
+                </TouchableOpacity>
+              </>
+            ) : null}
+          </View>
+        ) : null}
+
+        {/* B40 §11.3：指标图形化展开层（回合遥测双层曲线 + 峰值/温升摘要 +
+            tok/s 翻滚大数字）；无轨迹的旧消息诚实不渲染 */}
+        {perfExpanded && turnPerf ? (
+          <View style={componentStyles.perfExpand} testID="footer-perf-expand">
+            <PerfAreaChart
+              history={turnPerf.points}
+              overlay="pss"
+              max={PERF_FOOTER_MAX_KB}
+              color={theme.colors.primary}
+              warnColor={PERF_WARN_COLOR}
+              dangerColor={theme.colors.error}
+              series={[
+                {
+                  key: 'pss',
+                  color: theme.colors.primary,
+                  max: PERF_FOOTER_MAX_KB,
+                },
+                {key: 'cpu', color: PERF_CPU_COLOR, max: 100},
+              ] as PerfSeriesSpec[]}
+              height={72}
+              testID="footer-perf-chart"
+            />
+            <View style={componentStyles.perfExpandStats}>
+              {timings?.predicted_per_second != null ? (
+                <View style={componentStyles.metricsSection}>
+                  <OdometerNumber
+                    value={timings.predicted_per_second}
+                    format={n => n.toFixed(1)}
+                    fontSize={14}
+                    color={theme.colors.brandAccent}
+                    testID="footer-perf-toks"
+                  />
+                  <Text style={componentStyles.metricsLabel}>tok/s</Text>
+                </View>
+              ) : null}
+              <Text style={componentStyles.metricsLabel}>
+                峰值 {(turnPerf.pssPeakKb / 1024 / 1024).toFixed(1)}G · 温升{' '}
+                {turnPerf.tempRiseC >= 0 ? '+' : ''}
+                {turnPerf.tempRiseC.toFixed(1)}°C · {turnPerf.points.length} 采样点
+              </Text>
+            </View>
           </View>
         ) : null}
 

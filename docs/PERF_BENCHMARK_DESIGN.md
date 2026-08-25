@@ -1,6 +1,6 @@
 # 专业跑分面板设计（PERF_BENCHMARK_DESIGN）
 
-> 状态：**v0.8 B40 跑分仪式化规划定稿（叠全/防抖/红线修已落地，仪式卡待波次实施）** | 版本：0.8 | 2026-08-25
+> 状态：**v0.9 B40 三波全部落地（待真机终验 + FileProvider 欠账择波）** | 版本：0.9 | 2026-08-25
 > 定位：生图/视频「跑分软件」玩法升级——从 4 指标实时面板 → 专业多维跑分 + 数据落盘回放
 > 方法论：写轮眼（同行调研）+ 自学习（内部基线实证）
 > v0.2：面板形态修正——嵌于预览卡片下半截的**横版紧凑布局**（md 图表，弃竖状全屏/图片原型）
@@ -300,7 +300,7 @@ interface PerfSnapshotV2 {
 5. **OdometerNumber 落地复查结论**：已实现但**无消费点**（死代码风险）——B40 第二波接入待回复仪式卡与结果页大数字。
 6. **像素跑分卡分享复查结论**：文本分享已真机验通；**图片附件走 file:// 未配 FileProvider**，图片能否附到分享面板存疑——列入欠账（方案见 11.4）。
 
-### 11.2 第二波：待回复仪式卡（PendingIndicator 升级，聊天域）
+### 11.2 第二波：待回复仪式卡（PendingIndicator 升级，聊天域）——**已落地（w2）**
 目标：等待回复的每一秒都是跑分现场；完成后卡片不消失，折叠可展开。
 - **形态三段**（单状态机，随 agentUiState.status 演进）：
   1. 模型加载中：加载阶段文案 + 百分比（modelStore.isContextLoading/loadingModel）；
@@ -310,7 +310,7 @@ interface PerfSnapshotV2 {
 - **红线**：无顶描边、无渐变光晕类 AI 风；仪式感只来自真实数据 + 动效节奏。
 - **SSOT 约束**：AssistantTurnFooter 行2 文本指标不变（唯一事实源），仪式卡是运行态面，完成态归并到 footer 展开层（见 11.3）。
 
-### 11.3 第三波：回复卡指标图形化展开（聊天域）
+### 11.3 第三波：回复卡指标图形化展开（聊天域）——**已落地（w3）**
 - AssistantTurnFooter 行2 保持文本为主，末尾加「▾ 图」展开钥：展开后内嵌迷你图表区（复用 PerfAreaChart：本轮 PSS/CPU 双层 + 峰值打标）。
 - 数据来源 = 11.2 的 chatTurnPerf 本轮轨迹；无轨迹的旧消息诚实不显展开钥。
 - tok/s 大数字接 OdometerNumber（消化 11.1-5 死代码）。
@@ -323,6 +323,7 @@ interface PerfSnapshotV2 {
 - 真机（K90）：叠全渲染五层分色、GPU 无闪 `--`、图表 88pt 不溢出、待回复卡三段演进、完成后折叠可展开、分享面板带图。
 - 门禁：tsc 0 / jest 全绿（除既有登记项）/ Gradle SUCCESS / 覆盖安装 / 浅深双模式截图。
 - push 纪律：全部本地提交，大版本测试通过后统一推。
+- **w2/w3 落地补充（2026-08-25）**：①待回复卡已接 1Hz 实时遥测行（内存/CPU/温度）+ 模型加载阶段行；②「完成后不消失」按 §11.2 归并决策实现：完成态收敛到 footer 展开层（▾ 图）而非监控卡驻留，避免双面板冗余；③chatTurnPerf 内存态服务落地（begin/finish/cancel，<2 点诚实返 null，采样失败跳过不造假），接线 run_started/finished/failed 三事件；④footer 展开层 = PSS+CPU 双层曲线（复用 PerfAreaChart series）+ 峰值/温升/采样点摘要 + tok/s OdometerNumber 翻滚（消化 §11.1-5 死码）；⑤门禁：tsc 0 + 新增 7 用例 + 受影响套件 266 全绿。
 
 ## 变更日志
 
@@ -334,5 +335,6 @@ interface PerfSnapshotV2 {
 | 2026-08-24 | 0.4 | 三修：①实时数据恒 `--` 根治（syncPoll 挂入 nightTaskReaction）；②卡片加宽（taskPage padding 16→10）；③底行显示不全根治（flexWrap 换行网格） |
 | 2026-08-24 | 0.5 | **演出层升级与基准测试总控规划定稿**（§10）：6D 排查收敛——零新建 store（扩展 BenchmarkStore）、砍 bench() 合成负载与双内存通道、砍云提交链、用例 4→3、雷达 4 轴对齐 perfScore；PerfMotion 统一动效引擎；标准负载契约；CP-APP-012 + 星图 benchmark 域登记；W1-W6 波次 |
 | 2026-08-24 | 0.6 | **W1-W6 代码全部落地**：①PerfMotion 三件（AnimatedNumber 追式缓动首帧锚定不演假动画 / OdometerNumber 逐位翻滚 / ScoreReveal 揭幕狂飙+光圈+震动，三页共用；跑分金复用 brandAccent 不造新 token）；②聊天页 footer 行2 数值接动效 + tok/s 迷你速率条；PendingIndicator 阶段色条（info/domain.tools 二态）+ 心跳波形（卡住平坦）+ 工具期差分速率；③PerfPanel 折线渐变面积图（5/6GB 阈值虚线 + 峰值打标）+ 全数字动效 + 胶囊负载分档变色（砍步耗时环：无分母不画假环）；④总控台：benchmarkOrchestrator 三用例真实负载（复用 registerChatSender 槽 + imageGenStore.generate，零新链路）+ 四轴雷达 + 段位 + HUD 条（聊天/生图页挂载）；砍除链落地：api/benchmark.ts 删除、UIStore.benchmarkShareDialog 删除、bench()/高级参数/双内存通道删除、旧协议诚实标记；⑤跑分卡分享：纯 JS 像素光栅化（七段码 + 5×7 点阵，零依赖零用户内容）+ RN 内置 Share（url+文本双带）；⑥l10n benchmark.suite 段 en/zh/zh_Hant 三语。门禁：tsc 0 / jest 新增 40+ 全绿 / l10n validate 通过；待真机验证（套件全流程 + 分享 + 浅深双模式） |
+| 2026-08-25 | 0.9 | **B40 第二/三波落地**：待回复卡 1Hz 实时遥测行 + 模型加载阶段行（w2）；chatTurnPerf 回合遥测服务（内存态，接线 run_started/finished/failed）+ footer「▾ 图」展开层（PSS+CPU 双层曲线 + 峰值/温升摘要 + tok/s OdometerNumber 翻滚，消化死码）；门禁 tsc 0 + 受影响套件 266 全绿；待真机终验 |
 | 2026-08-25 | 0.8 | **B40 跑分仪式化规划定稿 + 第一波落地**（§11）：①红线修复——PendingIndicator 卡片顶描边移除（AI 风禁令）；②GPU 负载/频率偶发 `--` 根治——kgsl 电源域切换瞬时读失败，原生侧 3s 防抖保持（传感器防抖非造假，待重建真机验）；③折线多层叠加落地——PerfAreaChart `series` 多规格 + 「叠全」chip（PSS/CPU/GPU/温/功耗五层分色同屏）；④图表 60→88pt 利用预览卡余量；⑤落地复查披露两项欠账：OdometerNumber 无消费点（第二波消化）、像素分享卡 file:// 未配 FileProvider（11.4 方案）；⑥第二/三波规划：待回复仪式卡（含 chatTurnPerf 数据链缺口披露）+ 回复卡指标图形展开；⑦推送纪律：本地 commit 照常，push 等大版本测试通过后统一推 |
 | 2026-08-25 | 0.7 | **真机全链路验证通过（K90，人类模拟路径 + DRC 导航，scrcpy 监督）**：①诚实失败路径 ×3 验证（聊天模型未加载/生图模型未加载/推理超时，均复位无半态）；②标准负载契约真机血证三次修订：旧会话 3595 tokens 致 300s 超时 → 新会话；思考开 >600s/关 77s → completionSettings 钉死（override 不入会话参数实证）；生图赛道改 generateDreamLiteEntry 同源入口（自带按需加载，免双引擎常驻预载）；超时 300→6000s；③全套件跑通：LLM 77s（10.0 tok/s）→ 生图 54.0s（11.6 s/步）→ 耐久 42.4/46.7/42.5s，总时长 4m23s，综合分 46 · 段位走地鸡（MEM 0=双引擎常驻 PSS 峰值破 6GB 硬杀线 / THM 100 / STB 53 / SPD -- 无基线诚实置灰）；④分享面板验证：系统分享唤起 + 文本摘要「Pocket Chick Benchmark — Total 46/100 (MEM 0 · SPD -- · THM 100 · STB 53) · FREE RANGE CHICK」；⑤浅深双模式截图存档（.tmp/b39_*.png）；⑥G5：双引擎常驻 PSS 5.76GB 实证（逼近硬杀线，印证内存分项口径）；⑦HUD 用例标签 l10n 映射修复（raw key → 推理速度/生图速度/温控耐久）；设备侧铁证：HyperOS 双引擎常驻触发 OEM 内存配额 signal 9 杀进程（跑分软件本身成为内存安全分的活证据） |
