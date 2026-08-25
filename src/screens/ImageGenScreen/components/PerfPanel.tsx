@@ -21,7 +21,7 @@ import {imageGenStore} from '../../../store/imageGenStore';
 import {useTheme} from '../../../hooks';
 import {AnimatedNumber} from '../../../components/PerfMotion';
 import {createStyles} from '../styles';
-import {PerfHistoryModal} from './PerfHistoryModal';
+import {PerfHistoryModal} from '../../../components/PerfHistoryModal';
 import {
   PerfAreaChart,
   type PerfOverlay,

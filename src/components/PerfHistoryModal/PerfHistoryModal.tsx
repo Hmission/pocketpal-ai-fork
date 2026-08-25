@@ -1,10 +1,13 @@
 /**
- * PerfHistoryModal — 跑分历史回放（PERF_BENCHMARK_DESIGN §5/6.3，P3+P4）
+ * PerfHistoryModal — 跑分历史回放（PERF_BENCHMARK_DESIGN §5/6.3，P3+P4 / B41 提共享）
  *
- * RN Modal 自持（PerfPanel [历史 ▷] 唤起，零导航注册）：
+ * RN Modal 自持（零导航注册）：
  *  - 列表态：历史任务摘要（时间/模型/类型），新→旧
  *  - 回放态：静态全览曲线 + 播放光标（逐点推进）+ 统计卡 + 跑分卡
  * 数据源：perfRecorder（JSONL 落盘文件），读取容错（被杀无 summary 时重算）。
+ *
+ * B41：提为共享组件（原 ImageGenScreen 内），聊天回合遥测（chat-turn）与
+ * 生图任务同库，均可在此回看——跑分数据留存、可回看（大王诉求）。
  */
 import * as React from 'react';
 import {
@@ -19,10 +22,10 @@ import {
   perfRecorder,
   type PerfMeta,
   type PerfSession,
-} from '../../../services/perf/perfRecorder';
-import {PSS_DANGER_KB} from '../../../services/perf/perfScore';
-import {useTheme} from '../../../hooks';
-import {createStyles} from '../styles';
+} from '../../services/perf/perfRecorder';
+import {PSS_DANGER_KB} from '../../services/perf/perfScore';
+import {useTheme} from '../../hooks';
+import {createStyles} from './styles';
 
 const PLAYBACK_CHART_HEIGHT = 120;
 const PLAY_TICK_MS = 180;
@@ -45,6 +48,8 @@ const TASK_TYPE_LABEL: Record<string, string> = {
   transcribe: '转写',
   tts: '语音',
   upload: '上传',
+  // B41：聊天回合遥测（跑分本体也留存可回看）
+  'chat-turn': '聊天',
 };
 
 interface Props {
@@ -135,7 +140,7 @@ export const PerfHistoryModal: React.FC<Props> = ({visible, onClose}) => {
             /* ── 列表态 ── */
             sessions.length === 0 ? (
               <Text style={s.perfModalEmpty}>
-                暂无性能记录——生成/放大等任务结束后自动落盘
+                暂无性能记录——聊天/生成等任务结束后自动落盘
               </Text>
             ) : (
               <FlatList

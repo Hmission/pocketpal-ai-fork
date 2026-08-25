@@ -485,8 +485,11 @@ async function applyEventToStore(
       // persist here — the message was added before the run started.
       // 生成进度监控卡：总耗时起算 + 心跳归位（§18.9）。
       chatSessionStore.markAgentRunStarted();
-      // B40 §11.2：回合遥测起采（1Hz，内存态）。
-      chatTurnPerf.begin();
+      // B40 §11.2 / B41 留存：回合遥测起采（1Hz，逐点落盘可回看）。
+      chatTurnPerf.begin({
+        taskId: ctx.messageId,
+        modelLabel: modelStore.activeModel?.name ?? 'unknown',
+      });
       return;
     case 'step_started':
       await chatSessionStore.pushAgentStep(ctx.messageId, ctx.sessionId, {

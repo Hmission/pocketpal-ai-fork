@@ -1,6 +1,6 @@
 # 专业跑分面板设计（PERF_BENCHMARK_DESIGN）
 
-> 状态：**v1.0 跑分仪式化全链落地（聊天域两段等待接遥测 + 展开层，真机验通过）** | 版本：1.0 | 2026-08-25
+> 状态：**v1.1 跑分数据留存落地（聊天回合遥测落盘 + 统一回放，真机验通过）** | 版本：1.1 | 2026-08-25
 > 定位：生图/视频「跑分软件」玩法升级——从 4 指标实时面板 → 专业多维跑分 + 数据落盘回放
 > 方法论：写轮眼（同行调研）+ 自学习（内部基线实证）
 > v0.2：面板形态修正——嵌于预览卡片下半截的**横版紧凑布局**（md 图表，弃竖状全屏/图片原型）
@@ -352,6 +352,7 @@ interface PerfSnapshotV2 {
 | 2026-08-24 | 0.4 | 三修：①实时数据恒 `--` 根治（syncPoll 挂入 nightTaskReaction）；②卡片加宽（taskPage padding 16→10）；③底行显示不全根治（flexWrap 换行网格） |
 | 2026-08-24 | 0.5 | **演出层升级与基准测试总控规划定稿**（§10）：6D 排查收敛——零新建 store（扩展 BenchmarkStore）、砍 bench() 合成负载与双内存通道、砍云提交链、用例 4→3、雷达 4 轴对齐 perfScore；PerfMotion 统一动效引擎；标准负载契约；CP-APP-012 + 星图 benchmark 域登记；W1-W6 波次 |
 | 2026-08-24 | 0.6 | **W1-W6 代码全部落地**：①PerfMotion 三件（AnimatedNumber 追式缓动首帧锚定不演假动画 / OdometerNumber 逐位翻滚 / ScoreReveal 揭幕狂飙+光圈+震动，三页共用；跑分金复用 brandAccent 不造新 token）；②聊天页 footer 行2 数值接动效 + tok/s 迷你速率条；PendingIndicator 阶段色条（info/domain.tools 二态）+ 心跳波形（卡住平坦）+ 工具期差分速率；③PerfPanel 折线渐变面积图（5/6GB 阈值虚线 + 峰值打标）+ 全数字动效 + 胶囊负载分档变色（砍步耗时环：无分母不画假环）；④总控台：benchmarkOrchestrator 三用例真实负载（复用 registerChatSender 槽 + imageGenStore.generate，零新链路）+ 四轴雷达 + 段位 + HUD 条（聊天/生图页挂载）；砍除链落地：api/benchmark.ts 删除、UIStore.benchmarkShareDialog 删除、bench()/高级参数/双内存通道删除、旧协议诚实标记；⑤跑分卡分享：纯 JS 像素光栅化（七段码 + 5×7 点阵，零依赖零用户内容）+ RN 内置 Share（url+文本双带）；⑥l10n benchmark.suite 段 en/zh/zh_Hant 三语。门禁：tsc 0 / jest 新增 40+ 全绿 / l10n validate 通过；待真机验证（套件全流程 + 分享 + 浅深双模式） |
+| 2026-08-25 | 1.1 | **B42 跑分数据留存（大王诉求：跑完的实时数据要留存可回看）**：根因——chatTurnPerf 纯内存态跑完即失、无回看入口。①chatTurnPerf 逐点委托 perfRecorder 增量落盘（JSONL，进程被杀也留断点轨迹，与生图同库）；失败回合 removeSession 不留残迹；②PerfHistoryModal 提共享层（components/，样式随迁）+ 加 `chat-turn`→「聊天」标签，聊天回合与生图任务统一回放；③总控台加「性能回放历史」入口（perf-history-button）。真机验：聊天回合落盘 perf_<messageId>.jsonl（taskType chat-turn，29 行，跑分卡综合 85）+ 回放面板列表/回放态/统计卡/跑分卡全通。门禁：tsc 0 + 受影响 325 全绿 + Gradle SUCCESS |
 | 2026-08-25 | 1.0 | **B41 聊天域跑分仪式化**（大王提醒：思考中 + 流式期也要跑分，跑分是本体）：①PendingIndicator 单点遥测→滚动历史（最近 60 点）+ 迷你折线（复用共享 PerfAreaChart，PSS 主图 + 5/6GB 阈值虚线）；②流式期门控放开（isPending 加 streaming_text，遥测卡常驻，隐藏仅限 done）；③管家直答 butlerReply 点亮 prefill 态接遥测 + 答完复位；④PerfAreaChart 迁 components 共享层，三处（生图页/待回复卡/回复卡展开层）统一引用，消除 components→screens 倒置。真机验证（小米 13）：prefill 遥测+折线 / 流式期遥测常驻 / 展开层 7.1tok/s+峰值 2.0G+30 采样点+双层曲线。门禁：tsc 0 + 受影响套件 309 全绿（含 invariants）+ Gradle SUCCESS |
 | 2026-08-25 | 0.9 | **B40 第二/三波落地**：待回复卡 1Hz 实时遥测行 + 模型加载阶段行（w2）；chatTurnPerf 回合遥测服务（内存态，接线 run_started/finished/failed）+ footer「▾ 图」展开层（PSS+CPU 双层曲线 + 峰值/温升摘要 + tok/s OdometerNumber 翻滚，消化死码）；门禁 tsc 0 + 受影响套件 266 全绿；待真机终验 |
 | 2026-08-25 | 0.8 | **B40 跑分仪式化规划定稿 + 第一波落地**（§11）：①红线修复——PendingIndicator 卡片顶描边移除（AI 风禁令）；②GPU 负载/频率偶发 `--` 根治——kgsl 电源域切换瞬时读失败，原生侧 3s 防抖保持（传感器防抖非造假，待重建真机验）；③折线多层叠加落地——PerfAreaChart `series` 多规格 + 「叠全」chip（PSS/CPU/GPU/温/功耗五层分色同屏）；④图表 60→88pt 利用预览卡余量；⑤落地复查披露两项欠账：OdometerNumber 无消费点（第二波消化）、像素分享卡 file:// 未配 FileProvider（11.4 方案）；⑥第二/三波规划：待回复仪式卡（含 chatTurnPerf 数据链缺口披露）+ 回复卡指标图形展开；⑦推送纪律：本地 commit 照常，push 等大版本测试通过后统一推 |

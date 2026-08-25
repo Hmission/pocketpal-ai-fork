@@ -26,6 +26,7 @@ import {DeviceInfoCard} from './DeviceInfoCard';
 import {BenchResultCard} from './BenchResultCard';
 import {BenchRadar} from './BenchRadar';
 import {ScoreReveal} from '../../components/PerfMotion';
+import {PerfHistoryModal} from '../../components/PerfHistoryModal';
 
 import {modelStore, benchmarkStore} from '../../store';
 import {benchmarkOrchestrator} from '../../services/benchmarkOrchestrator';
@@ -55,6 +56,8 @@ export const BenchmarkScreen: React.FC = observer(() => {
   const [deleteAllConfirmVisible, setDeleteAllConfirmVisible] = useState(false);
   const [shareBusy, setShareBusy] = useState(false);
   const [shareNotice, setShareNotice] = useState<string | null>(null);
+  // B41 留存：性能回放历史（聊天回合 + 生图任务统一落盘可回看）
+  const [historyVisible, setHistoryVisible] = useState(false);
 
   const theme = useTheme();
   const styles = createStyles(theme);
@@ -229,6 +232,14 @@ export const BenchmarkScreen: React.FC = observer(() => {
                   style={styles.button}>
                   {l10n.benchmark.suite.startButton}
                 </Button>
+                <Button
+                  testID="perf-history-button"
+                  mode="outlined"
+                  icon="history"
+                  onPress={() => setHistoryVisible(true)}
+                  style={styles.button}>
+                  性能回放历史
+                </Button>
                 <View style={styles.warningContainer}>
                   <Text variant="bodySmall" style={styles.warningText}>
                     {l10n.benchmark.messages.testWarning}
@@ -355,6 +366,12 @@ export const BenchmarkScreen: React.FC = observer(() => {
           </Card.Content>
         </Card>
       </ScrollView>
+
+      {/* B41 留存：聊天回合 + 生图任务统一跑分历史回放 */}
+      <PerfHistoryModal
+        visible={historyVisible}
+        onClose={() => setHistoryVisible(false)}
+      />
     </SafeAreaView>
   );
 });
