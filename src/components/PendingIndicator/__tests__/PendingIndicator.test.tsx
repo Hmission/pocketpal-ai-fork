@@ -103,13 +103,7 @@ describe('PendingIndicator — 生成进度监控卡（§18.9）', () => {
   });
 
   // ── B39 跑分感（PERF_BENCHMARK_DESIGN §10.4）──
-  it('阶段色条常驻：一眼分辨模型在哪个赛道', () => {
-    const {getByTestId} = render(
-      <PendingIndicator agentStatus="prefill" runStartedAt={NOW} />,
-    );
-    expect(getByTestId('pending-indicator-stage-bar')).toBeTruthy();
-  });
-
+  // （卡片顶部描边已按大王红线移除——AI 风装饰不允许；阶段信息由心跳波形/文案承载）
   it('活跃时心跳波形在场（活着的证据）', () => {
     const {getByTestId} = render(
       <PendingIndicator

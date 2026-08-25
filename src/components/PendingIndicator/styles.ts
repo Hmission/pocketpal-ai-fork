@@ -33,14 +33,6 @@ export const createStyles = (theme: Theme) =>
       alignItems: 'center',
       gap: 4,
     },
-    // 阶段色条（B39）：卡顶 2px，prefill 蓝/工具期紫（既有 token）
-    stageBar: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      height: 2,
-    },
     // 心跳微波形（B39）：5 根错峰小条，卡住时整体隐去（诚实）
     wave: {
       flexDirection: 'row',

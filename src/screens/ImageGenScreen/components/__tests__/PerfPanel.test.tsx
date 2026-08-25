@@ -92,6 +92,21 @@ describe('PerfPanel（v2 横版专业面板）', () => {
     expect(getByText('峰值 5.0GB')).toBeTruthy();
   });
 
+  it('B40 叠全：点 all chip 五层曲线同屏不崩溃，PSS 峰值文字仍在', () => {
+    runInAction(() => {
+      imageGenStore.perf = FULL_SNAP;
+      imageGenStore.perfHistory = [
+        FULL_SNAP,
+        {...FULL_SNAP, pssKb: 5 * GB, cpuPct: 90},
+        {...FULL_SNAP, pssKb: 4.5 * GB, gpuLoadPct: -1}, // GPU N/A 点诚实落底
+      ];
+    });
+    const {getByText, getByTestId} = render(<PerfPanel />);
+    fireEvent.press(getByTestId('perf-overlay-chip-all'));
+    expect(getByText('峰值 5.0GB')).toBeTruthy();
+    expect(getByTestId('perf-area-chart')).toBeTruthy();
+  });
+
   it('PSS 超 6GB（HyperOS 硬杀线）时 PSS 大字为 error 色', () => {
     runInAction(() => {
       imageGenStore.perf = {...FULL_SNAP, pssKb: 6.5 * GB};

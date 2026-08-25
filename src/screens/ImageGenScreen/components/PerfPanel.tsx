@@ -22,7 +22,11 @@ import {useTheme} from '../../../hooks';
 import {AnimatedNumber} from '../../../components/PerfMotion';
 import {createStyles} from '../styles';
 import {PerfHistoryModal} from './PerfHistoryModal';
-import {PerfAreaChart, type PerfOverlay} from './PerfAreaChart';
+import {
+  PerfAreaChart,
+  type PerfOverlay,
+  type PerfSeriesSpec,
+} from './PerfAreaChart';
 
 /** 阈值：>5GB 橙（逼近）/ >6GB 红（HyperOS 看护硬杀线，K90 实测 6291456kb） */
 const PERF_WARN_KB = 5 * 1024 * 1024;
@@ -30,23 +34,25 @@ const PERF_DANGER_KB = 6 * 1024 * 1024;
 /** 语义色登记（IMAGEGEN_UI_SPEC §9）：warning=橙 */
 const PERF_WARN_COLOR = '#F5A623';
 
-/** 叠加线维度：PSS 主图 + CPU/GPU/温度/功耗切换（各自满量程归一） */
-type Overlay = PerfOverlay;
+/** 叠加线维度：PSS 主图 + CPU/GPU/温度/功耗切换（各自满量程归一）；
+ *  B40 新增 'all' 叠全（五条曲线分色同屏叠加，大王诉求：折线不止一层） */
+type Overlay = PerfOverlay | 'all';
 const OVERLAY_LABEL: Record<Overlay, string> = {
   pss: 'PSS',
   cpu: 'CPU',
   gpu: 'GPU',
   temp: '温度',
   power: '功耗',
+  all: '叠全',
 };
-const OVERLAY_MAX: Record<Overlay, number> = {
+const OVERLAY_MAX: Record<PerfOverlay, number> = {
   pss: PERF_DANGER_KB,
   cpu: 100,
   gpu: 100,
   temp: 60,
   power: 10000,
 };
-const OVERLAY_COLOR: Record<Overlay, string> = {
+const OVERLAY_COLOR: Record<PerfOverlay, string> = {
   pss: '', // 走 theme.primary（阈值色另行）
   cpu: '#4FC3F7',
   gpu: '#81C784',
@@ -92,7 +98,19 @@ export const PerfPanel: React.FC = observer(() => {
   const peakPss = perfHistory.reduce((m, p) => Math.max(m, p.pssKb), 0);
 
   const barColor =
-    overlay === 'pss' ? undefined : OVERLAY_COLOR[overlay] || theme.colors.primary;
+    overlay === 'all' || overlay === 'pss'
+      ? undefined
+      : OVERLAY_COLOR[overlay] || theme.colors.primary;
+
+  // B40 叠全：五条曲线各自满量程归一 + 分色（PSS 用主色，阈值线仍画）
+  const multiSeries: PerfSeriesSpec[] | undefined =
+    overlay === 'all'
+      ? (Object.keys(OVERLAY_MAX) as PerfOverlay[]).map(key => ({
+          key,
+          color: key === 'pss' ? theme.colors.primary : OVERLAY_COLOR[key],
+          max: OVERLAY_MAX[key],
+        }))
+      : undefined;
 
   // 胶囊负载分档变色（B39）：>=85 红 / >=60 橙 / 否则继承中性（显示层不改数值）
   const loadTierColor = (v: number | undefined) =>
@@ -194,15 +212,17 @@ export const PerfPanel: React.FC = observer(() => {
               峰值 {(peakPss / 1024 / 1024).toFixed(1)}GB
             </Text>
           </View>
-          {/* 折线 + 渐变面积图（B39）：满宽贴卡片缘、峰值打标、5/6GB 阈值虚线 */}
+          {/* 折线 + 渐变面积图（B39）/ 多层叠加（B40）：满宽贴卡片缘、峰值打标、5/6GB 阈值虚线 */}
           <View style={s.perfMiniChart}>
             <PerfAreaChart
               history={perfHistory}
-              overlay={overlay}
-              max={OVERLAY_MAX[overlay]}
+              overlay={overlay === 'all' ? 'pss' : overlay}
+              max={overlay === 'all' ? OVERLAY_MAX.pss : OVERLAY_MAX[overlay]}
               color={barColor ?? theme.colors.primary}
               warnColor={PERF_WARN_COLOR}
               dangerColor={theme.colors.error}
+              series={multiSeries}
+              height={88}
               testID="perf-area-chart"
             />
             {perfHistory.length === 0 ? (

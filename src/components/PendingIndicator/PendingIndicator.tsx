@@ -293,11 +293,6 @@ export const PendingIndicator: React.FC<PendingIndicatorProps> = ({
 
   return (
     <View style={styles.card} testID="pending-indicator">
-      {/* 阶段色条：卡顶 2px，一眼分辨模型在哪个赛道 */}
-      <View
-        style={[styles.stageBar, {backgroundColor: stageColor}]}
-        testID="pending-indicator-stage-bar"
-      />
       <View style={styles.row}>
         {showWave && (
           <View

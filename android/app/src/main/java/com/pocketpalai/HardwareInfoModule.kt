@@ -310,6 +310,15 @@ class HardwareInfoModule(reactContext: ReactApplicationContext) :
   private var gpuFreqPath: String? = null
   private var gpuPathProbed = false
 
+  // GPU 采样防抖保持（B40）：kgsl gpubusy 在 GPU 电源域切换瞬间会偶发读取失败/返回 0，
+  // 若直接降为 -1 会让跑分面板/折线图闪 "--"（大王实测发现）。对策：最近 GPU_HOLD_MS
+  // 内有过有效值则保持返回该值（传感器防抖，非造假）；从未读到过才诚实 -1。
+  private val GPU_HOLD_MS = 3000L
+  private var lastGpuLoadPct = -1.0
+  private var lastGpuLoadAtMs = 0L
+  private var lastGpuFreqMhz = -1.0
+  private var lastGpuFreqAtMs = 0L
+
   /** 探测 GPU 负载/频率 sysfs 节点：Adreno kgsl 优先，次选 devfreq（Mali/MTK） */
   private fun probeGpuPaths() {
     if (gpuPathProbed) return
@@ -352,8 +361,24 @@ class HardwareInfoModule(reactContext: ReactApplicationContext) :
     }
   }
 
-  /** GPU 负载%（Adreno gpubusy 两列比值 / devfreq 纯百分比）；-1 = N/A */
+  /** GPU 负载%（Adreno gpubusy 两列比值 / devfreq 纯百分比）；-1 = N/A，带防抖保持 */
   private fun readGpuLoadPct(): Double {
+    val now = System.currentTimeMillis()
+    val raw = readGpuLoadPctRaw()
+    if (raw >= 0.0) {
+      lastGpuLoadPct = raw
+      lastGpuLoadAtMs = now
+      return raw
+    }
+    // 瞬时读取失败：保持最近 GPU_HOLD_MS 内的有效值（防抖，非造假）
+    if (lastGpuLoadPct >= 0.0 && now - lastGpuLoadAtMs <= GPU_HOLD_MS) {
+      return lastGpuLoadPct
+    }
+    return -1.0
+  }
+
+  /** GPU 负载% 原始读数；-1 = 本次读取失败/不可用 */
+  private fun readGpuLoadPctRaw(): Double {
     probeGpuPaths()
     val path = gpuBusyPath ?: return -1.0
     return try {
@@ -378,8 +403,23 @@ class HardwareInfoModule(reactContext: ReactApplicationContext) :
     }
   }
 
-  /** GPU 频率 MHz（kgsl gpuclk / devfreq cur_freq，单位 Hz）；-1 = N/A */
+  /** GPU 频率 MHz（kgsl gpuclk / devfreq cur_freq，单位 Hz）；-1 = N/A，带防抖保持 */
   private fun readGpuFreqMhz(): Double {
+    val now = System.currentTimeMillis()
+    val raw = readGpuFreqMhzRaw()
+    if (raw >= 0.0) {
+      lastGpuFreqMhz = raw
+      lastGpuFreqAtMs = now
+      return raw
+    }
+    if (lastGpuFreqMhz >= 0.0 && now - lastGpuFreqAtMs <= GPU_HOLD_MS) {
+      return lastGpuFreqMhz
+    }
+    return -1.0
+  }
+
+  /** GPU 频率 MHz 原始读数；-1 = 本次读取失败/不可用 */
+  private fun readGpuFreqMhzRaw(): Double {
     probeGpuPaths()
     val path = gpuFreqPath ?: return -1.0
     return try {

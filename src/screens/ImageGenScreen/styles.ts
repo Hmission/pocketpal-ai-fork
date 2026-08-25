@@ -974,9 +974,9 @@ export const createStyles = (theme: any) =>
       color: theme.colors.onSurfaceVariant,
       marginLeft: 'auto',
     },
-    // B39 图表容器：折线渐变面积图 60pt（替代 v2 条形 40pt，卡片下半截空间预算内）
+    // B39 图表容器：折线渐变面积图 / B40 多层叠加，加高到 88pt 利用预览卡纵向余量（真机验不溢出）
     perfMiniChart: {
-      height: 60,
+      height: 88,
       overflow: 'hidden',
     },
     perfChartEmpty: {
