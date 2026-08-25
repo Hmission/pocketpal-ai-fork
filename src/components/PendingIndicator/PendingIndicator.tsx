@@ -1,9 +1,13 @@
 import React, {useContext, useEffect, useRef, useState} from 'react';
 import {Animated, Text, View} from 'react-native';
+import {observer} from 'mobx-react-lite';
 
 import {useTheme} from '../../hooks';
 import {L10nContext} from '../../utils';
 import {t} from '../../locales';
+import {modelStore} from '../../store';
+import NativeHardwareInfo from '../../specs/NativeHardwareInfo';
+import {AnimatedNumber} from '../PerfMotion';
 
 import {createStyles, createCountStyle} from './styles';
 
@@ -34,6 +38,11 @@ const TALENT_LABEL_KEYS: Record<
   calculate: 'calculating',
   datetime: 'lookingUpTime',
 };
+
+// 遥测行格式化（B40 仪式卡，单位语言中立）
+const perfGbFmt = (n: number) => `${n.toFixed(1)}G`;
+const perfPctFmt = (n: number) => `${Math.round(n)}%`;
+const perfTempFmt = (n: number) => `${Math.round(n)}°C`;
 
 // 阶段 → 人类可读标签（生成进度监控卡 §18.9）。工具调用阶段走
 // TALENT_LABEL_KEYS（更具体），prefill/streaming/executing 走通用文案。
@@ -166,7 +175,7 @@ interface PendingIndicatorProps {
  * token count, and elapsed seconds so the user can tell the model is
  * still working rather than hung.
  */
-export const PendingIndicator: React.FC<PendingIndicatorProps> = ({
+export const PendingIndicator: React.FC<PendingIndicatorProps> = observer(({
   pendingTalentNames,
   toolCallTokenCount = 0,
   isStopping = false,
@@ -219,6 +228,40 @@ export const PendingIndicator: React.FC<PendingIndicatorProps> = ({
     // 基准只在 tick() 内推进——差分即真实速率，外部重置会让速率恒 0
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runStartedAt]);
+
+  // 实时遥测（B40 仪式卡）：待回复卡驻留期间 1Hz 采样（PSS/CPU/温度）——
+  // 仪式感 = 设备在烧电路的活证据；N/A 诚实显 --，不造假。
+  const [perfNow, setPerfNow] = useState<{
+    pssGb: number;
+    cpuPct: number;
+    tempC: number;
+  } | null>(null);
+  useEffect(() => {
+    let alive = true;
+    const sample = async () => {
+      try {
+        const s = await NativeHardwareInfo.getPerfSnapshot();
+        if (!alive) {
+          return;
+        }
+        setPerfNow({
+          pssGb: s.pssKb / 1024 / 1024,
+          cpuPct: s.cpuPct,
+          tempC: s.tempC,
+        });
+      } catch {
+        if (alive) {
+          setPerfNow(null);
+        }
+      }
+    };
+    sample();
+    const iv = setInterval(sample, 1000);
+    return () => {
+      alive = false;
+      clearInterval(iv);
+    };
+  }, []);
 
   // Build the label suffix.
   // - `stopping` overrides everything with "Stopping…".
@@ -312,6 +355,34 @@ export const PendingIndicator: React.FC<PendingIndicatorProps> = ({
           </Text>
         )}
       </View>
+      {/* 模型加载阶段（B40）：「加载到哪一步」可见 */}
+      {modelStore.isContextLoading && (
+        <Text style={styles.perfRow} testID="pending-indicator-loading">
+          {l10n.benchmark.messages.initializingModel}
+        </Text>
+      )}
+      {/* 实时遥测行（B40）：内存/CPU/温度 1Hz，追式缓动数字 */}
+      <Text style={styles.perfRow} testID="pending-indicator-telemetry">
+        <Text style={styles.perfLabel}>内存 </Text>
+        <AnimatedNumber
+          value={perfNow ? perfNow.pssGb : undefined}
+          format={perfGbFmt}
+          style={styles.perfValue}
+        />
+        <Text style={styles.perfSep}> · </Text>
+        <Text style={styles.perfLabel}>CPU </Text>
+        <AnimatedNumber
+          value={perfNow ? perfNow.cpuPct : undefined}
+          format={perfPctFmt}
+          style={styles.perfValue}
+        />
+        <Text style={styles.perfSep}> · </Text>
+        <AnimatedNumber
+          value={perfNow ? perfNow.tempC : undefined}
+          format={perfTempFmt}
+          style={styles.perfValue}
+        />
+      </Text>
       {showReasoning && (
         <Text
           style={styles.reasoning}
@@ -322,4 +393,4 @@ export const PendingIndicator: React.FC<PendingIndicatorProps> = ({
       )}
     </View>
   );
-};
+});

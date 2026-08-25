@@ -54,6 +54,23 @@ export const createStyles = (theme: Theme) =>
       color: theme.colors.textSecondary,
       opacity: 0.85,
     },
+    // 实时遥测行（B40 仪式卡）：1Hz 内存/CPU/温度，仪式感=烧电路的活证据；
+    // 数值走 brandAccent 强调（与跑分面板同源语义），无顶描边类 AI 风装饰。
+    perfRow: {
+      ...theme.typography.captionS,
+      marginTop: 6,
+      color: theme.colors.textSecondary,
+    },
+    perfLabel: {
+      color: theme.colors.textSecondary,
+    },
+    perfValue: {
+      color: theme.colors.brandAccent,
+      fontWeight: '600',
+    },
+    perfSep: {
+      color: theme.colors.outlineVariant,
+    },
   });
 
 export const createCountStyle = (theme: Theme) =>

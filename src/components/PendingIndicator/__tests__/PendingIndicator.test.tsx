@@ -7,12 +7,20 @@
  */
 import React from 'react';
 import {StyleSheet} from 'react-native';
+import {runInAction} from 'mobx';
 import {render} from '../../../../jest/test-utils';
 import {PendingIndicator} from '../PendingIndicator';
+import {modelStore} from '../../../store';
 
 const NOW = Date.now();
 
 describe('PendingIndicator — 生成进度监控卡（§18.9）', () => {
+  afterEach(() => {
+    // B40 仪式卡用例可能置位模型加载态，用例间复位
+    runInAction(() => {
+      modelStore.isContextLoading = false;
+    });
+  });
   it('prefill 阶段显示阶段标签 + 总耗时（不再裸三点）', () => {
     const {getByText} = render(
       <PendingIndicator
@@ -151,5 +159,30 @@ describe('PendingIndicator — 生成进度监控卡（§18.9）', () => {
     expect(getByText(/Building page · 42 tokens/).props.children).not.toContain(
       'tok/s',
     );
+  });
+
+  // ── B40 仪式卡（PERF_BENCHMARK_DESIGN §11.2 第一波）──
+  it('B40 遥测行常驻：采样未回时诚实显 --（不造假）', () => {
+    const {getByTestId, getAllByText} = render(
+      <PendingIndicator agentStatus="prefill" runStartedAt={NOW} />,
+    );
+    expect(getByTestId('pending-indicator-telemetry')).toBeTruthy();
+    // jest 环境无原生快照 → 三个指标均显 --
+    expect(getAllByText('--').length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('B40 模型加载阶段行：isContextLoading 时可见，复位后消失', () => {
+    runInAction(() => {
+      modelStore.isContextLoading = true;
+    });
+    const {getByTestId, rerender, queryByTestId} = render(
+      <PendingIndicator agentStatus="prefill" runStartedAt={NOW} />,
+    );
+    expect(getByTestId('pending-indicator-loading')).toBeTruthy();
+    runInAction(() => {
+      modelStore.isContextLoading = false;
+    });
+    rerender(<PendingIndicator agentStatus="prefill" runStartedAt={NOW} />);
+    expect(queryByTestId('pending-indicator-loading')).toBeNull();
   });
 });
