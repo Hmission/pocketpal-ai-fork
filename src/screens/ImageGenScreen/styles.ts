@@ -213,15 +213,16 @@ export const createStyles = (theme: any) =>
       color: theme.colors.onSurfaceVariant,
     },
     // 任务化预览页（running 空白进度页 / failed 报错页）：与图片页同规格方形容器
-    // padding 16→10：跑分面板（PerfPanel）向预览图宽度靠拢「稍微宽一些」，
-    // 仍不超出预览卡片宽度（面板 = pageW-20 < 预览图 pageW）。
+    // padding 16→6：跑分面板（PerfPanel）向预览图宽度靠拢「更宽一些」，
+    // 仍不超出预览卡片宽度（面板 = pageW-12 < 预览图 pageW）；
+    // 缩字 + 加宽双管齐下，手机端一行内容不再被裁切。
     taskPage: {
       aspectRatio: 1,
       borderRadius: theme.radius.s,
       backgroundColor: theme.colors.surface,
       alignItems: 'center',
       justifyContent: 'center',
-      padding: 10,
+      padding: 6,
       gap: 8,
       overflow: 'hidden',
     },
@@ -899,19 +900,21 @@ export const createStyles = (theme: any) =>
       marginTop: 4,
     },
     // ADR-0008 跑分式性能面板（IMAGEGEN_UI_SPEC §9）
+    // v4：弃灰色底面板（大王：不想要灰色面板）——去 backgroundColor，
+    // 改 hairline 顶部细线分隔（与聊天页指标行同一分隔语言），面板透明融入预览卡。
     perfPanel: {
-      marginTop: 10,
       alignSelf: 'stretch',
-      backgroundColor: withOpacity(theme.colors.shadow, 0.05),
-      borderRadius: theme.radius.m,
-      paddingHorizontal: 10,
-      paddingVertical: 8,
-      gap: 8,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.colors.outline,
+      paddingHorizontal: 8,
+      paddingTop: 6,
+      paddingBottom: 2,
+      gap: 6,
     },
     perfHeader: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: 6,
     },
     perfTitle: {
       ...theme.typography.uiS,
@@ -919,17 +922,17 @@ export const createStyles = (theme: any) =>
       fontWeight: '600',
     },
     perfPssBig: {
-      ...theme.typography.titleM,
+      ...theme.typography.titleS,
       fontWeight: '700',
     },
     // v2 折叠头指标胶囊横排（CPU/GPU/温/功耗，安兔兔式实时指标行压缩形态）
     perfCapsuleRow: {
       flexDirection: 'row',
-      gap: 4,
+      gap: 3,
       flexShrink: 1,
     },
     perfCapsule: {
-      paddingHorizontal: 6,
+      paddingHorizontal: 4,
       paddingVertical: 2,
       borderRadius: theme.radius[theme.shapeRoles.pill],
       backgroundColor: withOpacity(theme.colors.onSurface, 0.06),
@@ -937,14 +940,10 @@ export const createStyles = (theme: any) =>
     perfCapsuleText: {
       ...theme.typography.captionS,
       color: theme.colors.onSurfaceVariant,
+      fontSize: 10,
+      lineHeight: 13,
     },
-    perfDeviceNote: {
-      ...theme.typography.captionS,
-      color: theme.colors.onSurfaceVariant,
-      opacity: 0.7,
-      marginTop: 2,
-    },
-    perfBody: {gap: 6, marginTop: 6},
+    perfBody: {gap: 5, marginTop: 4},
     // v2 叠加线切换行：chips 横滑 + 右端峰值文字
     perfOverlayRow: {
       flexDirection: 'row',
@@ -953,8 +952,8 @@ export const createStyles = (theme: any) =>
     },
     perfChipsScroll: {flexGrow: 0},
     perfOverlayChip: {
-      paddingHorizontal: 8,
-      paddingVertical: 3,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
       marginRight: 4,
       borderRadius: theme.radius[theme.shapeRoles.pill],
       borderWidth: 1,
@@ -967,12 +966,40 @@ export const createStyles = (theme: any) =>
     perfOverlayChipText: {
       ...theme.typography.captionS,
       color: theme.colors.onSurfaceVariant,
+      fontSize: 10,
+      lineHeight: 13,
     },
     perfOverlayChipTextActive: {color: '#ffffff', fontWeight: '600'},
     perfPeak: {
       ...theme.typography.captionS,
       color: theme.colors.onSurfaceVariant,
       marginLeft: 'auto',
+      fontSize: 10,
+      lineHeight: 13,
+    },
+    // B43 图例行（叠全时）：色点 + 通道名横排一行，图表可读性（紫色线=功耗等）
+    perfLegend: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 1,
+    },
+    perfLegendItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
+    },
+    perfLegendDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+    },
+    perfLegendText: {
+      ...theme.typography.captionS,
+      color: theme.colors.onSurfaceVariant,
+      fontSize: 9,
+      lineHeight: 12,
     },
     // B39 图表容器：折线渐变面积图 / B40 多层叠加，加高到 88pt 利用预览卡纵向余量（真机验不溢出）
     perfMiniChart: {
@@ -984,30 +1011,34 @@ export const createStyles = (theme: any) =>
       color: theme.colors.onSurfaceVariant,
     },
     // v3 指标行：自适应换行（全部指标 + 历史入口可见，不再横向滚动被裁切）。
-    // 卡片加宽后（见 taskPage padding 收窄）每行可容纳 4 项，8 项折 2 行，
-    // 根治「最底下一行显示不全」。
+    // 卡片加宽（taskPage padding 6）+ 字号收紧（10/11pt）后每行可容纳 5 项，
+    // 8 项 + 历史按钮折 2 行，根治「最底下一行显示不全」。
     perfMetricsRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       justifyContent: 'center',
-      gap: 4,
+      gap: 3,
     },
     perfMetric: {
       gap: 1,
-      width: 62,
+      width: 58,
     },
     perfMetricLabel: {
       ...theme.typography.captionS,
       color: theme.colors.onSurfaceVariant,
+      fontSize: 10,
+      lineHeight: 13,
     },
     perfMetricValue: {
       ...theme.typography.uiS,
       color: theme.colors.onSurface,
       fontWeight: '600',
+      fontSize: 11,
+      lineHeight: 14,
     },
     perfHistoryBtn: {
-      paddingHorizontal: 10,
-      paddingVertical: 4,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
       alignSelf: 'center',
       borderRadius: theme.radius[theme.shapeRoles.pill],
       backgroundColor: withOpacity(theme.colors.primary, 0.12),
@@ -1016,6 +1047,8 @@ export const createStyles = (theme: any) =>
       ...theme.typography.uiS,
       color: theme.colors.primary,
       fontWeight: '600',
+      fontSize: 11,
+      lineHeight: 14,
     },
     // B41：回放 Modal 样式随 PerfHistoryModal 迁至 components/PerfHistoryModal/styles.ts
   });

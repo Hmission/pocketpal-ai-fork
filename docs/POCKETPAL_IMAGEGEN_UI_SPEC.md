@@ -29,6 +29,8 @@ relates: [POCKETPAL_DESIGN_SPEC, ADR-0002-imagegen-header-right]
 > 版本：v5.4（2026-08-22 B36 大王复查）：① **音频引擎选择弃 Menu → 复用本页 ModelPicker 屏级 overlay 交互**（同页双交互模式消灭，dropOverlay/dropBackdrop/dropPanelAbs + 行内下载/删除）；② 音频结果区升级**整卡三态**（running 波浪 / success 全文卡 / failed 三按钮，对齐本页 taskPage 语义）；③ 音频历史条点击**联动结果区切换**（对齐相册翻页联动）；④ 音频 composer 模型管理行删除（三行冗余状态文本 → 并入顶栏下拉行内）——详见 AUDIO_UI_SPEC v1.5
 > 版本：v5.5（2026-08-23 B38 大王复查·多模态统一）：① **音频顶栏胶囊弃独立风格 → 与本页 triggerPill 同一设计语言**（primary 12% 底 + full 圆角 + primary 1px 描边 + onSurface 文字 + ▾，就绪点内嵌）——同页不再并存两套胶囊风格；② 音频产物区升级**播放器预览窗口**（方形大卡 + 播放/暂停 + 时间轴跳播 + 时长，对齐本页预览窗口规格）；③ 音频历史卡改**方形卡**（对齐本页相册缩略图 72px 方形），点击加载预览窗口——详见 AUDIO_UI_SPEC v1.7
 > 版本：v5.6（2026-08-24 B39 跑分演出升级规划，PERF_BENCHMARK_DESIGN §10 v0.5）：§9 跑分面板演出层升级定稿——① 40pt 条形迷你图 → **折线+渐变面积图**（自绘满宽贴卡片缘，峰值打标，卡片内不溢出红线不变）；② 全数字接 PerfMotion AnimatedNumber（PSS 大字/胶囊/指标行）+ 胶囊负载分档变色 + 步耗时进度环；③ §9 语义色注册表扩编：速率强调色 + 跑分金均**复用既有 brandAccent token**（不造新色，避免双金分裂），阈值语义不变（>5GB 橙/>6GB 红）；数据链路（syncPoll/perfRecorder/perfScore）零改动——详见 PERF_BENCHMARK_DESIGN §10.5/10.6
+> 版本：v5.7（2026-08-25 B43 大王反馈收窄）：§9 跑分卡坐标轴升级——① 折线图加坐标轴（左 Y 刻度按维度单位 / 底部 X 时间刻度 / 水平垂直网格 / 5GB·6GB 阈值线端点标注）+ **叠全改复合图**（PSS/功耗折线 + CPU/GPU 负载柱状 + 温度热力带），温度不再与 PSS 主色同橙撞色；② 演出层 vivid 动画（最新点呼吸光圈 + 彗星尾 + 示波器扫掠光）；③ 指标分级色全接入（温度/功耗/频率/步耗时两档阈值，正常继承中性 / 警告橙 / 危险红，不再全黑）；④ 「叠全」chip 移至**最左**（默认项排最前）；⑤ 叠全图例行（色点+通道名，虚线语义由图内端点标注承载）——详见 PERF_BENCHMARK_DESIGN §10.5
+
 > 上位规范：POCKETPAL_DESIGN_SPEC.md（UI 域 SSOT）
 
 ## 1. 页面结构（创造工坊 + 顶栏一行 + 单列三区 + 产物区整卡切换）v5
@@ -191,18 +193,32 @@ relates: [POCKETPAL_DESIGN_SPEC, ADR-0002-imagegen-header-right]
 生成/加载期间实时显示本机资源占用（跑分软件式玩法，大王定调）：
 
 - **位置与形态**：running 任务页进度卡内（三点波浪 + 进度信息下方）的**横版紧凑布局**（v2 大王裁定：卡片下半截空间，非竖状全屏）；加载期（loading）同样显示；**默认展开**（打开即见实时数据），点按折叠头可收起
-- **数据源**：`HardwareInfo.getPerfSnapshot()`（1Hz，与进度轮询同频）——PSS（Debug.getMemoryInfo().totalPss，与 HyperOS 看护硬杀同口径，主指标）+ CPU%（本进程 CPU 时间差分）+ CPU 频率（大核 scaling_cur_freq）+ GPU 负载%（Adreno kgsl gpubusy / Mali devfreq 平台探测）+ GPU 频率 + 温度分区（thermal_zone type 分 cpu/gpu）+ 功耗（power_supply current×voltage，部分设备 N/A）+ 步耗时（已有 stepTime）；NPU 利用率无标准 API → 设备小字显型号（诚实模式，不编造）；所有新指标平台探测 + 失败 N/A（-1 → UI 显 `--`），不报错不兜底
+- **数据源**：`HardwareInfo.getPerfSnapshot()`（1Hz，与进度轮询同频）——PSS（Debug.getMemoryInfo().totalPss，与 HyperOS 看护硬杀同口径，主指标）+ CPU%（本进程 CPU 时间差分）+ CPU 频率（大核 scaling_cur_freq）+ GPU 负载%（Adreno kgsl gpubusy / Mali devfreq 平台探测）+ GPU 频率 + 温度分区（thermal_zone type 分 cpu/gpu）+ 功耗（power_supply current×voltage，部分设备 N/A）+ 步耗时（已有 stepTime）；NPU 利用率无标准 API → 诚实模式（不编造，不显示型号小字）；所有新指标平台探测 + 失败 N/A（-1 → UI 显 `--`），不报错不兜底
 - **视觉（横版三行）**：
-  - 折叠头一行：`性能 ▾` + PSS 大字（GB，一位小数，阈值色 >5GB 黄 / >6GB 红）+ 指标胶囊横排（CPU% GPU% 温度 功耗）+ 设备小字（SoC 型号）
-  - 迷你曲线条：PSS 历史（最近 60 点，横向压扁 ~40pt，6GB 满量程）右端接峰值/跑分卡；叠加线 [CPU][GPU][温度][功耗] 点按切换
-  - 指标行：横向排列 CPU%/GPU%/频率/温度/功耗/步耗时（放不下横向滚动）+ `[历史 ▷]` 入口
+  - 折叠头一行：`性能 ▾` + PSS 大字（GB，一位小数，阈值色 >5GB 黄 / >6GB 红）+ 指标胶囊横排（CPU% GPU% 温度 功耗）——**无设备小字行**（v1.2 去除 SoC 型号，卡片变矮）
+  - 迷你曲线条：**默认叠全**（B43 复合图：PSS/功耗折线 + CPU/GPU 负载柱状 + 温度热力带（30→60°C 绿→橙→红渐变带）+ 5/6GB 阈值虚线，五通道不糊不撞色；chip 可切回单线）；**坐标轴**（B43）：左 Y 刻度按维度单位（PSS→GB / 负载→% / 温度→°C / 功耗→W）+ 底部 X 时间刻度（1Hz 采样索引差=相对秒）+ 水平/垂直网格（hairline 淡）+ 阈值线端点迷你标注（5GB/6GB）；**图例行**（叠全时色点+通道名一行）；**演出层**（vivid：最新点呼吸光圈 + 彗星尾 + 扫掠光，Animated JS driver）；叠加线 **[叠全][PSS][CPU][GPU][温度][功耗]**（**叠全最左**，大王裁定）点按切换，右端接峰值
+  - 指标行：横向排列 CPU%/GPU%/频率/温度/功耗/步耗时（flexWrap 网格，每行 5 项）+ `[历史 ▷]` 入口；v1.2 面板去灰底改 hairline 顶部细线分隔（透明融入预览卡），卡片加宽（taskPage padding 6）+ 字号收紧（胶囊/标签 10pt、数值 11pt）根治手机端截切；**B43 分级色**：温度/功耗/CPU 频/GPU 频/步耗时全部按档变色（阈值见 §9.2），正常继承中性色不再全黑
   - 数据缺失（未就绪）：显示 `--`，不报错不兜底文案
 - **落盘与回放**（PERF_BENCHMARK_DESIGN）：任务级 JSONL（`DocumentDirectory/perf/perf_<taskId>.jsonl`，首行 meta）——任务开始建文件、1Hz append、结束补 summary；`[历史 ▷]` → PerfHistoryModal（列表 → 回放曲线 + 统计卡 + 跑分卡）；保留最近 50 条
 - **生命周期**：轮询随 syncPoll 启停（generating/loading 驱动）；停止时清空实时历史（落盘数据独立保留）
 - **红线**：零新依赖（RN View 自绘 + sysfs/系统 API，无图表库）；Screen 层零直连，数据经 imageGenStore 单通道；颜色走 theme token + 本规范登记语义色
-- **testID**：perf-panel / perf-expand / perf-pss / perf-cpu / perf-temp / perf-gpu / perf-history
+- **testID**：perf-panel / perf-expand / perf-pss / perf-cpu / perf-temp / perf-gpu / perf-history / perf-overlay-chip-* / perf-legend / perf-area-chart / perf-chart-pulse / perf-chart-sweep
 
-### 9.1 跑分卡分数体系（PERF_BENCHMARK_DESIGN §4.3）
+### 9.2 B43 指标分级阈值（分级色注册表：正常继承中性 / 警告橙 #F5A623 / 危险红 theme.colors.error，不造新色）
+
+| 指标 | 警告阈 | 危险阈 | 方向 |
+|---|---|---|---|
+| PSS | >5GB | >6GB | 高于（HyperOS 硬杀线 6291456kb 实测） |
+| CPU/GPU 负载 | ≥60% | ≥85% | 高于 |
+| 温度 | ≥45°C | ≥55°C | 高于 |
+| 功耗 | ≥7W | ≥10W | 高于 |
+| CPU 频率 | <2.0GHz | <1.5GHz | 低于（降频警戒） |
+| GPU 频率 | <500MHz | <300MHz | 低于（降频警戒） |
+| 步耗时 | ≥12s | ≥20s | 高于 |
+
+温度热力带色点：30°C 复用 GPU 绿 #81C784 → 45°C PERF_WARN 橙 #F5A623 → 60°C error 红（三段插值，均既有语义色）。
+
+### 9.3 跑分卡分数体系（PERF_BENCHMARK_DESIGN §4.3）
 
 ```
 综合分 = w1×内存安全 + w2×温控 + w3×稳定性（无 stepTime 数据时三项）；有同模型速度基线时加 w4×速度

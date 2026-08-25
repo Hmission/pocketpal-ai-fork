@@ -178,4 +178,66 @@ describe('PerfPanel（v2 横版专业面板）', () => {
     const {getByTestId} = render(<PerfPanel />);
     expect(getByTestId('perf-pss').props.children).toBe('4.2 GB');
   });
+
+  // ── B43 坐标轴/复合图/分级色/叠全置左（大王反馈收窄）──
+  it('「叠全」chip 置于最左（大王裁定：默认项排最前）', () => {
+    const {getAllByTestId} = render(<PerfPanel />);
+    const chips = getAllByTestId(/perf-overlay-chip-/);
+    expect(chips[0].props.testID).toBe('perf-overlay-chip-all');
+    expect(chips[1].props.testID).toBe('perf-overlay-chip-pss');
+  });
+
+  it('B43 叠全默认展示图例行 + 演出层；切单通道后图例行隐藏', () => {
+    runInAction(() => {
+      imageGenStore.perf = FULL_SNAP;
+      imageGenStore.perfHistory = [
+        FULL_SNAP,
+        {...FULL_SNAP, pssKb: 5 * GB},
+        {...FULL_SNAP, pssKb: 4.5 * GB},
+      ];
+    });
+    const {getByTestId, queryByTestId, unmount} = render(<PerfPanel />);
+    expect(getByTestId('perf-legend')).toBeTruthy(); // 图例行在场（紫色线=功耗可读）
+    // 图表宽需 layout 事件驱动（jest 环境不自触发）；触发后演出层才渲染
+    fireEvent(getByTestId('perf-area-chart'), 'layout', {
+      nativeEvent: {layout: {width: 320, height: 88}},
+    });
+    expect(getByTestId('perf-chart-pulse')).toBeTruthy(); // 呼吸光圈演出层在场
+    unmount();
+    const again = render(<PerfPanel />);
+    fireEvent.press(again.getByTestId('perf-overlay-chip-cpu'));
+    expect(again.queryByTestId('perf-legend')).toBeNull();
+  });
+
+  it('B43 指标分级色：温度/功耗/CPU 频超标显警告橙，危险档显红', () => {
+    runInAction(() => {
+      imageGenStore.perf = {
+        ...FULL_SNAP,
+        tempGpuC: 48, // ≥45°C 橙
+        powerMw: 8000, // ≥7W 橙
+        cpuFreqMhz: 1800, // <2.0GHz 降频橙
+      };
+    });
+    const {getAllByText, unmount} = render(<PerfPanel />);
+    const collectColors = (label: string): string[] =>
+      getAllByText(label).flatMap((n: any) =>
+        (Array.isArray(n.props.style) ? n.props.style : [n.props.style]).map(
+          (s: any) => s?.color,
+        ),
+      );
+    expect(collectColors('48°C')).toContain('#F5A623'); // 温度警告橙
+    expect(collectColors('8.0W')).toContain('#F5A623'); // 功耗警告橙
+    expect(collectColors('1.8GHz')).toContain('#F5A623'); // 降频警告橙
+    unmount();
+    runInAction(() => {
+      imageGenStore.perf = {...FULL_SNAP, tempGpuC: 58}; // ≥55°C 危险红
+    });
+    const danger = render(<PerfPanel />);
+    const dangerColors = danger.getAllByText('58°C').flatMap((n: any) =>
+      (Array.isArray(n.props.style) ? n.props.style : [n.props.style]).map(
+        (s: any) => s?.color,
+      ),
+    );
+    expect(dangerColors).toContain('#FF653F'); // error 红（浅模式）
+  });
 });
