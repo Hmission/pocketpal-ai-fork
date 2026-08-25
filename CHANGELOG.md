@@ -8,6 +8,7 @@
 ## [Unreleased]
 
 ### 跑分演出与基准测试总控
+- 基准套件真机全链路验证通过 + 标准负载契约三次修订（2026-08-25，K90 人类模拟路径 + DRC 导航，PERF_BENCHMARK_DESIGN v0.7）：①诚实失败路径 ×3 验证（聊天/生图模型未加载、推理超时，均复位无半态）；②契约血证修订：LLM 用例新建「基准测试」会话（旧会话 3595 tokens 携带致超时）+ 思考模式显式 completionSettings 钉死关（同机开 >600s/关 77s；override 不入会话参数实证）+ 生图赛道改 generateDreamLiteEntry 页面同源入口（自带按需加载，免双引擎常驻预载）；③全套件跑通：LLM 77s（10.0 tok/s）→ 生图 54.0s（11.6 s/步）→ 耐久 42.4/46.7/42.5s，总时长 4m23s，综合分 46 · 段位走地鸡（MEM 0=双引擎常驻 PSS 峰值破 6GB 硬杀线 / THM 100 / STB 53 / SPD 无基线诚实置灰）；④分享链路验证：系统分享面板唤起 + 文本摘要正确；浅深双模式截图存档；G5：双引擎常驻 PSS 5.76GB 实证；⑤设备侧铁证：HyperOS 双引擎常驻触发 OEM 内存配额 signal 9 杀进程——跑分软件本身成为内存安全分的活证据
 - 跑分演出升级与基准测试总控（2026-08-24，B39，PERF_BENCHMARK_DESIGN §10 v0.6，大王裁定：跑分是安慰剂，过程才是药效）：6D 洋葱排查收敛后六波长链落地——①PerfMotion 统一动效引擎（AnimatedNumber 追式缓动首帧锚定不演假动画/保留真实毛刺、OdometerNumber 逐位翻滚、ScoreReveal 揭幕狂飙+光圈+震动，三页共用；跑分金复用 brandAccent 不造新 token）；②聊天页升级不重造：footer 行2 数值接动效 + tok/s 迷你速率条，PendingIndicator 阶段色条（既有 token 二态）+ 心跳波形（卡住/停止平坦=诚实）+ 工具期差分速率（复用 1s 心跳零新定时器）；③生图页 PerfPanel 条形图→SVG 折线渐变面积图（5/6GB 阈值虚线+峰值打标，预览卡片内不溢出红线保持）+ 全数字动效 + 胶囊负载分档变色（砍步耗时环：无分母不画假环）；④基准页原地改造三用例总控台（推理/生图/耐久，自动导航到聊天页/生图页跑真实负载，复用 registerChatSender 调度链 + imageGenStore.generate 零新链路，1Hz 随采→perfScore SSOT 四轴雷达+段位走地鸡/战斗鸡/神鸡，HUD 条可终止）；砍除链：api/benchmark.ts 云提交整体删除、bench() 合成负载/高级参数/双内存通道删除、旧协议结果诚实标记不洗数据；⑤跑分卡分享：纯 JS 像素光栅化（七段码+5×7 点阵，零依赖零用户内容）+ RN 内置 Share（url+文本双带）——不发公网，成绩只住手机里；⑥l10n benchmark.suite 段 en/zh/zh_Hant 三语。门禁：tsc 0 错 + 新增 40+ 用例全绿 + l10n validate；待真机验证（套件全流程+分享+浅深双模式）
 
 ### 生图性能

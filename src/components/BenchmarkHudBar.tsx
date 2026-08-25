@@ -20,6 +20,16 @@ export const BenchmarkHudBar: React.FC = observer(() => {
   if (!suiteRunning) {
     return null;
   }
+  // 用例 key → l10n 标签（与 BenchmarkScreen 同源映射；非用例文案原样透传）
+  const labels = l10n.benchmark.suite.labels as Record<string, string>;
+  const CASE_LABEL_KEY: Record<string, string> = {
+    llm: 'inferSpeed',
+    gen: 'genSpeed',
+    endurance: 'endurance',
+  };
+  const caseText = CASE_LABEL_KEY[suiteBanner]
+    ? labels[CASE_LABEL_KEY[suiteBanner]] ?? suiteBanner
+    : suiteBanner;
   return (
     <View
       style={{
@@ -43,7 +53,7 @@ export const BenchmarkHudBar: React.FC = observer(() => {
         }}
         numberOfLines={1}>
         {l10n.benchmark.suite.hudRunning}
-        {suiteBanner ? ` · ${suiteBanner}` : ''}
+        {caseText ? ` · ${caseText}` : ''}
       </Text>
       <TouchableOpacity
         onPress={() => benchmarkOrchestrator.abort()}

@@ -1,6 +1,6 @@
 # 专业跑分面板设计（PERF_BENCHMARK_DESIGN）
 
-> 状态：**v0.6 代码落地（W1-W6 完成，待真机验证）** | 版本：0.6 | 2026-08-24
+> 状态：**v0.7 真机全链路验证通过（K90 全套件跑通）** | 版本：0.7 | 2026-08-25
 > 定位：生图/视频「跑分软件」玩法升级——从 4 指标实时面板 → 专业多维跑分 + 数据落盘回放
 > 方法论：写轮眼（同行调研）+ 自学习（内部基线实证）
 > v0.2：面板形态修正——嵌于预览卡片下半截的**横版紧凑布局**（md 图表，弃竖状全屏/图片原型）
@@ -253,16 +253,18 @@ interface PerfSnapshotV2 {
 - **模型加载时长不入分**：用例直跑当前已加载模型；无模型时引导加载，加载时长单列显示。
 - **温控耐久**：热量事前告知 + 随时可终止。
 
-### 10.8 标准负载契约（全链只读，W1 定稿）
+### 10.8 标准负载契约（全链只读；v0.7 真机血证三次修订）
 
 | 项 | 值 |
 |---|---|
 | 聊天用例 prompt | 「用一段话介绍小黄鸡。」（固定，不改写不追加） |
-| 聊天用例模型 | 当前已加载激活模型（不切换） |
-| 生图用例引擎 | DreamLite（当前挂载参数） |
-| 生图用例规格 | 512×512 · 默认步数 · seed=42 |
+| 聊天用例会话 | **新建「基准测试」会话**（旧会话历史上下文不可控：实测 3595 tokens 携带致 300s 超时） |
+| 聊天用例思考模式 | **钉死关**（显式 completionSettings：enable_thinking=false + reasoning.enabled=false；同机思考开 >600s / 关 77s，override 不入会话参数是真机实证） |
+| 聊天用例模型 | 当前已加载激活模型（不切换）；超时 600s |
+| 生图用例引擎 | DreamLite，走 `generateDreamLiteEntry` 页面同源入口（自带按需加载，避免双引擎常驻预载） |
+| 生图用例规格 | 512×512 · 4 步 · 无显式 seed（DreamLite flow matching 契约，页面同口径） |
 | 耐久轮数 | N=3（温升采样起点→每轮结束） |
-| 分数口径 | perfScore §4.3 公式（不新增分项） |
+| 分数口径 | perfScore §4.3 公式（不新增分项；速度轴无同模型基线时诚实为 null，雷达置灰「—」） |
 
 ### 10.9 跑分卡分享（W6，全链路新建——全仓当前无 Share 通道，生图分享已移除）
 
@@ -294,4 +296,5 @@ interface PerfSnapshotV2 {
 | 2026-08-23 | 0.3 | **四阶段全部落地**（长链执行）：P1 HardwareInfoModule 六指标 sysfs 探测；P2 PerfPanel 横版化（胶囊行/叠加线/指标行/设备小字）；P3 perfRecorder JSONL 落盘 + store 生命周期接线；P4 PerfHistoryModal 回放（播放光标/统计卡/跑分卡）+ perfScore 分数体系。门禁：tsc 0 / jest 23 新增全绿 / Gradle SUCCESS；待真机验证（K90 GPU 负载/功耗读数 + 落盘回放） |
 | 2026-08-24 | 0.4 | 三修：①实时数据恒 `--` 根治（syncPoll 挂入 nightTaskReaction）；②卡片加宽（taskPage padding 16→10）；③底行显示不全根治（flexWrap 换行网格） |
 | 2026-08-24 | 0.5 | **演出层升级与基准测试总控规划定稿**（§10）：6D 排查收敛——零新建 store（扩展 BenchmarkStore）、砍 bench() 合成负载与双内存通道、砍云提交链、用例 4→3、雷达 4 轴对齐 perfScore；PerfMotion 统一动效引擎；标准负载契约；CP-APP-012 + 星图 benchmark 域登记；W1-W6 波次 |
-| 2026-08-24 | 0.6 | **W1-W6 代码全部落地**：①PerfMotion 三件（AnimatedNumber 追式缓动首帧锚定不演假动画 / OdometerNumber 逐位翻滚 / ScoreReveal 揭幕+光圈+震动，跑分金复用 brandAccent 不造新 token）；②聊天页 footer 行2 数值接动效 + tok/s 迷你速率条；PendingIndicator 阶段色条（info/domain.tools 二态）+ 心跳波形（卡住平坦）+ 工具期差分速率；③PerfPanel 折线渐变面积图（5/6GB 阈值虚线 + 峰值打标）+ 全数字动效 + 胶囊负载分档变色（砍步耗时环：无分母不画假环）；④总控台：benchmarkOrchestrator 三用例真实负载（复用 registerChatSender 槽 + imageGenStore.generate，零新链路）+ 四轴雷达 + 段位 + HUD 条（聊天/生图页挂载）；砍除链落地：api/benchmark.ts 删除、UIStore.benchmarkShareDialog 删除、bench()/高级参数/双内存通道删除、旧协议诚实标记；⑤跑分卡分享：纯 JS 像素光栅化（七段码 + 5×7 点阵，零依赖零用户内容）+ RN 内置 Share（url+文本双带）；⑥l10n：benchmark.suite 段 en/zh/zh_Hant 落地，其余语言自动回退英文（既有机制）。门禁：tsc 0 / jest 新增 40+ 全绿 / l10n validate 通过；全量回归仅 modelCatalog 旧基线恒败（已登记）。待真机验证（套件全流程 + 分享 + 浅深双模式） |
+| 2026-08-24 | 0.6 | **W1-W6 代码全部落地**：①PerfMotion 三件（AnimatedNumber 追式缓动首帧锚定不演假动画 / OdometerNumber 逐位翻滚 / ScoreReveal 揭幕狂飙+光圈+震动，三页共用；跑分金复用 brandAccent 不造新 token）；②聊天页 footer 行2 数值接动效 + tok/s 迷你速率条；PendingIndicator 阶段色条（info/domain.tools 二态）+ 心跳波形（卡住平坦）+ 工具期差分速率；③PerfPanel 折线渐变面积图（5/6GB 阈值虚线 + 峰值打标）+ 全数字动效 + 胶囊负载分档变色（砍步耗时环：无分母不画假环）；④总控台：benchmarkOrchestrator 三用例真实负载（复用 registerChatSender 槽 + imageGenStore.generate，零新链路）+ 四轴雷达 + 段位 + HUD 条（聊天/生图页挂载）；砍除链落地：api/benchmark.ts 删除、UIStore.benchmarkShareDialog 删除、bench()/高级参数/双内存通道删除、旧协议诚实标记；⑤跑分卡分享：纯 JS 像素光栅化（七段码 + 5×7 点阵，零依赖零用户内容）+ RN 内置 Share（url+文本双带）；⑥l10n benchmark.suite 段 en/zh/zh_Hant 三语。门禁：tsc 0 / jest 新增 40+ 全绿 / l10n validate 通过；待真机验证（套件全流程 + 分享 + 浅深双模式） |
+| 2026-08-25 | 0.7 | **真机全链路验证通过（K90，人类模拟路径 + DRC 导航，scrcpy 监督）**：①诚实失败路径 ×3 验证（聊天模型未加载/生图模型未加载/推理超时，均复位无半态）；②标准负载契约真机血证三次修订：旧会话 3595 tokens 致 300s 超时 → 新会话；思考开 >600s/关 77s → completionSettings 钉死（override 不入会话参数实证）；生图赛道改 generateDreamLiteEntry 同源入口（自带按需加载，免双引擎常驻预载）；超时 300→6000s；③全套件跑通：LLM 77s（10.0 tok/s）→ 生图 54.0s（11.6 s/步）→ 耐久 42.4/46.7/42.5s，总时长 4m23s，综合分 46 · 段位走地鸡（MEM 0=双引擎常驻 PSS 峰值破 6GB 硬杀线 / THM 100 / STB 53 / SPD -- 无基线诚实置灰）；④分享面板验证：系统分享唤起 + 文本摘要「Pocket Chick Benchmark — Total 46/100 (MEM 0 · SPD -- · THM 100 · STB 53) · FREE RANGE CHICK」；⑤浅深双模式截图存档（.tmp/b39_*.png）；⑥G5：双引擎常驻 PSS 5.76GB 实证（逼近硬杀线，印证内存分项口径）；⑦HUD 用例标签 l10n 映射修复（raw key → 推理速度/生图速度/温控耐久）；设备侧铁证：HyperOS 双引擎常驻触发 OEM 内存配额 signal 9 杀进程（跑分软件本身成为内存安全分的活证据） |

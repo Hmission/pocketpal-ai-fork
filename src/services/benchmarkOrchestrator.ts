@@ -12,7 +12,11 @@
 import {v4 as uuidv4} from 'uuid';
 
 import {benchmarkStore} from '../store/BenchmarkStore';
-import {chatSessionStore, modelStore} from '../store';
+import {
+  chatSessionStore,
+  modelStore,
+  defaultCompletionSettings,
+} from '../store';
 import {imageGenStore} from '../store/imageGenStore';
 import {getChatSender} from '../debug/actionRegistry';
 import NativeHardwareInfo from '../specs/NativeHardwareInfo';
@@ -24,10 +28,10 @@ import type {BenchmarkResult} from '../utils/types';
 // ── 标准负载契约（§10.8，全链只读）──
 export const BENCH_LLM_PROMPT = '用一段话介绍小黄鸡。';
 export const BENCH_GEN_PROMPT = 'a cute baby chick on green grass, sunlight';
-export const BENCH_GEN_SEED = 42;
+/** DreamLite 标准步数（与生图页默认同口径，§10.8 契约） */
+export const BENCH_DREAM_STEPS = 4;
 export const BENCH_ENDURANCE_ROUNDS = 3;
-const LLM_CASE_TIMEOUT_MS = 300_000;
-const GEN_CASE_TIMEOUT_MS = 20 * 60_000;
+const LLM_CASE_TIMEOUT_MS = 600_000;
 const POLL_MS = 500;
 const SAMPLE_MS = 1000;
 
@@ -128,8 +132,23 @@ class BenchmarkOrchestrator {
     if (!sender) {
       throw new Error('聊天发送槽未就绪（聊天页未挂载）');
     }
+    // 标准负载契约（§10.8，真机血证三条）：
+    // ① LLM 用例在新会话跑——旧会话历史上下文不可控（实测 3595 tokens 致超时）；
+    // ② 思考模式钉死关——同设备同模型思考开 >600s / 思考关 52s，跑分要可比基线；
+    //   （override 不入会话参数，真机实证：必须显式 completionSettings 钉死）
+    // ③ 生图走 DreamLite 同源入口（自带按需加载，与页面单通道）。
+    const benchSettings = {
+      ...defaultCompletionSettings,
+      enable_thinking: false,
+      reasoning: {
+        ...(defaultCompletionSettings as {reasoning?: object}).reasoning,
+        enabled: false,
+      },
+    };
+    await chatSessionStore.createNewSession('基准测试', [], benchSettings);
     this.startSampling('bench-llm');
     const beforeCount = chatSessionStore.currentSessionMessages.length;
+    console.log('[BenchSuite] llm 用例发送标准 prompt（新会话）');
     await sender({text: BENCH_LLM_PROMPT});
     // 完成判定：新助手消息带 timings（或 interrupted），且推理结束
     const done = await waitUntil(
@@ -152,8 +171,9 @@ class BenchmarkOrchestrator {
       throw new Error('用户终止');
     }
     if (!done) {
-      throw new Error('推理用例超时（300s）');
+      throw new Error('推理用例超时（600s）');
     }
+    console.log('[BenchSuite] llm 用例完成，读取时序链');
     const latest = chatSessionStore.currentSessionMessages[0];
     const timings = latest?.metadata?.timings;
     if (!timings?.predicted_per_second) {
@@ -165,25 +185,48 @@ class BenchmarkOrchestrator {
     };
   }
 
-  // ── 用例 2/3：生图速度 / 温控耐久（同一赛道，导航一次）──
+  // ── 用例 2/3：生图速度 / 温控耐久（DreamLite 单通道，与页面同源）──
   private async runGenRounds(nav: BenchNav, rounds: number): Promise<void> {
-    if (!imageGenStore.modelLoaded && !imageGenStore.dreamliteLoaded) {
-      throw new Error('生图模型未加载——请先在生图页加载模型再跑分');
-    }
     benchmarkStore.setCase(rounds > 1 ? 2 : 1, rounds > 1 ? 'endurance' : 'gen');
     nav.navigate(ROUTES.IMAGE_GEN);
-    await waitUntil(() => !imageGenStore.loading, 15_000, () => this.aborted);
+    console.log(`[BenchSuite] 生图赛道（${rounds} 轮，DreamLite 入口自带按需加载）`);
     for (let i = 0; i < rounds; i++) {
       if (this.aborted) {
         throw new Error('用户终止');
       }
+      const roundStart = Date.now();
       this.startSampling(rounds > 1 ? `bench-endure-${i + 1}` : 'bench-gen');
-      const uri = await imageGenStore.generate(BENCH_GEN_PROMPT, {
+      let uri: string | null = null;
+      // 任务化与页面同源：beginTask → generateDreamLiteEntry → finish/fail
+      const taskId = await imageGenStore.beginTask({
+        uri: '',
+        prompt: BENCH_GEN_PROMPT,
+        seed: 0, // DreamLite flow matching 无显式 seed（页面同口径）
+        ts: Date.now(),
         width: 512,
         height: 512,
-        seed: BENCH_GEN_SEED,
+        steps: BENCH_DREAM_STEPS,
+        family: 'dreamlite',
+        kind: 'generated',
+        modelLabel: 'DreamLite',
       });
-      this.stopSampling();
+      try {
+        uri = await imageGenStore.generateDreamLiteEntry(
+          512,
+          512,
+          BENCH_DREAM_STEPS,
+          BENCH_GEN_PROMPT,
+        );
+        if (uri) {
+          await imageGenStore.finishTask(taskId, uri, {
+            durationMs: Date.now() - roundStart,
+          });
+        } else {
+          await imageGenStore.failTask(taskId, '生成失败', '基准套件生图用例');
+        }
+      } finally {
+        this.stopSampling();
+      }
       if (this.aborted) {
         throw new Error('用户终止');
       }
@@ -192,9 +235,22 @@ class BenchmarkOrchestrator {
           `生图用例失败（第 ${i + 1} 轮）：${imageGenStore.error ?? '未知错误'}`,
         );
       }
-      // 步耗时均值：总时长/步数不可得时退化为末次采样值（真实数据，不编造）
-      const wallSec = (Date.now() - imageGenStore.genStartedAt) / 1000;
-      this.stepAvgs.push(imageGenStore.stepTime > 0 ? imageGenStore.stepTime : wallSec);
+      // 步耗时均值：本轮窗口内 stepTime>0 采样点的均值（真实采集）；
+      // 无采样点时退化为总时长/步数（不造假，口径可解释）
+      const pts = this.points.filter(
+        p => p.ts >= roundStart && p.stepTime > 0,
+      );
+      const stepAvg =
+        pts.length > 0
+          ? pts.reduce((a, p) => a + p.stepTime, 0) / pts.length
+          : (Date.now() - roundStart) / 1000 / BENCH_DREAM_STEPS;
+      this.stepAvgs.push(stepAvg);
+      console.log(
+        `[BenchSuite] 生图第 ${i + 1}/${rounds} 轮完成：${(
+          (Date.now() - roundStart) /
+          1000
+        ).toFixed(1)}s`,
+      );
     }
   }
 
