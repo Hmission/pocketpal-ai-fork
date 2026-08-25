@@ -82,7 +82,7 @@ interface DropdownProps {
   stage: string;
   generating: boolean;
   modelsDir: string;
-  /** 08-18：设备不兼容判定（requiresHighGpu 模型在 740 级 GPU 灰置） */
+  /** 设备不兼容判定（单点在 ImageGenScreen：按 manifest.gpuPolicy 声明式矩阵灰置） */
   isIncompatible?: (entry: ModelEntry) => boolean;
   onToggleDrop: () => void;
   onSelectModel: (entry: ModelEntry) => void;

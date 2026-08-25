@@ -138,7 +138,7 @@ class ImageGenStore {
   private outDir = '';
   /** 当前引擎后端（manifest 透传：'CPU' | 'OpenCL' | 'Vulkan'；空走引擎默认 CPU） */
   backend: string | null = null;
-  /** 08-18：GPU renderer（设备兼容性分级：requiresHighGpu 模型在 740 级灰置） */
+  /** GPU renderer（设备兼容性分级：按 manifest.gpuPolicy 声明式矩阵灰置，判定单点在 ImageGenScreen） */
   gpuRenderer = '';
   /** ADR-0008 跑分面板：最近一次性能快照（PSS/CPU/温度，1Hz） */
   perf: PerfSnapshot | null = null;

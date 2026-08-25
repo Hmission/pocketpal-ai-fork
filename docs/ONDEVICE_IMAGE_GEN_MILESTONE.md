@@ -64,6 +64,7 @@
   - **Vulkan 换道探针结论（2026-08-24，负）**：Mali-G925 Vulkan 能力上报良好（fp16:1）且模型加载成功，但 TE 编码即崩（ggml-vulkan.cpp:7539 descriptor_set_idx 断言，去 graph-cut 后仍崩）——sd.cpp Runner 动态图与 ggml-vulkan 描述符生命周期不兼容，引擎级非驱动锅；「Adreno 零成功」结论泛化为整个 sd.cpp+ggml-vulkan 组合。提速主攻转 OpenCL Mali 内核调优/半精度变体（MASTER_LOG §86）
   - **B 线基准修正（2026-08-24）**：上述「4 步 ~10.4 分钟」为冷启动含首编水位；kernel cache 预热后稳态实测 **~113 s/步**（512×768，步2/3，MASTER_LOG §88），折合 512² 约 72 s/步。B1 三变量排除矩阵（§88）：workgroup 16→32 零收益、图分段 26→1 仅 -2.7%、flash attention -10% 反噬——配置层杠杆耗尽，瓶颈定论在 fp32 通用 GEMM 内核本身
   - **B2 半精度攻坚大捷（2026-08-25，已转正）**：[CLPROF] 算子级探针实锤热点 mul_mm_q4_k/q5_k_f32_l4_lm（71.1%）+ mul_mm_f32_f32_l4_lm（7.6%）；三内核同法半精度化（half 缓冲 + half 乘法 + fp32 累加，PP_MALI_FP16_LM 门控升为 Mali 默认）。实测：512² **69→24.2 s/步（2.86x）**、512×768 **113→33 s/步（3.42x）**，画质无损（nan=0、值域 ±5）。**平板用 1.5 倍像素量打平 K90（Adreno 840）步速——天玑不再落后高通**（§90.8/90.9）
+  - **FLUX.2 Klein 平板准入（2026-08-25，§91）**：四线侦察（门控/引擎/内核/内存）后链路全通——gpuPolicy 声明式矩阵（废 requiresHighGpu）+ q4_0 l4_lm 半精度变体 + ``params_backend="te=disk"`` 解 TE+DiT 同驻留超配额（7.83GB→存活）；全链 296.77s、采样 35.4 s/步、nan=0。出图马赛克经 Mali+Adreno 双端交叉定罪到 leejet Q4_0 量化本身（非设备/内核锅），实验标挂起待换更优量化。Z-Image 维持三重锁（6.9GB 硬顶 + 740 hang + GDN 断言）不打
 - **结论**：模型可用性评估必须以 GPU 等级为准；6.9GB 权重（Z-Image）仅 Adreno 840 级可承载（Mali 上 GDN 内核不支持，不做）
 
 ### 3.4 长时生成 ANR 守护

@@ -1250,10 +1250,21 @@ export const ImageGenScreen: React.FC = observer(() => {
         stage={imageGenStore.stage}
         generating={imageGenStore.generating}
         modelsDir={AIOS_MODELS_DIR}
-        isIncompatible={entry =>
-          entry.manifest.requiresHighGpu === true &&
-          !/Adreno \(TM\) [89]\d\d/.test(imageGenStore.gpuRenderer)
-        }
+        isIncompatible={entry => {
+          // GPU 准入单点判定（声明式矩阵见 imageGenManifest.GpuPolicy，实测准入非推测）
+          const policy = entry.manifest.gpuPolicy;
+          if (!policy) {
+            return false;
+          }
+          const adrenoHigh = /Adreno \(TM\) [89]\d\d/.test(
+            imageGenStore.gpuRenderer,
+          );
+          if (policy === 'high-adreno-only') {
+            return !adrenoHigh;
+          }
+          // high-adreno-or-mali：Mali 准入限已验证机型路径（K Pad 2026-08-25 实测）
+          return !adrenoHigh && !/Mali/.test(imageGenStore.gpuRenderer);
+        }}
         onToggleDrop={() => setShowModelDrop(v => !v)}
         onSelectModel={handleSelectModel}
         onRowAction={handleRowAction}

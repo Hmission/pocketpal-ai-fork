@@ -9,6 +9,17 @@
 #define TM 4
 #define TN 8
 
+// 8-25 Klein-on-Mali: same fp16 treatment as the q4_k/q5_k/f32 variants.
+// Klein DiT (Q4_0) rides this tiled GEMM ([CLPROF] lineage verified).
+// Gate shared: -DPP_MALI_FP16_LM (runtime env GGML_OPENCL_MALI_FP16_LM).
+#ifdef PP_MALI_FP16_LM
+typedef half pp_buf_t;
+#define PP_STORE(x) ((half)(x))
+#else
+typedef float pp_buf_t;
+#define PP_STORE(x) (x)
+#endif
+
 kernel void kernel_mul_mm_q4_0_f32_l4_lm(
     global uchar4 * src0_q,
     global half   * src0_d,
@@ -37,8 +48,8 @@ kernel void kernel_mul_mm_q4_0_f32_l4_lm(
     src1 = (global float4*)((global char*)src1 + offset1);
     dst  = (global float *)((global char*)dst  + offsetd);
 
-    local float buf_a[BM * BK];
-    local float buf_b[BN * BK];
+    local pp_buf_t buf_a[BM * BK];
+    local pp_buf_t buf_b[BN * BK];
 
     const int batch_idx = get_global_id(2);
 
@@ -69,8 +80,8 @@ kernel void kernel_mul_mm_q4_0_f32_l4_lm(
     int pos_b = (batch_idx   * batch_stride_b + ic * BN * stride_b) / LOAD_VEC_B;
 
     float sums[TM * TN];
-    float cache_a[TM];
-    float cache_b[TN];
+    pp_buf_t cache_a[TM];
+    pp_buf_t cache_b[TN];
 
     for (int i = 0; i < TM * TN; i++) {
         sums[i] = 0.0f;
@@ -89,38 +100,38 @@ kernel void kernel_mul_mm_q4_0_f32_l4_lm(
                 float4 v1 = (convert_float4((uchar4)((q.s0   )&0x0F, (q.s1   )&0x0F, (q.s2   )&0x0F, (q.s3   )&0x0F)) - 8.0f)*d;
                 float4 v2 = (convert_float4((uchar4)((q.s0>>4)&0x0F, (q.s1>>4)&0x0F, (q.s2>>4)&0x0F, (q.s3>>4)&0x0F)) - 8.0f)*d;
 
-                buf_a[(loadr_a * 4 +  0) * BM + loadc_a + l] = v1.s0;
-                buf_a[(loadr_a * 4 +  1) * BM + loadc_a + l] = v1.s1;
-                buf_a[(loadr_a * 4 +  2) * BM + loadc_a + l] = v1.s2;
-                buf_a[(loadr_a * 4 +  3) * BM + loadc_a + l] = v1.s3;
-                buf_a[(loadr_a * 4 + 16) * BM + loadc_a + l] = v2.s0;
-                buf_a[(loadr_a * 4 + 17) * BM + loadc_a + l] = v2.s1;
-                buf_a[(loadr_a * 4 + 18) * BM + loadc_a + l] = v2.s2;
-                buf_a[(loadr_a * 4 + 19) * BM + loadc_a + l] = v2.s3;
+                buf_a[(loadr_a * 4 +  0) * BM + loadc_a + l] = PP_STORE(v1.s0);
+                buf_a[(loadr_a * 4 +  1) * BM + loadc_a + l] = PP_STORE(v1.s1);
+                buf_a[(loadr_a * 4 +  2) * BM + loadc_a + l] = PP_STORE(v1.s2);
+                buf_a[(loadr_a * 4 +  3) * BM + loadc_a + l] = PP_STORE(v1.s3);
+                buf_a[(loadr_a * 4 + 16) * BM + loadc_a + l] = PP_STORE(v2.s0);
+                buf_a[(loadr_a * 4 + 17) * BM + loadc_a + l] = PP_STORE(v2.s1);
+                buf_a[(loadr_a * 4 + 18) * BM + loadc_a + l] = PP_STORE(v2.s2);
+                buf_a[(loadr_a * 4 + 19) * BM + loadc_a + l] = PP_STORE(v2.s3);
             } else {
-                buf_a[(loadr_a * 4 +  0) * BM + loadc_a + l] = 0.0f;
-                buf_a[(loadr_a * 4 +  1) * BM + loadc_a + l] = 0.0f;
-                buf_a[(loadr_a * 4 +  2) * BM + loadc_a + l] = 0.0f;
-                buf_a[(loadr_a * 4 +  3) * BM + loadc_a + l] = 0.0f;
-                buf_a[(loadr_a * 4 + 16) * BM + loadc_a + l] = 0.0f;
-                buf_a[(loadr_a * 4 + 17) * BM + loadc_a + l] = 0.0f;
-                buf_a[(loadr_a * 4 + 18) * BM + loadc_a + l] = 0.0f;
-                buf_a[(loadr_a * 4 + 19) * BM + loadc_a + l] = 0.0f;
+                buf_a[(loadr_a * 4 +  0) * BM + loadc_a + l] = PP_STORE(0.0f);
+                buf_a[(loadr_a * 4 +  1) * BM + loadc_a + l] = PP_STORE(0.0f);
+                buf_a[(loadr_a * 4 +  2) * BM + loadc_a + l] = PP_STORE(0.0f);
+                buf_a[(loadr_a * 4 +  3) * BM + loadc_a + l] = PP_STORE(0.0f);
+                buf_a[(loadr_a * 4 + 16) * BM + loadc_a + l] = PP_STORE(0.0f);
+                buf_a[(loadr_a * 4 + 17) * BM + loadc_a + l] = PP_STORE(0.0f);
+                buf_a[(loadr_a * 4 + 18) * BM + loadc_a + l] = PP_STORE(0.0f);
+                buf_a[(loadr_a * 4 + 19) * BM + loadc_a + l] = PP_STORE(0.0f);
             }
         }
 
         for (int l = 0; l < BN; l += loadstride_b) {
             if (ic*BN + loadc_b + l < ne11) {
                 int idx = pos_b + (loadc_b + l) * stride_b / LOAD_VEC_B + loadr_b;
-                buf_b[(loadr_b * LOAD_VEC_B + 0) * BN + loadc_b + l] = src1[idx].s0;
-                buf_b[(loadr_b * LOAD_VEC_B + 1) * BN + loadc_b + l] = src1[idx].s1;
-                buf_b[(loadr_b * LOAD_VEC_B + 2) * BN + loadc_b + l] = src1[idx].s2;
-                buf_b[(loadr_b * LOAD_VEC_B + 3) * BN + loadc_b + l] = src1[idx].s3;
+                buf_b[(loadr_b * LOAD_VEC_B + 0) * BN + loadc_b + l] = PP_STORE(src1[idx].s0);
+                buf_b[(loadr_b * LOAD_VEC_B + 1) * BN + loadc_b + l] = PP_STORE(src1[idx].s1);
+                buf_b[(loadr_b * LOAD_VEC_B + 2) * BN + loadc_b + l] = PP_STORE(src1[idx].s2);
+                buf_b[(loadr_b * LOAD_VEC_B + 3) * BN + loadc_b + l] = PP_STORE(src1[idx].s3);
             } else {
-                buf_b[(loadr_b * LOAD_VEC_B + 0) * BN + loadc_b + l] = 0.0f;
-                buf_b[(loadr_b * LOAD_VEC_B + 1) * BN + loadc_b + l] = 0.0f;
-                buf_b[(loadr_b * LOAD_VEC_B + 2) * BN + loadc_b + l] = 0.0f;
-                buf_b[(loadr_b * LOAD_VEC_B + 3) * BN + loadc_b + l] = 0.0f;
+                buf_b[(loadr_b * LOAD_VEC_B + 0) * BN + loadc_b + l] = PP_STORE(0.0f);
+                buf_b[(loadr_b * LOAD_VEC_B + 1) * BN + loadc_b + l] = PP_STORE(0.0f);
+                buf_b[(loadr_b * LOAD_VEC_B + 2) * BN + loadc_b + l] = PP_STORE(0.0f);
+                buf_b[(loadr_b * LOAD_VEC_B + 3) * BN + loadc_b + l] = PP_STORE(0.0f);
             }
         }
 
@@ -141,7 +152,12 @@ kernel void kernel_mul_mm_q4_0_f32_l4_lm(
             for (int cc = 0; cc < TN; cc++) {
                 for (int cr = 0; cr < TM; cr++) {
                     const int sums_idx = cc*TM + cr;
+#ifdef PP_MALI_FP16_LM
+                    // half multiply on the fp16 pipe, fp32 accumulate (6.18 NaN lesson).
+                    sums[sums_idx] += (float)(cache_a[cr] * cache_b[cc]);
+#else
                     sums[sums_idx] = mad(cache_a[cr], cache_b[cc], sums[sums_idx]);
+#endif
                 }
             }
         }

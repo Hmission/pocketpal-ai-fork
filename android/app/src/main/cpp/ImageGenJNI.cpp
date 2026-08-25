@@ -434,6 +434,14 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
     // 慢 10%）——OpenCL 通用 flash attention 在 Mali 无专用快路径，开销反噬；出图虽 OK 但值域扩宽（±16 vs ±6）。
     params.diffusion_flash_attn = false;
     params.enable_mmap = false;
+    // 8-25 Klein-on-Mali 内存链：TE（2.5GB）+ DiT（2.46GB）同驻留 + 图切段缓冲 →
+    // PSS 7.83GB 触 MiuiSentinelMemoryManager abort（实测 14:33:32，阈值 ~6GB）。
+    // 锋利解：引擎原生 params_backend 模块级机制，TE 走 disk 驻留——编码时按需流读，
+    // 采样期不驻留（DiT 2.46GB + 缓冲 3GB ≈5.5GB，与 SD3.5 已验证水位同构）。
+    // 仅拆分式（带 llm 的 klein/z_image 系）生效；SD3.5（clip 系）不受影响。
+    if (!llm.empty()) {
+      params.params_backend = "te=disk";
+    }
   }
   // 6.17 顺序卸载探索结论：Z-Image 6.9GB 对小米13（GPU ~2.8G）是硬件上限，
   // cpu residency + stream_layers + graph-cut 各轮延长存活但仍无法跑通（业界亦不在中低端手机跑 6B DiT）。
