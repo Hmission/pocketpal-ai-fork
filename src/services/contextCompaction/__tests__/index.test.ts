@@ -110,9 +110,11 @@ describe('compressSession', () => {
     expect(result!.compactedCount).toBe(6); // 全部可压区间（10-4）
   });
 
-  it('WORKSPACE_SPEC 裁剪一致性：对话文本超预算时 slice 收缩（被压=进摘要）', async () => {
+  it('WORKSPACE_SPEC 裁剪一致性：对话文本超预算时 slice 收缩（被压=进摘要，v1.2 预算随 nCtx 上探）', async () => {
     // 7 条消息（3 轮长 + 1 轮短）：可压区间 3 条（u0/a0/u1 各 ~2500 字），
-    // nCtx 8192 → 预算 min(6000, 7792)=6000 字符 → 裁掉 u1 只压 2 条
+    // nCtx 4096 → 预算 min(12000, 3696)=3696 字符 → 裁掉 a0/u1 只压 1 条 u0
+    // （旧 8192 档预算 6000 可容 2 条——v1.2 预算上限上探后该档容 3 条，
+    //  故用更小 nCtx 保留「超预算收缩」语义）
     const longMsgs: MessageType.Any[] = [
       {...userMsg(0), text: '甲'.repeat(2500)} as MessageType.Text,
       {
@@ -125,13 +127,16 @@ describe('compressSession', () => {
       assistantMsg(2),
       userMsg(3),
     ];
-    const result = await compressSession({messages: longMsgs, nCtx: 8192});
-    // 预算 6000 字符只能容纳前 2 条（2500+2500+前缀）→ 被压消息 = 进摘要的消息
-    expect(result!.compactedCount).toBe(2);
-    expect(result!.compactedMessageIds).toEqual(['u0', 'a0']);
-    expect(mockSummarize.mock.calls[0][0].dialogueText.length).toBeLessThanOrEqual(6000);
-    // 超预算的 u1 未被标记（保持可压区间，下轮续压）
+    const result = await compressSession({messages: longMsgs, nCtx: 4096});
+    // 预算 3696 字符只能容纳首条（2500+前缀）→ 被压消息 = 进摘要的消息
+    expect(result!.compactedCount).toBe(1);
+    expect(result!.compactedMessageIds).toEqual(['u0']);
+    expect(
+      mockSummarize.mock.calls[0][0].dialogueText.length,
+    ).toBeLessThanOrEqual(3696);
+    // 超预算的 a0/u1 未被标记（保持可压区间，下轮续压）
     expect(result!.compactedMessageIds).not.toContain('u1');
+    expect(result!.compactedMessageIds).not.toContain('a0');
   });
 
   it('WORKSPACE_SPEC 裁剪后释放不足且无可裁 → 诚实 null（不静默欠释放）', async () => {
@@ -177,12 +182,13 @@ describe('compressSession', () => {
     expect(mockSummarize).not.toHaveBeenCalled();
   });
 
-  it('B19.1 nCtx 预算裁剪传入 summarizer（min(6000, nCtx-400)）', async () => {
+  it('B19.1 nCtx 预算裁剪传入 summarizer（v1.2 min(12000, nCtx-400)）', async () => {
     await compressSession({messages: tenMessages(), nCtx: 4096});
     expect(mockSummarize.mock.calls[0][0].maxInputChars).toBe(4096 - 400);
     mockSummarize.mockClear();
     await compressSession({messages: tenMessages(), nCtx: 99999});
-    expect(mockSummarize.mock.calls[0][0].maxInputChars).toBe(6000);
+    // v1.2：上限 6000→12000（16K 档一次吃下压到半水位的 slice）
+    expect(mockSummarize.mock.calls[0][0].maxInputChars).toBe(12000);
   });
 
   it('摘要失败返回 null（不标记不落盘）', async () => {

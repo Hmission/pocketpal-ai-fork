@@ -5,6 +5,14 @@ export const WARNING_THRESHOLD = 0.8;
 // Headroom below n_ctx; the full banner auto-clears once a later turn's
 // `used` drops below `effectiveNCtx - AUTOCLEAR_RUNWAY`.
 export const AUTOCLEAR_RUNWAY = 256;
+
+/**
+ * 工具 schema 注入后提示词基线（talent 注册表最坏估算，2026-08-26 从
+ * 策展表注释沉底为常量）：每档策展 n_ctx 门禁必须 ≥ 本基线 + 对话窗 +
+ * 生成预留（见 modelContextDefaults.test.ts 断言，防 4B 档 4096 容不下
+ * 工具基线类矛盾复发；K90 实证旧默认必溢「对话空间已满」）。
+ */
+export const TOOL_BASELINE_TOKENS = 4500;
 // Remote replies shorter than this are never flagged as hedged-truncated.
 export const MIN_REMOTE_TOKENS = 500;
 

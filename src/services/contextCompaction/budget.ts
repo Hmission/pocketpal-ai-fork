@@ -36,6 +36,15 @@ const MESSAGE_OVERHEAD_TOKENS = 8;
 export const GENERATION_RESERVE = 512;
 
 /**
+ * 压缩目标水位（v1.2，2026-08-26 大王裁定）：触发 0.8 → 压缩到半水位，
+ * 一次释放 ~30% 容量（16K ≈ 4.8K token ≈ 10+ 轮对话）。行业对齐
+ * （Claude Code auto-compact / LangChain SummaryBufferMemory：触发
+ * 75-85% → 目标 40-60%）。旧 70% 目标线致「每次只压一两轮」小额滚动、
+ * 摘要碎片化叠加损耗——压缩次数 ≈ 摘要重写次数，越少越好。
+ */
+export const COMPACT_TARGET_WATERMARK = 0.5;
+
+/**
  * B19.1 水位实测校准：字符估算对英文/markdown/符号系统性低估（真机实测
  * 81% banner 时压缩从未触发），而上一轮 native 实测水位
  * （tokens_evaluated + tokens_predicted，deriveSnapshotFromResult）在

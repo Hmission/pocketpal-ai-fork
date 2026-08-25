@@ -3,9 +3,9 @@ doc_id: POCKETPAL_CONTEXT_COMPACTION_SPEC
 module: root
 type: spec
 status: active
-version: "1.1"
+version: "1.2"
 created: "2026-08-19"
-updated: "2026-08-20"
+updated: "2026-08-26"
 relates: [POCKETPAL_CHAT_UI_SPEC, POCKETPAL_MODEL_MATRIX, POCKETPAL_DESIGN_SPEC]
 ---
 
@@ -13,12 +13,14 @@ relates: [POCKETPAL_CHAT_UI_SPEC, POCKETPAL_MODEL_MATRIX, POCKETPAL_DESIGN_SPEC]
 
 # 上下文压缩机制 · SPEC（CONTEXT_COMPACTION_SPEC）
 
-**状态**：active | **版本**：1.1 | **更新**：2026-08-20
+**状态**：active | **版本**：1.2 | **更新**：2026-08-26
 
 > **定位**：本地模型聊天页的上下文治理机制——发送前预算驱动，扩窗优先（内存允许）、
 > 压缩兜底（已到天花板），人机协作、选择记忆（per-model 持久化），全链路可管可控可见。
-> **行业对齐**：Claude Code auto-compact（80% 容量触发、摘要替换旧消息、最近保留）、
-> Codex CLI（per-model 阈值、压缩独立于 LLM 提供商）、OpenCode（非破坏性隐藏）。
+> **行业对齐**：Claude Code auto-compact（80% 容量触发、**压到约 50% 低位一次顶很久**、
+> 摘要替换旧消息、最近保留）、Codex CLI（per-model 阈值、压缩独立于 LLM 提供商）、
+> OpenCode（非破坏性隐藏）。核心共识：触发 75-85% → **目标 40-60%**——压缩次数 ≈
+> 摘要重写次数，重写越多信息损耗越大，小额滚动压缩 = 碎片化（v1.2 修正）。
 > **本地化差异**：扩窗有设备内存成本（KV cache 线性增长，K90/小米 13 实证 OOM 风险），
 > 因此扩窗可行性由内存审计单事实源（hasModelUpgradeFitting）判定，到天花板自动转压缩。
 
@@ -49,15 +51,20 @@ relates: [POCKETPAL_CHAT_UI_SPEC, POCKETPAL_MODEL_MATRIX, POCKETPAL_DESIGN_SPEC]
 
 ## 二、压缩执行（摘要压缩 Summarize-and-Compact）
 
-1. **选区间**：最旧未压缩消息起，预算缺口（目标释放至 70%）驱动条数；预算缺口
-   驱动时突破单次 ≤20 条上限（宁多压不静默欠释放），保护最近 4 条（≈2 轮）；
+1. **选区间**：最旧未压缩消息起，预算缺口（目标释放至半水位 50%：
+   `targetReleaseTokens = used − n_ctx×COMPACT_TARGET_WATERMARK(0.5)`）驱动条数；
+   触发 80% → 压到 50% = 一次释放 ~30% 容量（16K 下 ≈4.8K token ≈ 10+ 轮对话），
+   压缩频率与摘要重写次数降 3-4 倍（v1.2：旧 70% 目标线致「每次只压一两轮」
+   小额滚动、摘要碎片化叠加损耗）；旧版「预算缺口突破单次 ≤20 条上限」随
+   目标线重算自然淘汰（大块语义由水位驱动，条数上限不再必要）。保护最近 4 条（≈2 轮）；
    **B19.1 释放量校验**：保护区外全部压完仍不达预算缺口 → 诚实返回 null
    （剩余消息自身超预算，如保护区巨型消息），避免「压缩了但预算仍超」的静默失效。
 2. **摘要生成**：当前对话模型（复用 extractAndSaveMemories 引擎选择模式，独立摘要 prompt，
    ≤400 字、温度 0.3、n_predict 220）；多次压缩 = 已有摘要 + 中间消息增量重压（单锚点模型）。
-   **B19.1 摘要工作集预算化**：输入按 min(6000, n_ctx−400 token) 1:1 保守折算裁剪
-   （llama.rn ctx_shift 默认 false，prompt ≥ n_ctx 直接硬错；按字符不限 token 时
-   英文/符号内容可自身溢出）——容量约束前置，不靠运行时报错回退。
+   **B19.1 摘要工作集预算化**：输入按 min(12000, n_ctx−400 token) 1:1 保守折算裁剪
+   （v1.2：上限 6000→12000，随 n_ctx 上探——16K 档一次吃下「压到 50%」的 slice，
+   否则 slice 被输入预算裁剪回小额，压缩大块化落空；小 n_ctx 自动收窄不变）；
+   llama.rn ctx_shift 默认 false，prompt ≥ n_ctx 直接硬错，容量约束前置，不靠运行时报错回退。
 3. **落盘三处**：
    - 会话内：被压消息 `metadata.compacted = true`（原文保留，非破坏性）；
      锚点（首条被压消息）`metadata.compaction = {summary, messageIds, count, ts}`。
@@ -103,7 +110,21 @@ relates: [POCKETPAL_CHAT_UI_SPEC, POCKETPAL_MODEL_MATRIX, POCKETPAL_DESIGN_SPEC]
 - 不做满态自动换引擎压缩（B19.1 大王裁定：换模型不是正道；满态走用户主权显式路径）。
 - 不做错误字符串匹配式运行时回退（脆弱且掩盖根因，容量约束前置）。
 
-## 六、B19.1 变更记录（2026-08-20，真机血证链路根治）
+## 六、v1.2 变更记录（2026-08-26，大王裁定「探索上限」+ 「每次只压两轮」复发治理）
+
+背景：策展表按 8-9GB 设备可用内存重排后（见 CHAT_UI_SPEC §18.6 v3.8），16K+
+档位成为常态；旧目标线 70% 在 16K 下每次只释放 ~10% 容量（≈一两轮对话），
+压缩变成高频小额滚动——每 2-4 轮触发一次 LLM 摘要、priorSummary 增量退化为
+整段重写、摘要信息逐次损耗。行业对照（Claude Code auto-compact / LangChain
+SummaryBufferMemory）均为「触发 80% → 压到 40-60%」。
+
+根治三项：
+1. 目标线 70% → **COMPACT_TARGET_WATERMARK=0.5**（一次性压到半水位，一次顶 10+ 轮）；
+2. 摘要输入预算 6000 → **12000 上限随 nCtx 收缩**（大块 slice 完整进摘要）；
+3. 新增 **TOOL_BASELINE_TOKENS=4500** 常量（工具 schema 注入后提示词基线，从
+   注释沉底为代码）——策展门禁断言每档 nCtx ≥ 工具基线 + 2 轮对话 + 生成预留。
+
+## 七、B19.1 变更记录（2026-08-20，真机血证链路根治）
 
 小米 13 DRC 实证：决策 compact 正确触发但压缩执行死锁（摘要请求与主生成
 双硬错「Context is full」）。6D 排查定位三条缝隙合流——估算与实测脱节（D5）、

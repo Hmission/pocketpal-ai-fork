@@ -26,8 +26,6 @@ import {
 } from './src/utils/paths';
 import {ensureStorageAccess} from './src/utils/androidPermission';
 import {promptWriter} from './src/services/promptWriter';
-import {recommendNCtx} from './src/utils/engineGuard';
-import DeviceInfo from 'react-native-device-info';
 import {initIndex} from './src/services/aiosMemory/searchEngine';
 import {useTheme} from './src/hooks';
 import {useDeepLinking} from './src/hooks/useDeepLinking';
@@ -40,7 +38,6 @@ import {ROUTES} from './src/utils/navigationConstants';
 import {
   SidebarContent,
   ModelsHeaderRight,
-  PalHeaderRight,
   HeaderLeft,
   AppWithMigration,
   TTSSetupSheet,
@@ -49,6 +46,7 @@ import {
 } from './src/components';
 import {MarkdownProvider} from './src/components/MarkdownView';
 import {ConfirmDialogHost} from './src/components/ui/ConfirmDialog';
+import {InfoDialogHost} from './src/components/ui/InfoDialog';
 import {ErrorReportDialogHost} from './src/components/ui/ErrorReportDialog';
 import {ModelSwitchDialogHost} from './src/components/ui/ModelSwitchDialog';
 import {IntentPickerHost} from './src/components/ui/IntentPicker';
@@ -62,7 +60,6 @@ import {
   GenerationSettingsScreen,
   BenchmarkScreen,
   AboutScreen,
-  PalsScreen,
   MemoryScreen,
   KnowledgeScreen,
   WorkspaceScreen,
@@ -126,6 +123,7 @@ const AppDrawer: React.FC = () => {
       // 'history' 让 goBack 按访问历史逐层回退（用户既有可用行为）。
       backBehavior="history"
       screenOptions={{
+        // eslint-disable-next-line react/no-unstable-nested-components -- React Navigation API 契约：headerLeft 必须传函数（navigator 内部调用）
         headerLeft: () => <HeaderLeft />,
         headerStatusBarHeight: insets.top,
         drawerStyle: {
@@ -137,6 +135,7 @@ const AppDrawer: React.FC = () => {
         headerTintColor: theme.colors.onBackground,
         headerTitleStyle: styles.headerTitle,
       }}
+      // eslint-disable-next-line react/no-unstable-nested-components -- React Navigation API 契约：drawerContent 必须传函数（navigator 内部调用）
       drawerContent={props => <SidebarContent {...props} />}>
       <Drawer.Screen
         name={ROUTES.CHAT}
@@ -149,6 +148,7 @@ const AppDrawer: React.FC = () => {
         name={ROUTES.MODELS}
         component={gestureHandlerRootHOC(ModelsScreen)}
         options={{
+          // eslint-disable-next-line react/no-unstable-nested-components -- React Navigation API 契约：headerRight 必须传函数（navigator 内部调用）
           headerRight: () => <ModelsHeaderRight />,
           headerStyle: styles.headerWithoutDivider,
           title: currentL10n.screenTitles.models,
@@ -321,15 +321,10 @@ const App = observer(() => {
           await promptWriter.release();
         });
         promptWriter.ensureLoaded().catch(() => {});
-        // 按设备内存预设上下文长度（仅向下保护，不覆盖用户自定义）
-        DeviceInfo.getTotalMemory()
-          .then(total => {
-            const rec = recommendNCtx(total);
-            if (rec < modelStore.contextInitParams.n_ctx) {
-              modelStore.setNContext(rec);
-            }
-          })
-          .catch(() => {});
+        // 2026-08-26：设备内存梯子（recommendNCtx 向下保护）随死代码删除——
+        // 职责已由启动 PSS 审计（auditPerModelNCtxAgainstPss + resolvePssSafeBudget）
+        // 完整覆盖（preset 源越限降最大安全档），旧逻辑还会把全局默认在
+        // 8GB 设备压到 2048（正是「默认上下文都很短」的现役源头之一）。
       });
   }, []);
 
@@ -366,6 +361,7 @@ const App = observer(() => {
                     <DownloadOverlay />
                     <HubRunSheetHost />
                     <ConfirmDialogHost />
+                    <InfoDialogHost />
                     <ErrorReportDialogHost />
                     <ModelSwitchDialogHost />
                     <IntentPickerHost />

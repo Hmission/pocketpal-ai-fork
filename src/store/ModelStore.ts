@@ -1,4 +1,5 @@
 import {AppState, AppStateStatus, Platform, Alert} from 'react-native';
+import {infoDialog} from '../components/ui/InfoDialog';
 import DeviceInfo from 'react-native-device-info';
 
 import {v4 as uuidv4} from 'uuid';
@@ -54,7 +55,6 @@ import {
   CatalogModel,
   catalogEntryById,
   catalogEntryByFilename,
-  catalogEntryTotalBytes,
 } from '../utils/modelCatalog';
 import {
   DownloadSource,
@@ -113,10 +113,13 @@ import {
 import NativeHardwareInfo from '../specs/NativeHardwareInfo';
 import {
   getModelMemoryRequirement,
-  PSS_SAFE_BUDGET,
+  resolvePssSafeBudget,
 } from '../utils/memoryEstimator';
 import {CONTEXT_LADDER} from '../utils/bannerVariantResolver';
-import {defaultNCtxForModel} from '../utils/modelContextDefaults';
+import {
+  CURATED_TABLE_VERSION,
+  defaultNCtxForModel,
+} from '../utils/modelContextDefaults';
 import type {ContextPolicy} from '../services/contextCompaction/decision';
 import {loadLlamaModelInfo} from 'llama.rn';
 import {applyModelStoreMethodGroups} from './modelStoreMethods';
@@ -259,6 +262,8 @@ class ModelStore {
   availableMemoryCeiling: number | undefined = undefined;
   // Updated after successful model load using GGUF estimator
   largestSuccessfulLoad: number | undefined = undefined;
+  // 策展表版本（v2 2026-08-26）：preset 源档位随表版本一次性拉齐的记账字段
+  curatedTableVersion: number | undefined = undefined;
 
   constructor() {
     // models 域拆分（批次4 P3）：方法组挂载必须在 makeAutoObservable 之前，
@@ -287,6 +292,7 @@ class ModelStore {
         'lastAutoReleasedModelId',
         'availableMemoryCeiling',
         'largestSuccessfulLoad',
+        'curatedTableVersion',
       ],
       storage: AsyncStorage,
     }).then(async () => {
@@ -496,13 +502,16 @@ class ModelStore {
     }
     this.setModelNCtx(model.id, defaultNCtxForModel(model), 'preset');
   };
-  
+
   /**
-   * 策展默认一次归一（2026-08-19）：preset 源超策展默认者降档
-   * （旧梯子遗留，如 1B 98304）；user 源不碰（主权）；preset 低于
-   * 策展者是审计的安全决策，不拉回（防与审计乒乓）。
+   * 策展默认归一 + 版本化拉齐（2026-08-19 建立；v2 2026-08-26 升级）：
+   * - preset 源超策展默认者降档（旧梯子遗留污染自愈，如 1B 98304）；
+   * - 策展表版本升级（CURATED_TABLE_VERSION）且 preset 源低于新策展者 →
+   *   一次性升档拉齐（解除旧「只降不升」导致老用户 stuck 旧短值的钉死）；
+   * user 源不碰（主权）；防乒乓：版本记账只在本次迭代完成时落一次。
    */
   normalizePresetNCtxToCuratedDefaults = (): void => {
+    const tableVersioned = this.curatedTableVersion !== CURATED_TABLE_VERSION;
     for (const model of this.models) {
       if (model.origin === ModelOrigin.REMOTE) {
         continue;
@@ -520,19 +529,32 @@ class ModelStore {
           `[ModelStore] curated default: ${model.name} n_ctx ${current} → ${curated}`,
         );
         this.setModelNCtx(model.id, curated, 'preset');
+      } else if (tableVersioned && current < curated) {
+        console.warn(
+          `[ModelStore] curated table v${CURATED_TABLE_VERSION}: ${model.name} n_ctx ${current} → ${curated}`,
+        );
+        this.setModelNCtx(model.id, curated, 'preset');
       }
+    }
+    if (tableVersioned) {
+      runInAction(() => {
+        this.curatedTableVersion = CURATED_TABLE_VERSION;
+      });
     }
   };
 
   /**
-   * PSS 安全审计（2026-08-19）：启动时复查每模型生效 n_ctx（覆盖优先，
-   * 无覆盖取全局默认），估算超 PSS_SAFE_BUDGET 者降到最大安全档——
+   * PSS 安全审计（2026-08-19 建立；2026-08-26 设备化）：启动时复查每模型生效
+   * n_ctx（覆盖优先，无覆盖取全局默认），估算超预算者降到最大安全档——
    * 自愈旧版预调污染与全局默认越限（K90 实证：40960 档 f16 KV 生成中
    * PSS 6.77GB > 6GB 硬限被杀；8B 模型全局默认 8192 亦越限）。
+   * 预算 = resolvePssSafeBudget(availableMemoryCeiling)（K90 8-9GB 挥霍口径，
+   * 上限 9GB；未知设备回退 4GB）——守卫 hook 语义不变，预算值换设备口径。
    * 用户手调（source='user'）= 可见决策 = 主权，审计不碰；
    * 「只升不降」保护的是安全范围内的用户主权，不是必杀值。
    */
   auditPerModelNCtxAgainstPss = (): void => {
+    const budget = resolvePssSafeBudget(this.availableMemoryCeiling);
     for (const model of this.models) {
       if (model.origin === ModelOrigin.REMOTE) {
         continue;
@@ -550,7 +572,7 @@ class ModelStore {
       } catch {
         continue;
       }
-      if (estimated <= PSS_SAFE_BUDGET) {
+      if (estimated <= budget) {
         continue;
       }
       let safe: number | undefined;
@@ -563,7 +585,7 @@ class ModelStore {
             ...this.contextInitParams,
             n_ctx: tier,
           });
-          if (mem <= PSS_SAFE_BUDGET) {
+          if (mem <= budget) {
             safe = tier;
           } else {
             break;
@@ -1047,9 +1069,7 @@ class ModelStore {
       if (exists) {
         // 去重：共享文件已存在则跳过重下，显式日志不静默（不做哈希校验——
         // 哈希为不存在的损坏场景兜底，锋利：不预支成本）
-        console.log(
-          `[ModelStore] 复用已存在共享文件，跳过下载: ${file.name}`,
-        );
+        console.log(`[ModelStore] 复用已存在共享文件，跳过下载: ${file.name}`);
         continue;
       }
       const resolved = resolveFileSource(file, entry, source);
@@ -1562,16 +1582,17 @@ class ModelStore {
     }
   };
 
-  checkSpaceAndDownload = async (
-    modelId: string,
-    source?: DownloadSource,
-  ) => {
+  checkSpaceAndDownload = async (modelId: string, source?: DownloadSource) => {
     const model = this.models.find(m => m.id === modelId);
     if (!model) {
       throw new Error(`Model not found for download: ${modelId}`);
     }
     // 幂等：已下载/本地模型不重复下载（非错误，静默返回）
-    if (model.isDownloaded || model.isLocal || model.origin === ModelOrigin.LOCAL) {
+    if (
+      model.isDownloaded ||
+      model.isLocal ||
+      model.origin === ModelOrigin.LOCAL
+    ) {
       return;
     }
     if (!model.downloadUrl) {
@@ -2263,8 +2284,10 @@ class ModelStore {
 
     // Get all effective initialization settings BEFORE try block
     // so they're available for error reporting if initialization fails
-    const effectiveSettings =
-      await this.getEffectiveContextInitParams(filePath, model.id);
+    const effectiveSettings = await this.getEffectiveContextInitParams(
+      filePath,
+      model.id,
+    );
 
     try {
       // Create properly versioned ContextInitParams
@@ -2733,12 +2756,12 @@ class ModelStore {
     } catch (error) {
       // Only handle errors related to the initial setup before the download starts
       console.error('Failed to set up HF model download:', error);
-      Alert.alert(
-        uiStore.l10n.errors.downloadSetupFailedTitle,
-        t(uiStore.l10n.errors.downloadSetupFailedMessage, {
+      infoDialog({
+        title: uiStore.l10n.errors.downloadSetupFailedTitle,
+        message: t(uiStore.l10n.errors.downloadSetupFailedMessage, {
           message: (error as Error).message,
         }),
-      );
+      });
     }
   };
 
@@ -2880,7 +2903,6 @@ class ModelStore {
     return this.addHFModel(hfModel, modelFile);
   };
 
-
   /**
    * Scan model dirs for .gguf files (B15 双轨：默认目录 ∪ 自定义目录，去重按文件名).
    * Auto-registers models not yet in the store.
@@ -3011,7 +3033,10 @@ class ModelStore {
             }
           });
           console.log(
-            '[ModelStore] mmproj paired: ' + filename + ' -> ' + target.filename,
+            '[ModelStore] mmproj paired: ' +
+              filename +
+              ' -> ' +
+              target.filename,
           );
         }
       }
@@ -3483,10 +3508,15 @@ class ModelStore {
 
   // 投影模型方法组：实现迁至 modelStoreMethods/projectionMethods.ts（行为零变化）
   getCompatibleProjectionModels!: (modelId: string) => Model[];
-  setDefaultProjectionModel!: (modelId: string, projectionModelId: string) => void;
+  setDefaultProjectionModel!: (
+    modelId: string,
+    projectionModelId: string,
+  ) => void;
   getDefaultProjectionModel!: (modelId: string) => Model | undefined;
   getLLMsUsingProjectionModel!: (projectionModelId: string) => Model[];
-  getDownloadedLLMsUsingProjectionModel!: (projectionModelId: string) => Model[];
+  getDownloadedLLMsUsingProjectionModel!: (
+    projectionModelId: string,
+  ) => Model[];
   hasRequiredProjectionModel!: (model: Model) => boolean;
   getProjectionModelStatus!: (model: Model) => {
     isAvailable: boolean;
@@ -3500,7 +3530,9 @@ class ModelStore {
     dependentModels?: Model[];
   };
   cleanupOrphanedProjectionModel!: (projectionModelId: string) => Promise<void>;
-  cleanupOrphanedProjectionModels!: (projectionModelIds: string[]) => Promise<void>;
+  cleanupOrphanedProjectionModels!: (
+    projectionModelIds: string[],
+  ) => Promise<void>;
   setModelVisionEnabled!: (modelId: string, enabled: boolean) => Promise<void>;
   getModelVisionPreference!: (model: Model) => boolean;
 
@@ -3608,14 +3640,11 @@ class ModelStore {
       // Create the completion promise and register it for safe context release
       // （guard：串行化+冷却窗+重试，防冷却期 HostFunction 异常）
       const completionPromise = chatEngineGuard.run(() =>
-        this.context!.completion(
-          cleanCompletionParams,
-          data => {
-            if (data.token) {
-              params.onToken?.(data.token);
-            }
-          },
-        ),
+        this.context!.completion(cleanCompletionParams, data => {
+          if (data.token) {
+            params.onToken?.(data.token);
+          }
+        }),
       );
 
       // Register the promise so releaseContext can wait for it

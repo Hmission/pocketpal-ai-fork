@@ -94,9 +94,26 @@ function calculateComputeBuffer(
  * 自动预调的内存预算 = 6GB 硬限 − 运行时开销与估算乐观余量 2GB。
  * 估算（权重+KV+计算×1.1）是理论值，实测 PSS 额外含 RN 运行时/原生库/分片
  * 损耗（K90 实证：理论 ~5GB 的档位实际 PSS 6.77GB 被杀）。宁少勿杀；
- * 用户手调不受此限（决策可见，风险自担）。
+ * 2026-08-26 大王裁定「探索上限」：预算改为设备感知（resolvePssSafeBudget），
+ * 本常量退为无可用内存数据时的 fallback；用户手调不受此限（决策可见，风险自担）。
  */
 export const PSS_SAFE_BUDGET = 4.0e9;
+
+/** 设备感知预算上限（2026-08-26 大王口径：8-9GB 挥霍，仅考虑本 App）。 */
+const PSS_SAFE_BUDGET_CEILING = 9.0e9;
+
+/**
+ * 设备感知安全预算（2026-08-26）：预算 = 启动实测可用内存（availableMemoryCeiling），
+ * 硬上限 9GB；无实测数据回退 PSS_SAFE_BUDGET（4GB）。availMem 吃紧时预算自然
+ * 收紧（宁紧勿杀），空闲时（K90 实测 8-9GB）放开探索上限。KV 保持 f16 不加
+ * 量化旋钮（锋利不预设）；越界仍由启动审计降档兜底（守卫 hook 语义不变）。
+ */
+export function resolvePssSafeBudget(availableBytes?: number): number {
+  if (!availableBytes || availableBytes <= 0) {
+    return PSS_SAFE_BUDGET;
+  }
+  return Math.min(availableBytes, PSS_SAFE_BUDGET_CEILING);
+}
 
 /**
  * Get model memory requirement estimate in bytes

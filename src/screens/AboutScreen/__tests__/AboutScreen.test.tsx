@@ -1,9 +1,10 @@
 import React from 'react';
-import {Alert, Linking} from 'react-native';
+import {Linking} from 'react-native';
 import {render, fireEvent} from '../../../../jest/test-utils';
 import {AboutScreen} from '../AboutScreen';
 import {l10n} from '../../../locales';
 import {GITHUB_REPO_URL} from '../../../utils/openSource';
+import * as InfoDialog from '../../../components/ui/InfoDialog';
 
 // Mock DeviceInfo
 jest.mock('react-native-device-info', () => ({
@@ -16,7 +17,8 @@ jest.mock('@react-native-clipboard/clipboard', () => ({
   setString: jest.fn(),
 }));
 
-jest.spyOn(Alert, 'alert');
+// 08-25 InfoDialog 统一：错误/信息弹窗已迁 infoDialog（Alert → infoDialog）
+const infoDialogSpy = jest.spyOn(InfoDialog, 'infoDialog').mockResolvedValue();
 
 jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined as any);
 
@@ -61,9 +63,9 @@ describe('AboutScreen', () => {
 
     fireEvent.press(getByText('v1.0.0 (100)'));
 
-    expect(Alert.alert).toHaveBeenCalledWith(
-      l10n.en.about.versionCopiedTitle,
-      l10n.en.about.versionCopiedDescription,
-    );
+    expect(infoDialogSpy).toHaveBeenCalledWith({
+      title: l10n.en.about.versionCopiedTitle,
+      message: l10n.en.about.versionCopiedDescription,
+    });
   });
 });

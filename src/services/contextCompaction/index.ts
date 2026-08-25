@@ -11,10 +11,7 @@
  */
 import {appendConversation} from '../aiosMemory/conversationLog';
 import {estimateMessageTokens} from './budget';
-import {
-  summarizeConversation,
-  tokenBudgetToMaxChars,
-} from './summarizer';
+import {summarizeConversation, tokenBudgetToMaxChars} from './summarizer';
 import {chatSessionStore} from '../../store';
 import {emit} from '../../debug/eventStream';
 import type {CompletionEngine} from '../../utils/completionTypes';
@@ -22,6 +19,13 @@ import type {MessageType} from '../../utils/types';
 
 /** 摘要请求自身开销近似：SUMMARY_SYSTEM + 模板包装 + n_predict(220)。 */
 const SUMMARY_REQUEST_OVERHEAD_TOKENS = 400;
+
+/**
+ * 摘要输入字符上限（v1.2，2026-08-26）：6000→12000——16K 档一次吃下
+ * 「压到半水位」的 slice（~8-10K 字符），否则 slice 被输入预算裁剪回小额，
+ * 压缩大块化落空；小 n_ctx 档自动收窄（min 随 nCtx−开销 折算）。
+ */
+const SUMMARY_INPUT_CHAR_CAP = 12000;
 
 export interface CompressionResult {
   /** 被压缩的消息条数 */
@@ -87,12 +91,7 @@ function speakerOf(m: MessageType.Any): '大王' | '女妖' {
 export async function compressSession(
   input: CompressSessionInput,
 ): Promise<CompressionResult | null> {
-  const {
-    messages,
-    engine,
-    minKeepMessages = 4,
-    targetReleaseTokens,
-  } = input;
+  const {messages, engine, minKeepMessages = 4, targetReleaseTokens} = input;
 
   if (messages.length <= minKeepMessages) {
     return null;
@@ -116,7 +115,10 @@ export async function compressSession(
     const text = messageToDialogueText(messages[i]);
     accumulated += text ? estimateMessageTokens(text) : 0;
     count++;
-    if (targetReleaseTokens !== undefined && accumulated >= targetReleaseTokens) {
+    if (
+      targetReleaseTokens !== undefined &&
+      accumulated >= targetReleaseTokens
+    ) {
       break;
     }
     if (count >= cap) {
@@ -160,16 +162,21 @@ export async function compressSession(
 
   const priorSummary =
     anchorIdx >= 0
-      ? (messages[anchorIdx].metadata?.compaction as
-          | {summary?: string}
-          | undefined)?.summary
+      ? (
+          messages[anchorIdx].metadata?.compaction as
+            | {summary?: string}
+            | undefined
+        )?.summary
       : undefined;
 
   // B19.1 摘要工作集预算化：输入按「n_ctx − 请求自身开销」折算裁剪，
-  // 保证摘要请求必然放得下；缺省回退固定 6000 字符。
+  // 保证摘要请求必然放得下；缺省回退固定上限（v1.2：6000→12000，随 nCtx 上探）。
   const maxInputChars = input.nCtx
-    ? Math.min(6000, tokenBudgetToMaxChars(input.nCtx - SUMMARY_REQUEST_OVERHEAD_TOKENS))
-    : 6000;
+    ? Math.min(
+        SUMMARY_INPUT_CHAR_CAP,
+        tokenBudgetToMaxChars(input.nCtx - SUMMARY_REQUEST_OVERHEAD_TOKENS),
+      )
+    : SUMMARY_INPUT_CHAR_CAP;
 
   // 2026-08-21 裁剪一致性（WORKSPACE_SPEC）：对话文本超预算时，从尾部
   // 收缩 slice 本身（被压消息 = 进摘要的消息）——杜绝旧版「标记全压但
@@ -186,7 +193,11 @@ export async function compressSession(
   }
   // 裁剪后重算释放量：target 驱动 + 裁剪致释放不足且已无可裁 → 诚实失败
   const releasedAfterTrim = slice.reduce(
-    (sum, m) => sum + (messageToDialogueText(m) ? estimateMessageTokens(messageToDialogueText(m)!) : 0),
+    (sum, m) =>
+      sum +
+      (messageToDialogueText(m)
+        ? estimateMessageTokens(messageToDialogueText(m)!)
+        : 0),
     0,
   );
   if (

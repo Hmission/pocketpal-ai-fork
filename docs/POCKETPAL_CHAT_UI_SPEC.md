@@ -376,6 +376,7 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 - **每模型预调**：加载链（proceedWithInitialization）在该模型无覆盖时，按设备内存 ceiling 沿 CONTEXT_LADDER 取最大可装档（封顶 GGUF `context_length`）写入 perModelNCtx——一次预调、持久化；只升不降，ceiling 未知不虚构，REMOTE 不适用。
 - **PSS 安全阀（v3.6，2026-08-19 K90 真机血证）**：厂商 PSS 看护（HyperOS 实测 pss threshold 6GB 硬杀，与空闲内存无关）才是进程存活的天花板。预调天花板改取 min(内存 ceiling, `PSS_SAFE_BUDGET` 4GB)；启动新增 `auditPerModelNCtxAgainstPss` 审计——已持久化档位估算超预算者降到最大安全档（自愈旧版预调污染：K90 实证 40960/32768 档 f16 KV 生成中 PSS 6.77GB 被硬杀）。「只升不降」保护的是安全范围内的用户主权，不是必杀值；用户手调不受预算限制（决策可见）。
 - **默认上下文提升 + 源跟踪（v3.7）**：全局默认 n_ctx 4096→8192（contextInitParams v2.3 迁移：仅抬旧默认，用户自选值不动）——工具 schema 注入后提示词基线 ~4.5K，旧默认必溢（K90 实证「对话空间已满」）。`perModelNCtxSource`（preset/user）持久化：审计只动 preset/无源档，用户手调=主权不碰；审计覆盖面扩到「无覆盖取全局默认」的模型（8B 默认 8192 越限写安全档夹住）。
+- **策展表重排 + 设备感知预算（v3.8，2026-08-26 大王裁定「探索上限」）**：策展预算从固定 `PSS_SAFE_BUDGET` 4GB 改为设备感知 `resolvePssSafeBudget`——K90 实测可用内存 8-9GB 挥霍口径（仅考虑本 App），预算 = 启动实测可用内存（上限 9GB，未知设备回退 4GB）；KV 保持 f16 不加量化旋钮（锋利，不预设）。新策展表：Qwen3.5-4B 4096→**16384**（大王实测 16K 可用）、Qwen3.5-2B 24576→**32768**、MiniCPM5-1B 16384→**32768**（封顶 GGUF 原生 32768）、Ministral-3-3B 12288→**24576**、Gemma-3-4B 16384→**32768**、LFM2.5-8B 12288→**24576**、LFM2.5-2.6B 6144→**16384**；尺寸分档回退 ≤1.5GB→24576、≤4GB→32768、更大→16384。`CURATED_TABLE_VERSION=2` 版本化：preset 源档位随表版本一次性拉齐（解除 `normalizePresetNCtxToCuratedDefaults` 只降不升的历史钉死），user 源主权不碰。死代码清除：`recommendNCtx` 内存梯子（16G→8192）零调用删除。门禁：每档 `getModelMemoryRequirement` 验算 ≤ 设备预算 + 启动 PSS 审计兜底（守卫 hook 语义不变，预算值换设备口径）。
 
 ### 18.7 模型用途标签 + 切换弹窗多候选
 
@@ -510,6 +511,7 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 | 2026-08-19 | 4.0 | §18.9 生成进度监控卡：PendingIndicator 升级四要素（阶段标签/总耗时/思考流预览/300s 心跳）——prefill 不再裸三点，引擎真挂有「疑似卡住」提示；run_failed 收尾防永久转圈 |
 | 2026-08-19 | 4.1 | §19 上下文压缩机制（B19）：发送前预算决策机 + banner「压缩上下文」CTA（选择即记忆）+ 压缩占位卡片 + 指标行「压缩 N」+ 设置页策略三选与自动压缩开关（CONTEXT_COMPACTION_SPEC） |
 | 2026-08-19 | 4.2 | §18.9 进度监控卡卡片化：容器升级 assistant 卡片设计语言（底色+圆角），K90 真机复查「一行文本视觉权重不足」裁定 |
+| 2026-08-26 | 4.3 | §18.6 策展表重排（4B→16384/2B→32768 等）+ 设备感知预算 resolvePssSafeBudget（上限 9GB）+ CURATED_TABLE_VERSION 版本化拉齐 + recommendNCtx 死代码删除——大王裁定「探索上限」，聊天体验极限化（配套 CONTEXT_COMPACTION_SPEC v1.2） |
 | 2026-08-21 | 4.7 | §16.2/§18.7 模型加载卡片动效统一：选择器卡片与任务切换弹窗加载态升级三点波浪 + 2% 底条（ImageTaskProgress 同款设计语言，useWaveDots 复用；ModelSwitchDialog 移除 ActivityIndicator 统一） |
 | 2026-08-24 | 4.8 | §18.2/§18.9 跑分演出升级规划定稿（B39，PERF_BENCHMARK_DESIGN §10 v0.5）：AssistantTurnFooter 行2 指标行数值接 PerfMotion AnimatedNumber + tok/s 段加 24px 迷你速率条（首 token 后才启动）；PendingIndicator 加实时 tok/s 跳动 + 心跳微波形 + 阶段色（prefill 蓝/streaming 绿/tool 紫）——升级不重造，双行结构/三点动画/300s 心跳卡住语义不变 |
 | 2026-08-20 | 4.3 | §19 B19.1 链路根治（小米 13 DRC 血证，CONTEXT_COMPACTION_SPEC v1.1）：触发线含生成预留(512)、水位双源校准（实测钉底估算漂移）、摘要工作集预算化（min(6000, n_ctx−400)）、满态显式失败（饱和跳过压缩，context-full banner 用户主权，不静默不换引擎） |

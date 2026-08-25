@@ -22,7 +22,10 @@ class EngineGuard {
   private chain: Promise<unknown> = Promise.resolve();
   private lastDoneAt = 0;
 
-  constructor(private kind: EngineKind, private cooldownMs = 400) {}
+  constructor(
+    private kind: EngineKind,
+    private cooldownMs = 400,
+  ) {}
 
   async run<T>(fn: () => Promise<T>): Promise<T> {
     const prev = this.chain;
@@ -59,20 +62,3 @@ class EngineGuard {
 export const chatEngineGuard = new EngineGuard('chat');
 /** 管家模型出口（promptWriter 专用） */
 export const prompterGuard = new EngineGuard('prompter');
-
-/**
- * 按设备内存预设合理上下文长度（n_ctx 过长会挤压内存）。
- * 启动时仅"向下保护"：推荐值小于当前值才下调，不覆盖用户向上自定义。
- */
-export function recommendNCtx(totalBytes: number): number {
-  if (totalBytes >= 16e9) {
-    return 8192;
-  }
-  if (totalBytes >= 12e9) {
-    return 4096;
-  }
-  if (totalBytes >= 8e9) {
-    return 2048;
-  }
-  return 1024;
-}

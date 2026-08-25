@@ -3,9 +3,9 @@ doc_id: DRC_COMPASS_REGISTRY
 module: root
 type: registry
 status: active
-version: "1.2"
+version: "1.3"
 created: "2026-08-19"
-updated: "2026-08-23"
+updated: "2026-08-26"
 relates: [DRC_SPEC, COMPASS_SYSTEM_SSOT, STATE_COMPASS_ENGINE_SELF_NAVIGATION_SSOT, WORKSPACE_TOOL_ERROR_FEEDBACK_SPEC, ONDEVICE_VIDEO_GEN_ANALYSIS]
 ---
 
@@ -43,6 +43,7 @@ relates: [DRC_SPEC, COMPASS_SYSTEM_SSOT, STATE_COMPASS_ENGINE_SELF_NAVIGATION_SS
 | CP-APP-010 | VIDEO_TASK_START_FAILED / 前台服务启动失败 / WakeLock / 夜间任务被杀 | 检查 FOREGROUND_SERVICE + FOREGROUND_SERVICE_DATA_SYNC 权限与 service 声明（targetSdk 36 需 foregroundServiceType）；查 logcat 是否被 PSS 看护/内存配额杀（压内存优先于白名单，见 ONDEVICE_VIDEO §7.1） | android/app/.../VideoTaskServiceModule.kt · AndroidManifest.xml · docs/ONDEVICE_VIDEO_GEN_ANALYSIS.md §7.1 | ✅ 已登记（2026-08-23） |
 | CP-APP-011 | TTS 模型未安装完整 / sample_rate does not exist / 生成噪音 | 检查 TTS 模型下载源是否为 sherpa 兼容源（kokoro 需 metadata+tokens.txt、kitten 需 sherpa 官方 v0.1 生成链四件套）；**kitten 生成链下载已补齐（§81，Phase 2 动态枚举 espeak）**，新装机经下载链即可齐备；kokoro 换源=降版本（v1.0→v0.19）+ fork/sherpa 双链耦合，裁定不动，生成链靠 sherpaConvert 下载后转换兜底 | src/services/tts/constants.ts · src/services/tts/engines/kitten/index.ts · docs/internal/POCKETPAL_MODIFICATION_MASTER_LOG.md §74.5/§81 | ✅ 已登记（2026-08-23） |
 | CP-APP-012 | 基准编排中断 / 用例卡死 / 跑分卡渲染失败 / 分享不可用 | 查 benchmarkStore 编排状态机是否复位（用例结束/失败必须 reset，不留半态）；分享走 FileProvider 门禁，不可用降级存相册+诚实提示；数值 N/A 不编造 | docs/PERF_BENCHMARK_DESIGN.md §10 · src/store/BenchmarkStore.ts | ✅ 已登记（2026-08-24） |
+| CP-APP-013 | 上下文满 / Context is full / 上下文预算决策不可解 / 压缩未触发或未释放 | 查 DRC `chat.budget_decision` 事件（used/nCtx/action/saturated）+ `perModelNCtxSource` 覆盖源（preset 应随 CURATED_TABLE_VERSION 拉齐，user 为主权）+ 策展档 `defaultNCtxForModel` 是否低于工具基线 `TOOL_BASELINE_TOKENS`（4500）；压缩目标线=COMPACT_TARGET_WATERMARK 0.5（触发 0.8 压到半水位，连压多轮=水位曲线异常） | docs/POCKETPAL_CONTEXT_COMPACTION_SPEC.md v1.2 · src/utils/modelContextDefaults.ts · src/services/contextCompaction/{decision,budget}.ts | ✅ 已登记（2026-08-26） |
 
 ## 3. 状态指南针（ST-APP-NNN）
 

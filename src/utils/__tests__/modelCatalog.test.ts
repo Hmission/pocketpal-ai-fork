@@ -32,24 +32,21 @@ describe('modelCatalog — MODEL_MATRIX 门禁', () => {
     expect(names).toContain('minicpm5_1b_heretic_q4km.gguf');
   });
 
-  it('生图入选清单 = 3 件（MODEL_MATRIX §2）', () => {
-    expect(CATALOG_IMAGEGEN).toHaveLength(3);
+  it('生图入选清单 = 4 件（MODEL_MATRIX §2：DreamLite/SD3.5/Z-Image/FLUX.2 Klein，Klein 2026-08-25 准入）', () => {
+    expect(CATALOG_IMAGEGEN).toHaveLength(4);
     const ids = CATALOG_IMAGEGEN.map(m => m.id);
     expect(ids.some(id => id.includes('dreamlite'))).toBe(true);
     expect(ids.some(id => id.includes('sd35'))).toBe(true);
     expect(ids.some(id => id.includes('z-image'))).toBe(true);
+    expect(ids.some(id => id.includes('flux'))).toBe(true);
   });
 
   it('Qwen 视觉伴侣 mmproj 精确文件名（MODEL_MATRIX §1 #2/#4）', () => {
-    const qwen2b = CATALOG_LLM.find(m =>
-      m.file.name.includes('Qwen3.5-2B'),
-    );
+    const qwen2b = CATALOG_LLM.find(m => m.file.name.includes('Qwen3.5-2B'));
     expect(qwen2b?.extras?.map(e => e.name)).toEqual([
       'mmproj-Qwen3.5-2B-Uncensored-HauhauCS-Aggressive-f16.gguf',
     ]);
-    const qwen4b = CATALOG_LLM.find(m =>
-      m.file.name.includes('Qwen3.5-4B'),
-    );
+    const qwen4b = CATALOG_LLM.find(m => m.file.name.includes('Qwen3.5-4B'));
     expect(qwen4b?.extras?.map(e => e.name)).toEqual([
       'mmproj-Qwen3.5-4B-Uncensored-HauhauCS-Aggressive-BF16.gguf',
     ]);
@@ -71,17 +68,18 @@ describe('modelCatalog — MODEL_MATRIX 门禁', () => {
       ['zimage_llm.gguf', 'ae.safetensors'].sort(),
     );
     const dream = CATALOG_IMAGEGEN.find(m => m.id.includes('dreamlite'))!;
-    expect([dream.file.name, ...(dream.extras ?? []).map(e => e.name)].sort())
-      .toEqual(
-        [
-          'unet_masked.onnx',
-          'vae_decoder.onnx',
-          'vae_encoder.onnx',
-          'te_q8.gguf',
-          'te_fp16.onnx',
-          'te_fp16.onnx.data',
-        ].sort(),
-      );
+    expect(
+      [dream.file.name, ...(dream.extras ?? []).map(e => e.name)].sort(),
+    ).toEqual(
+      [
+        'unet_masked.onnx',
+        'vae_decoder.onnx',
+        'vae_encoder.onnx',
+        'te_q8.gguf',
+        'te_fp16.onnx',
+        'te_fp16.onnx.data',
+      ].sort(),
+    );
   });
 
   it('下载源显式声明：有源条目必有对应 repo；无源条目无 repo', () => {
@@ -153,7 +151,9 @@ describe('modelCatalog — MODEL_MATRIX 门禁', () => {
     expect(vae?.remotePath).toBe('vae/diffusion_pytorch_model.safetensors');
     // 自制 LoRA（2026-08-20 双平台分发）：manifest 的 lora 字段指向本文件；
     // baked/merged GGUF 不装机（大王钦定）——catalog 不建条目
-    const lora = sd35.extras?.find(f => f.name === 'lora_humanpose.safetensors');
+    const lora = sd35.extras?.find(
+      f => f.name === 'lora_humanpose.safetensors',
+    );
     expect(lora).toBeDefined();
     expect(lora?.sizeBytes).toBe(83138888);
     expect(lora?.repoBySource).toEqual({
@@ -195,9 +195,7 @@ describe('modelCatalog — MODEL_MATRIX 门禁', () => {
   it('catalogEntryTotalBytes 含 extras 总量', () => {
     const dream = CATALOG_IMAGEGEN.find(m => m.id.includes('dreamlite'))!;
     const extras = (dream.extras ?? []).reduce((s, f) => s + f.sizeBytes, 0);
-    expect(catalogEntryTotalBytes(dream)).toBe(
-      dream.file.sizeBytes + extras,
-    );
+    expect(catalogEntryTotalBytes(dream)).toBe(dream.file.sizeBytes + extras);
   });
 
   // §57 门禁补锁：生图页（manifest）与模型页（catalog）文件集一致性，防两处漂移

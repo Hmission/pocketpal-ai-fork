@@ -1,7 +1,7 @@
 jest.unmock('../../store');
 import {runInAction} from 'mobx';
 import {LlamaContext} from 'llama.rn';
-import {Alert, Platform} from 'react-native';
+import {Platform} from 'react-native';
 
 import {
   downloadManager,
@@ -16,6 +16,10 @@ import {
   mockLlamaContextParams,
   mockHFModel1,
 } from '../../../jest/fixtures/models';
+import {
+  CURATED_TABLE_VERSION,
+  defaultNCtxForModel,
+} from '../../utils/modelContextDefaults';
 import * as RNFS from '@dr.pogodin/react-native-fs';
 
 import {modelStore, uiStore, serverStore} from '..';
@@ -97,6 +101,7 @@ describe('ModelStore', () => {
     modelStore.models = []; // Clear models before each test
     modelStore.context = undefined;
     modelStore.activeModelId = undefined;
+    modelStore.curatedTableVersion = undefined; // 每个用例从"未记账"起（v2 拉齐语义）
 
     // Re-setup download manager mocks after clearAllMocks
     (downloadManager.syncWithActiveDownloads as jest.Mock).mockResolvedValue(
@@ -136,15 +141,15 @@ describe('ModelStore', () => {
       });
     });
 
-    it('无覆盖时写人工策展默认（尺寸档 2e9 → 24576）', () => {
+    it('无覆盖时写人工策展默认（尺寸档 2e9 → 32768）', () => {
       runInAction(() => {
         modelStore.largestSuccessfulLoad = 8e9;
         modelStore.availableMemoryCeiling = 8e9;
       });
       (modelStore as any).presetModelNCtxIfAbsent(presetCtxModel);
-      // 策展表取代内存梯子（2026-08-19 大王裁定；2026-08-21 按真实
-      // GGUF 验算重排：fixture 无规则命中，size 2e9 落尺寸档 24576）。
-      expect(modelStore.perModelNCtx['preset-ctx-model']).toBe(24576);
+      // 策展表取代内存梯子（2026-08-19 大王裁定；2026-08-26 v2 尺寸档
+      // ≤4GB→32768：fixture 无规则命中，size 2e9 落尺寸档 32768）。
+      expect(modelStore.perModelNCtx['preset-ctx-model']).toBe(32768);
       expect(modelStore.perModelNCtxSource['preset-ctx-model']).toBe('preset');
     });
 
@@ -163,7 +168,7 @@ describe('ModelStore', () => {
         modelStore.availableMemoryCeiling = undefined;
       });
       (modelStore as any).presetModelNCtxIfAbsent(presetCtxModel);
-      expect(modelStore.perModelNCtx['preset-ctx-model']).toBe(24576);
+      expect(modelStore.perModelNCtx['preset-ctx-model']).toBe(32768);
     });
 
     it('REMOTE 模型无本地内存语义，不预调', () => {
@@ -188,8 +193,8 @@ describe('ModelStore', () => {
         };
       });
       (modelStore as any).presetModelNCtxIfAbsent(presetCtxModel);
-      // 已加载模型读生效值 = perModelNCtx（策展档 24576），不被全局 4096 覆盖
-      expect(modelStore.getModelNCtx('preset-ctx-model')).toBe(24576);
+      // 已加载模型读生效值 = perModelNCtx（策展档 32768），不被全局 4096 覆盖
+      expect(modelStore.getModelNCtx('preset-ctx-model')).toBe(32768);
       expect(modelStore.getModelNCtx()).toBe(4096); // 无模型回退全局
     });
 
@@ -225,7 +230,7 @@ describe('ModelStore', () => {
       });
     });
 
-    it('preset 超策展档降档（旧梯子遗留 98304 → 1B 策展 16384）', () => {
+    it('preset 超策展档降档（旧梯子遗留 98304 → 1B 策展 32768）', () => {
       const butler = {
         ...presetModelFixture,
         id: 'minicpm-butler',
@@ -238,7 +243,8 @@ describe('ModelStore', () => {
         modelStore.perModelNCtxSource = {'minicpm-butler': 'preset'};
       });
       modelStore.normalizePresetNCtxToCuratedDefaults();
-      expect(modelStore.perModelNCtx['minicpm-butler']).toBe(16384);
+      // 策展表 v2：minicpm 规则 16384→32768（1B KV 极小，封顶 GGUF 原生 32768）
+      expect(modelStore.perModelNCtx['minicpm-butler']).toBe(32768);
     });
 
     it('user 源不碰（主权）', () => {
@@ -257,16 +263,35 @@ describe('ModelStore', () => {
       expect(modelStore.perModelNCtx['minicpm-butler']).toBe(98304);
     });
 
-    it('preset 低于策展者不拉回（审计安全决策防乒乓）', () => {
+    it('表版本升级：preset 低档一次性拉齐到 v2 策展（解除只降不升钉死）', () => {
       const m = {
         ...presetModelFixture,
         id: 'low-preset',
-        // 不命中任何规则（避免新策展规则降档），尺寸档 24576 > 8192
+        // 不命中任何规则，尺寸档 32768 > 8192；curatedTableVersion 未记账 = 升级窗口
+        filename: 'generic-2.5b-q4.gguf',
+        size: 2.5e9,
+      } as Model;
+      modelStore.models = [m];
+      const legacyCurated = defaultNCtxForModel(m);
+      runInAction(() => {
+        modelStore.perModelNCtx = {'low-preset': 8192};
+        modelStore.perModelNCtxSource = {'low-preset': 'preset'};
+      });
+      modelStore.normalizePresetNCtxToCuratedDefaults();
+      expect(modelStore.perModelNCtx['low-preset']).toBe(legacyCurated);
+      expect(modelStore.curatedTableVersion).toBe(CURATED_TABLE_VERSION);
+    });
+
+    it('表版本一致（防乒乓）：preset 低档不拉回（审计安全决策）', () => {
+      const m = {
+        ...presetModelFixture,
+        id: 'low-preset',
         filename: 'generic-2.5b-q4.gguf',
         size: 2.5e9,
       } as Model;
       modelStore.models = [m];
       runInAction(() => {
+        modelStore.curatedTableVersion = CURATED_TABLE_VERSION; // 已记账
         modelStore.perModelNCtx = {'low-preset': 8192};
         modelStore.perModelNCtxSource = {'low-preset': 'preset'};
       });
@@ -1799,9 +1824,17 @@ describe('ModelStore', () => {
         new Error('Mock error'),
       );
 
-      // Mock console.error and Alert.alert
+      // Mock console.error and infoDialog（08-25 InfoDialog 统一后错误弹窗改走 infoDialog）
       const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
-      const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation();
+      const infoDialogModule = jest.requireActual(
+        '../../components/ui/InfoDialog',
+      );
+      const infoDialogSpy = jest
+        .spyOn(
+          infoDialogModule as {infoDialog: (...args: any[]) => Promise<void>},
+          'infoDialog',
+        )
+        .mockResolvedValue();
 
       await modelStore.downloadHFModel(hfModel as any, modelFile as any, {
         enableVision: true,
@@ -1813,17 +1846,17 @@ describe('ModelStore', () => {
         expect.any(Error),
       );
 
-      // Check that Alert.alert is called with the error message
-      expect(alertSpy).toHaveBeenCalledWith(
-        uiStore.l10n.errors.downloadSetupFailedTitle,
-        t(uiStore.l10n.errors.downloadSetupFailedMessage, {
+      // Check that infoDialog is called with the error message
+      expect(infoDialogSpy).toHaveBeenCalledWith({
+        title: uiStore.l10n.errors.downloadSetupFailedTitle,
+        message: t(uiStore.l10n.errors.downloadSetupFailedMessage, {
           message: 'Mock error',
         }),
-      );
+      });
 
       // Clean up mocks
       consoleErrorSpy.mockRestore();
-      alertSpy.mockRestore();
+      infoDialogSpy.mockRestore();
       modelStore.addHFModel = originalAddHFModel;
     });
   });

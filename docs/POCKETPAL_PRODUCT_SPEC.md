@@ -110,7 +110,7 @@ relates: [INDEX, POCKETPAL_DESIGN_SPEC, POCKETPAL_MODEL_MATRIX, APP_INTRO_COPY, 
   - llama.rn 原生多 context 验证 → 管家模型与大模型共存，硬门槛解除
   - engineStatus（三引擎统一状态源）/ taskRouter（规则快筛只判不执）/ chatImageTask（聊天内联生图）/ ActiveTaskBanner（实时任务横幅）
   - engineGuard：推理串行化 + 400ms 冷却窗 + HostFunction 退避重试
-  - recommendNCtx：按内存预设上下文（16G→8192/12G→4096/8G→2048）
+  - ~~recommendNCtx：按内存预设上下文（16G→8192/12G→4096/8G→2048）~~（2026-08-26 删除：策展表取代后的死代码，零调用）
 - **生图引擎打通（P5.1）**：stable-diffusion.cpp 编入 CMake（CPU 后端静态链接），JNI 写 PNG
 - **生图桥接（P5.2）**：ImageGenModule.kt + imageGenStore（单例引擎与聊天模型互斥）+ ImageGenScreen
 - **豆包化（M6）**：聊天发送前检测「画/绘/生成…图」→ 跳生图页预填
@@ -288,12 +288,12 @@ NaN 指纹跨设备一致（c≡3 mod 64）→ 判定非设备特定 → fusion 
 - **问题**：默认 2048 太小，长对话频繁触顶；两处调整入口（上下文不足弹窗/生成设置）数值不同步。
 - **策略**：每模型独立 n_ctx（perModelNCtx，持久化白名单）；两入口收口同一存储，一边调了另一边自动同步。
 - **预调**：模型首次加载且无覆盖时，按设备内存上限沿档位梯取最大可装档（封顶模型训练上下文），一次预调、持久化；只升不降（不覆盖用户手调）、上限未知不虚构。
-- **PSS 安全阀（2026-08-19 K90 真机血证）**：厂商 PSS 看护（HyperOS 实测 6GB 硬杀）与空闲内存无关，才是存活天花板。预调天花板取 min(内存上限, 4GB 安全预算)，启动审计自愈超限档；自动档永不越预算，用户手调不受限（决策可见）。详见 CHAT_UI_SPEC §18.6 v3.6。
+- **PSS 安全阀（2026-08-19 K90 真机血证 + 2026-08-26 设备化升级）**：厂商 PSS 看护（HyperOS 实测 6GB 硬杀）与空闲内存无关，才是存活天花板。预调天花板取 min(内存上限, 设备感知预算 `resolvePssSafeBudget`——K90 实测可用内存 8-9GB 挥霍口径、上限 9GB、未知设备回退 4GB)，启动审计自愈超限档；自动档永不越预算，用户手调不受限（决策可见）。详见 CHAT_UI_SPEC §18.6 v3.8。
 
 ### 4.11 产物工作区与上下文治理（2026-08-21，WORKSPACE_SPEC v1）
 
 - **一句话架构**：对话是过程，产物是文档；上下文只放框架指针，正文按需读段；压缩只动过程，永不碰产物；新会话凭记忆索引恢复工作区。
-- **策展表重排（小模型长上下文）**：模型越小 → 上下文越长（KV 便宜 + 速度快），上限 = GGUF `context_length`，预算 = PSS_SAFE_BUDGET 4GB。新策展：MiniCPM5-1B 8192→**16384**、Qwen3.5-2B/LFM2.5-2.6B 16384→**24576**、Ministral-3-3B 8192→**16384**；Qwen3.5-4B 保持（KV 大户审计降档 4096 诚实档）、LFM2.5-8B-A1B 保持（K90 PSS 硬杀不可用）。尺寸档回退：≤1.5GB→16384；≤4GB→24576；更大→12288。门禁：每档 `getModelMemoryRequirement` 验算 ≤4GB + `normalizePresetNCtxToCuratedDefaults` 自动降档 + `auditPerModelNCtxAgainstPss` 兜底（user 源主权不碰）。
+- **策展表重排（小模型长上下文，v2 2026-08-26 重排）**：模型越小 → 上下文越长（KV 便宜 + 速度快），上限 = GGUF `context_length`，预算 = 设备感知 `resolvePssSafeBudget`（K90 可用内存 8-9GB 挥霍口径，上限 9GB，fallback 4GB）。新策展：MiniCPM5-1B **16384→32768**（封顶原生 32768）、Qwen3.5-2B **24576→32768**、Qwen3.5-4B **4096→16384**（大王实测 16K 可用，旧“KV 大户诚实档”随设备预算解除）、Ministral-3-3B **12288→24576**、Gemma-3-4B **16384→32768**、LFM2.5-8B **12288→24576**、LFM2.5-2.6B **6144→16384**。尺寸回退：≤1.5GB→24576；≤4GB→32768；更大→16384。`CURATED_TABLE_VERSION=2` 版本化拉齐（preset 源随表版本升档，user 主权不碰）。门禁：每档 `getModelMemoryRequirement` 验算 ≤ 设备预算 + `normalizePresetNCtxToCuratedDefaults` 版本化升档 + `auditPerModelNCtxAgainstPss` 兜底（守卫语义不变）。工具基线 `TOOL_BASELINE_TOKENS=4500` 沉底为常量（原注释），策展断言每档 nCtx ≥ 基线 + 2 轮对话 + 生成预留。
 - **产物工作区（三模式同构底座）**：写作/冒险/玩具统一三件协议——目录（`workspace/<domain>/<project>/` 分文档文件）、索引（每域 index.json = [{name, path, updatedAt, progress}]，写后置顶）、分段读取（`## ` 分节只读目标段，单文件 ≤20KB 超限显式拒绝开新章）。实现：`src/services/workspace/`（index.ts + docStore.ts + recovery.ts）。
 - **写作链路闭环（WritingDocEngine）**：与 AdventureStateEngine 同构（TalentEngine + toToolDefinition + engineGuard 串行化 + DRC 埋点）：init/list/new_chapter/read_section/read_all/list_sections/append/update_outline/update_persona 九动作；init 写记忆 fact「在写《X》」；append 返回字数回执不重复正文；女妖 pact.talents 声明 `writing_doc`。
 - **路由与恢复（双触发）**：自动——WRITE_RE 增续写意图（继续写/续写/接着写/写下去）；显式——快捷前缀「新建写作项目：/写作项目：」（剥离后为空短路 chitchat 防误伤）。恢复链路：routeTask 命中 write → 索引命中 → 读框架文档（大纲+人设+progress）注入组装层 → 模型续写；未命中静默。
