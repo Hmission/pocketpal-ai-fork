@@ -15,6 +15,8 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 
 > 单一事实源：聊天页/抽屉的配色层次、卡片结构、菜单弹出规范与文本可读性定稿。
 > 任何聊天页 UI 迭代必须先更新本文档再改代码。版本：v1（2026-08-14，聊天页+抽屉重设计定稿）；v2（2026-08-15，气泡一体化 + 灰色分层落地，ADR-0003 已实施）
+> 版本：v2.1（2026-08-27，UI 一致性升级，五大类）：① **跑分卡 B43 同步**——PendingIndicator 折线 44→56pt（PSS+CPU 双线 + 温度热力带 + 坐标轴 + 5/6GB 阈值标注 + vivid 演出层），遥测行归一共享 `PerfMiniRow`（折叠头 PSS 大字阈值色 + 内存/CPU/温度胶囊分级色）；AssistantTurnFooter 展开层加 axes/tempBand/vivid（72pt）——与生图页 PerfPanel 同一效果族（紧凑尺度）；② **顶部横幅去灰**——BannerBar neutral 灰底（surfaceVariant）→ surface 实底 + outline hairline，新增 `centered` prop；BenchmarkHudBar 灰底 → 跑分金 brandAccent 12% wash + 文案居中；BannerRow html-soft-cap/context-remote-hedged 灰变体 → info 语义 wash + 居中；③ **场景收敛**——ActiveTaskBanner chat/prompter loading 态隐藏（输入框 placeholder 五分支已表达「加载模型/加载管家模型」，双提示冗余），保留 running/error 与 image 引擎任务；④ **死代码清理**——ModelNotLoadedMessage（无引用仅测试自引用）git rm 留痕；⑤ 阈值/格式器单一事实源 `utils/perfTiers`（IMAGEGEN_UI_SPEC §9 注册表抽取共享）
+> 版本：v2.2（2026-08-27，管家提示词增强链路修订）：聊天生图小模型扩写根治「鹦鹉学舌」（画苹果出海边美女——§13.4 增强链路第 4 条）：few-shot 示例由 system 内嵌纯文本改 user/assistant 示范轮 + temperature 0.7→0.4 + isParrotingExample 检测闸（复读=显式失败，任务卡标「提示词未增强」）；「管家优化为」展示语义与契约不变
 > 并列文档：POCKETPAL_IMAGEGEN_UI_SPEC.md（生图页）/ POCKETPAL_UI_INTERACTION_SPEC.md（全局交互）
 > 上位规范：POCKETPAL_DESIGN_SPEC.md（UI 域 SSOT）
 
@@ -218,6 +220,10 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 - 动作条：成功卡 `[继续编辑此图] [再来一张]`（递归闭环，豆包同款）；失败卡 `[重试]`。
 - 管家增强提示词展示：文生图成功卡下方小字「✨ 管家优化为：…」（metadata.imageEnhancedPrompt，可点击展开全文）；
   编辑卡展示中文指令原文（编辑 instruction 为 diptych 语义文本条件，不经过英文扩写）。
+- 增强链路契约（v2.2，2026-08-27 鹦鹉学舌根治）：① 未就绪=原文直出不标记；② 增强成功=展示「管家优化为」；
+  ③ 增强失败（异常或复读检测闸命中）=回退原文 + enhancedFailed 标记展示「提示词未增强」（显式失败不静默）；
+  ④ 复读闸：promptWriter.writePrompt 输出与 few-shot 示例词重合 ≥70% 判定复读抛错（1B 模型短输入复述示例的根治防线，
+  根因与修复详见内部 MASTER_LOG §101）。
 
 ### 13.5 testID 登记（新增）
 

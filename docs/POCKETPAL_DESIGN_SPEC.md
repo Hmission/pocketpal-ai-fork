@@ -434,6 +434,12 @@ ScrollView
 | B53 | **存量红测试修复**：modelCatalog 条目断言——**在途**（Krea2 Turbo 为并行窗口 08-26 新准入，modelCatalog.ts 已加入但 MODEL_MATRIX 未登记，测试断言 4 vs catalog 5 属在途中间态，**不擅自改断言**，待 MODEL_MATRIX 登记后同步）；并行窗口在途测试同步（ModelStore 策展表 v2/AboutScreen 等）待收口 | B52 | CI jest 0 失败 | 🔵 执行中（依赖并行窗口收口 + MODEL_MATRIX 登记） |
 | B54 | **P4#17 架构归一：肥件拆分 + 单槽 v2**（评估 2026-08-26 ✅ 完成）：engineMutex 纯协调器设计无需改（EXCLUSIVE_PAIRS 已含 chat↔image 释放）；单槽 v2 联动（生图加载 ⇒ 文本槽管家就绪）应实施于**编排层**（imageGenStore.loadModel 前置管家检查），ModelStore 正被并行窗口在途修改（策展表 v2）——**实施挂后续窗口避开冲突**；肥件拆分（ModelStore 3313 行）同样待并行窗口收口后执行 | 架构评审 | 三肥件行数降 30%+；单槽 v2 契约落码 | 🔵 实施待并行窗口收口 |
 | B59 | **生图页出图按钮任务期灰置转圈 + 模型下拉选中描边圆角统一（大王反馈，2026-08-26 ✅，MASTER_LOG §97）**：①出图/编辑按钮 loading/generating 双态灰置（surface 底 + onSurfaceVariant 字 + primary 转圈）——此前仅 generating 转圈且无灰底，**引擎加载期按钮零反馈**（首次出图加载模型最耗时时最需要）；转圈色白 → primary（灰底可见）；disabled 全链路防连点；②模型下拉选中行 borderRadius inputSmall(8) → surface(32) 与浮层面板整卡一致（音频引擎下拉同样式一并统一）；未加载不灰置引导红线（B30）与空提示词横幅（B31）不变 | IMAGEGEN_UI_SPEC v5.8 | tsc 0 错 + Panels 22 用例全绿（新增任务期灰置转圈禁点双阶段用例） | ✅ 已完成（2026-08-26） |
+| R1 | **size 常量域补全（2026-08-26 ✅）**：minTapTarget=44 + controlHeight=36 入 tokens（size.ts + theme 集成），29 处裸值替换——断根「无档人人自造」；裸 44/36 仅剩 8 处登记豁免 | tokens/size.ts 已就位 | 裸值 grep 归零（豁免表外）+ 22 套件 267 测试全绿 | ✅ 已完成（2026-08-26，MASTER_LOG §108） |
+| R2 | **底部留白结构修复（2026-08-26 ✅）**：100/120/150 共 8 处 → insets/xxl+xl 表达式（bottomOffset 双语义实证：键盘补偿非底缘留白，HF 双份判定成立） | B58 insets 样板 | 无新魔法数 + 相关套件全绿；完整布局分区深化待 R2b | ✅ 已完成（2026-08-26，MASTER_LOG §108） |
+| R3 | **肥件拆分（2026-08-26~27 ✅ P1-P5 全完成）**：ModelStore 3306→915 行（-72.3%，8 方法组文件）/ ChatSessionStore 1658→1387 / GenerationSettingsScreen 1231→197。**勘误：本系列曾沿用 B59 编号与并行窗口 B59（灰置转圈）撞号——自本行起统一以 R 系列为准** | facade+mixin 现役 pattern | 主闸门 ModelStore.test 210/210 + P5 链路 80 + 三闸全绿 | ✅ 已完成（2026-08-26~27，MASTER_LOG §109） |
+| R4 | **测试基建三板斧（2026-08-27 🔵）**：hooks 桶瘦身 208 处 / store 直连 mock 边界 14 处 / utils 桶拆（组件套件堆基线 ~170MB 降级目标 + [ImageGenStore] 警告消失） | R3 完成（降低噪音）+ 并行窗口 ImageGenScreen 收口 | 组件套件堆基线显著下降 + 全量无随机红 | 🔵 执行中（2026-08-27） |
+| R5 | **视觉裁定 + 豁免登记（2026-08-26 ✅）**：4 项裁定执行（paddingH28→xl / 行高52→56 / emptyState64 豁免 / 空态卡28→l+xs）；豁免清单（28 钮族 13 / 64 族 6 / 尺寸帽 14 / 组件内对 4 等 ~43 处）登记于 REMAINING_FIX_PLAN | — | 裁定 4 项落码 + 豁免表登记 | ✅ 已完成（2026-08-26，MASTER_LOG §108） |
+| R6 | **MASTER_LOG 归档 + 文档对账（2026-08-27 ✅）**：§89-§109 合订正式 docs/POCKETPAL_MASTER_LOG.md（此前仅 .tmp 临时文件）；DESIGN_SPEC/DEV_BACKLOG/PLAN 对账补录；P1#2/P1#3 真机验证待小米 13 | 治理补课 | 文档链完整可查 | ✅ 已完成（2026-08-27） |
 
 **批次间依赖**：B1 前置最大（聊天域，含 §8 旧债务 4 项中的 2 项），完成后旧债务全部清零；新债务一律按本表规则补录（批次号 + 验收 + 前置），不允许无批次挂账。
 
@@ -496,9 +502,9 @@ ScrollView
 
 | 要素   | 契约值                                         | 说明                                         |
 | ------ | ---------------------------------------------- | -------------------------------------------- |
-| 底色   | 语义色 12% wash：`withOpacity(语义色, 0.12)`   | neutral 用 surfaceVariant；禁 withAlpha 自拼 |
-| 边框   | hairline，语义色 25%                           | ——                                           |
-| 文本   | `theme.typography.captionM` / onSurfaceVariant | 禁 fontSize 字面量                           |
+| 底色   | 语义色 12% wash：`withOpacity(语义色, 0.12)`   | neutral 用 surface 实底 + outline hairline（2026-08-27 去灰修订：原 surfaceVariant 灰底消灭）；禁 withAlpha 自拼 |
+| 边框   | hairline，语义色 25%                           | neutral 用 outline；禁 withAlpha 自拼         |
+| 文本   | `theme.typography.captionM` / onSurfaceVariant | 禁 fontSize 字面量；纯文案横幅可 `centered` 居中（2026-08-27 新增 prop） |
 | 进度条 | BannerBar 内置 Meter（4px / radius 2）         | 禁第二套实现                                 |
 | 动作   | BannerBar actions 槽（text 按钮）              | ——                                           |
 | 图标   | assets/icons 自绘                              | 禁 emoji 作 UI 图标                          |
