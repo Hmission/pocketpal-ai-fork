@@ -28,8 +28,20 @@ jest.mock('../../../hooks', () => ({
       display: {fontSize: 28, lineHeight: 34, fontWeight: '600'},
     },
     radius: {
-      xs: 4, s: 6, m: 10, ml: 12, l: 14, xl: 20, full: 999,
-      shapeRoles: {card: 'l', surface: 'm', pill: 'full', inputSmall: 's', circle: 'full'},
+      xs: 4,
+      s: 6,
+      m: 10,
+      ml: 12,
+      l: 14,
+      xl: 20,
+      full: 999,
+      shapeRoles: {
+        card: 'l',
+        surface: 'm',
+        pill: 'full',
+        inputSmall: 's',
+        circle: 'full',
+      },
     },
     colors: {
       surface: '#ffffff',
@@ -42,6 +54,8 @@ jest.mock('../../../hooks', () => ({
       onPrimaryContainer: '#0d47a1',
     },
     dark: false,
+    // B52 图标 token 化后测试 mock 需同源（与 tokens/iconSize 一致）
+    iconSize: {xs: 14, s: 16, m: 20, l: 24, xl: 28},
   }),
 }));
 

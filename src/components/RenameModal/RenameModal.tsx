@@ -1,10 +1,24 @@
 import React, {useContext, useEffect} from 'react';
-import {TextInput} from 'react-native';
+import {StyleSheet, TextInput} from 'react-native';
 
 import {useTheme} from '../../hooks';
 import {OverlayCard} from '../ui/OverlayCard';
 import {L10nContext} from '../../utils';
 import {chatSessionStore, SessionMetaData} from '../../store';
+import {Theme} from '../../utils/types';
+
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    input: {
+      borderWidth: theme.stroke.sm,
+      borderColor: theme.colors.border,
+      borderRadius: theme.radius.s,
+      padding: theme.spacing.s,
+      ...theme.typography.bodyS,
+      color: theme.colors.onSurface,
+      minHeight: 44,
+    },
+  });
 
 interface RenameModalProps {
   visible: boolean;
@@ -24,6 +38,7 @@ export const RenameModal: React.FC<RenameModalProps> = ({
   const [newTitle, setNewTitle] = React.useState(session?.title || '');
   const theme = useTheme();
   const l10n = useContext(L10nContext);
+  const styles = createStyles(theme);
 
   useEffect(() => {
     setNewTitle(session?.title || '');
@@ -53,15 +68,7 @@ export const RenameModal: React.FC<RenameModalProps> = ({
         },
       }}>
       <TextInput
-        style={{
-          borderWidth: theme.stroke.sm,
-          borderColor: theme.colors.border,
-          borderRadius: theme.radius.s,
-          padding: theme.spacing.s,
-          ...theme.typography.bodyS,
-          color: theme.colors.onSurface,
-          minHeight: 44,
-        }}
+        style={styles.input}
         placeholder="New Title"
         placeholderTextColor={theme.colors.onSurfaceVariant}
         value={newTitle}

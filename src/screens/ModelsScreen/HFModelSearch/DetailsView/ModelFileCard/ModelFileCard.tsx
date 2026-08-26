@@ -1,5 +1,5 @@
 import React, {FC, useState, useContext, useMemo} from 'react';
-import {Alert, View, StyleSheet, Pressable} from 'react-native';
+import {View, StyleSheet, Pressable} from 'react-native';
 import {computed} from 'mobx';
 import {observer} from 'mobx-react';
 import LinearGradient from 'react-native-linear-gradient';
@@ -13,6 +13,8 @@ import {
 } from 'react-native-paper';
 
 import {useTheme, useMemoryCheck} from '../../../../../hooks';
+import {infoDialog} from '../../../../../components/ui/InfoDialog';
+import {confirmDialog} from '../../../../../components/ui/ConfirmDialog';
 import {createStyles} from './styles';
 import {modelStore} from '../../../../../store';
 import {
@@ -154,35 +156,33 @@ export const ModelFileCard: FC<ModelFileCardProps> = observer(
           (m: Model) => m.hfModelFile?.oid === modelFile.oid,
         );
         if (model?.origin === ModelOrigin.PRESET) {
-          Alert.alert(
-            l10n.models.modelFile.alerts.cannotRemoveTitle,
-            l10n.models.modelFile.alerts.modelPreset,
-          );
+          infoDialog({
+            title: l10n.models.modelFile.alerts.cannotRemoveTitle,
+            message: l10n.models.modelFile.alerts.modelPreset,
+          });
         } else if (model?.isDownloaded) {
-          Alert.alert(
-            l10n.models.modelFile.alerts.cannotRemoveTitle,
-            l10n.models.modelFile.alerts.downloadedFirst,
-          );
+          infoDialog({
+            title: l10n.models.modelFile.alerts.cannotRemoveTitle,
+            message: l10n.models.modelFile.alerts.downloadedFirst,
+          });
         } else if (model) {
-          Alert.alert(
-            l10n.models.modelFile.alerts.removeTitle,
-            l10n.models.modelFile.alerts.removeMessage,
-            [
-              {text: l10n.common.cancel, style: 'cancel'},
-              {
-                text: l10n.models.modelFile.buttons.remove,
-                onPress: () => {
-                  const removed = modelStore.removeModelFromList(model);
-                  if (!removed) {
-                    Alert.alert(
-                      'Error',
-                      l10n.models.modelFile.alerts.removeError,
-                    );
-                  }
-                },
-              },
-            ],
-          );
+          void confirmDialog({
+            title: l10n.models.modelFile.alerts.removeTitle,
+            message: l10n.models.modelFile.alerts.removeMessage,
+            confirmText: l10n.models.modelFile.buttons.remove,
+            cancelText: l10n.common.cancel,
+          }).then(ok => {
+            if (!ok) {
+              return;
+            }
+            const removed = modelStore.removeModelFromList(model);
+            if (!removed) {
+              infoDialog({
+                title: 'Error',
+                message: l10n.models.modelFile.alerts.removeError,
+              });
+            }
+          });
         }
       }
     };
@@ -197,10 +197,10 @@ export const ModelFileCard: FC<ModelFileCardProps> = observer(
 
     const handleDownload = () => {
       if (isDownloaded) {
-        Alert.alert(
-          l10n.models.modelFile.alerts.alreadyDownloadedTitle,
-          l10n.models.modelFile.alerts.alreadyDownloadedMessage,
-        );
+        infoDialog({
+          title: l10n.models.modelFile.alerts.alreadyDownloadedTitle,
+          message: l10n.models.modelFile.alerts.alreadyDownloadedMessage,
+        });
       } else {
         // Direct download with default projection for all models
         // VisionDownloadSheet is only opened via the vision chip
@@ -219,19 +219,18 @@ export const ModelFileCard: FC<ModelFileCardProps> = observer(
         m => m.hfModelFile?.oid === modelFile.oid,
       );
       if (model?.isDownloaded) {
-        Alert.alert(
-          l10n.models.modelFile.alerts.deleteTitle,
-          l10n.models.modelFile.alerts.deleteMessage,
-          [
-            {text: l10n.common.cancel, style: 'cancel'},
-            {
-              text: l10n.common.delete,
-              onPress: async () => {
-                await modelStore.deleteModel(model);
-              },
-            },
-          ],
-        );
+        void confirmDialog({
+          title: l10n.models.modelFile.alerts.deleteTitle,
+          message: l10n.models.modelFile.alerts.deleteMessage,
+          confirmText: l10n.common.delete,
+          cancelText: l10n.common.cancel,
+          destructive: true,
+        }).then(async ok => {
+          if (!ok) {
+            return;
+          }
+          await modelStore.deleteModel(model);
+        });
       }
     };
 
@@ -373,7 +372,7 @@ export const ModelFileCard: FC<ModelFileCardProps> = observer(
                 testID="bookmark-button"
                 icon={isBookmarked ? 'bookmark' : 'bookmark-outline'}
                 onPress={toggleBookmark}
-                size={20}
+                size={theme.iconSize.m}
                 animated
               />
               {isDownloading ? (
@@ -381,7 +380,7 @@ export const ModelFileCard: FC<ModelFileCardProps> = observer(
                   testID="cancel-button"
                   icon="close"
                   onPress={handleCancel}
-                  size={20}
+                  size={theme.iconSize.m}
                   animated
                 />
               ) : (
@@ -404,7 +403,7 @@ export const ModelFileCard: FC<ModelFileCardProps> = observer(
                             ? handleCancel
                             : handleDownload
                       }
-                      size={20}
+                      size={theme.iconSize.m}
                       animated
                       disabled={
                         !isModelInfoReady ||

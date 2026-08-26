@@ -7,11 +7,17 @@
  * same handler.
  */
 
-import {Alert, Linking} from 'react-native';
+import {Linking} from 'react-native';
 import {renderHook} from '@testing-library/react-native';
 
 import {useDeepLinking} from '../useDeepLinking';
 import {deepLinkStore} from '../../store';
+
+// B46 迁移同步：非法链接提示已由 Alert.alert → infoDialog（用户存量改动）
+jest.mock('../../components/ui/InfoDialog', () => ({
+  infoDialog: jest.fn(),
+}));
+import {infoDialog} from '../../components/ui/InfoDialog';
 
 const mockNavigate = jest.fn();
 
@@ -50,7 +56,6 @@ const VALID_URL =
 describe('useDeepLinking — hub/run dispatch', () => {
   let getInitialURLSpy: jest.SpyInstance;
   let addEventListenerSpy: jest.SpyInstance;
-  let alertSpy: jest.SpyInstance;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -63,13 +68,11 @@ describe('useDeepLinking — hub/run dispatch', () => {
     addEventListenerSpy = jest
       .spyOn(Linking, 'addEventListener')
       .mockReturnValue({remove: jest.fn()} as any);
-    alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   });
 
   afterEach(() => {
     getInitialURLSpy.mockRestore();
     addEventListenerSpy.mockRestore();
-    alertSpy.mockRestore();
   });
 
   it('parks a valid link in pendingHubRun via the iOS emitter path', async () => {
@@ -89,7 +92,7 @@ describe('useDeepLinking — hub/run dispatch', () => {
       filename: 'model.Q4_K_M.gguf',
       source: 'hf',
     });
-    expect(alertSpy).not.toHaveBeenCalled();
+    expect(infoDialog).not.toHaveBeenCalled();
   });
 
   it('alerts and writes nothing on a malformed link', async () => {
@@ -101,7 +104,7 @@ describe('useDeepLinking — hub/run dispatch', () => {
       url: 'pocketpal://hub/run?filename=x.gguf', // missing repo_id
     });
 
-    expect(alertSpy).toHaveBeenCalled();
+    expect(infoDialog).toHaveBeenCalled();
     expect(deepLinkStore.setPendingHubRun).not.toHaveBeenCalled();
     expect(deepLinkStore.pendingHubRun).toBeNull();
   });
@@ -120,7 +123,7 @@ describe('useDeepLinking — hub/run dispatch', () => {
       filename: undefined,
       source: 'hf',
     });
-    expect(alertSpy).not.toHaveBeenCalled();
+    expect(infoDialog).not.toHaveBeenCalled();
   });
 
   it('parks a valid link arriving cold via the prod Linking path', async () => {
@@ -166,7 +169,7 @@ describe('useDeepLinking — hub/run dispatch', () => {
     await Promise.resolve();
 
     expect(deepLinkStore.setPendingHubRun).not.toHaveBeenCalled();
-    expect(alertSpy).not.toHaveBeenCalled();
+    expect(infoDialog).not.toHaveBeenCalled();
   });
 
   it('ignores a non-hub link via the prod Linking url event without alerting', async () => {
@@ -184,7 +187,7 @@ describe('useDeepLinking — hub/run dispatch', () => {
     handlers.forEach(h => h({url: 'pocketpal://chat?palId=foo'}));
 
     expect(deepLinkStore.setPendingHubRun).not.toHaveBeenCalled();
-    expect(alertSpy).not.toHaveBeenCalled();
+    expect(infoDialog).not.toHaveBeenCalled();
   });
 
   it('ignores an unknown hub path on the prod Linking path without alerting', async () => {
@@ -195,7 +198,7 @@ describe('useDeepLinking — hub/run dispatch', () => {
     await Promise.resolve();
 
     expect(deepLinkStore.setPendingHubRun).not.toHaveBeenCalled();
-    expect(alertSpy).not.toHaveBeenCalled();
+    expect(infoDialog).not.toHaveBeenCalled();
   });
 
   it('alerts on a malformed hub/run link via the prod Linking path', async () => {
@@ -205,7 +208,7 @@ describe('useDeepLinking — hub/run dispatch', () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(alertSpy).toHaveBeenCalled();
+    expect(infoDialog).toHaveBeenCalled();
     expect(deepLinkStore.setPendingHubRun).not.toHaveBeenCalled();
   });
 });

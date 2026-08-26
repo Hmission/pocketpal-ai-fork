@@ -12,11 +12,12 @@ import {ItalicAccentTitle} from '../components/ItalicAccentTitle';
 import {HighlightText} from '../components/HighlightText';
 import {PhoneWithShield} from '../illustrations/PhoneWithShield';
 import {useOnboardingHandlers} from '../useOnboardingHandlers';
-import {styles} from './styles';
+import {createStyles} from './styles';
 
 export const Onboarding4Screen: React.FC = observer(() => {
   const {l10n, next, goBack} = useOnboardingHandlers(4);
   const theme = useTheme();
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
   const t = l10n.onboarding;
   return (
     <OnboardingScaffold
@@ -42,14 +43,7 @@ export const Onboarding4Screen: React.FC = observer(() => {
                 phrases={[t.screen4.highlight]}
               />
               {/* 阶段四审计闭环：首启流程存储权限说明（B13/B15 权限链的可见面） */}
-              <Text
-                style={{
-                  marginTop: 12,
-                  ...theme.typography.captionS,
-                  color: theme.colors.onSurfaceVariant,
-                }}>
-                {t.screen4.storageNote}
-              </Text>
+              <Text style={styles.storageNote}>{t.screen4.storageNote}</Text>
             </>
           }
         />

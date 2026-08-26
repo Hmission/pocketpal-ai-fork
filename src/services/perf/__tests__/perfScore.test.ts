@@ -43,10 +43,7 @@ describe('perfScore 分数体系', () => {
   });
 
   it('内存安全负值归 0（峰值超硬杀线）', () => {
-    const points = [
-      mkPoint(0, {pssKb: 7 * GB}),
-      mkPoint(1, {pssKb: 7 * GB}),
-    ];
+    const points = [mkPoint(0, {pssKb: 7 * GB}), mkPoint(1, {pssKb: 7 * GB})];
     expect(computePerfScore(points).memory).toBe(0);
   });
 
@@ -69,10 +66,7 @@ describe('perfScore 分数体系', () => {
   });
 
   it('稳定性：有尖峰时低于 100（均值<峰值）', () => {
-    const points = [
-      mkPoint(0, {pssKb: 2 * GB}),
-      mkPoint(1, {pssKb: 4 * GB}),
-    ];
+    const points = [mkPoint(0, {pssKb: 2 * GB}), mkPoint(1, {pssKb: 4 * GB})];
     const card = computePerfScore(points);
     expect(card.stability).toBe(75); // 均值 3GB / 峰值 4GB
   });
@@ -86,10 +80,7 @@ describe('perfScore 分数体系', () => {
   });
 
   it('速度：有基线时四项加权，快于基线 → 速度满分', () => {
-    const points = [
-      mkPoint(0, {stepTime: 1}),
-      mkPoint(1, {stepTime: 1}),
-    ];
+    const points = [mkPoint(0, {stepTime: 1}), mkPoint(1, {stepTime: 1})];
     const card = computePerfScore(points, 2); // 基线 2s，本次 1s → 200→clamp 100
     expect(card.speed).toBe(100);
     // memory50×0.35 + thermal100×0.25 + stability100×0.25 + speed100×0.15 = 82.5 → 83

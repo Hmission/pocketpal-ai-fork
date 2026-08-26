@@ -5,50 +5,29 @@
  * backdrop 遮罩 + surfaceElevated + xl 圆角 + elevation 8 + ui/Button 操作区），
  * 深浅色模式自适应，视觉与 App 卡片体系一致（禁用系统黑色半透明弹窗）。
  *
- * 用法（命令式，Promise<boolean>，true=确认）：
- *   const ok = await confirmDialog({title, message, destructive: true});
- *   if (ok) { ... }
+ * 命令式 API（confirmDialog）已拆至 ./ConfirmDialog/api（B58：零 React 依赖，
+ * 工具层可安全 import）；Host 经 registerConfirmDialogListener 挂接。
  *
  * 挂载：App 根挂载 <ConfirmDialogHost />（自管 Modal，不依赖既有 provider 栈）。
  * Host 未挂载时 confirmDialog 返回 false（fail-fast，破坏性操作不执行）。
  */
 import * as React from 'react';
-import {Text} from 'react-native';
+import {StyleSheet, Text} from 'react-native';
 
 import {useTheme} from '../../hooks';
+import type {Theme} from '../../utils/types';
 import {OverlayCard} from './OverlayCard';
+import {
+  ConfirmDialogOptions,
+  registerConfirmDialogListener,
+} from './ConfirmDialog/api';
 
-export interface ConfirmDialogOptions {
-  title: string;
-  message: string;
-  confirmText?: string;
-  cancelText?: string;
-  /** 破坏性操作：确认按钮用警示红 */
-  destructive?: boolean;
-}
+export {confirmDialog} from './ConfirmDialog/api';
+export type {ConfirmDialogOptions} from './ConfirmDialog/api';
 
 interface PendingDialog {
   opts: ConfirmDialogOptions;
   resolve: (confirmed: boolean) => void;
-}
-
-type Listener = (
-  opts: ConfirmDialogOptions,
-  resolve: (confirmed: boolean) => void,
-) => void;
-
-let listener: Listener | null = null;
-
-/** 命令式确认弹窗。Host 未挂载时返回 false（按取消处理，fail-fast）。 */
-export function confirmDialog(opts: ConfirmDialogOptions): Promise<boolean> {
-  return new Promise(resolve => {
-    if (!listener) {
-      console.warn('[ConfirmDialog] host not mounted, treating as cancelled');
-      resolve(false);
-      return;
-    }
-    listener(opts, resolve);
-  });
 }
 
 /**
@@ -57,13 +36,14 @@ export function confirmDialog(opts: ConfirmDialogOptions): Promise<boolean> {
  */
 export const ConfirmDialogHost: React.FC = () => {
   const theme = useTheme();
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
   const [pending, setPending] = React.useState<PendingDialog | null>(null);
 
   React.useEffect(() => {
-    listener = (opts, resolve) => setPending({opts, resolve});
-    return () => {
-      listener = null;
-    };
+    const unregister = registerConfirmDialogListener((opts, resolve) =>
+      setPending({opts, resolve}),
+    );
+    return unregister;
   }, []);
 
   const close = (confirmed: boolean) => {
@@ -87,16 +67,18 @@ export const ConfirmDialogHost: React.FC = () => {
           onPress: () => close(true),
         },
       }}>
-      <Text
-        style={{
-          ...theme.typography.bodyS,
-          lineHeight: 20,
-          color: theme.colors.onSurfaceVariant,
-        }}>
-        {pending?.opts.message}
-      </Text>
+      <Text style={styles.message}>{pending?.opts.message}</Text>
     </OverlayCard>
   );
 };
 
 ConfirmDialogHost.displayName = 'ConfirmDialogHost';
+
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    message: {
+      ...theme.typography.bodyS,
+      lineHeight: 20,
+      color: theme.colors.onSurfaceVariant,
+    },
+  });

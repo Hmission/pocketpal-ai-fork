@@ -32,7 +32,11 @@ import {
 } from '../services/ttsEngine';
 
 /** ASR 模型下载状态机（与 TTS 下载状态机同构） */
-export type AsrDownloadState = 'not_installed' | 'downloading' | 'ready' | 'error';
+export type AsrDownloadState =
+  | 'not_installed'
+  | 'downloading'
+  | 'ready'
+  | 'error';
 
 class AudioStore {
   /** 生成引擎选择（顶栏胶囊 + 生成段共享，B35：模型只在顶栏） */
@@ -306,8 +310,8 @@ class AudioStore {
         engine === 'kokoro'
           ? 'Kokoro'
           : engine === 'supertonic'
-          ? 'Supertonic'
-          : 'Kitten',
+            ? 'Supertonic'
+            : 'Kitten',
     });
     runInAction(() => {
       this.ttsGenerating = true;

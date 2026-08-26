@@ -1,6 +1,5 @@
 import React, {useCallback, useState, useEffect, useMemo} from 'react';
 import {
-  Alert,
   Linking,
   View,
   TouchableOpacity,
@@ -13,10 +12,10 @@ import {observer} from 'mobx-react-lite';
 import {useNavigation} from '@react-navigation/native';
 import {DrawerNavigationProp} from '@react-navigation/drawer';
 import {ROUTES} from '../../../utils/navigationConstants';
+import {Progress} from '../../../components/ui/Progress';
 import {
   Card,
   Icon,
-  ProgressBar,
   Button,
   IconButton,
   Text,
@@ -32,6 +31,7 @@ import {useTheme, useMemoryCheck, useStorageCheck} from '../../../hooks';
 
 import {createStyles} from './styles';
 import {confirmDialog} from '../../../components/ui/ConfirmDialog';
+import {infoDialog} from '../../../components/ui/InfoDialog';
 
 import {uiStore, modelStore, serverStore} from '../../../store';
 import {t} from '../../../locales';
@@ -188,9 +188,11 @@ export const ModelCard: React.FC<ModelCardProps> = observer(
               message = `${l10n.models.multimodal.cannotDeleteInUse}\n\n${l10n.models.multimodal.dependentModels} ${modelNames}`;
             }
 
-            Alert.alert(l10n.models.multimodal.cannotDeleteTitle, message, [
-              {text: l10n.common.ok, style: 'default'},
-            ]);
+            infoDialog({
+              title: l10n.models.multimodal.cannotDeleteTitle,
+              message,
+              buttonText: l10n.common.ok,
+            });
             return;
           }
 
@@ -207,13 +209,14 @@ export const ModelCard: React.FC<ModelCardProps> = observer(
               await modelStore.deleteModel(model);
             } catch (error) {
               console.error('Failed to delete projection model:', error);
-              Alert.alert(
-                l10n.models.multimodal.cannotDeleteTitle,
-                error instanceof Error
-                  ? error.message
-                  : 'Unknown error occurred',
-                [{text: l10n.common.ok, style: 'default'}],
-              );
+              infoDialog({
+                title: l10n.models.multimodal.cannotDeleteTitle,
+                message:
+                  error instanceof Error
+                    ? error.message
+                    : 'Unknown error occurred',
+                buttonText: l10n.common.ok,
+              });
             }
           }
         } else {
@@ -784,7 +787,7 @@ export const ModelCard: React.FC<ModelCardProps> = observer(
                     <IconButton
                       icon="alert-circle-outline"
                       iconColor={theme.colors.error}
-                      size={20}
+                      size={theme.iconSize.m}
                       style={styles.warningIcon}
                     />
                     <Text style={styles.warningText}>
@@ -802,7 +805,7 @@ export const ModelCard: React.FC<ModelCardProps> = observer(
                   <IconButton
                     icon="alert-circle-outline"
                     iconColor={theme.colors.error}
-                    size={20}
+                    size={theme.iconSize.m}
                     style={styles.warningIcon}
                   />
                   <Text style={styles.warningText}>{integrityError}</Text>
@@ -810,14 +813,14 @@ export const ModelCard: React.FC<ModelCardProps> = observer(
               </TouchableRipple>
             )}
 
-            {/* Download Progress */}
+            {/* Download Progress（B57：paper ProgressBar 清零 → ui/Progress height=8） */}
             {isDownloading && (
               <View style={styles.downloadProgressContainer}>
-                <ProgressBar
+                <Progress
                   testID="download-progress-bar"
-                  progress={model.progress / 100}
+                  height={8}
+                  value={model.progress}
                   color={theme.colors.tertiary}
-                  style={styles.progressBar}
                 />
                 {model.downloadSpeed && (
                   <Text style={styles.downloadSpeed}>

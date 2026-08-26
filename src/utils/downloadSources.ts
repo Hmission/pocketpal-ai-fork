@@ -66,11 +66,7 @@ export function fileRemotePath(
   file: CatalogFileSourceInfo,
   source: DownloadSource,
 ): string {
-  return (
-    file.remotePathBySource?.[source] ??
-    file.remotePath ??
-    file.name
-  );
+  return file.remotePathBySource?.[source] ?? file.remotePath ?? file.name;
 }
 
 /**

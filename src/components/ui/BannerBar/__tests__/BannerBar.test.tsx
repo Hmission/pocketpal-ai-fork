@@ -6,15 +6,15 @@ import {BannerBar} from '../BannerBar';
 
 describe('BannerBar', () => {
   it('renders text with neutral variant by default', () => {
-    const {getByText, getByTestId} = render(
-      <BannerBar text="上下文已压缩" />,
-    );
+    const {getByText, getByTestId} = render(<BannerBar text="上下文已压缩" />);
     expect(getByTestId('ui-banner')).toBeTruthy();
     expect(getByText('上下文已压缩')).toBeTruthy();
   });
 
   it('renders meter when progress is a valid number', () => {
-    const {queryByTestId, rerender} = render(<BannerBar text="x" progress={42} />);
+    const {queryByTestId, rerender} = render(
+      <BannerBar text="x" progress={42} />,
+    );
     expect(queryByTestId('banner-meter')).toBeTruthy();
     rerender(<BannerBar text="x" progress={-1} />);
     expect(queryByTestId('banner-meter')).toBeNull();
@@ -34,9 +34,7 @@ describe('BannerBar', () => {
 
   it('renders dismiss and fires onDismiss', () => {
     const onDismiss = jest.fn();
-    const {getByTestId} = render(
-      <BannerBar text="x" onDismiss={onDismiss} />,
-    );
+    const {getByTestId} = render(<BannerBar text="x" onDismiss={onDismiss} />);
     fireEvent.press(getByTestId('ui-banner-dismiss'));
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });

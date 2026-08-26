@@ -114,9 +114,7 @@ describe('text message', () => {
   it('单图撑满卡片宽度（contain 不裁切）', () => {
     const {getByTestId} = renderWithProviders(
       <TextMessage
-        message={
-          {...derivedTextMessage, imageUris: ['file:///a.png']} as any
-        }
+        message={{...derivedTextMessage, imageUris: ['file:///a.png']} as any}
         messageWidth={440}
         showName={false}
       />,
@@ -143,10 +141,17 @@ describe('text message', () => {
     );
     expect(queryByTestId('image-content-1')).toBeTruthy();
     expect(queryByTestId('image-content-2')).toBeNull();
-    const thumbs = [getByTestId('image-thumbnail-0'), getByTestId('image-thumbnail-1')];
+    const thumbs = [
+      getByTestId('image-thumbnail-0'),
+      getByTestId('image-thumbnail-1'),
+    ];
     for (const t of thumbs) {
-      expect(t.props.style).not.toEqual(expect.objectContaining({width: '100%'}));
-      expect(t.props.style).toEqual(expect.objectContaining({width: 80, height: 80}));
+      expect(t.props.style).not.toEqual(
+        expect.objectContaining({width: '100%'}),
+      );
+      expect(t.props.style).toEqual(
+        expect.objectContaining({width: 80, height: 80}),
+      );
     }
     expect(getByTestId('image-content-0').props.resizeMode).toBe('cover');
   });

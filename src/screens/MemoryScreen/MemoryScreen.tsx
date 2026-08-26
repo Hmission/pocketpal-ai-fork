@@ -5,7 +5,6 @@ import {
   FlatList,
   Text,
   StyleSheet,
-  Alert,
   TextInput,
   Image,
   ScrollView,
@@ -22,21 +21,81 @@ import {
   rotateOldLogs,
   AiosMemory,
 } from '../../services/aiosMemory';
-import {
-  createWeeklyAlbum,
-  listAlbums,
-  Album,
-} from '../../services/albumBook';
+import {createWeeklyAlbum, listAlbums, Album} from '../../services/albumBook';
 import {AIOS_MEMORIES_DIR} from '../../utils/paths';
 import {useTheme, useStaggerEntry} from '../../hooks';
 import type {Theme} from '../../utils/types';
 import {IconTile} from '../../components/ui';
 import {OverlayCard} from '../../components/ui';
 import {Button as UiButton} from '../../components/ui';
+import {infoDialog} from '../../components/ui/InfoDialog';
+import {confirmDialog} from '../../components/ui/ConfirmDialog';
 import {L10nContext} from '../../utils';
 import {HeartIcon} from '../../assets/icons';
 
 // 记忆行错峰入场（DESIGN_SPEC §5：一次性、不循环；JS driver）
+// 以下三个为模块级 render helper：避免在渲染期定义组件触发
+// react/no-unstable-nested-components，闭包数据经参数传入。
+/** 记忆行类型徽章（左槽） */
+const renderMemoryRowTypeBadge = ({
+  item,
+  styles,
+  typeColor,
+  superseded,
+}: {
+  item: AiosMemory;
+  styles: any;
+  typeColor: (type: string) => string;
+  superseded: boolean;
+}) => (
+  <View
+    style={[
+      styles.typeBadge,
+      {
+        backgroundColor: superseded
+          ? themeColourForSuperseded()
+          : typeColor(item.type),
+      },
+    ]}>
+    <Text style={styles.typeText}>{item.type[0].toUpperCase()}</Text>
+  </View>
+);
+
+/** 记忆行操作按钮（右槽：编辑/删除） */
+const renderMemoryRowActions = ({
+  item,
+  styles,
+  theme,
+  l10n,
+  onEdit,
+  onDelete,
+}: {
+  item: AiosMemory;
+  styles: any;
+  theme: Theme;
+  l10n: React.ContextType<typeof L10nContext>;
+  onEdit: (item: AiosMemory) => void;
+  onDelete: (id: string) => void;
+}) => (
+  <View style={styles.rowActions}>
+    <IconButton
+      icon="pencil-outline"
+      size={theme.iconSize.m}
+      accessibilityLabel={l10n.components.chatView.menuItems.edit}
+      onPress={() => onEdit(item)}
+    />
+    <IconButton
+      icon="delete-outline"
+      size={theme.iconSize.m}
+      accessibilityLabel={l10n.common.delete}
+      onPress={() => onDelete(item.id)}
+    />
+  </View>
+);
+
+/** 记忆绘本行封面图标（左槽，无闭包依赖） */
+const renderAlbumRowIcon = () => <List.Icon icon="book-open-variant" />;
+
 const StaggeredMemoryRow = ({
   index,
   item,
@@ -53,17 +112,18 @@ const StaggeredMemoryRow = ({
   onDelete: (id: string) => void;
 }) => {
   const l10n = React.useContext(L10nContext);
+  const theme = useTheme();
   const entry = useStaggerEntry(index);
   const superseded = !!item.supersededBy;
   // v3.8 记忆可见性：属性槽友好标签（偏好/讨厌/在做/身份/位置）
   const slotLabel = item.attrSlot
-    ? {
+    ? ({
         preference: '偏好',
         dislike: '讨厌',
         activity: '在做',
         identity: '身份',
         location: '位置',
-      }[item.attrSlot] ?? item.attrSlot
+      }[item.attrSlot] ?? item.attrSlot)
     : null;
   return (
     <Animated.View style={entry}>
@@ -74,35 +134,12 @@ const StaggeredMemoryRow = ({
           item.ts,
         ).toLocaleString()}${superseded ? ' · 已被替代' : ''}`}
         descriptionStyle={superseded ? styles.supersededDesc : undefined}
-        left={() => (
-          <View
-            style={[
-              styles.typeBadge,
-              {
-                backgroundColor: superseded
-                  ? themeColourForSuperseded()
-                  : typeColor(item.type),
-              },
-            ]}>
-            <Text style={styles.typeText}>{item.type[0].toUpperCase()}</Text>
-          </View>
-        )}
-        right={() => (
-          <View style={{flexDirection: 'row'}}>
-            <IconButton
-              icon="pencil-outline"
-              size={20}
-              accessibilityLabel={l10n.components.chatView.menuItems.edit}
-              onPress={() => onEdit(item)}
-            />
-            <IconButton
-              icon="delete-outline"
-              size={20}
-              accessibilityLabel={l10n.common.delete}
-              onPress={() => onDelete(item.id)}
-            />
-          </View>
-        )}
+        left={() =>
+          renderMemoryRowTypeBadge({item, styles, typeColor, superseded})
+        }
+        right={() =>
+          renderMemoryRowActions({item, styles, theme, l10n, onEdit, onDelete})
+        }
         style={styles.listItem}
       />
     </Animated.View>
@@ -180,65 +217,66 @@ export function MemoryScreen({navigation}: any) {
     return () => navigation.removeListener?.('focus', refresh);
   }, [navigation, refresh]);
 
-  const handleDelete = (id: string) => {
-    Alert.alert('删除记忆', '确认删除这条记忆？', [
-      {text: '取消', style: 'cancel'},
-      {
-        text: '删除',
-        style: 'destructive',
-        onPress: async () => {
-          await deleteMemory(id);
-          refresh();
-        },
-      },
-    ]);
+  const handleDelete = async (id: string) => {
+    const ok = await confirmDialog({
+      title: '删除记忆',
+      message: '确认删除这条记忆？',
+      confirmText: '删除',
+      cancelText: '取消',
+      destructive: true,
+    });
+    if (ok) {
+      await deleteMemory(id);
+      refresh();
+    }
   };
 
   const handleGovern = async () => {
-    Alert.alert(
-      '记忆治理',
-      '将调用本地模型对记忆进行蒸馏结构化（去重合并 + 精炼重写），\n治理后记忆条数会减少但更精准。\n同时清理 90 天前的旧对话日志。\n\n确认开始？',
-      [
-        {text: '取消', style: 'cancel'},
-        {
-          text: '治理',
-          onPress: async () => {
-            setGoverning(true);
-            try {
-              const rotated = await rotateOldLogs();
-              const result = await governMemories();
-              if (result.distilled) {
-                Alert.alert(
-                  '治理完成',
-                  `蒸馏：${result.before}→${result.after} 条\n日志轮转：删除 ${rotated} 个旧日志`,
-                );
-              } else {
-                Alert.alert('治理跳过', result.error || '无需治理');
-              }
-              refresh();
-            } catch (e) {
-              Alert.alert('治理失败', String(e));
-            } finally {
-              setGoverning(false);
-            }
-          },
-        },
-      ],
-    );
+    const ok = await confirmDialog({
+      title: '记忆治理',
+      message:
+        '将调用本地模型对记忆进行蒸馏结构化（去重合并 + 精炼重写），\n治理后记忆条数会减少但更精准。\n同时清理 90 天前的旧对话日志。\n\n确认开始？',
+      confirmText: '治理',
+      cancelText: '取消',
+    });
+    if (!ok) {
+      return;
+    }
+    setGoverning(true);
+    try {
+      const rotated = await rotateOldLogs();
+      const result = await governMemories();
+      if (result.distilled) {
+        infoDialog({
+          title: '治理完成',
+          message: `蒸馏：${result.before}→${result.after} 条\n日志轮转：删除 ${rotated} 个旧日志`,
+        });
+      } else {
+        infoDialog({
+          title: '治理跳过',
+          message: result.error || '无需治理',
+        });
+      }
+      refresh();
+    } catch (e) {
+      infoDialog({title: '治理失败', message: String(e)});
+    } finally {
+      setGoverning(false);
+    }
   };
 
-  const handleClearAll = () => {
-    Alert.alert('清空全部记忆', '确认清空所有记忆？此操作不可撤销。', [
-      {text: '取消', style: 'cancel'},
-      {
-        text: '清空',
-        style: 'destructive',
-        onPress: async () => {
-          await clearMemories();
-          refresh();
-        },
-      },
-    ]);
+  const handleClearAll = async () => {
+    const ok = await confirmDialog({
+      title: '清空全部记忆',
+      message: '确认清空所有记忆？此操作不可撤销。',
+      confirmText: '清空',
+      cancelText: '取消',
+      destructive: true,
+    });
+    if (ok) {
+      await clearMemories();
+      refresh();
+    }
   };
 
   const handleEdit = (item: AiosMemory) => {
@@ -343,7 +381,9 @@ export function MemoryScreen({navigation}: any) {
         style={styles.albumModalContent}>
         {selectedAlbum ? (
           <ScrollView style={styles.albumDetail}>
-            <Text style={styles.albumWeek}>{selectedAlbum.week} · 本周故事</Text>
+            <Text style={styles.albumWeek}>
+              {selectedAlbum.week} · 本周故事
+            </Text>
             <Image
               source={{uri: selectedAlbum.coverUri}}
               style={styles.albumCover}
@@ -371,7 +411,7 @@ export function MemoryScreen({navigation}: any) {
               <List.Item
                 title={`${item.week} 本周故事`}
                 description={item.story.replace(/^#.*\n?/, '').slice(0, 60)}
-                left={() => <List.Icon icon="book-open-variant" />}
+                left={renderAlbumRowIcon}
                 onPress={() => setSelectedAlbum(item)}
               />
             )}
@@ -443,6 +483,7 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     listItem: {paddingVertical: theme.spacing.xs},
+    rowActions: {flexDirection: 'row'},
     // v3.8 记忆可见性：被替代记忆灰显
     supersededTitle: {
       color: theme.colors.outlineVariant,

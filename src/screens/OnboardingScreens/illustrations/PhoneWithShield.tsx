@@ -1,8 +1,14 @@
 import React from 'react';
+import {StyleSheet} from 'react-native';
 import Svg, {Rect} from 'react-native-svg';
 
 import {ShieldGlyph} from '../../../assets/onboarding/illustrations';
 import {useTheme} from '../../../hooks';
+
+// 盾牌徽章定位基态：绝对定位（top/left 由容器尺寸派生，见组件内 glyphPosition）
+const styles = StyleSheet.create({
+  glyph: {position: 'absolute'},
+});
 
 export type PhoneWithShieldProps = {
   /** Outer width in RN points; height scales to keep aspect 85:143. */
@@ -24,6 +30,11 @@ export const PhoneWithShield: React.FC<PhoneWithShieldProps> = ({
   const viewBoxH = 143;
   const height = (width * viewBoxH) / viewBoxW;
   const shieldSize = (41 / viewBoxW) * width;
+  // 徽章位置由父容器尺寸派生：垂直 49.8/143 锚点 + 水平居中
+  const glyphPosition = {
+    top: (49.8 / viewBoxH) * height,
+    left: (width - shieldSize) / 2,
+  };
   return (
     <>
       <Svg
@@ -56,11 +67,7 @@ export const PhoneWithShield: React.FC<PhoneWithShieldProps> = ({
       <ShieldGlyph
         width={shieldSize}
         height={shieldSize}
-        style={{
-          position: 'absolute',
-          top: (49.8 / viewBoxH) * height,
-          left: (width - shieldSize) / 2,
-        }}
+        style={[styles.glyph, glyphPosition]}
       />
     </>
   );

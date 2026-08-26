@@ -29,7 +29,7 @@ const MAX_SEQ_GEN = 200;
 const TE_MAX_TOKENS = 200 + DROP_IDX; // generate tokenizer max_length：200+34，超出截断
 // 编辑模式 TE 视觉通道（官方 processor 语义）：512² 源图 → patch16 → 32×32 网格 → merge 2×2 → 256 视觉 token
 const VIS_GRID = 32;
-const N_VIS_TOKENS = VIS_GRID * VIS_GRID / 4;
+const N_VIS_TOKENS = (VIS_GRID * VIS_GRID) / 4;
 const IMAGE_PAD_ID = 151655; // <|image_pad|>（Qwen3-VL image_token_index）
 const VISION_START_ID = 151652; // <|vision_start|>（诊断用：验证 llama.rn 特殊 token 映射）
 // M-RoPE 位置（te_vision_lm.onnx 固定 seq=520，与导出契约一致）：
@@ -146,7 +146,7 @@ export async function loadTE(): Promise<void> {
     // 08-20 NNAPI 定稿（大王下令，双设备对照实测）：K90（8 Elite）TE 编码 42.1s→25.9s（-38.5%），
     // 全流程 90.7s→64.3s（-29.1%）；小米 13（8 Gen 2）无收益（ORT 自动回退 CPU，无副作用）。
     // 不支持的算子/设备由 ORT 标准机制回退 CPU（EP 声明式优先序，非自写兜底）——单配置保留，非设备分支。
-        // 08-21 NNAPI 定稿（大王下令，三设备对照实测）：K90（8 Elite）TE 编码 42.1s→25.9s（-38.5%）收益明确；
+    // 08-21 NNAPI 定稿（大王下令，三设备对照实测）：K90（8 Elite）TE 编码 42.1s→25.9s（-38.5%）收益明确；
     // 小米 13（8 Gen 2）/Mali 平板（天玑 9400+）持平（ORT 自动回退 CPU，无副作用）——单配置保留，非设备分支。
     // 不支持的算子/设备由 ORT 标准机制回退 CPU（EP 声明式优先序，非自写兜底）。
     executionProviders: ['nnapi', 'cpu'],
@@ -174,10 +174,13 @@ export async function loadTEVision(): Promise<void> {
   // 双段：visual（pixel_values → image_embeds，fp32 输出）→ 融合 LLM（input_ids + image_embeds → hidden_states）
   // 08-21 真机验证：双段 TE 曾用 nnapi EP，出图与桌面（CPU）完全无关（NNAPI 数值失真）；
   // 桌面同一套 ONNX 三 seed 稳定产出正确编辑——定稿 CPU（编辑链路正确性优先，不做 NNAPI 设备分支）
-  teVisVisual = await ort.InferenceSession.create(`${DIR}/te_vision_visual.onnx`, {
-    executionProviders: ['cpu'],
-    enableCpuMemArena: false,
-  });
+  teVisVisual = await ort.InferenceSession.create(
+    `${DIR}/te_vision_visual.onnx`,
+    {
+      executionProviders: ['cpu'],
+      enableCpuMemArena: false,
+    },
+  );
   teVisLm = await ort.InferenceSession.create(`${DIR}/te_vision_lm.onnx`, {
     executionProviders: ['cpu'],
     enableCpuMemArena: false,
@@ -259,7 +262,11 @@ export async function encodePrompt(
       const preIds = await tokenizeIds(EDIT_TEMPLATE_PRE);
       const sufIds = await tokenizeIds(EDIT_TEMPLATE_SUF.replace('{}', inner));
       const textCap = SEQ_EDIT_FIXED - preIds.length - N_VIS_TOKENS;
-      const body = [...preIds, ...Array(N_VIS_TOKENS).fill(IMAGE_PAD_ID), ...sufIds.slice(0, textCap)];
+      const body = [
+        ...preIds,
+        ...Array(N_VIS_TOKENS).fill(IMAGE_PAD_ID),
+        ...sufIds.slice(0, textCap),
+      ];
       real = body.length;
       // 08-21 诊断：llama.rn tokenize 对 Qwen3-VL 特殊 token（<|vision_start|>/<|image_pad|>）的映射验证
       console.log(
@@ -274,7 +281,9 @@ export async function encodePrompt(
         'real=',
         real,
       );
-      ids = body.slice(0, SEQ_EDIT_FIXED).concat(Array(Math.max(0, SEQ_EDIT_FIXED - body.length)).fill(0));
+      ids = body
+        .slice(0, SEQ_EDIT_FIXED)
+        .concat(Array(Math.max(0, SEQ_EDIT_FIXED - body.length)).fill(0));
     } else {
       const text = GEN_TEMPLATE.replace('{}', inner);
       const tk = await teCtx!.tokenize(text);
@@ -287,7 +296,9 @@ export async function encodePrompt(
       return null;
     }
     const ids64 = ids.map(v => BigInt(v));
-    const mask64 = ids.map((_, i) => BigInt(mode === 'edit' && i >= real ? 0 : 1));
+    const mask64 = ids.map((_, i) =>
+      BigInt(mode === 'edit' && i >= real ? 0 : 1),
+    );
     let hs: Float32Array;
     if (mode === 'edit') {
       if (!teVisVisual || !teVisLm) {
@@ -299,8 +310,15 @@ export async function encodePrompt(
       // 视觉段：512² [-1,1] → [1024,1536] patch 数组（官方 processor 契约）→ te_vision_visual.onnx
       const pv = buildPixelValues(pixelValues);
       const visRes: any = await teVisVisual.run({
-        pixel_values: new ort.Tensor('float32', pv, [VIS_EMB_ROWS, VIS_EMB_FLAT]),
-        image_grid_thw: new ort.Tensor('int64', [1, VIS_GRID, VIS_GRID] as any, [1, 3]),
+        pixel_values: new ort.Tensor('float32', pv, [
+          VIS_EMB_ROWS,
+          VIS_EMB_FLAT,
+        ]),
+        image_grid_thw: new ort.Tensor(
+          'int64',
+          [1, VIS_GRID, VIS_GRID] as any,
+          [1, 3],
+        ),
       });
       const imageEmbeds = visRes.image_embeds.data as Float32Array; // [256,2048] fp32
       // 融合 LLM：M-RoPE 位置端侧构造（官方 get_rope_index 单图解析式）
@@ -308,8 +326,15 @@ export async function encodePrompt(
       const res: any = await teVisLm.run({
         input_ids: new ort.Tensor('int64', ids64 as any, [1, seq]),
         attention_mask: new ort.Tensor('int64', mask64 as any, [1, seq]),
-        image_embeds: new ort.Tensor('float32', imageEmbeds, [N_VIS_TOKENS, TE_DIM]),
-        image_grid_thw: new ort.Tensor('int64', [1, VIS_GRID, VIS_GRID] as any, [1, 3]),
+        image_embeds: new ort.Tensor('float32', imageEmbeds, [
+          N_VIS_TOKENS,
+          TE_DIM,
+        ]),
+        image_grid_thw: new ort.Tensor(
+          'int64',
+          [1, VIS_GRID, VIS_GRID] as any,
+          [1, 3],
+        ),
         position_ids: new ort.Tensor('int64', posIds as any, [3, 1, seq]),
       });
       hs = res.hidden_states.data as Float32Array; // [1,seq,2048]，含视觉 token
@@ -323,7 +348,6 @@ export async function encodePrompt(
       });
       hs = res.hidden_states.data as Float32Array; // [1,seq,2048]
     }
-    const kept = seq - dropIdx;
     // 08-21 修复：mask/enc 边界用真实 token 数（real-dropIdx），对齐官方 prompt_embeds_mask
     // （官方 _extract_masked_hidden 先按 attention_mask 提取真实 token 再 drop，pad 区不参与注意力）。
     // 旧实现用 kept（含 LM 输出的 pad 区 hidden 161 行）→ 注意力被无效 token 污染 → 编辑条件失真
@@ -627,7 +651,15 @@ export function editDreamLite(
     if (!r) {
       throw new Error('TE 编码失败，未生成图片，请重试');
     }
-    const img = await denoise(cond, width, height, steps, r.enc, onStep, r.mask);
+    const img = await denoise(
+      cond,
+      width,
+      height,
+      steps,
+      r.enc,
+      onStep,
+      r.mask,
+    );
     return saveRgb(img, width, height);
   });
 }

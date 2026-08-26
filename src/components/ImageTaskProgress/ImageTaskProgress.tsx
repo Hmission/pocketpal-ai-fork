@@ -8,12 +8,13 @@
  * 组件自守卫：loading/generating 均 false 时渲染 null（卡片回写瞬间不闪烁）。
  */
 import * as React from 'react';
-import {Animated, StyleSheet, Text, View} from 'react-native';
+import {StyleSheet, Text, View} from 'react-native';
 import {observer} from 'mobx-react';
 
 import {useTheme} from '../../hooks';
 import {imageGenStore} from '../../store/imageGenStore';
-import {useWaveDots} from '../../screens/ImageGenScreen/hooks/useWaveDots';
+import {WaveDots} from '../ui/WaveDots';
+import {Progress} from '../ui/Progress';
 import {withOpacity} from '../../utils/colorUtils';
 import type {Theme} from '../../utils/types';
 
@@ -22,7 +23,6 @@ export const ImageTaskProgress: React.FC = observer(() => {
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
   const active = imageGenStore.loading || imageGenStore.generating;
-  const waveDots = useWaveDots(active);
 
   // 耗时展示：生成期间每 2s 刷新（与生图页预览区同节奏）
   const [now, setNow] = React.useState(Date.now());
@@ -47,33 +47,12 @@ export const ImageTaskProgress: React.FC = observer(() => {
   return (
     <View style={styles.wrap} testID="image-task-progress">
       <View style={styles.dotsRow}>
-        {waveDots.map((dot, i) => (
-          <Animated.View
-            key={i}
-            style={[
-              styles.dot,
-              {
-                transform: [
-                  {
-                    translateY: dot.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0, -6],
-                    }),
-                  },
-                ],
-                opacity: dot.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.45, 1],
-                }),
-              },
-            ]}
-          />
-        ))}
+        {/* B57：三点波浪动效归一 ui/WaveDots（JS driver 纪律在组件内承接） */}
+        <WaveDots active={active} />
         <Text style={styles.title}>正在生成新图…</Text>
       </View>
-      <View style={styles.track}>
-        <View style={[styles.fill, {width: `${pct}%`}]} />
-      </View>
+      {/* B57：进度条归一 ui/Progress（value≥2 底条语义保留） */}
+      <Progress value={pct} />
       <Text style={styles.text}>
         {progressText
           ? `采样 ${progressText}` +
@@ -105,27 +84,10 @@ const createStyles = (theme: Theme) =>
       gap: 6,
       height: 24,
     },
-    dot: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      backgroundColor: theme.colors.primary,
-    },
     title: {
       ...theme.typography.captionM,
       fontWeight: '600',
       color: theme.colors.onSurface,
-    },
-    track: {
-      height: 6,
-      borderRadius: theme.radius.xxs,
-      backgroundColor: withOpacity(theme.colors.shadow, 0.08),
-      overflow: 'hidden',
-    },
-    fill: {
-      height: '100%',
-      backgroundColor: theme.colors.primary,
-      borderRadius: theme.radius.xxs,
     },
     text: {
       ...theme.typography.captionS,

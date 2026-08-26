@@ -59,7 +59,11 @@ describe('PerfRecorder 落盘契约', () => {
   });
 
   it('append：逐点写 JSONL pt 行（无 active 会话时静默丢弃）', async () => {
-    await perfRecorder.begin({taskId: 't2', taskType: 'generated', startedAt: 1});
+    await perfRecorder.begin({
+      taskId: 't2',
+      taskType: 'generated',
+      startedAt: 1,
+    });
     await perfRecorder.append(mkPt({pssKb: 4000}));
     const [path, content] = (RNFS.appendFile as jest.Mock).mock.calls[0];
     expect(path).toContain('perf_t2.jsonl');
@@ -71,7 +75,11 @@ describe('PerfRecorder 落盘契约', () => {
   });
 
   it('finish：写 summary 行（含跑分卡 + 结果）并复位状态', async () => {
-    await perfRecorder.begin({taskId: 't3', taskType: 'generated', startedAt: 1});
+    await perfRecorder.begin({
+      taskId: 't3',
+      taskType: 'generated',
+      startedAt: 1,
+    });
     await perfRecorder.append(mkPt({ts: 1000}));
     await perfRecorder.append(mkPt({ts: 2000, pssKb: 4 * 1024 * 1024}));
     await perfRecorder.finish('success');
@@ -85,7 +93,10 @@ describe('PerfRecorder 落盘契约', () => {
   });
 
   it('readSession：解析 meta+points+summary；被杀无 summary 时由轨迹重算跑分卡', async () => {
-    const meta = {kind: 'meta', meta: {taskId: 't4', taskType: 'generated', startedAt: 1}};
+    const meta = {
+      kind: 'meta',
+      meta: {taskId: 't4', taskType: 'generated', startedAt: 1},
+    };
     const p1 = {kind: 'pt', pt: mkPt({ts: 1000})};
     const p2 = {kind: 'pt', pt: mkPt({ts: 2000})};
     (RNFS.readFile as jest.Mock).mockResolvedValue(
@@ -100,7 +111,10 @@ describe('PerfRecorder 落盘契约', () => {
   });
 
   it('readSession：有 summary 时直接使用落盘分数', async () => {
-    const meta = {kind: 'meta', meta: {taskId: 't5', taskType: 'generated', startedAt: 1}};
+    const meta = {
+      kind: 'meta',
+      meta: {taskId: 't5', taskType: 'generated', startedAt: 1},
+    };
     const summary = {
       kind: 'summary',
       summary: {
@@ -127,8 +141,18 @@ describe('PerfRecorder 落盘契约', () => {
       {name: 'other.txt', path: '/p/o'},
     ]);
     (RNFS.readFile as jest.Mock)
-      .mockResolvedValueOnce(JSON.stringify({kind: 'meta', meta: {taskId: 'a', taskType: 'generated', startedAt: 100}}) + '\n')
-      .mockResolvedValueOnce(JSON.stringify({kind: 'meta', meta: {taskId: 'b', taskType: 'caption', startedAt: 200}}) + '\n');
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          kind: 'meta',
+          meta: {taskId: 'a', taskType: 'generated', startedAt: 100},
+        }) + '\n',
+      )
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          kind: 'meta',
+          meta: {taskId: 'b', taskType: 'caption', startedAt: 200},
+        }) + '\n',
+      );
     const list = await perfRecorder.listSessions();
     expect(list.map(m => m.taskId)).toEqual(['b', 'a']); // 倒序
   });

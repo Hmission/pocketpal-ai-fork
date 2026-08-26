@@ -1,3 +1,4 @@
+/* eslint-disable no-bitwise -- B51：PNG IHDR 二进制解析测试（字节位移/掩码），位运算为被测对象本身 */
 import {
   encodePng,
   pngWithMeta,
@@ -24,7 +25,10 @@ function scanChunks(png: Uint8Array): Array<[string, number]> {
   let off = 8;
   while (off + 12 <= png.length) {
     const len =
-      (png[off] << 24) | (png[off + 1] << 16) | (png[off + 2] << 8) | png[off + 3];
+      (png[off] << 24) |
+      (png[off + 1] << 16) |
+      (png[off + 2] << 8) |
+      png[off + 3];
     const type = String.fromCharCode(
       png[off + 4],
       png[off + 5],

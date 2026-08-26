@@ -1,9 +1,10 @@
 import React, {useContext} from 'react';
-import {Button, Paragraph, ProgressBar, Text} from 'react-native-paper';
+import {Button, Paragraph, Text} from 'react-native-paper';
 import {modelStore} from '../../store';
 import {Model} from '../../utils/types';
 import {useTheme} from '../../hooks';
 import {View} from 'react-native';
+import {Progress} from '../ui/Progress';
 import {createStyles} from './styles';
 import {useNavigation} from '@react-navigation/native';
 import {observer} from 'mobx-react';
@@ -83,11 +84,12 @@ export const ModelNotAvailable = observer(
         <View style={styles.modelNotDownloaded}>
           {isDownloading ? (
             <>
-              <ProgressBar
+              {/* B57：paper ProgressBar 清零 → ui/Progress（paper 语义 0-1 → 0-100） */}
+              <Progress
                 testID="download-progress-bar"
-                progress={downloadProgress}
+                height={8}
+                value={downloadProgress * 100}
                 color={theme.colors.tertiary}
-                style={styles.progressBar}
               />
               {downloadSpeed && <Paragraph>{downloadSpeed}</Paragraph>}
             </>

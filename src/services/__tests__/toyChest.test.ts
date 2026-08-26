@@ -67,7 +67,7 @@ describe('toyChest（P8 玩具工坊，PLAY_SPEC v1）', () => {
 
   it('upsert 迭代（v1.6）：同 title 覆盖原 id 不堆条目，且条目置顶', async () => {
     const v1 = await saveToy('贪吃蛇', '<html>v1</html>');
-    const other = await saveToy('抽签器', '<html>draw</html>');
+    await saveToy('抽签器', '<html>draw</html>');
     const v2 = await saveToy('贪吃蛇', '<html>v2</html>');
 
     expect(v2!.id).toBe(v1!.id); // 覆盖迭代 id 不变

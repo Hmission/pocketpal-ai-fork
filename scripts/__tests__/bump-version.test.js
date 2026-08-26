@@ -85,9 +85,7 @@ describe('bump-version', () => {
         'utf8',
       );
       expect(pbx.match(/MARKETING_VERSION = 2\.0\.1;/g)).toHaveLength(2);
-      expect(
-        pbx.match(/CURRENT_PROJECT_VERSION = 145;/g),
-      ).toHaveLength(2);
+      expect(pbx.match(/CURRENT_PROJECT_VERSION = 145;/g)).toHaveLength(2);
     });
 
     it('目标版本与当前相同时显式失败', () => {

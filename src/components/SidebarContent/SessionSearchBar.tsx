@@ -43,7 +43,9 @@ export const SessionSearchBar: React.FC<SessionSearchBarProps> = ({
           },
         ]}>
         <SearchIcon
-          stroke={focused ? theme.colors.primary : theme.colors.onSurfaceVariant}
+          stroke={
+            focused ? theme.colors.primary : theme.colors.onSurfaceVariant
+          }
         />
         <TextInput
           value={searchQuery}

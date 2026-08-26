@@ -8,9 +8,31 @@
  * 纪律：Animated JS driver；overflow hidden 裁剪，零新依赖。
  */
 import * as React from 'react';
-import {Animated, Easing, StyleProp, Text, TextStyle, View} from 'react-native';
+import {
+  Animated,
+  Easing,
+  StyleProp,
+  StyleSheet,
+  Text,
+  TextStyle,
+  View,
+} from 'react-native';
 
 const DIGITS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+
+/** 静态外观（字号/行高/颜色/位移随 props/动画动态注入） */
+const styles = StyleSheet.create({
+  rollerWrap: {
+    overflow: 'hidden',
+  },
+  digitText: {
+    textAlign: 'center',
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+});
 
 interface DigitRollerProps {
   digit: number;
@@ -21,8 +43,12 @@ interface DigitRollerProps {
 /** 单个数位：竖排 0-9 条带，首帧锚定目标位（不演假动画），后续变化翻滚 */
 const DigitRoller: React.FC<DigitRollerProps> = ({digit, fontSize, color}) => {
   const lineHeight = Math.round(fontSize * 1.25);
-  const translateY = React.useRef(new Animated.Value(-digit * lineHeight))
-    .current;
+  const translateY = React.useRef(
+    new Animated.Value(-digit * lineHeight),
+  ).current;
+  // 动态部分（高/字号/色/位移）经组件体变量注入，静态外观走 styles
+  const rollerStyle = {height: lineHeight};
+  const digitStyle = {fontSize, lineHeight, color};
 
   React.useEffect(() => {
     const anim = Animated.timing(translateY, {
@@ -36,17 +62,10 @@ const DigitRoller: React.FC<DigitRollerProps> = ({digit, fontSize, color}) => {
   }, [digit, lineHeight, translateY]);
 
   return (
-    <View style={{height: lineHeight, overflow: 'hidden'}}>
+    <View style={[styles.rollerWrap, rollerStyle]}>
       <Animated.View style={{transform: [{translateY}]}}>
         {DIGITS.map(d => (
-          <Text
-            key={d}
-            style={{
-              fontSize,
-              lineHeight,
-              color,
-              textAlign: 'center',
-            }}>
+          <Text key={d} style={[styles.digitText, digitStyle]}>
             {d}
           </Text>
         ))}
@@ -75,18 +94,14 @@ export const OdometerNumber: React.FC<OdometerNumberProps> = ({
   style,
   testID,
 }) => {
-  const na =
-    value === undefined || value === null || Number.isNaN(value);
+  const na = value === undefined || value === null || Number.isNaN(value);
   const text = na ? '--' : format(value);
   const lineHeight = Math.round(fontSize * 1.25);
+  // 动态行高（基于 props 字号）经组件体变量注入
+  const rowStyle = {height: lineHeight};
 
   return (
-    <View
-      style={[
-        {flexDirection: 'row', alignItems: 'center', height: lineHeight},
-        style,
-      ]}
-      testID={testID}>
+    <View style={[styles.row, rowStyle, style]} testID={testID}>
       {na
         ? text.split('').map((ch, i) => (
             <Text key={i} style={{fontSize, lineHeight, color}}>

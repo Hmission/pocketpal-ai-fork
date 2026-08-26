@@ -87,10 +87,7 @@ export const BannerRow: React.FC<BannerRowProps> = observer(
 
     if (variant === 'html-soft-cap') {
       return (
-        <BannerBar
-          testID="soft-cap-warning"
-          text={l10n.chat.softCapWarning}
-        />
+        <BannerBar testID="soft-cap-warning" text={l10n.chat.softCapWarning} />
       );
     }
 

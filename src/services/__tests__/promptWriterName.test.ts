@@ -3,7 +3,9 @@ import {isPrompterModelName} from '../promptWriter';
 describe('isPrompterModelName（管家模型判定）', () => {
   it('命中 MiniCPM5-1B 各命名形态', () => {
     expect(
-      isPrompterModelName('MiniCPM5-1B-Claude-Opus-Fable5-V2-Thinking-heretic-Q4_K_M.gguf'),
+      isPrompterModelName(
+        'MiniCPM5-1B-Claude-Opus-Fable5-V2-Thinking-heretic-Q4_K_M.gguf',
+      ),
     ).toBe(true);
     expect(isPrompterModelName('minicpm5_1b_q4km.gguf')).toBe(true);
     expect(isPrompterModelName('MiniCPM5-1B.gguf')).toBe(true);

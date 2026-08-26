@@ -75,11 +75,13 @@ export function emit(
   }
   try {
     void ensureEventFile().then(() =>
-      RNFS.appendFile(AIOS_EVENTS_LOG, buildEventLine(domain, type, payload) + '\n', 'utf8').catch(
-        () => {
-          // 观测失败静默降级（BT07）：不阻断业务
-        },
-      ),
+      RNFS.appendFile(
+        AIOS_EVENTS_LOG,
+        buildEventLine(domain, type, payload) + '\n',
+        'utf8',
+      ).catch(() => {
+        // 观测失败静默降级（BT07）：不阻断业务
+      }),
     );
     return true;
   } catch {

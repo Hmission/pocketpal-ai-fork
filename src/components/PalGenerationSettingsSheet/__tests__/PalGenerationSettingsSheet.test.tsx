@@ -1,6 +1,11 @@
 import React from 'react';
-import {Alert} from 'react-native';
 import {render, fireEvent, waitFor, act} from '../../../../jest/test-utils';
+
+// B52③ 迁移同步：校验失败提示已由 Alert.alert → infoDialog
+jest.mock('../../ui/InfoDialog', () => ({
+  infoDialog: jest.fn().mockResolvedValue(undefined),
+}));
+import {infoDialog} from '../../ui/InfoDialog';
 
 import {PalGenerationSettingsSheet} from '../PalGenerationSettingsSheet';
 import {chatSessionStore, defaultCompletionSettings} from '../../../store';
@@ -44,8 +49,6 @@ jest.mock('../../../utils/modelSettings', () => ({
     max_tokens: {validation: {type: 'numeric'}},
   },
 }));
-
-jest.spyOn(Alert, 'alert');
 
 describe('PalGenerationSettingsSheet', () => {
   const defaultProps = {
@@ -249,10 +252,12 @@ describe('PalGenerationSettingsSheet', () => {
       fireEvent.press(saveButton);
 
       await waitFor(() => {
-        expect(Alert.alert).toHaveBeenCalledWith(
-          l10n.en.components.palGenerationSettingsSheet.invalidValues,
-          expect.stringContaining('temperature'),
-          expect.any(Array),
+        // B52③：校验失败提示走 infoDialog
+        expect(infoDialog).toHaveBeenCalledWith(
+          expect.objectContaining({
+            title: l10n.en.components.palGenerationSettingsSheet.invalidValues,
+            message: expect.stringContaining('temperature'),
+          }),
         );
         expect(defaultProps.onUpdateSettings).not.toHaveBeenCalled();
         expect(defaultProps.onClose).not.toHaveBeenCalled();

@@ -80,7 +80,10 @@ export const BenchResultCard = ({result, onDelete}: Props) => {
             <View style={styles.resultRow}>
               <View style={styles.resultItem}>
                 <Text
-                  style={[styles.resultValue, {color: theme.colors.brandAccent}]}>
+                  style={[
+                    styles.resultValue,
+                    {color: theme.colors.brandAccent},
+                  ]}>
                   {suite.score.total}
                   <Text style={styles.resultUnit}> 分</Text>
                 </Text>
@@ -107,21 +110,15 @@ export const BenchResultCard = ({result, onDelete}: Props) => {
             </View>
             <View style={styles.resultRow}>
               <View style={styles.resultItem}>
-                <Text style={styles.resultValue}>
-                  {suite.score.memory}
-                </Text>
+                <Text style={styles.resultValue}>{suite.score.memory}</Text>
                 <Text style={styles.resultLabel}>{labels.memSafe}</Text>
               </View>
               <View style={styles.resultItem}>
-                <Text style={styles.resultValue}>
-                  {suite.score.thermal}
-                </Text>
+                <Text style={styles.resultValue}>{suite.score.thermal}</Text>
                 <Text style={styles.resultLabel}>{labels.thermal}</Text>
               </View>
               <View style={styles.resultItem}>
-                <Text style={styles.resultValue}>
-                  {suite.score.stability}
-                </Text>
+                <Text style={styles.resultValue}>{suite.score.stability}</Text>
                 <Text style={styles.resultLabel}>{labels.stability}</Text>
               </View>
               {result.wallTimeMs != null && (

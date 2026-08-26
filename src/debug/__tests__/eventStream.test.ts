@@ -2,11 +2,7 @@
  * eventStream 契约测试：buildEventLine 格式 / seq 递增 / emit 节流。
  * 覆盖铁律：BT07（观测不为 SPOF）。
  */
-import {
-  buildEventLine,
-  emit,
-  __resetEventStreamForTest,
-} from '../eventStream';
+import {buildEventLine, emit, __resetEventStreamForTest} from '../eventStream';
 
 describe('eventStream', () => {
   beforeEach(() => {
@@ -46,12 +42,7 @@ describe('eventStream', () => {
 
   it('不同 throttleKey 互不干扰', () => {
     emit('chat', 'chat.assistant_delta', {text: 'a'}, 'delta:m1');
-    const other = emit(
-      'chat',
-      'chat.assistant_delta',
-      {text: 'b'},
-      'delta:m2',
-    );
+    const other = emit('chat', 'chat.assistant_delta', {text: 'b'}, 'delta:m2');
     expect(other).toBe(true);
   });
 

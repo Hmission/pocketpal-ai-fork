@@ -1,18 +1,13 @@
 import React, {useRef, useEffect} from 'react';
-import {
-  Animated,
-  View,
-  Keyboard,
-  Pressable,
-  TouchableOpacity,
-  Text as RNText,
-} from 'react-native';
+import {View, Keyboard, Pressable, Text as RNText} from 'react-native';
 import {observer} from 'mobx-react';
 import BottomSheet, {BottomSheetScrollView} from '@gorhom/bottom-sheet';
 
 import {useTheme} from '../../hooks';
 import {createStyles} from './styles';
-import {useWaveDots} from '../../screens/ImageGenScreen/hooks/useWaveDots';
+import {WaveDots} from '../ui/WaveDots';
+import {Progress} from '../ui/Progress';
+import {Chip} from '../ui/Chip';
 import {modelStore} from '../../store';
 import {CustomBackdrop} from '../Sheet/CustomBackdrop';
 import {getModelSkills, Model} from '../../utils';
@@ -116,31 +111,34 @@ export const ChatPalModelPickerSheet = observer(
       null,
     );
     const [nowTs, setNowTs] = React.useState(Date.now());
+    // observer 本地读（MobX 惯例，ImageGenScreen:196 同款）：observable 属性变化
+    // 不能直接驱动 React effect，先读入 render 局部变量——isContextLoading 变化触发
+    // observer 重渲染 → 局部变量刷新 → effect 以新闭包重新执行（起表/归零）。
+    const isContextLoading = modelStore.isContextLoading;
     useEffect(() => {
-      if (modelStore.isContextLoading) {
+      if (isContextLoading) {
         setLoadStartedAt(prev => prev ?? Date.now());
         const id = setInterval(() => setNowTs(Date.now()), 1000);
         return () => clearInterval(id);
       }
       setLoadStartedAt(null);
       return undefined;
-    }, [modelStore.isContextLoading]);
+    }, [isContextLoading]);
     const loadElapsedS = loadStartedAt
       ? Math.max(0, Math.round((nowTs - loadStartedAt) / 1000))
       : 0;
 
-    // 三点波浪动效（与生图任务卡 ImageTaskProgress 同款）：
-    // 加载期跳动提示，用户能感知加载在进行而非卡死。
-    const waveDots = useWaveDots(modelStore.isContextLoading);
+    // 三点波浪动效（B57：渲染归一 ui/WaveDots，active 由条件渲染承载；
+    // 原 hook 自 src/screens/ImageGenScreen/hooks/useWaveDots 迁 ui/WaveDots/useWaveDots）
 
     // 加载收尾自动关 sheet（进度行使命完成）；state 驱动以触发 effect 重跑
     const [pendingClose, setPendingClose] = React.useState(false);
     useEffect(() => {
-      if (!modelStore.isContextLoading && pendingClose) {
+      if (!isContextLoading && pendingClose) {
         setPendingClose(false);
         onClose();
       }
-    }, [modelStore.isContextLoading, pendingClose, onClose]);
+    }, [isContextLoading, pendingClose, onClose]);
 
     const handleModelSelect = React.useCallback(
       async (model: (typeof modelStore.availableModels)[0]) => {
@@ -167,7 +165,8 @@ export const ChatPalModelPickerSheet = observer(
         const butlerResident = butler && promptWriter.isLoaded;
         const note = getModelNote(model);
         const loadingThis =
-          modelStore.isContextLoading && modelStore.loadingModel?.id === model.id;
+          modelStore.isContextLoading &&
+          modelStore.loadingModel?.id === model.id;
         const modelSkills = getModelSkills(model)
           .flatMap(skill => skill.labelKey)
           .join(', ');
@@ -202,66 +201,43 @@ export const ChatPalModelPickerSheet = observer(
               ) : loadingThis ? (
                 <View style={styles.loadingWrap}>
                   <View style={styles.loadingRow}>
-                    {waveDots.map((dot, i) => (
-                      <Animated.View
-                        key={i}
-                        style={[
-                          styles.loadingDot,
-                          {
-                            transform: [
-                              {
-                                translateY: dot.interpolate({
-                                  inputRange: [0, 1],
-                                  outputRange: [0, -6],
-                                }),
-                              },
-                            ],
-                            opacity: dot.interpolate({
-                              inputRange: [0, 1],
-                              outputRange: [0.45, 1],
-                            }),
-                          },
-                        ]}
-                      />
-                    ))}
+                    {/* B57：三点波浪归一 ui/WaveDots（原 8px/6gap/6 振幅视觉参数回传） */}
+                    <WaveDots size={8} gap={6} translateY={6} />
                     <RNText style={styles.actionDisabled}>
                       正在加载 · 已耗时 {loadElapsedS}s
                     </RNText>
                   </View>
-                  {/* 无确定进度（模型加载无 step 上报）：2% 底条，与生图页加载期语义一致 */}
-                  <View style={styles.loadingTrack}>
-                    <View style={[styles.loadingFill, {width: '2%'}]} />
-                  </View>
+                  {/* B57：2% 底条语义 = ui/Progress value 缺省 */}
+                  <Progress />
                 </View>
               ) : isActiveModel ? (
-                // 卸载 = 独立动作（不触发选择），stopPropagation 隔卡片 onPress
-                <TouchableOpacity
+                // 卸载 = 独立动作（不触发选择）；RN 0.82 嵌套 Pressable 内层认领
+                // responder，外层卡片 onPress 不再触发，DS Chip 无需手写 stopPropagation
+                <Chip
+                  variant="outline"
+                  color="primary"
+                  size="s"
+                  label="卸载"
                   testID={`picker-unload-${model.id}`}
                   disabled={modelStore.isContextLoading}
-                  onPress={e => {
-                    e.stopPropagation();
-                    modelStore.releaseContext(true);
-                  }}>
-                  <RNText style={[styles.actionText, styles.actionTextUnload]}>
-                    卸载
-                  </RNText>
-                </TouchableOpacity>
+                  onPress={() => modelStore.releaseContext(true)}
+                />
               ) : (
-                <TouchableOpacity
+                <Chip
+                  variant="outline"
+                  color="primary"
+                  size="s"
+                  label="加载"
                   testID={`picker-load-${model.id}`}
                   disabled={modelStore.isContextLoading}
-                  onPress={e => {
-                    e.stopPropagation();
-                    handleModelSelect(model);
-                  }}>
-                  <RNText style={styles.actionText}>加载</RNText>
-                </TouchableOpacity>
+                  onPress={() => handleModelSelect(model)}
+                />
               )}
             </View>
           </Pressable>
         );
       },
-      [styles, handleModelSelect, loadElapsedS, waveDots],
+      [styles, handleModelSelect, loadElapsedS],
     );
 
     // If the snapPoints not memoized, the sheet gets closed when the tab is changed for the first time.

@@ -7,7 +7,6 @@ import {
   touchProject,
   findProject,
   listProjects,
-  projectDir,
   domainRoot,
 } from '../index';
 
@@ -50,13 +49,11 @@ describe('ensureProject / touchProject / findProject', () => {
   it('ensureProject 建目录 + 索引条目，幂等', async () => {
     const dir = await ensureProject('writing', '我的小说');
     expect(dir).toBe(`${domainRoot('writing')}/我的小说`);
-    expect(findProject('writing', '我的小说')).resolves.toMatchObject({
+    await expect(findProject('writing', '我的小说')).resolves.toMatchObject({
       name: '我的小说',
     });
     // 二次 ensure 不炸（幂等）
-    await expect(
-      ensureProject('writing', '我的小说'),
-    ).resolves.toBe(dir);
+    await expect(ensureProject('writing', '我的小说')).resolves.toBe(dir);
   });
 
   it('touchProject 写后置顶 + 可选 progress 更新', async () => {

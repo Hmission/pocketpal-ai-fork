@@ -119,7 +119,7 @@ describe('imageGenStore 幽灵任务治理', () => {
       okEntry,
     ]);
 
-    await imageGenStore['ensureReadyImpl']();
+    await (imageGenStore as any).ensureReadyImpl();
 
     const ghost = imageGenStore.history.find(h => h.taskId === 'task_ghost_1');
     expect(ghost?.status).toBe('failed');
@@ -140,7 +140,7 @@ describe('imageGenStore 幽灵任务治理', () => {
   it('水合无 running：零 patch（无幽灵不写盘）', async () => {
     (imageGenTaskRepository.loadAll as jest.Mock).mockResolvedValue([okEntry]);
 
-    await imageGenStore['ensureReadyImpl']();
+    await (imageGenStore as any).ensureReadyImpl();
 
     expect(imageGenTaskRepository.patchByTaskId).not.toHaveBeenCalled();
     expect(imageGenStore.history).toHaveLength(1);

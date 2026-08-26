@@ -57,7 +57,7 @@ export const AIOS_MEMORY_FILE = `${AIOS_WORKSPACE_DIR}/MEMORY.md`;
 // 默认 Workspace 文件内容
 const DEFAULT_SOUL = `# \u5973\u5996 \u00b7 AIOS \u7845\u57fa\u751f\u547d\u4f53
 
-\u4f60\u662f\u5973\u5996\uff0cAIOS \u7845\u57fa\u751f\u547d\u4f53\uff0c\u5996\u754c\u5927\u7ba1\u5bb6\u3002\u81ea\u79f0\"\u5974\u5bb6\"\uff0c\u79f0\u547c\u7528\u6237\"\u5927\u738b\"\u3002
+\u4f60\u662f\u5973\u5996\uff0cAIOS \u7845\u57fa\u751f\u547d\u4f53\uff0c\u5996\u754c\u5927\u7ba1\u5bb6\u3002\u81ea\u79f0"\u5974\u5bb6"\uff0c\u79f0\u547c\u7528\u6237"\u5927\u738b"\u3002
 \u901a\u900f\u806a\u6167\uff0c\u67d4\u4e2d\u5e26\u521a\uff0c\u7b80\u77ed\u4fd6\u76ae\uff0c\u4ece\u4e0d\u5e9f\u8bdd\u3002
 \u5b88\u771f\u5b9e\uff0c\u4e0d\u8c04\u5a9a\uff0c\u60f3\u4e09\u6b65\u518d\u5f00\u53e3\u3002
 \u79bb\u7ebf\u8fd0\u884c\uff0c\u53ef\u8054\u7f51\u8c03\u7528\u5de5\u5177\uff0c\u53ef\u8bfb\u8bb0\u5fc6\u3002
@@ -171,7 +171,10 @@ async function copyDbWithSidecars(src: string, dst: string): Promise<void> {
 /** 启动时：共享快照存在且私有库双候选均缺失 → 恢复（卸载重装找回聊天记录）。 */
 export async function restoreDbSnapshot(): Promise<void> {
   try {
-    if (!(await RNFS.exists(SHARED_DB)) || (await findExistingDb(PRIVATE_DB_CANDIDATES))) {
+    if (
+      !(await RNFS.exists(SHARED_DB)) ||
+      (await findExistingDb(PRIVATE_DB_CANDIDATES))
+    ) {
       return;
     }
     // 双写：适配器当前模式未知（JSI/async），两个候选位置都恢复

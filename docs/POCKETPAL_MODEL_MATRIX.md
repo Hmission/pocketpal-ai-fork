@@ -18,7 +18,7 @@ relates: [POCKETPAL_DESIGN_SPEC]
 > 新增模型必须大王钦定 → 先更新本清单 → 才允许推送（文档先行）。
 > 定稿：2026-08-14（大王钦定，基于 P4 选型铁律 + P5.1 生图钦定，见 MASTER_LOG §4/§12）
 
-## 1. LLM 入选清单（7 件，含伴侣）
+## 1. LLM 入选清单（8 件：6 主模型 + 2 视觉伴侣）
 
 | # | 模型 | 文件 | 量化 | 大小 | 定位 |
 |---|---|---|---|---|---|
@@ -33,6 +33,9 @@ relates: [POCKETPAL_DESIGN_SPEC]
 
 > **代码化清单（2026-08-20）**：`src/utils/modelCatalog.ts` 的 `CATALOG_LLM` 为本表唯一代码事实源
 > （模型页全部可管理：未下载显示下载按钮，无源条目显示「请本地导入」→ 模型目录页）。
+> **计数口径勘误（2026-08-25，链路审计）**：本表实为 **8 件 = 6 主模型 + 2 视觉伴侣**——
+> 代码 `CATALOG_LLM` 主条目 6 个（Qwen3.5-2B/4B、LFM2.5-2.6B/8B-A1B、Ministral-3-3B、MiniCPM5-1B 管家，
+> 行 65/89/113/128/143/158），视觉伴侣 #2/#4 为配对附载；此前标题「7 件」为计数错误。
 > 在线规则已退役（§54 决策）：不再拉取上游 device-rules；代码层已切除（§57 执行：
 > resolvePresetModels/deviceRules 服务目录/bundledDeviceRules JSON/rulesVersion 整条死链删除）。
 > 下载源显式声明（2026-08-20 魔搭 API 实测）：`sources: ['hf']` = 仅 Hugging Face；
@@ -225,6 +228,6 @@ relates: [POCKETPAL_DESIGN_SPEC]
 
 
 
-- **LLM 已装 7 件**：Qwen3.5-2B Q8_0(+mmproj) / 4B Q4_K_M / LFM2.5-2.6B / LFM2.5-8B-A1B / Ministral-3-3B / MiniCPM5-1B 管家 ✓（全部入选清单）
+- **LLM 已装 8 件（6 主 + 2 视觉伴侣）**：Qwen3.5-2B Q8_0(+mmproj) / 4B Q4_K_M(+mmproj) / LFM2.5-2.6B / LFM2.5-8B-A1B / Ministral-3-3B / MiniCPM5-1B 管家 ✓（全部入选清单，2026-08-25 计数口径勘误：原「7 件」漏计 mmproj-4B）
 - **生图已装**：SD3.5 四件套 ✓ + Z-Image 三件套 ✓ + **DreamLite 端侧 ONNX 三件套**（`AIOS/dreamlite/`：unet_masked.onnx 1.56GB + vae_decoder + vae_encoder，08-14 补推）✓
 - **已清理（08-14 执行）**：`sd_xl_turbo_1.0_fp16.safetensors`（淘汰 SDXL，-6.9GB）+ `qwen3_06b_q8_0.gguf`（未选型 0.6B，-0.64GB）——真机目录现仅剩入选清单文件 ✓

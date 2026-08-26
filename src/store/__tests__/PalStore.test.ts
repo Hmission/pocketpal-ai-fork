@@ -250,9 +250,9 @@ describe('PalStore', () => {
       new (palStore.constructor as any)();
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      const reconcileCall = (palRepository.updatePal as jest.Mock).mock.calls.find(
-        call => call[0] === 'legacy-banshee',
-      );
+      const reconcileCall = (
+        palRepository.updatePal as jest.Mock
+      ).mock.calls.find(call => call[0] === 'legacy-banshee');
       expect(reconcileCall).toBeDefined();
       const pact = reconcileCall![1].pact;
       const names = pact.talents.map((t: any) => t.name);
@@ -455,8 +455,7 @@ describe('PalStore', () => {
       await callInitializePipPal();
 
       expect(palRepository.updatePal).toHaveBeenCalledTimes(1);
-      const [, updates] = (palRepository.updatePal as jest.Mock).mock
-        .calls[0];
+      const [, updates] = (palRepository.updatePal as jest.Mock).mock.calls[0];
       expect(updates.pact.schemaVersion).toBe(3);
       expect(updates.pact.talents.map((t: {name: string}) => t.name)).toEqual([
         'web_search',
@@ -491,8 +490,7 @@ describe('PalStore', () => {
 
       await callInitializePipPal();
 
-      const [, updates] = (palRepository.updatePal as jest.Mock).mock
-        .calls[0];
+      const [, updates] = (palRepository.updatePal as jest.Mock).mock.calls[0];
       const names = updates.pact.talents.map((t: {name: string}) => t.name);
       expect(names).toContain('web_search');
       expect(names).toEqual([

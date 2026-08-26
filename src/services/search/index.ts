@@ -19,9 +19,7 @@ export {
 } from './searchBudget';
 
 /** Built-in composite engine (Bing + Wikipedia) — no key accessor needed. */
-export const createSearchProvider = (
-  id: SearchProviderId,
-): SearchProvider => {
+export const createSearchProvider = (id: SearchProviderId): SearchProvider => {
   switch (id) {
     case 'builtin':
       return new BuiltinProvider();

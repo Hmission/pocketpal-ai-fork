@@ -8,7 +8,13 @@
  */
 import * as RNFS from '@dr.pogodin/react-native-fs';
 
-export type ModelFamily = 'zimage' | 'sd3' | 'flux' | 'classic' | 'dreamlite';
+export type ModelFamily =
+  | 'zimage'
+  | 'sd3'
+  | 'flux'
+  | 'classic'
+  | 'dreamlite'
+  | 'krea2';
 
 /**
  * GPU 准入策略（声明式兼容矩阵，实测准入非推测）：
@@ -101,10 +107,33 @@ export const BUILTIN_MANIFESTS: ImageGenManifest[] = [
     note: '何时选：中文提示词优化 + 无审查场景。体积：套件约 6.9GB（主模型 3.86 + Qwen3-4B TE 2.50 + ae 0.34；TE 与 FLUX.2 Klein 共享不重下）。适配：仅高端 Adreno（K90 8 步 512px ~11 分钟，08-20 XMEM 真关实测 655s；中低端 740 级驱动采样 hang，实测无解）',
   },
   {
+    id: 'krea2-turbo-q4',
+    label: 'Krea2 Turbo (Q4_K_M)',
+    // 8-26 大王纠错：Krea AI 自研模型，非 FLUX 系（badge 不可标 FLUX.2）
+    family: 'krea2',
+    main: 'Krea-2-Turbo-Q4_K_M.gguf',
+    companions: {
+      // Qwen3-VL-4B（Krea2 官方文本编码器，与 zimage_llm 非同源文件）
+      llm: 'Qwen3VL-4B-Instruct-Q4_K_M.gguf',
+      vae: 'wan_2.1_vae.safetensors',
+    },
+    // 8-26 接入评估（本机 + K90 真机实测，16GB RAM 修正后复审）:
+    // 本机：引擎 6/25 已支持，CPU 出图质量正常，Q4 sha 验证一致；桌面 CUDA DiT 全 NaN 为上游缺陷（与端侧无关）。
+    // 真机（K90 Pro Max 16GB，可用 ~10GB）：加载成功但 9.9GB 预算（TE 2.8G + DiT 6.9G + VAE 0.24G）全驻留
+    // 超 OpenCL 全局 7.5GB，生成三次 OOM 被杀（08-26 实测三连）。
+    // 16GB 实机第二轮：te=disk（TE 流式省 2.8G）+ 必要时图切段，峰值贴 10GB 线验证中（MASTER_LOG §96.7）。
+    experimental: true,
+    gpuPolicy: 'high-adreno-only',
+    defaults: {steps: 8, cfg: 1, size: 512, backend: 'OpenCL'},
+    note: '何时选：审美多样性 + 风格 LoRA（实验性）。体积：套件约 9.9GB（DiT 7.22 + Qwen3-VL TE 2.5 + Wan VAE 0.25）。适配：仅高端 Adreno（K90 16GB 实测 08-26：全驻留三连 OOM；te=disk 治理验证中）',
+  },
+  {
     id: 'flux-klein-4b',
-    label: 'FLUX.2 Klein (Q4_0)',
+    label: 'FLUX.2 Klein (Q4_K_M)',
     family: 'flux',
-    main: 'flux_klein_4b_q4_0.gguf',
+    // 8-25 量化换源：leejet Q4_0（马赛克，双端定罪）→ unsloth Q4_K_M
+    // （149 张量同名兼容，Q4_K+Q6_K 混合渐进量化；OID 同 leejet 即有物证）
+    main: 'flux-2-klein-4b-Q4_K_M.gguf',
     companions: {
       // TE 复用 Z-Image 的 zimage_llm.gguf（Qwen3-4B-Q4_K_M，与 klein 官方 qwen_3_4b
       // 同源；官方是 8.05GB 全精度，端侧必须 GGUF 量化；Z-Image 已实测端侧无 nan/inf）
@@ -120,8 +149,8 @@ export const BUILTIN_MANIFESTS: ImageGenManifest[] = [
     // ≠ 不兼容）；侦察实锤 klein 链路零 GDN（FluxRunner DiT + LLMEmbedder TE，引擎侧零 gated_delta
     // 构图），内存靠 te=disk 驻留（JNI Mali 分支）+图切段装下 → 升声明式准入 'high-adreno-or-mali'。
     // K Pad（Mali-G925）实测链路全通：全链 296.77s、采样 35.4 s/步、nan=0；
-    // 但 leejet Q4_0 量化出马赛克——Mali 与 Adreno（08-24 K90）双端复现，量化定罪非设备锅，
-    // 换更优量化（如 unsloth klein GGUF）后可除实验标。
+    // 但 leejet Q4_0 量化出马赛克——Mali 与 Adreno（08-24 K90）双端复现，量化定罪非设备锅。
+    // 8-25 换 unsloth Q4_K_M（混合渐进量化）待验画质，验收通过除实验标。
     experimental: true,
     gpuPolicy: 'high-adreno-or-mali',
     // 08-24 根因隔离实验（Adreno OpenCL 马赛克 → CPU 对照）收口回滚：CPU 是临时兜底态，
@@ -130,7 +159,7 @@ export const BUILTIN_MANIFESTS: ImageGenManifest[] = [
     // 08-24 画幅如实化：官方蒸馏契约是 1MP（4 步 1024px），但 klein 尚无端侧完整出图实测，
     // 端侧暂与 SD3.5/Z-Image 同走 512 级档位（SD_RATIOS，内存约束）。
     // 待量化源修复后，再决策是否升 1024 档（升档前必有真机出图证据，不凭官方文案预设）。
-    note: '何时选：画质天花板，4 步极速，中英文原生。体积：DiT 2.46 + VAE 0.34 ≈ 2.8GB（TE 与 Z-Image 共享不重下）。适配：高端 Adreno + Mali 平板（链路已实测通；当前 leejet Q4_0 量化出马赛克——量化源锅非设备锅，待换更优量化）',
+    note: '何时选：画质天花板，4 步极速，中英文原生。体积：DiT 2.6 + VAE 0.34 ≈ 2.9GB（TE 与 Z-Image 共享不重下）。适配：高端 Adreno + Mali 平板（链路已实测通；已换 unsloth Q4_K_M 量化源，验画质中）',
   },
 ];
 
@@ -149,9 +178,7 @@ export const IMAGE_GEN_MODEL_FILES: ReadonlySet<string> = new Set([
 ]);
 
 /** 解析设备端 *.manifest.json（扩展点） */
-async function loadDeviceManifests(
-  dir: string,
-): Promise<ImageGenManifest[]> {
+async function loadDeviceManifests(dir: string): Promise<ImageGenManifest[]> {
   const out: ImageGenManifest[] = [];
   try {
     const files = await RNFS.readDir(dir);
@@ -208,7 +235,8 @@ export async function resolveCompanions(
   extras: {clipL?: string; clipG?: string; llm?: string; vae?: string};
   missing: string[];
 }> {
-  const extras: {clipL?: string; clipG?: string; llm?: string; vae?: string} = {};
+  const extras: {clipL?: string; clipG?: string; llm?: string; vae?: string} =
+    {};
   const missing: string[] = [];
   const c = manifest.companions;
   if (!c) {

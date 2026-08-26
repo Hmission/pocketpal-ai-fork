@@ -5,7 +5,7 @@ import _ from 'lodash';
 import dayjs from 'dayjs';
 import {MD3Theme} from 'react-native-paper';
 import DeviceInfo from 'react-native-device-info';
-import Blob from 'react-native/Libraries/Blob/Blob';
+// Blob 为 RN 运行时全局 polyfill（非公开导出），直接使用全局类型
 import * as RNFS from '@dr.pogodin/react-native-fs';
 
 import {l10n} from '../locales';

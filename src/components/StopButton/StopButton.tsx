@@ -45,11 +45,7 @@ export const StopButton = ({
       {...touchableOpacityProps}
       onPress={handlePress}
       style={styles.stopButton(theme)}>
-      <StopIcon
-        stroke={color ?? theme.colors.onError}
-        width={20}
-        height={20}
-      />
+      <StopIcon stroke={color ?? theme.colors.onError} width={20} height={20} />
     </TouchableOpacity>
   );
 };

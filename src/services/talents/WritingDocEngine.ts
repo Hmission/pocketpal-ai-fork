@@ -111,7 +111,12 @@ export class WritingDocEngine implements TalentEngine {
         if (!file) {
           return this.err('INVALID_ARG', 'project 名称含非法字符。');
         }
-        return await this.updateFrame(file, project, '大纲', String(args.content ?? ''));
+        return await this.updateFrame(
+          file,
+          project,
+          '大纲',
+          String(args.content ?? ''),
+        );
       }
       if (action === 'update_persona') {
         if (!(await findProject('writing', project))) {
@@ -125,7 +130,12 @@ export class WritingDocEngine implements TalentEngine {
         if (!file) {
           return this.err('INVALID_ARG', 'project 名称含非法字符。');
         }
-        return await this.updateFrame(file, project, '人设', String(args.content ?? ''));
+        return await this.updateFrame(
+          file,
+          project,
+          '人设',
+          String(args.content ?? ''),
+        );
       }
       // 其余动作需要项目上下文 + 文档名
       const file = this.docFileSafe(project, String(args.doc ?? '正文'));
@@ -184,7 +194,11 @@ export class WritingDocEngine implements TalentEngine {
       return this.err('EMPTY_TITLE', 'init 需要 title 参数。');
     }
     const genre = String(args.genre ?? '').trim();
-    const dir = await ensureProject('writing', title, `刚开篇（${genre || '体裁未定'}）`);
+    const dir = await ensureProject(
+      'writing',
+      title,
+      `刚开篇（${genre || '体裁未定'}）`,
+    );
     if (!dir) {
       return this.err('INVALID_TITLE', '项目名含非法字符。');
     }
@@ -206,14 +220,18 @@ export class WritingDocEngine implements TalentEngine {
     }
     // 记忆 fact（activity slot 自动命中「在写」）：跨会话「继续写」恢复凭据
     try {
-      await addMemory('fact', `在写${genre ? `《${title}》（${genre}）` : `《${title}》`}`);
+      await addMemory(
+        'fact',
+        `在写${genre ? `《${title}》（${genre}）` : `《${title}》`}`,
+      );
     } catch {
       // 记忆失败不阻断建项目（观测不为 SPOF）
     }
     emit('chat', 'workspace.writing_doc', {action: 'init', project: title});
     return {
       type: 'text',
-      summary: `写作项目《${title}》已创建：大纲.md / 人设.md / 正文-第一章.md 就位。` +
+      summary:
+        `写作项目《${title}》已创建：大纲.md / 人设.md / 正文-第一章.md 就位。` +
         '先写大纲（update_outline）与主要角色（update_persona），再逐章 append 正文。',
     };
   }
@@ -226,8 +244,9 @@ export class WritingDocEngine implements TalentEngine {
         summary: '还没有写作项目。告诉大王可以用「新建写作项目」开一个。',
       };
     }
-    const lines = projects.map(p =>
-      `- 《${p.name}》${p.progress ? `：${p.progress}` : ''}（${new Date(p.updatedAt).toLocaleDateString()}）`,
+    const lines = projects.map(
+      p =>
+        `- 《${p.name}》${p.progress ? `：${p.progress}` : ''}（${new Date(p.updatedAt).toLocaleDateString()}）`,
     );
     return {type: 'text', summary: `现有写作项目：\n${lines.join('\n')}`};
   }
@@ -237,7 +256,10 @@ export class WritingDocEngine implements TalentEngine {
     const project = String(args.project ?? '').trim();
     const chapter = String(args.chapter ?? '').trim();
     if (!project || !chapter) {
-      return this.err('INVALID_ARG', 'new_chapter 需要 project 与 chapter 参数。');
+      return this.err(
+        'INVALID_ARG',
+        'new_chapter 需要 project 与 chapter 参数。',
+      );
     }
     if (!(await findProject('writing', project))) {
       return this.err(
@@ -251,7 +273,10 @@ export class WritingDocEngine implements TalentEngine {
       return this.err('INVALID_ARG', '章节名含非法字符。');
     }
     if (await RNFS.exists(file)) {
-      return this.err('CHAPTER_EXISTS', `章节「${chapter}」已存在，请换章节名或读回续写。`);
+      return this.err(
+        'CHAPTER_EXISTS',
+        `章节「${chapter}」已存在，请换章节名或读回续写。`,
+      );
     }
     // 骨架占位（updateSection 空内容 = 删除节）
     await updateSection(file, chapter, '（待写）');
@@ -272,7 +297,10 @@ export class WritingDocEngine implements TalentEngine {
     }
     const hit = await readSection(file, section);
     if (!hit) {
-      return this.err('NO_SECTION', `「${section}」节不存在，先 list_sections 看有哪些节。`);
+      return this.err(
+        'NO_SECTION',
+        `「${section}」节不存在，先 list_sections 看有哪些节。`,
+      );
     }
     return {
       type: 'text',
@@ -283,7 +311,10 @@ export class WritingDocEngine implements TalentEngine {
   private async readAll(file: string): Promise<TalentResult> {
     const raw = await readWholeDoc(file);
     if (raw === null) {
-      return this.err('NO_DOC', '文档不存在（检查 doc 参数，如「大纲」「人设」「正文-第一章」）。');
+      return this.err(
+        'NO_DOC',
+        '文档不存在（检查 doc 参数，如「大纲」「人设」「正文-第一章」）。',
+      );
     }
     return {type: 'text', summary: raw};
   }
@@ -291,13 +322,17 @@ export class WritingDocEngine implements TalentEngine {
   private async listSections(file: string): Promise<TalentResult> {
     const sections = await listSections(file);
     if (sections === null) {
-      return this.err('NO_DOC', '文档不存在（检查 doc 参数，如「大纲」「人设」「正文-第一章」）。');
+      return this.err(
+        'NO_DOC',
+        '文档不存在（检查 doc 参数，如「大纲」「人设」「正文-第一章」）。',
+      );
     }
     if (sections.length === 0) {
       return {type: 'text', summary: '（文档还没有分节，可 append 创建）'};
     }
-    const lines = sections.map(s =>
-      `- ${s.section}${s.content ? `（${s.content.length} 字）` : '（空）'}`,
+    const lines = sections.map(
+      s =>
+        `- ${s.section}${s.content ? `（${s.content.length} 字）` : '（空）'}`,
     );
     return {type: 'text', summary: `文档分节：\n${lines.join('\n')}`};
   }
@@ -362,7 +397,11 @@ export class WritingDocEngine implements TalentEngine {
     };
   }
 
-  private err(errorMessage: string, summary: string, guide?: string): TalentResult {
+  private err(
+    errorMessage: string,
+    summary: string,
+    guide?: string,
+  ): TalentResult {
     return {type: 'error', summary, errorMessage, guide};
   }
 
@@ -397,13 +436,19 @@ export class WritingDocEngine implements TalentEngine {
               description: '项目名（init 用 title，其余动作用 project）',
             },
             title: {type: 'string', description: 'init 时的项目标题'},
-            genre: {type: 'string', description: 'init 时的体裁（小说/散文/剧本…）'},
+            genre: {
+              type: 'string',
+              description: 'init 时的体裁（小说/散文/剧本…）',
+            },
             doc: {
               type: 'string',
               description: '文档名：大纲 / 人设 / 正文-<章节>',
             },
             chapter: {type: 'string', description: 'new_chapter 的新章节名'},
-            section: {type: 'string', description: '节名（如「第一章」「主线」）'},
+            section: {
+              type: 'string',
+              description: '节名（如「第一章」「主线」）',
+            },
             content: {type: 'string', description: '要落盘的内容'},
           },
           required: ['action'],

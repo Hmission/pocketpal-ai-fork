@@ -12,10 +12,23 @@ import {
   Animated,
   Easing,
   StyleProp,
+  StyleSheet,
   View,
   ViewStyle,
 } from 'react-native';
 import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
+
+/** 静态外观（尺寸/颜色/透明度/缩放随 props/动画动态注入） */
+const styles = StyleSheet.create({
+  shell: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ring: {
+    position: 'absolute',
+    borderWidth: 2,
+  },
+});
 
 export interface ScoreRevealProps {
   /** 最终分数（真实计算值，演出只改节奏不改数） */
@@ -50,6 +63,15 @@ export const ScoreReveal: React.FC<ScoreRevealProps> = ({
   const ringOpacity = React.useRef(new Animated.Value(0)).current;
   const ringScale = React.useRef(new Animated.Value(0.6)).current;
   const doneRef = React.useRef(false);
+  // 光圈动态部分（尺码/边框色/透明度/缩放均随 props/动画变化）
+  const ringStyle = {
+    width: fontSize * 3,
+    height: fontSize * 3,
+    borderRadius: fontSize * 1.5,
+    borderColor: ringColor ?? color,
+    opacity: ringOpacity,
+    transform: [{scale: ringScale}],
+  };
 
   React.useEffect(() => {
     const listener = count.addListener(({value: v}) => {
@@ -106,27 +128,13 @@ export const ScoreReveal: React.FC<ScoreRevealProps> = ({
   }, []);
 
   return (
-    <View
-      style={[{alignItems: 'center', justifyContent: 'center'}, style]}
-      testID={testID}>
+    <View style={[styles.shell, style]} testID={testID}>
       <Animated.Text
         testID={testID ? `${testID}-value` : undefined}
         style={{fontSize, color, fontVariant: ['tabular-nums']}}>
         {text}
       </Animated.Text>
-      <Animated.View
-        pointerEvents="none"
-        style={{
-          position: 'absolute',
-          width: fontSize * 3,
-          height: fontSize * 3,
-          borderRadius: fontSize * 1.5,
-          borderWidth: 2,
-          borderColor: ringColor ?? color,
-          opacity: ringOpacity,
-          transform: [{scale: ringScale}],
-        }}
-      />
+      <Animated.View pointerEvents="none" style={[styles.ring, ringStyle]} />
     </View>
   );
 };

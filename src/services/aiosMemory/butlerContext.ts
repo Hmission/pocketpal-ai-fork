@@ -28,9 +28,7 @@ export async function buildButlerContext(
   }
   const recalled = await searchMemory(userText, 3);
   if (recalled.length > 0) {
-    parts.push(
-      RECALL_DISCLAIMER + '\n' + recalled.join('\n---\n'),
-    );
+    parts.push(RECALL_DISCLAIMER + '\n' + recalled.join('\n---\n'));
   }
   const guidance = intentGuidance(intent);
   if (guidance) {

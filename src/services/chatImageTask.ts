@@ -202,11 +202,19 @@ async function runInlineEditTask(
       visRgb,
     );
     if (!uri) {
-      return {uri: null, error: imageGenStore.error ?? '编辑失败', enhanced: null};
+      return {
+        uri: null,
+        error: imageGenStore.error ?? '编辑失败',
+        enhanced: null,
+      };
     }
     return {uri, error: null, enhanced: null};
   } catch (e) {
-    return {uri: null, error: (e as Error)?.message ?? '编辑失败', enhanced: null};
+    return {
+      uri: null,
+      error: (e as Error)?.message ?? '编辑失败',
+      enhanced: null,
+    };
   }
 }
 

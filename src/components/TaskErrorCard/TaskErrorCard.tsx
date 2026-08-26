@@ -12,13 +12,14 @@
  * 调度层只存 code/retryText/可选模型名，不再传文案。
  */
 import * as React from 'react';
-import {Text, TouchableOpacity, View, ViewStyle, TextStyle} from 'react-native';
+import {Text, View, ViewStyle, TextStyle} from 'react-native';
 import {observer} from 'mobx-react';
 
 import {useTheme} from '../../hooks';
 import {MessageType, Theme} from '../../utils/types';
 import {withOpacity} from '../../utils/colorUtils';
 import {L10nContext} from '../../utils';
+import {Chip} from '../ui/Chip';
 
 export type TaskErrorCode = 'no_model' | 'load_failed' | 'busy';
 
@@ -67,29 +68,28 @@ export const TaskErrorCard: React.FC<{
       </View>
       {(canRetry || canGoModels) && (
         <View style={styles.row}>
+          {/* B57：动作胶囊收敛到 DS Chip outline（语义色归一：
+          color=danger → theme.colors.error，描边/文本同色；
+          size=s 对齐动作胶囊样板；无障碍 label 由 label 自动承载） */}
           {canRetry && (
-            <TouchableOpacity
+            <Chip
               testID="task-error-retry"
+              variant="outline"
+              color={err.code === 'busy' ? 'danger' : 'primary'}
+              size="s"
+              label={l10n.common.retry}
               onPress={() => onRetry(err.retryText!)}
-              style={[styles.chip(theme), {borderColor: theme.colors.danger}]}>
-              <Text style={[styles.chipText(theme), {color: theme.colors.danger}]}>
-                {l10n.common.retry}
-              </Text>
-            </TouchableOpacity>
+            />
           )}
           {canGoModels && (
-            <TouchableOpacity
+            <Chip
               testID="task-error-go-models"
+              variant="outline"
+              color="primary"
+              size="s"
+              label={l10n.chat.goToModels}
               onPress={onGoModels}
-              style={[
-                styles.chip(theme),
-                {borderColor: theme.colors.primary},
-              ]}>
-              <Text
-                style={[styles.chipText(theme), {color: theme.colors.primary}]}>
-                {l10n.chat.goToModels}
-              </Text>
-            </TouchableOpacity>
+            />
           )}
         </View>
       )}
@@ -103,8 +103,6 @@ const styles: {
   title: (theme: Theme) => TextStyle;
   detail: (theme: Theme) => TextStyle;
   row: ViewStyle;
-  chip: (theme: Theme) => ViewStyle;
-  chipText: (theme: Theme) => TextStyle;
 } = {
   wrap: {
     marginTop: 6,
@@ -134,14 +132,4 @@ const styles: {
     gap: 8,
     marginTop: 6,
   },
-  chip: theme => ({
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xxs + 1,
-    borderRadius: theme.radius.full,
-    borderWidth: 1,
-  }),
-  chipText: theme => ({
-    ...theme.typography.captionM,
-    fontWeight: '600',
-  }),
 };

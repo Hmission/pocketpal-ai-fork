@@ -5,7 +5,6 @@ import {
   View,
   Animated,
   TouchableOpacity,
-  Alert,
   NativeModules,
   PermissionsAndroid,
   Platform,
@@ -45,6 +44,8 @@ import {L10nContext, UserContext} from '../../utils';
 import {t} from '../../locales';
 
 import {SendButton, StopButton, Menu} from '..';
+
+import {infoDialog} from '../ui/InfoDialog';
 
 export interface ChatInputTopLevelProps {
   /** Whether the AI is currently streaming tokens */
@@ -144,7 +145,7 @@ export const ChatInput = observer(
     isStopVisible,
     sendButtonVisibilityMode,
     textInputProps,
-    inputBackgroundColor,
+    inputBackgroundColor: _inputBackgroundColor,
     isCameraActive = false,
     onStartCamera,
     promptText,
@@ -330,9 +331,9 @@ export const ChatInput = observer(
           try {
             const p = await NativeModules.AudioRecord.stopRecording();
             if (p) {
-              const text = await audioStore.transcribeTask(p);
-              if (text) {
-                handleChangeText(text);
+              const textValue = await audioStore.transcribeTask(p);
+              if (textValue) {
+                handleChangeText(textValue);
               }
             }
           } catch (e) {
@@ -359,7 +360,10 @@ export const ChatInput = observer(
           setIsListening(true);
           return;
         } catch (e) {
-          console.warn('[ChatInput] local ASR start failed, fallback to system:', e);
+          console.warn(
+            '[ChatInput] local ASR start failed, fallback to system:',
+            e,
+          );
         }
       }
       Voice.start(undefined, {
@@ -431,10 +435,10 @@ export const ChatInput = observer(
         if (!hasPermission) {
           const permissionResult = await requestPermission();
           if (!permissionResult) {
-            Alert.alert(
-              l10n.camera.permissionTitle,
-              l10n.camera.permissionMessage,
-            );
+            infoDialog({
+              title: l10n.camera.permissionTitle,
+              message: l10n.camera.permissionMessage,
+            });
             setShowImageUploadMenu(false);
             return;
           }
@@ -456,10 +460,10 @@ export const ChatInput = observer(
         setShowImageUploadMenu(false);
       } catch (error) {
         console.error('Error taking photo:', error);
-        Alert.alert(
-          l10n.errors.cameraErrorTitle,
-          l10n.errors.cameraErrorMessage,
-        );
+        infoDialog({
+          title: l10n.errors.cameraErrorTitle,
+          message: l10n.errors.cameraErrorMessage,
+        });
       } finally {
         // Re-enable auto-release after camera operation
         modelStore.enableAutoRelease('camera-photo');
@@ -492,10 +496,10 @@ export const ChatInput = observer(
         setShowImageUploadMenu(false);
       } catch (error) {
         console.error('Error selecting images:', error);
-        Alert.alert(
-          l10n.errors.galleryErrorTitle,
-          l10n.errors.galleryErrorMessage,
-        );
+        infoDialog({
+          title: l10n.errors.galleryErrorTitle,
+          message: l10n.errors.galleryErrorMessage,
+        });
       } finally {
         // Re-enable auto-release after gallery operation
         modelStore.enableAutoRelease('image-gallery');
@@ -516,17 +520,21 @@ export const ChatInput = observer(
           if (!hasPermission) {
             const permissionResult = await requestPermission();
             if (!permissionResult) {
-              Alert.alert(
-                l10n.camera.permissionTitle,
-                l10n.camera.permissionMessage,
-              );
+              infoDialog({
+                title: l10n.camera.permissionTitle,
+                message: l10n.camera.permissionMessage,
+              });
               setShowEditPickerMenu(false);
               return;
             }
           }
           modelStore.disableAutoRelease('camera-photo');
           const result = await launchCamera({mediaType: 'photo', quality: 0.8});
-          if (result.assets && result.assets.length > 0 && result.assets[0].uri) {
+          if (
+            result.assets &&
+            result.assets.length > 0 &&
+            result.assets[0].uri
+          ) {
             onEditSourceChange?.(result.assets[0].uri);
             setQuickPrefix('图片编辑');
             inputRef.current?.focus();
@@ -538,7 +546,11 @@ export const ChatInput = observer(
             selectionLimit: 1,
             quality: 0.8,
           });
-          if (result.assets && result.assets.length > 0 && result.assets[0].uri) {
+          if (
+            result.assets &&
+            result.assets.length > 0 &&
+            result.assets[0].uri
+          ) {
             onEditSourceChange?.(result.assets[0].uri);
             setQuickPrefix('图片编辑');
             inputRef.current?.focus();
@@ -547,10 +559,10 @@ export const ChatInput = observer(
         setShowEditPickerMenu(false);
       } catch (error) {
         console.error('Error picking edit image:', error);
-        Alert.alert(
-          l10n.errors.galleryErrorTitle,
-          l10n.errors.galleryErrorMessage,
-        );
+        infoDialog({
+          title: l10n.errors.galleryErrorTitle,
+          message: l10n.errors.galleryErrorMessage,
+        });
       } finally {
         modelStore.enableAutoRelease(
           source === 'camera' ? 'camera-photo' : 'image-gallery',
@@ -646,7 +658,7 @@ export const ChatInput = observer(
                     />
                     <IconButton
                       icon="close-circle"
-                      size={20}
+                      size={theme.iconSize.m}
                       iconColor={theme.colors.error}
                       style={styles.removeImageButton}
                       onPress={() =>
@@ -713,8 +725,8 @@ export const ChatInput = observer(
                         : quickPrefix === '写作项目'
                           ? '描述你想写的故事，例如：星海征途、奇幻冒险…'
                           : isVideoCapable
-                        ? l10n.video.promptPlaceholder
-                        : l10n.components.chatInput.inputPlaceholder
+                            ? l10n.video.promptPlaceholder
+                            : l10n.components.chatInput.inputPlaceholder
               }
               placeholderTextColor={onSurfaceColorVariant}
               underlineColorAndroid="transparent"
@@ -750,7 +762,7 @@ export const ChatInput = observer(
                   图标用主题 primary（可用态彩色，非灰）；busy 时才降透明示禁用 */}
               <TouchableOpacity
                 testID="image-quick-gen"
-                style={[styles.quickIconBtn, {opacity: busy ? 0.4 : 1}]}
+                style={[styles.quickIconBtn, busy && styles.quickIconBtnBusy]}
                 disabled={busy}
                 onPress={() => {
                   setQuickPrefix('图像生成');
@@ -759,12 +771,16 @@ export const ChatInput = observer(
                 }}
                 accessibilityLabel="图像生成"
                 accessibilityRole="button">
-                <Icon name="palette" size={20} color={theme.colors.primary} />
+                <Icon
+                  name="palette"
+                  size={theme.iconSize.m}
+                  color={theme.colors.primary}
+                />
               </TouchableOpacity>
               {/* 玩具工坊（P8，PLAY_SPEC）：玩法引导入口——「做个玩具」前缀路由 play 任务 */}
               <TouchableOpacity
                 testID="toy-quick-gen"
-                style={[styles.quickIconBtn, {opacity: busy ? 0.4 : 1}]}
+                style={[styles.quickIconBtn, busy && styles.quickIconBtnBusy]}
                 disabled={busy}
                 onPress={() => {
                   setQuickPrefix('做个玩具');
@@ -775,14 +791,14 @@ export const ChatInput = observer(
                 accessibilityRole="button">
                 <Icon
                   name="gamepad-variant"
-                  size={20}
+                  size={theme.iconSize.m}
                   color={theme.colors.primary}
                 />
               </TouchableOpacity>
               {/* TRPG 城主（P12 v1.1，ADVENTURE_SPEC）：冒险玩法引导入口——「来场冒险」前缀路由 adventure 任务 */}
               <TouchableOpacity
                 testID="adventure-quick-gen"
-                style={[styles.quickIconBtn, {opacity: busy ? 0.4 : 1}]}
+                style={[styles.quickIconBtn, busy && styles.quickIconBtnBusy]}
                 disabled={busy}
                 onPress={() => {
                   setQuickPrefix('来场冒险');
@@ -793,14 +809,14 @@ export const ChatInput = observer(
                 accessibilityRole="button">
                 <Icon
                   name="sword-cross"
-                  size={20}
+                  size={theme.iconSize.m}
                   color={theme.colors.primary}
                 />
               </TouchableOpacity>
               {/* 写作工作区（WORKSPACE_SPEC v1）：写作项目引导入口——「写作项目」前缀路由 write 任务（新建/续写） */}
               <TouchableOpacity
                 testID="writing-quick-gen"
-                style={[styles.quickIconBtn, {opacity: busy ? 0.4 : 1}]}
+                style={[styles.quickIconBtn, busy && styles.quickIconBtnBusy]}
                 disabled={busy}
                 onPress={() => {
                   setQuickPrefix('写作项目');
@@ -811,7 +827,7 @@ export const ChatInput = observer(
                 accessibilityRole="button">
                 <Icon
                   name="pencil-outline"
-                  size={20}
+                  size={theme.iconSize.m}
                   color={theme.colors.primary}
                 />
               </TouchableOpacity>
@@ -822,14 +838,17 @@ export const ChatInput = observer(
                 anchor={
                   <TouchableOpacity
                     testID="image-quick-edit"
-                    style={[styles.quickIconBtn, {opacity: busy ? 0.4 : 1}]}
+                    style={[
+                      styles.quickIconBtn,
+                      busy && styles.quickIconBtnBusy,
+                    ]}
                     disabled={busy}
                     onPress={() => setShowEditPickerMenu(true)}
                     accessibilityLabel="图片编辑"
                     accessibilityRole="button">
                     <Icon
                       name="image-edit-outline"
-                      size={20}
+                      size={theme.iconSize.m}
                       color={theme.colors.primary}
                     />
                   </TouchableOpacity>
@@ -890,7 +909,9 @@ export const ChatInput = observer(
                   style={[
                     styles.thinkingToggleLeft,
                     // 全局 UI 规范：选中态 = 标准橙黄底 + onPrimary 前景（替代旧 onSurface 黑底）
-                    isThinkingEnabled && {backgroundColor: theme.colors.primary},
+                    isThinkingEnabled && {
+                      backgroundColor: theme.colors.primary,
+                    },
                   ]}
                   // B18 §17：胶囊 24px 视觉，触区上下 +6 补回 36px 行基线
                   hitSlop={{top: 6, bottom: 6, left: 4, right: 4}}

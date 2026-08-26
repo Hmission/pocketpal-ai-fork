@@ -1,6 +1,5 @@
 import {governMemories, rotateOldLogs} from '../governance';
 import {_invalidateCache, AiosMemory} from '../index';
-import {modelStore} from '../../../store';
 import {promptWriter} from '../../promptWriter';
 import * as RNFS from '@dr.pogodin/react-native-fs';
 
@@ -93,8 +92,8 @@ describe('记忆治理（批次 9-2）', () => {
     expect(result.after).toBe(5);
 
     // 验证 save 写入了蒸馏后的记忆
-    const memWrite = (RNFS.writeFile as jest.Mock).mock.calls.find(
-      c => String(c[0]).includes('aios_memories'),
+    const memWrite = (RNFS.writeFile as jest.Mock).mock.calls.find(c =>
+      String(c[0]).includes('aios_memories'),
     );
     expect(memWrite).toBeDefined();
     const saved = JSON.parse(memWrite![1]);

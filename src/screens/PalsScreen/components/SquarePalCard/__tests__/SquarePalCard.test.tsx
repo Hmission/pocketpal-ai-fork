@@ -14,6 +14,16 @@ import {downloadedModel} from '../../../../../../jest/fixtures/models';
 import type {Pal} from '../../../../../store/PalStore';
 import type {PalsHubPal} from '../../../../../types/palshub';
 
+import {infoDialog} from '../../../../../components/ui/InfoDialog';
+
+import {l10n} from '../../../../../locales';
+
+// B52③ 迁移同步：删除确认已由 Alert.alert → confirmDialog（默认确认流）
+jest.mock('../../../../../components/ui/ConfirmDialog', () => ({
+  confirmDialog: jest.fn().mockResolvedValue(true),
+}));
+import {confirmDialog} from '../../../../../components/ui/ConfirmDialog';
+
 // Mock navigation
 const mockNavigate = jest.fn();
 jest.mock('@react-navigation/native', () => ({
@@ -29,6 +39,11 @@ jest.mock('../../../../../utils/exportUtils', () => ({
 }));
 
 const {exportPal} = require('../../../../../utils/exportUtils');
+
+// Mock InfoDialog
+jest.mock('../../../../../components/ui/InfoDialog', () => ({
+  infoDialog: jest.fn().mockResolvedValue(undefined),
+}));
 
 describe('SquarePalCard', () => {
   const mockOnPress = jest.fn();
@@ -192,7 +207,6 @@ describe('SquarePalCard', () => {
     });
 
     it('shows delete confirmation when delete button is pressed', () => {
-      jest.spyOn(Alert, 'alert');
       const pal = createLocalPal();
       const {UNSAFE_getAllByType} = render(
         <SquarePalCard pal={pal} onPress={mockOnPress} isLocal={true} />,
@@ -206,7 +220,13 @@ describe('SquarePalCard', () => {
       const deleteButton = iconButtons[1];
 
       fireEvent.press(deleteButton);
-      expect(Alert.alert).toHaveBeenCalled();
+      // B52③：删除确认走 confirmDialog（destructive 语义）
+      expect(confirmDialog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: l10n.en.palsScreen.deletePal,
+          destructive: true,
+        }),
+      );
     });
 
     it('calls exportPal when share button is pressed', async () => {
@@ -498,7 +518,6 @@ describe('SquarePalCard', () => {
 
   describe('Error Handling', () => {
     it('handles share error gracefully', async () => {
-      jest.spyOn(Alert, 'alert');
       exportPal.mockRejectedValueOnce(new Error('Share failed'));
 
       const pal = createLocalPal();
@@ -516,16 +535,15 @@ describe('SquarePalCard', () => {
       });
 
       await waitFor(() => {
-        expect(Alert.alert).toHaveBeenCalledWith(
-          'Share Error',
-          'Failed to share pal. Please try again.',
-          [{text: 'OK'}],
-        );
+        expect(infoDialog).toHaveBeenCalledWith({
+          title: 'Share Error',
+          message: 'Failed to share pal. Please try again.',
+          buttonText: 'OK',
+        });
       });
     });
 
     it('handles chat start error gracefully', async () => {
-      jest.spyOn(Alert, 'alert');
       chatSessionStore.setActivePal = jest
         .fn()
         .mockRejectedValueOnce(new Error('Failed'));
@@ -548,10 +566,10 @@ describe('SquarePalCard', () => {
         });
 
         await waitFor(() => {
-          expect(Alert.alert).toHaveBeenCalledWith(
-            'Error',
-            'Failed to start chat. Please try again.',
-          );
+          expect(infoDialog).toHaveBeenCalledWith({
+            title: 'Error',
+            message: 'Failed to start chat. Please try again.',
+          });
         });
       }
     });

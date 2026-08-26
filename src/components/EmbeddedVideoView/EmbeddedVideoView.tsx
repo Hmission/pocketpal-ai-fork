@@ -5,7 +5,6 @@ import {
   Text,
   ActivityIndicator,
   Platform,
-  Alert,
 } from 'react-native';
 
 import {observer} from 'mobx-react';
@@ -23,6 +22,8 @@ import {useTheme} from '../../hooks';
 
 import {createStyles} from './styles';
 import {ResponseBubble} from '../ResponseBubble';
+
+import {infoDialog} from '../ui/InfoDialog';
 
 import {L10nContext} from '../../utils';
 
@@ -66,29 +67,19 @@ export const EmbeddedVideoView = observer(
             console.log('Camera permission result:', result);
             if (!result) {
               // Permission was denied
-              Alert.alert(
-                l10n.video.permissionTitle,
-                l10n.video.permissionMessage,
-                [
-                  {
-                    text: l10n.common.ok,
-                    onPress: onClose,
-                  },
-                ],
-              );
+              infoDialog({
+                title: l10n.video.permissionTitle,
+                message: l10n.video.permissionMessage,
+                buttonText: l10n.common.ok,
+              }).then(onClose);
             }
           } catch (error) {
             console.error('Error requesting camera permission:', error);
-            Alert.alert(
-              l10n.video.permissionTitle,
-              l10n.video.permissionMessage,
-              [
-                {
-                  text: l10n.common.ok,
-                  onPress: onClose,
-                },
-              ],
-            );
+            infoDialog({
+              title: l10n.video.permissionTitle,
+              message: l10n.video.permissionMessage,
+              buttonText: l10n.common.ok,
+            }).then(onClose);
           }
         };
 

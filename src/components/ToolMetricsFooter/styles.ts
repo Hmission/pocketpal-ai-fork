@@ -12,6 +12,6 @@ export const styles = ({theme}: {theme: Theme}) =>
     },
     text: {
       color: theme.colors.textSecondary,
-      fontSize: 10,
+      fontSize: 11,
     },
   });

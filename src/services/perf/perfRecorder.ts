@@ -52,14 +52,17 @@ const FILE_PREFIX = 'perf_';
 type JsonlLine =
   | {kind: 'meta'; meta: PerfMeta}
   | {kind: 'pt'; pt: PerfPoint}
-  | {kind: 'summary'; summary: {
-      finishedAt: number;
-      result: 'success' | 'failed';
-      durationMs: number;
-      pssPeakKb: number;
-      avgStepTime: number;
-      score: PerfScoreCard;
-    }};
+  | {
+      kind: 'summary';
+      summary: {
+        finishedAt: number;
+        result: 'success' | 'failed';
+        durationMs: number;
+        pssPeakKb: number;
+        avgStepTime: number;
+        score: PerfScoreCard;
+      };
+    };
 
 class PerfRecorder {
   private activeId: string | null = null;
@@ -84,7 +87,11 @@ class PerfRecorder {
     try {
       await RNFS.mkdir(DIR);
       const line: JsonlLine = {kind: 'meta', meta};
-      await RNFS.writeFile(this.pathFor(meta.taskId), JSON.stringify(line) + '\n', 'utf8');
+      await RNFS.writeFile(
+        this.pathFor(meta.taskId),
+        JSON.stringify(line) + '\n',
+        'utf8',
+      );
       this.activeId = meta.taskId;
       this.activeMeta = meta;
       this.activePoints = [];
@@ -103,7 +110,11 @@ class PerfRecorder {
     this.activePoints.push(pt);
     try {
       const line: JsonlLine = {kind: 'pt', pt};
-      await RNFS.appendFile(this.pathFor(this.activeId), JSON.stringify(line) + '\n', 'utf8');
+      await RNFS.appendFile(
+        this.pathFor(this.activeId),
+        JSON.stringify(line) + '\n',
+        'utf8',
+      );
     } catch (e) {
       console.warn('[PerfRecorder] append failed:', e);
     }
@@ -123,13 +134,21 @@ class PerfRecorder {
       const summary: Extract<JsonlLine, {kind: 'summary'}>['summary'] = {
         finishedAt: Date.now(),
         result,
-        durationMs: points.length > 1 ? points[points.length - 1].ts - points[0].ts : 0,
+        durationMs:
+          points.length > 1 ? points[points.length - 1].ts - points[0].ts : 0,
         pssPeakKb: points.reduce((m, p) => Math.max(m, p.pssKb), 0),
-        avgStepTime: steps.length > 0 ? steps.reduce((a, b) => a + b, 0) / steps.length : 0,
+        avgStepTime:
+          steps.length > 0
+            ? steps.reduce((a, b) => a + b, 0) / steps.length
+            : 0,
         score,
       };
       const line: JsonlLine = {kind: 'summary', summary};
-      await RNFS.appendFile(this.pathFor(taskId), JSON.stringify(line) + '\n', 'utf8');
+      await RNFS.appendFile(
+        this.pathFor(taskId),
+        JSON.stringify(line) + '\n',
+        'utf8',
+      );
     } catch (e) {
       console.warn('[PerfRecorder] finish failed:', e);
     } finally {
@@ -170,7 +189,8 @@ class PerfRecorder {
     try {
       const content = await RNFS.readFile(this.pathFor(taskId), 'utf8');
       const session: PerfSession = {meta: null as never, points: []};
-      let summary: Extract<JsonlLine, {kind: 'summary'}>['summary'] | null = null;
+      let summary: Extract<JsonlLine, {kind: 'summary'}>['summary'] | null =
+        null;
       for (const raw of content.split('\n')) {
         if (!raw.trim()) {
           continue;

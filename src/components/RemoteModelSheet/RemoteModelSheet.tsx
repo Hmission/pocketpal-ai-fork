@@ -464,7 +464,7 @@ export const RemoteModelSheet: React.FC<RemoteModelSheetProps> = observer(
                         ? 'check-circle-outline'
                         : 'alert-circle-outline'
                     }
-                    size={16}
+                    size={theme.iconSize.s}
                     color={
                       probeResult.ok ? theme.colors.primary : theme.colors.error
                     }

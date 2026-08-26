@@ -60,7 +60,10 @@ export function applyProjectionMethods(store: ModelStore): void {
    * @param modelId The ID of the LLM model
    * @param projectionModelId The ID of the projection model to set as default
    */
-  store.setDefaultProjectionModel = (modelId: string, projectionModelId: string) => {
+  store.setDefaultProjectionModel = (
+    modelId: string,
+    projectionModelId: string,
+  ) => {
     const model = store.models.find(m => m.id === modelId);
     if (model && model.supportsMultimodal) {
       runInAction(() => {
@@ -105,9 +108,9 @@ export function applyProjectionMethods(store: ModelStore): void {
   store.getDownloadedLLMsUsingProjectionModel = (
     projectionModelId: string,
   ): Model[] => {
-    return store.getLLMsUsingProjectionModel(projectionModelId).filter(
-      m => m.isDownloaded,
-    );
+    return store
+      .getLLMsUsingProjectionModel(projectionModelId)
+      .filter(m => m.isDownloaded);
   };
 
   /**
@@ -282,7 +285,9 @@ export function applyProjectionMethods(store: ModelStore): void {
    * Automatically cleanup multiple orphaned projection models
    * @param projectionModelIds Array of projection model IDs to check for cleanup
    */
-  store.cleanupOrphanedProjectionModels = async (projectionModelIds: string[]) => {
+  store.cleanupOrphanedProjectionModels = async (
+    projectionModelIds: string[],
+  ) => {
     console.log('Checking for orphaned projection models:', projectionModelIds);
 
     // Process each projection model for potential cleanup

@@ -1,0 +1,58 @@
+# Line ending normalization (2026-08-25 基建根因修复)
+# 背景：此前缺失本文件 + core.autocrlf=true → 检出 LF→CRLF，prettier 期望 LF
+#       → 全仓 15 万 prettier CRLF 噪音淹没 eslint，质量门禁失效。
+# 规则：文本统一 LF（与 git blob 一致）；bat/ps1/cmd 保留 CRLF（Windows 生态惯例）。
+* text=auto
+
+*.js      text eol=lf
+*.jsx     text eol=lf
+*.ts      text eol=lf
+*.tsx     text eol=lf
+*.json    text eol=lf
+*.md      text eol=lf
+*.yml     text eol=lf
+*.yaml    text eol=lf
+*.css     text eol=lf
+*.html    text eol=lf
+*.xml     text eol=lf
+*.svg     text eol=lf
+*.gradle  text eol=lf
+*.properties text eol=lf
+*.py      text eol=lf
+*.sh      text eol=lf
+*.java    text eol=lf
+*.kt      text eol=lf
+*.c       text eol=lf
+*.cpp     text eol=lf
+*.h       text eol=lf
+*.hpp     text eol=lf
+*.mm      text eol=lf
+
+*.bat     text eol=crlf
+*.cmd     text eol=crlf
+*.ps1     text eol=crlf
+
+# husky shell hooks（无扩展名，强制 LF）
+.husky/*  text eol=lf
+
+# Binaries
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.webp    binary
+*.gif     binary
+*.apk     binary
+*.zip     binary
+*.gz      binary
+*.woff    binary
+*.woff2   binary
+*.ttf     binary
+*.otf     binary
+*.mp3     binary
+*.wav     binary
+*.mp4     binary
+*.bin     binary
+*.jar     binary
+*.aar     binary
+*.so      binary
+*.keystore binary

@@ -12,18 +12,21 @@ export const createStyles = ({theme}: {theme: Theme}) =>
       backgroundColor: '#000',
       overflow: 'hidden',
       zIndex: 1,
+      // B58：flex-end 流式——控件组贴底单锚点（原三层 absolute 混合 %/px 锚
+      // 在短屏/高屏下层距漂移），层距用 spacing token
+      justifyContent: 'flex-end',
     },
     camera: {
       flex: 1,
     },
     controlsContainer: {
-      position: 'absolute',
-      bottom: '5%', // Lower position, below the interval controls
-      alignSelf: 'center', // Center horizontally
+      // B58：流式（原 absolute bottom '5%'）——最底控件组，底部留 l 档余量
+      alignSelf: 'center',
       flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
       gap: 20, // Space between close and flip buttons
+      marginBottom: theme.spacing.l,
     },
     closeButton: {
       width: 40,
@@ -71,9 +74,8 @@ export const createStyles = ({theme}: {theme: Theme}) =>
       paddingHorizontal: 20,
     },
     intervalControlsContainer: {
-      position: 'absolute',
-      bottom: '11%', // Position above the camera controls
-      alignSelf: 'center', // Center horizontally
+      // B58：流式（原 absolute bottom '11%'）——controls 之上，间距 m 档
+      alignSelf: 'center',
       width: '50%', // Take up 50% of screen width
       flexDirection: 'row',
       justifyContent: 'center',
@@ -84,6 +86,7 @@ export const createStyles = ({theme}: {theme: Theme}) =>
       borderRadius: 25, // Make it oval-shaped
       borderWidth: 1,
       borderColor: 'rgba(255, 255, 255, 0.2)',
+      marginBottom: theme.spacing.m,
     },
     intervalLabel: {
       color: '#fff',
@@ -121,11 +124,12 @@ export const createStyles = ({theme}: {theme: Theme}) =>
       fontWeight: 'bold',
     },
     responseOverlayContainer: {
-      position: 'absolute',
-      bottom: 180,
-      left: 16,
-      right: 16,
+      // B58：流式（原 absolute bottom:180 + left/right:16）——最上层，
+      // stretch 保证宽度 = 父宽 - 左右 m 档边距（width 100% + margin 会溢出）
+      alignSelf: 'stretch',
       maxHeight: '40%',
+      marginHorizontal: theme.spacing.m,
+      marginBottom: theme.spacing.m,
     },
     responseText: {
       color: '#fff',

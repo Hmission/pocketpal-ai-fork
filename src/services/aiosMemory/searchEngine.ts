@@ -13,14 +13,8 @@ import * as RNFS from '@dr.pogodin/react-native-fs';
 import {
   AIOS_CONVERSATIONS_DIR,
   AIOS_WORKSPACE_MEMORY_DIR,
-  AIOS_DB_DIR,
 } from '../../utils/paths';
-import {
-  generateKeywords,
-  scoreMatch,
-  listMemories,
-  AiosMemory,
-} from './index';
+import {generateKeywords, scoreMatch, listMemories} from './index';
 
 // ---- 召回免责前缀（2026-08-23 三闸·闸2）----
 // 历史片段注入统一语义：可能已过时，仅作背景参考，防模型把旧记忆当当前事实。
@@ -109,11 +103,11 @@ async function fts5Insert(content: string, source: string): Promise<void> {
     return;
   }
   try {
-    await executeSQL(
-      'INSERT INTO conv_fts (content, source) VALUES (?, ?)',
-      [content.slice(0, 1000), source],
-    );
-  } catch (e) {
+    await executeSQL('INSERT INTO conv_fts (content, source) VALUES (?, ?)', [
+      content.slice(0, 1000),
+      source,
+    ]);
+  } catch {
     // silent
   }
 }
@@ -183,10 +177,7 @@ export async function initIndex(): Promise<void> {
 /**
  * \u6df7\u5408\u68c0\u7d22\uff1a\u5148\u5c1d\u8bd5 FTS5\uff0c\u5931\u8d25\u56de\u9000\u7eaf JS\u3002
  */
-export async function searchMemory(
-  query: string,
-  topN = 5,
-): Promise<string[]> {
+export async function searchMemory(query: string, topN = 5): Promise<string[]> {
   // Try FTS5 first
   if (fts5Available) {
     const ftsResults = await fts5Search(query, topN);

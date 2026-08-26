@@ -64,7 +64,7 @@ export const HighlightText: React.FC<HighlightTextProps> = ({
   const styles = createStyles(theme, align);
   const segments = splitOnPhrases(body, phrases);
   return (
-    <View style={{width: '100%'}}>
+    <View style={styles.wrap}>
       <Text style={styles.bodyText}>
         {segments.map((seg, idx) =>
           seg.highlighted ? (

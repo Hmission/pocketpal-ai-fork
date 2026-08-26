@@ -146,7 +146,7 @@ export const SearchView = observer(
           <View style={styles.emptyStateContainer}>
             <Icon
               name="alert-circle-outline"
-              size={24}
+              size={theme.iconSize.l}
               color={theme.colors.onSurfaceVariant}
             />
             <Text style={styles.noResultsText}>

@@ -4,10 +4,7 @@ import type {
   ToolDefinition,
   SystemPromptContext,
 } from './types';
-import {
-  readScreen,
-  SCREEN_READER_DISABLED,
-} from '../../utils/screenReader';
+import {readScreen, SCREEN_READER_DISABLED} from '../../utils/screenReader';
 
 /**
  * Device Control Engine — 只读子集（SCREENWATCH_SPEC v1，P11）。
@@ -84,11 +81,13 @@ export class DeviceControlEngine implements TalentEngine {
             action: {
               type: 'string',
               enum: ['read_screen', 'find_app'],
-              description: '要执行的操作：read_screen 读当前屏；find_app 在屏幕树中查找元素',
+              description:
+                '要执行的操作：read_screen 读当前屏；find_app 在屏幕树中查找元素',
             },
             target: {
               type: 'string',
-              description: 'find_app 时查找的目标（应用名/控件文本），read_screen 可省略',
+              description:
+                'find_app 时查找的目标（应用名/控件文本），read_screen 可省略',
             },
           },
           required: ['action'],
@@ -100,7 +99,7 @@ export class DeviceControlEngine implements TalentEngine {
   systemPromptFragment(_ctx: SystemPromptContext): string | null {
     return (
       'When you use device_control, you are an ONLOOKER, not an operator. ' +
-      'You read the user\'s current screen (accessibility tree) to know what they are doing, ' +
+      "You read the user's current screen (accessibility tree) to know what they are doing, " +
       'then comment in 1-2 playful or caring sentences as the butler (女妖). ' +
       'NEVER instruct the user to operate, NEVER suggest tapping anything — watching is enough.'
     );

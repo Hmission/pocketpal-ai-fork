@@ -17,6 +17,7 @@ import {observer} from 'mobx-react';
 import {runInAction} from 'mobx';
 
 import {useTheme} from '../../hooks';
+import {Chip} from '../ui/Chip';
 import {imageGenStore} from '../../store/imageGenStore';
 import {
   runImageTaskCard,
@@ -56,24 +57,6 @@ export const ImageTaskActions: React.FC<{message: MessageType.Text}> = observer(
     const prompt = meta.imagePrompt ?? '';
     const enhanced = meta.imageEnhancedPrompt;
     const busy = imageGenStore.generating || imageGenStore.loading;
-
-    const chip = (label: string, testID: string, onPress: () => void) => (
-      <TouchableOpacity
-        testID={testID}
-        disabled={busy}
-        onPress={onPress}
-        style={[
-          styles.chip(theme),
-          {
-            borderColor: theme.colors.primary,
-            opacity: busy ? 0.4 : 1,
-          },
-        ]}>
-        <Text style={[styles.chipText(theme), {color: theme.colors.primary}]}>
-          {label}
-        </Text>
-      </TouchableOpacity>
-    );
 
     const handleRerun = () => {
       // 编辑卡重试：同一源图+指令重跑；生图卡重试：同一提示词再生成
@@ -136,21 +119,59 @@ export const ImageTaskActions: React.FC<{message: MessageType.Text}> = observer(
         )}
         {/* P0 净化：管家就绪但增强失败 → 显式展示（不静默），原图直接出图 */}
         {succeeded && !enhanced && meta.enhancedFailed && (
-          <Text style={styles.enhancedText(theme)} testID="image-enhanced-failed">
+          <Text
+            style={styles.enhancedText(theme)}
+            testID="image-enhanced-failed">
             提示词未增强（管家不可用），已按原文出图
           </Text>
         )}
         <View style={styles.row}>
-          {succeeded &&
-            meta.editTask &&
-            chip('继续编辑此图', 'image-task-edit', handleContinueEdit)}
-          {succeeded &&
-            !meta.editTask &&
-            chip('再来一张', 'image-task-rerun', handleRerun)}
-          {succeeded &&
-            !meta.editTask &&
-            chip('编辑图片', 'image-task-edit', handleEdit)}
-          {failed && chip('重试', 'image-task-retry', handleRerun)}
+          {/* B57：动作胶囊归一 ui/Chip outline（disabled=busy 自动降级，
+              顶替原 opacity 0.4 hack；size=s 语义按 DS 归一） */}
+          {succeeded && meta.editTask && (
+            <Chip
+              variant="outline"
+              color="primary"
+              size="s"
+              label="继续编辑此图"
+              testID="image-task-edit"
+              disabled={busy}
+              onPress={handleContinueEdit}
+            />
+          )}
+          {succeeded && !meta.editTask && (
+            <Chip
+              variant="outline"
+              color="primary"
+              size="s"
+              label="再来一张"
+              testID="image-task-rerun"
+              disabled={busy}
+              onPress={handleRerun}
+            />
+          )}
+          {succeeded && !meta.editTask && (
+            <Chip
+              variant="outline"
+              color="primary"
+              size="s"
+              label="编辑图片"
+              testID="image-task-edit"
+              disabled={busy}
+              onPress={handleEdit}
+            />
+          )}
+          {failed && (
+            <Chip
+              variant="outline"
+              color="primary"
+              size="s"
+              label="重试"
+              testID="image-task-retry"
+              disabled={busy}
+              onPress={handleRerun}
+            />
+          )}
         </View>
       </View>
     );
@@ -162,8 +183,6 @@ const styles: {
   enhancedWrap: ViewStyle;
   enhancedText: (theme: Theme) => TextStyle;
   row: ViewStyle;
-  chip: (theme: Theme) => ViewStyle;
-  chipText: (theme: Theme) => TextStyle;
 } = {
   wrap: {
     marginTop: 6,
@@ -181,14 +200,4 @@ const styles: {
     flexDirection: 'row',
     gap: 8,
   },
-  chip: theme => ({
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xxs + 1,
-    borderRadius: theme.radius.full,
-    borderWidth: 1,
-  }),
-  chipText: theme => ({
-    ...theme.typography.captionM,
-    fontWeight: '600',
-  }),
 };

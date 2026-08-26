@@ -82,7 +82,7 @@ export const VisionDownloadSheet: React.FC<VisionDownloadSheetProps> = ({
       <View style={styles.toggleHeader}>
         <Icon
           name={visionEnabled ? 'eye' : 'eye-off'}
-          size={24}
+          size={theme.iconSize.l}
           color={visionEnabled ? theme.colors.text : theme.colors.textSecondary}
         />
         <View style={styles.toggleTextContainer}>

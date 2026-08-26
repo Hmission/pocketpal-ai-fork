@@ -72,11 +72,13 @@ export function refreshStateSnapshot(): void {
     } catch {
       // 版本信息失败不影响快照
     }
-    void RNFS.writeFile(AIOS_STATE_JSON, JSON.stringify(snapshot, null, 2), 'utf8').catch(
-      () => {
-        // 观测失败静默降级（BT07）
-      },
-    );
+    void RNFS.writeFile(
+      AIOS_STATE_JSON,
+      JSON.stringify(snapshot, null, 2),
+      'utf8',
+    ).catch(() => {
+      // 观测失败静默降级（BT07）
+    });
   } catch {
     // 静默降级
   }

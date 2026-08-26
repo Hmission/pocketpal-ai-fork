@@ -23,14 +23,16 @@ export const TTS_PARENT_SUBDIR = 'tts';
 /**
  * HuggingFace base URL for the Supertonic v3 (31-language) model.
  *
- * v3 preserves the 5-file manifest, filenames, and 10-voice catalog of v2
- * while covering 31 languages plus a trained language-agnostic `<na>` tag.
+ * Served via the hf-mirror.com domestic mirror (HF 直连被墙，2026-08-25 对齐
+ * asrEngine.ts 镜像链路，DEV_BACKLOG P4#11)；v3 preserves the 5-file manifest,
+ * filenames, and 10-voice catalog of v2 while covering 31 languages plus a
+ * trained language-agnostic `<na>` tag.
  * Because the filenames are identical to v2, a local version sentinel
  * (`SUPERTONIC_VERSION_SENTINEL_FILENAME`) distinguishes a stale v2 install
  * from v3; see the supertonic engine and architecture/tts.md.
  */
 export const SUPERTONIC_MODEL_BASE_URL =
-  'https://huggingface.co/Supertone/supertonic-3/resolve/main';
+  'https://hf-mirror.com/Supertone/supertonic-3/resolve/main';
 
 /**
  * On-disk model generation this app expects. Bumped from the unversioned v2
@@ -86,7 +88,8 @@ export const SUPERTONIC_MODEL_ESTIMATED_BYTES = 398_361_202;
 // ---------------------------------------------------------------------------
 
 /**
- * HuggingFace base URL for Kokoro 82M v1.0 ONNX community port.
+ * HuggingFace base URL for Kokoro 82M v1.0 ONNX community port
+ * (via hf-mirror.com 国内镜像，2026-08-25 P4#11）。
  * Full-precision (FP32) variant. The FP16 weights produce silent audio on
  * some devices (numeric overflow during inference); FP32 trades disk + RAM
  * for correctness everywhere: ~330 MB on disk, ~1 GB peak RAM. Q8 also
@@ -94,7 +97,7 @@ export const SUPERTONIC_MODEL_ESTIMATED_BYTES = 398_361_202;
  * quantized variant is viable today.
  */
 export const KOKORO_MODEL_BASE_URL =
-  'https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main';
+  'https://hf-mirror.com/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main';
 
 /** Base URL for the Kokoro per-voice `.bin` embedding files. */
 export const KOKORO_VOICES_BASE_URL = `${KOKORO_MODEL_BASE_URL}/voices`;
@@ -117,7 +120,7 @@ export const KOKORO_MODEL_FILES = [
  * so both engines share one download origin.
  */
 export const TTS_DICT_URL =
-  'https://huggingface.co/datasets/palshub/phonemizer-dicts/resolve/main/en-us.bin';
+  'https://hf-mirror.com/datasets/palshub/phonemizer-dicts/resolve/main/en-us.bin';
 
 /** Local filename for the IPA dict (saved inside each engine's model dir). */
 export const TTS_DICT_FILENAME = 'en-us.bin';
@@ -132,9 +135,9 @@ export const KOKORO_MODEL_ESTIMATED_BYTES = 330 * 1024 * 1024;
 // Kitten (nano-fp32 variant)
 // ---------------------------------------------------------------------------
 
-/** HuggingFace base URL for the Kitten nano-fp32 model. */
+/** HuggingFace base URL for the Kitten nano-fp32 model (hf-mirror.com 镜像，2026-08-25 P4#11). */
 export const KITTEN_MODEL_BASE_URL =
-  'https://huggingface.co/palshub/kitten-tts-nano-0.8-fp32/resolve/main';
+  'https://hf-mirror.com/palshub/kitten-tts-nano-0.8-fp32/resolve/main';
 
 /**
  * Kitten Phase 1 files (fork playback chain): the ONNX model (saved locally
@@ -163,9 +166,8 @@ export const KITTEN_MODEL_FILES = [
  */
 export const KITTEN_SHERPA_MODEL_ID = 'csukuangfj/kitten-nano-en-v0_1-fp16';
 
-/** Base URL for the sherpa generation-chain files. */
-export const KITTEN_SHERPA_BASE_URL =
-  `https://huggingface.co/${KITTEN_SHERPA_MODEL_ID}/resolve/main`;
+/** Base URL for the sherpa generation-chain files (hf-mirror.com 镜像，2026-08-25 P4#11). */
+export const KITTEN_SHERPA_BASE_URL = `https://hf-mirror.com/${KITTEN_SHERPA_MODEL_ID}/resolve/main`;
 
 /**
  * Fixed sherpa generation-chain files. `model.fp16.onnx` is saved locally as

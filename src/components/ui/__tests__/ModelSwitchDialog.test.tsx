@@ -49,9 +49,24 @@ jest.mock('../../../hooks', () => ({
 }));
 
 const CANDIDATES = [
-  {id: 'qwen-2b', name: 'Qwen3.5-2B', size: 1.8 * 1024 ** 3, note: '写作/聊天主力'},
-  {id: 'qwen-4b', name: 'Qwen3.5-4B', size: 3.1 * 1024 ** 3, note: '日用均衡档'},
-  {id: 'big-8b', name: 'Big-8B', size: 6.2 * 1024 ** 3, note: '更大更强，但加载更慢'},
+  {
+    id: 'qwen-2b',
+    name: 'Qwen3.5-2B',
+    size: 1.8 * 1024 ** 3,
+    note: '写作/聊天主力',
+  },
+  {
+    id: 'qwen-4b',
+    name: 'Qwen3.5-4B',
+    size: 3.1 * 1024 ** 3,
+    note: '日用均衡档',
+  },
+  {
+    id: 'big-8b',
+    name: 'Big-8B',
+    size: 6.2 * 1024 ** 3,
+    note: '更大更强，但加载更慢',
+  },
 ];
 
 describe('ModelSwitchDialog（多候选 + 弹窗内加载）', () => {

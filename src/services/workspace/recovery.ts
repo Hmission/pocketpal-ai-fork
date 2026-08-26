@@ -90,7 +90,8 @@ export async function resolveWritingRecovery(
   return {
     domain: 'writing',
     project: entry.name,
-    frameworkText: `【写作项目恢复】\n${parts.join('\n\n')}${progress}\n` +
+    frameworkText:
+      `【写作项目恢复】\n${parts.join('\n\n')}${progress}\n` +
       '正文在分章文档里，需要时用 writing_doc.read_section 按需读取，续写用 append 落盘。',
   };
 }

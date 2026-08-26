@@ -136,15 +136,14 @@ function stepToApiMessages(step: AgentStep): ChatMessage[] {
  * in assistant message contents'），会话永久卡死。装载探针
  * （detectReasoningReinject）标记 false 时，历史消息剥离该字段再入模板。
  */
-export function stripReasoningContent(
-  messages: ChatMessage[],
-): ChatMessage[] {
+export function stripReasoningContent(messages: ChatMessage[]): ChatMessage[] {
   return messages.map(msg => {
     if (
       msg.role === 'assistant' &&
       (msg as {reasoning_content?: string}).reasoning_content !== undefined
     ) {
-      const {reasoning_content: _rc, ...rest} = msg as Record<string, unknown>;
+      const rest = {...msg} as Record<string, unknown>;
+      delete rest.reasoning_content;
       return rest as ChatMessage;
     }
     return msg;

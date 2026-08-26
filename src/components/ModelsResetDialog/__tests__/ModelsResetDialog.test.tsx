@@ -94,8 +94,8 @@ describe('ModelsResetDialog', () => {
       />,
     );
 
-    // Simulate pressing the dialog backdrop
-    fireEvent(getByTestId('reset-dialog'), 'onDismiss');
+    // Simulate pressing the dialog backdrop（OverlayCard 遮罩契约）
+    fireEvent.press(getByTestId('ui-overlay-card-scrim'));
 
     expect(mockOnDismiss).toHaveBeenCalledTimes(1);
     expect(mockOnReset).not.toHaveBeenCalled();

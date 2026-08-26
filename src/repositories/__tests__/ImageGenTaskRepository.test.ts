@@ -21,8 +21,7 @@ jest.mock('../../database', () => {
       rows.length = 0;
     },
     query: (...conditions: any[]) => ({
-      fetch: async () =>
-        rows.filter(r => conditions.every(c => matches(c, r))),
+      fetch: async () => rows.filter(r => conditions.every(c => matches(c, r))),
     }),
     create: async (cb: (r: any) => void) => {
       const record: any = {

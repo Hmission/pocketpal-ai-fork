@@ -195,11 +195,9 @@ export function pngWithMeta(png: Uint8Array, meta: PngGenMeta): Uint8Array {
   let bytes = utf8Encode(JSON.stringify(m));
   if (bytes.length > PNG_META_MAX_BYTES) {
     // prompt 字节预算 = 总预算 − 空 prompt 的 JSON 开销（其余字段占位）
-    const overhead = utf8Encode(
-      JSON.stringify({ ...meta, prompt: '' }),
-    ).length;
+    const overhead = utf8Encode(JSON.stringify({...meta, prompt: ''})).length;
     const promptBudget = Math.max(0, PNG_META_MAX_BYTES - overhead);
-    m = { ...meta, prompt: utf8Truncate(meta.prompt, promptBudget) };
+    m = {...meta, prompt: utf8Truncate(meta.prompt, promptBudget)};
     bytes = utf8Encode(JSON.stringify(m));
     if (bytes.length > PNG_META_MAX_BYTES) {
       // 极端：modelId/backend 也超长（实际不会）→ 只留核心参数
@@ -236,9 +234,7 @@ export function pngWithMeta(png: Uint8Array, meta: PngGenMeta): Uint8Array {
  * 扫描 PNG 块，读取 tEXt 元数据（key='aios.gen'）。
  * 无 meta（旧图/外部图）→ 返回 null，调用方回落 DB 字段，不报错。
  */
-export function readPngMetaBytes(
-  png: Uint8Array,
-): PngGenMeta | null {
+export function readPngMetaBytes(png: Uint8Array): PngGenMeta | null {
   if (png.length < 8 || png[0] !== 0x89 || png[1] !== 0x50) {
     return null;
   }
@@ -253,7 +249,12 @@ export function readPngMetaBytes(
     if (len < 0 || off + 12 + len > png.length) {
       return null;
     }
-    const type = String.fromCharCode(png[off + 4], png[off + 5], png[off + 6], png[off + 7]);
+    const type = String.fromCharCode(
+      png[off + 4],
+      png[off + 5],
+      png[off + 6],
+      png[off + 7],
+    );
     if (type === 'tEXt') {
       const data = png.subarray(off + 8, off + 8 + len);
       const sep = data.indexOf(0);
@@ -265,7 +266,11 @@ export function readPngMetaBytes(
             // schema 门控：仅认本 App 写入的结构（modelId 必填）。
             // 'parameters' 是 WebUI 生态通用 key——外部图的同名块（参数串/非对象）
             // 在此被显式过滤，回落 DB 字段。
-            if (parsed && typeof parsed === 'object' && typeof parsed.modelId === 'string') {
+            if (
+              parsed &&
+              typeof parsed === 'object' &&
+              typeof parsed.modelId === 'string'
+            ) {
               return parsed as PngGenMeta;
             }
             return null;

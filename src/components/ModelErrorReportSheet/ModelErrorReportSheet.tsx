@@ -1,4 +1,4 @@
-import {View, Alert, Platform} from 'react-native';
+import {View, Platform} from 'react-native';
 import React, {useContext, useState, useEffect, useCallback} from 'react';
 
 import {ContextParams} from 'llama.rn';
@@ -6,6 +6,7 @@ import DeviceInfo from 'react-native-device-info';
 import {Text, Button, Checkbox, ActivityIndicator} from 'react-native-paper';
 
 import {submitModelLoadErrorReport} from '../../api/feedback';
+import {infoDialog} from '../ui/InfoDialog';
 
 import {useTheme} from '../../hooks';
 
@@ -142,18 +143,18 @@ export const ModelErrorReportSheet: React.FC<ModelErrorReportSheetProps> = ({
         additionalInfo: additionalInfo.trim() || undefined,
       });
 
-      Alert.alert(
-        l10n.components.modelErrorReportSheet.success.title,
-        l10n.components.modelErrorReportSheet.success.message,
-        [{text: l10n.common.ok, onPress: handleClose}],
-      );
+      infoDialog({
+        title: l10n.components.modelErrorReportSheet.success.title,
+        message: l10n.components.modelErrorReportSheet.success.message,
+        buttonText: l10n.common.ok,
+      }).then(handleClose);
     } catch (err) {
       console.error('Model error report submission error:', err);
-      Alert.alert(
-        l10n.components.modelErrorReportSheet.error.title,
-        l10n.components.modelErrorReportSheet.error.message,
-        [{text: l10n.common.ok}],
-      );
+      infoDialog({
+        title: l10n.components.modelErrorReportSheet.error.title,
+        message: l10n.components.modelErrorReportSheet.error.message,
+        buttonText: l10n.common.ok,
+      });
     } finally {
       setIsSubmitting(false);
     }

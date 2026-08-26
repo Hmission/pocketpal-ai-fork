@@ -53,9 +53,7 @@ describe('appendSection', () => {
     mem[DOC] = '# 标题\n\n## 第一章\n旧第一段\n';
     const r = await appendSection(DOC, '第一章', '新第二段');
     expect(r.ok).toBe(true);
-    expect(mem[DOC]).toBe(
-      '# 标题\n\n## 第一章\n旧第一段\n\n新第二段\n',
-    );
+    expect(mem[DOC]).toBe('# 标题\n\n## 第一章\n旧第一段\n\n新第二段\n');
   });
 
   it('节不存在 → 文件尾新建节', async () => {
@@ -97,9 +95,7 @@ describe('updateSection', () => {
   it('整节替换（标题保留）', async () => {
     mem[DOC] = '# 标题\n\n## 大纲\n旧大纲\n\n## 人设\n旧人设\n';
     await updateSection(DOC, '大纲', '新大纲');
-    expect(mem[DOC]).toBe(
-      '# 标题\n\n## 大纲\n新大纲\n\n## 人设\n旧人设\n',
-    );
+    expect(mem[DOC]).toBe('# 标题\n\n## 大纲\n新大纲\n\n## 人设\n旧人设\n');
   });
 
   it('空内容 → 删除该节', async () => {

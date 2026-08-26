@@ -196,9 +196,17 @@ describe('AdventureStateEngine（P12 TRPG 城主，ADVENTURE_SPEC v1）', () => 
     });
 
     it('append 缺 section/content：显式 EMPTY_CONTENT', async () => {
-      const r1 = await engine.execute({action: 'append', doc: '剧情', section: '第一章'});
+      const r1 = await engine.execute({
+        action: 'append',
+        doc: '剧情',
+        section: '第一章',
+      });
       expect(errMsg(r1)).toBe('EMPTY_CONTENT');
-      const r2 = await engine.execute({action: 'append', doc: '剧情', content: 'x'});
+      const r2 = await engine.execute({
+        action: 'append',
+        doc: '剧情',
+        content: 'x',
+      });
       expect(errMsg(r2)).toBe('EMPTY_CONTENT');
     });
 
@@ -217,7 +225,9 @@ describe('AdventureStateEngine（P12 TRPG 城主，ADVENTURE_SPEC v1）', () => 
       });
       expect(result.type).toBe('error');
       expect(errMsg(result)).toBe('DOC_TOO_LARGE');
-      expect((RNFS as any).__mem.has(`${AIOS_ADVENTURE_DIR}/剧情.md`)).toBe(false);
+      expect((RNFS as any).__mem.has(`${AIOS_ADVENTURE_DIR}/剧情.md`)).toBe(
+        false,
+      );
     });
   });
 });

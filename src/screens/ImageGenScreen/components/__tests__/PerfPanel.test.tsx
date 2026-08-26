@@ -196,7 +196,7 @@ describe('PerfPanel（v2 横版专业面板）', () => {
         {...FULL_SNAP, pssKb: 4.5 * GB},
       ];
     });
-    const {getByTestId, queryByTestId, unmount} = render(<PerfPanel />);
+    const {getByTestId, unmount} = render(<PerfPanel />);
     expect(getByTestId('perf-legend')).toBeTruthy(); // 图例行在场（紫色线=功耗可读）
     // 图表宽需 layout 事件驱动（jest 环境不自触发）；触发后演出层才渲染
     fireEvent(getByTestId('perf-area-chart'), 'layout', {
@@ -233,11 +233,13 @@ describe('PerfPanel（v2 横版专业面板）', () => {
       imageGenStore.perf = {...FULL_SNAP, tempGpuC: 58}; // ≥55°C 危险红
     });
     const danger = render(<PerfPanel />);
-    const dangerColors = danger.getAllByText('58°C').flatMap((n: any) =>
-      (Array.isArray(n.props.style) ? n.props.style : [n.props.style]).map(
-        (s: any) => s?.color,
-      ),
-    );
+    const dangerColors = danger
+      .getAllByText('58°C')
+      .flatMap((n: any) =>
+        (Array.isArray(n.props.style) ? n.props.style : [n.props.style]).map(
+          (s: any) => s?.color,
+        ),
+      );
     expect(dangerColors).toContain('#FF653F'); // error 红（浅模式）
   });
 });

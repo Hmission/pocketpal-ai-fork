@@ -1,4 +1,4 @@
-import {View, Keyboard, Alert} from 'react-native';
+import {View, Keyboard} from 'react-native';
 
 import React, {useContext, useState} from 'react';
 
@@ -11,6 +11,8 @@ import {t} from '../../locales';
 
 import {Menu} from '..';
 import {DotsVerticalIcon, ShareIcon} from '../../assets/icons';
+
+import {infoDialog} from '../ui/InfoDialog';
 
 import {exportAllPals} from '../../utils/exportUtils';
 import {importPals} from '../../utils/importUtils';
@@ -36,7 +38,10 @@ export const PalHeaderRight = observer(() => {
       await exportAllPals();
     } catch (error) {
       console.error('Error exporting all pals:', error);
-      Alert.alert('Export Error', 'Failed to export all pals.');
+      infoDialog({
+        title: 'Export Error',
+        message: 'Failed to export all pals.',
+      });
     }
     closeMenu();
   };
@@ -45,16 +50,19 @@ export const PalHeaderRight = observer(() => {
     try {
       const count = await importPals();
       if (count > 0) {
-        Alert.alert(
-          'Import Success',
-          t(l10n.components.palHeaderRight.importSuccess, {
+        infoDialog({
+          title: 'Import Success',
+          message: t(l10n.components.palHeaderRight.importSuccess, {
             count: count.toString(),
           }),
-        );
+        });
       }
     } catch (error) {
       console.error('Error importing pals:', error);
-      Alert.alert('Import Error', l10n.components.palHeaderRight.importError);
+      infoDialog({
+        title: 'Import Error',
+        message: l10n.components.palHeaderRight.importError,
+      });
     }
     closeMenu();
   };

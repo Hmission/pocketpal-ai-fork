@@ -41,7 +41,10 @@ export function applyReasoningMethods(store: ModelStore): void {
    * Manual model-card override. Top of precedence; routes remote ids to
    * ServerStore, local to the persisted Model.
    */
-  store.setReasoningOverride = (modelId: string, cap: ReasoningCapability): void => {
+  store.setReasoningOverride = (
+    modelId: string,
+    cap: ReasoningCapability,
+  ): void => {
     const localModel = store.models.find(m => m.id === modelId);
     if (!localModel) {
       serverStore.setRemoteReasoningOverride(modelId, cap);

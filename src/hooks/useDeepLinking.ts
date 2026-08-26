@@ -6,12 +6,13 @@
  */
 
 import {useEffect, useCallback} from 'react';
-import {Alert, Linking} from 'react-native';
+import {Linking} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {deepLinkService, DeepLinkParams} from '../services/DeepLinkService';
 import {isHubLink, parseHubRunURL} from '../services/hubRunLink';
 import {chatSessionStore, palStore, deepLinkStore, uiStore} from '../store';
 import {ROUTES} from '../utils/navigationConstants';
+import {infoDialog} from '../components/ui/InfoDialog';
 import {
   isBenchmarkRunnerUrl,
   parseBenchmarkAutostart,
@@ -34,11 +35,11 @@ export const useDeepLinking = () => {
           console.error(`Pal not found: ${palId} (${palName})`);
 
           // Show user-friendly error message
-          Alert.alert(
-            'Pal Not Found',
-            `The pal "${palName || palId}" could not be found. It may have been deleted or is not available on this device.`,
-            [{text: 'OK'}],
-          );
+          infoDialog({
+            title: 'Pal Not Found',
+            message: `The pal "${palName || palId}" could not be found. It may have been deleted or is not available on this device.`,
+            buttonText: 'OK',
+          });
           return;
         }
 
@@ -56,11 +57,12 @@ export const useDeepLinking = () => {
         console.error('Error handling chat deep link:', error);
 
         // Show user-friendly error message
-        Alert.alert(
-          'Error Opening Chat',
-          'An error occurred while trying to open the chat. Please try again.',
-          [{text: 'OK'}],
-        );
+        infoDialog({
+          title: 'Error Opening Chat',
+          message:
+            'An error occurred while trying to open the chat. Please try again.',
+          buttonText: 'OK',
+        });
       }
     },
     [navigation],
@@ -73,11 +75,11 @@ export const useDeepLinking = () => {
   const handleHubRunLink = useCallback((url: string) => {
     const request = parseHubRunURL(url);
     if (!request) {
-      Alert.alert(
-        uiStore.l10n.models.hubRun.invalidLinkTitle,
-        uiStore.l10n.models.hubRun.invalidLinkMessage,
-        [{text: uiStore.l10n.common.ok}],
-      );
+      infoDialog({
+        title: uiStore.l10n.models.hubRun.invalidLinkTitle,
+        message: uiStore.l10n.models.hubRun.invalidLinkMessage,
+        buttonText: uiStore.l10n.common.ok,
+      });
       return;
     }
     deepLinkStore.setPendingHubRun(request);
@@ -117,9 +119,9 @@ export const useDeepLinking = () => {
   );
 
   // E2E-only routing for the BenchmarkRunnerScreen. Two paths:
-  //   1. Cold launch — Linking.getInitialURL() reads the launching intent's
+  //   1. Cold launch �? Linking.getInitialURL() reads the launching intent's
   //      data URI; no MainActivity onNewIntent override needed.
-  //   2. Warm launch — WDIO's `mobile: deepLink` driver command delivers the
+  //   2. Warm launch �? WDIO's `mobile: deepLink` driver command delivers the
   //      URL after the app has already started (fullReset re-installs the
   //      APK but the activity is launched before the test sends the deep
   //      link), so Android routes it as a warm 'url' event. Without the
@@ -135,8 +137,8 @@ export const useDeepLinking = () => {
       if (isBenchmarkRunnerUrl(url)) {
         // Resolve autostart from the same raw URL the gate matched, via the
         // shared helper, so cold-launch (getInitialURL) and warm-launch
-        // ('url' event) deliveries — and the iOS dispatchAutomationDeepLink
-        // path — cannot diverge in truthiness. A bare bench URL resolves
+        // ('url' event) deliveries �? and the iOS dispatchAutomationDeepLink
+        // path �? cannot diverge in truthiness. A bare bench URL resolves
         // false, so the screen stays idle exactly as before.
         (navigation as any).navigate(ROUTES.BENCHMARK_RUNNER, {
           autostart: parseBenchmarkAutostart(url),
@@ -182,7 +184,7 @@ export const useDeepLinking = () => {
   // emitter above; Android prod has no native deep-link bridge, so this RN
   // Linking path (cold getInitialURL + warm 'url' event) is the only delivery.
   // Gated by isHubLink so non-hub URLs (chat, e2e/benchmark, memory) and unknown
-  // hub paths are ignored silently — only the exact hub/run route reaches
+  // hub paths are ignored silently �? only the exact hub/run route reaches
   // handleHubRunLink, matching the native emitter path. A malformed hub/run
   // payload still alerts.
   useEffect(() => {

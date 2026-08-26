@@ -23,6 +23,7 @@ relates: [POCKETPAL_DESIGN_SPEC, ADR-0002-imagegen-header-right]
 > 版本：v4（2026-08-21，创作工坊：页内双 tab（生图/音频工坊）+ 反推能力——操作条五按钮、caption 任务化入画廊、复刻生图 Sheet 全参数；音频工坊见 AUDIO_UI_SPEC）
 > 版本：v4.1（2026-08-21，新手引导：非 Dream 出图未加载不再灰置——点击弹提示 + 展开模型下拉；预览区有图时非 Dream 也常驻「编辑」按钮——点击确认后自动切 DreamLite）
 > 版本：v4.2（2026-08-21，提示形态统一：生图页全部轻提示弃用底部 Paper Snackbar——顶部 BannerBar overlay（白卡实底压预览区顶部，语义色 wash，不挡底部按钮）；编辑锁定提示常驻至预备态结束，其余瞬时 3s 自动消失）
+> 版本：v4.3（2026-08-25，大王反馈：横幅改造——弃屏级 absolute top:458 中间浮条，移入预览卡片（ResultPreview 图区）顶部绝对定位，只压预览卡片不压历史区/创作区；**去白卡实底 surfaceElevated（大王：不要灰色底）**，BannerBar 语义色 wash 直接透出；瞬时横幅**整卡点击关闭**（保留 ×）+ 3s 自动消失；预览图信息条（infoOverlay）让位下移不重叠；音频 tab 同一设计语言叠卡片顶部）
 > 版本：v5.1（2026-08-22，顶栏滑块按钮：生图/音频双 tab 胶囊合并为单滑块（toggle，点文字段切换、点选中段不动）；模型胶囊缩短 1/3（maxWidth 180→120）保证「加载」按钮永可见）
 > 版本：v5.2（2026-08-22 大王反馈收窄）：滑块分段 56→48px/段（两段总宽 96）；抽屉入口文案「画图」→「创造工坊」（zh）/「Studio」（en）/「創造工坊」（zh-Hant，其余语言回退 en）；workshop.svg 重绘（全描边 2px 同族，画笔斜置 + 音符流出于笔尖的对角构图，替代原实心圆散构图）
 > 版本：v5.3（2026-08-22 B35 大王裁定）：① workshop.svg 再次重绘——**画笔 × 扳手 X 交叉**（大王：两工具交叉成 X，替代音符；画笔沿主对角线、扳手沿副对角线，交叉点居中，互不侵入对方主体）；② 音频历史条改**横向滚动**（对齐本页相册 HistoryStrip 模式，转写/生成两段隔离）；③ 音频引擎选择**移入顶栏胶囊**（对齐本页模型胶囊语义，高级参数不含模型红线扩展至音频 tab）；④ 转写结果卡对齐反推卡（3 行折叠 + 展开全文 + 三按钮操作条）
@@ -30,6 +31,7 @@ relates: [POCKETPAL_DESIGN_SPEC, ADR-0002-imagegen-header-right]
 > 版本：v5.5（2026-08-23 B38 大王复查·多模态统一）：① **音频顶栏胶囊弃独立风格 → 与本页 triggerPill 同一设计语言**（primary 12% 底 + full 圆角 + primary 1px 描边 + onSurface 文字 + ▾，就绪点内嵌）——同页不再并存两套胶囊风格；② 音频产物区升级**播放器预览窗口**（方形大卡 + 播放/暂停 + 时间轴跳播 + 时长，对齐本页预览窗口规格）；③ 音频历史卡改**方形卡**（对齐本页相册缩略图 72px 方形），点击加载预览窗口——详见 AUDIO_UI_SPEC v1.7
 > 版本：v5.6（2026-08-24 B39 跑分演出升级规划，PERF_BENCHMARK_DESIGN §10 v0.5）：§9 跑分面板演出层升级定稿——① 40pt 条形迷你图 → **折线+渐变面积图**（自绘满宽贴卡片缘，峰值打标，卡片内不溢出红线不变）；② 全数字接 PerfMotion AnimatedNumber（PSS 大字/胶囊/指标行）+ 胶囊负载分档变色 + 步耗时进度环；③ §9 语义色注册表扩编：速率强调色 + 跑分金均**复用既有 brandAccent token**（不造新色，避免双金分裂），阈值语义不变（>5GB 橙/>6GB 红）；数据链路（syncPoll/perfRecorder/perfScore）零改动——详见 PERF_BENCHMARK_DESIGN §10.5/10.6
 > 版本：v5.7（2026-08-25 B43 大王反馈收窄）：§9 跑分卡坐标轴升级——① 折线图加坐标轴（左 Y 刻度按维度单位 / 底部 X 时间刻度 / 水平垂直网格 / 5GB·6GB 阈值线端点标注）+ **叠全改复合图**（PSS/功耗折线 + CPU/GPU 负载柱状 + 温度热力带），温度不再与 PSS 主色同橙撞色；② 演出层 vivid 动画（最新点呼吸光圈 + 彗星尾 + 示波器扫掠光）；③ 指标分级色全接入（温度/功耗/频率/步耗时两档阈值，正常继承中性 / 警告橙 / 危险红，不再全黑）；④ 「叠全」chip 移至**最左**（默认项排最前）；⑤ 叠全图例行（色点+通道名，虚线语义由图内端点标注承载）——详见 PERF_BENCHMARK_DESIGN §10.5
+> 版本：v5.8（2026-08-26，B59 大王反馈）：① 出图/编辑按钮**任务进行期灰置 + 转圈 + 禁点**——loading（引擎加载）与 generating 同属任务期，disabled 全链路防连点；灰底（surface）+ 文字降级（onSurfaceVariant），转圈色白 → primary（灰底上可见）；此前仅 generating 转圈且无灰底，引擎加载期按钮零反馈（首次出图加载模型最耗时时最需要）；未加载（非 Dream 未选模型）不灰置引导红线不变（v4.1）；② 模型下拉**选中行圆角对齐浮层面板**——modelRow borderRadius inputSmall(8) → surface(32)，选中描边与整卡一致（音频引擎下拉复用同样式一并统一）
 
 > 上位规范：POCKETPAL_DESIGN_SPEC.md（UI 域 SSOT）
 
@@ -104,17 +106,21 @@ relates: [POCKETPAL_DESIGN_SPEC, ADR-0002-imagegen-header-right]
 - **未加载模型不禁用（v4.1）**：非 Dream 未加载时出图按钮**不再灰置**——点击弹「需要先加载模型」OverlayCard（底座 DESIGN_SPEC §12.1）→「去加载」→ 自动展开模型下拉（行内加载按钮）；再次生成 / 失败页重试走同一 handleGenerate 自动复用引导。DreamLite 未加载点出图维持引擎内部自动加载（generateDreamLiteEntry 兜底）
 - **onPress 必须显式无参包装**：`onPress={() => onGenerate()}`，禁止 `onPress={onGenerate}` 直传 async 函数——RN 必传 GestureResponderEvent 作为首参，直传导致 `handleGenerate(event)` 入口 `(event ?? prompt).trim()` 抛 TypeError 被 Bridgeless 事件系统静默吞掉（2026-08-20 两台真机 + DRC 三重复现，回归引入点 commit 44689f8 加 promptOverride 参数）
 - **「再次生成」= 当前图同参数重跑**：用任务自带 prompt（与失败页「重试」同源 `handleGenerate(item.prompt)`），不读当前输入框——输入框被清空/编辑预备态清 prompt 后再次生成仍有效
+- **任务进行期灰置转圈（v5.8，B59）**：出图/编辑按钮在 loading（引擎加载）与 generating 期 **disabled + 灰底（surface）+ 文字降级（onSurfaceVariant）+ primary 转圈**（原 onPrimary 白圈灰底上不可见，改 primary）；编辑进行中（taskKind=edit）出图按钮灰置显示文字不转圈；未加载引导（v4.1）与空提示词横幅（v4.2）红线不变
 
-## 9. 顶部横幅提示（v4.2，大王裁定：弃用底部 Snackbar）
+## 9. 顶部横幅提示（v4.3，大王裁定：弃用底部 Snackbar）
 
-生图页全部轻提示**不再使用底部 Paper Snackbar**（灰色底 + 遮挡底部按钮），统一为**顶部横幅 overlay**：
+生图页全部轻提示**不再使用底部 Paper Snackbar**（灰色底 + 遮挡底部按钮），统一为**预览卡片顶部横幅**：
 
-- **形态**：absolute 定位压在预览区顶部（不占文档流），白卡实底（`surfaceElevated` + xl 圆角 + elevation 4 + 阴影）保证图片上可读性，内嵌 `ui/BannerBar`（DESIGN_SPEC §12.3 语义色 12% wash + hairline，非灰底）
+- **形态**：absolute 定位叠在**预览卡片（ResultPreview 图区）顶部**（随卡片滚动、不占文档流），无瓷底——`ui/BannerBar` 自带语义色 12% wash + hairline（DESIGN_SPEC §12.3）直接透出；圆角容器（radius.m + elevation 4 + 阴影）裁剪 BannerBar 上下 hairline
 - **两类展示**：
-  - **瞬时反馈**（生成完成 / 保存 / 复制 / 反推完成 / 错误提示）：3s 自动消失 + × 可关闭
-  - **状态引导**（编辑锁定「已锁定当前图（sq×sq），输入编辑指令后点「执行编辑」」）：**常驻至编辑预备态结束**（执行编辑 / 翻页 / 切模型 / 出图时随 editArming=false 消失）——由 editArming 派生渲染，不占瞬时 state
+  - **瞬时反馈**（生成完成 / 保存 / 复制 / 反推完成 / 错误提示）：3s 自动消失 + **整卡点击关闭**（原仅 ×，v4.3 升级）+ × 可关闭
+  - **状态引导**（编辑锁定「已锁定当前图（sq×sq），输入编辑指令后点「执行编辑」」）：**常驻至编辑预备态结束**（执行编辑 / 翻页 / 切模型 / 出图时随 editArming=false 消失）——由 editArming 派生渲染，不占瞬时 state，不可点关闭（状态横幅与状态同步）
+- **边框内缩**：left/right 8 内缩成小卡语义，不横贯全屏宽
+- **避让**：横幅显示期间预览图顶部信息条（infoOverlay）自动下移（top 8→52）不重叠
 - **语义色**：error=红 / warning=橙 / 其余=info 蓝
 - **互斥**：编辑预备态期间只显示常驻锁定横幅，瞬时反馈让位（避免双横幅）
+- **音频 tab**：同一设计语言叠音频卡片顶部（瞬时横幅；编辑锁定为生图 tab 专属状态不展示）
 - 覆盖范围：原 15 处 Snackbar 调用点全部迁移（详见 MASTER_LOG §68）
 
 ## 3. 模型下拉规则
@@ -124,6 +130,7 @@ relates: [POCKETPAL_DESIGN_SPEC, ADR-0002-imagegen-header-right]
 - 行内按钮：加载（主色实底）/ 卸载（红描边，二次确认）
 - 族徽章彩色：SD3.5 紫 #8e24aa / Z-Image 青 #00838f / DreamLite 粉 #d81b60
 - 选中行仅高亮回填参数，不自动加载（点「加载」按钮才加载）
+- 选中行圆角 = 浮层面板同值（shapeRoles.surface 32px，v5.8 B59）：选中描边与整卡圆角一致；音频引擎下拉复用同样式一并统一
 
 ## 4. 生成/编辑/反推状态机视觉（v3 任务化 + v4 caption）
 

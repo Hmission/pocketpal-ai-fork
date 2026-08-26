@@ -18,6 +18,12 @@ jest.mock('../../../utils/modelSettings', () => ({
 // Mock Alert
 jest.spyOn(Alert, 'alert');
 
+// B46 迁移同步：校验失败提示已由 Alert.alert → infoDialog（用户存量改动）
+jest.mock('../../ui/InfoDialog', () => ({
+  infoDialog: jest.fn(),
+}));
+import {infoDialog} from '../../ui/InfoDialog';
+
 // Mock the CompletionSettings component
 jest.mock('../../CompletionSettings', () => {
   const {View, TouchableOpacity} = require('react-native');
@@ -217,11 +223,14 @@ describe('ChatGenerationSettingsSheet', () => {
       fireEvent.press(getByText('Save'));
     });
 
-    // Should show alert for invalid value
-    expect(Alert.alert).toHaveBeenCalledWith(
-      'Invalid Values',
-      expect.stringContaining('temperature: Must be between 0 and 2'),
-      expect.anything(),
+    // Should show alert for invalid value（B46 迁移：infoDialog）
+    expect(infoDialog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Invalid Values',
+        message: expect.stringContaining(
+          'temperature: Must be between 0 and 2',
+        ),
+      }),
     );
     expect(
       chatSessionStore.updateSessionCompletionSettings,

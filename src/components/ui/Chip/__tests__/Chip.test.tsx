@@ -23,6 +23,26 @@ describe('Chip', () => {
     const {getByTestId} = render(<Chip variant="input" label="Tag" />);
     expect(getByTestId('ui-chip').props.accessibilityRole).toBe('button');
   });
+
+  // B57：outline 动作胶囊——带 onPress 即交互（role=button），无 onPress 为展示层
+  it('outline variant with onPress is interactive', () => {
+    const {getByTestId} = render(
+      <Chip
+        variant="outline"
+        color="primary"
+        label="Tag"
+        onPress={jest.fn()}
+      />,
+    );
+    expect(getByTestId('ui-chip').props.accessibilityRole).toBe('button');
+  });
+
+  it('outline variant without onPress stays display (role=text)', () => {
+    const {getByTestId} = render(
+      <Chip variant="outline" color="danger" label="Tag" />,
+    );
+    expect(getByTestId('ui-chip').props.accessibilityRole).toBe('text');
+  });
 });
 
 runSnapshotMatrix(
@@ -37,7 +57,8 @@ runSnapshotMatrix(
     />
   ),
   {
-    variants: ['display', 'selectable', 'input'] as const,
+    // B57：四变体全部进快照（outline 无 onPress = 展示层渲染，描边/语义色可见）
+    variants: ['display', 'selectable', 'input', 'outline'] as const,
     sizes: ['s', 'm'] as const,
     langs: ['fa'] as const,
     rtlCanaryVariant: 'selectable',

@@ -55,7 +55,10 @@ async function writeIndex(entries: ToyEntry[]): Promise<void> {
 
 /** 落盘一件玩具（upsert）：标题为空/写盘失败返回 null（显式失败，不静默）。
  * 同 title → 覆盖原文件（id 不变）并把条目置顶 = 迭代存档；新 title → 新建。 */
-export async function saveToy(title: string, html: string): Promise<ToyEntry | null> {
+export async function saveToy(
+  title: string,
+  html: string,
+): Promise<ToyEntry | null> {
   const trimmedTitle = title.trim();
   if (!trimmedTitle || !html) {
     return null;
@@ -65,7 +68,11 @@ export async function saveToy(title: string, html: string): Promise<ToyEntry | n
   const existing = entries.find(e => e.title === trimmedTitle);
   const entry: ToyEntry = existing
     ? {...existing, createdAt: Date.now()}
-    : {id: nextToyId(), title: trimmedTitle.slice(0, 40), createdAt: Date.now()};
+    : {
+        id: nextToyId(),
+        title: trimmedTitle.slice(0, 40),
+        createdAt: Date.now(),
+      };
   try {
     const rest = entries.filter(e => e.id !== entry.id);
     const next = [entry, ...rest].slice(0, TOY_LIMIT);

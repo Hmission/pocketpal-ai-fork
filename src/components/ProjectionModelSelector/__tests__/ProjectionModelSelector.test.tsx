@@ -8,6 +8,18 @@ import {createModel} from '../../../../jest/fixtures/models';
 
 import {ProjectionModelSelector} from '../ProjectionModelSelector';
 
+// B46 迁移同步：cannot-delete 提示已由 Alert.alert → infoDialog（用户存量改动）
+jest.mock('../../ui/InfoDialog', () => ({
+  infoDialog: jest.fn(),
+}));
+import {infoDialog} from '../../ui/InfoDialog';
+
+// B52③ 迁移同步：删除/重载确认已由 Alert.alert → confirmDialog（默认确认流）
+jest.mock('../../ui/ConfirmDialog', () => ({
+  confirmDialog: jest.fn().mockResolvedValue(true),
+}));
+import {confirmDialog} from '../../ui/ConfirmDialog';
+
 describe('ProjectionModelSelector', () => {
   const mockModel = createModel({
     id: 'test-model-1',
@@ -176,12 +188,12 @@ describe('ProjectionModelSelector', () => {
       const deleteButton = getByTestId('delete-projection-model-button');
       fireEvent.press(deleteButton);
 
-      // Verify Alert was called with cannot delete message
-      expect(Alert.alert).toHaveBeenCalledWith(
-        'Cannot Delete',
-        'This projection model is currently active.',
-        [{text: 'OK', style: 'default'}],
-      );
+      // Verify infoDialog was called with cannot delete message（B46 迁移）
+      expect(infoDialog).toHaveBeenCalledWith({
+        title: 'Cannot Delete',
+        message: 'This projection model is currently active.',
+        buttonText: expect.any(String),
+      });
 
       // Verify delete was NOT called
       expect(modelStore.deleteModel).not.toHaveBeenCalled();
@@ -217,17 +229,15 @@ describe('ProjectionModelSelector', () => {
       const deleteButton = getByTestId('delete-projection-model-button');
       fireEvent.press(deleteButton);
 
-      // Verify Alert was called with warning about dependent models
-      expect(Alert.alert).toHaveBeenCalledWith(
-        'Delete Projection Model',
-        expect.stringContaining('Dependent LLM'),
-        expect.arrayContaining([
-          {text: 'Cancel', style: 'cancel'},
-          expect.objectContaining({
-            text: 'Delete',
-            style: 'destructive',
-          }),
-        ]),
+      // Verify confirmDialog was called with warning about dependent models（B52③）
+      expect(confirmDialog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Delete Projection Model',
+          message: expect.stringContaining('Dependent LLM'),
+          confirmText: 'Delete',
+          cancelText: 'Cancel',
+          destructive: true,
+        }),
       );
     });
 
@@ -256,18 +266,7 @@ describe('ProjectionModelSelector', () => {
       modelStore.deleteModel = mockDeleteModel;
       modelStore.setModelVisionEnabled = mockSetModelVisionEnabled;
 
-      // Mock Alert to auto-confirm deletion
-      (Alert.alert as jest.Mock).mockImplementation(
-        (title: string, message: string, buttons: any[]) => {
-          // Find and execute the delete button callback
-          const deleteButton = buttons.find(
-            (b: any) => b.style === 'destructive',
-          );
-          if (deleteButton?.onPress) {
-            deleteButton.onPress();
-          }
-        },
-      );
+      // B52③：confirmDialog mock 默认 resolve(true) 自动确认删除流（替代原 Alert 自动按 destructive）
 
       const {getByTestId} = render(
         <ProjectionModelSelector
@@ -304,20 +303,12 @@ describe('ProjectionModelSelector', () => {
         .mockReturnValue([]);
       modelStore.deleteModel = jest.fn().mockRejectedValue(deletionError);
 
-      // Track Alert calls
-      const alertCalls: any[] = [];
-      (Alert.alert as jest.Mock).mockImplementation(
-        (title: string, message: string, buttons: any[]) => {
-          alertCalls.push({title, message, buttons});
-          const deleteButton = buttons?.find(
-            (b: any) => b.style === 'destructive',
-          );
-          if (deleteButton?.onPress) {
-            // Execute the onPress (it will handle the error internally)
-            deleteButton.onPress();
-          }
-        },
-      );
+      // B52③：confirmDialog mock 默认确认；收集调用供断言（替代原 Alert.alert 收集）
+      (confirmDialog as jest.Mock).mockImplementation(async () => {
+        confirmCalls.push({title: 'Delete Projection Model'});
+        return true;
+      });
+      const confirmCalls: any[] = [];
 
       const {getByTestId} = render(
         <ProjectionModelSelector
@@ -335,12 +326,16 @@ describe('ProjectionModelSelector', () => {
 
       // Wait for error alert to be shown
       await waitFor(() => {
-        // First alert is the confirmation dialog
-        expect(alertCalls[0].title).toBe('Delete Projection Model');
+        // 确认弹窗已走 confirmDialog（B52③）
+        expect(confirmCalls[0].title).toBe('Delete Projection Model');
 
-        // Second alert should be the error message
-        expect(alertCalls[1].title).toBe('Cannot Delete');
-        expect(alertCalls[1].message).toBe('Failed to delete file');
+        // 删除失败提示已迁 infoDialog（B46 用户存量迁移）
+        expect(infoDialog).toHaveBeenCalledWith(
+          expect.objectContaining({
+            title: 'Cannot Delete',
+            message: 'Failed to delete file',
+          }),
+        );
       });
 
       // Verify deleteModel was called

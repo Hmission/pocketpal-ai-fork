@@ -10,7 +10,12 @@
  * 并附候选清单（不静默、不模糊猜）。
  */
 import {listToys, readToy} from '../toyChest';
-import type {TalentEngine, TalentResult, ToolDefinition, SystemPromptContext} from './types';
+import type {
+  TalentEngine,
+  TalentResult,
+  ToolDefinition,
+  SystemPromptContext,
+} from './types';
 
 export class ReadHtmlEngine implements TalentEngine {
   readonly name = 'read_html';

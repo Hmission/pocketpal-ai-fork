@@ -191,7 +191,7 @@ export const DeviceInfoCard = ({onDeviceInfo, testId}: Props) => {
           </View>
           <Icon
             source={expanded ? 'chevron-up' : 'chevron-down'}
-            size={24}
+            size={theme.iconSize.l}
             color={theme.colors.onSurface}
           />
         </View>

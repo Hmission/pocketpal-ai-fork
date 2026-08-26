@@ -48,7 +48,11 @@ export const HeaderLeft: React.FC = () => {
       testID="menu-button"
       accessibilityLabel="Open drawer"
       onPress={() => navigation.openDrawer()}>
-      <MenuIcon stroke={theme.colors.primary} width={theme.iconSize.m} height={theme.iconSize.m} />
+      <MenuIcon
+        stroke={theme.colors.primary}
+        width={theme.iconSize.m}
+        height={theme.iconSize.m}
+      />
     </TouchableOpacity>
   );
 };

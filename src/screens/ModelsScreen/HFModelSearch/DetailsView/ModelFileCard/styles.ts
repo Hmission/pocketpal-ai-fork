@@ -102,24 +102,8 @@ export const createStyles = (theme: Theme, isProjectionModel) =>
       color: theme.colors.onErrorContainer,
       fontWeight: '500',
     },
-    progressContainer: {
-      marginTop: 8,
-    },
-    progressBar: {
-      height: 2,
-      backgroundColor: theme.colors.primary,
-      opacity: 0.2,
-      borderRadius: 1,
-      overflow: 'hidden',
-    },
-    progressFill: {
-      position: 'absolute',
-      left: 0,
-      top: 0,
-      bottom: 0,
-      backgroundColor: theme.colors.primary,
-      borderRadius: 1,
-    },
+    // B57：progressContainer/progressBar/progressFill 为死键（JSX 只走
+    // LinearGradient 进度覆盖层，见 ModelFileCard.tsx），随迁删除。
     snackbarContent: {
       flexDirection: 'column',
       gap: 4,
@@ -134,7 +118,7 @@ export const createStyles = (theme: Theme, isProjectionModel) =>
     },
     gatedText: {
       color: theme.colors.primary,
-      fontSize: 10,
+      fontSize: 11,
     },
     visionChip: {
       backgroundColor: 'transparent',

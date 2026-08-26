@@ -51,7 +51,7 @@ import {IncreaseContextSheet} from '../IncreaseContextSheet';
 import {hasModelUpgradeFitting} from '../IncreaseContextSheet/fitStatus';
 import {t} from '../../locales';
 
-import {chatSessionStore, modelStore} from '../../store';
+import {chatSessionStore, modelStore, ttsStore} from '../../store';
 import {compactSessionAndMark} from '../../services/contextCompaction';
 
 import {MessageType, User} from '../../utils/types';
@@ -63,6 +63,8 @@ import {
   L10nContext,
 } from '../../utils';
 import {hasVideoCapability} from '../../utils/pal-capabilities';
+import {derivedText, isFinalMessage} from '../../utils/chat';
+import {isSpeakableMessage} from '../../utils/speakable';
 
 import {
   Message,
@@ -87,6 +89,7 @@ import {
   EditIcon,
   GridIcon,
   PencilLineIcon,
+  PlayIcon,
   RefreshIcon,
   TrashIcon,
 } from '../../assets/icons';
@@ -255,8 +258,8 @@ export const ChatView = observer(
     // ============ THEME & LOCALIZATION ============
     const l10n = React.useContext(L10nContext);
     const theme = useTheme();
-    const styles = createStyles({theme});
     const insets = useSafeAreaInsets();
+    const styles = createStyles({theme, insets});
     const isFocused = useIsFocused();
 
     // ============ REFS ============
@@ -733,7 +736,12 @@ export const ChatView = observer(
       edit: editLabel,
       reportContent: reportContentLabel,
       deleteFromHere: deleteFromHereLabel,
+      speak: speakLabel,
     } = l10n.components.chatView.menuItems;
+
+    // observer 本地读（B51 惯例）：MobX observable 属性不可作 useMemo 依赖，
+    // 渲染期读入局部变量，observable 变化经 observer 重渲染驱动 useMemo 重算
+    const streamingNow = modelStore.isStreaming;
 
     const menuItems = React.useMemo((): MenuItem[] => {
       if (
@@ -762,6 +770,38 @@ export const ChatView = observer(
           disabled: false,
         },
       ];
+
+      // 全文朗读（P4#15 收尾，B52）：与 PlayButton 同一门控单一事实源
+      // （isSpeakableMessage + isFinalMessage + TTS 可用）；voice 缺失时引导 setup。
+      const speakable =
+        ttsStore.isTTSAvailable &&
+        isSpeakableMessage(selectedMessage) &&
+        (isFinalMessage(selectedMessage) || !streamingNow);
+
+      if (speakable) {
+        const speakableText = derivedText(selectedMessage);
+        const hadReasoning =
+          selectedMessage.type === 'text'
+            ? !!selectedMessage.metadata?.completionResult?.reasoning_content?.trim()
+            : (selectedMessage.steps ?? []).some(s =>
+                s.reasoningContent?.trim(),
+              );
+        baseItems.push({
+          label: speakLabel,
+          onPress: () => {
+            if (ttsStore.currentVoice == null) {
+              ttsStore.openSetupSheet();
+            } else {
+              ttsStore
+                .play(selectedMessage.id, speakableText, {hadReasoning})
+                .catch(() => {});
+            }
+            handleMenuDismiss();
+          },
+          icon: () => <PlayIcon stroke={theme.colors.primary} />,
+          disabled: false,
+        });
+      }
 
       if (!isAuthor) {
         baseItems.push({
@@ -841,6 +881,8 @@ export const ChatView = observer(
       editLabel,
       reportContentLabel,
       deleteFromHereLabel,
+      speakLabel,
+      streamingNow,
     ]);
 
     // ============ RENDER FUNCTIONS ============
@@ -1171,7 +1213,7 @@ export const ChatView = observer(
                 onPress={scrollToBottom}>
                 <Icon
                   name="chevron-down"
-                  size={20}
+                  size={theme.iconSize.m}
                   color={theme.colors.onPrimary}
                 />
               </TouchableOpacity>
@@ -1183,6 +1225,7 @@ export const ChatView = observer(
         styles.flatListContentContainer,
         styles.flatList,
         styles.scrollToBottomButton,
+        theme.iconSize.m,
         chatMessages,
         visibleChatMessages,
         renderListEmptyComponent,

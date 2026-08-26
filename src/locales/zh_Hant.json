@@ -414,12 +414,7 @@
       "confirmReset": "確認重置"
     },
     "usageStats": {
-      "byteSizes": [
-        "位元組",
-        "KB",
-        "MB",
-        "GB"
-      ],
+      "byteSizes": ["位元組", "KB", "MB", "GB"],
       "tooltip": {
         "usage": "使用率： ",
         "total": "總計： ",
@@ -768,7 +763,8 @@
         "reportContent": "報告內容",
         "deleteFromHere": "從此處刪除",
         "deleteFromHereTitle": "刪除此條及之後的訊息？",
-        "deleteFromHereMessage": "此訊息與之後的所有訊息將被移除，無法復原。"
+        "deleteFromHereMessage": "此訊息與之後的所有訊息將被移除，無法復原。",
+        "speak": "朗讀"
       }
     },
     "lookiePalSheet": {

@@ -6,7 +6,7 @@ import React, {
   useMemo,
   useRef,
 } from 'react';
-import {View, Alert} from 'react-native';
+import {View} from 'react-native';
 import {
   Text,
   Button,
@@ -21,6 +21,7 @@ import debounce from 'lodash/debounce';
 import {Sheet, TextInput} from '..';
 import {useTheme} from '../../hooks';
 import {serverStore} from '../../store';
+import {confirmDialog} from '../ui/ConfirmDialog';
 import {L10nContext} from '../../utils';
 import {parseTimeoutMs} from '../../utils/timeout';
 import {SERVER_TYPE_DROPDOWN_OPTIONS} from '../../utils/serverTypes';
@@ -176,29 +177,23 @@ export const ServerDetailsSheet: React.FC<ServerDetailsSheetProps> = observer(
       }
       const serverName = server.name;
       const modelCount = userModels.length;
-      // Dismiss the sheet first so the native alert can present on the main
-      // window — @gorhom/bottom-sheet renders on a separate overlay that can
-      // block native alerts on iOS.
+      // 关闭 sheet 后弹确认（B52③：confirmDialog 为 RN Modal 层，
+      // 无需原 native alert 的 setTimeout(300) 兼容 hack）
       onDismiss();
-      setTimeout(() => {
-        Alert.alert(
-          l10n.settings.removeServer,
-          t(l10n.settings.removeServerMessage, {
-            serverName,
-            count: String(modelCount),
-          }),
-          [
-            {text: l10n.common.cancel, style: 'cancel'},
-            {
-              text: l10n.common.delete,
-              style: 'destructive',
-              onPress: () => {
-                serverStore.removeServer(serverId);
-              },
-            },
-          ],
-        );
-      }, 300);
+      void confirmDialog({
+        title: l10n.settings.removeServer,
+        message: t(l10n.settings.removeServerMessage, {
+          serverName,
+          count: String(modelCount),
+        }),
+        confirmText: l10n.common.delete,
+        cancelText: l10n.common.cancel,
+        destructive: true,
+      }).then(ok => {
+        if (ok) {
+          serverStore.removeServer(serverId);
+        }
+      });
     }, [serverId, server, userModels.length, l10n, onDismiss]);
 
     if (!server) {
@@ -280,7 +275,7 @@ export const ServerDetailsSheet: React.FC<ServerDetailsSheetProps> = observer(
                     ? 'check-circle-outline'
                     : 'alert-circle-outline'
                 }
-                size={16}
+                size={theme.iconSize.s}
                 color={
                   probeResult.ok ? theme.colors.primary : theme.colors.error
                 }

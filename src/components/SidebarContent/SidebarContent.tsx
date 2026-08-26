@@ -1,5 +1,5 @@
 import React, {useContext, useEffect, useState} from 'react';
-import {TouchableOpacity, View, Alert, SectionList} from 'react-native';
+import {TouchableOpacity, View, SectionList} from 'react-native';
 import {observer} from 'mobx-react';
 import {Divider, Text} from 'react-native-paper';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
@@ -14,6 +14,7 @@ import {SettingsIcon} from '../../assets/icons';
 import {L10nContext} from '../../utils';
 import {t} from '../../locales';
 import {confirmDialog} from '../ui/ConfirmDialog';
+import {infoDialog} from '../ui/InfoDialog';
 import {ROUTES} from '../../utils/navigationConstants';
 import {exportChatSession} from '../../utils/exportUtils';
 import {SessionListItem} from './SessionListItem';
@@ -116,10 +117,10 @@ export const SidebarContent: React.FC<DrawerContentComponentProps> = observer(
           await chatSessionStore.duplicateSession(session.id);
           props.navigation.navigate(ROUTES.CHAT);
         } catch {
-          Alert.alert(
-            l10n.common.error,
-            l10n.components.sidebarContent.exportError,
-          );
+          infoDialog({
+            title: l10n.common.error,
+            message: l10n.components.sidebarContent.exportError,
+          });
         }
       },
       [closeMenu, props.navigation, l10n],
@@ -169,10 +170,10 @@ export const SidebarContent: React.FC<DrawerContentComponentProps> = observer(
         try {
           await exportChatSession(sessionId);
         } catch {
-          Alert.alert(
-            l10n.common.error,
-            l10n.components.sidebarContent.exportError,
-          );
+          infoDialog({
+            title: l10n.common.error,
+            message: l10n.components.sidebarContent.exportError,
+          });
         }
       },
       [l10n],
@@ -210,10 +211,10 @@ export const SidebarContent: React.FC<DrawerContentComponentProps> = observer(
         try {
           await chatSessionStore.bulkDeleteSessions();
         } catch {
-          Alert.alert(
-            l10n.common.error,
-            l10n.components.sidebarContent.bulkDeleteError,
-          );
+          infoDialog({
+            title: l10n.common.error,
+            message: l10n.components.sidebarContent.bulkDeleteError,
+          });
         }
       }
     }, [l10n]);
@@ -222,10 +223,10 @@ export const SidebarContent: React.FC<DrawerContentComponentProps> = observer(
       try {
         await chatSessionStore.bulkExportSessions();
       } catch {
-        Alert.alert(
-          l10n.common.error,
-          l10n.components.sidebarContent.bulkExportError,
-        );
+        infoDialog({
+          title: l10n.common.error,
+          message: l10n.components.sidebarContent.bulkExportError,
+        });
       }
     }, [l10n]);
 

@@ -120,7 +120,9 @@ export const ModelSettingsSheet: React.FC<ModelSettingsSheetProps> = memo(
         setSupportsEffort(cap.supportsEffort);
         setEffortSet(orderEffortValues(cap.effortValues));
         setReasoningDirty(false);
-        setUsageSet(USAGE_TAG_KEYS.filter(k => model.capabilities?.includes(k)));
+        setUsageSet(
+          USAGE_TAG_KEYS.filter(k => model.capabilities?.includes(k)),
+        );
       }
     }, [model]);
 

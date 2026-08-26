@@ -1,5 +1,5 @@
 import React, {useState, useEffect} from 'react';
-import {View, Alert} from 'react-native';
+import {View} from 'react-native';
 
 import {observer} from 'mobx-react-lite';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -13,6 +13,8 @@ import {Sheet} from '../../Sheet';
 import {createStyles} from './styles';
 
 import {authService, PalsHubErrorHandler} from '../../../services';
+
+import {infoDialog} from '../../ui/InfoDialog';
 
 interface AuthSheetProps {
   isVisible: boolean;
@@ -44,12 +46,15 @@ export const AuthSheet: React.FC<AuthSheetProps> = observer(
 
     const handleEmailAuth = async () => {
       if (!email.trim() || !password.trim()) {
-        Alert.alert('Error', 'Please fill in all required fields.');
+        infoDialog({
+          title: 'Error',
+          message: 'Please fill in all required fields.',
+        });
         return;
       }
 
       if (isSignUp && !fullName.trim()) {
-        Alert.alert('Error', 'Please enter your full name.');
+        infoDialog({title: 'Error', message: 'Please enter your full name.'});
         return;
       }
 
@@ -64,23 +69,28 @@ export const AuthSheet: React.FC<AuthSheetProps> = observer(
             fullName.trim(),
           );
           if (ok) {
-            Alert.alert(
-              'Account Created',
-              'Please check your email to verify your account.',
-              [{text: 'OK', onPress: onClose}],
-            );
+            infoDialog({
+              title: 'Account Created',
+              message: 'Please check your email to verify your account.',
+              buttonText: 'OK',
+            }).then(onClose);
           }
         } else {
           const ok = await authService.signInWithEmail(email.trim(), password);
           if (ok) {
-            Alert.alert('Welcome Back!', 'You have successfully signed in.', [
-              {text: 'OK', onPress: onClose},
-            ]);
+            infoDialog({
+              title: 'Welcome Back!',
+              message: 'You have successfully signed in.',
+              buttonText: 'OK',
+            }).then(onClose);
           }
         }
       } catch (error) {
         const errorInfo = PalsHubErrorHandler.handle(error);
-        Alert.alert('Authentication Error', errorInfo.userMessage);
+        infoDialog({
+          title: 'Authentication Error',
+          message: errorInfo.userMessage,
+        });
       } finally {
         setIsLoading(false);
       }
@@ -95,7 +105,10 @@ export const AuthSheet: React.FC<AuthSheetProps> = observer(
         // Sheet will close automatically via useEffect when auth state changes
       } catch (error) {
         const errorInfo = PalsHubErrorHandler.handle(error);
-        Alert.alert('Google Sign-In Error', errorInfo.userMessage);
+        infoDialog({
+          title: 'Google Sign-In Error',
+          message: errorInfo.userMessage,
+        });
       } finally {
         setIsLoading(false);
       }
@@ -103,7 +116,10 @@ export const AuthSheet: React.FC<AuthSheetProps> = observer(
 
     const handleForgotPassword = async () => {
       if (!email.trim()) {
-        Alert.alert('Error', 'Please enter your email address first.');
+        infoDialog({
+          title: 'Error',
+          message: 'Please enter your email address first.',
+        });
         return;
       }
 
@@ -111,15 +127,15 @@ export const AuthSheet: React.FC<AuthSheetProps> = observer(
         setIsLoading(true);
         const ok = await authService.resetPassword(email.trim());
         if (ok) {
-          Alert.alert(
-            'Password Reset',
-            'Check your email for password reset instructions.',
-            [{text: 'OK'}],
-          );
+          infoDialog({
+            title: 'Password Reset',
+            message: 'Check your email for password reset instructions.',
+            buttonText: 'OK',
+          });
         }
       } catch (error) {
         const errorInfo = PalsHubErrorHandler.handle(error);
-        Alert.alert('Error', errorInfo.userMessage);
+        infoDialog({title: 'Error', message: errorInfo.userMessage});
       } finally {
         setIsLoading(false);
       }

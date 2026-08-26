@@ -151,6 +151,7 @@ export interface TokenColors {
   badgeZImage: string;
   badgeDreamlite: string;
   badgeFlux: string;
+  badgeKrea2: string;
 
   // 悬浮层表面（半透明+阴影分层，禁 blur；DESIGN_SPEC §1.5）
   surfaceElevated: string;

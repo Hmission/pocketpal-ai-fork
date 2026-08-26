@@ -12,6 +12,7 @@ export type ActionConfig = {
   loading?: boolean;
   disabled?: boolean;
   destructive?: boolean;
+  testID?: string;
 };
 
 export type ActionsProps = {
@@ -42,6 +43,7 @@ export const Actions: React.FC<ActionsProps> = ({
           label={secondary.label}
           onPress={secondary.onPress}
           disabled={secondary.disabled}
+          testID={secondary.testID}
         />
       ) : null}
       {primary ? (
@@ -50,6 +52,7 @@ export const Actions: React.FC<ActionsProps> = ({
           label={primary.label}
           onPress={primary.onPress}
           disabled={primary.disabled}
+          testID={primary.testID}
         />
       ) : null}
     </View>

@@ -4,10 +4,16 @@
  * 引导分支，禁止静默 return true（否则新装不弹引导、模型列表空）。
  * 2026-08-20 readDir 探针升级后补测（§57）。
  */
-import {Platform, PermissionsAndroid, Alert, Linking} from 'react-native';
+import {Platform, PermissionsAndroid} from 'react-native';
 
 import {ensureStorageAccess, ensureCustomDirAccess} from '../androidPermission';
 import {getCustomModelDirs} from '../modelDirs';
+import {confirmDialog} from '../../components/ui/ConfirmDialog/api';
+
+// B55：引导弹窗已由 Alert.alert → confirmDialog（去设置为主动作）
+jest.mock('../../components/ui/ConfirmDialog/api', () => ({
+  confirmDialog: jest.fn().mockResolvedValue(false),
+}));
 
 jest.mock('../../store', () => ({
   uiStore: {
@@ -57,7 +63,9 @@ beforeEach(() => {
   (getCustomModelDirs as jest.Mock).mockResolvedValue([AIOS_DIR]);
   jest
     .spyOn(PermissionsAndroid, 'requestMultiple')
-    .mockResolvedValue({} as Awaited<ReturnType<typeof PermissionsAndroid.requestMultiple>>);
+    .mockResolvedValue(
+      {} as Awaited<ReturnType<typeof PermissionsAndroid.requestMultiple>>,
+    );
   jest.spyOn(PermissionsAndroid, 'check').mockResolvedValue(true);
   jest
     .spyOn(PermissionsAndroid, 'request')
@@ -67,21 +75,20 @@ beforeEach(() => {
 describe('ensureStorageAccess — readDir 探针判定契约（task-7c3e）', () => {
   it('目录真实可读 → 返回 true，不弹引导', async () => {
     setAndroid(34);
-    const alertSpy = jest.spyOn(Alert, 'alert');
     await expect(ensureStorageAccess()).resolves.toBe(true);
-    expect(alertSpy).not.toHaveBeenCalled();
+    expect(confirmDialog).not.toHaveBeenCalled();
     expect(mockReadDir).toHaveBeenCalledWith(AIOS_DIR);
   });
 
   it('readDir 探针失败（exists 可能通过）→ 请求后复测仍失败 → 弹引导 + 返回 false（核心契约）', async () => {
     setAndroid(34);
     mockReadDir.mockRejectedValue(new Error('EACCES'));
-    const alertSpy = jest.spyOn(Alert, 'alert');
     await expect(ensureStorageAccess()).resolves.toBe(false);
     // mkdir 后必须二次 readDir 验证，仍失败才落引导
     expect(mockMkdir).toHaveBeenCalledWith(AIOS_DIR);
     expect(mockReadDir).toHaveBeenCalledTimes(3); // 初探 + mkdir 后复探 + 请求后复探
-    expect(alertSpy).toHaveBeenCalled();
+    // B55：引导弹窗走 confirmDialog（去设置为主动作）
+    expect(confirmDialog).toHaveBeenCalled();
   });
 
   it('mkdir 后二次 readDir 成功 → 返回 true（目录可建即视为可写）', async () => {
@@ -95,9 +102,8 @@ describe('ensureStorageAccess — readDir 探针判定契约（task-7c3e）', ()
   it('无自定义目录 → 返回 true 不引导（纯零权限闭环）', async () => {
     setAndroid(34);
     (getCustomModelDirs as jest.Mock).mockResolvedValue([]);
-    const alertSpy = jest.spyOn(Alert, 'alert');
     await expect(ensureStorageAccess()).resolves.toBe(true);
-    expect(alertSpy).not.toHaveBeenCalled();
+    expect(confirmDialog).not.toHaveBeenCalled();
   });
 
   it('非 Android 平台恒 true', async () => {
@@ -118,16 +124,15 @@ describe('ensureStorageAccess — readDir 探针判定契约（task-7c3e）', ()
 describe('ensureCustomDirAccess — 用户主动添加目录', () => {
   it('目录可读 → true 不引导', async () => {
     setAndroid(34);
-    const alertSpy = jest.spyOn(Alert, 'alert');
     await expect(ensureCustomDirAccess(AIOS_DIR)).resolves.toBe(true);
-    expect(alertSpy).not.toHaveBeenCalled();
+    expect(confirmDialog).not.toHaveBeenCalled();
   });
 
   it('目录不可读 → 弹「所有文件访问」引导 + 返回 false', async () => {
     setAndroid(34);
     mockReadDir.mockRejectedValue(new Error('EACCES'));
-    const alertSpy = jest.spyOn(Alert, 'alert');
     await expect(ensureCustomDirAccess(AIOS_DIR)).resolves.toBe(false);
-    expect(alertSpy).toHaveBeenCalled();
+    // B55：引导弹窗走 confirmDialog（去设置为主动作）
+    expect(confirmDialog).toHaveBeenCalled();
   });
 });

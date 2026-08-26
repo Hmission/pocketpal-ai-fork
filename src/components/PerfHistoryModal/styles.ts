@@ -1,6 +1,8 @@
 /**
  * PerfHistoryModal 样式（B41 提共享：原 ImageGenScreen 回放面板，
- * 聊天回合 + 生图任务统一历史回看）。从 ImageGenScreen/styles.ts 原样迁出。
+ * 聊天回合 + 生图任务统一历史回看）。
+ * v3.21：弃手写 Modal 壳（backdrop/card/header）——迁移 Sheet 底座（DESIGN_SPEC §12.2），
+ * 内容区 padding 与二级导航按钮随迁；底部圆角/遮罩/关闭按钮由 Sheet 承担。
  */
 import {StyleSheet} from 'react-native';
 
@@ -8,40 +10,25 @@ import {withOpacity} from '../../utils/colorUtils';
 
 export const createStyles = (theme: any) =>
   StyleSheet.create({
-    perfModalBackdrop: {
+    // Sheet 内容区：padding 对齐 Sheet 样板的 upscaleBody 族（padding 16 + 底 28）
+    perfModalBody: {
       flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.45)',
-      justifyContent: 'flex-end',
-    },
-    perfModalCard: {
-      backgroundColor: theme.colors.surfaceElevated,
-      borderTopLeftRadius: theme.radius.l,
-      borderTopRightRadius: theme.radius.l,
       padding: 16,
-      maxHeight: '82%',
+      paddingBottom: 28,
       gap: 10,
     },
-    perfModalHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-    },
-    perfModalBackBtn: {
-      paddingHorizontal: 8,
+    perfSessionList: {flex: 1},
+    perfBackBtn: {
+      alignSelf: 'flex-start',
+      paddingHorizontal: 10,
       paddingVertical: 4,
       borderRadius: theme.radius.s,
       backgroundColor: withOpacity(theme.colors.onSurface, 0.06),
     },
-    perfModalBackText: {
+    perfBackText: {
       ...theme.typography.uiS,
       color: theme.colors.primary,
       fontWeight: '600',
-    },
-    perfModalTitle: {
-      ...theme.typography.uiM,
-      color: theme.colors.onSurface,
-      fontWeight: '600',
-      flexShrink: 1,
     },
     perfModalEmpty: {
       ...theme.typography.uiS,

@@ -29,7 +29,7 @@ const DEFAULT_MAP: Record<'write' | 'code', RegExp> = {
   // 2026-08-19 大王钦定终局：代码/玩具匠=LFM2.5-2.6B（LFM2.5 族工具调用
   // 专长，迭代合规优于小雾 3B）。LFM8B 虽更大但 5.16GB 全权重超 K90 厂商
   // PSS 看护线被硬杀，且看护厂商锁死关不掉（SecurityException 实证）。
-  code: /lfm2[.\-]?5[-_ ]?2[.\-]?6b/i,
+  code: /lfm2[.-]?5[-_ ]?2[.-]?6b/i,
 };
 
 const bySizeDesc = (a: Model, b: Model) => b.size - a.size;
@@ -65,7 +65,11 @@ export function listModelsForTask(task: TaskKind | 'chat'): Model[] {
   }
   // play（玩具匠）复用 code 选型；adventure（城主）/chat（升级闲聊）复用 write 选型
   const modelTask: 'write' | 'code' =
-    task === 'play' ? 'code' : task === 'adventure' || task === 'chat' ? 'write' : task;
+    task === 'play'
+      ? 'code'
+      : task === 'adventure' || task === 'chat'
+        ? 'write'
+        : task;
   const candidates = modelStore.availableModels.filter(
     m =>
       m.origin !== ModelOrigin.REMOTE &&

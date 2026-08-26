@@ -1,5 +1,5 @@
 import React, {useContext, useEffect, useRef, useState} from 'react';
-import {Animated, Text, View} from 'react-native';
+import {Animated, StyleSheet, Text, View} from 'react-native';
 import {observer} from 'mobx-react-lite';
 
 import {useTheme} from '../../hooks';
@@ -67,6 +67,13 @@ interface DotProps {
   theme: Theme;
 }
 
+const waveBarStyles = StyleSheet.create({
+  bar: {
+    width: 2,
+    borderRadius: 1,
+  },
+});
+
 /**
  * 心跳微波形（B39 跑分感，PERF_BENCHMARK_DESIGN §10.4）：
  * 5 根错峰起伏小条——「手机在干活」的心电图证据。
@@ -74,6 +81,8 @@ interface DotProps {
  */
 const WaveBar: React.FC<{delay: number; color: string}> = ({delay, color}) => {
   const h = useRef(new Animated.Value(3)).current;
+  // 心跳条静态外观（B39）：2px 细条 + 圆角，动态高/色经组件体变量注入
+  const waveStyle = {backgroundColor: color, height: h};
   useEffect(() => {
     // 全局动画规范：Animated.loop 一律 JS driver
     const anim = Animated.loop(
@@ -90,11 +99,7 @@ const WaveBar: React.FC<{delay: number; color: string}> = ({delay, color}) => {
     anim.start();
     return () => anim.stop();
   }, [h, delay]);
-  return (
-    <Animated.View
-      style={{width: 2, borderRadius: 1, backgroundColor: color, height: h}}
-    />
-  );
+  return <Animated.View style={[waveBarStyles.bar, waveStyle]} />;
 };
 
 const Dot: React.FC<DotProps> = ({delay, theme}) => {
@@ -178,241 +183,243 @@ interface PendingIndicatorProps {
  * token count, and elapsed seconds so the user can tell the model is
  * still working rather than hung.
  */
-export const PendingIndicator: React.FC<PendingIndicatorProps> = observer(({
-  pendingTalentNames,
-  toolCallTokenCount = 0,
-  isStopping = false,
-  agentStatus,
-  runStartedAt = null,
-  lastAgentEventAt = null,
-  reasoningTail = '',
-}) => {
-  const theme = useTheme();
-  const l10n = useContext(L10nContext);
-  const styles = createStyles(theme);
-  const countStyle = createCountStyle(theme).count;
+export const PendingIndicator: React.FC<PendingIndicatorProps> = observer(
+  ({
+    pendingTalentNames,
+    toolCallTokenCount = 0,
+    isStopping = false,
+    agentStatus,
+    runStartedAt = null,
+    lastAgentEventAt = null,
+    reasoningTail = '',
+  }) => {
+    const theme = useTheme();
+    const l10n = useContext(L10nContext);
+    const styles = createStyles(theme);
+    const countStyle = createCountStyle(theme).count;
 
-  const firstTalent = pendingTalentNames?.[0];
-  const inToolCallMode = !!firstTalent;
+    const firstTalent = pendingTalentNames?.[0];
+    const inToolCallMode = !!firstTalent;
 
-  // 总耗时 + 心跳（§18.9）：interval 只依赖 runStartedAt；
-  // lastAgentEventAt 经 ref 同步最新值，避免 300ms 级事件触发
-  // interval 重建（与 toolCallTokenCount 同策略的 observer 最小化）。
-  const lastEventRef = useRef(lastAgentEventAt);
-  lastEventRef.current = lastAgentEventAt;
-  const [elapsedSec, setElapsedSec] = useState(0);
-  const [stalled, setStalled] = useState(false);
-  // 工具期实时速率（B39）：toolCallTokenCount 差分 / 1s 心跳 interval，
-  // 不新增定时器；流式期监控卡本就隐藏（门控既有），不造假场景。
-  const prevTokenCountRef = useRef(toolCallTokenCount);
-  const [tokenRate, setTokenRate] = useState(0);
-  useEffect(() => {
-    if (runStartedAt == null) {
-      setElapsedSec(0);
-      setStalled(false);
-      setTokenRate(0);
-      prevTokenCountRef.current = toolCallTokenCount;
-      return;
-    }
-    const startedAt = runStartedAt;
-    const tick = () => {
-      const now = Date.now();
-      setElapsedSec(Math.floor((now - startedAt) / 1000));
-      const last = lastEventRef.current;
-      setStalled(last != null && now - last > STALL_MS);
-      // interval 1s → 差分即 tok/s（真实采集，不平滑）
-      setTokenRate(Math.max(0, toolCallTokenCount - prevTokenCountRef.current));
-      prevTokenCountRef.current = toolCallTokenCount;
-    };
-    tick();
-    const interval = setInterval(tick, 1000);
-    return () => clearInterval(interval);
-    // toolCallTokenCount 经 ref 同步（首帧同步），不入依赖避免 interval 重建；
-    // 基准只在 tick() 内推进——差分即真实速率，外部重置会让速率恒 0
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [runStartedAt]);
-
-  // 实时遥测（B40 仪式卡）：待回复卡驻留期间 1Hz 采样（PSS/CPU/温度）——
-  // 仪式感 = 设备在烧电路的活证据；N/A 诚实显 --，不造假。
-  // B41：perfHistory 滚动缓冲（最近 60 点）驱动迷你折线，跑分是本体。
-  const PERF_MAX_PSS_KB = 6 * 1024 * 1024;
-  const [perfNow, setPerfNow] = useState<{
-    pssGb: number;
-    cpuPct: number;
-    tempC: number;
-  } | null>(null);
-  const [perfHistory, setPerfHistory] = useState<PerfSnapshot[]>([]);
-  useEffect(() => {
-    let alive = true;
-    const sample = async () => {
-      try {
-        const s = await NativeHardwareInfo.getPerfSnapshot();
-        if (!alive) {
-          return;
-        }
-        setPerfNow({
-          pssGb: s.pssKb / 1024 / 1024,
-          cpuPct: s.cpuPct,
-          tempC: s.tempC,
-        });
-        setPerfHistory(h => [...h, s].slice(-60));
-      } catch {
-        if (alive) {
-          setPerfNow(null);
-        }
+    // 总耗时 + 心跳（§18.9）：interval 只依赖 runStartedAt；
+    // lastAgentEventAt 经 ref 同步最新值，避免 300ms 级事件触发
+    // interval 重建（与 toolCallTokenCount 同策略的 observer 最小化）。
+    const lastEventRef = useRef(lastAgentEventAt);
+    lastEventRef.current = lastAgentEventAt;
+    const [elapsedSec, setElapsedSec] = useState(0);
+    const [stalled, setStalled] = useState(false);
+    // 工具期实时速率（B39）：toolCallTokenCount 差分 / 1s 心跳 interval，
+    // 不新增定时器；流式期监控卡本就隐藏（门控既有），不造假场景。
+    const prevTokenCountRef = useRef(toolCallTokenCount);
+    const [tokenRate, setTokenRate] = useState(0);
+    useEffect(() => {
+      if (runStartedAt == null) {
+        setElapsedSec(0);
+        setStalled(false);
+        setTokenRate(0);
+        prevTokenCountRef.current = toolCallTokenCount;
+        return;
       }
-    };
-    sample();
-    const iv = setInterval(sample, 1000);
-    return () => {
-      alive = false;
-      clearInterval(iv);
-    };
-  }, []);
+      const startedAt = runStartedAt;
+      const tick = () => {
+        const now = Date.now();
+        setElapsedSec(Math.floor((now - startedAt) / 1000));
+        const last = lastEventRef.current;
+        setStalled(last != null && now - last > STALL_MS);
+        // interval 1s → 差分即 tok/s（真实采集，不平滑）
+        setTokenRate(
+          Math.max(0, toolCallTokenCount - prevTokenCountRef.current),
+        );
+        prevTokenCountRef.current = toolCallTokenCount;
+      };
+      tick();
+      const interval = setInterval(tick, 1000);
+      return () => clearInterval(interval);
+      // toolCallTokenCount 经 ref 同步（首帧同步），不入依赖避免 interval 重建；
+      // 基准只在 tick() 内推进——差分即真实速率，外部重置会让速率恒 0
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [runStartedAt]);
 
-  // Build the label suffix.
-  // - `stopping` overrides everything with "Stopping…".
-  // - `stalled`（心跳超时）→ "Seems stuck — tap Stop · Xs"：
-  //   用户必须能区分「正在干活 vs 挂了」（§18.9）。
-  // - tool-call mode → "Building page · 120 tokens · Xs".
-  // - 其它阶段 → 阶段标签 + 总耗时（prefill 不再裸三点）。
-  let suffix: string | null = null;
-  if (isStopping) {
-    suffix = l10n.components.pendingIndicator.stopping;
-  } else if (stalled && runStartedAt != null) {
-    suffix = `${l10n.components.pendingIndicator.stageHang} · ${t(
-      l10n.components.toolMetrics.elapsed,
-      {seconds: elapsedSec},
-    )}`;
-  } else if (inToolCallMode) {
-    const labelKey = firstTalent ? TALENT_LABEL_KEYS[firstTalent] : undefined;
-    const label = labelKey
-      ? l10n.components.pendingIndicator[labelKey]
-      : l10n.components.pendingIndicator.preparingTool;
-    const parts: string[] = [label];
-    if (toolCallTokenCount >= MIN_TOKENS) {
-      parts.push(
-        t(l10n.components.toolMetrics.tokens, {
-          count: toolCallTokenCount.toLocaleString(),
-        }),
-      );
-    }
-    if (runStartedAt != null && elapsedSec >= 1) {
-      parts.push(
-        t(l10n.components.toolMetrics.elapsed, {seconds: elapsedSec}),
-      );
-    }
-    // 实时速率（B39）：差分 >0 才显，单位语言中立（同 GB/°C 惯例）
-    if (tokenRate > 0) {
-      parts.push(`≈${tokenRate} tok/s`);
-    }
-    suffix = parts.join(' · ');
-  } else {
-    const key = stageLabelKey(agentStatus ?? 'idle');
-    const label = key
-      ? (l10n.components.pendingIndicator as Record<string, string>)[key]
-      : null;
-    const parts: string[] = [];
-    if (label) {
-      parts.push(label);
-    }
-    if (runStartedAt != null && elapsedSec >= 1) {
-      parts.push(
-        t(l10n.components.toolMetrics.elapsed, {seconds: elapsedSec}),
-      );
-    }
-    suffix = parts.length > 0 ? parts.join(' · ') : null;
-  }
+    // 实时遥测（B40 仪式卡）：待回复卡驻留期间 1Hz 采样（PSS/CPU/温度）——
+    // 仪式感 = 设备在烧电路的活证据；N/A 诚实显 --，不造假。
+    // B41：perfHistory 滚动缓冲（最近 60 点）驱动迷你折线，跑分是本体。
+    const PERF_MAX_PSS_KB = 6 * 1024 * 1024;
+    const [perfNow, setPerfNow] = useState<{
+      pssGb: number;
+      cpuPct: number;
+      tempC: number;
+    } | null>(null);
+    const [perfHistory, setPerfHistory] = useState<PerfSnapshot[]>([]);
+    useEffect(() => {
+      let alive = true;
+      const sample = async () => {
+        try {
+          const s = await NativeHardwareInfo.getPerfSnapshot();
+          if (!alive) {
+            return;
+          }
+          setPerfNow({
+            pssGb: s.pssKb / 1024 / 1024,
+            cpuPct: s.cpuPct,
+            tempC: s.tempC,
+          });
+          setPerfHistory(h => [...h, s].slice(-60));
+        } catch {
+          if (alive) {
+            setPerfNow(null);
+          }
+        }
+      };
+      sample();
+      const iv = setInterval(sample, 1000);
+      return () => {
+        alive = false;
+        clearInterval(iv);
+      };
+    }, []);
 
-  // 思考流预览（§18.9）：生成期模型内心戏实时可见，TTFT 的
-  // 「在干活」铁证；工具调用/卡住/停止时让位不抢眼。
-  const showReasoning =
-    !isStopping &&
-    !stalled &&
-    !inToolCallMode &&
-    reasoningTail.length > 0 &&
-    (agentStatus === 'prefill' || agentStatus === 'streaming_text');
+    // Build the label suffix.
+    // - `stopping` overrides everything with "Stopping…".
+    // - `stalled`（心跳超时）→ "Seems stuck — tap Stop · Xs"：
+    //   用户必须能区分「正在干活 vs 挂了」（§18.9）。
+    // - tool-call mode → "Building page · 120 tokens · Xs".
+    // - 其它阶段 → 阶段标签 + 总耗时（prefill 不再裸三点）。
+    let suffix: string | null = null;
+    if (isStopping) {
+      suffix = l10n.components.pendingIndicator.stopping;
+    } else if (stalled && runStartedAt != null) {
+      suffix = `${l10n.components.pendingIndicator.stageHang} · ${t(
+        l10n.components.toolMetrics.elapsed,
+        {seconds: elapsedSec},
+      )}`;
+    } else if (inToolCallMode) {
+      const labelKey = firstTalent ? TALENT_LABEL_KEYS[firstTalent] : undefined;
+      const label = labelKey
+        ? l10n.components.pendingIndicator[labelKey]
+        : l10n.components.pendingIndicator.preparingTool;
+      const parts: string[] = [label];
+      if (toolCallTokenCount >= MIN_TOKENS) {
+        parts.push(
+          t(l10n.components.toolMetrics.tokens, {
+            count: toolCallTokenCount.toLocaleString(),
+          }),
+        );
+      }
+      if (runStartedAt != null && elapsedSec >= 1) {
+        parts.push(
+          t(l10n.components.toolMetrics.elapsed, {seconds: elapsedSec}),
+        );
+      }
+      // 实时速率（B39）：差分 >0 才显，单位语言中立（同 GB/°C 惯例）
+      if (tokenRate > 0) {
+        parts.push(`≈${tokenRate} tok/s`);
+      }
+      suffix = parts.join(' · ');
+    } else {
+      const key = stageLabelKey(agentStatus ?? 'idle');
+      const label = key
+        ? (l10n.components.pendingIndicator as Record<string, string>)[key]
+        : null;
+      const parts: string[] = [];
+      if (label) {
+        parts.push(label);
+      }
+      if (runStartedAt != null && elapsedSec >= 1) {
+        parts.push(
+          t(l10n.components.toolMetrics.elapsed, {seconds: elapsedSec}),
+        );
+      }
+      suffix = parts.length > 0 ? parts.join(' · ') : null;
+    }
 
-  // 阶段色（B39）：prefill 蓝（info）→ 工具期紫（domain.tools），
-  // 全部既有 token 不造新色；流式期监控卡隐藏故无第三态。
-  const stageColor = inToolCallMode
-    ? theme.colors.domain.tools
-    : theme.colors.info;
-  // 心跳波形：卡住/停止时平坦（诚实），活跃时起伏（活着）
-  const showWave = !isStopping && !stalled && runStartedAt != null;
+    // 思考流预览（§18.9）：生成期模型内心戏实时可见，TTFT 的
+    // 「在干活」铁证；工具调用/卡住/停止时让位不抢眼。
+    const showReasoning =
+      !isStopping &&
+      !stalled &&
+      !inToolCallMode &&
+      reasoningTail.length > 0 &&
+      (agentStatus === 'prefill' || agentStatus === 'streaming_text');
 
-  return (
-    <View style={styles.card} testID="pending-indicator">
-      <View style={styles.row}>
-        {showWave && (
-          <View
-            style={styles.wave}
-            testID="pending-indicator-wave">
-            {[0, 1, 2, 3, 4].map(i => (
-              <WaveBar key={i} delay={i * 120} color={stageColor} />
-            ))}
+    // 阶段色（B39）：prefill 蓝（info）→ 工具期紫（domain.tools），
+    // 全部既有 token 不造新色；流式期监控卡隐藏故无第三态。
+    const stageColor = inToolCallMode
+      ? theme.colors.domain.tools
+      : theme.colors.info;
+    // 心跳波形：卡住/停止时平坦（诚实），活跃时起伏（活着）
+    const showWave = !isStopping && !stalled && runStartedAt != null;
+
+    return (
+      <View style={styles.card} testID="pending-indicator">
+        <View style={styles.row}>
+          {showWave && (
+            <View style={styles.wave} testID="pending-indicator-wave">
+              {[0, 1, 2, 3, 4].map(i => (
+                <WaveBar key={i} delay={i * 120} color={stageColor} />
+              ))}
+            </View>
+          )}
+          <Dot delay={0} theme={theme} />
+          <Dot delay={200} theme={theme} />
+          <Dot delay={400} theme={theme} />
+          {suffix !== null && (
+            <Text style={countStyle} testID="pending-indicator-suffix">
+              {suffix}
+            </Text>
+          )}
+        </View>
+        {/* 模型加载阶段（B40）：「加载到哪一步」可见 */}
+        {modelStore.isContextLoading && (
+          <Text style={styles.perfRow} testID="pending-indicator-loading">
+            {l10n.benchmark.messages.initializingModel}
+          </Text>
+        )}
+        {/* 实时遥测行（B40）：内存/CPU/温度 1Hz，追式缓动数字 */}
+        <Text style={styles.perfRow} testID="pending-indicator-telemetry">
+          <Text style={styles.perfLabel}>内存 </Text>
+          <AnimatedNumber
+            value={perfNow ? perfNow.pssGb : undefined}
+            format={perfGbFmt}
+            style={styles.perfValue}
+          />
+          <Text style={styles.perfSep}> · </Text>
+          <Text style={styles.perfLabel}>CPU </Text>
+          <AnimatedNumber
+            value={perfNow ? perfNow.cpuPct : undefined}
+            format={perfPctFmt}
+            style={styles.perfValue}
+          />
+          <Text style={styles.perfSep}> · </Text>
+          <AnimatedNumber
+            value={perfNow ? perfNow.tempC : undefined}
+            format={perfTempFmt}
+            style={styles.perfValue}
+          />
+        </Text>
+        {/* B41 迷你折线：等待的每一秒都有曲线在跑（跑分是本体）。
+          复用生图页同款 PerfAreaChart，PSS 主图 + 5/6GB 阈值线。 */}
+        {perfHistory.length > 1 && (
+          <View style={styles.perfChartWrap} testID="pending-indicator-chart">
+            <PerfAreaChart
+              history={perfHistory}
+              overlay="pss"
+              max={PERF_MAX_PSS_KB}
+              color={stageColor}
+              warnColor="#F5A623"
+              dangerColor={theme.colors.error}
+              height={44}
+            />
           </View>
         )}
-        <Dot delay={0} theme={theme} />
-        <Dot delay={200} theme={theme} />
-        <Dot delay={400} theme={theme} />
-        {suffix !== null && (
-          <Text style={countStyle} testID="pending-indicator-suffix">
-            {suffix}
+        {showReasoning && (
+          <Text
+            style={styles.reasoning}
+            numberOfLines={2}
+            testID="pending-indicator-reasoning">
+            {l10n.components.pendingIndicator.reasoningLabel}: {reasoningTail}
           </Text>
         )}
       </View>
-      {/* 模型加载阶段（B40）：「加载到哪一步」可见 */}
-      {modelStore.isContextLoading && (
-        <Text style={styles.perfRow} testID="pending-indicator-loading">
-          {l10n.benchmark.messages.initializingModel}
-        </Text>
-      )}
-      {/* 实时遥测行（B40）：内存/CPU/温度 1Hz，追式缓动数字 */}
-      <Text style={styles.perfRow} testID="pending-indicator-telemetry">
-        <Text style={styles.perfLabel}>内存 </Text>
-        <AnimatedNumber
-          value={perfNow ? perfNow.pssGb : undefined}
-          format={perfGbFmt}
-          style={styles.perfValue}
-        />
-        <Text style={styles.perfSep}> · </Text>
-        <Text style={styles.perfLabel}>CPU </Text>
-        <AnimatedNumber
-          value={perfNow ? perfNow.cpuPct : undefined}
-          format={perfPctFmt}
-          style={styles.perfValue}
-        />
-        <Text style={styles.perfSep}> · </Text>
-        <AnimatedNumber
-          value={perfNow ? perfNow.tempC : undefined}
-          format={perfTempFmt}
-          style={styles.perfValue}
-        />
-      </Text>
-      {/* B41 迷你折线：等待的每一秒都有曲线在跑（跑分是本体）。
-          复用生图页同款 PerfAreaChart，PSS 主图 + 5/6GB 阈值线。 */}
-      {perfHistory.length > 1 && (
-        <View style={styles.perfChartWrap} testID="pending-indicator-chart">
-          <PerfAreaChart
-            history={perfHistory}
-            overlay="pss"
-            max={PERF_MAX_PSS_KB}
-            color={stageColor}
-            warnColor="#F5A623"
-            dangerColor={theme.colors.error}
-            height={44}
-          />
-        </View>
-      )}
-      {showReasoning && (
-        <Text
-          style={styles.reasoning}
-          numberOfLines={2}
-          testID="pending-indicator-reasoning">
-          {l10n.components.pendingIndicator.reasoningLabel}: {reasoningTail}
-        </Text>
-      )}
-    </View>
-  );
-});
+    );
+  },
+);

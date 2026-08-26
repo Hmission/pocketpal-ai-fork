@@ -243,7 +243,11 @@ export const HtmlPreviewBubble: React.FC<HtmlPreviewBubbleProps> = ({
         </View>
         {showCode ? (
           <ScrollView
-            style={[styles.collapsedWebView, styles.codeSurface, {height: previewHeight}]}
+            style={[
+              styles.collapsedWebView,
+              styles.codeSurface,
+              {height: previewHeight},
+            ]}
             testID="html-preview-code">
             <CodeHighlighter
               hljsStyle={atomOneDark}

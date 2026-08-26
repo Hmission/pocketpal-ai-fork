@@ -114,23 +114,19 @@ jest.mock('@react-native-documents/picker', () => ({
 
 // B38：时间轴 Slider 为原生组件，jest 环境降级为纯 View
 jest.mock('@react-native-community/slider', () => {
-  const React = require('react');
+  const R = require('react');
   const {View} = require('react-native');
   return {
     __esModule: true,
-    default: (props: any) => React.createElement(View, props),
+    default: (props: any) => R.createElement(View, props),
   };
 });
 
-const imageGenStoreMock = require('../../../../store/imageGenStore').imageGenStore;
+const imageGenStoreMock =
+  require('../../../../store/imageGenStore').imageGenStore;
 const audioStoreMock = require('../../../../store/audioStore').audioStore;
 
-const renderTab = () =>
-  render(
-    <AudioWorkshopTab
-      onSnackbar={jest.fn()}
-    />,
-  );
+const renderTab = () => render(<AudioWorkshopTab onSnackbar={jest.fn()} />);
 
 describe('AudioWorkshopTab 结果区三态（B36）', () => {
   beforeEach(() => {

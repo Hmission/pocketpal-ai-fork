@@ -57,7 +57,7 @@ export const createStyles = (theme: Theme) =>
       color: theme.colors.onSurfaceVariant,
     },
     gatedChipText: {
-      fontSize: 10,
+      fontSize: 11,
     },
     emptyStateContainer: {
       alignItems: 'center',

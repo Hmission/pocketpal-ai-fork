@@ -21,11 +21,14 @@
     "typecheck": "tsc --noEmit",
     "l10n:validate": "node scripts/validate-l10n.js",
     "verify:fonts": "node scripts/verify-fonts.js",
+    "guard:worktree": "node scripts/guard_tracked_files.js",
+    "verify:worktree": "node scripts/guard_tracked_files.js --quiet",
     "lint:fix": "eslint \"**/*.{js,ts,tsx}\" --fix",
     "format": "prettier --write \"**/*.{js,ts,tsx,json,md}\"",
     "start": "react-native start",
     "start:reset": "react-native start --reset-cache",
-    "test": "jest"
+    "test": "jest",
+    "lint:prettier": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json}\""
   },
   "dependencies": {
     "@dr.pogodin/react-native-fs": "^2.36.0",

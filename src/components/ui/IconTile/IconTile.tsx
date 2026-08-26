@@ -1,7 +1,8 @@
 import React from 'react';
-import {View} from 'react-native';
+import {StyleSheet, View} from 'react-native';
 
 import {useTheme} from '../../../hooks';
+import type {Theme} from '../../../utils/types';
 import {withOpacity} from '../../../utils/colorUtils';
 
 export type IconTileSize = 'm' | 's';
@@ -27,20 +28,24 @@ export const IconTile: React.FC<IconTileProps> = ({
   testID = 'ui-icon-tile',
 }) => {
   const theme = useTheme();
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
   const dim = size === 'm' ? 40 : 32;
   const iconDim = size === 'm' ? 22 : 18;
+  // 动态尺寸/域色底由 props 派生，静态居中/圆角走 styles.tile
+  const tileSize = {width: dim, height: dim};
+  const tileFill = {backgroundColor: withOpacity(color, 0.12)};
   return (
-    <View
-      testID={testID}
-      style={{
-        width: dim,
-        height: dim,
-        borderRadius: theme.radius.m,
-        backgroundColor: withOpacity(color, 0.12),
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}>
+    <View testID={testID} style={[styles.tile, tileSize, tileFill]}>
       <Icon width={iconDim} height={iconDim} stroke={color} />
     </View>
   );
 };
+
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    tile: {
+      borderRadius: theme.radius.m,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+  });

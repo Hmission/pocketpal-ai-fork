@@ -7,6 +7,8 @@ import {IconButton} from 'react-native-paper';
 import iconHF from '../../assets/icon-hf.png';
 import iconHFLight from '../../assets/icon-hf-light.png';
 
+import {useTheme} from '../../hooks';
+
 import {createStyles} from './styles';
 import {ModelsResetDialog} from '../ModelsResetDialog';
 
@@ -22,6 +24,7 @@ export const ModelsHeaderRight = observer(() => {
   const [_, setTrigger] = useState<boolean>(false);
 
   const l10n = useContext(L10nContext);
+  const theme = useTheme();
 
   const styles = createStyles();
 
@@ -66,7 +69,7 @@ export const ModelsHeaderRight = observer(() => {
         anchor={
           <IconButton
             icon="tune-vertical"
-            size={24}
+            size={theme.iconSize.l}
             style={styles.iconButton}
             onPress={() => setMenuVisible(true)}
             testID="models-menu-button"

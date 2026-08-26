@@ -693,14 +693,12 @@ class PalStore {
     return this.pals.some(pal => pal.palshub_id === palsHubId);
   };
 
-
   /** The built-in AIOS Pal (female ghost). Default assistant when a session has no explicit Pal. */
   getAiosPal = (): Pal | undefined => {
     return this.pals.find(p => p.name === '女妖' && p.source === 'local');
   };
 
   // Additional helper methods for PalsHub integration
-
 
   /**
    * Get categories from PalsHub
@@ -795,15 +793,19 @@ class PalStore {
 
         await this.addPal(palData);
 
-      // Sync systemPrompt to SOUL.md (Workspace file system, only if not exists)
-      try {
-        if (!(await RNFS.exists(AIOS_SOUL_FILE))) {
-          await RNFS.writeFile(AIOS_SOUL_FILE, palData.systemPrompt ?? '', 'utf8');
-          console.log('[PalStore] SOUL.md synced from systemPrompt');
+        // Sync systemPrompt to SOUL.md (Workspace file system, only if not exists)
+        try {
+          if (!(await RNFS.exists(AIOS_SOUL_FILE))) {
+            await RNFS.writeFile(
+              AIOS_SOUL_FILE,
+              palData.systemPrompt ?? '',
+              'utf8',
+            );
+            console.log('[PalStore] SOUL.md synced from systemPrompt');
+          }
+        } catch (soulErr) {
+          console.warn('[PalStore] SOUL.md sync failed:', soulErr);
         }
-      } catch (soulErr) {
-        console.warn('[PalStore] SOUL.md sync failed:', soulErr);
-      }
       } else {
         console.log('Lookie pal already exists, skipping creation');
       }

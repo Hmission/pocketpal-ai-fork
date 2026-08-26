@@ -1,4 +1,4 @@
-import {View, Alert} from 'react-native';
+import {View} from 'react-native';
 import React, {useContext, useState} from 'react';
 
 import {Text, Button, Switch, ActivityIndicator} from 'react-native-paper';
@@ -13,6 +13,8 @@ import {useTheme} from '../../hooks';
 
 import {Menu} from '../Menu';
 import {createStyles} from './styles';
+
+import {infoDialog} from '../ui/InfoDialog';
 
 import {modelStore} from '../../store';
 
@@ -70,11 +72,11 @@ export const ContentReportSheet: React.FC<ContentReportSheetProps> = ({
 
   const handleSubmit = async () => {
     if (!selectedCategory || !description.trim()) {
-      Alert.alert(
-        l10n.components.contentReportSheet.validation.title,
-        l10n.components.contentReportSheet.validation.message,
-        [{text: l10n.common.ok}],
-      );
+      infoDialog({
+        title: l10n.components.contentReportSheet.validation.title,
+        message: l10n.components.contentReportSheet.validation.message,
+        buttonText: l10n.common.ok,
+      });
       return;
     }
 
@@ -90,18 +92,18 @@ export const ContentReportSheet: React.FC<ContentReportSheetProps> = ({
         isContentReport: true,
       });
 
-      Alert.alert(
-        l10n.components.contentReportSheet.success.title,
-        l10n.components.contentReportSheet.success.message,
-        [{text: l10n.common.ok, onPress: handleClose}],
-      );
+      infoDialog({
+        title: l10n.components.contentReportSheet.success.title,
+        message: l10n.components.contentReportSheet.success.message,
+        buttonText: l10n.common.ok,
+      }).then(handleClose);
     } catch (error) {
       console.error('Content report submission error:', error);
-      Alert.alert(
-        l10n.components.contentReportSheet.error.title,
-        l10n.components.contentReportSheet.error.message,
-        [{text: l10n.common.ok}],
-      );
+      infoDialog({
+        title: l10n.components.contentReportSheet.error.title,
+        message: l10n.components.contentReportSheet.error.message,
+        buttonText: l10n.common.ok,
+      });
     } finally {
       setIsSubmitting(false);
     }

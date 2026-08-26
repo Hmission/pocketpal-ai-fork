@@ -28,9 +28,15 @@ function main() {
     let lastSeq = '';
     const interval = setInterval(() => {
       try {
-        const out = adb(device, 'shell', `tail -n ${lastN} ${EVENTS_LOG} 2>/dev/null`);
+        const out = adb(
+          device,
+          'shell',
+          `tail -n ${lastN} ${EVENTS_LOG} 2>/dev/null`,
+        );
         if (out && out !== lastSeq) {
-          const delta = lastSeq ? out.split('\n').filter(Boolean).slice(-lastN) : out.split('\n');
+          const delta = lastSeq
+            ? out.split('\n').filter(Boolean).slice(-lastN)
+            : out.split('\n');
           delta.filter(Boolean).forEach(line => console.log(line));
           lastSeq = out;
         }
@@ -44,7 +50,11 @@ function main() {
     });
   } else {
     try {
-      const out = adb(device, 'shell', `tail -n ${lastN} ${EVENTS_LOG} 2>/dev/null`);
+      const out = adb(
+        device,
+        'shell',
+        `tail -n ${lastN} ${EVENTS_LOG} 2>/dev/null`,
+      );
       if (out) {
         console.log(out);
       } else {

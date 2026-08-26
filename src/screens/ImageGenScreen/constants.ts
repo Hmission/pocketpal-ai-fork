@@ -7,6 +7,7 @@ export const FAMILY_BADGE: Record<ImageGenManifest['family'], string> = {
   flux: 'FLUX.2',
   classic: '',
   dreamlite: 'DreamLite',
+  krea2: 'Krea2',
 };
 
 // DreamLite 作为统一模型选项进入顶部选择栏（同一模型不分出图/编辑；模式切换由预览区分页驱动）
@@ -38,6 +39,8 @@ export const PROMPT_TOKEN_LIMIT: Record<string, number> = {
   sd3: 77,
   zimage: 256,
   flux: 256,
+  // 8-26：Krea2 文本编码器 Qwen3-VL-4B，与 zimage/flux 同源同限
+  krea2: 256,
 };
 
 /** 粗估 token 数：英文 ~4 字符/token，中文 1 字符/token（BPE 近似，供输入提示） */

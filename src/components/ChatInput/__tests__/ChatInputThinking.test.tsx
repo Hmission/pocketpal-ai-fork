@@ -61,6 +61,8 @@ jest.mock('../../../hooks', () => ({
         fontFamily: 'System',
       },
     },
+    // B52 图标 token 化后测试 mock 需同源（与 tokens/iconSize 一致）
+    iconSize: {xs: 14, s: 16, m: 20, l: 24, xl: 28},
   }),
 }));
 
@@ -108,10 +110,10 @@ jest.mock('../../StopButton', () => ({
 }));
 
 jest.mock('../../Menu', () => {
-  const React = require('react');
+  const R = require('react');
   // Menu 现为编辑按钮的 anchor 容器（常驻渲染）：mock 需渲染 anchor + children
   const MenuMock = (props: any) =>
-    React.createElement(React.Fragment, null, props.anchor, props.children);
+    R.createElement(R.Fragment, null, props.anchor, props.children);
   MenuMock.Item = 'MenuItem';
   return {Menu: MenuMock};
 });

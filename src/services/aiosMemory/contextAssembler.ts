@@ -69,11 +69,12 @@ export async function assembleContext(
   workspaceContext?: string,
 ): Promise<AssembledContext> {
   // \u81ea\u9002\u5e94\u53ec\u56de\uff1a\u8fd1\u671f\u6d88\u606f\u591a\uff08\u4e0a\u4e0b\u6587\u7a7a\u95f4\u5c11\uff09\u2192\u5c11\u53ec\u56de\uff1b\u8fd1\u671f\u6d88\u606f\u5c11\uff08\u7a7a\u95f4\u591a\uff09\u2192\u591a\u53ec\u56de
-  const adaptiveMax = recentMessageCount > 10
-    ? Math.max(1, maxRecallFragments - 2)
-    : recentMessageCount > 5
-      ? Math.max(2, maxRecallFragments - 1)
-      : maxRecallFragments;
+  const adaptiveMax =
+    recentMessageCount > 10
+      ? Math.max(1, maxRecallFragments - 2)
+      : recentMessageCount > 5
+        ? Math.max(2, maxRecallFragments - 1)
+        : maxRecallFragments;
 
   // 1. system 层：SOUL（人设）+ USER（大王画像）+ AGENTS（规范）+ MEMORY（注入知识文档，截断防臃肿）+ 记忆碎片
   const soul = await readFileSafe(AIOS_SOUL_FILE);
@@ -90,7 +91,16 @@ export async function assembleContext(
   const intent = intentGuidance(sessionIntent);
   // M7 情绪：跟踪大王输入情绪，供状态展示
   trackSentiment(currentUserText);
-  const systemPrompt = [soul, user, agents, memoryDoc, todayState, intent, memoryFragment, workspaceContext]
+  const systemPrompt = [
+    soul,
+    user,
+    agents,
+    memoryDoc,
+    todayState,
+    intent,
+    memoryFragment,
+    workspaceContext,
+  ]
     .filter(Boolean)
     .join('\n\n---\n\n');
 

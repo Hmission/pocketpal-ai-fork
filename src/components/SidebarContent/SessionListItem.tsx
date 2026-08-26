@@ -17,6 +17,26 @@ import {
 import {L10nContext} from '../../utils';
 import {Divider} from 'react-native-paper';
 
+/**
+ * 菜单行内图标（模块级 render helper）：避免在渲染期定义组件触发
+ * react/no-unstable-nested-components；按 kind 返回对应图标元素。
+ */
+const renderMenuLeadingIcon = (
+  kind: 'edit' | 'fork' | 'export' | 'delete',
+  color: string,
+) => {
+  switch (kind) {
+    case 'edit':
+      return <EditIcon stroke={color} />;
+    case 'fork':
+      return <DuplicateIcon stroke={color} />;
+    case 'export':
+      return <ShareIcon stroke={color} />;
+    default:
+      return <TrashIcon stroke={color} />;
+  }
+};
+
 interface SessionListItemProps {
   session: SessionMetaData;
   isActive: boolean;
@@ -110,7 +130,10 @@ export const SessionListItem = React.memo<SessionListItemProps>(
                 ? {
                     // 灰色治理（DESIGN_SPEC §1.8）：选中态改域彩 12% 底，不再用 surfaceVariant
                     colors: {
-                      secondaryContainer: withOpacity(theme.colors.primary, 0.12),
+                      secondaryContainer: withOpacity(
+                        theme.colors.primary,
+                        0.12,
+                      ),
                     },
                   }
                 : undefined
@@ -141,7 +164,9 @@ export const SessionListItem = React.memo<SessionListItemProps>(
                 onMenuDismiss();
               }}
               label={l10n.common.rename}
-              leadingIcon={() => <EditIcon stroke={theme.colors.primary} />}
+              leadingIcon={() =>
+                renderMenuLeadingIcon('edit', theme.colors.primary)
+              }
             />
             <Menu.Item
               onPress={() => {
@@ -149,9 +174,9 @@ export const SessionListItem = React.memo<SessionListItemProps>(
                 onMenuDismiss();
               }}
               label={l10n.components.sidebarContent.forkSession}
-              leadingIcon={() => (
-                <DuplicateIcon stroke={theme.colors.primary} />
-              )}
+              leadingIcon={() =>
+                renderMenuLeadingIcon('fork', theme.colors.primary)
+              }
             />
             <Menu.Item
               onPress={() => {
@@ -159,7 +184,9 @@ export const SessionListItem = React.memo<SessionListItemProps>(
                 onMenuDismiss();
               }}
               label={l10n.common.export}
-              leadingIcon={() => <ShareIcon stroke={theme.colors.primary} />}
+              leadingIcon={() =>
+                renderMenuLeadingIcon('export', theme.colors.primary)
+              }
             />
             <Menu.Item
               onPress={() => {
@@ -168,7 +195,9 @@ export const SessionListItem = React.memo<SessionListItemProps>(
               }}
               label={l10n.common.delete}
               labelStyle={{color: theme.colors.error}}
-              leadingIcon={() => <TrashIcon stroke={theme.colors.error} />}
+              leadingIcon={() =>
+                renderMenuLeadingIcon('delete', theme.colors.error)
+              }
             />
             <Divider style={styles.menuDivider} />
             <Menu.Item

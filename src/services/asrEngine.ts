@@ -23,10 +23,7 @@ export const SENSEVOICE_DIR = `${AIOS_MODELS_DIR}/audio/sense-voice-zh-en-ja-ko-
  * 正确仓库 csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17
  * 含 model.int8.onnx + tokens.txt，无 config.yaml）。
  */
-export const SENSEVOICE_FILES = [
-  'model.int8.onnx',
-  'tokens.txt',
-] as const;
+export const SENSEVOICE_FILES = ['model.int8.onnx', 'tokens.txt'] as const;
 
 // 国内镜像（hf-mirror.com，2026-08-21 实测直连可达；HF 官方域名被墙）
 const MODEL_BASE_URL =

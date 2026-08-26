@@ -1,5 +1,5 @@
 import React, {useContext} from 'react';
-import {View, Alert} from 'react-native';
+import {View} from 'react-native';
 import {Text, Button, Divider} from 'react-native-paper';
 import {observer} from 'mobx-react-lite';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -12,6 +12,8 @@ import {Sheet} from '../../../../components';
 import {createStyles} from './styles';
 
 import {authService} from '../../../../services';
+import {infoDialog} from '../../../../components/ui/InfoDialog';
+import {confirmDialog} from '../../../../components/ui/ConfirmDialog';
 
 interface ProfileSheetProps {
   isVisible: boolean;
@@ -26,30 +28,27 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = observer(
     const styles = createStyles(theme);
     const l10n = useContext(L10nContext);
 
-    const handleSignOut = () => {
-      Alert.alert(
-        l10n.palsScreen.signOut,
-        l10n.palsScreen.signOutConfirmation,
-        [
-          {text: l10n.common.cancel, style: 'cancel'},
-          {
-            text: l10n.palsScreen.signOut,
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                await authService.signOut();
-                onClose();
-              } catch (error) {
-                console.error('Error signing out:', error);
-                Alert.alert(
-                  l10n.errors.unexpectedError,
-                  l10n.palsScreen.signOutError,
-                );
-              }
-            },
-          },
-        ],
-      );
+    const handleSignOut = async () => {
+      const ok = await confirmDialog({
+        title: l10n.palsScreen.signOut,
+        message: l10n.palsScreen.signOutConfirmation,
+        confirmText: l10n.palsScreen.signOut,
+        cancelText: l10n.common.cancel,
+        destructive: true,
+      });
+      if (!ok) {
+        return;
+      }
+      try {
+        await authService.signOut();
+        onClose();
+      } catch (error) {
+        console.error('Error signing out:', error);
+        infoDialog({
+          title: l10n.errors.unexpectedError,
+          message: l10n.palsScreen.signOutError,
+        });
+      }
     };
 
     const renderAuthenticatedContent = () => {

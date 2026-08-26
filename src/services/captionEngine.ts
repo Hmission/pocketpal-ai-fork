@@ -79,7 +79,9 @@ export async function runCaption(
     if (!isCaptionModelActive()) {
       const model = findCaptionModel();
       if (!model) {
-        throw new Error('反推视觉模型未安装（Qwen3.5-4B + mmproj，见 MODEL_MATRIX §1.2）');
+        throw new Error(
+          '反推视觉模型未安装（Qwen3.5-4B + mmproj，见 MODEL_MATRIX §1.2）',
+        );
       }
       onStage?.('load');
       await modelStore.selectModel(model);

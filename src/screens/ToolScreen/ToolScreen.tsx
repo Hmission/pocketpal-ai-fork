@@ -16,6 +16,35 @@ import {
 } from '../../utils/screenReader';
 
 // 工具行错峰入场（DESIGN_SPEC §5：一次性、不循环；JS driver）
+// 以下两个为模块级 render helper：避免在渲染期定义组件触发
+// react/no-unstable-nested-components，闭包数据经参数传入。
+/** 启用状态图标（左槽） */
+const renderToolStatusIcon = (props: any, enabled: boolean) => (
+  <List.Icon {...props} icon={enabled ? 'check-circle' : 'circle-outline'} />
+);
+
+/** 行尾动作（device_control 授权按钮 / 其余工具开关） */
+const renderToolRowRight = ({
+  name,
+  enabled,
+  screenReaderOn,
+  onToggle,
+}: {
+  name: string;
+  enabled: boolean;
+  screenReaderOn: boolean;
+  onToggle: (name: string, enable: boolean) => void;
+}) =>
+  name === 'device_control' ? (
+    !screenReaderOn ? (
+      <Button mode="outlined" compact onPress={openAccessibilitySettings}>
+        授权
+      </Button>
+    ) : null
+  ) : (
+    <Switch value={enabled} onValueChange={v => onToggle(name, v)} />
+  );
+
 const StaggeredToolRow = ({
   index,
   item,
@@ -48,28 +77,9 @@ const StaggeredToolRow = ({
           </View>
         }
         description={item.function.description?.slice(0, 80)}
-        left={props => (
-          <List.Icon
-            {...props}
-            icon={enabled ? 'check-circle' : 'circle-outline'}
-          />
-        )}
+        left={props => renderToolStatusIcon(props, enabled)}
         right={() =>
-          name === 'device_control' ? (
-            !screenReaderOn ? (
-              <Button
-                mode="outlined"
-                compact
-                onPress={openAccessibilitySettings}>
-                授权
-              </Button>
-            ) : null
-          ) : (
-            <Switch
-              value={enabled}
-              onValueChange={v => onToggle(name, v)}
-            />
-          )
+          renderToolRowRight({name, enabled, screenReaderOn, onToggle})
         }
       />
     </Animated.View>

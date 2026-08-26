@@ -10,7 +10,7 @@
  * eng-9d-memory-bus（裁决/新鲜度字段）
  */
 import * as RNFS from '@dr.pogodin/react-native-fs';
-import {AIOS_MEMORIES_DIR, AIOS_CONVERSATIONS_DIR} from '../../utils/paths';
+import {AIOS_CONVERSATIONS_DIR} from '../../utils/paths';
 import {modelStore} from '../../store';
 import {promptWriter} from '../promptWriter';
 import {
@@ -47,25 +47,42 @@ export async function governMemories(): Promise<GovernanceResult> {
   const before = memories.length;
 
   // 引擎选择：优先当前对话大模型；管家直答回退到管家引擎
-  const engine = modelStore.engine ?? (promptWriter.isLoaded ? promptWriter : null);
+  const engine =
+    modelStore.engine ?? (promptWriter.isLoaded ? promptWriter : null);
   if (!engine) {
-    return {before, after: before, distilled: false, error: '没有可用的模型引擎'};
+    return {
+      before,
+      after: before,
+      distilled: false,
+      error: '没有可用的模型引擎',
+    };
   }
   if (modelStore.inferencing) {
-    return {before, after: before, distilled: false, error: '模型正在推理中，请稍后'};
+    return {
+      before,
+      after: before,
+      distilled: false,
+      error: '模型正在推理中，请稍后',
+    };
   }
 
   // 准备输入：只取链尾（未被替代的）+ 非 episode 过期的
   const now = Date.now();
   const input = memories.filter(m => {
     if (m.supersededBy) return false;
-    if (m.type === 'episode' && now - m.ts > 30 * 24 * 60 * 60 * 1000) return false;
+    if (m.type === 'episode' && now - m.ts > 30 * 24 * 60 * 60 * 1000)
+      return false;
     return true;
   });
 
   if (input.length < 10) {
     // 条目太少，不需要治理
-    return {before, after: before, distilled: false, error: '记忆条目不足 10 条，无需治理'};
+    return {
+      before,
+      after: before,
+      distilled: false,
+      error: '记忆条目不足 10 条，无需治理',
+    };
   }
 
   try {
@@ -101,7 +118,12 @@ export async function governMemories(): Promise<GovernanceResult> {
     let first = jsonText.indexOf('[');
     let last = jsonText.lastIndexOf(']');
     if (first < 0 || last <= first) {
-      return {before, after: before, distilled: false, error: '蒸馏输出解析失败'};
+      return {
+        before,
+        after: before,
+        distilled: false,
+        error: '蒸馏输出解析失败',
+      };
     }
     const distilled = JSON.parse(jsonText.slice(first, last + 1)) as Array<{
       type: string;
@@ -132,9 +154,7 @@ export async function governMemories(): Promise<GovernanceResult> {
     await save(newMemories);
     await refreshUserMd();
 
-    console.log(
-      `[governance] 蒸馏完成: ${before}→${newMemories.length} 条`,
-    );
+    console.log(`[governance] 蒸馏完成: ${before}→${newMemories.length} 条`);
     return {before, after: newMemories.length, distilled: true};
   } catch (e) {
     console.warn('[governance] distillation failed:', e);
@@ -171,7 +191,9 @@ export async function rotateOldLogs(): Promise<number> {
       }
     }
     if (deleted > 0) {
-      console.log(`[governance] 日志轮转: 删除 ${deleted} 个过期对话日志（>90天）`);
+      console.log(
+        `[governance] 日志轮转: 删除 ${deleted} 个过期对话日志（>90天）`,
+      );
     }
     return deleted;
   } catch (e) {

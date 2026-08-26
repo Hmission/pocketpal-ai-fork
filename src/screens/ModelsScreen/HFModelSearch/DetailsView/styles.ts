@@ -60,7 +60,7 @@ export const createStyles = (theme: Theme) =>
       // backgroundColor: theme.colors.surfaceVariant,
     },
     statText: {
-      fontSize: 10,
+      fontSize: 11,
       // color: theme.colors.onSurfaceVariant,
     },
     sectionTitle: {

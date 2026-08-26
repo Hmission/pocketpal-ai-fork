@@ -51,7 +51,10 @@ describe('ReadHtmlEngine（read_html 玩具迭代读回）', () => {
     const e2 = await saveToy('贪吃蛇', '<html>v2</html>');
     expect(e1!.id).toBe(e2!.id); // upsert 覆盖 id 不变
 
-    const result = await engine.execute({title: '贪吃蛇'}) as {type: 'text'; summary: string};
+    const result = (await engine.execute({title: '贪吃蛇'})) as {
+      type: 'text';
+      summary: string;
+    };
     expect(result.summary).toContain('<html>v2</html>');
   });
 
@@ -62,7 +65,11 @@ describe('ReadHtmlEngine（read_html 玩具迭代读回）', () => {
     const result = await engine.execute({title: '不存在的玩具'});
 
     expect(result.type).toBe('error');
-    const err = result as {type: 'error'; summary: string; errorMessage: string};
+    const err = result as {
+      type: 'error';
+      summary: string;
+      errorMessage: string;
+    };
     expect(err.errorMessage).toBe('TOY_NOT_FOUND');
     expect(err.summary).toContain('贪吃蛇');
     expect(err.summary).toContain('抽签器');
@@ -71,7 +78,9 @@ describe('ReadHtmlEngine（read_html 玩具迭代读回）', () => {
   it('缺 title 参数返回 MISSING_TITLE', async () => {
     const result = await engine.execute({});
     expect(result.type).toBe('error');
-    expect((result as {errorMessage: string}).errorMessage).toBe('MISSING_TITLE');
+    expect((result as {errorMessage: string}).errorMessage).toBe(
+      'MISSING_TITLE',
+    );
   });
 
   it('toToolDefinition 契约：name/required 齐备', () => {

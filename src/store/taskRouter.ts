@@ -12,7 +12,13 @@
  *   play     → chat 大模型（玩具匠：代码模型 + render_html 出可玩成品，PLAY_SPEC v1）
  *   adventure → chat 大模型（城主：写作模型写剧情 + adventure_state 工具管状态，ADVENTURE_SPEC v1）
  */
-export type TaskKind = 'chitchat' | 'image' | 'write' | 'code' | 'play' | 'adventure';
+export type TaskKind =
+  | 'chitchat'
+  | 'image'
+  | 'write'
+  | 'code'
+  | 'play'
+  | 'adventure';
 
 export interface TaskSignal {
   task: TaskKind;
@@ -47,7 +53,8 @@ const CODE_RE =
 // 玩具工坊（P8 v1）：快捷按钮预填「做个玩具：」——玩法引导前后端对齐（PLAY_SPEC §2.5）。
 // TRPG 城主（P12 v1.1）：快捷按钮预填「来场冒险：」——冒险玩法引导（ADVENTURE_SPEC §五）。
 // 写作工作区（2026-08-21 WORKSPACE_SPEC）：显式前缀「新建写作项目：/写作项目：」→ write 路由。
-const QUICK_PREFIX_RE = /^(图像生成|图片编辑|做个玩具|来场冒险|新建写作项目|写作项目)[:：]\s*/;
+const QUICK_PREFIX_RE =
+  /^(图像生成|图片编辑|做个玩具|来场冒险|新建写作项目|写作项目)[:：]\s*/;
 
 // 玩具（P8 v1，PLAY_SPEC）：动词 + 玩具/游戏/小玩意类目标词。
 // 收紧避免误伤：目标词仅限可玩品类，不含「代码/程序」（那是 code 域）。

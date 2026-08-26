@@ -11,27 +11,27 @@ import {
 
 describe('downloadSources — 双源 URL 构造', () => {
   it('HF resolve 模板（main 分支）', () => {
-    expect(
-      resolveDownloadUrl('a/b', 'm.gguf', 'hf'),
-    ).toBe('https://huggingface.co/a/b/resolve/main/m.gguf');
+    expect(resolveDownloadUrl('a/b', 'm.gguf', 'hf')).toBe(
+      'https://huggingface.co/a/b/resolve/main/m.gguf',
+    );
   });
 
   it('ModelScope resolve 模板（master 分支）', () => {
-    expect(
-      resolveDownloadUrl('a/b', 'm.gguf', 'modelscope'),
-    ).toBe('https://modelscope.cn/models/a/b/resolve/master/m.gguf');
+    expect(resolveDownloadUrl('a/b', 'm.gguf', 'modelscope')).toBe(
+      'https://modelscope.cn/models/a/b/resolve/master/m.gguf',
+    );
   });
 
   it('文件名含子路径时保持原样拼接', () => {
-    expect(
-      resolveDownloadUrl('a/b', 'sub/m.gguf', 'hf'),
-    ).toBe('https://huggingface.co/a/b/resolve/main/sub/m.gguf');
+    expect(resolveDownloadUrl('a/b', 'sub/m.gguf', 'hf')).toBe(
+      'https://huggingface.co/a/b/resolve/main/sub/m.gguf',
+    );
   });
 
   it('getAvailableSources：按显式声明 + repo 存在性过滤', () => {
-    expect(
-      getAvailableSources({sources: ['hf'], hfRepo: 'a/b'}),
-    ).toEqual(['hf']);
+    expect(getAvailableSources({sources: ['hf'], hfRepo: 'a/b'})).toEqual([
+      'hf',
+    ]);
     // 声明了 modelscope 但无 modelscopeRepo → 剔除（防死按钮）
     expect(
       getAvailableSources({sources: ['hf', 'modelscope'], hfRepo: 'a/b'}),
@@ -49,9 +49,7 @@ describe('downloadSources — 双源 URL 构造', () => {
   it('repoForSource：按源返回对应 repo', () => {
     const entry = {hfRepo: 'x/y', modelscopeRepo: 'x/y-ms'};
     expect(repoForSource(entry, 'hf' as DownloadSource)).toBe('x/y');
-    expect(repoForSource(entry, 'modelscope' as DownloadSource)).toBe(
-      'x/y-ms',
-    );
+    expect(repoForSource(entry, 'modelscope' as DownloadSource)).toBe('x/y-ms');
   });
 
   it('fileRemotePath：默认本地名；remotePath 与 per-source 覆盖', () => {
@@ -132,7 +130,9 @@ describe('downloadSources — 双源 URL 构造', () => {
       remotePath: 'text_encoders/clip_l.safetensors',
       repoBySource: {modelscope: 'AI-ModelScope/sd35-fp8'},
     };
-    expect(resolveFileDownloadUrl(file, entry, 'modelscope' as DownloadSource)).toBe(
+    expect(
+      resolveFileDownloadUrl(file, entry, 'modelscope' as DownloadSource),
+    ).toBe(
       'https://modelscope.cn/models/AI-ModelScope/sd35-fp8/resolve/master/text_encoders/clip_l.safetensors',
     );
     // 该源无 repo → undefined

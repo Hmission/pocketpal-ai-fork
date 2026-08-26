@@ -1,6 +1,7 @@
 import {StyleSheet} from 'react-native';
 import {Theme} from '../../utils/types';
 import {EdgeInsets} from 'react-native-safe-area-context';
+import {withOpacity} from '../../utils/colorUtils';
 
 export const createStyles = ({
   theme,
@@ -43,5 +44,20 @@ export const createStyles = ({
     },
     headerWithDivider: {
       backgroundColor: theme.colors.background,
+    },
+    rightSection: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 2,
+    },
+    modelPickerChip: {
+      paddingHorizontal: theme.spacing.s,
+      paddingVertical: theme.spacing.xs,
+      borderRadius: theme.radius[theme.shapeRoles.pill],
+      // 灰色治理（DESIGN_SPEC §1.8）：模型 chip 从 surfaceVariant 改为域彩 12% 底
+      backgroundColor: withOpacity(theme.colors.primary, 0.12),
+      // 标准橙黄描边：与抽屉搜索框聚焦态同一设计语言
+      borderWidth: 1,
+      borderColor: theme.colors.primary,
     },
   });

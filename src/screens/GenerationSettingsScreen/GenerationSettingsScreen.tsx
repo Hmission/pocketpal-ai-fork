@@ -7,7 +7,6 @@ import {
   Keyboard,
   ScrollView,
   TextInput as RNTextInput,
-  Alert,
   Linking,
   TouchableOpacity,
 } from 'react-native';
@@ -38,6 +37,8 @@ import {
 } from '../../components';
 
 import {useTheme, useStaggerEntry} from '../../hooks';
+import {infoDialog} from '../../components/ui/InfoDialog';
+import {confirmDialog} from '../../components/ui/ConfirmDialog';
 
 import {createStyles} from './styles';
 
@@ -974,9 +975,7 @@ export const GenerationSettingsScreen: React.FC = observer(() => {
                       <Text variant="titleMedium" style={styles.textLabel}>
                         {l10n.settings.internetSearch.enableLabel}
                       </Text>
-                      <Text
-                        variant="labelSmall"
-                        style={styles.textDescription}>
+                      <Text variant="labelSmall" style={styles.textDescription}>
                         {l10n.settings.internetSearch.enableDescription}
                       </Text>
                     </View>
@@ -1095,10 +1094,10 @@ export const GenerationSettingsScreen: React.FC = observer(() => {
                             const cacheInfo = await getSessionCacheInfo();
 
                             if (cacheInfo.fileCount === 0) {
-                              Alert.alert(
-                                l10n.settings.clearPalCaches,
-                                l10n.settings.noCachesToClear,
-                              );
+                              infoDialog({
+                                title: l10n.settings.clearPalCaches,
+                                message: l10n.settings.noCachesToClear,
+                              });
                               return;
                             }
 
@@ -1114,49 +1113,41 @@ export const GenerationSettingsScreen: React.FC = observer(() => {
                               },
                             );
 
-                            Alert.alert(
-                              l10n.settings.clearCachesConfirmTitle,
-                              confirmMessage,
-                              [
-                                {
-                                  text: l10n.common.cancel,
-                                  style: 'cancel',
-                                },
-                                {
-                                  text: l10n.settings.clearCachesButton,
-                                  style: 'destructive',
-                                  onPress: async () => {
-                                    try {
-                                      const deletedCount =
-                                        await clearAllSessionCaches();
-                                      const successMessage = t(
-                                        l10n.settings.clearCachesSuccess,
-                                        {count: deletedCount.toString()},
-                                      );
-                                      Alert.alert(
-                                        l10n.settings.clearPalCaches,
-                                        successMessage,
-                                      );
-                                    } catch (error) {
-                                      console.error(
-                                        'Failed to clear caches:',
-                                        error,
-                                      );
-                                      Alert.alert(
-                                        l10n.settings.clearPalCaches,
-                                        l10n.settings.clearCachesError,
-                                      );
-                                    }
-                                  },
-                                },
-                              ],
-                            );
+                            void confirmDialog({
+                              title: l10n.settings.clearCachesConfirmTitle,
+                              message: confirmMessage,
+                              confirmText: l10n.settings.clearCachesButton,
+                              cancelText: l10n.common.cancel,
+                              destructive: true,
+                            }).then(async ok => {
+                              if (!ok) {
+                                return;
+                              }
+                              try {
+                                const deletedCount =
+                                  await clearAllSessionCaches();
+                                const successMessage = t(
+                                  l10n.settings.clearCachesSuccess,
+                                  {count: deletedCount.toString()},
+                                );
+                                infoDialog({
+                                  title: l10n.settings.clearPalCaches,
+                                  message: successMessage,
+                                });
+                              } catch (error) {
+                                console.error('Failed to clear caches:', error);
+                                infoDialog({
+                                  title: l10n.settings.clearPalCaches,
+                                  message: l10n.settings.clearCachesError,
+                                });
+                              }
+                            });
                           } catch (error) {
                             console.error('Failed to get cache info:', error);
-                            Alert.alert(
-                              l10n.settings.clearPalCaches,
-                              l10n.settings.clearCachesError,
-                            );
+                            infoDialog({
+                              title: l10n.settings.clearPalCaches,
+                              message: l10n.settings.clearCachesError,
+                            });
                           }
                         }}
                         style={styles.menuButton}>
@@ -1199,10 +1190,11 @@ export const GenerationSettingsScreen: React.FC = observer(() => {
                         try {
                           await exportLegacyChatSessions();
                         } catch {
-                          Alert.alert(
-                            'Export Error',
-                            'Failed to export legacy chat sessions. The file may not exist.',
-                          );
+                          infoDialog({
+                            title: 'Export Error',
+                            message:
+                              'Failed to export legacy chat sessions. The file may not exist.',
+                          });
                         }
                       }}
                       style={styles.menuButton}>

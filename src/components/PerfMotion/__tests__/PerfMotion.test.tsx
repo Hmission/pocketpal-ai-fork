@@ -12,7 +12,11 @@ describe('PerfMotion — 演出层动效引擎（§10.3）', () => {
   describe('AnimatedNumber（追式缓动）', () => {
     it('首帧直接显示目标值（不演假动画）', () => {
       const {getByTestId} = render(
-        <AnimatedNumber value={4.231} format={n => `${n.toFixed(1)} GB`} testID="an" />,
+        <AnimatedNumber
+          value={4.231}
+          format={n => `${n.toFixed(1)} GB`}
+          testID="an"
+        />,
       );
       expect(getByTestId('an').props.children).toBe('4.2 GB');
     });
@@ -37,9 +41,7 @@ describe('PerfMotion — 演出层动效引擎（§10.3）', () => {
 
   describe('OdometerNumber（逐位翻滚）', () => {
     it('数值按位渲染翻滚条带', () => {
-      const {getByTestId} = render(
-        <OdometerNumber value={88} testID="odo" />,
-      );
+      const {getByTestId} = render(<OdometerNumber value={88} testID="odo" />);
       expect(getByTestId('odo')).toBeTruthy();
     });
 

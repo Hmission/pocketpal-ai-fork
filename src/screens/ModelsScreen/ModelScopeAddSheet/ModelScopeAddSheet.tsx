@@ -6,7 +6,10 @@ import {BottomSheetFlatList} from '@gorhom/bottom-sheet';
 import {useTheme} from '../../../hooks';
 import {L10nContext} from '../../../utils';
 import {Sheet} from '../../../components';
-import {fetchModelDetail, isValidModelScopeRepoId} from '../../../api/modelscope';
+import {
+  fetchModelDetail,
+  isValidModelScopeRepoId,
+} from '../../../api/modelscope';
 import {HuggingFaceModel, ModelFile} from '../../../utils/types';
 import {getLLMFiles, formatBytes} from '../../../utils';
 import {modelStore} from '../../../store';
@@ -80,7 +83,7 @@ export const ModelScopeAddSheet: React.FC<ModelScopeAddSheetProps> = ({
       modelStore.downloadHFModel(model, file, {enableVision: true});
       handleClose();
     },
-    [model, modelStore, handleClose],
+    [model, handleClose],
   );
 
   const renderFile = ({item}: {item: ModelFile}) => (

@@ -1,9 +1,14 @@
 import React from 'react';
-import {Alert} from 'react-native';
 import {render, fireEvent, waitFor} from '../../../../jest/test-utils';
 import {ServerDetailsSheet} from '../ServerDetailsSheet';
 import {serverStore} from '../../../store';
 import {testConnection} from '../../../api/openai';
+
+// B52③ 迁移同步：删除服务器确认已由 Alert.alert → confirmDialog（默认确认流）
+jest.mock('../../ui/ConfirmDialog', () => ({
+  confirmDialog: jest.fn().mockResolvedValue(true),
+}));
+import {confirmDialog} from '../../ui/ConfirmDialog';
 
 const mockedTestConnection = testConnection as jest.Mock;
 
@@ -150,9 +155,6 @@ describe('ServerDetailsSheet', () => {
   });
 
   it('shows confirmation dialog when remove server is pressed', () => {
-    jest.useFakeTimers();
-    jest.spyOn(Alert, 'alert').mockImplementation();
-
     const {getByTestId} = render(
       <ServerDetailsSheet
         isVisible={true}
@@ -162,30 +164,18 @@ describe('ServerDetailsSheet', () => {
     );
 
     fireEvent.press(getByTestId('remove-server-button'));
-    jest.advanceTimersByTime(300);
 
-    expect(Alert.alert).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.stringContaining('LM Studio'),
-      expect.arrayContaining([
-        expect.objectContaining({style: 'cancel'}),
-        expect.objectContaining({style: 'destructive'}),
-      ]),
+    // B52③：确认弹窗走 confirmDialog（destructive 语义，无 setTimeout hack）
+    expect(confirmDialog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining('LM Studio'),
+        destructive: true,
+      }),
     );
-    jest.useRealTimers();
   });
 
-  it('calls removeServer and dismisses on delete confirmation', () => {
-    jest.useFakeTimers();
+  it('calls removeServer and dismisses on delete confirmation', async () => {
     const mockDismiss = jest.fn();
-    (Alert.alert as jest.Mock) = jest
-      .fn()
-      .mockImplementation((title, message, buttons) => {
-        const destructiveButton = buttons.find(
-          (b: any) => b.style === 'destructive',
-        );
-        destructiveButton?.onPress();
-      });
 
     const {getByTestId} = render(
       <ServerDetailsSheet
@@ -196,12 +186,13 @@ describe('ServerDetailsSheet', () => {
     );
 
     fireEvent.press(getByTestId('remove-server-button'));
-    // onDismiss is called immediately (before the alert)
+    // onDismiss 立即调用（关闭 sheet 后弹确认）
     expect(mockDismiss).toHaveBeenCalled();
 
-    jest.advanceTimersByTime(300);
-    expect(serverStore.removeServer).toHaveBeenCalledWith('srv-1');
-    jest.useRealTimers();
+    // confirmDialog mock 默认 resolve(true) → 确认后删除
+    await waitFor(() => {
+      expect(serverStore.removeServer).toHaveBeenCalledWith('srv-1');
+    });
   });
 
   it('renders the request timeout input', () => {

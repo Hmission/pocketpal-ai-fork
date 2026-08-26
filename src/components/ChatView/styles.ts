@@ -1,7 +1,14 @@
 import {StyleSheet} from 'react-native';
+import type {EdgeInsets} from 'react-native-safe-area-context';
 import {Theme} from '../../utils/types';
 
-export const createStyles = ({theme}: {theme: Theme}) =>
+export const createStyles = ({
+  theme,
+  insets,
+}: {
+  theme: Theme;
+  insets: EdgeInsets;
+}) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -85,7 +92,8 @@ export const createStyles = ({theme}: {theme: Theme}) =>
     // P5 全屏查看器「编辑此图片」按钮（底部悬浮胶囊，与保存按钮同层）
     viewerEditButton: {
       position: 'absolute' as const,
-      bottom: 56,
+      // B58：insets 感知（底部手势条设备不贴条，与 TextMessage 保存钮同表达式归一）
+      bottom: insets.bottom + theme.spacing.m,
       alignSelf: 'center' as const,
       paddingHorizontal: 24,
       paddingVertical: 10,

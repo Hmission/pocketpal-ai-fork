@@ -7,7 +7,10 @@ import {STATE_REGISTRY, toCompass} from '../stateCompass';
 describe('stateCompass', () => {
   it('STATE_MAP 覆盖 engine/chat/imagegen/model 四域', () => {
     for (const domain of ['engine', 'chat', 'imagegen', 'model']) {
-      expect(Object.keys(STATE_REGISTRY[domain as keyof typeof STATE_REGISTRY]).length).toBeGreaterThan(0);
+      expect(
+        Object.keys(STATE_REGISTRY[domain as keyof typeof STATE_REGISTRY])
+          .length,
+      ).toBeGreaterThan(0);
     }
   });
 

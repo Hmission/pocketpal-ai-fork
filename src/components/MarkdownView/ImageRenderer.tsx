@@ -1,11 +1,22 @@
 import React from 'react';
-import {Image, useWindowDimensions} from 'react-native';
+import {Image, StyleSheet, useWindowDimensions} from 'react-native';
 import {
   CustomBlockRenderer,
   HTMLContentModel,
   HTMLElementModel,
 } from 'react-native-render-html';
 import {useTheme} from '../../hooks';
+import {Theme} from '../../utils/types';
+
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    image: {
+      aspectRatio: 1.6,
+      borderRadius: theme.radius.s,
+      marginVertical: theme.spacing.xs,
+      backgroundColor: theme.colors.surfaceContainerHighest,
+    },
+  });
 
 /**
  * ImgRenderer — markdown 图片渲染（![]() / <img>）。
@@ -20,16 +31,12 @@ const ImgRenderer: CustomBlockRenderer = ({tnode}) => {
     return null;
   }
   const imgWidth = Math.max(120, width - 96);
+  const styles = createStyles(theme);
+  const imgStyle = {width: imgWidth};
   return (
     <Image
       source={{uri: src}}
-      style={{
-        width: imgWidth,
-        aspectRatio: 1.6,
-        borderRadius: theme.radius.s,
-        marginVertical: theme.spacing.xs,
-        backgroundColor: theme.colors.surfaceContainerHighest,
-      }}
+      style={[styles.image, imgStyle]}
       resizeMode="cover"
       accessibilityLabel={tnode.attributes?.alt ?? 'markdown image'}
     />

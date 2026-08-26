@@ -67,7 +67,9 @@ describe('OverlayCard', () => {
       <OverlayCard
         visible
         title="删除"
-        actions={{primary: {label: '删除', onPress: onConfirm, destructive: true}}}>
+        actions={{
+          primary: {label: '删除', onPress: onConfirm, destructive: true},
+        }}>
         <Text>正文</Text>
       </OverlayCard>,
     );

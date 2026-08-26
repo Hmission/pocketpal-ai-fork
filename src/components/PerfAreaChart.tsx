@@ -19,8 +19,9 @@
  * 纪律：react-native-svg（既有依赖，零新增）；N/A 点落底不编造；
  * 演出动画一律 Animated JS driver（全局规范）。
  */
+/* eslint-disable no-bitwise -- B51：SVG 路径/颜色通道位运算解析（十进制↔RGBA 打包），图表绘制正当用�?*/
 import * as React from 'react';
-import {Animated, Easing, View} from 'react-native';
+import {Animated, Easing, StyleSheet, View} from 'react-native';
 import {
   Circle,
   Defs,
@@ -80,6 +81,13 @@ const X_LABEL_H = 14; // 底部 X 轴时间文字区高
 const BAND_H = 2; // 温度热力带高
 const BAR_H = 12; // 柱状区高
 
+// 图表外壳：宽度固定 100%（行高由组件 height 动态注入）
+const chartWrapStyles = StyleSheet.create({
+  wrap: {
+    width: '100%',
+  },
+});
+
 // ── 演出层（vivid）：JS driver 循环动画组件 ──
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const AnimatedLine = Animated.createAnimatedComponent(Line);
@@ -92,15 +100,21 @@ const TEMP_HIGH = '#FF653F';
 const lerpHex = (a: string, b: string, k: number): string => {
   const pa = parseInt(a.slice(1), 16);
   const pb = parseInt(b.slice(1), 16);
-  const r = Math.round(((pa >> 16) & 0xff) + (((pb >> 16) & 0xff) - ((pa >> 16) & 0xff)) * k);
-  const g = Math.round(((pa >> 8) & 0xff) + (((pb >> 8) & 0xff) - ((pa >> 8) & 0xff)) * k);
+  const r = Math.round(
+    ((pa >> 16) & 0xff) + (((pb >> 16) & 0xff) - ((pa >> 16) & 0xff)) * k,
+  );
+  const g = Math.round(
+    ((pa >> 8) & 0xff) + (((pb >> 8) & 0xff) - ((pa >> 8) & 0xff)) * k,
+  );
   const bl = Math.round((pa & 0xff) + ((pb & 0xff) - (pa & 0xff)) * k);
   return `#${((r << 16) | (g << 8) | bl).toString(16).padStart(6, '0')}`;
 };
 
 const tempBandColor = (t: number): string => {
   const c = Math.max(30, Math.min(60, t));
-  return c <= 45 ? lerpHex(TEMP_LOW, TEMP_MID, (c - 30) / 15) : lerpHex(TEMP_MID, TEMP_HIGH, (c - 45) / 15);
+  return c <= 45
+    ? lerpHex(TEMP_LOW, TEMP_MID, (c - 30) / 15)
+    : lerpHex(TEMP_MID, TEMP_HIGH, (c - 45) / 15);
 };
 
 interface PerfAreaChartProps {
@@ -193,6 +207,8 @@ export const PerfAreaChart: React.FC<PerfAreaChartProps> = ({
   testID,
 }) => {
   const [width, setWidth] = React.useState(0);
+  // 图表高度（prop 动态，宽度为静态 100%）
+  const wrapStyle = {height};
 
   const multi = series && series.length > 0;
   // PSS 阈值线：单层 pss 模式，或多层中含 pss 时都画
@@ -234,7 +250,15 @@ export const PerfAreaChart: React.FC<PerfAreaChartProps> = ({
   // 主曲线（演出层锚点）：多层=series[0]，单层=overlay 曲线
   const mainColor = multi ? series![0].color : color;
   const mainPts = multi
-    ? buildPoints(history, series![0].key, series![0].max, plotW, x0, plotBottom, plotH)
+    ? buildPoints(
+        history,
+        series![0].key,
+        series![0].max,
+        plotW,
+        x0,
+        plotBottom,
+        plotH,
+      )
     : singlePts;
   const mainLast = lastValid(mainPts);
   // 彗星尾：主曲线尾部渐隐拖尾（最后 8 点淡、最后 3 点稍亮）
@@ -289,7 +313,10 @@ export const PerfAreaChart: React.FC<PerfAreaChartProps> = ({
   }, [vivid, pulse, sweep]);
 
   const pulseR = pulse.interpolate({inputRange: [0, 1], outputRange: [3, 7]});
-  const pulseO = pulse.interpolate({inputRange: [0, 1], outputRange: [0.65, 0.08]});
+  const pulseO = pulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.65, 0.08],
+  });
   const sweepX = sweep.interpolate({
     inputRange: [0, 1],
     outputRange: [x0 + 2, width - 2],
@@ -300,7 +327,11 @@ export const PerfAreaChart: React.FC<PerfAreaChartProps> = ({
   });
 
   // ── X 轴时间刻度（1Hz 采样契约，索引差=相对秒数，不编造）：0 / 1/3 / 2/3 / 末尾 ──
-  const xTicks: Array<{frac: number; label: string; anchor: 'start' | 'middle' | 'end'}> =
+  const xTicks: Array<{
+    frac: number;
+    label: string;
+    anchor: 'start' | 'middle' | 'end';
+  }> =
     axes && history.length > 1
       ? [0, 1 / 3, 2 / 3, 1].map((f, i) => {
           const idx = Math.round(f * (history.length - 1));
@@ -316,18 +347,25 @@ export const PerfAreaChart: React.FC<PerfAreaChartProps> = ({
   // 网格刻度（水平 4 档含 0/100% 轴线，垂直 4 档）；0 档不标文字（底部轴即 0，避免撞柱区）
   const hTicks = [0, 1 / 3, 2 / 3, 1];
   const vTicks = [0, 1 / 3, 2 / 3, 1];
-  const yAxisLabels = (yTick ? hTicks.slice(1) : []).map(f => ({f, t: yTick!(f, max)}));
+  const yAxisLabels = (yTick ? hTicks.slice(1) : []).map(f => ({
+    f,
+    t: yTick!(f, max),
+  }));
 
   const canDraw = width > 0 && history.length > 1;
   if (!canDraw) {
     return (
-      <View style={{height, width: '100%'}} onLayout={e => setWidth(e.nativeEvent.layout.width)} testID={testID} />
+      <View
+        style={[chartWrapStyles.wrap, wrapStyle]}
+        onLayout={e => setWidth(e.nativeEvent.layout.width)}
+        testID={testID}
+      />
     );
   }
 
   return (
     <View
-      style={{height, width: '100%'}}
+      style={[chartWrapStyles.wrap, wrapStyle]}
       onLayout={e => setWidth(e.nativeEvent.layout.width)}
       testID={testID}>
       <Svg width={width} height={height}>
@@ -431,26 +469,26 @@ export const PerfAreaChart: React.FC<PerfAreaChartProps> = ({
         ) : null}
 
         {/* ── 温度热力带（tempBand）：底 2px 渐变带，按列绘制 ── */}
-        {tempBand && history.length > 1 ? (
-          history.map((p, i) => {
-            const colW = plotW / history.length;
-            const t = p.tempC;
-            if (naOf(t)) {
-              return null;
-            }
-            return (
-              <Rect
-                key={`band-${i}`}
-                x={x0 + i * colW}
-                y={bandY}
-                width={Math.max(colW + 0.5, 1.5)}
-                height={BAND_H}
-                fill={tempBandColor(t)}
-                opacity={0.9}
-              />
-            );
-          })
-        ) : null}
+        {tempBand && history.length > 1
+          ? history.map((p, i) => {
+              const colW = plotW / history.length;
+              const t = p.tempC;
+              if (naOf(t)) {
+                return null;
+              }
+              return (
+                <Rect
+                  key={`band-${i}`}
+                  x={x0 + i * colW}
+                  y={bandY}
+                  width={Math.max(colW + 0.5, 1.5)}
+                  height={BAND_H}
+                  fill={tempBandColor(t)}
+                  opacity={0.9}
+                />
+              );
+            })
+          : null}
 
         {showPssLines ? (
           <>
@@ -501,32 +539,39 @@ export const PerfAreaChart: React.FC<PerfAreaChartProps> = ({
         ) : null}
 
         {/* ── 柱状区（bars）：贴画布底部，双系列并排 ── */}
-        {bars && bars.length > 0 && history.length > 1 ? (
-          bars.map(bar => {
-            const colW = plotW / history.length;
-            const barW = Math.max(colW * 0.34, 1.5);
-            return history.map((p, i) => {
-              const v = overlayValueOf(p, bar.key);
-              if (naOf(v)) {
-                return null;
-              }
-              const h = Math.min(Math.max((v / bar.max) * (BAR_H - 2), 0.5), BAR_H - 2);
-              const x = x0 + i * colW + (colW - bars!.length * barW) / 2 + barW * bars!.indexOf(bar);
-              return (
-                <Rect
-                  key={`bar-${bar.key}-${i}`}
-                  x={x}
-                  y={barBottom - h}
-                  width={barW}
-                  height={h}
-                  rx={0.5}
-                  fill={bar.color}
-                  opacity={0.85}
-                />
-              );
-            });
-          })
-        ) : null}
+        {bars && bars.length > 0 && history.length > 1
+          ? bars.map(bar => {
+              const colW = plotW / history.length;
+              const barW = Math.max(colW * 0.34, 1.5);
+              return history.map((p, i) => {
+                const v = overlayValueOf(p, bar.key);
+                if (naOf(v)) {
+                  return null;
+                }
+                const h = Math.min(
+                  Math.max((v / bar.max) * (BAR_H - 2), 0.5),
+                  BAR_H - 2,
+                );
+                const x =
+                  x0 +
+                  i * colW +
+                  (colW - bars!.length * barW) / 2 +
+                  barW * bars!.indexOf(bar);
+                return (
+                  <Rect
+                    key={`bar-${bar.key}-${i}`}
+                    x={x}
+                    y={barBottom - h}
+                    width={barW}
+                    height={h}
+                    rx={0.5}
+                    fill={bar.color}
+                    opacity={0.85}
+                  />
+                );
+              });
+            })
+          : null}
 
         {multi ? (
           // B40 多层叠加：每条曲线各自满量程归一 + 分色
@@ -534,7 +579,15 @@ export const PerfAreaChart: React.FC<PerfAreaChartProps> = ({
             <Polyline
               key={sp.key}
               points={toPolyline(
-                buildPoints(history, sp.key, sp.max, plotW, x0, plotBottom, plotH),
+                buildPoints(
+                  history,
+                  sp.key,
+                  sp.max,
+                  plotW,
+                  x0,
+                  plotBottom,
+                  plotH,
+                ),
               )}
               fill="none"
               stroke={sp.color}

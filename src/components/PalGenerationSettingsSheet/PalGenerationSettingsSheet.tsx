@@ -7,7 +7,8 @@ import {
   COMPLETION_PARAMS_METADATA,
   validateCompletionSettings,
 } from '../../utils/modelSettings';
-import {Alert, View} from 'react-native';
+import {View} from 'react-native';
+import {infoDialog} from '../ui/InfoDialog';
 import {Button, Text, Icon} from 'react-native-paper';
 import {L10nContext} from '../../utils';
 import {t} from '../../locales';
@@ -191,15 +192,17 @@ export const PalGenerationSettingsSheet = ({
     };
 
     if (Object.keys(allErrors).length > 0) {
-      Alert.alert(
-        l10n.components.palGenerationSettingsSheet.invalidValues,
-        l10n.components.palGenerationSettingsSheet.pleaseCorrect +
+      // B52③：校验失败提示 → infoDialog（对齐 ChatGenerationSettingsSheet 模式）
+      infoDialog({
+        title: l10n.components.palGenerationSettingsSheet.invalidValues,
+        message:
+          l10n.components.palGenerationSettingsSheet.pleaseCorrect +
           '\n' +
           Object.entries(allErrors)
             .map(([key, msg]) => `• ${key}: ${msg}`)
             .join('\n'),
-        [{text: l10n.components.palGenerationSettingsSheet.ok}],
-      );
+        buttonText: l10n.components.palGenerationSettingsSheet.ok,
+      });
       return;
     }
 

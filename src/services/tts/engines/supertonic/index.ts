@@ -267,7 +267,10 @@ export class SupertonicEngine implements Engine {
           );
         }
       } catch (convertErr) {
-        console.warn('[SupertonicEngine] sherpa bin conversion failed:', convertErr);
+        console.warn(
+          '[SupertonicEngine] sherpa bin conversion failed:',
+          convertErr,
+        );
       }
 
       // Manifest WITH baseUrl — if any voice files failed to download

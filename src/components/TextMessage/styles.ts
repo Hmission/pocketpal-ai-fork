@@ -1,4 +1,5 @@
 import {StyleSheet} from 'react-native';
+import type {EdgeInsets} from 'react-native-safe-area-context';
 
 import {getUserAvatarNameColor} from '../../utils';
 import {MessageType, Theme, User} from '../../utils/types';
@@ -7,10 +8,12 @@ export const styles = ({
   message,
   theme,
   user,
+  insets,
 }: {
   message: MessageType.Text | MessageType.AssistantTurn;
   theme: Theme;
   user?: User;
+  insets: EdgeInsets;
 }) =>
   StyleSheet.create({
     descriptionText: {
@@ -82,8 +85,9 @@ export const styles = ({
     },
     imagePreviewCloseButton: {
       position: 'absolute',
-      top: 50,
-      right: 20,
+      // B58：insets 感知（刘海机/挖孔屏不贴槽），右缘归 spacing.ml 档
+      top: insets.top + theme.spacing.m,
+      right: theme.spacing.ml,
       zIndex: 1,
     },
     imagePreviewContent: {
@@ -92,7 +96,8 @@ export const styles = ({
     },
     imagePreviewSaveButton: {
       position: 'absolute',
-      bottom: 56,
+      // B58：insets 感知（底部手势条设备不贴条）
+      bottom: insets.bottom + theme.spacing.m,
       alignSelf: 'center',
       paddingHorizontal: 28,
       paddingVertical: 10,

@@ -159,6 +159,28 @@ describe('ComposerPanel', () => {
     expect(onGenerate).toHaveBeenCalled();
   });
 
+  it('任务进行期（loading/generating）出图按钮灰置+转圈且禁点（2026-08-26）', () => {
+    const onGenerate = jest.fn();
+    const {getByTestId, queryByText, rerender} = wrap(
+      <ComposerPanel
+        {...baseProps}
+        generating={true}
+        onGenerate={onGenerate}
+      />,
+    );
+    // generating：文字换转圈（灰底 primary 圈），点击不触发
+    expect(queryByText('出图')).toBeNull();
+    fireEvent.press(getByTestId('imagegen-generate'));
+    expect(onGenerate).not.toHaveBeenCalled();
+    // loading（引擎加载期）：同样灰置转圈禁点——首次出图加载模型最耗时时也可见反馈
+    rerender(
+      <ComposerPanel {...baseProps} loading={true} onGenerate={onGenerate} />,
+    );
+    expect(queryByText('出图')).toBeNull();
+    fireEvent.press(getByTestId('imagegen-generate'));
+    expect(onGenerate).not.toHaveBeenCalled();
+  });
+
   it('非 Dream 预览区有图时显示编辑按钮，点击触发 onEditArm；无图不渲染', () => {
     const onEditArm = jest.fn();
     const {getByText} = wrap(
@@ -183,7 +205,9 @@ describe('ComposerPanel', () => {
       <ComposerPanel {...baseProps} showAdvanced={true} hasLora={true} />,
     );
     expect(getByText('LoRA')).toBeTruthy();
-    rerender(<ComposerPanel {...baseProps} showAdvanced={true} hasLora={false} />);
+    rerender(
+      <ComposerPanel {...baseProps} showAdvanced={true} hasLora={false} />,
+    );
     expect(queryByText('LoRA')).toBeNull();
   });
 
@@ -423,5 +447,42 @@ describe('ResultPreview', () => {
     expect(getByText('显存不足')).toBeTruthy();
     fireEvent.press(getByTestId('imagegen-copy-error'));
     expect(onCopyError).toHaveBeenCalledWith(failedItem);
+  });
+
+  it('预览卡片顶部横幅：瞬时横幅渲染 + 整卡点击关闭（不传 dismissable=false 的编辑锁定横幅）', () => {
+    const onDismissBanner = jest.fn();
+    const {getByText, getByTestId, rerender} = wrap(
+      <ResultPreview
+        {...baseProps}
+        currentImage={historyItem.uri}
+        currentItem={historyItem}
+        previewBanner={{
+          text: '生成完成（1024×1024）',
+          variant: 'info',
+          dismissable: true,
+        }}
+        onDismissBanner={onDismissBanner}
+      />,
+    );
+    expect(getByText('生成完成（1024×1024）')).toBeTruthy();
+    fireEvent.press(getByTestId('ui-banner'));
+    expect(onDismissBanner).toHaveBeenCalled();
+    // 编辑锁定常驻横幅（dismissable=false）：不响应整卡点击
+    onDismissBanner.mockClear();
+    rerender(
+      <ResultPreview
+        {...baseProps}
+        currentImage={historyItem.uri}
+        currentItem={historyItem}
+        previewBanner={{
+          text: '已锁定当前图（1024×1024），输入编辑指令后点「执行编辑」',
+          variant: 'info',
+          dismissable: false,
+        }}
+        onDismissBanner={onDismissBanner}
+      />,
+    );
+    fireEvent.press(getByText(/已锁定当前图/));
+    expect(onDismissBanner).not.toHaveBeenCalled();
   });
 });

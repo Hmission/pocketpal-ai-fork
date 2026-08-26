@@ -62,17 +62,17 @@ export async function isTtsGenInstalled(
         ? // B36：sherpa 生成链路用 tokens.txt（tokenizer.json 保留给 fork 播放链路）
           ['model_fp32.onnx', 'tokens.txt']
         : engine === 'supertonic'
-        ? [
-            'duration_predictor.onnx',
-            'text_encoder.onnx',
-            'vector_estimator.onnx',
-            'vocoder.onnx',
-            // B36：sherpa 要求 int32 二进制 .bin（json 保留给 fork 播放链路）
-            'unicode_indexer.bin',
-          ]
-        : // B34：kitten 分支（此前落到 supertonic 检查恒 false → 「模型未安装完整」）
-          // B36：kitten_sherpa.onnx 为 sherpa 官方模型（palshub 0.8 输出纯噪声，弃用）
-          ['kitten_sherpa.onnx', 'tokens.txt'];
+          ? [
+              'duration_predictor.onnx',
+              'text_encoder.onnx',
+              'vector_estimator.onnx',
+              'vocoder.onnx',
+              // B36：sherpa 要求 int32 二进制 .bin（json 保留给 fork 播放链路）
+              'unicode_indexer.bin',
+            ]
+          : // B34：kitten 分支（此前落到 supertonic 检查恒 false → 「模型未安装完整」）
+            // B36：kitten_sherpa.onnx 为 sherpa 官方模型（palshub 0.8 输出纯噪声，弃用）
+            ['kitten_sherpa.onnx', 'tokens.txt'];
     if (!(await RNFS.exists(dir))) {
       return false;
     }

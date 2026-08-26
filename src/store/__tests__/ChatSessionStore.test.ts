@@ -118,9 +118,7 @@ describe('chatSessionStore', () => {
     });
 
     it('serializes concurrent loadSessionList calls (init + drawer mount race)', async () => {
-      (chatSessionRepository.getAllSessions as jest.Mock).mockResolvedValue(
-        [],
-      );
+      (chatSessionRepository.getAllSessions as jest.Mock).mockResolvedValue([]);
 
       // 并发调用：不 await 第一个，直接发起第二个
       const first = chatSessionStore.loadSessionList();
@@ -995,7 +993,11 @@ describe('chatSessionStore', () => {
         chatSessionRepository.saveGlobalCompletionSettings as jest.Mock
       ).mockResolvedValue(undefined);
 
-      await chatSessionStore.createNewSession('New Session', [], customSettings);
+      await chatSessionStore.createNewSession(
+        'New Session',
+        [],
+        customSettings,
+      );
 
       expect(chatSessionRepository.createSession).toHaveBeenCalledWith(
         'New Session',

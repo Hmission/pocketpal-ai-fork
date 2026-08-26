@@ -36,7 +36,11 @@ export async function appendConversation(
       `\u5973\u5996: ${assistantText.slice(0, 4000)}\n`;
 
     if (!(await RNFS.exists(file))) {
-      await RNFS.writeFile(file, `# \u5bf9\u8bdd\u65e5\u5fd7 ${dateStr}\n`, 'utf8');
+      await RNFS.writeFile(
+        file,
+        `# \u5bf9\u8bdd\u65e5\u5fd7 ${dateStr}\n`,
+        'utf8',
+      );
     }
     await RNFS.appendFile(file, entry, 'utf8');
     // Update search index cache so new conversations are immediately searchable

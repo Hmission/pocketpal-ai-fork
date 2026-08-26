@@ -81,10 +81,7 @@ describe('summarizeConversation', () => {
 
   it('B19.1 预算缺省回退 6000 字符', async () => {
     const engine = streamEngine('这是一段足够长的摘要内容');
-    await summarizeConversation(
-      {dialogueText: '大'.repeat(9999)},
-      engine,
-    );
+    await summarizeConversation({dialogueText: '大'.repeat(9999)}, engine);
     const userContent = engine.completion.mock.calls[0][0].messages[1].content;
     expect(userContent.length).toBe(6000);
   });

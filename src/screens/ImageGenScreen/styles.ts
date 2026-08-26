@@ -56,14 +56,14 @@ export const createStyles = (theme: any) =>
       color: theme.colors.onPrimary,
       fontWeight: '600',
     },
-    // v4.2 顶部横幅 overlay：压预览区顶部（白卡实底保证图片上可读），不挡底部按钮
-    bannerWrap: {
+    // v4.3 预览卡片顶部横幅 overlay：叠在图区顶部（只压预览卡片，不压历史区/创作区）；
+    // 无瓷底——BannerBar 自身语义色 wash 透出（大王裁定：不要灰色底）
+    bannerOverlay: {
       position: 'absolute',
-      top: 458,
-      left: 16,
-      right: 16,
-      zIndex: 5,
-      backgroundColor: theme.colors.surfaceElevated,
+      top: 8,
+      left: 8,
+      right: 8,
+      zIndex: 10,
       borderRadius: theme.radius.m,
       overflow: 'hidden',
       elevation: 4,
@@ -72,6 +72,8 @@ export const createStyles = (theme: any) =>
       shadowRadius: 8,
       shadowOffset: {width: 0, height: 2},
     },
+    // 信息条被横幅顶下：横幅显示期间不与其重叠（B58：spacing 表达式 = banner 高 40 + 边距 12）
+    infoOverlayPushed: {top: 52},
     dropPanel: {
       marginTop: 6,
       backgroundColor: theme.colors.surface,
@@ -88,13 +90,16 @@ export const createStyles = (theme: any) =>
     modelRow: {
       paddingVertical: 10,
       paddingHorizontal: 10,
-      borderRadius: theme.radius[theme.shapeRoles.inputSmall],
+      // 与浮层面板（dropPanelAbs）同圆角：选中描边视觉与整卡一致（2026-08-26 大王）
+      borderRadius: theme.radius[theme.shapeRoles.surface],
       backgroundColor: theme.colors.surface,
       flexDirection: 'row',
       alignItems: 'center',
     },
     modelRowMain: {flex: 1, paddingRight: 8},
     modelRowSelected: {borderWidth: 1, borderColor: theme.colors.primary},
+    // 本机不可用行：全行灰置（叠加在 modelRow 上）
+    modelRowIncompat: {opacity: 0.45},
     modelName: {...theme.typography.uiM, color: theme.colors.onSurface},
     modelNote: {
       ...theme.typography.captionS,
@@ -185,18 +190,13 @@ export const createStyles = (theme: any) =>
       // 编辑态：更低不透明度，底图可见
       backgroundColor: theme.colors.assistantBubbleBackground + 'A6',
     },
-    // 三点波浪动效容器/圆点
+    // B57：三点波浪容器保留（AudioWorkshopTab 包 ui/WaveDots）；
+    // genDot 单点样式随迁删除（圆点渲染归一组件）
     genDotsRow: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
       height: 32,
-    },
-    genDot: {
-      width: 10,
-      height: 10,
-      borderRadius: theme.radius[theme.shapeRoles.circle],
-      backgroundColor: theme.colors.primary,
     },
     genOverlayTitle: {
       ...theme.typography.uiM,
@@ -340,8 +340,12 @@ export const createStyles = (theme: any) =>
       marginTop: 4,
       textAlign: 'right',
     },
-    // 上传图反推 FAB（避开「重新上传」bottom 10 → 44）
-    captionFab: {bottom: 44, backgroundColor: '#6a1b9a'},
+    // 上传图反推 FAB（避开「重新上传」bottom 10 → B58：spacing 表达式 40+4=44；
+    // 颜色为反推紫（IMAGEGEN_UI_SPEC §2 登记语义，随 B56 上收 token）
+    captionFab: {
+      bottom: theme.spacing.xxl + theme.spacing.xs,
+      backgroundColor: '#6a1b9a',
+    },
     // ---- 音频工坊（AUDIO_UI_SPEC v1）----
     audioSegBar: {
       flexDirection: 'row',
@@ -458,7 +462,6 @@ export const createStyles = (theme: any) =>
       ...theme.typography.captionS,
       color: theme.colors.onSurfaceVariant,
       textAlign: 'center',
-      fontSize: 10,
     },
     audioComposer: {gap: 10},
     /** B33：生成输入框单行视觉；B38：默认两行（minHeight 66——怕用户找不到输入处） */
@@ -552,6 +555,10 @@ export const createStyles = (theme: any) =>
       borderRadius: theme.radius[theme.shapeRoles.pill],
       backgroundColor: withOpacity(theme.colors.primary, 0.12),
     },
+    // audio 段态：滑块右移至 +50%（叠加在 workshopSliderThumb 上）
+    workshopSliderThumbAudio: {
+      left: '50%',
+    },
     workshopSliderSeg: {
       // v5.3：再收窄至 36（原 48）——两字 24px（uiS）+ 左右总留白 12px（大王：留一个字符空间即可甚至不留）
       width: 36,
@@ -591,6 +598,7 @@ export const createStyles = (theme: any) =>
     badgeZ: {color: theme.colors.badgeZImage, fontWeight: '700'},
     badgeDream: {color: theme.colors.badgeDreamlite, fontWeight: '700'},
     badgeFlux: {color: theme.colors.badgeFlux, fontWeight: '700'},
+    badgeKrea2: {color: theme.colors.badgeKrea2, fontWeight: '700'},
     // 实验性徽章：警示色（模型可能不可用，与操作按钮橙区分）
     badgeExp: {
       color: theme.colors.warning,
@@ -818,6 +826,9 @@ export const createStyles = (theme: any) =>
     buttonSecondary: {backgroundColor: theme.colors.surface},
     buttonDanger: {backgroundColor: theme.colors.error},
     buttonDisabled: {backgroundColor: theme.colors.surface},
+    // 任务进行期（loading/generating）：按钮灰置时文字降级（onSurfaceVariant），
+    // 与转圈（primary 色）共同构成「灰掉+动效」的进行中反馈
+    buttonTextDisabled: {color: theme.colors.onSurfaceVariant},
     buttonText: {
       color: theme.colors.onPrimary,
       ...theme.typography.uiM,
@@ -876,18 +887,7 @@ export const createStyles = (theme: any) =>
       marginTop: 2,
     },
     statusPanel: {marginTop: 6, gap: 3},
-    progressTrack: {
-      height: 8,
-      borderRadius: theme.radius.xs,
-      backgroundColor: withOpacity(theme.colors.shadow, 0.08),
-      overflow: 'hidden',
-    },
     progressTrackW70: {width: '70%'},
-    progressBarFill: {
-      height: 8,
-      backgroundColor: theme.colors.primary,
-      borderRadius: theme.radius.xs,
-    },
     progressText: {
       ...theme.typography.captionS,
       color: theme.colors.onSurfaceVariant,
@@ -940,8 +940,8 @@ export const createStyles = (theme: any) =>
     perfCapsuleText: {
       ...theme.typography.captionS,
       color: theme.colors.onSurfaceVariant,
-      fontSize: 10,
-      lineHeight: 13,
+      fontSize: 11,
+      lineHeight: 14,
     },
     perfBody: {gap: 5, marginTop: 4},
     // v2 叠加线切换行：chips 横滑 + 右端峰值文字
@@ -966,16 +966,16 @@ export const createStyles = (theme: any) =>
     perfOverlayChipText: {
       ...theme.typography.captionS,
       color: theme.colors.onSurfaceVariant,
-      fontSize: 10,
-      lineHeight: 13,
+      fontSize: 11,
+      lineHeight: 14,
     },
     perfOverlayChipTextActive: {color: '#ffffff', fontWeight: '600'},
     perfPeak: {
       ...theme.typography.captionS,
       color: theme.colors.onSurfaceVariant,
       marginLeft: 'auto',
-      fontSize: 10,
-      lineHeight: 13,
+      fontSize: 11,
+      lineHeight: 14,
     },
     // B43 图例行（叠全时）：色点 + 通道名横排一行，图表可读性（紫色线=功耗等）
     perfLegend: {
@@ -998,8 +998,8 @@ export const createStyles = (theme: any) =>
     perfLegendText: {
       ...theme.typography.captionS,
       color: theme.colors.onSurfaceVariant,
-      fontSize: 9,
-      lineHeight: 12,
+      fontSize: 11,
+      lineHeight: 14,
     },
     // B39 图表容器：折线渐变面积图 / B40 多层叠加，加高到 88pt 利用预览卡纵向余量（真机验不溢出）
     perfMiniChart: {
@@ -1026,8 +1026,8 @@ export const createStyles = (theme: any) =>
     perfMetricLabel: {
       ...theme.typography.captionS,
       color: theme.colors.onSurfaceVariant,
-      fontSize: 10,
-      lineHeight: 13,
+      fontSize: 11,
+      lineHeight: 14,
     },
     perfMetricValue: {
       ...theme.typography.uiS,

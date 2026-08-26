@@ -15,9 +15,7 @@ describe('modelscope API 适配层', () => {
   });
 
   it('isValidModelScopeRepoId 校验 author/repo 形态', () => {
-    expect(isValidModelScopeRepoId('Qwen/Qwen2.5-7B-Instruct-GGUF')).toBe(
-      true,
-    );
+    expect(isValidModelScopeRepoId('Qwen/Qwen2.5-7B-Instruct-GGUF')).toBe(true);
     expect(isValidModelScopeRepoId('  Qwen/Qwen2.5  ')).toBe(true);
     expect(isValidModelScopeRepoId('norepo')).toBe(false);
     expect(isValidModelScopeRepoId('a/b/c')).toBe(false);

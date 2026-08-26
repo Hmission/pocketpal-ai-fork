@@ -386,9 +386,7 @@ export const Message = observer(
       // reasoning/content/talent block 之前，turn 级仅渲染一次。
       // 单一事实源 = AssistantAuthorRow（与 text 消息共用），消除
       // 原 legacy 多块路径潜在的徽章重复渲染。
-      blocks.push(
-        <AssistantAuthorRow key="author-row" message={message} />,
-      );
+      blocks.push(<AssistantAuthorRow key="author-row" message={message} />);
 
       steps.forEach((step, stepIdx) => {
         // Reasoning and content render as separate blocks, reasoning

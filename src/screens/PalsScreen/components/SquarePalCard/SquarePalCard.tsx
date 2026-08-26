@@ -1,5 +1,5 @@
 import React, {useContext} from 'react';
-import {View, TouchableOpacity, Dimensions, Image, Alert} from 'react-native';
+import {View, TouchableOpacity, Dimensions, Image} from 'react-native';
 
 import {observer} from 'mobx-react-lite';
 import {useNavigation} from '@react-navigation/native';
@@ -26,6 +26,8 @@ import type {PalsHubPal} from '../../../../types/palshub';
 
 import {L10nContext} from '../../../../utils';
 import {t} from '../../../../locales';
+import {infoDialog} from '../../../../components/ui/InfoDialog';
+import {confirmDialog} from '../../../../components/ui/ConfirmDialog';
 import {exportPal} from '../../../../utils/exportUtils';
 import {ROUTES} from '../../../../utils/navigationConstants';
 import {getContrastColor} from '../../../../utils/colorUtils';
@@ -256,30 +258,27 @@ export const SquarePalCard: React.FC<SquarePalCardProps> = observer(
           localPal = palStore.pals.find(p => p.palshub_id === pal.id);
 
           if (!localPal) {
-            // Need to download first
-            Alert.alert(
-              'Download Pal',
-              `Download "${pal.title}" to start chatting?`,
-              [
-                {text: 'Cancel', style: 'cancel'},
-                {
-                  text: 'Download',
-                  onPress: async () => {
-                    try {
-                      const downloadedPal =
-                        await palStore.downloadPalsHubPal(pal);
-                      await activatePalAndNavigate(downloadedPal);
-                    } catch (error) {
-                      console.error('Error downloading pal:', error);
-                      Alert.alert(
-                        'Download Error',
-                        'Failed to download pal. Please try again.',
-                      );
-                    }
-                  },
-                },
-              ],
-            );
+            // Need to download first（二元确认：B52③ Alert → confirmDialog）
+            void confirmDialog({
+              title: 'Download Pal',
+              message: `Download "${pal.title}" to start chatting?`,
+              confirmText: 'Download',
+              cancelText: 'Cancel',
+            }).then(async ok => {
+              if (!ok) {
+                return;
+              }
+              try {
+                const downloadedPal = await palStore.downloadPalsHubPal(pal);
+                await activatePalAndNavigate(downloadedPal);
+              } catch (error) {
+                console.error('Error downloading pal:', error);
+                infoDialog({
+                  title: 'Download Error',
+                  message: 'Failed to download pal. Please try again.',
+                });
+              }
+            });
             return;
           }
         } else {
@@ -289,7 +288,10 @@ export const SquarePalCard: React.FC<SquarePalCardProps> = observer(
         await activatePalAndNavigate(localPal);
       } catch (error) {
         console.error('Error starting chat:', error);
-        Alert.alert('Error', 'Failed to start chat. Please try again.');
+        infoDialog({
+          title: 'Error',
+          message: 'Failed to start chat. Please try again.',
+        });
       }
     };
 
@@ -314,19 +316,17 @@ export const SquarePalCard: React.FC<SquarePalCardProps> = observer(
             m => m.id === localPal.defaultModel?.id,
           );
           if (palDefaultModel) {
-            Alert.alert(
-              'Switch Model?',
-              `Switch to "${palDefaultModel.name}" for this pal?`,
-              [
-                {text: 'Keep Current', style: 'cancel'},
-                {
-                  text: 'Switch',
-                  onPress: () => {
-                    modelStore.selectModel(palDefaultModel);
-                  },
-                },
-              ],
-            );
+            // 切换模型确认（B52③：Alert → confirmDialog）
+            void confirmDialog({
+              title: 'Switch Model?',
+              message: `Switch to "${palDefaultModel.name}" for this pal?`,
+              confirmText: 'Switch',
+              cancelText: 'Keep Current',
+            }).then(ok => {
+              if (ok) {
+                modelStore.selectModel(palDefaultModel);
+              }
+            });
           }
         }
       }
@@ -338,18 +338,17 @@ export const SquarePalCard: React.FC<SquarePalCardProps> = observer(
     // Action handlers for local pals only
     const handleDelete = () => {
       const palName = isPalsHubPal(pal) ? pal.title : pal.name;
-      Alert.alert(
-        l10n.palsScreen.deletePal,
-        t(l10n.palsScreen.deletePalConfirmation, {palName}),
-        [
-          {text: l10n.common.cancel, style: 'cancel'},
-          {
-            text: l10n.common.delete,
-            style: 'destructive',
-            onPress: () => palStore.deletePal(pal.id),
-          },
-        ],
-      );
+      void confirmDialog({
+        title: l10n.palsScreen.deletePal,
+        message: t(l10n.palsScreen.deletePalConfirmation, {palName}),
+        confirmText: l10n.common.delete,
+        cancelText: l10n.common.cancel,
+        destructive: true,
+      }).then(ok => {
+        if (ok) {
+          palStore.deletePal(pal.id);
+        }
+      });
     };
 
     const handleShare = async () => {
@@ -357,9 +356,11 @@ export const SquarePalCard: React.FC<SquarePalCardProps> = observer(
         await exportPal(pal.id);
       } catch (error) {
         console.error('Error sharing pal:', error);
-        Alert.alert('Share Error', 'Failed to share pal. Please try again.', [
-          {text: 'OK'},
-        ]);
+        infoDialog({
+          title: 'Share Error',
+          message: 'Failed to share pal. Please try again.',
+          buttonText: 'OK',
+        });
       }
     };
 
@@ -434,7 +435,7 @@ export const SquarePalCard: React.FC<SquarePalCardProps> = observer(
                             height={16}
                           />
                         )}
-                        size={20}
+                        size={theme.iconSize.m}
                         style={styles.actionButton}
                         onPress={handleShare}
                       />
@@ -450,7 +451,7 @@ export const SquarePalCard: React.FC<SquarePalCardProps> = observer(
                             height={16}
                           />
                         )}
-                        size={20}
+                        size={theme.iconSize.m}
                         style={styles.actionButton}
                         onPress={handleDelete}
                       />
@@ -485,7 +486,7 @@ export const SquarePalCard: React.FC<SquarePalCardProps> = observer(
                       <IconButton
                         icon="alert-circle-outline"
                         iconColor={theme.colors.error}
-                        size={14}
+                        size={theme.iconSize.xs}
                         style={styles.warningIcon}
                       />
                       <Text style={styles.warningText} numberOfLines={1}>

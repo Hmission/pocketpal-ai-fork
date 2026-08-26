@@ -3,6 +3,16 @@ import mockClipboard from '@react-native-clipboard/clipboard/jest/clipboard-mock
 
 import 'react-native-gesture-handler/jestSetup';
 
+// B58 基建护栏：utils 层 import DS 命令式弹窗函数时，import 链可到达
+// react-native-paper/v3/tokens 的 Platform.select——jest preset 的 Platform
+// 被局部 mock 覆盖后 select 可能缺失（exportUtils/androidPermission 测试
+// 曾以「Test suite failed to run」崩溃）。护栏补全，防再犯。
+const RN = require('react-native');
+if (RN.Platform && typeof RN.Platform.select !== 'function') {
+  RN.Platform.select = (obj: any) =>
+    obj?.[RN.Platform.OS] ?? obj?.default ?? null;
+}
+
 // __E2E__ is a build-time constant in prod/e2e builds (see babel.config.js),
 // but in Jest the transform-define plugin is disabled so it stays a runtime
 // global. Default to true so adapter tests render their components; tests

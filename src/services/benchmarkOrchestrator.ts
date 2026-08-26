@@ -187,9 +187,14 @@ class BenchmarkOrchestrator {
 
   // ── 用例 2/3：生图速度 / 温控耐久（DreamLite 单通道，与页面同源）──
   private async runGenRounds(nav: BenchNav, rounds: number): Promise<void> {
-    benchmarkStore.setCase(rounds > 1 ? 2 : 1, rounds > 1 ? 'endurance' : 'gen');
+    benchmarkStore.setCase(
+      rounds > 1 ? 2 : 1,
+      rounds > 1 ? 'endurance' : 'gen',
+    );
     nav.navigate(ROUTES.IMAGE_GEN);
-    console.log(`[BenchSuite] 生图赛道（${rounds} 轮，DreamLite 入口自带按需加载）`);
+    console.log(
+      `[BenchSuite] 生图赛道（${rounds} 轮，DreamLite 入口自带按需加载）`,
+    );
     for (let i = 0; i < rounds; i++) {
       if (this.aborted) {
         throw new Error('用户终止');
@@ -237,9 +242,7 @@ class BenchmarkOrchestrator {
       }
       // 步耗时均值：本轮窗口内 stepTime>0 采样点的均值（真实采集）；
       // 无采样点时退化为总时长/步数（不造假，口径可解释）
-      const pts = this.points.filter(
-        p => p.ts >= roundStart && p.stepTime > 0,
-      );
+      const pts = this.points.filter(p => p.ts >= roundStart && p.stepTime > 0);
       const stepAvg =
         pts.length > 0
           ? pts.reduce((a, p) => a + p.stepTime, 0) / pts.length

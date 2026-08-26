@@ -43,7 +43,11 @@ describe('aiosMemory 提取（P2 v2 语义）', () => {
   });
 
   /** 模拟引擎流式输出：逐 token 回调 */
-  const runWithOutput = async (output: string, user = '大王：我喜欢青色', assistant = '好的，记住了。') => {
+  const runWithOutput = async (
+    output: string,
+    user = '大王：我喜欢青色',
+    assistant = '好的，记住了。',
+  ) => {
     mockCompletion.mockImplementation(
       async (_params: any, onData: (d: {token: string}) => void) => {
         for (const ch of output) {
@@ -78,14 +82,16 @@ describe('aiosMemory 提取（P2 v2 语义）', () => {
     );
     return extractAndSaveMemories('大王：我喜欢青色', '好的，记住了。');
   });
-  
+
   it('管家直答模式（modelStore.engine 为空）：提取回退到管家引擎（P2 修复）', async () => {
     expect(modelStore.engine).toBeUndefined(); // 前置：管家直答语义下大模型未加载
     mockCompletion.mockImplementation(
       async (params: any, onData: (d: {token: string}) => void) => {
         // 提取 prompt 传给管家
         expect(params.messages[0].content).toContain('记忆提取助手');
-        onData({token: '{"memories":[{"type":"fact","content":"大王喜欢喝茶"}]}'});
+        onData({
+          token: '{"memories":[{"type":"fact","content":"大王喜欢喝茶"}]}',
+        });
       },
     );
     await extractAndSaveMemories('我喜欢喝茶，最爱龙井', '好的，记住了。');
@@ -99,12 +105,16 @@ describe('aiosMemory 提取（P2 v2 语义）', () => {
   /** 提取记忆 JSON 的最近一次 writeFile 内容（排除 USER.md 聚合写入） */
   const lastMemoriesWrite = (): any[] => {
     const calls = (RNFS.writeFile as jest.Mock).mock.calls;
-    const mem = [...calls].reverse().find((c: any[]) => String(c[0]).includes('aios_memories'));
+    const mem = [...calls]
+      .reverse()
+      .find((c: any[]) => String(c[0]).includes('aios_memories'));
     return JSON.parse(mem![1]);
   };
 
   it('解析容错：剥离 BOS 前缀与围栏后入库', async () => {
-    await runWithOutput('<s>```json\n{"memories":[{"type":"fact","content":"大王喜欢青色"}]}\n```</s>');
+    await runWithOutput(
+      '<s>```json\n{"memories":[{"type":"fact","content":"大王喜欢青色"}]}\n```</s>',
+    );
     const written = lastMemoriesWrite();
     expect(written).toContainEqual(
       expect.objectContaining({type: 'fact', content: '大王喜欢青色'}),

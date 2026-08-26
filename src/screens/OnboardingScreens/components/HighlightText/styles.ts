@@ -4,6 +4,9 @@ import type {Theme} from '../../../../utils/types';
 
 export const createStyles = (theme: Theme, align: 'left' | 'center') =>
   StyleSheet.create({
+    wrap: {
+      width: '100%',
+    },
     bodyText: {
       ...theme.typography.bodyM,
       color: theme.colors.onSurfaceVariant,

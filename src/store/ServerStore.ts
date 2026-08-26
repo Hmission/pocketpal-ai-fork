@@ -40,8 +40,6 @@ export const SERVER_TEMPLATES = [
   },
 ];
 
-
-
 /** Minimum interval between auto-fetch cycles (ms) */
 const FETCH_THROTTLE_MS = 60000;
 

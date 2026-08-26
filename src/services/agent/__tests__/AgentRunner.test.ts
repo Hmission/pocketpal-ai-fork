@@ -244,7 +244,9 @@ describe('runAgent', () => {
     );
     const finished = events.filter(e => e.type === 'tool_call_finished');
     expect(finished).toHaveLength(1);
-    expect((finished[0] as any).outcome.responseContent).toBe('datetime failed');
+    expect((finished[0] as any).outcome.responseContent).toBe(
+      'datetime failed',
+    );
   });
 
   it('#3 tool call but second turn yields no further tool_calls → run finishes after follow-up', async () => {

@@ -1,8 +1,8 @@
 import React from 'react';
-import {View, Linking} from 'react-native';
-import {Text, Portal} from 'react-native-paper';
+import {View, Linking, Text} from 'react-native';
 
-import {Dialog, DialogAction} from '../Dialog';
+import {OverlayCard} from '../ui/OverlayCard';
+import type {ActionConfig} from '../ui/OverlayCard';
 import {Model} from '../../utils/types';
 import {useTheme} from '../../hooks';
 import {L10nContext} from '../../utils';
@@ -145,100 +145,101 @@ export const DownloadErrorDialog: React.FC<DownloadErrorDialogProps> = ({
   };
 
   const getActions = () => {
-    const actions: DialogAction[] = [];
+    // B46 迁移：OverlayCard 动作槽契约 = primary/secondary 两档（§12.1），
+    // 多动作（viewOnHuggingFace）下沉 body 链接；dismiss 由遮罩/标题关闭承担。
+    const actions: {primary?: ActionConfig; secondary?: ActionConfig} = {};
 
-    if (model?.hfUrl && !isTokenDisabledWhenAuthError && !notEnoughSpace) {
-      actions.push({
-        label: alerts.viewOnHuggingFace,
-        onPress: () => {
-          Linking.openURL(model.hfUrl);
-        },
-        mode: 'text' as const,
-      });
+    if (isTokenDisabledWhenAuthError) {
+      actions.primary = {
+        label: alerts.enableAndRetry,
+        onPress: handleEnableToken,
+      };
+    } else if (onTryAgain) {
+      actions.primary = {
+        label: alerts.tryAgain,
+        onPress: onTryAgain,
+      };
     }
 
     if (
+      ['unauthorized', 'forbidden', 'noToken'].includes(errorType) &&
+      onGoToSettings
+    ) {
+      actions.secondary = {
+        label: alerts.goToSettings,
+        onPress: onGoToSettings,
+      };
+    } else if (
       isTokenDisabledWhenAuthError ||
       isTokenPresentWhenAuthError ||
       notEnoughSpace
     ) {
-      actions.push({
+      actions.secondary = {
         label: l10n.common.dismiss,
-        onPress: () => {
-          onDismiss();
-        },
-        mode: 'text' as const,
-      });
-    }
-
-    if (isTokenDisabledWhenAuthError) {
-      actions.push({
-        label: alerts.enableAndRetry,
-        onPress: handleEnableToken,
-        mode: 'contained' as const,
-      });
-    } else if (
-      ['unauthorized', 'forbidden', 'noToken'].includes(errorType) &&
-      onGoToSettings
-    ) {
-      actions.push({
-        label: alerts.goToSettings,
-        onPress: onGoToSettings,
-        mode: 'text' as const,
-      });
-    }
-
-    if (!isTokenDisabledWhenAuthError && onTryAgain) {
-      actions.push({
-        label: alerts.tryAgain,
-        onPress: onTryAgain,
-        mode: 'contained' as const,
-      });
+        onPress: onDismiss,
+      };
     }
 
     return actions;
   };
 
+  const showHfLink =
+    !!model?.hfUrl && !isTokenDisabledWhenAuthError && !notEnoughSpace;
+
   const steps = getSteps();
   const message = getDialogMessage();
   const styles = createStyles(theme);
+  const {primary, secondary} = getActions();
 
   return (
-    <Portal>
-      <Dialog
-        testID="download-error-dialog"
-        visible={visible}
-        onDismiss={onDismiss}
-        title={getDialogTitle()}
-        actions={getActions()}
-        scrollable={true}>
-        <View>
-          {message && <Text variant="bodyMedium">{message}</Text>}
+    <OverlayCard
+      visible={visible}
+      onRequestClose={onDismiss}
+      testID="download-error-dialog"
+      title={getDialogTitle()}
+      actions={
+        primary || secondary
+          ? {
+              primary,
+              secondary,
+            }
+          : undefined
+      }>
+      <View>
+        {message && <Text style={styles.bodyText}>{message}</Text>}
 
-          {steps.length > 0 && (
-            <View style={styles.stepsContainer}>
-              {steps.map((step, index) => (
-                <View key={index} style={styles.stepItem}>
-                  <View style={styles.stepRow}>
-                    <CheckIcon color={theme.colors.primary} />
-                    <View style={styles.textContainer}>
-                      <Text style={styles.stepText}>{step}</Text>
-                    </View>
+        {steps.length > 0 && (
+          <View style={styles.stepsContainer}>
+            {steps.map((step, index) => (
+              <View key={index} style={styles.stepItem}>
+                <View style={styles.stepRow}>
+                  <CheckIcon color={theme.colors.primary} />
+                  <View style={styles.textContainer}>
+                    <Text style={styles.stepText}>{step}</Text>
                   </View>
                 </View>
-              ))}
-            </View>
-          )}
+              </View>
+            ))}
+          </View>
+        )}
 
-          {errorType === 'other' && error?.message && (
-            <View style={styles.errorDetails}>
-              <Text style={styles.errorText} testID="error-message-text">
-                {error.message}
-              </Text>
-            </View>
-          )}
-        </View>
-      </Dialog>
-    </Portal>
+        {showHfLink && (
+          <Text
+            style={styles.hfLink}
+            onPress={() => Linking.openURL(model!.hfUrl!)}
+            testID="view-on-hf-link">
+            {alerts.viewOnHuggingFace}
+          </Text>
+        )}
+
+        {errorType === 'other' && error?.message && (
+          <View style={styles.errorDetails}>
+            <Text style={styles.errorText} testID="error-message-text">
+              {error.message}
+            </Text>
+          </View>
+        )}
+      </View>
+    </OverlayCard>
   );
 };

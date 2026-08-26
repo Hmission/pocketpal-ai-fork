@@ -18,7 +18,6 @@ import {SRStyle} from '../services/superResEngine';
 import {chatSessionStore, modelStore} from '../store';
 import {imageGenStore} from '../store/imageGenStore';
 import {audioStore} from '../store/audioStore';
-import {transcribeFile} from '../services/asrEngine';
 import {TtsGenEngineId} from '../services/ttsEngine';
 import {KOKORO_VOICES} from '../services/tts/engines/kokoro/voices';
 import {SUPERTONIC_VOICES} from '../services/tts/engines/supertonic/voices';
@@ -384,7 +383,8 @@ export const drcActions: Record<string, DrcActionDef> = {
   'audio.generateTts': {
     id: 'audio.generateTts',
     domain: 'audio',
-    description: 'TTS 音频生成（与音频工坊「生成音频」按钮同链路：audioStore.generateTask）',
+    description:
+      'TTS 音频生成（与音频工坊「生成音频」按钮同链路：audioStore.generateTask）',
     paramsSchema: z.object({
       engine: z.enum(['kokoro', 'supertonic', 'kitten']).default('kokoro'),
       text: z.string().min(1).max(20000),
@@ -405,10 +405,9 @@ export const drcActions: Record<string, DrcActionDef> = {
         engine === 'kokoro'
           ? KOKORO_VOICES
           : engine === 'supertonic'
-          ? SUPERTONIC_VOICES
-          : KITTEN_VOICES;
-      const voice =
-        voices.find(v => v.id === p.voiceId) ?? voices[0] ?? null;
+            ? SUPERTONIC_VOICES
+            : KITTEN_VOICES;
+      const voice = voices.find(v => v.id === p.voiceId) ?? voices[0] ?? null;
       if (!voice) {
         throw new Error(`${engine} 音色列表为空`);
       }
@@ -426,7 +425,8 @@ export const drcActions: Record<string, DrcActionDef> = {
   'audio.transcribe': {
     id: 'audio.transcribe',
     domain: 'audio',
-    description: '转写 wav 音频文件（SenseVoice，任务化入画廊 kind=transcribe）',
+    description:
+      '转写 wav 音频文件（SenseVoice，任务化入画廊 kind=transcribe）',
     paramsSchema: z.object({
       path: z.string().min(1),
     }),

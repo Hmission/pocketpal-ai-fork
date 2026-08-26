@@ -17,7 +17,9 @@ describe('errorRegistry', () => {
   });
 
   it('OOM 命中 CP-APP-002', () => {
-    const hit = matchFirstError('java.lang.OutOfMemoryError: Failed to allocate');
+    const hit = matchFirstError(
+      'java.lang.OutOfMemoryError: Failed to allocate',
+    );
     expect(hit?.cpId).toBe('CP-APP-002');
   });
 

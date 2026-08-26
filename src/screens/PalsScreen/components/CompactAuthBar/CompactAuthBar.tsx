@@ -59,7 +59,7 @@ export const CompactAuthBar: React.FC<CompactAuthBarProps> = observer(
                   height={16}
                 />
               )}
-              size={20}
+              size={theme.iconSize.m}
               onPress={onDismiss}
               style={styles.dismissButton}
               testID="dismiss-auth-bar"

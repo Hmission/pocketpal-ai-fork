@@ -73,7 +73,10 @@ export async function detectReasoningReinject(
     );
     return true;
   } catch (error) {
-    console.warn('Reasoning re-injection probe failed (template rejects reasoning_content):', error);
+    console.warn(
+      'Reasoning re-injection probe failed (template rejects reasoning_content):',
+      error,
+    );
     return false;
   }
 }

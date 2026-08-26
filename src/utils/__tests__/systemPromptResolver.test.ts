@@ -292,7 +292,13 @@ describe('systemPromptResolver', () => {
         {
           role: 'assistant' as const,
           content: '',
-          tool_calls: [{id: 'c1', type: 'function', function: {name: 'x', arguments: '{}'}}],
+          tool_calls: [
+            {
+              id: 'c1',
+              type: 'function',
+              function: {name: 'x', arguments: '{}'},
+            },
+          ],
         },
         {role: 'assistant' as const, content: '普通回复'},
       ];

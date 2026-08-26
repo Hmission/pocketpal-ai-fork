@@ -19,6 +19,18 @@ import {downloadManager} from '../../../../../../services/downloads';
 
 import {modelStore} from '../../../../../../store';
 
+// B46 迁移同步：cannot-remove 提示已由 Alert.alert → infoDialog（用户存量改动）
+jest.mock('../../../../../../components/ui/InfoDialog', () => ({
+  infoDialog: jest.fn(() => Promise.resolve()),
+}));
+import {infoDialog} from '../../../../../../components/ui/InfoDialog';
+
+// B52③ 迁移同步：删除确认已由 Alert.alert → confirmDialog（默认确认流）
+jest.mock('../../../../../../components/ui/ConfirmDialog', () => ({
+  confirmDialog: jest.fn().mockResolvedValue(true),
+}));
+import {confirmDialog} from '../../../../../../components/ui/ConfirmDialog';
+
 const render = (ui: React.ReactElement, options: any = {}) =>
   baseRender(ui, {withBottomSheetProvider: true, ...options});
 
@@ -83,10 +95,10 @@ describe('ModelFileCard', () => {
       fireEvent.press(getByTestId('bookmark-button'));
     });
 
-    expect(Alert.alert).toHaveBeenCalledWith(
-      'Cannot Remove',
-      'The model is downloaded. Please delete the file first.',
-    );
+    expect(infoDialog).toHaveBeenCalledWith({
+      title: 'Cannot Remove',
+      message: 'The model is downloaded. Please delete the file first.',
+    });
   });
 
   it('handles download initiation', async () => {
@@ -160,10 +172,13 @@ describe('ModelFileCard', () => {
       fireEvent.press(getByTestId('download-button'));
     });
 
-    expect(Alert.alert).toHaveBeenCalledWith(
-      'Delete Model',
-      'Are you sure you want to delete this downloaded model?',
-      expect.any(Array),
+    // B52③：删除确认走 confirmDialog（destructive 语义）
+    expect(confirmDialog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Delete Model',
+        message: 'Are you sure you want to delete this downloaded model?',
+        destructive: true,
+      }),
     );
   });
 });

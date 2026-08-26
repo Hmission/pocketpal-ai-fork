@@ -19,6 +19,16 @@ import {
   exportAllPals,
 } from '../exportUtils';
 import {ensureLegacyStoragePermission} from '../androidPermission';
+import {infoDialog} from '../../components/ui/InfoDialog/api';
+import {confirmDialog} from '../../components/ui/ConfirmDialog/api';
+
+// Mock InfoDialog / ConfirmDialog（B58 拆分后：工具层经 api 路径引用，mock 同步指向 api）
+jest.mock('../../components/ui/InfoDialog/api', () => ({
+  infoDialog: jest.fn().mockResolvedValue(undefined),
+}));
+jest.mock('../../components/ui/ConfirmDialog/api', () => ({
+  confirmDialog: jest.fn().mockResolvedValue(false),
+}));
 
 // Mock dependencies
 jest.mock('react-native', () => ({
@@ -374,12 +384,16 @@ describe('exportUtils', () => {
 
     it('should handle share errors gracefully', async () => {
       (Share.open as jest.Mock).mockRejectedValue(new Error('Share failed'));
+      // B55：保存成功提示 → confirmDialog（分享为主动作）；确认后走分享失败提示
+      (confirmDialog as jest.Mock).mockResolvedValueOnce(true);
 
       await expect(exportChatSession('session-1')).rejects.toThrow();
-      expect(Alert.alert).toHaveBeenCalledWith(
-        expect.stringContaining('Export Error'),
-        expect.stringContaining('export'),
-        expect.any(Array),
+      // B55：分享路径经 confirmDialog 确认后失败 → 一定有用户可见的错误提示
+      // （具体标题受流程分支影响：分享失败提示或顶层导出错误提示，意图同为「不吞错」）
+      expect(infoDialog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: expect.stringContaining('Error'),
+        }),
       );
     });
 
@@ -410,11 +424,12 @@ describe('exportUtils', () => {
       // Verify that copyFile was attempted
       expect(RNFS.copyFile).toHaveBeenCalled();
 
-      // Verify that Alert.alert was called to show the error to the user
-      expect(Alert.alert).toHaveBeenCalledWith(
-        expect.any(String), // Save options title
-        expect.any(String), // Save options message
-        expect.any(Array), // Buttons array
+      // Verify that confirmDialog was called to show save options（B55：Alert → confirmDialog）
+      expect(confirmDialog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: expect.any(String), // Save options title
+          message: expect.any(String), // Save options message
+        }),
       );
     });
   });

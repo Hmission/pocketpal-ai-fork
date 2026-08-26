@@ -1,5 +1,12 @@
 import * as React from 'react';
-import {Animated, View, FlatList, Text, StyleSheet, TouchableOpacity} from 'react-native';
+import {
+  Animated,
+  View,
+  FlatList,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+} from 'react-native';
 import {Appbar, Divider, TextInput, Button} from 'react-native-paper';
 import * as RNFS from '@dr.pogodin/react-native-fs';
 
@@ -15,6 +22,7 @@ import {
 import {AIOS_MEMORY_FILE} from '../../utils/paths';
 import {ROUTES} from '../../utils/navigationConstants';
 import {listToys, readToy, ToyEntry} from '../../services/toyChest';
+import {listProjects, WorkspaceProject} from '../../services/workspace';
 import {HtmlPreviewBubble} from '../../components/HtmlPreviewBubble';
 import {chatSessionStore} from '../../store';
 import {useTheme, useStaggerEntry} from '../../hooks';
@@ -27,7 +35,7 @@ import {
   PlayIcon,
 } from '../../assets/icons';
 
-type Tab = 'conversations' | 'summaries' | 'longterm' | 'toys';
+type Tab = 'conversations' | 'summaries' | 'longterm' | 'toys' | 'writing';
 
 // 列表行错峰入场（DESIGN_SPEC §5：一次性、不循环；JS driver）
 const StaggeredListItem = ({
@@ -74,6 +82,11 @@ export function KnowledgeScreen({navigation}: any) {
     title: string;
     html: string;
   } | null>(null);
+  // 写作项目（WS-1，WORKSPACE_SPEC §九）：listProjects 只读列表，
+  // 模型经 WritingDocEngine 工具维护，UI 不做业务逻辑（同玩具箱模式）
+  const [writingProjects, setWritingProjects] = React.useState<
+    WorkspaceProject[]
+  >([]);
 
   const refresh = React.useCallback(async () => {
     try {
@@ -82,6 +95,7 @@ export function KnowledgeScreen({navigation}: any) {
       const slist = await listSummaryDates();
       setSummaryDates(slist);
       setToys(await listToys());
+      setWritingProjects(await listProjects('writing'));
     } catch (e) {
       console.warn('[KnowledgeScreen] refresh failed:', e);
     }
@@ -137,6 +151,13 @@ export function KnowledgeScreen({navigation}: any) {
   // → 模型 read_html 读回原文 → 改 → render_html 同名覆盖存档。
   const continueModifyToy = (toy: {title: string}) => {
     chatSessionStore.pendingChatText = `继续改玩具「${toy.title}」：`;
+    navigation.navigate(ROUTES.CHAT);
+  };
+
+  // 写作续写闭环（WS-1，WORKSPACE_SPEC §六恢复协议）：跳回聊天 +
+  // 预填「继续写《X》：」→ taskRouter WRITE_RE 命中 → 索引恢复 → 框架注入 → 续写。
+  const continueWriting = (project: WorkspaceProject) => {
+    chatSessionStore.pendingChatText = `继续写《${project.name}》：`;
     navigation.navigate(ROUTES.CHAT);
   };
 
@@ -214,12 +235,26 @@ export function KnowledgeScreen({navigation}: any) {
             玩具箱
           </Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, tab === 'writing' && styles.tabActive]}
+          onPress={() => {
+            setTab('writing');
+            refresh();
+          }}>
+          <Text
+            style={tab === 'writing' ? styles.tabTextActive : styles.tabText}>
+            写作
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* Content area */}
       {selectedToy ? (
         <View style={styles.toyDetail}>
-          <HtmlPreviewBubble html={selectedToy.html} title={selectedToy.title} />
+          <HtmlPreviewBubble
+            html={selectedToy.html}
+            title={selectedToy.title}
+          />
           <Button
             mode="contained"
             icon="pencil"
@@ -313,6 +348,31 @@ export function KnowledgeScreen({navigation}: any) {
             <Text style={styles.empty}>
               {toys.length === 0
                 ? '玩具箱空空的。在聊天里说「做个玩具：贪吃蛇」让小鸡造一个吧！'
+                : ''}
+            </Text>
+          }
+        />
+      ) : tab === 'writing' ? (
+        <FlatList
+          data={writingProjects}
+          renderItem={({item, index}) => (
+            <StaggeredListItem
+              index={index}
+              title={item.name}
+              subtitle={
+                item.progress ?? new Date(item.updatedAt).toLocaleString()
+              }
+              Icon={PencilLineIcon}
+              color={theme.colors.domain.knowledge}
+              onPress={() => continueWriting(item)}
+            />
+          )}
+          keyExtractor={item => item.name}
+          ItemSeparatorComponent={Divider}
+          ListEmptyComponent={
+            <Text style={styles.empty}>
+              {writingProjects.length === 0
+                ? '暂无写作项目。在聊天里说「新建写作项目：我的小说」开始创作吧！'
                 : ''}
             </Text>
           }

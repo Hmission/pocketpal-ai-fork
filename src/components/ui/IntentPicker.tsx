@@ -12,9 +12,10 @@
  * Host 未挂载时返回 null（fail-fast，不改变状态）。
  */
 import * as React from 'react';
-import {TouchableOpacity, View, Text} from 'react-native';
+import {StyleSheet, TouchableOpacity, View, Text} from 'react-native';
 
 import {useTheme} from '../../hooks';
+import type {Theme} from '../../utils/types';
 import type {IntentKind} from '../../services/aiosMemory/rituals';
 import {OverlayCard} from './OverlayCard';
 import {CheckMdIcon} from '../../assets/icons';
@@ -58,6 +59,7 @@ const INTENT_OPTIONS: Array<{kind: IntentKind; label: string; desc: string}> = [
  */
 export const IntentPickerHost: React.FC = () => {
   const theme = useTheme();
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
   const [pending, setPending] = React.useState<PendingPicker | null>(null);
 
   React.useEffect(() => {
@@ -73,47 +75,27 @@ export const IntentPickerHost: React.FC = () => {
   };
 
   return (
-    <OverlayCard visible={pending !== null} onRequestClose={() => close(null)} title="切换聊天状态">
+    <OverlayCard
+      visible={pending !== null}
+      onRequestClose={() => close(null)}
+      title="切换聊天状态">
       {INTENT_OPTIONS.map(opt => {
         const selected = pending?.current === opt.kind;
         return (
           <TouchableOpacity
             key={opt.kind}
             testID={`intent-picker-${opt.kind}`}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              minHeight: 44,
-              borderRadius: theme.radius.s,
-              paddingHorizontal: theme.spacing.sm,
-              borderWidth: theme.stroke.sm,
-              borderColor: selected
-                ? theme.colors.primary
-                : theme.colors.outlineVariant,
-              backgroundColor: selected
-                ? theme.colors.primary + '1F' // 12% 主色底（同模型 chip 语言）
-                : 'transparent',
-            }}
+            style={[styles.optionRow, selected && styles.optionRowSelected]}
             onPress={() => close(opt.kind)}>
             <View>
               <Text
-                style={{
-                  ...theme.typography.uiM,
-                  fontWeight: selected ? '600' : '400',
-                  color: selected
-                    ? theme.colors.primary
-                    : theme.colors.onSurface,
-                }}>
+                style={[
+                  styles.optionLabel,
+                  selected && styles.optionLabelSelected,
+                ]}>
                 {opt.label}
               </Text>
-              <Text
-                style={{
-                  ...theme.typography.captionS,
-                  color: theme.colors.onSurfaceVariant,
-                }}>
-                {opt.desc}
-              </Text>
+              <Text style={styles.optionDesc}>{opt.desc}</Text>
             </View>
             {selected && (
               <CheckMdIcon
@@ -130,3 +112,35 @@ export const IntentPickerHost: React.FC = () => {
 };
 
 IntentPickerHost.displayName = 'IntentPickerHost';
+
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    optionRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      minHeight: 44,
+      borderRadius: theme.radius.s,
+      paddingHorizontal: theme.spacing.sm,
+      borderWidth: theme.stroke.sm,
+      borderColor: theme.colors.outlineVariant,
+      backgroundColor: 'transparent',
+    },
+    optionRowSelected: {
+      borderColor: theme.colors.primary,
+      backgroundColor: theme.colors.primary + '1F', // 12% 主色底（同模型 chip 语言）
+    },
+    optionLabel: {
+      ...theme.typography.uiM,
+      fontWeight: '400',
+      color: theme.colors.onSurface,
+    },
+    optionLabelSelected: {
+      fontWeight: '600',
+      color: theme.colors.primary,
+    },
+    optionDesc: {
+      ...theme.typography.captionS,
+      color: theme.colors.onSurfaceVariant,
+    },
+  });

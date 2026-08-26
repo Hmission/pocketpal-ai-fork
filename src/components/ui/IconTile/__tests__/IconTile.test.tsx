@@ -2,6 +2,7 @@
  * IconTile 冒烟测试（DESIGN_SPEC §3）。
  */
 import React from 'react';
+import {StyleSheet} from 'react-native';
 import {render} from '@testing-library/react-native';
 
 import {IconTile} from '../IconTile';
@@ -16,8 +17,10 @@ describe('IconTile', () => {
   it('renders default m size (40x40) with testID', () => {
     const {getByTestId} = render(<IconTile icon={FakeIcon} color="#1E4DF6" />);
     const tile = getByTestId('ui-icon-tile');
-    expect(tile.props.style.width).toBe(40);
-    expect(tile.props.style.height).toBe(40);
+    // B51：style 为基样式+动态尺寸/底色数组，断言前 flatten
+    const flat = StyleSheet.flatten(tile.props.style);
+    expect(flat.width).toBe(40);
+    expect(flat.height).toBe(40);
   });
 
   it('renders s size (32x32)', () => {
@@ -25,8 +28,9 @@ describe('IconTile', () => {
       <IconTile icon={FakeIcon} color="#1E4DF6" size="s" />,
     );
     const tile = getByTestId('ui-icon-tile');
-    expect(tile.props.style.width).toBe(32);
-    expect(tile.props.style.height).toBe(32);
+    const flat = StyleSheet.flatten(tile.props.style);
+    expect(flat.width).toBe(32);
+    expect(flat.height).toBe(32);
   });
 
   it('applies domain color to the icon stroke', () => {

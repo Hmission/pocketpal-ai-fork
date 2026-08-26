@@ -23,7 +23,7 @@ export const createStyles = (theme: Theme) =>
     },
     tooltipText: {
       color: theme.colors.onSurface,
-      fontSize: 10,
+      fontSize: 11,
       marginBottom: 2,
     },
   });

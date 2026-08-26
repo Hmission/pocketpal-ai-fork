@@ -42,7 +42,10 @@ function resolveDevice(args = process.argv.slice(2)) {
 function adb(device, ...args) {
   const cmd = device ? ['-s', device, ...args] : [...args];
   try {
-    return execFileSync('adb', cmd, {encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe']}).trim();
+    return execFileSync('adb', cmd, {
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    }).trim();
   } catch (e) {
     const stderr = (e.stderr && e.stderr.toString()) || e.message;
     throw new Error(`adb ${args.join(' ')} 失败: ${stderr}`);
@@ -51,7 +54,11 @@ function adb(device, ...args) {
 
 /** 确保 DRC 目录存在（幂等；目录不存在时 adb push 会失败） */
 function ensureDirs(device) {
-  adb(device, 'shell', `mkdir -p ${DRC_COMMANDS_DIR} ${DRC_RESULTS_DIR} ${AIOS_ROOT}/logs`);
+  adb(
+    device,
+    'shell',
+    `mkdir -p ${DRC_COMMANDS_DIR} ${DRC_RESULTS_DIR} ${AIOS_ROOT}/logs`,
+  );
 }
 
 module.exports = {

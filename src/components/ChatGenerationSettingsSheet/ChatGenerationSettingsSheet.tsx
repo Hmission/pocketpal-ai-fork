@@ -13,7 +13,8 @@ import {
   COMPLETION_PARAMS_METADATA,
   validateCompletionSettings,
 } from '../../utils/modelSettings';
-import {Alert, View} from 'react-native';
+import {View} from 'react-native';
+import {infoDialog} from '../ui/InfoDialog';
 import {Button, SegmentedButtons, Text} from 'react-native-paper';
 import {L10nContext} from '../../utils';
 import {ChevronDownIcon} from '../../assets/icons';
@@ -236,15 +237,16 @@ export const ChatGenerationSettingsSheet = ({
     };
 
     if (Object.keys(allErrors).length > 0) {
-      Alert.alert(
-        l10n.components.chatGenerationSettingsSheet.invalidValues,
-        l10n.components.chatGenerationSettingsSheet.pleaseCorrect +
+      infoDialog({
+        title: l10n.components.chatGenerationSettingsSheet.invalidValues,
+        message:
+          l10n.components.chatGenerationSettingsSheet.pleaseCorrect +
           '\n' +
           Object.entries(allErrors)
             .map(([key, msg]) => `• ${key}: ${msg}`)
             .join('\n'),
-        [{text: l10n.components.chatGenerationSettingsSheet.ok}],
-      );
+        buttonText: l10n.components.chatGenerationSettingsSheet.ok,
+      });
       return;
     }
 
@@ -268,11 +270,14 @@ export const ChatGenerationSettingsSheet = ({
       // Apply current session settings to preset settings
       await handleSaveSettings(); // First save the current UI settings to the session
       await chatSessionStore.applySessionSettingsToGlobal();
-      Alert.alert(
-        l10n.components.chatGenerationSettingsSheet.applytoPresetAlert.title,
-        l10n.components.chatGenerationSettingsSheet.applytoPresetAlert.message,
-        [{text: l10n.components.chatGenerationSettingsSheet.ok}],
-      );
+      infoDialog({
+        title:
+          l10n.components.chatGenerationSettingsSheet.applytoPresetAlert.title,
+        message:
+          l10n.components.chatGenerationSettingsSheet.applytoPresetAlert
+            .message,
+        buttonText: l10n.components.chatGenerationSettingsSheet.ok,
+      });
     }
   };
 

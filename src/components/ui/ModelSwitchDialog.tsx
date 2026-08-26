@@ -23,16 +23,17 @@
  */
 import * as React from 'react';
 import {
-  Animated,
   ScrollView,
+  StyleSheet,
   TouchableOpacity,
   View,
   Text,
 } from 'react-native';
 
 import {useTheme} from '../../hooks';
-import {useWaveDots} from '../../screens/ImageGenScreen/hooks/useWaveDots';
-import {withOpacity} from '../../utils/colorUtils';
+import type {Theme} from '../../utils/types';
+import {WaveDots} from './WaveDots';
+import {Progress} from './Progress';
 import {OverlayCard} from './OverlayCard';
 import {Button} from './Button';
 import {CheckMdIcon} from '../../assets/icons';
@@ -86,7 +87,9 @@ export function askModelSwitch(
 ): Promise<ModelSwitchResult> {
   return new Promise(resolve => {
     if (!listener) {
-      console.warn('[ModelSwitchDialog] host not mounted, treating as cancelled');
+      console.warn(
+        '[ModelSwitchDialog] host not mounted, treating as cancelled',
+      );
       resolve({choice: 'cancel'});
       return;
     }
@@ -106,15 +109,16 @@ const TASK_LABEL: Record<ModelSwitchOptions['task'], string> = {
  */
 export const ModelSwitchDialogHost: React.FC = () => {
   const theme = useTheme();
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
   const [pending, setPending] = React.useState<PendingSwitch | null>(null);
   // 当前选中候选下标（默认 0 = 推荐项）；新弹窗挂起时复位
   const [pickIdx, setPickIdx] = React.useState(0);
   // §18.7：加载中（弹窗内完成，遮罩保持阻塞）+ 失败态（可取消/重试）
   const [loading, setLoading] = React.useState(false);
   const [loadError, setLoadError] = React.useState<string | null>(null);
-  // 加载动效（与生图任务卡 ImageTaskProgress 同款）：三点波浪 + 底条，
-  // 加载期跳动提示，用户能感知加载在进行而非卡死。
-  const waveDots = useWaveDots(loading);
+  // 加载动效（B57：三点波浪 → ui/WaveDots；2% 底条 → ui/Progress，
+  // 原 hook 自 screens/ImageGenScreen/hooks 迁 ui/WaveDots/useWaveDots）
+  const loadingActive = loading;
 
   React.useEffect(() => {
     listener = (opts, resolve) => {
@@ -137,7 +141,8 @@ export const ModelSwitchDialogHost: React.FC = () => {
 
   const candidates = pending?.opts.candidates ?? [];
   const canKeepCurrent = pending?.opts.canKeepCurrent ?? false;
-  const picked = candidates[Math.min(pickIdx, Math.max(0, candidates.length - 1))];
+  const picked =
+    candidates[Math.min(pickIdx, Math.max(0, candidates.length - 1))];
 
   // §18.7：确认后在弹窗内加载——遮罩保持（其他交互阻塞），
   // 完成/失败自动关并恢复；失败显示原因，不静默。
@@ -171,95 +176,28 @@ export const ModelSwitchDialogHost: React.FC = () => {
         // §18.7 加载态：遮罩保持（交互阻塞），按钮全禁，完成后自动关。
         // 动效与生图任务卡统一（三点波浪 + 2% 底条）：模型加载无确定进度，
         // 跳动提示让用户感知加载在进行而非卡死。
-        <View
-          style={{
-            alignItems: 'center',
-            gap: theme.spacing.sm,
-            paddingVertical: theme.spacing.m,
-          }}
-          testID="model-switch-loading">
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 6,
-              height: 24,
-            }}>
-            {waveDots.map((dot, i) => (
-              <Animated.View
-                key={i}
-                style={[
-                  {
-                    width: 8,
-                    height: 8,
-                    borderRadius: 4,
-                    backgroundColor: theme.colors.primary,
-                  },
-                  {
-                    transform: [
-                      {
-                        translateY: dot.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [0, -6],
-                        }),
-                      },
-                    ],
-                    opacity: dot.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0.45, 1],
-                    }),
-                  },
-                ]}
-              />
-            ))}
+        <View style={styles.loadingBox} testID="model-switch-loading">
+          <View style={styles.waveRow}>
+            {/* B57：三点波浪归一 ui/WaveDots（原 8px/6gap/6 振幅视觉参数回传） */}
+            <WaveDots active={loadingActive} size={8} gap={6} translateY={6} />
           </View>
           <Text
             numberOfLines={1}
             ellipsizeMode="tail"
-            style={{
-              ...theme.typography.bodyS,
-              color: theme.colors.onSurfaceVariant,
-              paddingHorizontal: theme.spacing.m,
-            }}>
+            style={styles.loadingText}>
             正在加载「{picked?.name}」…
           </Text>
-          <View
-            style={{
-              width: '70%',
-              height: 6,
-              borderRadius: theme.radius.xxs,
-              backgroundColor: withOpacity(theme.colors.shadow, 0.08),
-              overflow: 'hidden',
-            }}>
-            <View
-              style={{
-                height: '100%',
-                width: '2%',
-                backgroundColor: theme.colors.primary,
-                borderRadius: theme.radius.xxs,
-              }}
-            />
-          </View>
-          <Text
-            style={{
-              ...theme.typography.captionS,
-              color: theme.colors.onSurfaceVariant,
-            }}>
-            切换会替换当前模型，请稍候
-          </Text>
+          {/* B57：2% 底条语义 = ui/Progress value 缺省（原 70% 宽收窄保留） */}
+          <Progress style={styles.loadingProgress} />
+          <Text style={styles.loadingHint}>切换会替换当前模型，请稍候</Text>
         </View>
       ) : (
         <>
-          <Text
-            style={{
-              ...theme.typography.bodyS,
-              lineHeight: 20,
-              color: theme.colors.onSurfaceVariant,
-            }}>
+          <Text style={styles.introText}>
             加载会替换当前模型（数秒等待）。默认推荐第一项。
           </Text>
-          <ScrollView style={{maxHeight: 280}}>
-            <View style={{gap: theme.spacing.xs}}>
+          <ScrollView style={styles.candidateScroll}>
+            <View style={styles.candidateList}>
               {candidates.map((c, i) => {
                 const selected = i === pickIdx;
                 const sizeText = c.size
@@ -271,50 +209,26 @@ export const ModelSwitchDialogHost: React.FC = () => {
                     testID={`model-switch-candidate-${c.id}`}
                     onPress={() => setPickIdx(i)}
                     activeOpacity={0.7}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      minHeight: 44,
-                      borderRadius: theme.radius.s,
-                      paddingHorizontal: theme.spacing.sm,
-                      borderWidth: theme.stroke.sm,
-                      borderColor: selected
-                        ? theme.colors.primary
-                        : theme.colors.outlineVariant,
-                      backgroundColor: selected
-                        ? theme.colors.primary + '1F' // 12% 主色底（同模型 chip 语言）
-                        : 'transparent',
-                    }}>
-                    <View style={{flex: 1}}>
+                    style={[
+                      styles.candidateRow,
+                      selected && styles.candidateRowSelected,
+                    ]}>
+                    <View style={styles.candidateBody}>
                       <Text
-                        style={{
-                          ...theme.typography.uiM,
-                          fontWeight: selected ? '600' : '400',
-                          color: selected
-                            ? theme.colors.primary
-                            : theme.colors.onSurface,
-                        }}
+                        style={[
+                          styles.candidateLabel,
+                          selected && styles.candidateLabelSelected,
+                        ]}
                         numberOfLines={1}>
                         {c.name}
-                        <Text
-                          style={{
-                            ...theme.typography.captionS,
-                            color: theme.colors.onSurfaceVariant,
-                          }}>
+                        <Text style={styles.candidateSize}>
                           {sizeText}
                           {i === 0 ? ' · 推荐' : ''}
                         </Text>
                       </Text>
                       {/* §18.7 一句话推荐说明：差异可决策 */}
                       {c.note ? (
-                        <Text
-                          style={{
-                            ...theme.typography.captionS,
-                            color: theme.colors.onSurfaceVariant,
-                            marginTop: 2,
-                          }}
-                          numberOfLines={1}>
+                        <Text style={styles.candidateNote} numberOfLines={1}>
                           {c.note}
                         </Text>
                       ) : null}
@@ -333,29 +247,19 @@ export const ModelSwitchDialogHost: React.FC = () => {
           </ScrollView>
 
           {loadError ? (
-            <Text
-              style={{
-                ...theme.typography.captionS,
-                color: theme.colors.error,
-              }}
-              testID="model-switch-load-error">
+            <Text style={styles.loadErrorText} testID="model-switch-load-error">
               {loadError}
             </Text>
           ) : null}
 
-          <View
-            style={{
-              flexDirection: 'row',
-              gap: theme.spacing.s,
-              marginTop: theme.spacing.xs,
-            }}>
+          <View style={styles.actionRow}>
             {canKeepCurrent && (
               <Button
                 variant="secondary"
                 label="继续当前模型"
                 onPress={() => close({choice: 'current'})}
                 testID="model-switch-current"
-                style={{flex: 1}}
+                style={styles.actionButton}
               />
             )}
             <Button
@@ -363,7 +267,7 @@ export const ModelSwitchDialogHost: React.FC = () => {
               label="加载所选模型"
               onPress={handleLoad}
               testID="model-switch-load"
-              style={{flex: 1}}
+              style={styles.actionButton}
             />
           </View>
         </>
@@ -373,3 +277,82 @@ export const ModelSwitchDialogHost: React.FC = () => {
 };
 
 ModelSwitchDialogHost.displayName = 'ModelSwitchDialogHost';
+
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    loadingBox: {
+      alignItems: 'center',
+      gap: theme.spacing.sm,
+      paddingVertical: theme.spacing.m,
+    },
+    waveRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      height: 24,
+    },
+    loadingText: {
+      ...theme.typography.bodyS,
+      color: theme.colors.onSurfaceVariant,
+      paddingHorizontal: theme.spacing.m,
+    },
+    // B57：ui/Progress 收窄宽（原 70% 宽度语义保留，2% 底条 = value 缺省）
+    loadingProgress: {
+      width: '70%',
+    },
+    loadingHint: {
+      ...theme.typography.captionS,
+      color: theme.colors.onSurfaceVariant,
+    },
+    introText: {
+      ...theme.typography.bodyS,
+      lineHeight: 20,
+      color: theme.colors.onSurfaceVariant,
+    },
+    candidateScroll: {maxHeight: 280},
+    candidateList: {gap: theme.spacing.xs},
+    candidateRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      minHeight: 44,
+      borderRadius: theme.radius.s,
+      paddingHorizontal: theme.spacing.sm,
+      borderWidth: theme.stroke.sm,
+      borderColor: theme.colors.outlineVariant,
+      backgroundColor: 'transparent',
+    },
+    candidateRowSelected: {
+      borderColor: theme.colors.primary,
+      backgroundColor: theme.colors.primary + '1F', // 12% 主色底（同模型 chip 语言）
+    },
+    candidateBody: {flex: 1},
+    candidateLabel: {
+      ...theme.typography.uiM,
+      fontWeight: '400',
+      color: theme.colors.onSurface,
+    },
+    candidateLabelSelected: {
+      fontWeight: '600',
+      color: theme.colors.primary,
+    },
+    candidateSize: {
+      ...theme.typography.captionS,
+      color: theme.colors.onSurfaceVariant,
+    },
+    candidateNote: {
+      ...theme.typography.captionS,
+      color: theme.colors.onSurfaceVariant,
+      marginTop: 2,
+    },
+    loadErrorText: {
+      ...theme.typography.captionS,
+      color: theme.colors.error,
+    },
+    actionRow: {
+      flexDirection: 'row',
+      gap: theme.spacing.s,
+      marginTop: theme.spacing.xs,
+    },
+    actionButton: {flex: 1},
+  });

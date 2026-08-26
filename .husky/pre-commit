@@ -1,0 +1,5 @@
+yarn --silent guard:worktree
+# B50 门禁固化（2026-08-25）：格式防线——prettier 检查全仓 src；
+# B51 完成（2026-08-25）：eslint 全仓 0 错误后挂入全量 lint。
+yarn --silent lint:prettier
+yarn --silent lint

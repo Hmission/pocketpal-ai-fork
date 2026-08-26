@@ -12,6 +12,12 @@ import {
 
 import {ModelsScreen} from '../ModelsScreen';
 
+// B46 迁移同步：copy 失败提示已由 Alert.alert → infoDialog（用户存量改动）
+jest.mock('../../../components/ui/InfoDialog', () => ({
+  infoDialog: jest.fn(() => Promise.resolve()),
+}));
+import {infoDialog} from '../../../components/ui/InfoDialog';
+
 import {modelStore, uiStore} from '../../../store';
 import {
   basicModel,
@@ -310,7 +316,6 @@ describe('ModelsScreen', () => {
   });
 
   it('shows an error alert when copy fails', async () => {
-    const alertSpy = jest.spyOn(Alert, 'alert');
     (RNFS.copyFile as jest.Mock).mockRejectedValue(new Error('Disk full'));
     (RNFS.exists as jest.Mock).mockImplementation(async (path: string) => {
       if (path.includes('models/local')) {
@@ -336,7 +341,10 @@ describe('ModelsScreen', () => {
     });
 
     await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalledWith(expect.any(String), 'Disk full');
+      expect(infoDialog).toHaveBeenCalledWith({
+        title: expect.any(String),
+        message: 'Disk full',
+      });
     });
   });
 

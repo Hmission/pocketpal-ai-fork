@@ -45,8 +45,7 @@ function requestBatteryOptOutIfNeeded(): void {
   if (batteryOptOutRequested) {
     return;
   }
-  VideoTaskService?.isIgnoringBatteryOptimizations
-    ?.()
+  VideoTaskService?.isIgnoringBatteryOptimizations?.()
     ?.then((ignoring: boolean) => {
       if (!ignoring) {
         batteryOptOutRequested = true;
@@ -57,9 +56,7 @@ function requestBatteryOptOutIfNeeded(): void {
 }
 import {engineStatus} from './engineStatus';
 import {emit} from '../debug/eventStream';
-import NativeHardwareInfo, {
-  PerfSnapshot,
-} from '../specs/NativeHardwareInfo';
+import NativeHardwareInfo, {PerfSnapshot} from '../specs/NativeHardwareInfo';
 
 const ImageGen = NativeModules.ImageGen;
 const HISTORY_KEY = '@imagegen_history_v1';
@@ -261,8 +258,8 @@ class ImageGenStore {
           const list: GeneratedImage[] = Array.isArray(parsed)
             ? parsed
             : Array.isArray(parsed?.history)
-            ? parsed.history
-            : [];
+              ? parsed.history
+              : [];
           sources.push(...list);
         } catch {
           /* 单 key 解析失败跳过 */
@@ -278,7 +275,9 @@ class ImageGenStore {
         runInAction(() => {
           this.history = [...added, ...this.history];
         });
-        console.info(`[ImageGenStore] AsyncStorage history migrated to DB: +${added.length}`);
+        console.info(
+          `[ImageGenStore] AsyncStorage history migrated to DB: +${added.length}`,
+        );
       }
       await AsyncStorage.removeItem(B28_STORAGE_KEY);
       await AsyncStorage.removeItem(HISTORY_KEY);
@@ -427,7 +426,9 @@ class ImageGenStore {
    * 返回 taskId；成功 finishTask 回填图，失败 failTask 回填报错。
    * B28：内存先行（UI 即时反馈）+ DB 落盘（await 保证写在水合后）。
    */
-  async beginTask(base: Omit<GeneratedImage, 'taskId' | 'status'>): Promise<string> {
+  async beginTask(
+    base: Omit<GeneratedImage, 'taskId' | 'status'>,
+  ): Promise<string> {
     await this.ensureReady();
     const taskId = this.newTaskId();
     const entry: GeneratedImage = {...base, taskId, status: 'running'};
@@ -671,7 +672,9 @@ class ImageGenStore {
         return; // 目录不存在静默
       }
       for (const name of names) {
-        const m = name.match(/^(gen|upscaled|dreamlite)_(\d{13})(?:_(\d+))?\.png$/);
+        const m = name.match(
+          /^(gen|upscaled|dreamlite)_(\d{13})(?:_(\d+))?\.png$/,
+        );
         if (!m) {
           continue;
         }
@@ -680,7 +683,10 @@ class ImageGenStore {
           m[1] === 'upscaled' ? 'upscaled' : 'generated';
         entries.push({
           uri: `file://${path}/${name}`,
-          prompt: kind === 'upscaled' ? '高清放大（恢复条目）' : '历史生成（恢复条目）',
+          prompt:
+            kind === 'upscaled'
+              ? '高清放大（恢复条目）'
+              : '历史生成（恢复条目）',
           seed: m[3] ? parseInt(m[3], 10) : ts % 1e9,
           ts,
           width: 0,

@@ -1,8 +1,4 @@
-import {
-  buildMemoryFragment,
-  _invalidateCache,
-  AiosMemory,
-} from '../index';
+import {buildMemoryFragment, _invalidateCache, AiosMemory} from '../index';
 import {
   trackSentiment,
   buildTodayState,
@@ -125,8 +121,8 @@ describe('意图引导装填 + 情绪持久化（批次 9-3）', () => {
     trackSentiment('今天好开心啊');
 
     // 验证 writeFile 被调用，写入 sentiment.json
-    const sentimentWrite = (RNFS.writeFile as jest.Mock).mock.calls.find(
-      c => String(c[0]).includes('sentiment.json'),
+    const sentimentWrite = (RNFS.writeFile as jest.Mock).mock.calls.find(c =>
+      String(c[0]).includes('sentiment.json'),
     );
     expect(sentimentWrite).toBeDefined();
     const record = JSON.parse(sentimentWrite![1]);
@@ -198,12 +194,13 @@ describe('意图引导装填 + 情绪持久化（批次 9-3）', () => {
         ): Promise<void> => {
           if (String(params.messages[0].content).includes('明日清晨独白')) {
             cb({token: '大王，今天也要好好吃饭。'});
-          } else if (
-            String(params.messages[0].content).includes('当日日记')
-          ) {
+          } else if (String(params.messages[0].content).includes('当日日记')) {
             cb({token: '今天大王和我聊了模型，他说玩具工坊真好玩。'});
           } else {
-            cb({token: '今日小结：大王聊了工作与玩具，还聊了模型调度。女妖记住了玩具工坊很好玩。'});
+            cb({
+              token:
+                '今日小结：大王聊了工作与玩具，还聊了模型调度。女妖记住了玩具工坊很好玩。',
+            });
           }
         },
       ),
@@ -234,7 +231,9 @@ describe('意图引导装填 + 情绪持久化（批次 9-3）', () => {
       {name: '2026-08-17.md', path: '/d/2026-08-17.md'},
       {name: '2026-08-18.md', path: '/d/2026-08-18.md'},
     ]);
-    (RNFS.readFile as jest.Mock).mockResolvedValue('# 2026-08-18 小鸡日记\n\n今天很开心');
+    (RNFS.readFile as jest.Mock).mockResolvedValue(
+      '# 2026-08-18 小鸡日记\n\n今天很开心',
+    );
 
     const diaries = await listDiaries();
     expect(diaries.length).toBe(2);

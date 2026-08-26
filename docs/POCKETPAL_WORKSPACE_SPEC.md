@@ -13,7 +13,7 @@ relates: [POCKETPAL_PRODUCT_SPEC, POCKETPAL_ADVENTURE_SPEC, POCKETPAL_PLAY_SPEC,
 
 # 产物工作区 SPEC（WORKSPACE_SPEC）
 
-**状态**：active | **版本**：1.0 | **更新**：2026-08-21
+**状态**：active | **版本**：1.1 | **更新**：2026-08-22
 
 > **定位**：对话是过程，产物是文档。写作/冒险/玩具三模式的产物统一落盘
 > `workspace/<domain>/`，上下文只放框架指针，正文按需读段；压缩只动过程，
@@ -127,15 +127,16 @@ src/services/workspace/docStore.ts，文档以 `## 标题` 分节（markdown）�
 
 ## 九、Gap Ledger
 
-| Gap ID | 现象 | 补齐路径 |
-|--------|------|----------|
-| WS-1 | KnowledgeScreen 尚无「写作项目」列表 tab | 复用玩具箱 tab 模式（模型经工具维护，UI 只读列表） |
+| Gap ID | 现象 | 补齐路径 | 状态 |
+|--------|------|----------|------|
+| WS-1 | KnowledgeScreen 尚无「写作项目」列表 tab | 复用玩具箱 tab 模式（模型经工具维护，UI 只读列表） | **2026-08-25 落码**（DEV_BACKLOG P4#13；KnowledgeScreen Tab 枚举补 writing + 列表页，复用 `StaggeredListItem` + `FlatList`，数据源 `listProjects('writing')`） |
 
 ## 变更日志
 
 | 日期 | 版本 | 变更 |
 |------|------|------|
 | 2026-08-21 | 1.0 | 首发：目录/索引/分段读取/恢复四协议 + WritingDocEngine + AdventureStateEngine 多文档 + 压缩产物指针 |
+| 2026-08-22 | 1.1 | 新增 WORKSPACE_TOOL_ERROR_FEEDBACK_SPEC 关联（错误回传三字段 + 重试纪律 + guide 契约）；版本号同步（正文版本行此前与 frontmatter 不一致，勘误对齐） |
 ## 关联文档
 
 - [写作/冒险/玩具产品定位](./POCKETPAL_PRODUCT_SPEC.md)（positioning，§4.11）

@@ -168,12 +168,12 @@ Wan 2.1 T2V-1.3B = UMT5-XXL 文本编码器 + Wan DiT 1.3B + WanVAE
 **存活策略组合（按可行性排序）**：
 
 1. **PSS 压线是前提**：Wan 全链 Q3 TE + Q4 DiT 组合峰值估算 4-5GB，必须配合分段加载（§7.3）压到 **4GB 内**才能活过 PSS 看护——这是唯一不可谈判的硬约束。
-2. **前台服务**：新增 `ForegroundService`（常驻通知 + `foregroundServiceType`），进程提升为前台优先级——防 LMK/OEM forceStop，也是 Doze 豁免的关键。当前代码库**无任何前台服务**（已验证 `android/` 零匹配），需原生新增。
+2. **前台服务**：`ForegroundService`（常驻通知 + `foregroundServiceType`），进程提升为前台优先级——防 LMK/OEM forceStop，也是 Doze 豁免的关键。**已落地（2026-08-23，MASTER_LOG §76，提交 0102b4e）**：夜间长任务模式前台服务 + PARTIAL_WAKE_LOCK + AppState 反转三件套（原「当前代码库无任何前台服务，需原生新增」陈述已过时，2026-08-25 勘误）。
 3. **电池/Doze 豁免**：引导用户「电池省电→不限制」+「最近任务锁定」白名单（已有记忆实证可解除内存配额）；`REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` 权限申请。——**已落地（2026-08-23，MASTER_LOG §78）**：原生 BatteryGuard 在夜间任务启动时检查 isIgnoringBatteryOptimizations，未豁免发起系统弹窗引导。
-4. **CPU 保持唤醒**：现有 `KeepAwake` 是屏幕常亮（聊天用），后台长跑需新增 `PARTIAL_WAKE_LOCK`（保 CPU 不休眠）。
-5. **AppState 反转**：现架构「进后台即释放引擎」（TTSStore/ModelStore 记忆实证）——夜间任务需绕过：任务进行中不响应 background 释放，任务结束才释放。
+4. **CPU 保持唤醒**：现有 `KeepAwake` 是屏幕常亮（聊天用）——**已落地（2026-08-23，§76）**：`PARTIAL_WAKE_LOCK` 保 CPU 不休眠，与前台服务同批（0102b4e）。
+5. **AppState 反转**：现架构「进后台即释放引擎」（TTSStore/ModelStore 记忆实证）——**已落地（2026-08-23，§76）**：任务进行中不响应 background 释放，任务结束才释放（0102b4e）。
 
-**结论**：可行但需原生投入（前台服务 + wake lock + AppState 任务模式），加上白名单引导；PSS 4GB 内是前提。
+**结论（2026-08-25 更新）**：三项原生投入（前台服务 + wake lock + AppState 任务模式）均已落地（§76），白名单引导已落地（§78）；剩余前提 = PSS 4GB 内（依赖 §7.3 分段加载）——§7.1 陈述与代码现状已对齐。
 
 **PSS 看护粒度与绕过评估（2026-08-23 大王追问）**：
 

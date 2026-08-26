@@ -15,7 +15,6 @@ export * from './Checkbox';
 export * from './CircularActivityIndicator';
 export * from './CompletionSettings';
 export * from './DatabaseMigration';
-export * from './Dialog';
 export * from './Divider';
 export * from './DownloadErrorDialog';
 export * from './EmbeddedVideoView';
@@ -33,7 +32,7 @@ export * from './SuggestedPromptsRow';
 export * from './ImageMessage';
 export * from './KeyboardAccessoryView';
 export * from './LanguageSelector';
-export * from './LoadingBubble';
+// B57：LoadingBubble 零引用僵尸已 git rm（2026-08-26，B48 实证）
 export * from './MarkdownView';
 export * from './PendingIndicator';
 export * from './PerfMotion';

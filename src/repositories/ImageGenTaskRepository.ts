@@ -27,9 +27,7 @@ class ImageGenTaskRepository {
       .get<ImageGenTask>('image_gen_tasks')
       .query()
       .fetch();
-    return rows
-      .map(row => toEntry(row))
-      .sort((a, b) => b.ts - a.ts);
+    return rows.map(row => toEntry(row)).sort((a, b) => b.ts - a.ts);
   }
 
   /** 创建任务条目（beginTask/pushFailedTask/recover 共用）；create 必须在 Writer 内 */
@@ -80,7 +78,9 @@ class ImageGenTaskRepository {
         .fetch();
       await database.write(async () => {
         for (const row of rows) {
-          await row.update(record => applyEntry(record, {...toEntry(row), ...patch}));
+          await row.update(record =>
+            applyEntry(record, {...toEntry(row), ...patch}),
+          );
         }
       });
       scheduleDbSnapshot();

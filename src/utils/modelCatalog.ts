@@ -162,7 +162,8 @@ export const CATALOG_LLM: CatalogModel[] = [
       name: 'minicpm5_1b_heretic_q4km.gguf',
       sizeBytes: 688066528,
       dir: 'models',
-      remotePath: 'MiniCPM5-1B-Claude-Opus-Fable5-V2-Thinking-heretic.Q4_K_M.gguf',
+      remotePath:
+        'MiniCPM5-1B-Claude-Opus-Fable5-V2-Thinking-heretic.Q4_K_M.gguf',
       // 魔搭镜像文件名 = 本地落盘名（HF 远程名不同，需按源覆盖）
       remotePathBySource: {
         modelscope: 'minicpm5_1b_heretic_q4km.gguf',
@@ -178,8 +179,10 @@ export const CATALOG_LLM: CatalogModel[] = [
     // remotePathBySource.modelscope 覆盖 HF 远程名）：
     // zensignGG/MiniCPM5-1B-Claude-Opus-Fable5-V2-Thinking-heretic-GGUF
     sources: ['hf', 'modelscope'],
-    hfRepo: 'mradermacher/MiniCPM5-1B-Claude-Opus-Fable5-V2-Thinking-heretic-GGUF',
-    modelscopeRepo: 'zensignGG/MiniCPM5-1B-Claude-Opus-Fable5-V2-Thinking-heretic-GGUF',
+    hfRepo:
+      'mradermacher/MiniCPM5-1B-Claude-Opus-Fable5-V2-Thinking-heretic-GGUF',
+    modelscopeRepo:
+      'zensignGG/MiniCPM5-1B-Claude-Opus-Fable5-V2-Thinking-heretic-GGUF',
     tierHint: 'low',
     role: '常驻管家（prompter）',
   },
@@ -316,14 +319,57 @@ export const CATALOG_IMAGEGEN: CatalogModel[] = [
     role: '中文场景 + 无审查（仅高端 Adreno GPU）',
   },
   {
-    id: 'flux-klein-4b/flux_klein_4b_q4_0.gguf',
+    id: 'krea2-turbo-q4/Krea-2-Turbo-Q4_K_M.gguf',
     category: 'imagegen',
-    displayName: 'FLUX.2 Klein 4B (Q4_0)',
+    displayName: 'Krea2 Turbo (Q4_K_M)',
     file: {
-      name: 'flux_klein_4b_q4_0.gguf',
-      sizeBytes: 2460378560,
+      name: 'Krea-2-Turbo-Q4_K_M.gguf',
+      sizeBytes: 7216993376,
       dir: 'models',
-      remotePath: 'flux-2-klein-4b-Q4_0.gguf',
+      // realrebelai/KREA-2_GGUFs 仓库 TURBO 子目录（8-26 本机 hf-mirror 实测下载）
+      remotePath: 'TURBO/Krea-2-Turbo-Q4_K_M.gguf',
+    },
+    extras: [
+      {
+        // Krea2 官方文本编码器 Qwen3-VL-4B（Qwen 官方 GGUF 仓库，文件名实测）
+        name: 'Qwen3VL-4B-Instruct-Q4_K_M.gguf',
+        sizeBytes: 2497281664,
+        dir: 'models',
+        remotePath: 'Qwen3VL-4B-Instruct-Q4_K_M.gguf',
+        repoBySource: {
+          hf: 'Qwen/Qwen3-VL-4B-Instruct-GGUF',
+          modelscope: 'Qwen/Qwen3-VL-4B-Instruct-GGUF',
+        },
+      },
+      {
+        // Wan2.1 VAE（Krea2 配套；8-26 魔搭 resolve 200 实测）
+        name: 'wan_2.1_vae.safetensors',
+        sizeBytes: 253815318,
+        dir: 'models',
+        remotePath: 'split_files/vae/wan_2.1_vae.safetensors',
+        repoBySource: {
+          hf: 'Comfy-Org/Wan_2.1_ComfyUI_repackaged',
+          modelscope: 'Comfy-Org/Wan_2.1_ComfyUI_repackaged',
+        },
+      },
+    ],
+    // 8-26 接入评估：社区 GGUF（realrebelai 量化）+ 官方 TE/VAE；魔搭镜像未逐字节验证
+    sources: ['hf', 'modelscope'],
+    hfRepo: 'realrebelai/KREA-2_GGUFs',
+    modelscopeRepo: 'realrebelai/KREA-2_GGUFs',
+    role: '审美多样性 + 风格 LoRA（实验性）',
+  },
+  {
+    id: 'flux-klein-4b/flux-2-klein-4b-Q4_K_M.gguf',
+    category: 'imagegen',
+    displayName: 'FLUX.2 Klein 4B (Q4_K_M)',
+    file: {
+      name: 'flux-2-klein-4b-Q4_K_M.gguf',
+      // unsloth Dynamic 2.0 混合渐进量化（重要层上抄精度，city96 tooling）
+      // 08-25 双源实测：HF 与魔搭 sha256 均为 0b25d143...、2604311104B
+      sizeBytes: 2604311104,
+      dir: 'models',
+      remotePath: 'flux-2-klein-4b-Q4_K_M.gguf',
     },
     extras: [
       // TE 复用 Z-Image 的 zimage_llm.gguf（Qwen3-4B-Q4_K_M，与 klein 官方
@@ -352,14 +398,16 @@ export const CATALOG_IMAGEGEN: CatalogModel[] = [
         },
       },
     ],
-    // 非自制：leejet GGUF 量化（sd.cpp 官方工具链，Q4_0 端侧首选；leejet 仓仅
-    // Q4_0/Q8_0 两档无 Q4_K_M）+ unsloth Qwen3-4B 文本塔（复用 Z-Image）+ Comfy-Org VAE
-    //（2026-08-22 双源 resolve 全 200 实锤，MODEL_MATRIX §2 #4 同步）
+    // 非自制：unsloth GGUF 量化（Dynamic 2.0 混合渐进量化，08-25 换源替代
+    // leejet Q4_0——马赛克双端实锤定罪量化源；149 张量同名兼容 sd.cpp
+    // VERSION_FLUX2_KLEIN 识别，Q4_K+Q6_K 渐进，画质验收后除实验标）
+    // + unsloth Qwen3-4B 文本塔（复用 Z-Image）+ Comfy-Org VAE
+    //（2026-08-25 双源 resolve 全 200 + sha256 一致实锤，MODEL_MATRIX §2 #4 同步）
     sources: ['hf', 'modelscope'],
-    hfRepo: 'leejet/FLUX.2-klein-4B-GGUF',
-    modelscopeRepo: 'leejet/FLUX.2-klein-4B-GGUF',
+    hfRepo: 'unsloth/FLUX.2-klein-4B-GGUF',
+    modelscopeRepo: 'unsloth/FLUX.2-klein-4B-GGUF',
     tierHint: 'flagship',
-    role: '画质天花板（4 步极速，中英文原生，仅高端 Adreno GPU）',
+    role: '画质天花板（4 步极速，中英文原生，高端 Adreno + Mali 平板）',
   },
 ];
 
@@ -384,8 +432,5 @@ export function catalogEntryByFilename(
 /** 条目套件总字节数（含 extras，存储守卫用） */
 export function catalogEntryTotalBytes(entry: CatalogModel): number {
   const extras = entry.extras ?? [];
-  return (
-    entry.file.sizeBytes +
-    extras.reduce((sum, f) => sum + f.sizeBytes, 0)
-  );
+  return entry.file.sizeBytes + extras.reduce((sum, f) => sum + f.sizeBytes, 0);
 }

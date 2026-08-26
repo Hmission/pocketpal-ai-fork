@@ -46,7 +46,6 @@ const tintFor = (theme: Theme, variant: BannerVariant): BannerTint => {
 };
 
 export const createStyles = (theme: Theme) => {
-
   return StyleSheet.create({
     root: {
       paddingHorizontal: theme.spacing.sm,
@@ -71,18 +70,10 @@ export const createStyles = (theme: Theme) => {
       fontWeight: '600',
       fontVariant: ['tabular-nums'],
     },
+    // B57：ui/Progress 宽度契约（Meter 迁移后由 track width:100% + 此覆盖
+    // 维持 BannerRow 对 banner-meter 的 alignSelf:'stretch' 断言）
     meter: {
-      height: 4,
-      borderRadius: theme.radius.xxs,
-      backgroundColor: theme.colors.surfaceDisabled,
-      overflow: 'hidden',
       alignSelf: 'stretch',
-      width: '100%',
-    },
-    meterFill: {
-      height: 4,
-      borderRadius: theme.radius.xxs,
-      // 填充色由 tint(variant).fill 动态注入（语义色随变体）
     },
     actions: {
       flexDirection: 'row',

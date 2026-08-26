@@ -140,7 +140,7 @@ export const ModelPickerDropdown: React.FC<DropdownProps> = ({
                 style={[
                   s.modelRow,
                   selectedId === item.manifest.id && s.modelRowSelected,
-                  rowIncompat && {opacity: 0.45},
+                  rowIncompat && s.modelRowIncompat,
                 ]}
                 onPress={() => !rowIncompat && onSelectModel(item)}>
                 <View style={s.modelRowMain}>
@@ -154,7 +154,9 @@ export const ModelPickerDropdown: React.FC<DropdownProps> = ({
                               ? s.badgeDream
                               : item.manifest.family === 'flux'
                                 ? s.badgeFlux
-                                : s.badgeZ
+                                : item.manifest.family === 'krea2'
+                                  ? s.badgeKrea2
+                                  : s.badgeZ
                         }>
                         [{FAMILY_BADGE[item.manifest.family]}]{' '}
                       </Text>

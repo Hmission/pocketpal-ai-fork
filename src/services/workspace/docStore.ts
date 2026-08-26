@@ -166,7 +166,10 @@ export async function updateSection(
   return writeChecked(path, rebuild(doc));
 }
 
-async function writeChecked(path: string, next: string): Promise<DocWriteResult> {
+async function writeChecked(
+  path: string,
+  next: string,
+): Promise<DocWriteResult> {
   // Hermes 无 Node Buffer（真机实证 WRITE_FAILED: Property 'Buffer' doesn't exist）——
   // 用 TextEncoder 数 UTF-8 字节（RN 0.82 Hermes 内置，jest Node 亦可用）。
   const bytes = new TextEncoder().encode(next).length;
@@ -177,6 +180,9 @@ async function writeChecked(path: string, next: string): Promise<DocWriteResult>
     await RNFS.writeFile(path, next, 'utf8');
     return {ok: true, bytes};
   } catch (e) {
-    return {ok: false, error: `WRITE_FAILED: ${(e as Error)?.message ?? 'unknown'}`};
+    return {
+      ok: false,
+      error: `WRITE_FAILED: ${(e as Error)?.message ?? 'unknown'}`,
+    };
   }
 }

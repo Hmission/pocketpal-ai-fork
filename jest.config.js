@@ -30,10 +30,10 @@ module.exports = {
     '**/__tests__/**/*.test.[jt]s?(x)',
     '**/?(*.)+(spec|test).[jt]s?(x)',
   ],
-  testPathIgnorePatterns: ['/node_modules/', '/e2e/', '/\.tmp/'],
+  testPathIgnorePatterns: ['/node_modules/', '/e2e/', '/.tmp/'],
   // 让 haste-map 也不扫描 .tmp（内含 wt-klein 等副本工程的 __mocks__，
   // 与根 __mocks__ 同名 → duplicate manual mock 导致 jest 拒绝运行）
-  modulePathIgnorePatterns: ['/\.tmp/'],
+  modulePathIgnorePatterns: ['/.tmp/'],
   moduleNameMapper: {
     '@react-native-async-storage/async-storage':
       '<rootDir>/__mocks__/external/@react-native-async-storage/async-storage.js',

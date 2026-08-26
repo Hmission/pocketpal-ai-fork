@@ -15,7 +15,8 @@ import {NavigationContext} from '@react-navigation/native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {Text, Button, Card, ActivityIndicator} from 'react-native-paper';
 
-import {Menu, Dialog} from '../../components';
+import {Menu} from '../../components';
+import {OverlayCard} from '../../components/ui/OverlayCard';
 
 import {useTheme} from '../../hooks';
 import {L10nContext} from '../../utils';
@@ -130,8 +131,7 @@ export const BenchmarkScreen: React.FC = observer(() => {
     gen: 'genSpeed',
     endurance: 'endurance',
   };
-  const labels = l10n.benchmark.suite
-    .labels as Record<string, string>;
+  const labels = l10n.benchmark.suite.labels as Record<string, string>;
   const bannerText =
     suiteRunning && suiteBanner && CASE_LABEL_KEY[suiteBanner]
       ? t(l10n.benchmark.suite.caseProgress, {
@@ -191,7 +191,10 @@ export const BenchmarkScreen: React.FC = observer(() => {
             {/* ── 总控区：一键跑分 / 进行中横幅 / 失败诚实报错 ── */}
             {suiteRunning ? (
               <View style={styles.loadingContainer} testID="suite-running">
-                <ActivityIndicator testID="loading-indicator-benchmark" size="large" />
+                <ActivityIndicator
+                  testID="loading-indicator-benchmark"
+                  size="large"
+                />
                 <Text style={styles.warningText}>{bannerText}</Text>
                 <Text variant="bodySmall" style={styles.description}>
                   {l10n.benchmark.suite.runningHint}
@@ -206,9 +209,7 @@ export const BenchmarkScreen: React.FC = observer(() => {
             ) : (
               <>
                 {suiteError ? (
-                  <View
-                    style={styles.warningContainer}
-                    testID="suite-error">
+                  <View style={styles.warningContainer} testID="suite-error">
                     <Text variant="bodySmall" style={styles.warningText}>
                       {suiteError}
                     </Text>
@@ -258,15 +259,12 @@ export const BenchmarkScreen: React.FC = observer(() => {
                   testID="suite-total-reveal"
                 />
                 <Text
-                  style={[
-                    styles.resultLabel,
-                    {color: theme.colors.brandAccent, textAlign: 'center'},
-                  ]}
+                  style={[styles.resultLabel, styles.rankHighlight]}
                   testID="suite-rank">
                   {l10n.benchmark.suite.rankPrefix} ·{' '}
                   {rankOf(latestSuite.suite.score.total).cn}
                 </Text>
-                <View style={{alignItems: 'center', marginVertical: 8}}>
+                <View style={styles.radarWrap}>
                   <BenchRadar
                     score={latestSuite.suite.score}
                     color={theme.colors.brandAccent}
@@ -289,7 +287,7 @@ export const BenchmarkScreen: React.FC = observer(() => {
                 {shareNotice ? (
                   <Text
                     variant="bodySmall"
-                    style={[styles.resultLabel, {textAlign: 'center'}]}
+                    style={[styles.resultLabel, styles.labelCenter]}
                     testID="share-notice">
                     {shareNotice}
                   </Text>
@@ -324,35 +322,37 @@ export const BenchmarkScreen: React.FC = observer(() => {
               </View>
             )}
 
-            <Dialog
+            <OverlayCard
               visible={deleteConfirmVisible}
-              onDismiss={() => setDeleteConfirmVisible(false)}
+              onRequestClose={() => setDeleteConfirmVisible(false)}
               title={l10n.benchmark.dialogs.deleteResult.title}
-              actions={[
-                {
+              actions={{
+                secondary: {
                   label: l10n.benchmark.buttons.cancel,
                   onPress: () => setDeleteConfirmVisible(false),
                 },
-                {
+                primary: {
                   label: l10n.benchmark.buttons.delete,
                   onPress: handleConfirmDelete,
                 },
-              ]}>
-              <Text>{l10n.benchmark.dialogs.deleteResult.message}</Text>
-            </Dialog>
+              }}>
+              <Text style={styles.dialogMessage}>
+                {l10n.benchmark.dialogs.deleteResult.message}
+              </Text>
+            </OverlayCard>
 
-            <Dialog
+            <OverlayCard
               testID="clear-all-dialog"
               visible={deleteAllConfirmVisible}
-              onDismiss={() => setDeleteAllConfirmVisible(false)}
+              onRequestClose={() => setDeleteAllConfirmVisible(false)}
               title={l10n.benchmark.dialogs.clearAllResults.title}
-              actions={[
-                {
+              actions={{
+                secondary: {
                   testID: 'clear-all-dialog-cancel-button',
                   label: l10n.benchmark.buttons.cancel,
                   onPress: () => setDeleteAllConfirmVisible(false),
                 },
-                {
+                primary: {
                   testID: 'clear-all-dialog-confirm-button',
                   label: l10n.benchmark.buttons.clearAll,
                   onPress: () => {
@@ -360,9 +360,11 @@ export const BenchmarkScreen: React.FC = observer(() => {
                     setDeleteAllConfirmVisible(false);
                   },
                 },
-              ]}>
-              <Text>{l10n.benchmark.dialogs.clearAllResults.message}</Text>
-            </Dialog>
+              }}>
+              <Text style={styles.dialogMessage}>
+                {l10n.benchmark.dialogs.clearAllResults.message}
+              </Text>
+            </OverlayCard>
           </Card.Content>
         </Card>
       </ScrollView>

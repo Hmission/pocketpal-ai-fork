@@ -25,7 +25,7 @@ export const styles = ({theme}: {theme: Theme}) =>
     },
     interruptedStatus: {
       color: theme.colors.error,
-      fontSize: 10,
+      fontSize: 11,
     },
     // ── 行2：统一指标行（排版契约：captionS；数值 brandAccent 600；
     //    标签 textSecondary；分隔符 `·` outlineVariant）──

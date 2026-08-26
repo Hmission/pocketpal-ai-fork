@@ -22,7 +22,11 @@ interface TemplatePickerProps {
 const DropdownIcon = () => {
   const theme = useTheme();
   return (
-    <Icon name="keyboard-arrow-down" size={24} color={theme.colors.onSurface} />
+    <Icon
+      name="keyboard-arrow-down"
+      size={theme.iconSize.l}
+      color={theme.colors.onSurface}
+    />
   );
 };
 

@@ -16,10 +16,7 @@ import {L10nContext} from '../../utils';
 import type {Theme} from '../../utils/types';
 import {LanguageSelector} from '../../components';
 import {deleteSharedDbSnapshot} from '../../utils/paths';
-import {
-  VolumeOnIcon,
-  CpuChipIcon,
-} from '../../assets/icons';
+import {VolumeOnIcon, CpuChipIcon} from '../../assets/icons';
 
 export const SystemSettingsScreen: React.FC<{navigation?: any}> = observer(
   ({navigation}) => {
@@ -105,12 +102,8 @@ export const SystemSettingsScreen: React.FC<{navigation?: any}> = observer(
                 </View>
                 <Switch
                   testID="tts-availability-switch"
-                  value={
-                    ttsStore.userTTSOverride ?? ttsStore.deviceMeetsMemory
-                  }
-                  onValueChange={value =>
-                    ttsStore.setUserTTSOverride(value)
-                  }
+                  value={ttsStore.userTTSOverride ?? ttsStore.deviceMeetsMemory}
+                  onValueChange={value => ttsStore.setUserTTSOverride(value)}
                 />
               </View>
               <Divider />
@@ -128,9 +121,7 @@ export const SystemSettingsScreen: React.FC<{navigation?: any}> = observer(
                 <Switch
                   testID="self-check-switch"
                   value={uiStore.selfCheckEnabled}
-                  onValueChange={value =>
-                    uiStore.setSelfCheckEnabled(value)
-                  }
+                  onValueChange={value => uiStore.setSelfCheckEnabled(value)}
                 />
               </View>
               <Divider />
@@ -183,9 +174,7 @@ export const SystemSettingsScreen: React.FC<{navigation?: any}> = observer(
                     <Switch
                       testID="display-memory-usage-switch"
                       value={uiStore.displayMemUsage}
-                      onValueChange={value =>
-                        uiStore.setDisplayMemUsage(value)
-                      }
+                      onValueChange={value => uiStore.setDisplayMemUsage(value)}
                     />
                   </View>
                 </>

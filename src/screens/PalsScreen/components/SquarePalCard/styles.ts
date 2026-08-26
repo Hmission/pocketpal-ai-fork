@@ -119,7 +119,7 @@ export const createStyles = (theme: Theme) =>
       zIndex: 10, // Ensure it appears above other elements
     },
     premiumBadgeText: {
-      fontSize: 10,
+      fontSize: 11,
       fontWeight: '600',
       color: theme.colors.onSecondary,
       letterSpacing: 0.1,
@@ -162,7 +162,7 @@ export const createStyles = (theme: Theme) =>
       minWidth: 40,
     },
     price: {
-      fontSize: 10,
+      fontSize: 11,
       fontWeight: '600',
       color: theme.colors.onSurfaceVariant,
       letterSpacing: 0.1,
@@ -175,11 +175,11 @@ export const createStyles = (theme: Theme) =>
       color: theme.colors.onSecondary,
     },
     creator: {
-      fontSize: 10, // Reduced from 11px
+      fontSize: 11,
       color: theme.colors.onSurfaceVariant,
       marginBottom: 2, // Reduced from 4px
       fontWeight: '500',
-      lineHeight: 12, // Tight line height
+      lineHeight: 14,
     },
     description: {
       fontSize: 11,
@@ -210,7 +210,7 @@ export const createStyles = (theme: Theme) =>
       color: theme.colors.onSurface,
     },
     reviewCount: {
-      fontSize: 10,
+      fontSize: 11,
       color: theme.colors.onSurfaceVariant,
       fontWeight: '500',
     },
@@ -228,12 +228,12 @@ export const createStyles = (theme: Theme) =>
       backgroundColor: theme.colors.surfaceContainerHigh,
     },
     tagText: {
-      fontSize: 9,
-      lineHeight: 11,
+      fontSize: 11,
+      lineHeight: 14,
       fontWeight: '500',
     },
     moreTagsText: {
-      fontSize: 9,
+      fontSize: 11,
       color: theme.colors.onSurfaceVariant,
       fontWeight: '500',
     },
@@ -283,8 +283,8 @@ export const createStyles = (theme: Theme) =>
     },
     warningText: {
       flex: 1,
-      fontSize: 9,
-      lineHeight: 11,
+      fontSize: 11,
+      lineHeight: 14,
       color: theme.colors.error,
       fontWeight: '500',
     },

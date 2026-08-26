@@ -1,8 +1,10 @@
-import {Platform, PermissionsAndroid, Alert, Linking} from 'react-native';
+import {Platform, PermissionsAndroid, Linking} from 'react-native';
 import * as RNFS from '@dr.pogodin/react-native-fs';
 
 import {uiStore} from '../store';
+import {confirmDialog} from '../components/ui/ConfirmDialog/api';
 import {getCustomModelDirs} from './modelDirs';
+import {infoDialog} from '../components/ui/InfoDialog/api';
 
 export async function ensureLegacyStoragePermission() {
   // Skip everything on iOS or any Android 11+ device (API 29+)
@@ -35,11 +37,11 @@ export async function ensureLegacyStoragePermission() {
   const granted = results === PermissionsAndroid.RESULTS.GRANTED;
 
   if (!granted) {
-    Alert.alert(
-      l10n.components.exportUtils.permissionDenied,
-      l10n.components.exportUtils.permissionDeniedMessage,
-      [{text: 'OK'}],
-    );
+    infoDialog({
+      title: l10n.components.exportUtils.permissionDenied,
+      message: l10n.components.exportUtils.permissionDeniedMessage,
+      buttonText: 'OK',
+    });
   }
   return granted;
 }
@@ -148,12 +150,16 @@ export async function ensureCustomDirAccess(dir: string): Promise<boolean> {
 
 function showManageAccessAlert(): void {
   const l10n = uiStore.l10n;
-  Alert.alert(
-    l10n.components.exportUtils.permissionRequired,
-    '小黄鸡需要「所有文件访问」权限才能读取模型目录。请在系统设置中允许后返回。',
-    [
-      {text: l10n.common.cancel, style: 'cancel'},
-      {text: '去设置', onPress: () => Linking.openSettings()},
-    ],
-  );
+  // B55：信息+动作 → confirmDialog（去设置为主动作，取消=关闭）
+  void confirmDialog({
+    title: l10n.components.exportUtils.permissionRequired,
+    message:
+      '小黄鸡需要「所有文件访问」权限才能读取模型目录。请在系统设置中允许后返回。',
+    confirmText: '去设置',
+    cancelText: l10n.common.cancel,
+  }).then(ok => {
+    if (ok) {
+      Linking.openSettings();
+    }
+  });
 }

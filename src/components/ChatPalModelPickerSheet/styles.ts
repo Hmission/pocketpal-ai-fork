@@ -1,6 +1,5 @@
 import {StyleSheet} from 'react-native';
 import {Theme} from '../../utils/types';
-import {withOpacity} from '../../utils/colorUtils';
 
 export const createStyles = ({theme}: {theme: Theme}) =>
   StyleSheet.create({
@@ -136,28 +135,14 @@ export const createStyles = ({theme}: {theme: Theme}) =>
       flexDirection: 'row',
       justifyContent: 'flex-end',
     },
-    actionText: {
-      ...theme.typography.uiS,
-      fontWeight: '600',
-      color: theme.colors.primary,
-      paddingHorizontal: theme.spacing.sm,
-      paddingVertical: theme.spacing.xxs,
-      borderWidth: 1,
-      borderColor: theme.colors.primary,
-      borderRadius: theme.radius[theme.shapeRoles.pill],
-      overflow: 'hidden',
-    },
-    actionTextUnload: {
-      color: theme.colors.onSurfaceVariant,
-      borderColor: theme.colors.outlineVariant,
-    },
+    // B57：动作胶囊（加载/卸载）归 ui/Chip outline；以下样式键随迁删除
     actionDisabled: {
       ...theme.typography.uiS,
       color: theme.colors.onSurfaceVariant,
       paddingHorizontal: theme.spacing.sm,
       paddingVertical: theme.spacing.xxs,
     },
-    // 加载中动效（ImageTaskProgress 同款设计语言）：三点波浪 + 2% 底条
+    // 加载中动效（B57：三点波浪 → ui/WaveDots；2% 底条 → ui/Progress）
     loadingWrap: {
       width: '100%',
     },
@@ -165,24 +150,6 @@ export const createStyles = ({theme}: {theme: Theme}) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: theme.spacing.xs,
-    },
-    loadingDot: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      backgroundColor: theme.colors.primary,
-    },
-    loadingTrack: {
-      marginTop: theme.spacing.xs,
-      height: 6,
-      borderRadius: theme.radius.xxs,
-      backgroundColor: withOpacity(theme.colors.shadow, 0.08),
-      overflow: 'hidden',
-    },
-    loadingFill: {
-      height: '100%',
-      backgroundColor: theme.colors.primary,
-      borderRadius: theme.radius.xxs,
     },
     sheetFootnote: {
       ...theme.typography.captionS,

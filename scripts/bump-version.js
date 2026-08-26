@@ -67,7 +67,10 @@ function bumpVersion(rootDir, arg) {
   const codeMatch = gradle.match(/versionCode\s+(\d+)/);
   if (!codeMatch) throw new Error('build.gradle 未找到 versionCode');
   const newCode = Number(codeMatch[1]) + 1;
-  let gradleNext = gradle.replace(/versionCode\s+\d+/, `versionCode ${newCode}`);
+  let gradleNext = gradle.replace(
+    /versionCode\s+\d+/,
+    `versionCode ${newCode}`,
+  );
   gradleNext = gradleNext.replace(
     /versionName\s+"[^"]+"/,
     `versionName "${target}"`,
@@ -76,7 +79,9 @@ function bumpVersion(rootDir, arg) {
     throw new Error('build.gradle 未找到 versionName');
   }
   fs.writeFileSync(gradlePath, gradleNext);
-  changes.push(`build.gradle: versionName -> ${target}, versionCode -> ${newCode}`);
+  changes.push(
+    `build.gradle: versionName -> ${target}, versionCode -> ${newCode}`,
+  );
 
   // 4) ios pbxproj（全出现处替换）
   const pbxPath = path.join(
@@ -86,7 +91,8 @@ function bumpVersion(rootDir, arg) {
     'project.pbxproj',
   );
   const pbx = fs.readFileSync(pbxPath, 'utf8');
-  const marketingCount = (pbx.match(/MARKETING_VERSION = [^;]+;/g) || []).length;
+  const marketingCount = (pbx.match(/MARKETING_VERSION = [^;]+;/g) || [])
+    .length;
   if (marketingCount === 0) {
     throw new Error('project.pbxproj 未找到 MARKETING_VERSION');
   }
@@ -109,7 +115,9 @@ module.exports = {bumpVersion, computeTarget};
 if (require.main === module) {
   const arg = process.argv[2];
   if (!arg) {
-    console.error('用法: node scripts/bump-version.js <major|minor|patch|x.y.z>');
+    console.error(
+      '用法: node scripts/bump-version.js <major|minor|patch|x.y.z>',
+    );
     process.exit(1);
   }
   try {

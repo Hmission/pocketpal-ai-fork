@@ -1,5 +1,5 @@
 import React, {useContext, useEffect, useState} from 'react';
-import {Alert, Animated, ScrollView, StyleSheet, View} from 'react-native';
+import {Animated, ScrollView, StyleSheet, View} from 'react-native';
 import {Text} from 'react-native-paper';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {observer} from 'mobx-react-lite';
@@ -7,6 +7,8 @@ import * as RNFS from '@dr.pogodin/react-native-fs';
 import {pickDirectory} from '@react-native-documents/picker';
 
 import {useTheme, useStaggerEntry} from '../../hooks';
+import {infoDialog} from '../../components/ui/InfoDialog';
+import {confirmDialog} from '../../components/ui/ConfirmDialog';
 import {L10nContext} from '../../utils';
 import {Theme} from '../../utils/types';
 import {modelStore} from '../../store';
@@ -81,7 +83,7 @@ export const ModelDirsScreen: React.FC = observer(() => {
     }
     const dir = treeUriToPath(res.uri);
     if (!dir) {
-      Alert.alert(t.invalidDir);
+      infoDialog({title: t.invalidDir});
       return;
     }
     // 权限引导：目录不可读时弹「所有文件访问」（不阻塞，扫描兜底）
@@ -93,7 +95,7 @@ export const ModelDirsScreen: React.FC = observer(() => {
       exists = false;
     }
     if (!exists) {
-      Alert.alert(t.invalidDir);
+      infoDialog({title: t.invalidDir});
       return;
     }
     const next = await addCustomModelDir(dir);
@@ -101,19 +103,19 @@ export const ModelDirsScreen: React.FC = observer(() => {
     modelStore.scanLocalModels();
   };
 
-  const onRemove = (dir: string) => {
-    Alert.alert(t.removeConfirm, dir, [
-      {text: l10n.common.cancel, style: 'cancel'},
-      {
-        text: l10n.common.delete,
-        style: 'destructive',
-        onPress: async () => {
-          const next = await removeCustomModelDir(dir);
-          setCustomDirs(next);
-          modelStore.scanLocalModels();
-        },
-      },
-    ]);
+  const onRemove = async (dir: string) => {
+    const ok = await confirmDialog({
+      title: t.removeConfirm,
+      message: dir,
+      confirmText: l10n.common.delete,
+      cancelText: l10n.common.cancel,
+      destructive: true,
+    });
+    if (ok) {
+      const next = await removeCustomModelDir(dir);
+      setCustomDirs(next);
+      modelStore.scanLocalModels();
+    }
   };
 
   return (

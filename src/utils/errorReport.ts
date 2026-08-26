@@ -68,7 +68,9 @@ export async function buildErrorReport(
     lines.push(`深入: ${compass.deepDive.join(' | ')}`);
     setLastError(compass.cpId, input.summary);
   } else {
-    lines.push('指南针: 未收录（建议登记 docs/DebugRemoteControl/COMPASS_REGISTRY.md）');
+    lines.push(
+      '指南针: 未收录（建议登记 docs/DebugRemoteControl/COMPASS_REGISTRY.md）',
+    );
     setLastError('CP-APP-000', input.summary);
   }
   emit('error', 'error.reported', {

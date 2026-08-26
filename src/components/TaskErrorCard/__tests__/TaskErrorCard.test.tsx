@@ -23,10 +23,15 @@ jest.mock('../../../hooks', () => ({
       danger: '#C62828',
       primary: '#F5A623',
       textSecondary: '#666',
+      // B57：DS Chip outline 消费 error/onSurfaceVariant/outlineVariant
+      error: '#C62828',
+      onSurfaceVariant: '#7A7A7A',
+      outlineVariant: '#C9C9C9',
     },
-    typography: {captionM: {fontSize: 12}},
-    radius: {m: 12, full: 999},
-    spacing: {sm: 12, xs: 4, xxs: 2},
+    typography: {captionM: {fontSize: 12}, captionS: {fontSize: 10}},
+    radius: {m: 12, full: 999, xs: 4, s: 8},
+    shapeRoles: {pill: 'full'},
+    spacing: {sm: 12, xs: 4, xxs: 2, s: 8},
   }),
 }));
 
@@ -89,7 +94,11 @@ describe('TaskErrorCard', () => {
   it('无 taskError：不渲染', () => {
     const {queryByTestId} = render(
       wrapWithL10n(
-        <TaskErrorCard message={textMessage(undefined)} onRetry={jest.fn()} onGoModels={jest.fn()} />,
+        <TaskErrorCard
+          message={textMessage(undefined)}
+          onRetry={jest.fn()}
+          onGoModels={jest.fn()}
+        />,
       ),
     );
     expect(queryByTestId('task-error-card')).toBeNull();
@@ -99,7 +108,11 @@ describe('TaskErrorCard', () => {
     const {getByText} = render(
       wrapWithL10n(
         <TaskErrorCard
-          message={textMessage({code: 'load_failed', modelName: 'Test-8B', retryText: '重试原文'})}
+          message={textMessage({
+            code: 'load_failed',
+            modelName: 'Test-8B',
+            retryText: '重试原文',
+          })}
           onRetry={jest.fn()}
           onGoModels={jest.fn()}
         />,

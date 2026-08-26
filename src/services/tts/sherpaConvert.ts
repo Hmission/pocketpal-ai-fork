@@ -1,3 +1,4 @@
+/* eslint-disable no-bitwise -- B51：二进制格式转换（int32 LE 打包/解包 + 位运算合成），sherpa .bin 文件契约 */
 import * as RNFS from '@dr.pogodin/react-native-fs';
 
 /**
@@ -39,7 +40,9 @@ export async function generateKokoroTokensTxt(
   outPath: string,
 ): Promise<void> {
   const raw = await RNFS.readFile(tokenizerPath, 'utf8');
-  const tokenizer = JSON.parse(raw) as {model?: {vocab?: Record<string, number>}};
+  const tokenizer = JSON.parse(raw) as {
+    model?: {vocab?: Record<string, number>};
+  };
   const vocab = tokenizer.model?.vocab;
   if (!vocab) {
     throw new Error('tokenizer.json 缺少 model.vocab');

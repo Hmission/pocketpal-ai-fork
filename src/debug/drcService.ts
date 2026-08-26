@@ -31,7 +31,11 @@ let busy = false;
 
 /** 最近一次命令链路（写回 state.json lastCommand） */
 let lastCommand: {cmdId: string; actionId: string; ts: number} | null = null;
-export function getLastCommand(): {cmdId: string; actionId: string; ts: number} | null {
+export function getLastCommand(): {
+  cmdId: string;
+  actionId: string;
+  ts: number;
+} | null {
   return lastCommand;
 }
 
@@ -90,12 +94,23 @@ async function consumeCommand(cmdId: string): Promise<void> {
     return;
   }
 
-  lastCommand = {cmdId: command.cmdId, actionId: command.actionId, ts: Date.now()};
-  emit('system', 'command.start', {cmdId: command.cmdId, actionId: command.actionId});
+  lastCommand = {
+    cmdId: command.cmdId,
+    actionId: command.actionId,
+    ts: Date.now(),
+  };
+  emit('system', 'command.start', {
+    cmdId: command.cmdId,
+    actionId: command.actionId,
+  });
 
   const timeoutMs = command.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const timeout = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error(`命令超时（${timeoutMs}ms）：${command.actionId}`)), timeoutMs),
+    setTimeout(
+      () =>
+        reject(new Error(`命令超时（${timeoutMs}ms）：${command.actionId}`)),
+      timeoutMs,
+    ),
   );
   try {
     const data = await Promise.race([
@@ -110,7 +125,10 @@ async function consumeCommand(cmdId: string): Promise<void> {
       data,
       ts: Date.now(),
     });
-    emit('system', 'command.done', {cmdId: command.cmdId, actionId: command.actionId});
+    emit('system', 'command.done', {
+      cmdId: command.cmdId,
+      actionId: command.actionId,
+    });
   } catch (e: any) {
     const msg = e?.message ?? String(e);
     await writeResult({
@@ -121,7 +139,11 @@ async function consumeCommand(cmdId: string): Promise<void> {
       error: msg,
       ts: Date.now(),
     });
-    emit('system', 'command.failed', {cmdId: command.cmdId, actionId: command.actionId, error: msg});
+    emit('system', 'command.failed', {
+      cmdId: command.cmdId,
+      actionId: command.actionId,
+      error: msg,
+    });
   } finally {
     refreshStateSnapshot();
   }

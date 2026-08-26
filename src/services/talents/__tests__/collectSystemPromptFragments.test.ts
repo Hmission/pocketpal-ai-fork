@@ -29,15 +29,18 @@ describe('collectSystemPromptFragments', () => {
   });
 
   it('appends the global retry discipline last whenever any tool is active', () => {
-    const fragments = collectSystemPromptFragments(['calculate', 'read_url'], ctx);
+    const fragments = collectSystemPromptFragments(
+      ['calculate', 'read_url'],
+      ctx,
+    );
     expect(fragments[fragments.length - 1]).toBe(TOOL_RETRY_DISCIPLINE);
     expect(TOOL_RETRY_DISCIPLINE).toContain('failed twice in a row');
   });
 
   it('returns only the retry discipline for talents that contribute no fragment', () => {
-    expect(collectSystemPromptFragments(['calculate', 'datetime'], ctx)).toEqual(
-      [TOOL_RETRY_DISCIPLINE],
-    );
+    expect(
+      collectSystemPromptFragments(['calculate', 'datetime'], ctx),
+    ).toEqual([TOOL_RETRY_DISCIPLINE]);
     expect(collectSystemPromptFragments(['read_url'], ctx)).toEqual([
       TOOL_RETRY_DISCIPLINE,
     ]);
@@ -48,8 +51,8 @@ describe('collectSystemPromptFragments', () => {
   });
 
   it('ignores unknown talent names but still applies the retry discipline', () => {
-    expect(
-      collectSystemPromptFragments(['not_a_real_talent'], ctx),
-    ).toEqual([TOOL_RETRY_DISCIPLINE]);
+    expect(collectSystemPromptFragments(['not_a_real_talent'], ctx)).toEqual([
+      TOOL_RETRY_DISCIPLINE,
+    ]);
   });
 });

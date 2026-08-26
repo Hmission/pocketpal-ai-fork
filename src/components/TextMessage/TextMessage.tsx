@@ -6,7 +6,6 @@ import {
   Image,
   TouchableOpacity,
   Modal,
-  Alert,
 } from 'react-native';
 
 import ParsedText from 'react-native-parsed-text';
@@ -17,6 +16,8 @@ import {
 } from '@flyerhq/react-native-link-preview';
 
 import {useTheme} from '../../hooks';
+import {infoDialog} from '../ui/InfoDialog';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 import {styles} from './styles';
 import {MarkdownView} from '../MarkdownView';
@@ -99,6 +100,9 @@ export const TextMessage = ({
   >(null);
   const [isSaving, setIsSaving] = React.useState(false);
 
+  // B58：全屏查看器锚点 insets 感知（刘海/手势条设备不贴边）
+  const insets = useSafeAreaInsets();
+
   const {
     descriptionText,
     headerText,
@@ -119,6 +123,7 @@ export const TextMessage = ({
     message,
     theme,
     user,
+    insets,
   });
 
   // Extract imageUris from the message if available
@@ -237,9 +242,9 @@ export const TextMessage = ({
       const ok = await imageGenStore.saveToAlbum(previewUri);
       setIsSaving(false);
       if (ok) {
-        Alert.alert(l10n.components.textMessage.savedToAlbum);
+        infoDialog({title: l10n.components.textMessage.savedToAlbum});
       } else {
-        Alert.alert(l10n.components.textMessage.saveFailed);
+        infoDialog({title: l10n.components.textMessage.saveFailed});
       }
     };
 

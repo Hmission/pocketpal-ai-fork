@@ -1,6 +1,5 @@
 import React, {useContext, useEffect, useMemo, useState} from 'react';
 import {
-  Alert,
   LayoutAnimation,
   Platform,
   StyleSheet,
@@ -18,6 +17,7 @@ import {
 import {observer} from 'mobx-react';
 
 import {ChevronRightIcon} from '../../assets/icons';
+import {confirmDialog} from '../ui/ConfirmDialog';
 
 if (
   Platform.OS === 'android' &&
@@ -277,26 +277,24 @@ export const VoicePickerView: React.FC = observer(() => {
   };
 
   const handleDelete = (engineId: NeuralEngineId) => {
-    Alert.alert(
-      t(l10n.voiceAndSpeech.engineRemoveTitle, {
+    void confirmDialog({
+      title: t(l10n.voiceAndSpeech.engineRemoveTitle, {
         engineTitle: engineTitle(engineId, l10n),
       }),
-      t(l10n.voiceAndSpeech.engineRemoveBody, {
+      message: t(l10n.voiceAndSpeech.engineRemoveBody, {
         sizeMb: ENGINE_META[engineId].sizeMb,
       }),
-      [
-        {text: l10n.voiceAndSpeech.engineRemoveCancel, style: 'cancel'},
-        {
-          text: l10n.voiceAndSpeech.engineRemoveConfirm,
-          style: 'destructive',
-          onPress: () => {
-            triggerDelete(engineId).catch(err => {
-              console.warn(`[VoicePickerView] delete ${engineId} failed:`, err);
-            });
-          },
-        },
-      ],
-    );
+      confirmText: l10n.voiceAndSpeech.engineRemoveConfirm,
+      cancelText: l10n.voiceAndSpeech.engineRemoveCancel,
+      destructive: true,
+    }).then(ok => {
+      if (!ok) {
+        return;
+      }
+      triggerDelete(engineId).catch(err => {
+        console.warn(`[VoicePickerView] delete ${engineId} failed:`, err);
+      });
+    });
   };
 
   const renderVoiceRow = (voice: Voice) => {

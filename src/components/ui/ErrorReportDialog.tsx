@@ -8,9 +8,10 @@
  *（复制完整报告 + 落盘 AIOS/logs，供测试员整段发出）。
  */
 import * as React from 'react';
-import {ScrollView, View, Text} from 'react-native';
+import {ScrollView, StyleSheet, View, Text} from 'react-native';
 
 import {useTheme} from '../../hooks';
+import type {Theme} from '../../utils/types';
 import {copyAndSaveErrorReport} from '../../utils/errorReport';
 import {L10nContext} from '../../utils';
 import {t} from '../../locales';
@@ -40,6 +41,7 @@ export function showErrorReport(opts: ErrorReportDialogOptions): void {
 
 export const ErrorReportDialogHost: React.FC = () => {
   const theme = useTheme();
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
   const l10n = React.useContext(L10nContext);
   const [pending, setPending] = React.useState<ErrorReportDialogOptions | null>(
     null,
@@ -74,63 +76,33 @@ export const ErrorReportDialogHost: React.FC = () => {
   };
 
   return (
-    <OverlayCard visible={pending !== null} onRequestClose={close} title={pending?.title}>
-      <Text
-        style={{
-          ...theme.typography.bodyS,
-          lineHeight: 20,
-          color: theme.colors.onSurface,
-        }}>
-        {pending?.summary}
-      </Text>
-      <ScrollView
-        style={{
-          maxHeight: 220,
-          backgroundColor: theme.colors.surface,
-          borderRadius: theme.radius.s,
-          borderWidth: 1,
-          borderColor: theme.colors.outline,
-        }}
-        testID="error-report-detail">
-        <Text
-          style={{
-            ...theme.typography.captionM,
-            fontFamily: undefined,
-            color: theme.colors.onSurfaceVariant,
-            padding: theme.spacing.s,
-          }}>
-          {pending?.detail}
-        </Text>
+    <OverlayCard
+      visible={pending !== null}
+      onRequestClose={close}
+      title={pending?.title}>
+      <Text style={styles.summaryText}>{pending?.summary}</Text>
+      <ScrollView style={styles.detailScroll} testID="error-report-detail">
+        <Text style={styles.detailText}>{pending?.detail}</Text>
       </ScrollView>
       {copiedHint ? (
-        <Text
-          style={{
-            ...theme.typography.captionM,
-            color: theme.colors.primary,
-          }}
-          testID="error-report-copied-hint">
+        <Text style={styles.copiedHint} testID="error-report-copied-hint">
           {copiedHint}
         </Text>
       ) : null}
-      <View
-        style={{
-          flexDirection: 'row',
-          gap: theme.spacing.s,
-          marginTop: theme.spacing.xs,
-        }}>
+      <View style={styles.actionRow}>
         <Button
           variant="tertiary"
           label={l10n.errorReport.close}
           onPress={close}
           testID="error-report-close"
-          style={{flex: 1}}
+          style={styles.actionClose}
         />
         <Button
           variant="primary"
           label={l10n.errorReport.copy}
           onPress={handleCopy}
           testID="error-report-copy"
-          style={{flex: 1.4}}
+          style={styles.actionCopy}
         />
       </View>
     </OverlayCard>
@@ -138,3 +110,36 @@ export const ErrorReportDialogHost: React.FC = () => {
 };
 
 ErrorReportDialogHost.displayName = 'ErrorReportDialogHost';
+
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    summaryText: {
+      ...theme.typography.bodyS,
+      lineHeight: 20,
+      color: theme.colors.onSurface,
+    },
+    detailScroll: {
+      maxHeight: 220,
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.s,
+      borderWidth: theme.stroke.sm,
+      borderColor: theme.colors.outline,
+    },
+    detailText: {
+      ...theme.typography.captionM,
+      fontFamily: undefined,
+      color: theme.colors.onSurfaceVariant,
+      padding: theme.spacing.s,
+    },
+    copiedHint: {
+      ...theme.typography.captionM,
+      color: theme.colors.primary,
+    },
+    actionRow: {
+      flexDirection: 'row',
+      gap: theme.spacing.s,
+      marginTop: theme.spacing.xs,
+    },
+    actionClose: {flex: 1},
+    actionCopy: {flex: 1.4},
+  });

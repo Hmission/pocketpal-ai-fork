@@ -3,9 +3,9 @@ doc_id: POCKETPAL_AUDIO_UI_SPEC
 module: root
 type: spec
 status: active
-version: "1.7"
+version: "1.8"
 created: "2026-08-21"
-updated: "2026-08-23"
+updated: "2026-08-25"
 relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_IMAGEGEN_UI_SPEC, POCKETPAL_MODEL_MATRIX]
 ---
 
@@ -21,6 +21,7 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_IMAGEGEN_UI_SPEC, POCKETPAL_MODEL_MAT
 > 版本：v1.5（2026-08-22 B36 大王复查，全面对齐生图 tab）：① **引擎选择弃 Menu → 复用生图 ModelPicker 屏级 overlay 交互**（dropOverlay/dropBackdrop/dropPanelAbs + 行内动作，消灭同页双交互模式；行内动作 = 未就绪「下载」/ 就绪「删除」，store 能力现成）；② **结果区升级整卡三态**（对齐生图 taskPage 语义：running = 三点波浪进度卡（复用 useWaveDots）/ success = 全文卡 / failed = ⚠ 摘要 + 复制报错/重试/删除 三按钮）——小卡升级整卡，兑现 §2「整卡切换」；③ **历史条点击联动结果区**（点历史条目 → 结果区切换对应条目，对齐生图相册翻页联动）；④ **模型管理行整治**：composer 三行冗余状态文本删除 → 引擎状态/下载/删除全部并入顶栏下拉行内；⑤ **m4a/mp3 转码删条**（锋利：不做兜底转码，JS 显式只收 wav 16k）
 > 版本：v1.7（2026-08-23 B38 大王复查·多模态统一逻辑）：① **顶栏胶囊与生图 tab 同一设计语言**——废弃 audioHeaderCapsule 独立风格，复用 triggerPill（primary 12% 底 + full 圆角 + primary 1px 描边 + onSurface 文字 + ▾ 箭头），就绪点内嵌保留（音频的「加载」语义 = 引擎就绪点）；② **结果区升级播放器预览窗口**——方形大卡（与生图预览窗口同规格）：中央播放/暂停大按钮 + 时间轴（可拖动跳播）+ 当前/总时长（mm:ss）；running/failed 三态保留；产物操作行（重生成/分享/删除）置于预览卡内；③ **历史卡改方形**（与生图相册缩略图同构：方形卡 + 图标/摘要），**点击 = 加载到预览窗口**（转写=文本预览、生成=播放器预览），不再点卡直接播放/复制（操作归预览窗口）——多模态统一：生图=缩略图→大图预览，音频=方形卡→播放器预览，转写=方形卡→文本预览；④ **输入框默认两行**（minHeight 66，原 44——怕用户找不到输入处，提高存在感）；⑤ **原生播放器全能力**：MediaPlayer 扩展 seekTo/pause/resume/getPosition，JS 侧 500ms 轮询驱动时间轴
 > 版本：v1.6（2026-08-23 B37 生成链路修复）：TTS 生成链路（sherpa 原生）与播放链路（fork 库）对模型文件格式要求不同——下载后由 sherpaConvert.ts 生成 sherpa 格式副本（tokens.txt / unicode_indexer.bin / voice {id}.bin）；kokoro 模型需 sherpa metadata；kitten 生成链路换官方 kitten-nano-en-v0_1（kitten_sherpa.onnx，palshub 0.8 输出纯噪声弃用）
+> 版本：v1.8（2026-08-25 镜像校准销账，DEV_BACKLOG P4#11）：TTS 三引擎下载源 5 处直连 huggingface.co 全部切 hf-mirror.com（constants.ts L33/97/120/137/168：supertonic/kokoro/phonemizer/kitten/sherpa），对齐 ASR 既有镜像链路——§4.1 P2.5 连带项关闭
 > 上位规范：POCKETPAL_DESIGN_SPEC.md（UI 域 SSOT）+ POCKETPAL_IMAGEGEN_UI_SPEC.md（工坊 tab 载体）
 
 ## 1. 产品定位
@@ -87,7 +88,7 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_IMAGEGEN_UI_SPEC, POCKETPAL_MODEL_MAT
 ### 4.1 引擎与模型（复用现有 TTS 架构）
 - 三引擎：Kokoro FP32（330MB，默认，多音色）/ Kitten（57MB）/ Supertonic（380MB，31 语种）——模型文件与播放共用（sherpa-onnx 格式）
 - 合成：**TtsModule.synthesizeToFile 原生合成**（与 AsrModule 同构：sherpa-onnx OfflineTts kotlin-api）→ wav 文件落盘 `AIOS/audio/output/`（共享存储，用户可见）
-- 下载源：TTS 引擎模型下载源需镜像校准（HF 直连被墙，P2.5 连带项）
+- 下载源：**2026-08-25 已切 hf-mirror.com 镜像**（P4#11，5 处直连点全切，对齐 §3.1 ASR 既有镜像链路；此前「需镜像校准，P2.5 连带项」已关闭）
 - **双格式并存（v1.6，B37 实锤）**：fork 播放链路（@pocketpalai/react-native-speech）与 sherpa 生成链路（AudioTts native）对同一模型的文件格式要求不同——播放链路消费 tokenizer.json / unicode_indexer.json / voice {id}.json；生成链路消费 tokens.txt / unicode_indexer.bin / {id}.bin（6×int64 头 + float32）。下载后由 `src/services/tts/sherpaConvert.ts` 生成 sherpa 格式副本（失败不阻断播放链路）。
 - **kokoro 模型要求 sherpa metadata**（sample_rate=24000 / n_speakers / has_espeak=1 / style_dim=510,1,256）——onnx-community 原版导出缺 metadata 会初始化失败；kitten 生成链路用 sherpa 官方 kitten-nano-en-v0_1（kitten_sherpa.onnx），palshub 0.8 模型输出纯噪声（B37 实测弃用）。
 

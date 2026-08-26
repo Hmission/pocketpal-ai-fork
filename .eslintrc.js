@@ -36,6 +36,10 @@ module.exports = {
           'Imperative agent-status setters are banned. Drive agentUiState through agentStateReducer + chatSessionStore.setAgentUiState.',
       },
     ],
+    // B51（2026-08-25）：`void promise()` 是本仓 fire-and-forget 的既有惯用法
+    // （异步副作用显式忽略，比裸调用更明确），语句形式合法化；
+    // 表达式形式（const x = void y）仍报错。
+    'no-void': ['error', {allowAsStatement: true}],
   },
   overrides: [
     {
@@ -112,6 +116,16 @@ module.exports = {
       files: ['src/services/agent/**'],
       rules: {
         'no-restricted-syntax': 'off',
+      },
+    },
+    {
+      // B51（2026-08-25）：Node 工具脚本（scripts/）与根 mock 使用 Node 内置全局
+      // （Atomics/SharedArrayBuffer/process 等），补 node + es2021 env 消除误报
+      // （新版 globals 将 Atomics/SharedArrayBuffer 归入 es2017+，node env 不再携带）。
+      files: ['scripts/**/*.js', '__mocks__/**/*.{js,ts,tsx}'],
+      env: {
+        node: true,
+        es2021: true,
       },
     },
   ],

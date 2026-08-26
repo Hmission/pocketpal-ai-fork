@@ -1,11 +1,13 @@
 import React from 'react';
-import {Alert, Linking, Platform} from 'react-native';
+import {Linking, Platform} from 'react-native';
 import {runInAction} from 'mobx';
 import {render, fireEvent, waitFor, act} from '../../../../../jest/test-utils';
 
 import {PalDetailSheet} from '../PalDetailSheet';
 import {authService, palsHubService} from '../../../../services';
 import {palStore, checkoutFlowStore} from '../../../../store';
+
+import {infoDialog} from '../../../ui/InfoDialog';
 import {
   createPalsHubPal,
   mockPalsHubPal,
@@ -41,8 +43,10 @@ jest.mock('../../../Sheet/Sheet', () => {
   return {Sheet: MockSheet};
 });
 
-// Mock Alert
-jest.spyOn(Alert, 'alert');
+// Mock InfoDialog
+jest.mock('../../../ui/InfoDialog', () => ({
+  infoDialog: jest.fn().mockResolvedValue(undefined),
+}));
 
 // Mock Linking.openURL to return a resolved Promise
 jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
@@ -237,12 +241,12 @@ describe('PalDetailSheet', () => {
         );
       });
 
-      // Verify success alert was shown
-      expect(Alert.alert).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.any(String),
-        expect.any(Array),
-      );
+      // Verify success dialog was shown
+      expect(infoDialog).toHaveBeenCalledWith({
+        title: expect.any(String),
+        message: expect.any(String),
+        buttonText: expect.any(String),
+      });
     });
 
     it('shows downloaded state when pal is already downloaded', async () => {
@@ -272,12 +276,12 @@ describe('PalDetailSheet', () => {
       const downloadButton = getByText(/Get Free/i);
       fireEvent.press(downloadButton);
 
-      // Verify error alert was shown
+      // Verify error dialog was shown
       await waitFor(() => {
-        expect(Alert.alert).toHaveBeenCalledWith(
-          expect.any(String),
-          'Download failed',
-        );
+        expect(infoDialog).toHaveBeenCalledWith({
+          title: expect.any(String),
+          message: 'Download failed',
+        });
       });
     });
   });
@@ -500,19 +504,12 @@ describe('PalDetailSheet', () => {
       const downloadButton = getByTestId('download-button');
       fireEvent.press(downloadButton);
 
-      // Wait for download to complete and alert to be shown
+      // Wait for download to complete and success dialog to be shown
       await waitFor(() => {
-        expect(Alert.alert).toHaveBeenCalled();
+        expect(infoDialog).toHaveBeenCalled();
       });
 
-      // Simulate pressing OK button in the alert
-      const alertCall = (Alert.alert as jest.Mock).mock.calls[0];
-      const buttons = alertCall[2];
-      if (buttons && buttons[0] && buttons[0].onPress) {
-        buttons[0].onPress();
-      }
-
-      // Verify onClose was called
+      // infoDialog().then(onClose): promise resolves on dismissal → onClose fires
       await waitFor(() => {
         expect(onCloseMock).toHaveBeenCalled();
       });

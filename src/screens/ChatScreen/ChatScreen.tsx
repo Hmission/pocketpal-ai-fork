@@ -57,7 +57,7 @@ export const renderBubble = ({
   message,
   nextMessageInGroup,
   scale,
-  theme,
+  theme: _theme,
 }: {
   child: ReactNode;
   message: MessageType.Any;
@@ -172,21 +172,27 @@ export const ChatScreen: React.FC = observer(() => {
   // imageGenStore.pendingEditSource 交接；快捷行/全屏查看器经 onEditSourceChange 直连
   const [editSourceUri, setEditSourceUri] = useState<string | null>(null);
 
+  // observer 本地读（MobX 惯例）：pendingEditSource 是 observable 属性，先读入 render
+  // 局部变量——深链写入触发 observer 重渲染 → 局部变量刷新 → effect 重跑消费；
+  // 取用即清空（runInAction），天然防重复执行。
+  const pendingEditSource = imageGenStore.pendingEditSource;
+
   // 任务卡「编辑图片」改道：pendingEditSource（原跳生图页深链）→ 聊天内下沉输入框
   React.useEffect(() => {
-    if (imageGenStore.pendingEditSource) {
-      const uri = imageGenStore.pendingEditSource;
+    if (pendingEditSource) {
+      const uri = pendingEditSource;
       runInAction(() => {
         imageGenStore.pendingEditSource = null;
       });
       setEditSourceUri(uri);
     }
-  }, [imageGenStore.pendingEditSource]);
+  }, [pendingEditSource]);
 
   // 会话切换/新建时清空编辑源图（会话内临时态，防泄漏到下一会话，锋利不臃肿）
+  const activeSessionId = chatSessionStore.activeSessionId;
   React.useEffect(() => {
     setEditSourceUri(null);
-  }, [chatSessionStore.activeSessionId]);
+  }, [activeSessionId]);
 
   const {handleSendPress, handleStopPress} = useChatSession(
     currentMessageInfo,
@@ -199,7 +205,8 @@ export const ChatScreen: React.FC = observer(() => {
   // - write/code → chat 引擎未加载时按能力注册表自动选模型加载，再走常规聊天
   // - chitchat → chat 引擎未加载且管家就绪时，由常驻管家直接回答（启动即就绪）
   // - upgradeButlerReply → 用户主权升级（L2 2026-08-21）：管家卡片「换个更聪明的模型」
-  const {wrappedSendPress, upgradeButlerReply} = useChatScheduler(handleSendPress);
+  const {wrappedSendPress, upgradeButlerReply} =
+    useChatScheduler(handleSendPress);
 
   // DRC 聊天发送槽（debug/E2E 构建）：ChatScreen 在岗时注册 wrappedSendPress，
   // 卸载注销——command chat.send 复用完整调度链路（意图路由/管家直答），单一事实源。

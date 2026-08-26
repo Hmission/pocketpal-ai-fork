@@ -117,7 +117,7 @@ export const HeroRow: React.FC = observer(() => {
         </View>
         <IconButton
           icon={isPreviewing ? 'stop' : 'play'}
-          size={20}
+          size={theme.iconSize.m}
           iconColor={accent}
           containerColor={theme.colors.surface}
           onPress={handlePreviewToggle}

@@ -12,7 +12,13 @@
  * 各 Panel 只读 props 渲染；store 状态经 observer 自动联动。
  */
 import * as React from 'react';
-import {View, FlatList, Text, TouchableOpacity, ActivityIndicator} from 'react-native';
+import {
+  View,
+  FlatList,
+  Text,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native';
 import {KeyboardAwareScrollView} from 'react-native-keyboard-controller';
 import {observer} from 'mobx-react-lite';
 import {runInAction} from 'mobx';
@@ -46,12 +52,13 @@ import {
   SD_RATIOS,
   ModelEntry,
 } from './constants';
-import {useWaveDots} from './hooks/useWaveDots';
+// B57：旧 useWaveDots 已 git rm；prop 接线保留 → 参数化版本（ui 域单一事实源）
+import {useWaveDots} from '../../components/ui/WaveDots/useWaveDots';
 import {
   ModelPickerTrigger,
   ModelPickerDropdown,
 } from './components/ModelPickerPanel';
-import {ResultPreview} from './components/ResultPreview';
+import {ResultPreview, PreviewBanner} from './components/ResultPreview';
 import {BenchmarkHudBar} from '../../components/BenchmarkHudBar';
 import {HistoryStrip} from './components/HistoryStrip';
 import {ComposerPanel} from './components/ComposerPanel';
@@ -59,7 +66,6 @@ import {UpscalePanel} from './components/UpscalePanel';
 import {AudioWorkshopTab} from './components/AudioWorkshopTab';
 import {confirmDialog} from '../../components/ui/ConfirmDialog';
 import {OverlayCard} from '../../components/ui/OverlayCard';
-import {BannerBar} from '../../components/ui/BannerBar';
 import {SRStyle} from '../../services/superResEngine';
 
 /** v5.3：图片类任务判定（相册/启动定位共用）——音频内容（transcribe/tts）不属相册 */
@@ -85,7 +91,6 @@ const engineState = (id: TtsGenEngineId) =>
     : id === 'supertonic'
       ? ttsStore.supertonicDownloadState
       : ttsStore.kittenDownloadState;
-
 
 export const ImageGenScreen: React.FC = observer(() => {
   const theme = useTheme();
@@ -132,7 +137,9 @@ export const ImageGenScreen: React.FC = observer(() => {
   // 编辑预备态：已点「编辑」锁定当前预览图，正在输入编辑指令（再点「执行编辑」二创）
   const [editArming, setEditArming] = React.useState(false);
   // 进行中任务类型：'gen'=新生成（预览区空白页动效）｜'edit'=二创当前图（图上叠动效）｜'caption'=反推（图上叠动效）
-  const [taskKind, setTaskKind] = React.useState<'gen' | 'edit' | 'caption' | null>(null);
+  const [taskKind, setTaskKind] = React.useState<
+    'gen' | 'edit' | 'caption' | null
+  >(null);
   // P6-6：高清放大参数面板显隐（独立通用能力入口）
   const [upscaleVisible, setUpscaleVisible] = React.useState(false);
   // 未加载引导弹窗（2026-08-21）：非 Dream 点出图未加载 → 提示 + 展开模型下拉
@@ -140,27 +147,35 @@ export const ImageGenScreen: React.FC = observer(() => {
   // 信息条点击：当前查看完整生图参数的任务条目（提示词/耗时/尺寸/模型/种子/步数）
   const [infoItem, setInfoItem] = React.useState<GeneratedImage | null>(null);
   // 工坊双 tab（IMAGEGEN_UI_SPEC §8）：image=生图（现状）｜audio=音频工坊
-  const [workshopTab, setWorkshopTab] = React.useState<'image' | 'audio'>('image');
+  const [workshopTab, setWorkshopTab] = React.useState<'image' | 'audio'>(
+    'image',
+  );
   // B35：音频顶栏引擎选择下拉显隐（模型只在顶栏）
   const [showAudioEngineDrop, setShowAudioEngineDrop] = React.useState(false);
   // 顶栏音频胶囊状态点：当前引擎就绪
+  // observer 本地读（MobX 惯例）：引擎/下载态是 observable 属性，先读入 render 局部
+  // 变量——任一变化触发 observer 重渲染 → 局部变量刷新 → useMemo 重算就绪派生。
+  const genEngine = audioStore.genEngine;
+  const kokoroDownloadState = ttsStore.kokoroDownloadState;
+  const supertonicDownloadState = ttsStore.supertonicDownloadState;
+  const kittenDownloadState = ttsStore.kittenDownloadState;
   const audioHeaderReady = React.useMemo(() => {
     const st =
-      audioStore.genEngine === 'kokoro'
-        ? ttsStore.kokoroDownloadState
-        : audioStore.genEngine === 'supertonic'
-          ? ttsStore.supertonicDownloadState
-          : ttsStore.kittenDownloadState;
+      genEngine === 'kokoro'
+        ? kokoroDownloadState
+        : genEngine === 'supertonic'
+          ? supertonicDownloadState
+          : kittenDownloadState;
     return st === 'ready';
   }, [
-    audioStore.genEngine,
-    ttsStore.kokoroDownloadState,
-    ttsStore.kittenDownloadState,
-    ttsStore.supertonicDownloadState,
+    genEngine,
+    kokoroDownloadState,
+    supertonicDownloadState,
+    kittenDownloadState,
   ]);
 
-  // 顶部横幅（v4.2 大王裁定：生图页轻提示弃用底部 Snackbar——灰色底+挡底部按钮，
-  // 统一顶部 BannerBar overlay；瞬时反馈 3s 自动消失，编辑锁定常驻走 editArming 派生）
+  // 预览卡片顶部横幅（v4.3 大王裁定：生图页轻提示弃用底部 Snackbar，统一预览卡片顶部
+  // BannerBar overlay；语义色 wash 无灰底；瞬时反馈 3s 点击即消，编辑锁定常驻走 editArming 派生）
   type BannerMsg = {text: string; variant: 'info' | 'error' | 'warning'};
   const [banner, setBanner] = React.useState<BannerMsg | null>(null);
   const bannerTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -192,8 +207,8 @@ export const ImageGenScreen: React.FC = observer(() => {
     if (!generating && !loading) {
       return;
     }
-    const t = setInterval(() => setNow(Date.now()), 2000);
-    return () => clearInterval(t);
+    const timer = setInterval(() => setNow(Date.now()), 2000);
+    return () => clearInterval(timer);
   }, [generating, loading]);
 
   const scanModels = React.useCallback(async () => {
@@ -228,9 +243,7 @@ export const ImageGenScreen: React.FC = observer(() => {
     ) {
       return;
     }
-    const firstImage = imageGenStore.history.find(h =>
-      isImageKind(h.kind),
-    );
+    const firstImage = imageGenStore.history.find(h => isImageKind(h.kind));
     if (!firstImage) {
       return;
     }
@@ -503,14 +516,22 @@ export const ImageGenScreen: React.FC = observer(() => {
   };
 
   // 胶囊快速加载：直接加载当前选中模型，不展开下拉（默认 DreamLite 一键就绪）
+  // loadEntry 为渲染期普通函数（内部引用 scrollToPreview/pushLoadFailedTask 等组件
+  // 级派生），经 latest-ref 桥接稳定调用——handleQuickLoad 保持引用稳定（依赖仅
+  // selectedEntry），避免其每次渲染重建拖累下方 header effect 高频重跑，行为等价。
+  const loadEntryRef = React.useRef(loadEntry);
+  loadEntryRef.current = loadEntry;
   const handleQuickLoad = React.useCallback(() => {
     if (selectedEntry) {
-      loadEntry(selectedEntry);
+      loadEntryRef.current(selectedEntry);
     }
   }, [selectedEntry]);
 
   // B36：音频引擎行内动作（未就绪下载 / 就绪删除；删除二次确认——与生图模型卸载同一交互）
-  const handleAudioEngineAction = async (id: TtsGenEngineId, ready: boolean) => {
+  const handleAudioEngineAction = async (
+    id: TtsGenEngineId,
+    ready: boolean,
+  ) => {
     if (!ready) {
       if (id === 'kokoro') {
         await ttsStore.downloadKokoro();
@@ -1010,7 +1031,10 @@ export const ImageGenScreen: React.FC = observer(() => {
       scale,
       style,
     );
-    showBanner(out ? `已放大 ${scale}×` : '放大失败，请重试', out ? 'info' : 'error');
+    showBanner(
+      out ? `已放大 ${scale}×` : '放大失败，请重试',
+      out ? 'info' : 'error',
+    );
     if (out) {
       // 修复：放大结果在 history[0]（第 1 数据页）；previewIndex 0 = 编辑槽（空白上传页），
       // 此前用 0 导致放大完成后预览窗口空白（2026-08-19 真机实锤）
@@ -1027,7 +1051,22 @@ export const ImageGenScreen: React.FC = observer(() => {
     scrollToPreview(0, false);
   };
 
-  // v5 顶栏一行：返回 | 创造工坊标题+tab 胶囊（headerTitle）｜ 上下文操作随 tab 切换（headerRight）
+  // 预览卡片顶部横幅（v4.3 大王裁定）：弃屏级 top:458 中间浮条——移入预览卡片顶部，
+  // 只压预览图、不压历史区/创作区；无灰底（语义色 wash 透出）。
+  // 编辑锁定常驻优先（瞬时 banner 让位）；瞬时 banner 整卡可点关闭。
+  const previewBanner: PreviewBanner | null = editArming
+    ? {
+        text: `已锁定当前图（${DREAM_EDIT_SIZE}×${DREAM_EDIT_SIZE}），输入编辑指令后点「执行编辑」`,
+        variant: 'info',
+        dismissable: false,
+      }
+    : banner
+      ? {...banner, dismissable: true}
+      : null;
+
+  // s.* 样式键为 createStyles(theme) 每次渲染新建对象的属性，放入依赖数组将导致
+  // effect 每次渲染重跑而无意义（非标准 React 语义依赖）；主题静态无运行时切换，
+  // 样式恒等，故不列入依赖数组（含下方的 s.workshopSliderThumbAudio）。
   React.useEffect(() => {
     navigation.setOptions({
       // v5.3：缩小返回箭头与标题间距一个汉字（16px，titleS 字号）
@@ -1042,14 +1081,12 @@ export const ImageGenScreen: React.FC = observer(() => {
             <View
               style={[
                 s.workshopSliderThumb,
-                workshopTab === 'audio' && {left: '50%'},
+                workshopTab === 'audio' && s.workshopSliderThumbAudio,
               ]}
             />
             <TouchableOpacity
               style={s.workshopSliderSeg}
-              onPress={() =>
-                workshopTab !== 'image' && setWorkshopTab('image')
-              }
+              onPress={() => workshopTab !== 'image' && setWorkshopTab('image')}
               testID="workshop-tab-image">
               <Text
                 style={[
@@ -1061,9 +1098,7 @@ export const ImageGenScreen: React.FC = observer(() => {
             </TouchableOpacity>
             <TouchableOpacity
               style={s.workshopSliderSeg}
-              onPress={() =>
-                workshopTab !== 'audio' && setWorkshopTab('audio')
-              }
+              onPress={() => workshopTab !== 'audio' && setWorkshopTab('audio')}
               testID="workshop-tab-audio">
               <Text
                 style={[
@@ -1110,6 +1145,7 @@ export const ImageGenScreen: React.FC = observer(() => {
           </View>
         ),
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- s.* 样式键为每次渲染新建对象属性，非标准 React 语义依赖（见 effect 上方注释），故不列入
   }, [
     navigation,
     selectedEntry,
@@ -1130,109 +1166,120 @@ export const ImageGenScreen: React.FC = observer(() => {
         <BenchmarkHudBar />
         {workshopTab === 'image' ? (
           <>
-        {/* ① 结果区 */}
-        <ResultPreview
-          previewRef={previewRef}
-          pageW={pageW}
-          editSource={editSource}
-          history={imageGenStore.history}
-          generating={imageGenStore.generating}
-          bootedRef={bootedRef}
-          onListReady={handleListReady}
-          taskKind={taskKind}
-          progress={imageGenStore.progress}
-          progressText={imageGenStore.progressText}
-          stepTime={imageGenStore.stepTime}
-          genStartedAt={imageGenStore.genStartedAt}
-          stage={imageGenStore.stage}
-          now={now}
-          waveDots={waveDots}
-          currentImage={currentImage}
-          currentItem={currentItem}
-          fullscreen={fullscreen}
-          onPageW={setPageW}
-          onMomentumEnd={handleMomentumEnd}
-          onPickEditImage={handlePickEditImage}
-          onOpenFullscreen={() => setFullscreen(true)}
-          onCloseFullscreen={() => setFullscreen(false)}
-          onSave={handleSave}
-          onUpscale={() => setUpscaleVisible(true)}
-          onCaption={handleCaption}
-          onCopyCaption={handleCopyCaption}
-          onRemake={handleRemake}
-          onReroll={handleReroll}
-          onDelete={handleDeleteCurrent}
-          onInfoPress={setInfoItem}
-          onCopyError={handleCopyError}
-          onRetryTask={handleRetryTask}
-          onDeleteTask={handleDeleteTask}
-        />
+            {/* ① 结果区 */}
+            <ResultPreview
+              previewRef={previewRef}
+              pageW={pageW}
+              editSource={editSource}
+              history={imageGenStore.history}
+              generating={imageGenStore.generating}
+              bootedRef={bootedRef}
+              onListReady={handleListReady}
+              taskKind={taskKind}
+              progress={imageGenStore.progress}
+              progressText={imageGenStore.progressText}
+              stepTime={imageGenStore.stepTime}
+              genStartedAt={imageGenStore.genStartedAt}
+              stage={imageGenStore.stage}
+              now={now}
+              waveDots={waveDots}
+              currentImage={currentImage}
+              currentItem={currentItem}
+              fullscreen={fullscreen}
+              onPageW={setPageW}
+              onMomentumEnd={handleMomentumEnd}
+              onPickEditImage={handlePickEditImage}
+              onOpenFullscreen={() => setFullscreen(true)}
+              onCloseFullscreen={() => setFullscreen(false)}
+              onSave={handleSave}
+              onUpscale={() => setUpscaleVisible(true)}
+              onCaption={handleCaption}
+              onCopyCaption={handleCopyCaption}
+              onRemake={handleRemake}
+              onReroll={handleReroll}
+              onDelete={handleDeleteCurrent}
+              onInfoPress={setInfoItem}
+              onCopyError={handleCopyError}
+              onRetryTask={handleRetryTask}
+              onDeleteTask={handleDeleteTask}
+              previewBanner={previewBanner}
+              onDismissBanner={() => setBanner(null)}
+            />
 
-        {/* ② 历史区（只列成功任务缩略图；保留原始索引供翻页定位）
+            {/* ② 历史区（只列成功任务缩略图；保留原始索引供翻页定位）
             v5.3：相册只收图片类任务（generated/upload/upscaled/caption），音频内容（transcribe/tts）由音频 tab 历史卡承载 */}
-        <HistoryStrip
-          items={imageGenStore.history
-            .map((item, index) => ({item, index}))
-            .filter(
-              ({item}) =>
-                (item.status ?? 'success') === 'success' &&
-                isImageKind(item.kind),
-            )}
-          manageMode={manageMode}
-          toDelete={toDelete}
-          onUpload={handlePickEditImage}
-          onToggleManage={() => {
-            setManageMode(m => !m);
-            setToDelete([]);
-          }}
-          onThumbPress={(item, index) => {
-            // 点击缩略图 → 大图预览翻到对应页 + 回填参数
-            scrollToPreview(index + 1);
-            syncFromParams(item);
-          }}
-          onToggleDelete={toggleDelete}
-          onConfirmDelete={confirmDelete}
-        />
+            <HistoryStrip
+              items={imageGenStore.history
+                .map((item, index) => ({item, index}))
+                .filter(
+                  ({item}) =>
+                    (item.status ?? 'success') === 'success' &&
+                    isImageKind(item.kind),
+                )}
+              manageMode={manageMode}
+              toDelete={toDelete}
+              onUpload={handlePickEditImage}
+              onToggleManage={() => {
+                setManageMode(m => !m);
+                setToDelete([]);
+              }}
+              onThumbPress={(item, index) => {
+                // 点击缩略图 → 大图预览翻到对应页 + 回填参数
+                scrollToPreview(index + 1);
+                syncFromParams(item);
+              }}
+              onToggleDelete={toggleDelete}
+              onConfirmDelete={confirmDelete}
+            />
 
-        {/* ③ 创作区 */}
-        <ComposerPanel
-          prompt={prompt}
-          negativePrompt={negativePrompt}
-          steps={steps}
-          cfg={cfg}
-          size={size}
-          ratio={ratio}
-          seed={seed}
-          isDream={isDream}
-          editArming={editArming}
-          editRgb={editRgb}
-          hasEditableImage={!!editSource || !!currentImage}
-          showAdvanced={showAdvanced}
-          generating={imageGenStore.generating}
-          taskKind={taskKind}
-          loaded={loaded}
-          tokenLimit={
-            PROMPT_TOKEN_LIMIT[selectedEntry?.manifest.family ?? 'sd3'] ?? 256
-          }
-          hasLora={!!selectedEntry?.manifest.lora}
-          loraEnabled={loraEnabled}
-          loraMultiplier={loraMult}
-          onLoraEnabledChange={setLoraEnabled}
-          onLoraMultiplierChange={setLoraMult}
-          onPromptChange={setPrompt}
-          onNegativePromptChange={setNegativePrompt}
-          onStepsChange={setSteps}
-          onCfgChange={setCfg}
-          onSeedChange={setSeed}
-          onSizeChange={setSize}
-          onRatioChange={setRatio}
-          onToggleAdvanced={() => setShowAdvanced(a => !a)}
-          onEditArm={handleEditArm}
-          onGenerate={handleGenerate}
-        />
+            {/* ③ 创作区 */}
+            <ComposerPanel
+              prompt={prompt}
+              negativePrompt={negativePrompt}
+              steps={steps}
+              cfg={cfg}
+              size={size}
+              ratio={ratio}
+              seed={seed}
+              isDream={isDream}
+              editArming={editArming}
+              editRgb={editRgb}
+              hasEditableImage={!!editSource || !!currentImage}
+              showAdvanced={showAdvanced}
+              loading={imageGenStore.loading}
+              generating={imageGenStore.generating}
+              taskKind={taskKind}
+              loaded={loaded}
+              tokenLimit={
+                PROMPT_TOKEN_LIMIT[selectedEntry?.manifest.family ?? 'sd3'] ??
+                256
+              }
+              hasLora={!!selectedEntry?.manifest.lora}
+              loraEnabled={loraEnabled}
+              loraMultiplier={loraMult}
+              onLoraEnabledChange={setLoraEnabled}
+              onLoraMultiplierChange={setLoraMult}
+              onPromptChange={setPrompt}
+              onNegativePromptChange={setNegativePrompt}
+              onStepsChange={setSteps}
+              onCfgChange={setCfg}
+              onSeedChange={setSeed}
+              onSizeChange={setSize}
+              onRatioChange={setRatio}
+              onToggleAdvanced={() => setShowAdvanced(a => !a)}
+              onEditArm={handleEditArm}
+              onGenerate={handleGenerate}
+            />
           </>
         ) : (
-          <AudioWorkshopTab onSnackbar={showBanner} />
+          <AudioWorkshopTab
+            onSnackbar={showBanner}
+            // 音频 tab：只展示瞬时 banner（编辑锁定是生图 tab 状态，切 tab 不展示）
+            banner={
+              editArming || !banner ? null : {...banner, dismissable: true}
+            }
+            onDismissBanner={() => setBanner(null)}
+          />
         )}
       </KeyboardAwareScrollView>
 
@@ -1430,26 +1477,6 @@ export const ImageGenScreen: React.FC = observer(() => {
           </>
         )}
       </OverlayCard>
-
-      {/* 顶部横幅（v4.2 大王裁定：生图页轻提示弃用底部 Snackbar——
-          不挡底部按钮、语义色非灰；瞬时反馈 3s / 编辑锁定常驻由 editArming 派生） */}
-      {banner && !editArming ? (
-        <View style={s.bannerWrap} pointerEvents="box-none">
-          <BannerBar
-            variant={banner.variant}
-            text={banner.text}
-            onDismiss={() => setBanner(null)}
-          />
-        </View>
-      ) : null}
-      {editArming ? (
-        <View style={s.bannerWrap} pointerEvents="box-none">
-          <BannerBar
-            variant="info"
-            text={`已锁定当前图（${DREAM_EDIT_SIZE}×${DREAM_EDIT_SIZE}），输入编辑指令后点「执行编辑」`}
-          />
-        </View>
-      ) : null}
     </View>
   );
 });

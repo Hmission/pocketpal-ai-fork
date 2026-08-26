@@ -44,10 +44,6 @@ export const createStyles = (theme: Theme) =>
     modelNotDownloaded: {
       gap: 12,
     },
-    progressBar: {
-      height: 8,
-      borderRadius: 5,
-    },
     errorContainer: {
       gap: 12,
     },

@@ -1014,12 +1014,7 @@
         "total": "סה\"כ: ",
         "usage": "שימוש: "
       },
-      "byteSizes": [
-        "Bytes",
-        "KB",
-        "MB",
-        "GB"
-      ]
+      "byteSizes": ["Bytes", "KB", "MB", "GB"]
     },
     "chatView": {
       "menuItems": {

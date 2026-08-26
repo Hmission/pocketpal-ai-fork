@@ -13,11 +13,11 @@ import {IMAGE_GEN_MODEL_FILES} from './imageGenManifest';
 
 // 已知模型 → 中文简称（顺序敏感：具体版本规则在前，族兜底在后）
 const DISPLAY_NAME_RULES: Array<{pattern: RegExp; short: string}> = [
-  {pattern: /qwen3[.\-]?5[-_.\s]?2b/i, short: '通义千问 2B'},
-  {pattern: /qwen3[.\-]?5[-_.\s]?4b/i, short: '通义千问 4B'},
+  {pattern: /qwen3[.-]?5[-_.\s]?2b/i, short: '通义千问 2B'},
+  {pattern: /qwen3[.-]?5[-_.\s]?4b/i, short: '通义千问 4B'},
   {pattern: /minicpm/i, short: '面壁 MiniCPM'},
-  {pattern: /lfm2[.\-]?5[-_.\s]?2[.\-]?6b/i, short: 'Liquid 2.6B'},
-  {pattern: /lfm2[.\-]?5[-_.\s]?8b/i, short: 'Liquid 8B'},
+  {pattern: /lfm2[.-]?5[-_.\s]?2[.-]?6b/i, short: 'Liquid 2.6B'},
+  {pattern: /lfm2[.-]?5[-_.\s]?8b/i, short: 'Liquid 8B'},
   {pattern: /ministral[-_.\s]?3[-_.\s]?3b/i, short: '小雾 3B'},
   {pattern: /ministral/i, short: '小雾'},
 ];
@@ -36,13 +36,16 @@ export function isButlerModel(
 // 入选说明（B18，文案取自 MODEL_MATRIX §1 入选理由；选择器卡片单一事实源）
 const NOTE_RULES: Array<{pattern: RegExp; note: string}> = [
   {
-    pattern: /qwen3[.\-]?5[-_.\s]?2b/i,
+    pattern: /qwen3[.-]?5[-_.\s]?2b/i,
     note: '写作/聊天主力，Q8 近无损；配对视觉伴侣可看图',
   },
-  {pattern: /qwen3[.\-]?5[-_.\s]?4b/i, note: '日用均衡档，质量上限更高'},
-  {pattern: /lfm2[.\-]?5[-_.\s]?2[.\-]?6b/i, note: '代码/玩具匠，工具调用优化，低延迟'},
+  {pattern: /qwen3[.-]?5[-_.\s]?4b/i, note: '日用均衡档，质量上限更高'},
   {
-    pattern: /lfm2[.\-]?5[-_.\s]?8b/i,
+    pattern: /lfm2[.-]?5[-_.\s]?2[.-]?6b/i,
+    note: '代码/玩具匠，工具调用优化，低延迟',
+  },
+  {
+    pattern: /lfm2[.-]?5[-_.\s]?8b/i,
     note: 'MoE 大模型（激活~1.5B）；K90 PSS 看护硬杀不可用',
   },
   {pattern: /ministral/i, note: '代码候选（均衡档）'},
@@ -157,8 +160,7 @@ export function getModelDisplayNameWithParams(
  * 生图模型（manifest 声明的 main/companions 文件）同样排除。
  */
 export function isChatSelectable(
-  model: Pick<Model, 'modelType'> &
-    Partial<Pick<Model, 'filename' | 'origin'>>,
+  model: Pick<Model, 'modelType'> & Partial<Pick<Model, 'filename' | 'origin'>>,
 ): boolean {
   if (model.modelType !== ModelType.LLM) {
     return false;

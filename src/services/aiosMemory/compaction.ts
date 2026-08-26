@@ -8,7 +8,7 @@
  * 读取方：searchMemory（检索）、contextAssembler（组装）
  */
 import * as RNFS from '@dr.pogodin/react-native-fs';
-import {AIOS_CONVERSATIONS_DIR, AIOS_WORKSPACE_MEMORY_DIR} from '../../utils/paths';
+import {AIOS_WORKSPACE_MEMORY_DIR} from '../../utils/paths';
 import {modelStore} from '../../store';
 import {readConversationLog} from './conversationLog';
 import {updateConversationCache} from './searchEngine';

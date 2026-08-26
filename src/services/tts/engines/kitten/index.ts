@@ -249,9 +249,7 @@ export class KittenEngine implements Engine {
    * each removal is independent and a cleanup failure never masks the
    * original Phase 2 error.
    */
-  private async rollbackSherpaGenerationChain(
-    modelDir: string,
-  ): Promise<void> {
+  private async rollbackSherpaGenerationChain(modelDir: string): Promise<void> {
     const targets = [
       ...KITTEN_SHERPA_FILES.map(f => `${modelDir}/${f.name}`),
       `${modelDir}/${KITTEN_SHERPA_ESPEAK_DIR}`,

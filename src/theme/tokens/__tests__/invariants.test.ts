@@ -163,7 +163,7 @@ describe('design-token grep invariants', () => {
       'components/ImageMessage',
       'components/ChatInput',
       'components/ChatView',
-      'components/LoadingBubble',
+      // B57：LoadingBubble 零引用僵尸已删（git rm 留痕），白名单同步移除
       'components/ResponseBubble',
       'components/ThinkingBubble',
       'components/HtmlPreviewBubble',
@@ -184,6 +184,9 @@ describe('design-token grep invariants', () => {
       'components/StopButton',
       // B23 浮层与横幅体系收敛：RenameModal 迁 OverlayCard 底座（stroke/radius/typography token）
       'components/RenameModal',
+      // B46 弹窗范式收尾（2026-08-25）：DownloadErrorDialog 多动作槽下沉 body 链接，
+      // 正文/链接改用 typography token（bodyS/uiS）
+      'components/DownloadErrorDialog',
     ];
     const files = listFiles(SRC).filter(f => {
       const rel = path.relative(SRC, f).replace(/\\/g, '/');

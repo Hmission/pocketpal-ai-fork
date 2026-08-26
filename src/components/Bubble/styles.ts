@@ -4,7 +4,7 @@ import {MessageType, Theme} from '../../utils/types';
 
 export const styles = ({
   currentUserIsAuthor,
-  message,
+  message: _message,
   roundBorder,
   theme,
 }: {
@@ -59,7 +59,7 @@ export const styles = ({
     dateHeader: {
       //textAlign: 'right',
       color: theme.colors.textSecondary,
-      fontSize: 10,
+      fontSize: 11,
     },
     iconContainer: {
       color: theme.colors.textSecondary,

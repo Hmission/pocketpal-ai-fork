@@ -20,7 +20,13 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const {resolveDevice, adb, ensureDirs, DRC_COMMANDS_DIR, DRC_RESULTS_DIR} = require('./adb');
+const {
+  resolveDevice,
+  adb,
+  ensureDirs,
+  DRC_COMMANDS_DIR,
+  DRC_RESULTS_DIR,
+} = require('./adb');
 
 function usage() {
   console.error(`用法: node scripts/drc/drc-push.js <actionId> [jsonParams] [--device <id>] [--timeout <ms>]
@@ -70,7 +76,9 @@ function main() {
 
   const resolvedDevice = device || resolveDevice(args);
   if (!resolvedDevice) {
-    console.error('未找到在线设备。请连接设备（adb devices 确认）或用 --device <id> 指定。');
+    console.error(
+      '未找到在线设备。请连接设备（adb devices 确认）或用 --device <id> 指定。',
+    );
     process.exit(1);
   }
   console.log(`[drc-push] device=${resolvedDevice} action=${actionId}`);
@@ -101,7 +109,8 @@ function main() {
     } catch {
       // 结果未就绪，继续轮询
     }
-    const sleep = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+    const sleep = ms =>
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
     sleep(500);
   }
 

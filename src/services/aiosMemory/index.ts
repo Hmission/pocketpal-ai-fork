@@ -8,7 +8,7 @@
  * \u4eba\u8bbe: \u5df2\u79fb\u5165 AIOS Pal \u7684 systemPrompt\uff0c\u6b64\u5904\u53ea\u7ba1\u8bb0\u5fc6\u5b58\u53d6
  */
 import * as RNFS from '@dr.pogodin/react-native-fs';
-import {AIOS_MEMORIES_DIR, AIOS_CONVERSATIONS_DIR, AIOS_USER_FILE} from '../../utils/paths';
+import {AIOS_MEMORIES_DIR, AIOS_USER_FILE} from '../../utils/paths';
 import {modelStore} from '../../store';
 import {promptWriter} from '../promptWriter';
 import type {IntentKind} from './rituals';
@@ -53,9 +53,6 @@ export function extractAttrSlot(content: string): string | undefined {
 
 let cache: AiosMemory[] | null = null;
 let extracting = false;
-
-// \u5bf9\u8bdd\u65e5\u5fd7\u8bed\u6599\u7f13\u5b58\uff08dateStr \u2192 content\uff09
-let conversationCache: Map<string, string> = new Map();
 
 export async function load(): Promise<AiosMemory[]> {
   if (cache) {
@@ -140,11 +137,7 @@ export async function addMemory(
     if (attrSlot) {
       // 同属性槽且未被替代过的旧 fact，标记为 supersededBy
       for (const m of memories) {
-        if (
-          m.type === 'fact' &&
-          m.attrSlot === attrSlot &&
-          !m.supersededBy
-        ) {
+        if (m.type === 'fact' && m.attrSlot === attrSlot && !m.supersededBy) {
           m.supersededBy = newId;
         }
       }
@@ -172,7 +165,10 @@ export async function deleteMemory(id: string): Promise<void> {
 }
 
 /** Update a memory's content (for MemoryScreen edit feature). */
-export async function updateMemoryContent(id: string, content: string): Promise<void> {
+export async function updateMemoryContent(
+  id: string,
+  content: string,
+): Promise<void> {
   const trimmed = content.trim();
   if (!trimmed) {
     return;
@@ -212,7 +208,11 @@ export async function refreshUserMd(): Promise<void> {
     const lines = facts.map(f => `- ${f.content}`);
     const content = `# 大王画像\n\n由记忆系统从 fact 类记忆自动聚合（${new Date().toLocaleString()}）\n\n${lines.join('\n')}\n`;
     await RNFS.writeFile(AIOS_USER_FILE, content, 'utf8');
-    console.log('[aiosMemory] USER.md refreshed with', facts.length, 'facts (chain tails only)');
+    console.log(
+      '[aiosMemory] USER.md refreshed with',
+      facts.length,
+      'facts (chain tails only)',
+    );
   } catch (e) {
     console.warn('[aiosMemory] refreshUserMd failed:', e);
   }
@@ -283,8 +283,7 @@ export async function buildMemoryFragment(
     }
     const lines = selected.map(m => `- [${m.type}] ${m.content}`);
     return lines.length
-      ? '【你对大王的记忆】(相关时自然用上，别全部复述):\n' +
-          lines.join('\n')
+      ? '【你对大王的记忆】(相关时自然用上，别全部复述):\n' + lines.join('\n')
       : '';
   } catch (e) {
     console.warn('[aiosMemory] fragment build failed:', e);
@@ -398,7 +397,8 @@ export async function extractAndSaveMemories(
   // 提取引擎：优先当前对话大模型；管家直答模式下（modelStore.engine 为空，
   // P1 新语义 chitchat 走管家）回退到管家引擎——否则记忆提取永不触发。
   // （P2 真机复测 2026-08-17 修复：提取小任务 1B 管家足以胜任）
-  const engine = modelStore.engine ?? (promptWriter.isLoaded ? promptWriter : null);
+  const engine =
+    modelStore.engine ?? (promptWriter.isLoaded ? promptWriter : null);
   if (!engine) {
     return;
   }
@@ -430,7 +430,11 @@ export async function extractAndSaveMemories(
     // grammar 约束保证合法 JSON，直接解析（删除正则回退）
     // 2026-08-12 真机复测：本地 llama.rn 引擎不识别 OpenAI 式 response_format
     // json_schema，输出会带 <s> BOS 前缀/围栏 → 解析前剥离非 JSON 头尾。
-    const jsonText = output.trim().replace(/^<s>\s*/i, '').replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/s, '');
+    const jsonText = output
+      .trim()
+      .replace(/^<s>\s*/i, '')
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/```\s*$/s, '');
     let parsed: any;
     try {
       parsed = JSON.parse(jsonText);

@@ -22,10 +22,7 @@ export const createStyles = (theme: Theme) =>
       marginTop: 6,
       marginBottom: 12,
     },
-    progressBar: {
-      height: 8,
-      borderRadius: 5,
-    },
+    // B57：progressBar 键随 paper ProgressBar 清零删除（ui/Progress 自带高度/圆角）
     downloadSpeed: {
       textAlign: 'right',
       fontSize: 12,

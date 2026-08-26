@@ -51,7 +51,7 @@ export const SendButton = ({
         <SendIcon
           stroke={
             enabled
-              ? color ?? theme.colors.onPrimary
+              ? (color ?? theme.colors.onPrimary)
               : theme.colors.onSurfaceVariant
           }
           // §18.4 复查：图标 22→20 与 controlBar 快捷图标钮同尺寸（视觉高度一致），

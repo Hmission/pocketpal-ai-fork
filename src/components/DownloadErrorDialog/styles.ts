@@ -3,6 +3,19 @@ import {Theme} from '../../utils/types';
 
 export const createStyles = (theme: Theme) =>
   StyleSheet.create({
+    // B46 迁移：正文（原 paper bodyMedium → bodyS token）
+    bodyText: {
+      ...theme.typography.bodyS,
+      lineHeight: 20,
+      color: theme.colors.onSurfaceVariant,
+    },
+    // B46 迁移：viewOnHuggingFace 链接下沉 body（原动作槽 text 按钮）
+    hfLink: {
+      ...theme.typography.uiS,
+      color: theme.colors.primary,
+      fontWeight: '600',
+      marginTop: 12,
+    },
     stepItem: {
       paddingVertical: 8,
       marginVertical: 2,

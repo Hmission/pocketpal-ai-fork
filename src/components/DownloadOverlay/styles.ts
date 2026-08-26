@@ -7,8 +7,9 @@ export const overlayStyles = (theme: Theme, topInset: number) =>
     root: {
       position: 'absolute',
       top: topInset - 4,
-      left: 50,
-      right: 45,
+      // B58：左右对称化（原 left:50/right:45 右偏 2.5px），归 spacing.xxl 档
+      left: theme.spacing.xxl,
+      right: theme.spacing.xxl,
       zIndex: 100,
     },
   });

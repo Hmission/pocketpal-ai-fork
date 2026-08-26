@@ -30,6 +30,8 @@ interface ComposerPanelProps {
   /** 预览区有可编辑图（0 页编辑槽有图或历史页有图）——非 Dream 下编辑按钮显示条件 */
   hasEditableImage: boolean;
   showAdvanced: boolean;
+  /** 引擎加载中（loading 与 generating 同属任务进行期：按钮灰置+转圈防连点） */
+  loading?: boolean;
   generating: boolean;
   taskKind: 'gen' | 'edit' | 'caption' | null;
   /** 非 DreamLite 出图按钮的加载前置条件 */
@@ -64,7 +66,7 @@ export const ComposerPanel: React.FC<ComposerPanelProps> = ({
   negativePrompt,
   steps,
   cfg,
-  size,
+  size: _size,
   ratio,
   seed,
   isDream,
@@ -72,9 +74,10 @@ export const ComposerPanel: React.FC<ComposerPanelProps> = ({
   editRgb,
   hasEditableImage,
   showAdvanced,
+  loading = false,
   generating,
   taskKind,
-  loaded,
+  loaded: _loaded,
   tokenLimit,
   hasLora,
   loraEnabled,
@@ -86,7 +89,7 @@ export const ComposerPanel: React.FC<ComposerPanelProps> = ({
   onStepsChange,
   onCfgChange,
   onSeedChange,
-  onSizeChange,
+  onSizeChange: _onSizeChange,
   onRatioChange,
   onToggleAdvanced,
   onEditArm,
@@ -234,8 +237,8 @@ export const ComposerPanel: React.FC<ComposerPanelProps> = ({
         <>
           {editArming && (
             <Text style={s.promptHint}>
-              已锁定当前预览图（{DREAM_EDIT_SIZE}×
-              {DREAM_EDIT_SIZE}），编辑指令见上方输入框
+              已锁定当前预览图（{DREAM_EDIT_SIZE}×{DREAM_EDIT_SIZE}
+              ），编辑指令见上方输入框
             </Text>
           )}
           <View style={s.buttonRow}>
@@ -245,9 +248,9 @@ export const ComposerPanel: React.FC<ComposerPanelProps> = ({
                 s.buttonEdit,
                 editArming && !editRgb && s.buttonDisabled,
               ]}
-              disabled={generating || (editArming && !editRgb)}
+              disabled={loading || generating || (editArming && !editRgb)}
               onPress={onEditArm}>
-              {generating && taskKind === 'edit' ? (
+              {(loading || generating) && taskKind === 'edit' ? (
                 <ActivityIndicator size="small" color={theme.colors.onInfo} />
               ) : (
                 <Text style={[s.buttonText, s.buttonTextOnInfo]}>
@@ -260,17 +263,24 @@ export const ComposerPanel: React.FC<ComposerPanelProps> = ({
                 入口 (promptOverride ?? prompt).trim() 即抛 TypeError 被事件系统吞掉——
                 现象为「有按压缩放动效但出图无反应」（2026-08-20 两台真机 + 注入三重复现） */}
             <TouchableOpacity
-              style={[s.button, s.buttonGen]}
-              disabled={generating}
+              style={[
+                s.button,
+                s.buttonGen,
+                (loading || generating) && s.buttonDisabled,
+              ]}
+              disabled={loading || generating}
               testID="imagegen-generate"
               onPress={() => onGenerate()}>
-              {generating && taskKind === 'gen' ? (
-                <ActivityIndicator
-                  size="small"
-                  color={theme.colors.onPrimary}
-                />
+              {(loading || generating) && taskKind === 'gen' ? (
+                <ActivityIndicator size="small" color={theme.colors.primary} />
               ) : (
-                <Text style={s.buttonText}>出图</Text>
+                <Text
+                  style={[
+                    s.buttonText,
+                    (loading || generating) && s.buttonTextDisabled,
+                  ]}>
+                  出图
+                </Text>
               )}
             </TouchableOpacity>
           </View>
@@ -283,21 +293,31 @@ export const ComposerPanel: React.FC<ComposerPanelProps> = ({
           {hasEditableImage && (
             <TouchableOpacity
               style={[s.button, s.buttonEdit]}
-              disabled={generating}
+              disabled={loading || generating}
               onPress={onEditArm}>
               <Text style={[s.buttonText, s.buttonTextOnInfo]}>编辑</Text>
             </TouchableOpacity>
           )}
           {/* 未加载不再灰置：点击由编排层弹引导（提示+展开模型下拉），新手友好 */}
           <TouchableOpacity
-            style={[s.button, s.buttonGen]}
-            disabled={generating}
+            style={[
+              s.button,
+              s.buttonGen,
+              (loading || generating) && s.buttonDisabled,
+            ]}
+            disabled={loading || generating}
             testID="imagegen-generate"
             onPress={() => onGenerate()}>
-            {generating ? (
-              <ActivityIndicator size="small" color={theme.colors.onPrimary} />
+            {loading || generating ? (
+              <ActivityIndicator size="small" color={theme.colors.primary} />
             ) : (
-              <Text style={s.buttonText}>出图</Text>
+              <Text
+                style={[
+                  s.buttonText,
+                  (loading || generating) && s.buttonTextDisabled,
+                ]}>
+                出图
+              </Text>
             )}
           </TouchableOpacity>
         </View>

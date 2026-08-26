@@ -111,8 +111,7 @@ describe('KittenEngine', () => {
     ];
     const treeFileCount = 7; // espeak-ng-data 下 7 个文件
     const phase2Count = KITTEN_SHERPA_FILES.length + treeFileCount;
-    const totalDownloadCount =
-      KITTEN_MODEL_FILES.length + 1 + phase2Count; // 3 + 1 + 10
+    const totalDownloadCount = KITTEN_MODEL_FILES.length + 1 + phase2Count; // 3 + 1 + 10
 
     const downloadCalls = () =>
       (RNFS.downloadFile as jest.Mock).mock.calls.map(
@@ -187,13 +186,10 @@ describe('KittenEngine', () => {
     });
 
     it('Phase 2 已存在文件跳过（断点续跑幂等）', async () => {
-      (RNFS.exists as jest.Mock).mockImplementation(
-        (p: string) =>
-          Promise.resolve(
-            p.endsWith(
-              `/tts/kitten/${KITTEN_SHERPA_ESPEAK_DIR}/en_dict`,
-            ),
-          ),
+      (RNFS.exists as jest.Mock).mockImplementation((p: string) =>
+        Promise.resolve(
+          p.endsWith(`/tts/kitten/${KITTEN_SHERPA_ESPEAK_DIR}/en_dict`),
+        ),
       );
       mockFetchModelFilesDetails.mockResolvedValue(espeakTree);
       (RNFS.downloadFile as jest.Mock).mockImplementation(okDownload);
@@ -269,11 +265,7 @@ describe('KittenEngine', () => {
         (c: any[]) => c[0] as string,
       );
       // 无 sherpa 文件落盘，回滚无目标；播放链目录未被删除
-      expect(
-        unlinkPaths.some(p =>
-          p.includes('/tts/kitten'),
-        ),
-      ).toBe(false);
+      expect(unlinkPaths.some(p => p.includes('/tts/kitten'))).toBe(false);
       warnSpy.mockRestore();
     });
 

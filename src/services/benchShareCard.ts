@@ -176,13 +176,7 @@ export function renderScoreCardPng(input: ShareCardInput): Uint8Array {
   cv.text('100', (CARD_W + totalW) / 2 - 40, 214, 2, DIM);
 
   // 段位（ASCII 像素字）
-  cv.text(
-    input.rank,
-    (CARD_W - cv.textWidth(input.rank, 2)) / 2,
-    280,
-    2,
-    BAR,
-  );
+  cv.text(input.rank, (CARD_W - cv.textWidth(input.rank, 2)) / 2, 280, 2, BAR);
 
   // 分项条形图：MEM / SPD / THM / STB（speed=null → 条 0 + 诚实 '-'）
   const items: Array<{label: string; v: number | null}> = [

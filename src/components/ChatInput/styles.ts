@@ -170,6 +170,10 @@ export const createStyles = ({
       justifyContent: 'center',
       borderRadius: 18,
     },
+    // busy 禁用态：降透明示不可点（与生图页动作条同语义）
+    quickIconBtnBusy: {
+      opacity: 0.4,
+    },
     inputRow: {
       flex: 1,
       flexDirection: 'row',
@@ -190,12 +194,12 @@ export const createStyles = ({
     },
     // New compact pal name styles for control bar
     palNameCompact: {
-      fontSize: 10,
+      fontSize: 11,
       fontFamily: FONT_FAMILIES.INTER_REGULAR,
       color: theme.colors.inverseOnSurface,
     },
     palNameValueCompact: {
-      fontSize: 10,
+      fontSize: 11,
       fontFamily: FONT_FAMILIES.INTER_SEMIBOLD,
       color: theme.colors.inverseOnSurface,
     },

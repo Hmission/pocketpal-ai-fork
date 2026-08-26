@@ -93,7 +93,11 @@ describe('listModelsForTask', () => {
 
   it('code：code 标签命中；play 复用 code 选型', () => {
     const coder = model({id: 'coder', capabilities: ['code'], size: 3e9});
-    const writer = model({id: 'writer', capabilities: ['rewriting'], size: 4e9});
+    const writer = model({
+      id: 'writer',
+      capabilities: ['rewriting'],
+      size: 4e9,
+    });
     setAvailable([writer, coder]);
 
     // writer 无 code 标签/指纹 → 不入 code 任务族
@@ -111,7 +115,11 @@ describe('listModelsForTask', () => {
   });
 
   it('adventure 复用 write 选型', () => {
-    const writer = model({id: 'writer', capabilities: ['rewriting'], size: 2e9});
+    const writer = model({
+      id: 'writer',
+      capabilities: ['rewriting'],
+      size: 2e9,
+    });
     setAvailable([writer]);
     expect(listModelsForTask('adventure').map(m => m.id)).toEqual(['writer']);
   });

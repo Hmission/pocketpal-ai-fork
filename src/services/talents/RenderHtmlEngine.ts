@@ -87,7 +87,7 @@ Reply with at most one short sentence what you build`,
       'wheel, fortune sticks), or generative art (canvas animations).\n' +
       '- Single-file HTML only: inline CSS + JS, no external assets, no network.\n' +
       '- UI text must be Simplified Chinese; the toy must work on a narrow phone screen.\n' +
-      '- ALWAYS pass a short Chinese title (e.g. \"贪吃蛇\") so it can be saved to the toy chest.\n' +
+      '- ALWAYS pass a short Chinese title (e.g. "贪吃蛇") so it can be saved to the toy chest.\n' +
       '- Keep the code under ~150 lines when possible; prefer fun over completeness.'
     );
   }

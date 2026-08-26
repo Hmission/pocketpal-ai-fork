@@ -1,5 +1,5 @@
 import React, {useContext} from 'react';
-import {View} from 'react-native';
+import {StyleSheet, View} from 'react-native';
 import {observer} from 'mobx-react';
 import {useNavigation, NavigationProp} from '@react-navigation/native';
 
@@ -8,6 +8,16 @@ import {useTheme} from '../../hooks';
 import {modelStore, palStore, uiStore} from '../../store';
 import {L10nContext} from '../../utils';
 import {ROUTES} from '../../utils/navigationConstants';
+import {Theme} from '../../utils/types';
+
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    iconSlot: {
+      width: 24,
+      height: 24,
+      borderRadius: theme.radius.full,
+    },
+  });
 
 const formatSize = (bytes: number): string => {
   if (!bytes || bytes <= 0) {
@@ -38,6 +48,8 @@ export const DownloadBanner: React.FC = observer(() => {
   const navigation = useNavigation<NavigationProp<any>>();
   const l10n = useContext(L10nContext);
 
+  const styles = createStyles(theme);
+
   const visible = modelStore.activeDownloads.find(
     d => !uiStore.isDownloadBannerDismissed(d.modelId),
   );
@@ -62,13 +74,12 @@ export const DownloadBanner: React.FC = observer(() => {
   const eta = visible.etaLabel || formatSize(visible.bytesTotal);
   const clamped = Math.max(0, Math.min(100, visible.progress));
   const extraCount = Math.max(0, modelStore.activeDownloads.length - 1);
-  const extraLabel = l10n.downloadBanner.extraInProgress.replace(
-    '{{count}}',
-    String(extraCount),
-  );
   const text = `${title}${extraCount > 0 ? ` +${extraCount}` : ''}${
     eta ? ` · ${eta}` : ''
   }`;
+  const iconSlotBg = {
+    backgroundColor: pal?.color?.[0] ?? theme.colors.surfaceVariant,
+  };
 
   return (
     <BannerBar
@@ -78,12 +89,7 @@ export const DownloadBanner: React.FC = observer(() => {
         <View
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
-          style={{
-            width: 24,
-            height: 24,
-            borderRadius: theme.radius.full,
-            backgroundColor: pal?.color?.[0] ?? theme.colors.surfaceVariant,
-          }}
+          style={[styles.iconSlot, iconSlotBg]}
         />
       }
       text={text}

@@ -2,7 +2,12 @@ import React from 'react';
 import {View} from 'react-native';
 import {Portal, Snackbar, Text} from 'react-native-paper';
 
-import {AlertIcon, EyeOffIcon, ShieldMdIcon, WifiOffIcon} from '../../assets/icons';
+import {
+  AlertIcon,
+  EyeOffIcon,
+  ShieldMdIcon,
+  WifiOffIcon,
+} from '../../assets/icons';
 import {useTheme} from '../../hooks';
 import {ErrorState} from '../../utils/errors';
 import {createStyles} from './styles';
@@ -35,20 +40,48 @@ export const ErrorSnackbar: React.FC<ErrorSnackbarProps> = ({
     const iconColor = getIconColor();
     // Service-specific icons for auth errors
     if (error.code === 'authentication' || error.code === 'authorization') {
-      return <ShieldMdIcon testID="icon-shield" width={20} height={20} stroke={iconColor} />;
+      return (
+        <ShieldMdIcon
+          testID="icon-shield"
+          width={20}
+          height={20}
+          stroke={iconColor}
+        />
+      );
     }
 
     // For other error types
     switch (error.code) {
       case 'network':
-        return <WifiOffIcon testID="icon-wifi-off" width={20} height={20} stroke={iconColor} />;
+        return (
+          <WifiOffIcon
+            testID="icon-wifi-off"
+            width={20}
+            height={20}
+            stroke={iconColor}
+          />
+        );
       case 'multimodal':
-        return <EyeOffIcon testID="icon-eye-off" width={20} height={20} stroke={iconColor} />;
+        return (
+          <EyeOffIcon
+            testID="icon-eye-off"
+            width={20}
+            height={20}
+            stroke={iconColor}
+          />
+        );
       // storage/server 无专属自绘，统一 alert 兜底（B23 登记）
       case 'storage':
       case 'server':
       default:
-        return <AlertIcon testID="icon-alert" width={20} height={20} stroke={iconColor} />;
+        return (
+          <AlertIcon
+            testID="icon-alert"
+            width={20}
+            height={20}
+            stroke={iconColor}
+          />
+        );
     }
   };
 

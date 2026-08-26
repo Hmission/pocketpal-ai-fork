@@ -70,11 +70,10 @@ jest.mock('../../../store/imageGenStore', () => ({
 
 // KeyboardAwareScrollView 需要原生模块，测试环境降级为纯 View。
 jest.mock('react-native-keyboard-controller', () => {
-  const React = require('react');
+  const R = require('react');
   const {View} = require('react-native');
   return {
-    KeyboardAwareScrollView: (props: any) =>
-      React.createElement(View, props),
+    KeyboardAwareScrollView: (props: any) => R.createElement(View, props),
   };
 });
 
@@ -265,8 +264,16 @@ describe('ImageGenScreen 编排层（P4 对齐）', () => {
     await waitFor(() => {
       expect(launchImageLibrary).toHaveBeenCalled();
       // 双解码：1024² → UNet cond；512² → TE 视觉通道（ViT）
-      expect(mockDecode).toHaveBeenNthCalledWith(1, 'mock-image-library.jpg', 1024);
-      expect(mockDecode).toHaveBeenNthCalledWith(2, 'mock-image-library.jpg', 512);
+      expect(mockDecode).toHaveBeenNthCalledWith(
+        1,
+        'mock-image-library.jpg',
+        1024,
+      );
+      expect(mockDecode).toHaveBeenNthCalledWith(
+        2,
+        'mock-image-library.jpg',
+        512,
+      );
     });
     // 源图作为 upload 条目入历史
     await waitFor(() => {
@@ -288,7 +295,9 @@ describe('ImageGenScreen 编排层（P4 对齐）', () => {
     // 编辑预备态：输入指令后按钮变为「执行编辑」
     await act(async () => {
       fireEvent.changeText(
-        getByPlaceholderText('输入图像编辑指令，如：把天空换成日落、人物换上红色外套…'),
+        getByPlaceholderText(
+          '输入图像编辑指令，如：把天空换成日落、人物换上红色外套…',
+        ),
         '把背景改成海边',
       );
     });
@@ -330,7 +339,9 @@ describe('ImageGenScreen 编排层（P4 对齐）', () => {
     });
     await act(async () => {
       fireEvent.changeText(
-        getByPlaceholderText('输入图像编辑指令，如：把天空换成日落、人物换上红色外套…'),
+        getByPlaceholderText(
+          '输入图像编辑指令，如：把天空换成日落、人物换上红色外套…',
+        ),
         '加个太阳',
       );
     });

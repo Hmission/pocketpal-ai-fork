@@ -60,11 +60,10 @@ describe('resolveWritingRecovery', () => {
     const base = '/data/user/0/com.pocketpalai/files/workspace/writing/星海';
     mem[`${base}/大纲.md`] = '# 《星海》大纲\n\n## 主线\n寻星之旅';
     mem[`${base}/人设.md`] = '# 《星海》人设\n\n## 主要角色\n阿星';
-    mem[
-      '/data/user/0/com.pocketpalai/files/workspace/writing/index.json'
-    ] = JSON.stringify([
-      {name: '星海', path: '星海', updatedAt: 1, progress: '已写 2 章'},
-    ]);
+    mem['/data/user/0/com.pocketpalai/files/workspace/writing/index.json'] =
+      JSON.stringify([
+        {name: '星海', path: '星海', updatedAt: 1, progress: '已写 2 章'},
+      ]);
     const recovery = await resolveWritingRecovery('继续写《星海》');
     expect(recovery).not.toBeNull();
     expect(recovery?.project).toBe('星海');

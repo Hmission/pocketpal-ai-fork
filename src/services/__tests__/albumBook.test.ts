@@ -1,4 +1,9 @@
-import {createWeeklyAlbum, listAlbums, readAlbum, weekKeyOf} from '../albumBook';
+import {
+  createWeeklyAlbum,
+  listAlbums,
+  readAlbum,
+  weekKeyOf,
+} from '../albumBook';
 import {listMemories} from '../aiosMemory';
 import {listDiaries, readDiary} from '../aiosMemory/rituals';
 import {promptWriter} from '../promptWriter';
@@ -69,7 +74,9 @@ describe('albumBook（P10 记忆绘本，ALBUM_SPEC v1）', () => {
   });
 
   it('weekKeyOf 生成 ISO 周键 YYYY-Www', () => {
-    expect(weekKeyOf(new Date('2026-08-18T00:00:00'))).toMatch(/^\d{4}-W\d{2}$/);
+    expect(weekKeyOf(new Date('2026-08-18T00:00:00'))).toMatch(
+      /^\d{4}-W\d{2}$/,
+    );
   });
 
   it('素材为空 → 显式错误（不静默）', async () => {
@@ -82,7 +89,13 @@ describe('albumBook（P10 记忆绘本，ALBUM_SPEC v1）', () => {
 
   it('本周已存在 → 显式错误（周文件即幂等）', async () => {
     (listMemories as jest.Mock).mockResolvedValue([
-      {id: '1', type: 'episode', content: '大王今天修好了生图', ts: Date.now(), keywords: []},
+      {
+        id: '1',
+        type: 'episode',
+        content: '大王今天修好了生图',
+        ts: Date.now(),
+        keywords: [],
+      },
     ]);
     (listDiaries as jest.Mock).mockResolvedValue([]);
     const week = weekKeyOf(new Date());
@@ -94,18 +107,35 @@ describe('albumBook（P10 记忆绘本，ALBUM_SPEC v1）', () => {
 
   it('完整链路：故事 + 管家增强 + DreamLite 封面 + 落盘', async () => {
     (listMemories as jest.Mock).mockResolvedValue([
-      {id: '1', type: 'episode', content: '大王今天修好了生图', ts: Date.now(), keywords: []},
-      {id: '2', type: 'fact', content: '大王喜欢蓝色', ts: Date.now(), keywords: []},
+      {
+        id: '1',
+        type: 'episode',
+        content: '大王今天修好了生图',
+        ts: Date.now(),
+        keywords: [],
+      },
+      {
+        id: '2',
+        type: 'fact',
+        content: '大王喜欢蓝色',
+        ts: Date.now(),
+        keywords: [],
+      },
     ]);
     (listDiaries as jest.Mock).mockResolvedValue([
       {date: '2026-08-17', path: '/d/2026-08-17.md'},
     ]);
-    (readDiary as jest.Mock).mockResolvedValue('# 2026-08-17 小鸡日记\n\n今天和大王聊了模型');
+    (readDiary as jest.Mock).mockResolvedValue(
+      '# 2026-08-17 小鸡日记\n\n今天和大王聊了模型',
+    );
 
     // 故事由管家 completion 生成
     (promptWriter as any).completion.mockImplementation(
       async (_p: any, cb: (d: {token?: string}) => void) => {
-        cb({token: '这一周，大王把生图修好了。我们一起做了好多玩具，他说蓝色最好看。'});
+        cb({
+          token:
+            '这一周，大王把生图修好了。我们一起做了好多玩具，他说蓝色最好看。',
+        });
       },
     );
     // 封面提示词增强 + 出图
@@ -144,7 +174,13 @@ describe('albumBook（P10 记忆绘本，ALBUM_SPEC v1）', () => {
 
   it('出图失败 → 复用 imageGenStore.error 显式返回', async () => {
     (listMemories as jest.Mock).mockResolvedValue([
-      {id: '1', type: 'fact', content: '大王喜欢蓝色', ts: Date.now(), keywords: []},
+      {
+        id: '1',
+        type: 'fact',
+        content: '大王喜欢蓝色',
+        ts: Date.now(),
+        keywords: [],
+      },
     ]);
     (listDiaries as jest.Mock).mockResolvedValue([]);
     (promptWriter as any).completion.mockImplementation(
@@ -165,7 +201,10 @@ describe('albumBook（P10 记忆绘本，ALBUM_SPEC v1）', () => {
     const dir = `${AIOS_ALBUM_DIR}/${week}`;
     (RNFS as any).__dirs.add(AIOS_ALBUM_DIR);
     (RNFS as any).__dirs.add(dir);
-    (RNFS as any).__mem.set(`${dir}/story.md`, `# ${week} 本周故事\n\n这周很开心`);
+    (RNFS as any).__mem.set(
+      `${dir}/story.md`,
+      `# ${week} 本周故事\n\n这周很开心`,
+    );
     (RNFS.readDir as jest.Mock).mockResolvedValue([
       {name: week, path: dir, isDirectory: () => true},
     ]);

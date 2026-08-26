@@ -1,9 +1,10 @@
 import React from 'react';
-import {Alert} from 'react-native';
 import {render, fireEvent, waitFor} from '../../../../../jest/test-utils';
 
 import {AuthSheet} from '../AuthSheet';
 import {authService, PalsHubErrorHandler} from '../../../../services';
+
+import {infoDialog} from '../../../ui/InfoDialog';
 
 // Mock Sheet component
 jest.mock('../../../Sheet/Sheet', () => {
@@ -26,8 +27,10 @@ jest.mock('../../../Sheet/Sheet', () => {
   return {Sheet: MockSheet};
 });
 
-// Mock Alert
-jest.spyOn(Alert, 'alert');
+// Mock InfoDialog
+jest.mock('../../../ui/InfoDialog', () => ({
+  infoDialog: jest.fn().mockResolvedValue(undefined),
+}));
 
 describe('AuthSheet', () => {
   const defaultProps = {
@@ -128,11 +131,11 @@ describe('AuthSheet', () => {
           'test@example.com',
           'password123',
         );
-        expect(Alert.alert).toHaveBeenCalledWith(
-          'Welcome Back!',
-          'You have successfully signed in.',
-          expect.any(Array),
-        );
+        expect(infoDialog).toHaveBeenCalledWith({
+          title: 'Welcome Back!',
+          message: 'You have successfully signed in.',
+          buttonText: 'OK',
+        });
       });
     });
 
@@ -148,11 +151,11 @@ describe('AuthSheet', () => {
       await waitFor(() => {
         expect(authService.signInWithEmail).toHaveBeenCalled();
       });
-      expect(Alert.alert).not.toHaveBeenCalledWith(
-        'Welcome Back!',
-        expect.anything(),
-        expect.anything(),
-      );
+      expect(infoDialog).not.toHaveBeenCalledWith({
+        title: 'Welcome Back!',
+        message: 'You have successfully signed in.',
+        buttonText: 'OK',
+      });
     });
 
     it('shows error alert when email is empty', async () => {
@@ -165,10 +168,10 @@ describe('AuthSheet', () => {
       fireEvent.press(signInButton);
 
       await waitFor(() => {
-        expect(Alert.alert).toHaveBeenCalledWith(
-          'Error',
-          'Please fill in all required fields.',
-        );
+        expect(infoDialog).toHaveBeenCalledWith({
+          title: 'Error',
+          message: 'Please fill in all required fields.',
+        });
         expect(authService.signInWithEmail).not.toHaveBeenCalled();
       });
     });
@@ -183,10 +186,10 @@ describe('AuthSheet', () => {
       fireEvent.press(signInButton);
 
       await waitFor(() => {
-        expect(Alert.alert).toHaveBeenCalledWith(
-          'Error',
-          'Please fill in all required fields.',
-        );
+        expect(infoDialog).toHaveBeenCalledWith({
+          title: 'Error',
+          message: 'Please fill in all required fields.',
+        });
         expect(authService.signInWithEmail).not.toHaveBeenCalled();
       });
     });
@@ -208,10 +211,10 @@ describe('AuthSheet', () => {
 
       await waitFor(() => {
         expect(PalsHubErrorHandler.handle).toHaveBeenCalled();
-        expect(Alert.alert).toHaveBeenCalledWith(
-          'Authentication Error',
-          'An error occurred',
-        );
+        expect(infoDialog).toHaveBeenCalledWith({
+          title: 'Authentication Error',
+          message: 'An error occurred',
+        });
       });
     });
 
@@ -276,11 +279,11 @@ describe('AuthSheet', () => {
           'password123',
           'Test User',
         );
-        expect(Alert.alert).toHaveBeenCalledWith(
-          'Account Created',
-          'Please check your email to verify your account.',
-          expect.any(Array),
-        );
+        expect(infoDialog).toHaveBeenCalledWith({
+          title: 'Account Created',
+          message: 'Please check your email to verify your account.',
+          buttonText: 'OK',
+        });
       });
     });
 
@@ -298,11 +301,11 @@ describe('AuthSheet', () => {
       await waitFor(() => {
         expect(authService.signUpWithEmail).toHaveBeenCalled();
       });
-      expect(Alert.alert).not.toHaveBeenCalledWith(
-        'Account Created',
-        expect.anything(),
-        expect.anything(),
-      );
+      expect(infoDialog).not.toHaveBeenCalledWith({
+        title: 'Account Created',
+        message: 'Please check your email to verify your account.',
+        buttonText: 'OK',
+      });
     });
 
     it('shows error alert when full name is empty during sign up', async () => {
@@ -320,10 +323,10 @@ describe('AuthSheet', () => {
       fireEvent.press(createButton);
 
       await waitFor(() => {
-        expect(Alert.alert).toHaveBeenCalledWith(
-          'Error',
-          'Please enter your full name.',
-        );
+        expect(infoDialog).toHaveBeenCalledWith({
+          title: 'Error',
+          message: 'Please enter your full name.',
+        });
         expect(authService.signUpWithEmail).not.toHaveBeenCalled();
       });
     });
@@ -354,10 +357,10 @@ describe('AuthSheet', () => {
 
       await waitFor(() => {
         expect(PalsHubErrorHandler.handle).toHaveBeenCalled();
-        expect(Alert.alert).toHaveBeenCalledWith(
-          'Google Sign-In Error',
-          'An error occurred',
-        );
+        expect(infoDialog).toHaveBeenCalledWith({
+          title: 'Google Sign-In Error',
+          message: 'An error occurred',
+        });
       });
     });
   });
@@ -391,11 +394,11 @@ describe('AuthSheet', () => {
         expect(authService.resetPassword).toHaveBeenCalledWith(
           'test@example.com',
         );
-        expect(Alert.alert).toHaveBeenCalledWith(
-          'Password Reset',
-          'Check your email for password reset instructions.',
-          expect.any(Array),
-        );
+        expect(infoDialog).toHaveBeenCalledWith({
+          title: 'Password Reset',
+          message: 'Check your email for password reset instructions.',
+          buttonText: 'OK',
+        });
       });
     });
 
@@ -406,10 +409,10 @@ describe('AuthSheet', () => {
       fireEvent.press(forgotButton);
 
       await waitFor(() => {
-        expect(Alert.alert).toHaveBeenCalledWith(
-          'Error',
-          'Please enter your email address first.',
-        );
+        expect(infoDialog).toHaveBeenCalledWith({
+          title: 'Error',
+          message: 'Please enter your email address first.',
+        });
         expect(authService.resetPassword).not.toHaveBeenCalled();
       });
     });
@@ -429,7 +432,10 @@ describe('AuthSheet', () => {
 
       await waitFor(() => {
         expect(PalsHubErrorHandler.handle).toHaveBeenCalled();
-        expect(Alert.alert).toHaveBeenCalledWith('Error', 'An error occurred');
+        expect(infoDialog).toHaveBeenCalledWith({
+          title: 'Error',
+          message: 'An error occurred',
+        });
       });
     });
   });

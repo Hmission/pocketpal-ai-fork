@@ -5,13 +5,39 @@
  * 非运行态返回 null（零视觉负担）。数据经 benchmarkStore 单通道。
  */
 import * as React from 'react';
-import {Text, TouchableOpacity, View} from 'react-native';
+import {StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {observer} from 'mobx-react-lite';
 
 import {useTheme} from '../hooks';
 import {L10nContext} from '../utils';
 import {benchmarkStore} from '../store/BenchmarkStore';
 import {benchmarkOrchestrator} from '../services/benchmarkOrchestrator';
+import {Theme} from '../utils/types';
+
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    banner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      marginHorizontal: 12,
+      marginTop: 6,
+      borderRadius: 8,
+      backgroundColor: theme.colors.surfaceContainerHighest,
+    },
+    label: {
+      flex: 1,
+      fontSize: 12,
+      color: theme.colors.brandAccent,
+      fontWeight: '600',
+    },
+    abortText: {
+      fontSize: 12,
+      color: theme.colors.error,
+    },
+  });
 
 export const BenchmarkHudBar: React.FC = observer(() => {
   const theme = useTheme();
@@ -28,30 +54,12 @@ export const BenchmarkHudBar: React.FC = observer(() => {
     endurance: 'endurance',
   };
   const caseText = CASE_LABEL_KEY[suiteBanner]
-    ? labels[CASE_LABEL_KEY[suiteBanner]] ?? suiteBanner
+    ? (labels[CASE_LABEL_KEY[suiteBanner]] ?? suiteBanner)
     : suiteBanner;
+  const styles = createStyles(theme);
   return (
-    <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        marginHorizontal: 12,
-        marginTop: 6,
-        borderRadius: 8,
-        backgroundColor: theme.colors.surfaceContainerHighest,
-      }}
-      testID="benchmark-hud">
-      <Text
-        style={{
-          flex: 1,
-          fontSize: 12,
-          color: theme.colors.brandAccent,
-          fontWeight: '600',
-        }}
-        numberOfLines={1}>
+    <View style={styles.banner} testID="benchmark-hud">
+      <Text style={styles.label} numberOfLines={1}>
         {l10n.benchmark.suite.hudRunning}
         {caseText ? ` · ${caseText}` : ''}
       </Text>
@@ -59,9 +67,7 @@ export const BenchmarkHudBar: React.FC = observer(() => {
         onPress={() => benchmarkOrchestrator.abort()}
         testID="benchmark-hud-abort"
         hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-        <Text style={{fontSize: 12, color: theme.colors.error}}>
-          {l10n.benchmark.suite.abort}
-        </Text>
+        <Text style={styles.abortText}>{l10n.benchmark.suite.abort}</Text>
       </TouchableOpacity>
     </View>
   );

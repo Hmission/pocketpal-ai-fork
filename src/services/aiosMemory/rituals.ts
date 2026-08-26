@@ -70,7 +70,9 @@ export async function buildTodayState(): Promise<string> {
     // 情绪持久化：读昨日情绪，让女妖感知大王情绪延续
     const lastSentiment = await readLastSentiment();
     if (lastSentiment && lastSentiment.ts < dateStr) {
-      parts.push(`上次大王情绪：${lastSentiment.label}（${lastSentiment.score > 0 ? '积极' : lastSentiment.score < 0 ? '消极' : '平稳'}）`);
+      parts.push(
+        `上次大王情绪：${lastSentiment.label}（${lastSentiment.score > 0 ? '积极' : lastSentiment.score < 0 ? '消极' : '平稳'}）`,
+      );
     }
     // 内心生活（P9，INNERLIFE_SPEC §2.1）：收尾预写的明日晨间独白 → 今日注入。
     // 文件即过期：opening/今日.md 存在才有独白；缺失回退规则版（无兜底）。
@@ -104,8 +106,35 @@ async function readTodayOpening(dateStr: string): Promise<string | null> {
 export type IntentKind = 'chat' | 'vent' | 'qa' | 'task';
 
 // M7 情绪系统：规则词库情感打分（-2..+2），供开场仪式/状态展示用
-const POSITIVE_MARKERS = ['开心', '高兴', '棒', '太好了', '喜欢', '爱', '成功', '完成', '中奖', '幸运'];
-const NEGATIVE_MARKERS = ['烦', '难过', '伤心', '生气', '累', '压力', '焦虑', '失眠', '崩溃', '委屈', '孤独', '沮丧', '失望', '失败', '讨厌'];
+const POSITIVE_MARKERS = [
+  '开心',
+  '高兴',
+  '棒',
+  '太好了',
+  '喜欢',
+  '爱',
+  '成功',
+  '完成',
+  '中奖',
+  '幸运',
+];
+const NEGATIVE_MARKERS = [
+  '烦',
+  '难过',
+  '伤心',
+  '生气',
+  '累',
+  '压力',
+  '焦虑',
+  '失眠',
+  '崩溃',
+  '委屈',
+  '孤独',
+  '沮丧',
+  '失望',
+  '失败',
+  '讨厌',
+];
 
 export function sentimentScore(text: string): number {
   let score = 0;
@@ -155,18 +184,60 @@ export function getLastSentiment(): {score: number; label: string} {
 }
 
 const VENT_MARKERS = [
-  '烦', '难过', '伤心', '生气', '累', '压力', '焦虑', '失眠', '哭', '讨厌',
-  '想死', '崩溃', '委屈', '孤独', '沮丧', '失望',
+  '烦',
+  '难过',
+  '伤心',
+  '生气',
+  '累',
+  '压力',
+  '焦虑',
+  '失眠',
+  '哭',
+  '讨厌',
+  '想死',
+  '崩溃',
+  '委屈',
+  '孤独',
+  '沮丧',
+  '失望',
 ];
 const TASK_MARKERS = [
-  '帮我', '给我', '写', '总结', '列出', '规划', '安排', '提醒', '翻译',
-  '计算', '查一下', '生成', '设计', '制作',
+  '帮我',
+  '给我',
+  '写',
+  '总结',
+  '列出',
+  '规划',
+  '安排',
+  '提醒',
+  '翻译',
+  '计算',
+  '查一下',
+  '生成',
+  '设计',
+  '制作',
   // 玩具工坊/冒险词表（2026-08-19 K90 血证：缺词表时「做个玩具：贪吃蛇」
   // 落 'chat'，「轻松自然简短俏皮」引导压过工具触发令，3B 角色扮演不调
   // render_html）。玩法请求必须归 'task'（「需要工具就调用工具」）。
-  '做个', '玩具', '小游戏', '贪吃蛇', '来场冒险',
+  '做个',
+  '玩具',
+  '小游戏',
+  '贪吃蛇',
+  '来场冒险',
 ];
-const QA_MARKERS = ['?', '？', '什么', '为什么', '怎么', '哪', '谁', '几', '多少', '是不是', '吗'];
+const QA_MARKERS = [
+  '?',
+  '？',
+  '什么',
+  '为什么',
+  '怎么',
+  '哪',
+  '谁',
+  '几',
+  '多少',
+  '是不是',
+  '吗',
+];
 
 /**
  * 规则分类意图。4B 小模型跑不动意图分类模型，用关键词+句式规则（零成本）。
@@ -370,9 +441,7 @@ export async function maybeClosingSummary(
 }
 
 /** 小鸡日记列表（chick_diary/，新→旧）；无日记返回空数组 */
-export async function listDiaries(): Promise<
-  {date: string; path: string}[]
-> {
+export async function listDiaries(): Promise<{date: string; path: string}[]> {
   try {
     if (!(await RNFS.exists(AIOS_DIARY_DIR))) {
       return [];

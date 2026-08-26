@@ -1,5 +1,5 @@
 import React from 'react';
-import {Alert, Keyboard} from 'react-native';
+import {Keyboard} from 'react-native';
 import {render, fireEvent, waitFor} from '@testing-library/react-native';
 
 import {PalHeaderRight} from '../PalHeaderRight';
@@ -7,6 +7,8 @@ import {exportAllPals} from '../../../utils/exportUtils';
 import {importPals} from '../../../utils/importUtils';
 import {L10nContext} from '../../../utils';
 import {l10n} from '../../../locales';
+
+import {infoDialog} from '../../ui/InfoDialog';
 
 // Mock utilities
 jest.mock('../../../utils/exportUtils', () => ({
@@ -53,8 +55,10 @@ jest.mock('../../Menu', () => {
 jest.spyOn(Keyboard, 'isVisible').mockReturnValue(false);
 jest.spyOn(Keyboard, 'dismiss').mockImplementation();
 
-// Mock Alert
-jest.spyOn(Alert, 'alert');
+// Mock InfoDialog
+jest.mock('../../ui/InfoDialog', () => ({
+  infoDialog: jest.fn().mockResolvedValue(undefined),
+}));
 
 describe('PalHeaderRight', () => {
   beforeEach(() => {
@@ -177,10 +181,10 @@ describe('PalHeaderRight', () => {
           'Error exporting all pals:',
           expect.any(Error),
         );
-        expect(Alert.alert).toHaveBeenCalledWith(
-          'Export Error',
-          'Failed to export all pals.',
-        );
+        expect(infoDialog).toHaveBeenCalledWith({
+          title: 'Export Error',
+          message: 'Failed to export all pals.',
+        });
       });
 
       consoleError.mockRestore();
@@ -254,10 +258,10 @@ describe('PalHeaderRight', () => {
       fireEvent.press(importButton);
 
       await waitFor(() => {
-        expect(Alert.alert).toHaveBeenCalledWith(
-          'Import Success',
-          expect.stringContaining('5'),
-        );
+        expect(infoDialog).toHaveBeenCalledWith({
+          title: 'Import Success',
+          message: expect.stringContaining('5'),
+        });
       });
     });
 
@@ -280,7 +284,7 @@ describe('PalHeaderRight', () => {
 
       await waitFor(() => {
         expect(importPals).toHaveBeenCalled();
-        expect(Alert.alert).not.toHaveBeenCalled();
+        expect(infoDialog).not.toHaveBeenCalled();
       });
     });
 
@@ -309,10 +313,10 @@ describe('PalHeaderRight', () => {
           'Error importing pals:',
           expect.any(Error),
         );
-        expect(Alert.alert).toHaveBeenCalledWith(
-          'Import Error',
-          l10n.en.components.palHeaderRight.importError,
-        );
+        expect(infoDialog).toHaveBeenCalledWith({
+          title: 'Import Error',
+          message: l10n.en.components.palHeaderRight.importError,
+        });
       });
 
       consoleError.mockRestore();

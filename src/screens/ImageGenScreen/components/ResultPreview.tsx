@@ -18,6 +18,16 @@ import {GeneratedImage} from '../../../store/imageGenStore';
 import {ZoomableImage} from './ZoomableImage';
 import {AlertTriangleMdIcon} from '../../../assets/icons';
 import {PerfPanel} from './PerfPanel';
+import {BannerBar} from '../../../components/ui/BannerBar';
+import {WaveDots} from '../../../components/ui/WaveDots';
+import {Progress} from '../../../components/ui/Progress';
+
+/** 预览卡片顶部横幅（瞬时任务反馈 / 编辑锁定常驻）；dismissable=true 时整卡点击关闭 */
+export type PreviewBanner = {
+  text: string;
+  variant: 'info' | 'error' | 'warning';
+  dismissable: boolean;
+};
 
 interface ResultPreviewProps {
   /** 横向分页 FlatList ref（编排层持有，用于 scrollToOffset） */
@@ -40,7 +50,8 @@ interface ResultPreviewProps {
   genStartedAt: number;
   stage: string;
   now: number;
-  /** 三点波浪动效（useWaveDots） */
+  /** B57 兼容接线：编排层仍经 useWaveDots 计算并传入（prop 契约保留），
+   *  渲染已归一 ui/WaveDots（size=10），原始 Animated.Value[] 不再被消费 */
   waveDots: Animated.Value[];
   /** 当前预览图（编辑目标/操作条主体） */
   currentImage: string | null;
@@ -70,6 +81,10 @@ interface ResultPreviewProps {
   onRetryTask: (item: GeneratedImage) => void;
   /** 失败任务页：删除该任务条目 */
   onDeleteTask: (item: GeneratedImage) => void;
+  /** 预览卡片顶部横幅（编排层派生：编辑锁定常驻 / 瞬时任务反馈）；null=不显示 */
+  previewBanner?: PreviewBanner | null;
+  /** 横幅整卡点击关闭（瞬时横幅可点；编辑锁定常驻不传） */
+  onDismissBanner?: () => void;
 }
 
 /**
@@ -96,7 +111,6 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
   genStartedAt,
   stage,
   now,
-  waveDots,
   currentImage,
   currentItem,
   fullscreen,
@@ -116,6 +130,8 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
   onCopyError,
   onRetryTask,
   onDeleteTask,
+  previewBanner,
+  onDismissBanner,
 }) => {
   const theme = useTheme();
   const s = createStyles(theme);
@@ -127,37 +143,15 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
   // showPerf：仅 running 任务页展示跑分面板（ADR-0008），overlay 叠图模式不展示）
   const progressBody = (title: string, showPerf = false) => (
     <>
-      {/* 三点波浪呼吸 */}
-      <View style={s.genDotsRow}>
-        {waveDots.map((dot, i) => (
-          <Animated.View
-            key={i}
-            style={[
-              s.genDot,
-              {
-                transform: [
-                  {
-                    translateY: dot.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0, -8],
-                    }),
-                  },
-                ],
-                opacity: dot.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.45, 1],
-                }),
-              },
-            ]}
-          />
-        ))}
-      </View>
+      {/* 三点波浪呼吸（B57：渲染归一 ui/WaveDots，prop 接线保留） */}
+      <WaveDots size={10} />
       <Text style={s.genOverlayTitle}>{title}</Text>
-      <View style={[s.progressTrack, s.progressTrackW70]}>
-        <View
-          style={[s.progressBarFill, {width: `${Math.max(progress, 2)}%`}]}
-        />
-      </View>
+      {/* B57：进度条归一 ui/Progress（height=8 保原视觉；宽度 70% 收窄） */}
+      <Progress
+        height={8}
+        value={Math.max(progress, 2)}
+        style={s.progressTrackW70}
+      />
       <Text style={s.overlayText}>
         {progressText
           ? `采样 ${progressText}` +
@@ -290,13 +284,21 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
         {isCaptionItem ? (
           <View style={[s.captionFullPage, {width: pageW}]}>
             {/* 顶部 banner 胶囊：反推来源（点击弹参数详情 + 回填） */}
-            <View style={s.infoOverlayWrap} pointerEvents="box-none">
+            <View
+              style={[s.infoOverlayWrap, previewBanner && s.infoOverlayPushed]}
+              pointerEvents="box-none">
               <TouchableOpacity
                 style={s.infoOverlay}
                 activeOpacity={0.7}
                 onPress={() => onInfoPress(item)}>
                 <Text style={s.infoOverlayText} numberOfLines={1}>
-                  {['反推', item.modelLabel, item.durationMs != null ? `${(item.durationMs / 1000).toFixed(1)}s` : null]
+                  {[
+                    '反推',
+                    item.modelLabel,
+                    item.durationMs != null
+                      ? `${(item.durationMs / 1000).toFixed(1)}s`
+                      : null,
+                  ]
                     .filter(Boolean)
                     .join(' · ')}
                 </Text>
@@ -346,7 +348,9 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
               />
             </TouchableOpacity>
             {/* 信息条：预览图顶部胶囊（居中收窄 + 表面色半透明，弱化干扰）；点击弹完整参数 */}
-            <View style={s.infoOverlayWrap} pointerEvents="box-none">
+            <View
+              style={[s.infoOverlayWrap, previewBanner && s.infoOverlayPushed]}
+              pointerEvents="box-none">
               <TouchableOpacity
                 style={s.infoOverlay}
                 activeOpacity={0.7}
@@ -450,37 +454,53 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
           ) : null}
           {editOverlay}
           {captionOverlay}
+          {/* 预览卡片顶部横幅（v4.3：弃屏级 top:458 中间浮条——移入图区顶部，只压预览卡片；
+              无灰底，语义色 wash 透出；瞬时横幅整卡点击关闭） */}
+          {previewBanner ? (
+            <View style={s.bannerOverlay} pointerEvents="box-none">
+              <BannerBar
+                variant={previewBanner.variant}
+                text={previewBanner.text}
+                onPress={
+                  previewBanner.dismissable ? onDismissBanner : undefined
+                }
+                onDismiss={
+                  previewBanner.dismissable ? onDismissBanner : undefined
+                }
+              />
+            </View>
+          ) : null}
         </View>
         {/* 操作条 v4：生图/放大成功图五按钮；caption 任务操作条在页内（守卫：无图/caption 均不渲染） */}
         {showActionRow && currentItem?.kind !== 'caption' && (
           <View style={s.actionRow}>
-              <TouchableOpacity
-                style={[s.actionBtn, s.actionSave]}
-                onPress={onSave}>
-                <Text style={s.actionTextOnSuccess}>保存</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[s.actionBtn, s.actionEdit]}
-                onPress={onUpscale}>
-                <Text style={s.actionTextOnInfo}>放大</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[s.actionBtn, s.actionCaption]}
-                onPress={onCaption}
-                disabled={generating}>
-                <Text style={s.actionTextOnCaption}>反推</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[s.actionBtn, s.actionReuse]}
-                onPress={onReroll}>
-                <Text style={s.actionTextOnWarning}>再次生成</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[s.actionBtn, s.actionDelete]}
-                onPress={onDelete}>
-                <Text style={s.actionTextOnDanger}>删除</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={[s.actionBtn, s.actionSave]}
+              onPress={onSave}>
+              <Text style={s.actionTextOnSuccess}>保存</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.actionBtn, s.actionEdit]}
+              onPress={onUpscale}>
+              <Text style={s.actionTextOnInfo}>放大</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.actionBtn, s.actionCaption]}
+              onPress={onCaption}
+              disabled={generating}>
+              <Text style={s.actionTextOnCaption}>反推</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.actionBtn, s.actionReuse]}
+              onPress={onReroll}>
+              <Text style={s.actionTextOnWarning}>再次生成</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.actionBtn, s.actionDelete]}
+              onPress={onDelete}>
+              <Text style={s.actionTextOnDanger}>删除</Text>
+            </TouchableOpacity>
+          </View>
         )}
       </View>
 

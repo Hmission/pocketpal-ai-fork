@@ -19,7 +19,6 @@ import {
   GridIcon,
   HeartIcon,
   ModelIcon,
-  PalIcon,
   SettingsIcon,
 } from '../../assets/icons';
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import {View, ScrollView, Alert} from 'react-native';
+import {View, ScrollView} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {Card, Text, Button, IconButton} from 'react-native-paper';
 import {createStackNavigator} from '@react-navigation/stack';
@@ -7,6 +7,8 @@ import {useNavigation, ParamListBase} from '@react-navigation/native';
 import {DrawerNavigationProp} from '@react-navigation/drawer';
 
 import {useTheme} from '../../hooks';
+import {infoDialog} from '../../components/ui/InfoDialog';
+import {confirmDialog} from '../../components/ui/ConfirmDialog';
 import {createStyles} from './styles';
 import {chatSessionRepository} from '../../repositories/ChatSessionRepository';
 import {TestCompletionScreen, DatabaseInspectorScreen} from './screens';
@@ -60,16 +62,16 @@ const DevToolsHomeScreen: React.FC = () => {
   const resetMigration = async () => {
     try {
       await chatSessionRepository.resetMigration();
-      Alert.alert(
-        'Success',
-        'Migration reset successful. Please restart the app.',
-      );
+      infoDialog({
+        title: 'Success',
+        message: 'Migration reset successful. Please restart the app.',
+      });
     } catch (error) {
       console.error('Failed to reset migration:', error);
-      Alert.alert(
-        'Error',
-        'Failed to reset migration: ' + (error as Error).message,
-      );
+      infoDialog({
+        title: 'Error',
+        message: 'Failed to reset migration: ' + (error as Error).message,
+      });
     }
   };
 
@@ -144,21 +146,18 @@ const DevToolsHomeScreen: React.FC = () => {
               <Button
                 mode="contained"
                 onPress={() => {
-                  Alert.alert(
-                    'Reset Database Migration',
-                    'This will delete all data in the database. Are you sure you want to continue?',
-                    [
-                      {
-                        text: 'Cancel',
-                        style: 'cancel',
-                      },
-                      {
-                        text: 'Reset',
-                        style: 'destructive',
-                        onPress: resetMigration,
-                      },
-                    ],
-                  );
+                  void confirmDialog({
+                    title: 'Reset Database Migration',
+                    message:
+                      'This will delete all data in the database. Are you sure you want to continue?',
+                    confirmText: 'Reset',
+                    cancelText: 'Cancel',
+                    destructive: true,
+                  }).then(ok => {
+                    if (ok) {
+                      resetMigration();
+                    }
+                  });
                 }}
                 style={styles.button}>
                 Reset Migration

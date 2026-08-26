@@ -43,7 +43,11 @@ const errMsg = (result: any): string => {
 
 describe('WritingDocEngine（WORKSPACE_SPEC v1）', () => {
   it('init：建三件套骨架 + 索引 + 记忆', async () => {
-    const r = await engine.execute({action: 'init', title: '我的小说', genre: '科幻'});
+    const r = await engine.execute({
+      action: 'init',
+      title: '我的小说',
+      genre: '科幻',
+    });
     expect(r.type).toBe('text');
     if (r.type === 'text') {
       expect(r.summary).toContain('我的小说');
@@ -193,23 +197,60 @@ describe('WritingDocEngine（WORKSPACE_SPEC v1）', () => {
     expect(Object.keys(mem)).toHaveLength(0);
     // 同样拦截 update_outline / update_persona / new_chapter
     expect(
-      errMsg(await engine.execute({action: 'update_outline', project: '不存在的项目', content: 'x'})),
+      errMsg(
+        await engine.execute({
+          action: 'update_outline',
+          project: '不存在的项目',
+          content: 'x',
+        }),
+      ),
     ).toBe('PROJECT_NOT_FOUND');
     expect(
-      errMsg(await engine.execute({action: 'update_persona', project: '不存在的项目', content: 'x'})),
+      errMsg(
+        await engine.execute({
+          action: 'update_persona',
+          project: '不存在的项目',
+          content: 'x',
+        }),
+      ),
     ).toBe('PROJECT_NOT_FOUND');
     expect(
-      errMsg(await engine.execute({action: 'new_chapter', project: '不存在的项目', chapter: '第一章'})),
+      errMsg(
+        await engine.execute({
+          action: 'new_chapter',
+          project: '不存在的项目',
+          chapter: '第一章',
+        }),
+      ),
     ).toBe('PROJECT_NOT_FOUND');
     // 读动作同样拦截（真机实证：NO_DOC/NO_SECTION 无导航会让模型烧光 maxTurns）
     expect(
-      errMsg(await engine.execute({action: 'read_section', project: '不存在的项目', doc: '正文-第一章', section: '第一章'})),
+      errMsg(
+        await engine.execute({
+          action: 'read_section',
+          project: '不存在的项目',
+          doc: '正文-第一章',
+          section: '第一章',
+        }),
+      ),
     ).toBe('PROJECT_NOT_FOUND');
     expect(
-      errMsg(await engine.execute({action: 'read_all', project: '不存在的项目', doc: '大纲'})),
+      errMsg(
+        await engine.execute({
+          action: 'read_all',
+          project: '不存在的项目',
+          doc: '大纲',
+        }),
+      ),
     ).toBe('PROJECT_NOT_FOUND');
     expect(
-      errMsg(await engine.execute({action: 'list_sections', project: '不存在的项目', doc: '大纲'})),
+      errMsg(
+        await engine.execute({
+          action: 'list_sections',
+          project: '不存在的项目',
+          doc: '大纲',
+        }),
+      ),
     ).toBe('PROJECT_NOT_FOUND');
   });
 

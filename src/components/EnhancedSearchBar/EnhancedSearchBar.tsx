@@ -127,7 +127,7 @@ export const EnhancedSearchBar = ({
         <View style={styles.searchInputContainer}>
           <Icon
             name="magnify"
-            size={20}
+            size={theme.iconSize.m}
             color={theme.colors.onSurfaceVariant}
             style={styles.searchIcon}
           />
@@ -146,7 +146,7 @@ export const EnhancedSearchBar = ({
               hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
               <Icon
                 name="close"
-                size={20}
+                size={theme.iconSize.m}
                 color={theme.colors.onSurfaceVariant}
               />
             </TouchableOpacity>
@@ -277,7 +277,7 @@ export const EnhancedSearchBar = ({
                 {isSelected && (
                   <Icon
                     name="check-circle"
-                    size={24}
+                    size={theme.iconSize.l}
                     color={theme.colors.primary}
                   />
                 )}

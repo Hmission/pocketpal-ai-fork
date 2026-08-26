@@ -60,7 +60,9 @@ export async function summarizeConversation(
     return null;
   }
   const resolved =
-    engine ?? modelStore.engine ?? (promptWriter.isLoaded ? promptWriter : null);
+    engine ??
+    modelStore.engine ??
+    (promptWriter.isLoaded ? promptWriter : null);
   if (!resolved) {
     return null;
   }

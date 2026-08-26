@@ -16,7 +16,7 @@ import {askModelSwitch} from '../../components/ui/ModelSwitchDialog';
 import {extractAndSaveMemories} from '../../services/aiosMemory';
 import {appendConversation} from '../../services/aiosMemory/conversationLog';
 import {MessageType} from '../../utils/types';
-import {user, assistant} from '../../utils/chat';
+import {user} from '../../utils/chat';
 
 jest.mock('../../services/chatImageTask', () => ({
   runImageTaskCard: jest.fn(),
@@ -182,8 +182,14 @@ describe('useChatScheduler', () => {
     await act(async () => {
       jest.advanceTimersByTime(1300);
     });
-    expect(mockExtract).toHaveBeenCalledWith('我喜欢喝茶，最爱龙井', '管家回复');
-    expect(mockAppendConv).toHaveBeenCalledWith('我喜欢喝茶，最爱龙井', '管家回复');
+    expect(mockExtract).toHaveBeenCalledWith(
+      '我喜欢喝茶，最爱龙井',
+      '管家回复',
+    );
+    expect(mockAppendConv).toHaveBeenCalledWith(
+      '我喜欢喝茶，最爱龙井',
+      '管家回复',
+    );
     expect(handleSendPress).not.toHaveBeenCalled();
     jest.useRealTimers();
   });
@@ -216,7 +222,10 @@ describe('useChatScheduler', () => {
     expect(chatSessionStore.addMessageToCurrentSession).toHaveBeenCalledWith(
       expect.objectContaining({
         metadata: expect.objectContaining({
-          taskError: expect.objectContaining({code: 'no_model', retryText: '你好呀'}),
+          taskError: expect.objectContaining({
+            code: 'no_model',
+            retryText: '你好呀',
+          }),
         }),
       }),
     );

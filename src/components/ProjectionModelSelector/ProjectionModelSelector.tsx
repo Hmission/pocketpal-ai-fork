@@ -1,4 +1,4 @@
-import {View, TouchableOpacity, Alert} from 'react-native';
+import {View, TouchableOpacity} from 'react-native';
 import React, {useContext, useEffect, useState} from 'react';
 
 import {observer} from 'mobx-react';
@@ -6,6 +6,8 @@ import {Text, ActivityIndicator} from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import {useTheme} from '../../hooks';
+import {infoDialog} from '../ui/InfoDialog';
+import {confirmDialog} from '../ui/ConfirmDialog';
 
 import {createStyles} from './styles';
 
@@ -77,29 +79,24 @@ export const ProjectionModelSelector = observer(
           m => m.id === projectionModelId,
         );
         if (projectionModel && projectionModel.isDownloaded) {
-          // Show notification that the model will be reloaded
-          Alert.alert(
-            l10n.models.multimodal.reloadModelTitle,
-            l10n.models.multimodal.reloadModelMessage,
-            [
-              {
-                text: l10n.common.cancel,
-                style: 'cancel',
-              },
-              {
-                text: l10n.models.multimodal.reload,
-                onPress: async () => {
-                  // Get the projection model path
-                  const projModelPath =
-                    await modelStore.getModelFullPath(projectionModel);
-                  if (projModelPath) {
-                    // Reload the model with the new projection model
-                    modelStore.initContext(model, projModelPath);
-                  }
-                },
-              },
-            ],
-          );
+          // 切换投影模型需重载上下文——二元确认（B52③：Alert → confirmDialog）
+          void confirmDialog({
+            title: l10n.models.multimodal.reloadModelTitle,
+            message: l10n.models.multimodal.reloadModelMessage,
+            confirmText: l10n.models.multimodal.reload,
+            cancelText: l10n.common.cancel,
+          }).then(async ok => {
+            if (!ok) {
+              return;
+            }
+            // Get the projection model path
+            const projModelPath =
+              await modelStore.getModelFullPath(projectionModel);
+            if (projModelPath) {
+              // Reload the model with the new projection model
+              modelStore.initContext(model, projModelPath);
+            }
+          });
         }
       }
     };
@@ -111,11 +108,11 @@ export const ProjectionModelSelector = observer(
     const handleDeleteModel = (projectionModel: Model) => {
       // Check if model is currently active - this is the only case we prevent deletion
       if (modelStore.activeModelId === projectionModel.id) {
-        Alert.alert(
-          l10n.models.multimodal.cannotDeleteTitle,
-          l10n.models.multimodal.cannotDeleteActive,
-          [{text: l10n.common.ok, style: 'default'}],
-        );
+        infoDialog({
+          title: l10n.models.multimodal.cannotDeleteTitle,
+          message: l10n.models.multimodal.cannotDeleteActive,
+          buttonText: l10n.common.ok,
+        });
         return;
       }
 
@@ -130,33 +127,34 @@ export const ProjectionModelSelector = observer(
         message = `${l10n.models.multimodal.deleteProjectionMessage}\n\n${l10n.models.multimodal.dependentModels} ${modelNames}\n\n${l10n.models.multimodal.visionWillBeDisabled}`;
       }
 
-      // Show confirmation dialog (always allow deletion for manual action)
-      Alert.alert(l10n.models.multimodal.deleteProjectionTitle, message, [
-        {text: l10n.common.cancel, style: 'cancel'},
-        {
-          text: l10n.common.delete,
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              // Disable vision for dependent models before deletion
-              dependentModels.forEach(dependentModel => {
-                modelStore.setModelVisionEnabled(dependentModel.id, false);
-              });
+      // 删除投影模型确认（B52③：Alert → confirmDialog，destructive 语义保留）
+      void confirmDialog({
+        title: l10n.models.multimodal.deleteProjectionTitle,
+        message,
+        confirmText: l10n.common.delete,
+        cancelText: l10n.common.cancel,
+        destructive: true,
+      }).then(async ok => {
+        if (!ok) {
+          return;
+        }
+        try {
+          // Disable vision for dependent models before deletion
+          dependentModels.forEach(dependentModel => {
+            modelStore.setModelVisionEnabled(dependentModel.id, false);
+          });
 
-              await modelStore.deleteModel(projectionModel);
-            } catch (error) {
-              console.error('Failed to delete projection model:', error);
-              Alert.alert(
-                l10n.models.multimodal.cannotDeleteTitle,
-                error instanceof Error
-                  ? error.message
-                  : 'Unknown error occurred',
-                [{text: l10n.common.ok, style: 'default'}],
-              );
-            }
-          },
-        },
-      ]);
+          await modelStore.deleteModel(projectionModel);
+        } catch (error) {
+          console.error('Failed to delete projection model:', error);
+          infoDialog({
+            title: l10n.models.multimodal.cannotDeleteTitle,
+            message:
+              error instanceof Error ? error.message : 'Unknown error occurred',
+            buttonText: l10n.common.ok,
+          });
+        }
+      });
     };
 
     const toggleExpanded = () => {
@@ -181,7 +179,7 @@ export const ProjectionModelSelector = observer(
             </Text>
             <Icon
               name={expanded ? 'chevron-up' : 'chevron-down'}
-              size={16}
+              size={theme.iconSize.s}
               color={theme.colors.onSurfaceVariant}
               style={styles.chevronIcon}
             />
@@ -195,7 +193,7 @@ export const ProjectionModelSelector = observer(
               <View style={styles.emptyState}>
                 <Icon
                   name="image-off-outline"
-                  size={24}
+                  size={theme.iconSize.l}
                   color={theme.colors.onSurfaceVariant}
                 />
                 <Text style={styles.emptyText}>
@@ -259,7 +257,7 @@ export const ProjectionModelSelector = observer(
                                         ? 'check-circle'
                                         : 'circle-outline'
                                     }
-                                    size={20}
+                                    size={theme.iconSize.m}
                                     color={
                                       isSelected
                                         ? theme.colors.tertiary
@@ -274,7 +272,7 @@ export const ProjectionModelSelector = observer(
                                   activeOpacity={0.7}>
                                   <Icon
                                     name="delete-outline"
-                                    size={16}
+                                    size={theme.iconSize.s}
                                     color={theme.colors.error}
                                   />
                                 </TouchableOpacity>
@@ -297,7 +295,7 @@ export const ProjectionModelSelector = observer(
                                 activeOpacity={0.7}>
                                 <Icon
                                   name="download"
-                                  size={16}
+                                  size={theme.iconSize.s}
                                   color={theme.colors.primary}
                                 />
                               </TouchableOpacity>
@@ -317,7 +315,7 @@ export const ProjectionModelSelector = observer(
                               name={
                                 isSelected ? 'check-circle' : 'circle-outline'
                               }
-                              size={20}
+                              size={theme.iconSize.m}
                               color={
                                 isSelected
                                   ? theme.colors.tertiary

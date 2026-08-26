@@ -23,7 +23,7 @@ describe('sherpaConvert (B36)', () => {
     it('writes "<token> <id>" lines sorted by id', async () => {
       mockReadFile.mockResolvedValue(
         JSON.stringify({
-          model: {vocab: {'b': 1, 'a': 0, ' ': 2}},
+          model: {vocab: {b: 1, a: 0, ' ': 2}},
         }),
       );
       await generateKokoroTokensTxt('/t.json', '/tokens.txt');
@@ -36,9 +36,9 @@ describe('sherpaConvert (B36)', () => {
 
     it('throws when model.vocab is missing', async () => {
       mockReadFile.mockResolvedValue(JSON.stringify({model: {}}));
-      await expect(generateKokoroTokensTxt('/t.json', '/t.txt')).rejects.toThrow(
-        'model.vocab',
-      );
+      await expect(
+        generateKokoroTokensTxt('/t.json', '/t.txt'),
+      ).rejects.toThrow('model.vocab');
     });
   });
 
@@ -62,7 +62,14 @@ describe('sherpaConvert (B36)', () => {
       // ttl: 1×2×3, dp: 1×2×1 → header [1,50,256,1,8,16] 固定
       mockReadFile.mockResolvedValue(
         JSON.stringify({
-          style_ttl: {data: [[[1, 2, 3], [4, 5, 6]]]},
+          style_ttl: {
+            data: [
+              [
+                [1, 2, 3],
+                [4, 5, 6],
+              ],
+            ],
+          },
           style_dp: {data: [[[0.5], [1.5]]]},
         }),
       );

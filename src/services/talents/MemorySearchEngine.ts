@@ -27,7 +27,10 @@ export class MemorySearchEngine implements TalentEngine {
     try {
       const fragments = await searchMemory(query, 5);
       if (fragments.length === 0) {
-        return {type: 'text', summary: '\u6ca1\u6709\u627e\u5230\u76f8\u5173\u8bb0\u5fc6\u3002'};
+        return {
+          type: 'text',
+          summary: '\u6ca1\u6709\u627e\u5230\u76f8\u5173\u8bb0\u5fc6\u3002',
+        };
       }
       return {type: 'text', summary: fragments.join('\n---\n')};
     } catch (e) {

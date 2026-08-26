@@ -105,7 +105,11 @@ export const ZoomableImage: React.FC<ZoomableImageProps> = ({uri, onClose}) => {
         </GestureDetector>
       ) : null}
       <Text
-        style={[styles.hint, theme.typography.captionS, {color: theme.colors.onSurfaceVariant}]}>
+        style={[
+          styles.hint,
+          theme.typography.captionS,
+          {color: theme.colors.onSurfaceVariant},
+        ]}>
         双指缩放 · 拖动移动 · 单击关闭
       </Text>
     </GestureHandlerRootView>

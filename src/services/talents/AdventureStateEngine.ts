@@ -26,7 +26,11 @@ export class AdventureStateEngine implements TalentEngine {
   readonly name = 'adventure_state';
 
   /** 多文档白名单（防任意路径写盘）。 */
-  private static readonly DOC_WHITELIST = ['世界设定', '角色卡', '剧情'] as const;
+  private static readonly DOC_WHITELIST = [
+    '世界设定',
+    '角色卡',
+    '剧情',
+  ] as const;
 
   private get statePath(): string {
     return `${AIOS_ADVENTURE_DIR}/state.json`;
@@ -34,7 +38,9 @@ export class AdventureStateEngine implements TalentEngine {
 
   private docPath(doc: string): string | null {
     const clean = doc.trim();
-    if (!(AdventureStateEngine.DOC_WHITELIST as readonly string[]).includes(clean)) {
+    if (
+      !(AdventureStateEngine.DOC_WHITELIST as readonly string[]).includes(clean)
+    ) {
       return null;
     }
     return `${AIOS_ADVENTURE_DIR}/${clean}.md`;
@@ -174,9 +180,10 @@ export class AdventureStateEngine implements TalentEngine {
       if (!result.ok) {
         return {
           type: 'error',
-          summary: result.error === 'DOC_TOO_LARGE'
-            ? `${doc} 超 20KB 上限，本次未写入（精简或开新节）。`
-            : '写入失败，内容未落盘。',
+          summary:
+            result.error === 'DOC_TOO_LARGE'
+              ? `${doc} 超 20KB 上限，本次未写入（精简或开新节）。`
+              : '写入失败，内容未落盘。',
           errorMessage: result.error ?? 'WRITE_FAILED',
         };
       }
@@ -210,11 +217,13 @@ export class AdventureStateEngine implements TalentEngine {
             action: {
               type: 'string',
               enum: ['get', 'set', 'reset', 'read', 'append'],
-              description: 'get 读取 / set 更新 / reset 清档 / read 读世界档案节 / append 写世界档案节',
+              description:
+                'get 读取 / set 更新 / reset 清档 / read 读世界档案节 / append 写世界档案节',
             },
             state: {
               type: 'object',
-              description: 'set 时的状态字段（如 {hp: 8, 位置: "黑森林", 背包: ["火把"]}）',
+              description:
+                'set 时的状态字段（如 {hp: 8, 位置: "黑森林", 背包: ["火把"]}）',
             },
             doc: {
               type: 'string',

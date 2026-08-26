@@ -55,8 +55,8 @@ class PromptWriter {
     try {
       const files = await RNFS.readDir(SD_MODELS_DIR);
       const ggufs = files.filter(f => f.name.endsWith('.gguf'));
-      const heretic = ggufs.find(f =>
-        /minicpm5?[-_ ]?1b/i.test(f.name) && /heretic/i.test(f.name),
+      const heretic = ggufs.find(
+        f => /minicpm5?[-_ ]?1b/i.test(f.name) && /heretic/i.test(f.name),
       );
       const minicpm = ggufs.find(
         f => /minicpm5?[-_ ]?1b/i.test(f.name) && !/heretic/i.test(f.name),
@@ -98,12 +98,19 @@ class PromptWriter {
           use_progress_callback: false,
         });
         const ok = !!this.ctx;
-        engineStatus.setPhase('prompter', ok ? 'ready' : 'error', ok ? '' : '加载失败');
+        engineStatus.setPhase(
+          'prompter',
+          ok ? 'ready' : 'error',
+          ok ? '' : '加载失败',
+        );
         return ok;
       } catch (e) {
         console.warn('[PromptWriter] load failed:', e);
         this.ctx = undefined;
-        engineStatus.setError('prompter', `管家模型加载失败: ${(e as Error)?.message ?? e}`);
+        engineStatus.setError(
+          'prompter',
+          `管家模型加载失败: ${(e as Error)?.message ?? e}`,
+        );
         return false;
       }
     })();
@@ -148,9 +155,7 @@ class PromptWriter {
         ),
       );
       // 清理可能的 think 残留与首尾空白
-      const cleaned = out
-        .replace(/[\s\S]*?<\/think>/g, '')
-        .trim();
+      const cleaned = out.replace(/[\s\S]*?<\/think>/g, '').trim();
       return cleaned.length > 0 ? cleaned : null;
     } catch (e) {
       console.warn('[PromptWriter] completion failed:', e);

@@ -17,6 +17,7 @@ import {pick, types} from '@react-native-documents/picker';
 import {Portal, Snackbar} from 'react-native-paper';
 
 import {useTheme} from '../../hooks';
+import {infoDialog} from '../../components/ui/InfoDialog';
 
 import {FABGroup} from './FABGroup';
 import {ModelCard} from './ModelCard';
@@ -270,10 +271,10 @@ export const ModelsScreen: React.FC = observer(() => {
             await RNFS.copyFile(file.uri, permanentPath);
             await modelStore.addLocalModel(permanentPath);
           } catch (e) {
-            Alert.alert(
-              l10n.models.fileManagement.copyFailed,
-              e instanceof Error ? e.message : String(e),
-            );
+            infoDialog({
+              title: l10n.models.fileManagement.copyFailed,
+              message: e instanceof Error ? e.message : String(e),
+            });
           } finally {
             setIsCopyingModel(false);
           }

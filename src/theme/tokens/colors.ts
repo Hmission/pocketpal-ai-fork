@@ -177,6 +177,7 @@ export const lightColors: TokenColors = {
   badgeZImage: '#00838F',
   badgeDreamlite: '#D81B60',
   badgeFlux: '#3949AB',
+  badgeKrea2: '#E65100',
 
   // 悬浮层表面：半透明+阴影分层（禁 blur；DESIGN_SPEC §1.5）
   surfaceElevated: 'rgba(255, 255, 255, 0.96)',
@@ -346,6 +347,7 @@ export const darkColors: TokenColors = {
   badgeZImage: '#4DD0E1',
   badgeDreamlite: '#F48FB1',
   badgeFlux: '#9FA8DA',
+  badgeKrea2: '#FFAB91',
 
   // 悬浮层表面：半透明+阴影分层（禁 blur）
   surfaceElevated: 'rgba(30, 30, 32, 0.96)',

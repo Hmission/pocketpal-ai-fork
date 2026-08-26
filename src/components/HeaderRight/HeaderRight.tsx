@@ -1,5 +1,5 @@
 import React, {useContext} from 'react';
-import {Alert, Keyboard, TouchableOpacity, View} from 'react-native';
+import {Keyboard, TouchableOpacity, View} from 'react-native';
 
 import {observer} from 'mobx-react';
 
@@ -18,6 +18,7 @@ import {
 
 import {Menu} from '../Menu';
 import {confirmDialog} from '../ui/ConfirmDialog';
+import {infoDialog} from '../ui/InfoDialog';
 import {styles} from './styles';
 
 import {chatSessionStore, uiStore} from '../../store';
@@ -108,7 +109,10 @@ export const HeaderRight: React.FC = observer(() => {
         await exportChatSession(session.id);
       } catch (error) {
         console.error('Error exporting current session:', error);
-        Alert.alert('Export Error', 'Failed to export the current session.');
+        infoDialog({
+          title: 'Export Error',
+          message: 'Failed to export the current session.',
+        });
       }
     }
     closeMenu();
@@ -119,7 +123,10 @@ export const HeaderRight: React.FC = observer(() => {
       await exportAllChatSessions();
     } catch (error) {
       console.error('Error exporting all sessions:', error);
-      Alert.alert('Export Error', 'Failed to export all sessions.');
+      infoDialog({
+        title: 'Export Error',
+        message: 'Failed to export all sessions.',
+      });
     }
     closeMenu();
   };
@@ -128,16 +135,16 @@ export const HeaderRight: React.FC = observer(() => {
     try {
       const count = await importChatSessions();
       if (count > 0) {
-        Alert.alert(
-          'Import Success',
-          t(l10n.settings.importSuccess, {count: count.toString()}),
-        );
+        infoDialog({
+          title: 'Import Success',
+          message: t(l10n.settings.importSuccess, {count: count.toString()}),
+        });
         // Refresh the chat sessions
         await chatSessionStore.loadSessionList();
       }
     } catch (error) {
       console.error('Error importing sessions:', error);
-      Alert.alert('Import Error', l10n.settings.importError);
+      infoDialog({title: 'Import Error', message: l10n.settings.importError});
     }
     closeMenu();
   };

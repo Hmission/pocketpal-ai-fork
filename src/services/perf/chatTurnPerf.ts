@@ -69,9 +69,7 @@ class ChatTurnPerf {
         };
         this.points.push(pt);
         // 增量落盘（fire-and-forget，断点前轨迹可回看）
-        void perfRecorder
-          .append(pt)
-          .catch(() => undefined);
+        void perfRecorder.append(pt).catch(() => undefined);
       } catch {
         // 本点采样失败：诚实跳过，不打断轨迹（稀疏好过造假）
       }
@@ -90,9 +88,7 @@ class ChatTurnPerf {
     this.points = [];
     this.taskId = null;
     // 落盘收尾（写 summary 行；被杀无 summary 时读侧由轨迹重算）
-    void perfRecorder
-      .finish('success')
-      .catch(() => undefined);
+    void perfRecorder.finish('success').catch(() => undefined);
     if (points.length < 2) {
       return null;
     }

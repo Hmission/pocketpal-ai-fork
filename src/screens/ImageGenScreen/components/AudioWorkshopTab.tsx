@@ -1,6 +1,5 @@
 import * as React from 'react';
 import {
-  Animated,
   NativeModules,
   PermissionsAndroid,
   Platform,
@@ -18,19 +17,24 @@ import Clipboard from '@react-native-clipboard/clipboard';
 import Share from 'react-native-share';
 import {resolveAudioPath} from '../../../services/asrEngine';
 import {getPlayPosition} from '../../../services/ttsEngine';
-import {SUPERTONIC_VOICES, KOKORO_VOICES, KITTEN_VOICES} from '../../../services/tts';
+import {
+  SUPERTONIC_VOICES,
+  KOKORO_VOICES,
+  KITTEN_VOICES,
+} from '../../../services/tts';
 
 import {audioStore} from '../../../store/audioStore';
 import {imageGenStore, GeneratedImage} from '../../../store/imageGenStore';
 import {ttsStore} from '../../../store/TTSStore';
 import {useTheme} from '../../../hooks';
 import {createStyles} from '../styles';
-import {Voice} from '../../../services/tts';
 import {chatSessionStore} from '../../../store';
 import {InputSlider} from '../../../components/InputSlider';
-import {useWaveDots} from '../hooks/useWaveDots';
+import {WaveDots} from '../../../components/ui/WaveDots';
 import {AlertTriangleMdIcon} from '../../../assets/icons';
 import {copyAndSaveErrorReport} from '../../../utils/errorReport';
+import {BannerBar} from '../../../components/ui/BannerBar';
+import type {PreviewBanner} from './ResultPreview';
 
 type AudioSeg = 'transcribe' | 'generate';
 
@@ -44,7 +48,11 @@ type AudioSeg = 'transcribe' | 'generate';
  */
 export const AudioWorkshopTab: React.FC<{
   onSnackbar: (msg: string, variant?: 'info' | 'warning' | 'error') => void;
-}> = observer(({onSnackbar}) => {
+  /** 顶部横幅（瞬时任务反馈，叠卡片顶部不压创作区；整卡可点关闭；
+      编辑锁定常驻不传——生图 tab 专属状态） */
+  banner?: PreviewBanner | null;
+  onDismissBanner?: () => void;
+}> = observer(({onSnackbar, banner, onDismissBanner}) => {
   const theme = useTheme();
   const s = createStyles(theme);
   const [seg, setSeg] = React.useState<AudioSeg>('transcribe');
@@ -58,18 +66,24 @@ export const AudioWorkshopTab: React.FC<{
   /** B35：转写结果卡展开收起（对齐生图反推卡 captionExpanded 交互） */
   const [transcribeExpanded, setTranscribeExpanded] = React.useState(false);
   /** B36：结果区焦点条目（默认最新；历史条点按切换，对齐生图相册翻页联动） */
-  const [transcribeFocusId, setTranscribeFocusId] = React.useState<string | null>(null);
+  const [transcribeFocusId, setTranscribeFocusId] = React.useState<
+    string | null
+  >(null);
   const [ttsFocusId, setTtsFocusId] = React.useState<string | null>(null);
   /** B36：running 进度卡累计秒数 */
   const [now, setNow] = React.useState(Date.now());
   const [opStartedAt, setOpStartedAt] = React.useState<number | null>(null);
 
-  // B36：三点波浪动效（running 整卡，与生图页同设计语言；JS driver 合规）
-  const waveDots = useWaveDots(audioStore.transcribing || audioStore.ttsGenerating);
+  // B36：三点波浪动效（running 整卡，与生图页同设计语言；JS driver 合规——
+  // B57 渲染归一 ui/WaveDots，active 语义由条件渲染承载）
+  const dotsActive = audioStore.transcribing || audioStore.ttsGenerating;
 
   // B38：播放器进度轮询（500ms 驱动时间轴；播完自动复位）
+  // observer 本地读（MobX 惯例）：isPlaying 是 observable 属性，插入/结束经 observer
+  // 重渲染 → 局部变量刷新 → effect 重跑（启动/停止轮询），行为等价。
+  const isPlaying = audioStore.isPlaying;
   React.useEffect(() => {
-    if (!audioStore.isPlaying) {
+    if (!isPlaying) {
       return;
     }
     const t = setInterval(async () => {
@@ -91,7 +105,7 @@ export const AudioWorkshopTab: React.FC<{
       }
     }, 500);
     return () => clearInterval(t);
-  }, [audioStore.isPlaying]);
+  }, [isPlaying]);
 
   // 转写历史（kind='transcribe' success，历史条 + 结果区 success 页）
   const transcribeHistory = React.useMemo(
@@ -133,39 +147,47 @@ export const AudioWorkshopTab: React.FC<{
   const ttsFocus =
     ttsTasks.find(t => t.taskId === ttsFocusId) ?? ttsTasks[0] ?? null;
 
-  // 新任务产生 → 焦点重置最新
+  // 新任务产生 → 焦点重置最新（依赖数组提取为具名变量：避免下标访问表达式）
+  const transcribeLatestTaskId = transcribeTasks[0]?.taskId;
   React.useEffect(() => {
     setTranscribeFocusId(null);
-  }, [transcribeTasks[0]?.taskId]);
+  }, [transcribeLatestTaskId]);
+  const ttsLatestTaskId = ttsTasks[0]?.taskId;
   React.useEffect(() => {
     setTtsFocusId(null);
-  }, [ttsTasks[0]?.taskId]);
+  }, [ttsLatestTaskId]);
 
   // running 期间 1s 时钟（进度卡累计秒数）
+  // observer 本地读（MobX 惯例，ImageGenScreen 同款）：transcribing/ttsGenerating 是
+  // observable 属性，变化触发 observer 重渲染 → 局部变量刷新 → effect 重跑（启停 tick）。
+  const transcribing = audioStore.transcribing;
+  const ttsGenerating = audioStore.ttsGenerating;
   React.useEffect(() => {
-    if (!audioStore.transcribing && !audioStore.ttsGenerating) {
+    if (!transcribing && !ttsGenerating) {
       setOpStartedAt(null);
       return;
     }
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
-  }, [audioStore.transcribing, audioStore.ttsGenerating]);
+  }, [transcribing, ttsGenerating]);
 
   React.useEffect(() => {
     audioStore.refreshAsrState();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /** 当前引擎音色清单（kokoro/supertonic/kitten 常量目录；引擎选择在顶栏 B35） */
+  // observer 本地读：genEngine 是 observable 属性，切换经 observer 重渲染 → 局部变量
+  // 刷新 → useMemo 重算音色清单，行为等价。
+  const genEngine = audioStore.genEngine;
   const genVoices = React.useMemo(() => {
-    if (audioStore.genEngine === 'kokoro') {
+    if (genEngine === 'kokoro') {
       return KOKORO_VOICES;
     }
-    if (audioStore.genEngine === 'supertonic') {
+    if (genEngine === 'supertonic') {
       return SUPERTONIC_VOICES;
     }
     return KITTEN_VOICES;
-  }, [audioStore.genEngine]);
+  }, [genEngine]);
 
   React.useEffect(() => {
     if (!voiceId || !genVoices.some(v => v.id === voiceId)) {
@@ -241,10 +263,15 @@ export const AudioWorkshopTab: React.FC<{
       onSnackbar('请先选择音色', 'warning');
       return;
     }
-    const out = await audioStore.generateTask(audioStore.genEngine, text, selectedVoice, {
-      speed,
-      numSteps: supertonicSteps,
-    });
+    const out = await audioStore.generateTask(
+      audioStore.genEngine,
+      text,
+      selectedVoice,
+      {
+        speed,
+        numSteps: supertonicSteps,
+      },
+    );
     if (out) {
       onSnackbar('音频已生成');
     } else {
@@ -328,8 +355,8 @@ export const AudioWorkshopTab: React.FC<{
 
   /** 时长格式化（ms → m:ss） */
   const fmtDur = (ms: number): string => {
-    const s = Math.max(0, Math.round(ms / 1000));
-    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+    const secs = Math.max(0, Math.round(ms / 1000));
+    return `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
   };
 
   /** 分享产物文件 */
@@ -347,6 +374,17 @@ export const AudioWorkshopTab: React.FC<{
 
   return (
     <View style={s.card}>
+      {/* 卡片顶部横幅（v4.3：与生图 tab 同一设计语言——语义色 wash 无灰底，整卡点击关闭） */}
+      {banner ? (
+        <View style={s.bannerOverlay} pointerEvents="box-none">
+          <BannerBar
+            variant={banner.variant}
+            text={banner.text}
+            onPress={banner.dismissable ? onDismissBanner : undefined}
+            onDismiss={banner.dismissable ? onDismissBanner : undefined}
+          />
+        </View>
+      ) : null}
       {/* 次级分段（复用 KnowledgeScreen tabBar 样式语义） */}
       <View style={s.audioSegBar}>
         <TouchableOpacity
@@ -366,7 +404,10 @@ export const AudioWorkshopTab: React.FC<{
           onPress={() => setSeg('generate')}
           testID="audio-seg-generate">
           <Text
-            style={[s.audioSegText, seg === 'generate' && s.audioSegTextActive]}>
+            style={[
+              s.audioSegText,
+              seg === 'generate' && s.audioSegTextActive,
+            ]}>
             生成
           </Text>
         </TouchableOpacity>
@@ -379,33 +420,19 @@ export const AudioWorkshopTab: React.FC<{
             {audioStore.transcribing ? (
               <View style={s.audioResultStage}>
                 <View style={s.genDotsRow}>
-                  {waveDots.map((d, i) => (
-                    <Animated.View
-                      key={i}
-                      style={[
-                        s.genDot,
-                        {
-                          transform: [
-                            {
-                              translateY: d.interpolate({
-                                inputRange: [0, 1],
-                                outputRange: [0, -8],
-                              }),
-                            },
-                          ],
-                          opacity: d.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [0.45, 1],
-                          }),
-                        },
-                      ]}
-                    />
-                  ))}
+                  {/* B57：归一 ui/WaveDots（原 10px/8gap/8 振幅视觉参数回传） */}
+                  <WaveDots
+                    active={dotsActive}
+                    size={10}
+                    gap={8}
+                    translateY={8}
+                  />
                 </View>
                 <Text style={s.genOverlayTitle}>正在转写…</Text>
                 <Text style={s.overlayText}>
                   {audioStore.transcribeStage || '准备中…'} ·{' '}
-                  {Math.max(0, Math.round((now - (opStartedAt ?? now)) / 1000))}s
+                  {Math.max(0, Math.round((now - (opStartedAt ?? now)) / 1000))}
+                  s
                 </Text>
               </View>
             ) : transcribeFocus?.status === 'failed' ? (
@@ -434,7 +461,9 @@ export const AudioWorkshopTab: React.FC<{
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={s.failedBtnGhost}
-                    onPress={() => imageGenStore.deleteTask(transcribeFocus.taskId)}>
+                    onPress={() =>
+                      imageGenStore.deleteTask(transcribeFocus.taskId)
+                    }>
                     <Text style={s.failedBtnGhostText}>删除</Text>
                   </TouchableOpacity>
                 </View>
@@ -482,7 +511,9 @@ export const AudioWorkshopTab: React.FC<{
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[s.audioBtn, s.audioBtnDelete]}
-                    onPress={() => imageGenStore.deleteTask(transcribeFocus.taskId)}
+                    onPress={() =>
+                      imageGenStore.deleteTask(transcribeFocus.taskId)
+                    }
                     testID="audio-delete-transcribe">
                     <Text style={s.audioBtnText}>删除</Text>
                   </TouchableOpacity>
@@ -543,17 +574,15 @@ export const AudioWorkshopTab: React.FC<{
                   disabled={audioStore.asrState === 'downloading'}
                   testID="audio-download-model">
                   <Text style={s.audioBtnText}>
-                    {audioStore.asrState === 'downloading' ? '下载中…' : '下载模型'}
+                    {audioStore.asrState === 'downloading'
+                      ? '下载中…'
+                      : '下载模型'}
                   </Text>
                 </TouchableOpacity>
               )}
             </View>
             <TouchableOpacity
-              style={[
-                s.button,
-                s.buttonGen,
-                recording && s.buttonDanger,
-              ]}
+              style={[s.button, s.buttonGen, recording && s.buttonDanger]}
               onPress={handleRecordToggle}
               disabled={audioStore.transcribing}
               testID="audio-record">
@@ -583,33 +612,18 @@ export const AudioWorkshopTab: React.FC<{
             {audioStore.ttsGenerating ? (
               <View style={s.audioResultStage}>
                 <View style={s.genDotsRow}>
-                  {waveDots.map((d, i) => (
-                    <Animated.View
-                      key={i}
-                      style={[
-                        s.genDot,
-                        {
-                          transform: [
-                            {
-                              translateY: d.interpolate({
-                                inputRange: [0, 1],
-                                outputRange: [0, -8],
-                              }),
-                            },
-                          ],
-                          opacity: d.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [0.45, 1],
-                          }),
-                        },
-                      ]}
-                    />
-                  ))}
+                  <WaveDots
+                    active={dotsActive}
+                    size={10}
+                    gap={8}
+                    translateY={8}
+                  />
                 </View>
                 <Text style={s.genOverlayTitle}>正在生成音频…</Text>
                 <Text style={s.overlayText}>
                   {audioStore.ttsStage || '准备中…'} ·{' '}
-                  {Math.max(0, Math.round((now - (opStartedAt ?? now)) / 1000))}s
+                  {Math.max(0, Math.round((now - (opStartedAt ?? now)) / 1000))}
+                  s
                 </Text>
               </View>
             ) : ttsFocus?.status === 'failed' ? (
@@ -668,7 +682,7 @@ export const AudioWorkshopTab: React.FC<{
                         audioStore.playingUri === ttsFocus.uri &&
                           audioStore.playDuration > 0
                           ? audioStore.playDuration
-                          : ttsFocus.durationMs ?? 0,
+                          : (ttsFocus.durationMs ?? 0),
                       )}
                     </Text>
                   </View>
@@ -681,7 +695,7 @@ export const AudioWorkshopTab: React.FC<{
                         audioStore.playingUri === ttsFocus.uri &&
                           audioStore.playDuration > 0
                           ? audioStore.playDuration
-                          : ttsFocus.durationMs ?? 0,
+                          : (ttsFocus.durationMs ?? 0),
                         1,
                       )}
                       value={Math.min(
@@ -692,13 +706,11 @@ export const AudioWorkshopTab: React.FC<{
                           audioStore.playingUri === ttsFocus.uri &&
                             audioStore.playDuration > 0
                             ? audioStore.playDuration
-                            : ttsFocus.durationMs ?? 0,
+                            : (ttsFocus.durationMs ?? 0),
                           1,
                         ),
                       )}
-                      onSlidingComplete={v =>
-                        audioStore.seekTo(Math.round(v))
-                      }
+                      onSlidingComplete={v => audioStore.seekTo(Math.round(v))}
                       minimumTrackTintColor={theme.colors.primary}
                       maximumTrackTintColor={theme.colors.outlineVariant}
                       thumbTintColor={theme.colors.primary}
@@ -716,7 +728,7 @@ export const AudioWorkshopTab: React.FC<{
                           audioStore.playingUri === ttsFocus.uri &&
                             audioStore.playDuration > 0
                             ? audioStore.playDuration
-                            : ttsFocus.durationMs ?? 0,
+                            : (ttsFocus.durationMs ?? 0),
                         )}
                       </Text>
                     </View>
@@ -751,16 +763,16 @@ export const AudioWorkshopTab: React.FC<{
                 </View>
               </>
             ) : (
-              <Text style={s.audioStage}>暂无音频产物，输入文本后点生成音频</Text>
+              <Text style={s.audioStage}>
+                暂无音频产物，输入文本后点生成音频
+              </Text>
             )}
           </View>
 
           {/* ② 历史条（B35：横向滚动，对齐生图相册 HistoryStrip 模式；点按播放产物） */}
           {ttsHistory.length > 0 && (
             <View style={s.card}>
-              <Text style={s.cardTitle}>
-                音频产物 ({ttsHistory.length})
-              </Text>
+              <Text style={s.cardTitle}>音频产物 ({ttsHistory.length})</Text>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}

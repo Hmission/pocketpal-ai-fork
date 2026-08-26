@@ -16,9 +16,9 @@ describe('actionRegistry', () => {
   });
 
   it('未知 actionId 显式拒绝', async () => {
-    await expect(
-      executeAction('no.such.action', {}),
-    ).rejects.toThrow('未知 actionId');
+    await expect(executeAction('no.such.action', {})).rejects.toThrow(
+      '未知 actionId',
+    );
   });
 
   it('system.ping 返回 pong', async () => {
@@ -27,9 +27,9 @@ describe('actionRegistry', () => {
   });
 
   it('nav.go 无导航槽时显式报错（指南针提示）', async () => {
-    await expect(
-      executeAction('nav.go', {route: 'Chat'}),
-    ).rejects.toThrow('导航槽未注册');
+    await expect(executeAction('nav.go', {route: 'Chat'})).rejects.toThrow(
+      '导航槽未注册',
+    );
   });
 
   it('nav.go 参数过 zod 校验：非法 route 拒绝', async () => {
@@ -40,9 +40,9 @@ describe('actionRegistry', () => {
   });
 
   it('chat.send 无聊天槽时显式报错', async () => {
-    await expect(
-      executeAction('chat.send', {text: 'hi'}),
-    ).rejects.toThrow('聊天发送槽未注册');
+    await expect(executeAction('chat.send', {text: 'hi'})).rejects.toThrow(
+      '聊天发送槽未注册',
+    );
   });
 
   it('chat.send 参数校验：空文本拒绝', async () => {
@@ -79,9 +79,7 @@ describe('actionRegistry', () => {
   });
 
   it('models.load 参数校验：空 modelId 拒绝', async () => {
-    await expect(
-      executeAction('models.load', {modelId: ''}),
-    ).rejects.toThrow();
+    await expect(executeAction('models.load', {modelId: ''})).rejects.toThrow();
   });
 
   it('chat.newSession 创建会话成功', async () => {
@@ -156,12 +154,8 @@ describe('actionRegistry', () => {
   it('imagegen.generateDreamLite 生成失败：failTask 保留报错页', async () => {
     const {imageGenStore} = require('../../store/imageGenStore');
     (imageGenStore as any).error = 'DreamLite: engine boom';
-    const beginTask = jest
-      .spyOn(imageGenStore, 'beginTask')
-      .mockResolvedValue('task-drc-2');
-    const genEntry = jest
-      .spyOn(imageGenStore, 'generateDreamLiteEntry')
-      .mockResolvedValue(null);
+    jest.spyOn(imageGenStore, 'beginTask').mockResolvedValue('task-drc-2');
+    jest.spyOn(imageGenStore, 'generateDreamLiteEntry').mockResolvedValue(null);
     const failTask = jest
       .spyOn(imageGenStore, 'failTask')
       .mockResolvedValue(undefined);

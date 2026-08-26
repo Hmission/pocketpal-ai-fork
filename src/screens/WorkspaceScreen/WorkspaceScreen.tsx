@@ -4,7 +4,6 @@ import {
   ScrollView,
   Text,
   StyleSheet,
-  Alert,
   Platform,
   Animated,
 } from 'react-native';
@@ -29,6 +28,7 @@ import {listDiaries} from '../../services/aiosMemory/rituals';
 import {useTheme, useStaggerEntry} from '../../hooks';
 import type {Theme} from '../../utils/types';
 import {IconTile, ListItem} from '../../components/ui';
+import {infoDialog} from '../../components/ui/InfoDialog';
 import {EditBoxIcon, PencilLineIcon} from '../../assets/icons';
 
 const FILES = [
@@ -102,9 +102,15 @@ export function WorkspaceScreen({navigation}: any) {
           : RNFS.DocumentDirectoryPath;
       const exportPath = `${exportDir}/${fileName}`;
       await RNFS.copyFile(filePath, exportPath);
-      Alert.alert('导出成功', `文件已导出到:\n${exportPath}`);
+      infoDialog({
+        title: '导出成功',
+        message: `文件已导出到:\n${exportPath}`,
+      });
     } catch (e) {
-      Alert.alert('导出失败', e instanceof Error ? e.message : String(e));
+      infoDialog({
+        title: '导出失败',
+        message: e instanceof Error ? e.message : String(e),
+      });
     }
   };
 
@@ -115,7 +121,7 @@ export function WorkspaceScreen({navigation}: any) {
       });
       if (file) {
         await RNFS.copyFile(file.uri, targetPath);
-        Alert.alert('导入成功', '文件已导入到 workspace。');
+        infoDialog({title: '导入成功', message: '文件已导入到 workspace。'});
         // If currently viewing this file, reload it
         if (selectedFile === targetPath) {
           await loadFile(targetPath);
@@ -204,7 +210,7 @@ export function WorkspaceScreen({navigation}: any) {
                   Icon={EditBoxIcon}
                   color={theme.colors.domain.workspace}
                   right={
-                    <View style={{flexDirection: 'row'}}>
+                    <View style={styles.rowActions}>
                       <IconButton
                         icon="download-outline"
                         size={18}
@@ -282,6 +288,7 @@ const createStyles = (theme: Theme) =>
       gap: theme.spacing.s,
       marginBottom: theme.spacing.s,
     },
+    rowActions: {flexDirection: 'row'},
     editor: {
       flex: 1,
       textAlignVertical: 'top',

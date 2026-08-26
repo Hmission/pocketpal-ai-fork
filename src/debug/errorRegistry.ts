@@ -48,11 +48,15 @@ export const ERROR_PATTERNS: ErrorPattern[] = [
     triggerRegex: /model.*not found|modelLoadError|no model|模型.*未找到/i,
     navigation:
       '执行 models.scan 重新扫描；确认模型文件在 AIOS_MODELS_DIR；manifest 与文件一致性校验',
-    deepDive: ['docs/POCKETPAL_MODEL_MATRIX.md', 'src/utils/imageGenManifest.ts'],
+    deepDive: [
+      'docs/POCKETPAL_MODEL_MATRIX.md',
+      'src/utils/imageGenManifest.ts',
+    ],
   },
   {
     cpId: 'CP-APP-004',
-    triggerRegex: /engine.*busy|互斥|mutex|awaitEngineReady.*timeout|引擎.*占用/i,
+    triggerRegex:
+      /engine.*busy|互斥|mutex|awaitEngineReady.*timeout|引擎.*占用/i,
     navigation:
       '等待引擎释放后重试；engineStatus.busy 为 null 后重新发送；检查是否存在未 await 的 session 释放',
     deepDive: ['src/store/engineMutex.ts', 'src/store/engineStatus.ts'],

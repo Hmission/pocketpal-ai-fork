@@ -172,15 +172,17 @@ export const PerfPanel: React.FC = observer(() => {
         : undefined;
   };
   // 胶囊负载分档变色（B39）：>=85 红 / >=60 橙 / 否则继承中性
-  const loadTierColor = (v: number | undefined) =>
-    tierColor(v, 60, 85);
+  const loadTierColor = (v: number | undefined) => tierColor(v, 60, 85);
   // 分区温度归一（保持既有选取链：GPU 区 → CPU 区 → 整机）
   const tempShown = !na(perf?.tempGpuC)
     ? perf!.tempGpuC
     : !na(perf?.tempCpuC)
       ? perf!.tempCpuC
       : perf?.tempC;
-  const powerW = perf?.powerMw != null && perf.powerMw >= 0 ? perf.powerMw / 1000 : undefined;
+  const powerW =
+    perf?.powerMw != null && perf.powerMw >= 0
+      ? perf.powerMw / 1000
+      : undefined;
 
   return (
     <View style={s.perfPanel} testID="perf-panel">
@@ -223,7 +225,9 @@ export const PerfPanel: React.FC = observer(() => {
               <AnimatedNumber
                 value={opt(tempShown)}
                 format={tempFmt}
-                style={{color: tierColor(tempShown, TIER_TEMP.warn, TIER_TEMP.danger)}}
+                style={{
+                  color: tierColor(tempShown, TIER_TEMP.warn, TIER_TEMP.danger),
+                }}
               />
             </Text>
           </View>
@@ -232,7 +236,13 @@ export const PerfPanel: React.FC = observer(() => {
               <AnimatedNumber
                 value={opt(perf?.powerMw)}
                 format={powerFmt}
-                style={{color: tierColor(powerW, TIER_POWER_W.warn, TIER_POWER_W.danger)}}
+                style={{
+                  color: tierColor(
+                    powerW,
+                    TIER_POWER_W.warn,
+                    TIER_POWER_W.danger,
+                  ),
+                }}
               />
             </Text>
           </View>
@@ -311,9 +321,7 @@ export const PerfPanel: React.FC = observer(() => {
           {/* 指标行（自适应换行网格，B43 分级色）+ 历史入口：
               不再横向滚动——7 项指标 + 历史按钮在卡片宽度内折行，
               全部可见（根治「最底下一行显示不全」）。 */}
-          <View
-            style={s.perfMetricsRow}
-            testID="perf-metrics">
+          <View style={s.perfMetricsRow} testID="perf-metrics">
             <View style={s.perfMetric}>
               <Text style={s.perfMetricLabel}>CPU</Text>
               <AnimatedNumber
@@ -381,7 +389,13 @@ export const PerfPanel: React.FC = observer(() => {
                 format={tempFmt}
                 style={[
                   s.perfMetricValue,
-                  {color: tierColor(tempShown, TIER_TEMP.warn, TIER_TEMP.danger)},
+                  {
+                    color: tierColor(
+                      tempShown,
+                      TIER_TEMP.warn,
+                      TIER_TEMP.danger,
+                    ),
+                  },
                 ]}
               />
             </View>
@@ -392,7 +406,13 @@ export const PerfPanel: React.FC = observer(() => {
                 format={powerFmt}
                 style={[
                   s.perfMetricValue,
-                  {color: tierColor(powerW, TIER_POWER_W.warn, TIER_POWER_W.danger)},
+                  {
+                    color: tierColor(
+                      powerW,
+                      TIER_POWER_W.warn,
+                      TIER_POWER_W.danger,
+                    ),
+                  },
                 ]}
               />
             </View>
@@ -403,7 +423,13 @@ export const PerfPanel: React.FC = observer(() => {
                 format={stepFmt}
                 style={[
                   s.perfMetricValue,
-                  {color: tierColor(stepTime > 0 ? stepTime : undefined, TIER_STEP_S.warn, TIER_STEP_S.danger)},
+                  {
+                    color: tierColor(
+                      stepTime > 0 ? stepTime : undefined,
+                      TIER_STEP_S.warn,
+                      TIER_STEP_S.danger,
+                    ),
+                  },
                 ]}
               />
             </View>

@@ -314,14 +314,16 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
   //  Z-Image 双禁用（DISABLE=1 保精度 + XMEM=0：xmem 零拷贝致 VAE 解码内存峰值被杀）。
   const char* model_path_cstr = env->GetStringUTFChars(modelPath, nullptr);
   // 08-22 Box 清单项 1 收口（补丁→单点）：Qwen-TE flow-matching 同族判定。
-  // z_image / flux_klein 同为「DiT + Qwen3-4B TE（llm_path 拆分）+ flow matching
-  // + Adreno fp16 累积溢出风险」——采样值域/累积特性同构，必须同组 OpenCL 治理
-  // （DISABLE_ADRENO_KERNELS=1 + XMEM 真关）。原 strstr("z_image") 单串嗅探漏掉
-  // klein → 并入。引擎侧 sd.cpp 张量自动识别 VERSION_FLUX2_KLEIN，无需按名分支。
+  // z_image / klein / krea2（8-26 追加，同名不同态：Krea2 DiT 12.9B + Qwen3-VL TE
+  // + flow matching，采样值域/累积特性同构）同属拆分式模型，必须同组 OpenCL 治理
+  // （DISABLE_ADRENO_KERNELS=1 + XMEM 真关 + 禁 FP16_LM）。
+  // 引擎侧 sd.cpp 张量自动识别 VERSION_KREA2，无需按名分支。
   bool qwen_flow_family =
       model_path_cstr != nullptr &&
       (strstr(model_path_cstr, "z_image") != nullptr ||
-       strstr(model_path_cstr, "flux_klein") != nullptr);
+       strstr(model_path_cstr, "klein") != nullptr ||
+       strstr(model_path_cstr, "Krea") != nullptr ||
+       strstr(model_path_cstr, "krea") != nullptr);
   env->ReleaseStringUTFChars(modelPath, model_path_cstr);
   if (isMaliGpu()) {
     // 08-20 Mali 支持（红米平板）：Mali 走通用 fp32 路径。
@@ -334,7 +336,13 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
     // half 缓冲 + half 乘法 + fp32 累加。实测：512² 69→24.2 s/步（2.86x），
     // 512×768 113→33 s/步（3.42x），画质无损（§90.8/90.9）。
     // 回退：删本行即原 fp32 路径（env 门控，代码保留）。
-    setenv("GGML_OPENCL_MALI_FP16_LM", "1", 1);
+    // 8-25 修正：klein（qwen_flow 家族）排除——4 步蒸馏模型对分块 half 舍入敏感（马赛克纹理嫌疑），
+    // 暂走通用 fp32 路径保真；SD3.5/Z-Image 系维持半精度提速。
+    if (!qwen_flow_family) {
+      setenv("GGML_OPENCL_MALI_FP16_LM", "1", 1);
+    } else {
+      unsetenv("GGML_OPENCL_MALI_FP16_LM");
+    }
     // mul_mv_q4_k_f32 flat 变体：[CLPROF] 实锤只占 0.1%，不开（锋利：不留零收益开关；
     // 代码门控保留，未来若 flat 路径占比变化可再启用）。
     // 8-24 提速攻坚 A 线（Vulkan 探针）：GGML_VK_DISABLE_F16 是 Adreno 740 虚报

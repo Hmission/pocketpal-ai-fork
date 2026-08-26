@@ -2,7 +2,6 @@ import {
   addMemory,
   buildMemoryFragment,
   refreshUserMd,
-  extractAttrSlot,
   clearMemories,
   _invalidateCache,
   AiosMemory,
@@ -128,9 +127,7 @@ describe('9D 轻量裁决（批次 9-1）', () => {
     // 直接写入 mock 文件（绕过 addMemory，保持 cache 为 null 使 load() 读文件）
     const allMemories = [runningFact, oldEpisode, newEpisode, oldFact];
     (RNFS.exists as jest.Mock).mockResolvedValue(true);
-    (RNFS.readFile as jest.Mock).mockResolvedValue(
-      JSON.stringify(allMemories),
-    );
+    (RNFS.readFile as jest.Mock).mockResolvedValue(JSON.stringify(allMemories));
 
     const fragment = await buildMemoryFragment('西湖');
     // 被替代的旧 fact 不出现
@@ -176,8 +173,8 @@ describe('9D 轻量裁决（批次 9-1）', () => {
 
     await refreshUserMd();
 
-    const userWrite = (RNFS.writeFile as jest.Mock).mock.calls.find(
-      c => String(c[0]).includes('USER.md'),
+    const userWrite = (RNFS.writeFile as jest.Mock).mock.calls.find(c =>
+      String(c[0]).includes('USER.md'),
     );
     expect(userWrite).toBeDefined();
     const content = userWrite![1] as string;

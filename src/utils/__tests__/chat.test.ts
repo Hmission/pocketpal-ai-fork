@@ -710,9 +710,7 @@ describe('stripReasoningContent', () => {
   });
 
   it('keeps assistant messages without reasoning_content as-is', () => {
-    const messages: ChatMessage[] = [
-      {role: 'assistant', content: 'plain'},
-    ];
+    const messages: ChatMessage[] = [{role: 'assistant', content: 'plain'}];
 
     const stripped = stripReasoningContent(messages);
     expect(stripped[0]).toBe(messages[0]);

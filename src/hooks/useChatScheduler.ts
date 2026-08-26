@@ -2,8 +2,16 @@ import React from 'react';
 
 import {chatSessionStore, modelStore} from '../store';
 import {routeTask, TaskKind, isCaptionIntent} from '../store/taskRouter';
-import {runImageTaskCard, runEditImageTaskCard, runCaptionTaskCard} from '../services/chatImageTask';
-import {findModelForTask, listModelsForTask, candidateNote} from '../store/modelCapabilityRegistry';
+import {
+  runImageTaskCard,
+  runEditImageTaskCard,
+  runCaptionTaskCard,
+} from '../services/chatImageTask';
+import {
+  findModelForTask,
+  listModelsForTask,
+  candidateNote,
+} from '../store/modelCapabilityRegistry';
 import {getModelDisplayNameWithParams} from '../utils/modelDisplayNames';
 import {engineStatus} from '../store/engineStatus';
 import {promptWriter} from '../services/promptWriter';
@@ -16,7 +24,10 @@ import {askModelSwitch} from '../components/ui/ModelSwitchDialog';
 import {user, assistant} from '../utils/chat';
 import {L10nContext} from '../utils';
 import {MessageType, Model} from '../utils/types';
-import {resolveWritingRecovery, setPendingWorkspaceContext} from '../services/workspace/recovery';
+import {
+  resolveWritingRecovery,
+  setPendingWorkspaceContext,
+} from '../services/workspace/recovery';
 
 /**
  * useChatScheduler — 任务驱动调度（豆包式闭环，只判不执原则，SPEC §9.3）：
@@ -97,7 +108,7 @@ async function loadCandidate(
  */
 async function loadCandidateForDialog(
   candidate: Model,
-  retryText: string,
+  _retryText: string,
 ): Promise<void> {
   engineStatus.setPhase('chat', 'loading', `加载 ${candidate.name}…`);
   try {
@@ -168,8 +179,7 @@ async function butlerReply(
   chatSessionStore.markAgentRunStarted();
   const reply = await promptWriter.chat(text, systemExtra);
   const finalText =
-    reply ??
-    '抱歉，小黄鸡暂时没想到怎么回答。可到模型页加载更强的对话模型。';
+    reply ?? '抱歉，小黄鸡暂时没想到怎么回答。可到模型页加载更强的对话模型。';
   await chatSessionStore.updateMessage(cardId, sessionId, {
     text: finalText,
   });
@@ -242,8 +252,7 @@ async function resolveTaskModel(
       canKeepCurrent: true,
       // §18.7 弹窗内加载：遮罩保持（交互阻塞），完成/失败自动关
       onLoad: async (modelId: string) => {
-        const chosen =
-          candidates.find(c => c.id === modelId) ?? recommended!;
+        const chosen = candidates.find(c => c.id === modelId) ?? recommended!;
         chatSessionStore.setTaskModelChoice(task, chosen.id);
         await loadCandidateForDialog(chosen, text);
       },
@@ -280,8 +289,7 @@ async function resolveTaskModel(
     canKeepCurrent: false,
     // §18.7 弹窗内加载：遮罩保持（交互阻塞），完成/失败自动关
     onLoad: async (modelId: string) => {
-      const chosen =
-        candidates.find(c => c.id === modelId) ?? recommended;
+      const chosen = candidates.find(c => c.id === modelId) ?? recommended;
       chatSessionStore.setTaskModelChoice(task, chosen.id);
       await loadCandidateForDialog(chosen, text);
     },
@@ -320,10 +328,7 @@ export const useChatScheduler = (
   );
 
   const wrappedSendPress = React.useCallback(
-    async (
-      message: MessageType.PartialText,
-      editSourceUri?: string | null,
-    ) => {
+    async (message: MessageType.PartialText, editSourceUri?: string | null) => {
       const text = message.text.trim();
 
       // 编辑闭环（P5 豆包式）：显式编辑源图（图片编辑按钮/全屏查看器/任务卡下沉）

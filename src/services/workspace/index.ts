@@ -38,6 +38,7 @@ const DOMAIN_ROOTS: Record<ProjectDomain, string> = {
 /** 项目名 sanitize：去路径分隔符与危险字符，空白折叠；空名返回 null。 */
 export function sanitizeProjectName(raw: string): string | null {
   const cleaned = raw
+    // eslint-disable-next-line no-control-regex -- 有意排除 C0 控制字符（0x00-0x1F）与路径分隔符，项目名校验
     .replace(/[\\/:*?"<>|\u0000-\u001f]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
@@ -52,9 +53,7 @@ function indexFile(domain: ProjectDomain): string {
   return `${domainRoot(domain)}/index.json`;
 }
 
-async function readIndex(
-  domain: ProjectDomain,
-): Promise<WorkspaceProject[]> {
+async function readIndex(domain: ProjectDomain): Promise<WorkspaceProject[]> {
   try {
     if (!(await RNFS.exists(indexFile(domain)))) {
       return [];
@@ -71,7 +70,11 @@ async function writeIndex(
   domain: ProjectDomain,
   entries: WorkspaceProject[],
 ): Promise<void> {
-  await RNFS.writeFile(indexFile(domain), JSON.stringify(entries, null, 2), 'utf8');
+  await RNFS.writeFile(
+    indexFile(domain),
+    JSON.stringify(entries, null, 2),
+    'utf8',
+  );
 }
 
 /** 项目目录绝对路径（入参须已 sanitize）。 */

@@ -60,11 +60,8 @@ export const AssistantAuthorRow: React.FC<AssistantAuthorRowProps> = ({
     ? (message.metadata as {modelName?: string} | undefined)?.modelName
     : undefined;
   const intent = isAssistant
-    ? (
-        message.metadata as
-          | {turnMetrics?: {intent?: IntentKind}}
-          | undefined
-      )?.turnMetrics?.intent
+    ? (message.metadata as {turnMetrics?: {intent?: IntentKind}} | undefined)
+        ?.turnMetrics?.intent
     : undefined;
 
   if (!modelName && !intent) {

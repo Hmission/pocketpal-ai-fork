@@ -113,14 +113,16 @@ export async function createWeeklyAlbum(): Promise<AlbumResult> {
     }
 
     // 素材文本（记忆 + 日记内容）
-    const memLines = memories.slice(0, 15).map(
-      m => `- [${m.type}] ${m.content}`,
-    );
+    const memLines = memories
+      .slice(0, 15)
+      .map(m => `- [${m.type}] ${m.content}`);
     const diaryLines: string[] = [];
     for (const d of diaryDates) {
       const content = await readDiary(d.date);
       if (content) {
-        diaryLines.push(`- ${d.date}: ${content.replace(/^#.*\n?/, '').slice(0, 120)}`);
+        diaryLines.push(
+          `- ${d.date}: ${content.replace(/^#.*\n?/, '').slice(0, 120)}`,
+        );
       }
     }
     const material = [

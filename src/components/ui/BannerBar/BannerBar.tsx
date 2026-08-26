@@ -2,8 +2,8 @@ import * as React from 'react';
 import {Pressable, Text, TouchableOpacity, View} from 'react-native';
 
 import {useTheme} from '../../../hooks';
-import {withOpacity} from '../../../utils/colorUtils';
 import {XIcon} from '../../../assets/icons';
+import {Progress} from '../Progress';
 import {createStyles, tintFor, type BannerVariant} from './styles';
 
 export type {BannerVariant};
@@ -76,7 +76,9 @@ export const BannerBar: React.FC<BannerBarProps> = ({
           {text}
         </Text>
         {typeof percent === 'number' ? (
-          <Text testID="banner-percent" style={[styles.percent, {color: tint.fill}]}>
+          <Text
+            testID="banner-percent"
+            style={[styles.percent, {color: tint.fill}]}>
             {`${Math.round(percent)}%`}
           </Text>
         ) : null}
@@ -96,11 +98,16 @@ export const BannerBar: React.FC<BannerBarProps> = ({
         ) : null}
       </View>
       {ratio !== null ? (
-        <View style={styles.meter} testID="banner-meter">
-          <View
-            style={[styles.meterFill, {width: `${ratio * 100}%`, backgroundColor: tint.fill}]}
-          />
-        </View>
+        // B57：内部 Meter 归一 ui/Progress（height=4 契约；trackColor 保持
+        // surfaceDisabled；style 补 alignSelf:stretch 维持 BannerRow 契约断言）
+        <Progress
+          testID="banner-meter"
+          height={4}
+          color={tint.fill}
+          value={progress}
+          trackColor={theme.colors.surfaceDisabled}
+          style={styles.meter}
+        />
       ) : null}
       {actions && actions.length > 0 ? (
         <View style={styles.actions}>

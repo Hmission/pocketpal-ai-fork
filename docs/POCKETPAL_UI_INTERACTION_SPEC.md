@@ -3,9 +3,9 @@ doc_id: POCKETPAL_UI_INTERACTION_SPEC
 module: root
 type: spec
 status: active
-version: "1.2"
+version: "1.3"
 created: "2026-08-14"
-updated: "2026-08-20"
+updated: "2026-08-21"
 relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_CHAT_UI_SPEC]
 ---
 
@@ -77,7 +77,7 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_CHAT_UI_SPEC]
 | 用户消息 | 复制 / 编辑 / 从此处删除 |
 
 - 「从此处删除」= 移除该条及其后所有消息（二次确认，ConfirmDialog）
-- 朗读（TTS 全文）：登记为 TTS 专项（当前 TTS 仅流式 auto-speak，无全文朗读 API）
+- 朗读（TTS 全文）：**2026-08-25 核账修正**（DEV_BACKLOG P4#15）——全文朗读 API 已存在（`TTSStore.play` 单 utterance 全文路径，`TextMessage/PlayButton` → `AssistantTurnFooter` 承载消息级入口，`isSpeakableMessage` 判定 + `isTTSAvailable` 门控）；长按菜单「朗读」项**未落码**：宿主 `ChatView.tsx` menuItems 区于 2026-08-25 工作区文件消失事件中丢失（219 文件事故），现存消息组件无长按菜单结构可挂载，挂账待宿主恢复（B39）
 
 ### LLM 就绪等待（engineReady）
 - 发送门控：engineIsBusy（inferencing/isStreaming/isGenerating/isStopping）时
@@ -121,9 +121,11 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_CHAT_UI_SPEC]
 - 顶栏：新建会话=加号（reset-button），右侧三控件 gap 2 收紧一组
 - placeholder 按 engineStatus 五级优先决策（CHAT_UI_SPEC §18.5 表）
 
-## 7. 遗留债务（待后续迭代）
+## 7. 遗留债务（批次挂账 · 2026-08-25 审计对齐）
 
-- 信息型弹窗（约 20 文件）统一为 InfoDialog 体系（分批替换清单见 §3）
-- ChatScreen.test/useChatSession.test 既有失败与新架构对齐专项
-- TTS 全文朗读 API + 长按菜单朗读项
-- GenerationSettingsScreen 1321 行等肥文件瘦身
+| 债务 | 批次 | 状态 |
+|---|---|---|
+| 信息型弹窗（约 20 文件）统一为 InfoDialog 体系（分批替换清单见 §3） | DEV_BACKLOG P4#16 | **2026-08-25 落码**（InfoDialog.tsx 新建：ConfirmDialog 同构模板，listener 单例 + InfoDialogHost 挂 App 根，OverlayCard 底座 primary 单按钮，message 可选支持 title-only；收编 19 文件 41 处信息型 Alert.alert；单测 4/4 绿。确认型 Alert 与双动作弹窗不在本批范围，转 confirmDialog 收编挂下批次） |
+| TTS 全文朗读 API + 长按菜单朗读项 | DEV_BACKLOG P4#15 | **部分完成**（全文朗读 API 已有：TTSStore.play + PlayButton 消息级入口；长按菜单项未落码——宿主 ChatView.tsx 丢失于 2026-08-25 文件消失事件，挂 B39 待恢复） |
+| ChatScreen.test/useChatSession.test 既有失败与新架构对齐专项 | 下迭代 | 开放 |
+| GenerationSettingsScreen 1321 行等肥文件瘦身 | DEV_BACKLOG P4#17 | 择期（P1 单槽 v2 + P3 肥文件拆分，需架构评审） |

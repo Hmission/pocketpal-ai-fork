@@ -141,7 +141,7 @@ describe('taskRouter', () => {
       expect(routeTask('好的，我明天继续写作业').task).toBe('chitchat');
     });
   });
-  
+
   describe('写作快捷前缀（WORKSPACE_SPEC v1，2026-08-21）', () => {
     it('「新建写作项目：星海」剥离前缀路由 write', () => {
       const signal = routeTask('新建写作项目：星海');
@@ -157,7 +157,7 @@ describe('taskRouter', () => {
       expect(routeTask('写作项目：').task).toBe('chitchat');
     });
   });
-  
+
   describe('adventure 任务（P12 城主，ADVENTURE_SPEC v1）', () => {
     it('「来场冒险」命中', () => {
       expect(routeTask('来场冒险').task).toBe('adventure');
@@ -185,22 +185,22 @@ describe('taskRouter', () => {
   });
 
   describe('isCaptionIntent 反推意图（创作工坊 v4，路由专工）', () => {
-      it('命中「反推提示词」', () => {
-        expect(isCaptionIntent('反推提示词')).toBe(true);
-      });
-      it('命中「提取标签」', () => {
-        expect(isCaptionIntent('帮我提取标签')).toBe(true);
-      });
-      it('命中英文 caption / tagger', () => {
-        expect(isCaptionIntent('generate caption for this image')).toBe(true);
-        expect(isCaptionIntent('use tagger')).toBe(true);
-      });
-      it('防误伤：无图片上下文的日常话术不命中', () => {
-        expect(isCaptionIntent('帮我反推一下这个思路')).toBe(false);
-        expect(isCaptionIntent('你好')).toBe(false);
-      });
+    it('命中「反推提示词」', () => {
+      expect(isCaptionIntent('反推提示词')).toBe(true);
     });
-  
+    it('命中「提取标签」', () => {
+      expect(isCaptionIntent('帮我提取标签')).toBe(true);
+    });
+    it('命中英文 caption / tagger', () => {
+      expect(isCaptionIntent('generate caption for this image')).toBe(true);
+      expect(isCaptionIntent('use tagger')).toBe(true);
+    });
+    it('防误伤：无图片上下文的日常话术不命中', () => {
+      expect(isCaptionIntent('帮我反推一下这个思路')).toBe(false);
+      expect(isCaptionIntent('你好')).toBe(false);
+    });
+  });
+
   describe('chitchat 兜底', () => {
     it('普通问候归为闲聊', () => {
       expect(routeTask('你好，今天过得怎么样').task).toBe('chitchat');

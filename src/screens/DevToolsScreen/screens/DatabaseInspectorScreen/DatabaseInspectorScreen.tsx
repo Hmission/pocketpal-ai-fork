@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   SafeAreaView,
-  Alert,
 } from 'react-native';
 import {Card, Button} from 'react-native-paper';
 import {database} from '../../../../database';
@@ -14,6 +13,7 @@ import {chatSessionRepository} from '../../../../repositories/ChatSessionReposit
 import {palRepository} from '../../../../repositories/PalRepository';
 import {useNavigation} from '@react-navigation/native';
 import {radius} from '../../../../theme/tokens';
+import {infoDialog} from '../../../../components/ui/InfoDialog';
 
 // Define the collections we want to inspect
 const COLLECTIONS = [
@@ -67,26 +67,34 @@ const DatabaseInspectorScreen = () => {
   const resetChatMigration = async () => {
     try {
       await chatSessionRepository.resetMigration();
-      Alert.alert('Chat migration reset successful', 'Please restart the app.');
+      infoDialog({
+        title: 'Chat migration reset successful',
+        message: 'Please restart the app.',
+      });
     } catch (error) {
       console.error('Failed to reset chat migration:', error);
-      Alert.alert(
-        'Failed to reset chat migration',
-        error instanceof Error ? error.message : 'Unknown error occurred',
-      );
+      infoDialog({
+        title: 'Failed to reset chat migration',
+        message:
+          error instanceof Error ? error.message : 'Unknown error occurred',
+      });
     }
   };
 
   const resetPalMigration = async () => {
     try {
       await palRepository.resetMigration();
-      Alert.alert('Pal migration reset successful', 'Please restart the app.');
+      infoDialog({
+        title: 'Pal migration reset successful',
+        message: 'Please restart the app.',
+      });
     } catch (error) {
       console.error('Failed to reset pal migration:', error);
-      Alert.alert(
-        'Failed to reset pal migration',
-        error instanceof Error ? error.message : 'Unknown error occurred',
-      );
+      infoDialog({
+        title: 'Failed to reset pal migration',
+        message:
+          error instanceof Error ? error.message : 'Unknown error occurred',
+      });
     }
   };
 

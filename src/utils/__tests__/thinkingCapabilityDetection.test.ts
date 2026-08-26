@@ -191,11 +191,13 @@ describe('detectReasoningReinject', () => {
 
   it('should return false when the template rejects reasoning_content', async () => {
     const ctx = {
-      getFormattedChat: jest.fn().mockRejectedValue(
-        new Error(
-          'Only text chunks are supported in assistant message contents',
+      getFormattedChat: jest
+        .fn()
+        .mockRejectedValue(
+          new Error(
+            'Only text chunks are supported in assistant message contents',
+          ),
         ),
-      ),
     } as unknown as LlamaContext;
 
     const result = await detectReasoningReinject(ctx);

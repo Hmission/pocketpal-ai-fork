@@ -371,7 +371,7 @@ export const SystemPromptSection = observer(
               </Text>
               <IconButton
                 icon={showTemplateMode ? 'eye' : 'code-tags'}
-                size={20}
+                size={theme.iconSize.m}
                 onPress={handleToggleTemplateMode}
                 style={styles.toggleButton}
               />

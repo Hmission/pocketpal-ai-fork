@@ -71,9 +71,7 @@ export const ImageGenCatalogRow: React.FC<ImageGenCatalogRowProps> = ({
     <View style={styles.row}>
       <View style={styles.rowText}>
         <Text style={styles.rowTitle}>{entry.displayName}</Text>
-        {entry.role ? (
-          <Text style={styles.rowRole}>{entry.role}</Text>
-        ) : null}
+        {entry.role ? <Text style={styles.rowRole}>{entry.role}</Text> : null}
         <Text style={styles.rowRole}>
           {entry.file.name}
           {entry.extras?.length ? ` +${entry.extras.length}` : ''}

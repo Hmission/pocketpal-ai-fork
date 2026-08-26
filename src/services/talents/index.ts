@@ -125,7 +125,9 @@ export function collectSystemPromptFragments(
     .filter(engine => wanted.has(engine.name))
     .map(engine => engine.systemPromptFragment?.(engineCtx))
     .filter((fragment): fragment is string => !!fragment && !!fragment.trim());
-  return talentNames.length > 0 ? [...fragments, TOOL_RETRY_DISCIPLINE] : fragments;
+  return talentNames.length > 0
+    ? [...fragments, TOOL_RETRY_DISCIPLINE]
+    : fragments;
 }
 
 /**

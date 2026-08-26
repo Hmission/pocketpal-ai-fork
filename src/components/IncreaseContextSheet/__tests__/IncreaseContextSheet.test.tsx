@@ -24,8 +24,7 @@ jest.mock('../../../store', () => {
         perModelNCtx[modelId] = nCtx;
       }),
       getModelNCtx: jest.fn(
-        (modelId?: string | null) =>
-          (modelId && perModelNCtx[modelId]) || 4096,
+        (modelId?: string | null) => (modelId && perModelNCtx[modelId]) || 4096,
       ),
       releaseContext: jest.fn().mockResolvedValue(undefined),
       initContext: jest.fn().mockResolvedValue(undefined),
@@ -141,10 +140,7 @@ describe('IncreaseContextSheet', () => {
         expect(onReloadResult).toHaveBeenCalledWith(false, 6144),
       );
       // Setting restored to the prior n_ctx and the model actually re-loaded.
-      expect(modelStore.setModelNCtx).toHaveBeenLastCalledWith(
-        'model-1',
-        4096,
-      );
+      expect(modelStore.setModelNCtx).toHaveBeenLastCalledWith('model-1', 4096);
       expect(modelStore.initContext).toHaveBeenCalledTimes(2);
     });
 
@@ -159,10 +155,7 @@ describe('IncreaseContextSheet', () => {
       await waitFor(() =>
         expect(onReloadResult).toHaveBeenCalledWith(false, 6144),
       );
-      expect(modelStore.setModelNCtx).toHaveBeenLastCalledWith(
-        'model-1',
-        4096,
-      );
+      expect(modelStore.setModelNCtx).toHaveBeenLastCalledWith('model-1', 4096);
     });
   });
 

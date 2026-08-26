@@ -193,7 +193,9 @@ describe('ChatScreen', () => {
       modelStore.isContextLoading = false;
     });
     (promptWriter as any).isLoaded = true;
-    (promptWriter.chat as jest.Mock).mockResolvedValue('今天天气不错，适合出门。');
+    (promptWriter.chat as jest.Mock).mockResolvedValue(
+      '今天天气不错，适合出门。',
+    );
 
     const {getByPlaceholderText, getByTestId} = render(<ChatScreen />, {
       withNavigation: true,

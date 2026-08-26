@@ -1048,12 +1048,7 @@
         "total": "总计: ",
         "usage": "使用率: "
       },
-      "byteSizes": [
-        "字节",
-        "KB",
-        "MB",
-        "GB"
-      ]
+      "byteSizes": ["字节", "KB", "MB", "GB"]
     },
     "chatView": {
       "menuItems": {
@@ -1064,7 +1059,8 @@
         "reportContent": "举报内容",
         "deleteFromHere": "从此处删除",
         "deleteFromHereTitle": "删除此条及之后的消息？",
-        "deleteFromHereMessage": "该消息与其后的所有消息将被移除，无法恢复。"
+        "deleteFromHereMessage": "该消息与其后的所有消息将被移除，无法恢复。",
+        "speak": "朗读"
       }
     },
     "palHeaderRight": {

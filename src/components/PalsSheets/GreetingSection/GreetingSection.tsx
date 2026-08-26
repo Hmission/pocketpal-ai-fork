@@ -70,7 +70,7 @@ export const GreetingSection = () => {
                       <IconButton
                         testID={`suggested-prompt-remove-${idx}`}
                         icon="close"
-                        size={20}
+                        size={theme.iconSize.m}
                         accessibilityLabel={labels.removePromptLabel}
                         onPress={() =>
                           onChange(prompts.filter((_, i) => i !== idx))

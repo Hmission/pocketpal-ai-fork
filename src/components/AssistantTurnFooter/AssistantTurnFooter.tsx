@@ -11,10 +11,7 @@ import {CopyIcon, RefreshIcon} from '../../assets/icons';
 import {useTheme} from '../../hooks';
 import {PlayButton} from '../TextMessage/PlayButton';
 import {AnimatedNumber, OdometerNumber} from '../PerfMotion';
-import {
-  PerfAreaChart,
-  type PerfSeriesSpec,
-} from '../PerfAreaChart';
+import {PerfAreaChart, type PerfSeriesSpec} from '../PerfAreaChart';
 import type {ChatTurnPerfSummary} from '../../services/perf/chatTurnPerf';
 import {isSpeakableMessage} from '../../utils/speakable';
 import {ROUTES} from '../../utils/navigationConstants';
@@ -159,7 +156,12 @@ export const AssistantTurnFooter: React.FC<AssistantTurnFooterProps> = observer(
     ) => {
       const value = format(numValue);
       const full = t(tplKey, {value});
-      timingParts.push({kind, numValue, format, suffix: full.replace(value, '')});
+      timingParts.push({
+        kind,
+        numValue,
+        format,
+        suffix: full.replace(value, ''),
+      });
     };
     if (timings?.predicted_per_token_ms != null) {
       pushTiming(
@@ -382,14 +384,16 @@ export const AssistantTurnFooter: React.FC<AssistantTurnFooterProps> = observer(
               color={theme.colors.primary}
               warnColor={PERF_WARN_COLOR}
               dangerColor={theme.colors.error}
-              series={[
-                {
-                  key: 'pss',
-                  color: theme.colors.primary,
-                  max: PERF_FOOTER_MAX_KB,
-                },
-                {key: 'cpu', color: PERF_CPU_COLOR, max: 100},
-              ] as PerfSeriesSpec[]}
+              series={
+                [
+                  {
+                    key: 'pss',
+                    color: theme.colors.primary,
+                    max: PERF_FOOTER_MAX_KB,
+                  },
+                  {key: 'cpu', color: PERF_CPU_COLOR, max: 100},
+                ] as PerfSeriesSpec[]
+              }
               height={72}
               testID="footer-perf-chart"
             />
@@ -409,7 +413,8 @@ export const AssistantTurnFooter: React.FC<AssistantTurnFooterProps> = observer(
               <Text style={componentStyles.metricsLabel}>
                 峰值 {(turnPerf.pssPeakKb / 1024 / 1024).toFixed(1)}G · 温升{' '}
                 {turnPerf.tempRiseC >= 0 ? '+' : ''}
-                {turnPerf.tempRiseC.toFixed(1)}°C · {turnPerf.points.length} 采样点
+                {turnPerf.tempRiseC.toFixed(1)}°C · {turnPerf.points.length}{' '}
+                采样点
               </Text>
             </View>
           </View>

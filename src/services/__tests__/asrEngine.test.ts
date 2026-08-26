@@ -21,13 +21,15 @@ jest.mock('react-native', () => {
 describe('resolveAudioPath', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (NativeModules.AudioAsr.copyContentUri as jest.Mock).mockResolvedValue(true);
+    (NativeModules.AudioAsr.copyContentUri as jest.Mock).mockResolvedValue(
+      true,
+    );
   });
 
   it('file:// uri 剥离前缀返回绝对路径', async () => {
-    await expect(resolveAudioPath('file:///sdcard/Download/a.wav')).resolves.toBe(
-      '/sdcard/Download/a.wav',
-    );
+    await expect(
+      resolveAudioPath('file:///sdcard/Download/a.wav'),
+    ).resolves.toBe('/sdcard/Download/a.wav');
     expect(NativeModules.AudioAsr.copyContentUri).not.toHaveBeenCalled();
   });
 
@@ -50,7 +52,9 @@ describe('resolveAudioPath', () => {
   });
 
   it('content:// 拷贝失败（返回非 true）显式抛错', async () => {
-    (NativeModules.AudioAsr.copyContentUri as jest.Mock).mockResolvedValue(false);
+    (NativeModules.AudioAsr.copyContentUri as jest.Mock).mockResolvedValue(
+      false,
+    );
     await expect(
       resolveAudioPath('content://provider/document/a.wav'),
     ).rejects.toThrow('拷贝音频失败');

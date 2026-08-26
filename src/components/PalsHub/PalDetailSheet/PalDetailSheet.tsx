@@ -1,5 +1,5 @@
 import React, {useState, useEffect, useContext} from 'react';
-import {View, Image, Alert} from 'react-native';
+import {View, Image} from 'react-native';
 
 import {observer} from 'mobx-react-lite';
 import {Text, Button, Divider} from 'react-native-paper';
@@ -13,6 +13,8 @@ import {getFullThumbnailUri} from '../../../utils/imageUtils';
 
 import {Sheet} from '../../Sheet';
 import {createStyles} from './styles';
+
+import {infoDialog} from '../../ui/InfoDialog';
 
 import {authService, palsHubService} from '../../../services';
 
@@ -109,18 +111,21 @@ export const PalDetailSheet: React.FC<PalDetailSheetProps> = observer(
         setIsLoading(true);
         setError(null);
         await palStore.downloadPalsHubPal(palToDownload);
-        Alert.alert(
-          l10n.palsScreen.palDetailSheet.success,
-          l10n.palsScreen.palDetailSheet.palAddedToCollection,
-          [{text: l10n.common.ok, onPress: onClose}],
-        );
+        infoDialog({
+          title: l10n.palsScreen.palDetailSheet.success,
+          message: l10n.palsScreen.palDetailSheet.palAddedToCollection,
+          buttonText: l10n.common.ok,
+        }).then(onClose);
       } catch (downloadError) {
         const errorMessage =
           downloadError instanceof Error
             ? downloadError.message
             : l10n.palsScreen.palDetailSheet.failedToDownload;
         setError(errorMessage);
-        Alert.alert(l10n.palsScreen.palDetailSheet.error, errorMessage);
+        infoDialog({
+          title: l10n.palsScreen.palDetailSheet.error,
+          message: errorMessage,
+        });
       } finally {
         setIsLoading(false);
       }

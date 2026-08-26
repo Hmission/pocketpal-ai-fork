@@ -1,10 +1,12 @@
 import React from 'react';
 import {render, fireEvent, waitFor} from '@testing-library/react-native';
-import {Alert, Platform} from 'react-native';
+import {Platform} from 'react-native';
 
 import {EmbeddedVideoView} from '../EmbeddedVideoView';
 import {L10nContext} from '../../../utils';
 import {l10n} from '../../../locales';
+
+import {infoDialog} from '../../ui/InfoDialog';
 
 // Mock react-native-vision-camera
 jest.mock('react-native-vision-camera', () => {
@@ -52,8 +54,33 @@ jest.mock('../../../hooks', () => ({
       display: {fontSize: 28, lineHeight: 34, fontWeight: '600'},
     },
     radius: {
-      xs: 4, s: 6, m: 10, ml: 12, l: 14, xl: 20, full: 999,
-      shapeRoles: {card: 'l', surface: 'm', pill: 'full', inputSmall: 's', circle: 'full'},
+      xs: 4,
+      s: 6,
+      m: 10,
+      ml: 12,
+      l: 14,
+      xl: 20,
+      full: 999,
+      shapeRoles: {
+        card: 'l',
+        surface: 'm',
+        pill: 'full',
+        inputSmall: 's',
+        circle: 'full',
+      },
+    },
+    // B58：流式重构消费 spacing token（与 tokens/spacing 对齐）
+    spacing: {
+      none: 0,
+      xxs: 2,
+      xs: 4,
+      s: 8,
+      sm: 12,
+      m: 16,
+      ml: 20,
+      l: 24,
+      xl: 32,
+      xxl: 40,
     },
     colors: {
       primary: '#007AFF',
@@ -63,8 +90,10 @@ jest.mock('../../../hooks', () => ({
   }),
 }));
 
-// Mock Alert
-jest.spyOn(Alert, 'alert');
+// Mock InfoDialog
+jest.mock('../../ui/InfoDialog', () => ({
+  infoDialog: jest.fn().mockResolvedValue(undefined),
+}));
 
 // Mock Platform
 Object.defineProperty(Platform, 'OS', {
@@ -158,16 +187,11 @@ describe('EmbeddedVideoView', () => {
     );
 
     await waitFor(() => {
-      expect(Alert.alert).toHaveBeenCalledWith(
-        l10n.en.video.permissionTitle,
-        l10n.en.video.permissionMessage,
-        expect.arrayContaining([
-          expect.objectContaining({
-            text: l10n.en.common.ok,
-            onPress: defaultProps.onClose,
-          }),
-        ]),
-      );
+      expect(infoDialog).toHaveBeenCalledWith({
+        title: l10n.en.video.permissionTitle,
+        message: l10n.en.video.permissionMessage,
+        buttonText: l10n.en.common.ok,
+      });
     });
   });
 
@@ -189,16 +213,11 @@ describe('EmbeddedVideoView', () => {
 
     await waitFor(
       () => {
-        expect(Alert.alert).toHaveBeenCalledWith(
-          l10n.en.video.permissionTitle,
-          l10n.en.video.permissionMessage,
-          expect.arrayContaining([
-            expect.objectContaining({
-              text: l10n.en.common.ok,
-              onPress: defaultProps.onClose,
-            }),
-          ]),
-        );
+        expect(infoDialog).toHaveBeenCalledWith({
+          title: l10n.en.video.permissionTitle,
+          message: l10n.en.video.permissionMessage,
+          buttonText: l10n.en.common.ok,
+        });
       },
       {timeout: 3000},
     );
