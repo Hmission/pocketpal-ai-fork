@@ -3,7 +3,7 @@ doc_id: POCKETPAL_UI_FIX_UPGRADE_PLAN
 module: root
 type: planning
 status: active
-version: "1.2"
+version: "1.8"
 created: "2026-08-26"
 updated: "2026-08-26"
 relates: [POCKETPAL_CHAIN_AUDIT_20260826, POCKETPAL_DESIGN_SPEC, POCKETPAL_STARMAP_DOMAINS, DEV_BACKLOG]
@@ -60,7 +60,7 @@ relates: [POCKETPAL_CHAIN_AUDIT_20260826, POCKETPAL_DESIGN_SPEC, POCKETPAL_STARM
 
 ## 四、可执行批次（B55-B60，锋利优先排序）
 
-### B55：ALert 特殊保留专项（8 处）——✅ 带动作 3 处已执行；Sheet 化 2 处（ModelsScreen）为子批②
+### B55：ALert 特殊保留专项（8 处）——✅ 全部主体完成（2026-08-26）：带动作 3 处 → confirmDialog + ModelsScreen 服务器多选 → SearchableSelectSheet + 文件冲突三选一 → Sheet 动作行（Promise 语义保留，测试 15/15 同步）
 
 | 处 | 语义 | 方案 | 底座 |
 |---|---|---|---|
@@ -72,7 +72,7 @@ relates: [POCKETPAL_CHAIN_AUDIT_20260826, POCKETPAL_DESIGN_SPEC, POCKETPAL_STARM
 | safeAlert 封装 | 平台守卫（Android 双弹窗防抖） | **保留**（工具非范式，登记豁免） | — |
 | 验收 | ModelsScreen 两处 Alert 清零 + Sheet 选择可达 + 两处 confirmDialog 语义保留 | | |
 
-### B56：token 野档全量迁移（B47，门禁内最大面）
+### B56：token 野档全量迁移（B47，门禁内最大面）——✅ B56①+② 已执行（2026-08-26）：B56① 等值替换 942 处/92 文件；B56② 高频值归一 217 处/52 文件 + 颜色迁移 116 处（灰色族→onSurfaceVariant/outlineVariant 等 §1.6 映射，反推紫/全屏白/色板族登记豁免）；B56③ 反推紫已登记 theme.colors.imageInsight + fontSize 等值映射 219 处/56 文件（11→captionS/12→captionM·uiS/14→bodyS·uiM/16→bodyM·titleS/18→titleM，零视觉回归）+ DatabaseInspector 工具屏整文件归一——本轮再收口：12.5 小数 4 处 + 13 无档 1 处归档（12.5→captionM、13→uiM）；大王裁定补档后：**标题族补档归档**——补 headlineH2(24)/headlineH3(20)（填补 16/18/22/28 间隙，跟随 headlineH1 命名），20×2→headlineH3、24×3→headlineH2（等值，零视觉回归）、26→displayS(28)（非 4pt 值归就近）、40 字形豁免登记；至此 B56 token 卫生系列全部闭合。剩余仅：44 触区/28-150 定位大距（结构修复类）
 
 1. **补档位表**（token 层一次补齐——这是根，不补则野档合理化）：
    - spacing 补 `6/10/14/3` 档（新值登记 spacing.ts + DESIGN_SPEC §2.4 表）；`28/36/44/64/66/100/120/150` 属语义化专用值，逐处评估（100=底部留白 hack 改百分比/insets 结构）
@@ -83,7 +83,7 @@ relates: [POCKETPAL_CHAIN_AUDIT_20260826, POCKETPAL_DESIGN_SPEC, POCKETPAL_STARM
 4. **整文件裸奔重点**：DatabaseInspectorScreen（47 处 vs 1 token）单独子批（工具屏低风险）
 5. 验收：体检口径裸数字归零（豁免表登记）+ 新档位 token 有测试 + invariants 白名单同步
 
-### B57：重复组件收敛（B48）——✅ ①②③ 已执行（2026-08-26），④ Switch/spinner 待下窗口
+### B57：重复组件收敛（B48）——✅ ①②③④ 全部完成（2026-08-26）：①三点动画三合一（ui/WaveDots）②进度条统一（ui/Progress）③chip outline（ui/Chip）④Switch 收口 24 处 + spinner 三源归并 21 处（全仓 paper/RN ActivityIndicator 与直用 Switch 清零）；附带 CircularActivityIndicator 动画 cleanup 泄漏修复
 
 1. **三点动画三合一**：删 LoadingBubble 僵尸（index.ts 导出 + invariants 白名单同步清除）；useWaveDots 参数化（mode: fade|bounce + duration/stagger/minOpacity）迁入 `components/ui/WaveDots/`（保留名称与 7 处引用注释）；新建 `ui/WaveDots.tsx` 渲染组件吃掉 4 个重复渲染点（ImageTaskProgress/ResultPreview/AudioWorkshopTab/ChatPalModelPickerSheet/ModelSwitchDialog）
 2. **chip 收口**：ui/Chip 增 `outline` 变体 + `color(primary|danger)` + full 半径归一；迁移 ImageTaskActions/TaskErrorCard/ButlerUpgradeRow/ChatPalModelPickerSheet 4 处（disabled 换 DS 语义顶替 opacity 0.4 hack）
@@ -111,7 +111,7 @@ relates: [POCKETPAL_CHAIN_AUDIT_20260826, POCKETPAL_DESIGN_SPEC, POCKETPAL_STARM
 - **GenerationSettingsScreen 1218 行**：抽 2 hooks + 6 卡片子组件，Screen 变装配壳
 - 验收：三肥件各降 30%+；全量 jest 绿（ModelStore 测试 3000+ 断言）；逐批 atomic 提交
 
-### B60：单槽 v2（编排层联动，✅ 设计完成）
+### B60：单槽 v2（编排层联动）——✅ 已执行（2026-08-26）：imageGenStore.loadModel 与 loadDreamLiteEntry 两入口前置 `await promptWriter.ensureLoaded()`（幂等并发安全，未装管家=idle 不阻断、失败=内部已落 error 标注，非硬闸门）
 
 - 插入点：imageGenStore.loadModel（acquire('image') 前）+ loadDreamLiteEntry 头部
 - 动作：`await promptWriter.ensureLoaded()`（幂等并发安全）→ 就绪则 engineStatus.setPhase('prompter','ready') + vibeState.expectOrActivateButler()
@@ -144,7 +144,7 @@ relates: [POCKETPAL_CHAIN_AUDIT_20260826, POCKETPAL_DESIGN_SPEC, POCKETPAL_STARM
 | 第 4 波 | B56 子批②（颜色+整文件）+ B59 | 需专用窗口的架构批 |
 | 待并行 | B53 | 收口后闭 |
 
-**token 档位裁定（2026-08-26 技术自决）**：①spacing 不扩档——6/10/14/3 违反 §2.4 的 4pt 节奏契约，主值归一（6→4/8、10→8/12、14→12/16、3→2/4），确有视觉必要处评审豁免登记；②radius 补真实档 24（card-lg，6 文件真值）；③40px「标题」实为上传图标字形尺寸（uploadBigIcon），豁免登记不造档；④13/15 字号为 bodyS/bodyM 数值对，机械替换。
+**token 档位裁定（2026-08-26 技术自决）**：①spacing 不扩档——6/10/14/3 违反 §2.4 的 4pt 节奏契约，主值归一（6→4/8、10→8/12、14→12/16、3→2/4），确有视觉必要处评审豁免登记；②radius 不扩档（与 spacing 同原则——镜像 Figma 量表契约）：24 归 l(20) 档并逐处注释（已随 B56① 落码 6 处）；③40px「标题」实为上传图标字形尺寸（uploadBigIcon），豁免登记不造档；④13/15 字号为 bodyS/bodyM 数值对，机械替换。
 
 **B58 附带架构修复**：命令式弹窗函数（infoDialog/confirmDialog）与呈现层拆分——新建 ui/ConfirmDialog/api.ts + ui/InfoDialog/api.ts（零 React 依赖），Host 经 register 挂接；工具层（utils/exportUtils、utils/androidPermission）改引 api 路径，杜绝「utils → 呈现链（hooks→theme→paper）」的 import 期崩溃（exportUtils/androidPermission 测试曾以 suite 崩溃暴露）。
 
