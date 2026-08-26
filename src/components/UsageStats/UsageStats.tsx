@@ -12,7 +12,7 @@ import DeviceInfo from 'react-native-device-info';
 import {Svg, Path, Rect, Line} from 'react-native-svg';
 
 import {Surface} from '../ui';
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {L10nContext} from '../../utils';
 
 import {createStyles} from './styles';

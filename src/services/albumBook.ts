@@ -14,7 +14,7 @@ import {listMemories} from './aiosMemory';
 import {listDiaries, readDiary} from './aiosMemory/rituals';
 import {promptWriter} from './promptWriter';
 import {modelStore} from '../store';
-import {imageGenStore} from '../store/imageGenStore';
+import {imageGenStore} from '../store';
 
 const WEEK_MS = 7 * 86400000;
 const COVER_SIZE = 1024;

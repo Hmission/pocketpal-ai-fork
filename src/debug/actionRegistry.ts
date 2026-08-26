@@ -16,7 +16,7 @@ import * as RNFS from '@dr.pogodin/react-native-fs';
 
 import {SRStyle} from '../services/superResEngine';
 import {chatSessionStore, modelStore} from '../store';
-import {imageGenStore} from '../store/imageGenStore';
+import {imageGenStore} from '../store';
 import {audioStore} from '../store/audioStore';
 import {TtsGenEngineId} from '../services/ttsEngine';
 import {KOKORO_VOICES} from '../services/tts/engines/kokoro/voices';

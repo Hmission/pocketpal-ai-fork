@@ -28,12 +28,32 @@ import {
   type PerfOverlay,
   type PerfSeriesSpec,
 } from '../../../components/PerfAreaChart';
+// 阈值/格式器单一事实源（IMAGEGEN_UI_SPEC §9 语义色注册表，2026-08-26 抽取共享）
+import {
+  PERF_DANGER_KB,
+  PERF_WARN_COLOR,
+  PERF_CPU_COLOR,
+  PERF_GPU_COLOR,
+  PERF_POWER_COLOR,
+  TIER_TEMP,
+  TIER_POWER_W,
+  TIER_CPU_FREQ_G,
+  TIER_GPU_FREQ_M,
+  TIER_STEP_S,
+  na,
+  opt,
+  tierColor,
+  loadTierColor,
+  pssColorOf,
+  pctFmt,
+  tempFmt,
+  powerFmt,
+  freqFmt,
+  gbFmt,
+  stepFmt,
+} from '../../../utils/perfTiers';
 
-/** 阈值：>5GB 橙（逼近）/ >6GB 红（HyperOS 看护硬杀线，K90 实测 6291456kb） */
-const PERF_WARN_KB = 5 * 1024 * 1024;
-const PERF_DANGER_KB = 6 * 1024 * 1024;
-/** 语义色登记（IMAGEGEN_UI_SPEC §9）：warning=橙 */
-const PERF_WARN_COLOR = '#F5A623';
+/** 阈值已迁 utils/perfTiers（2026-08-26 抽取共享；PERF_WARN_KB/PERF_DANGER_KB 单一事实源） */
 
 /** 叠加线维度：PSS 主图 + CPU/GPU/温度/功耗切换（各自满量程归一）；
  *  B40 新增 'all' 叠全；B43 叠全改复合图（折线+柱状+热力带）并置于最左 */
@@ -57,41 +77,22 @@ const OVERLAY_MAX: Record<PerfOverlay, number> = {
 };
 const OVERLAY_COLOR: Record<PerfOverlay, string> = {
   pss: '', // 走 theme.primary（阈值色另行）
-  cpu: '#4FC3F7',
-  gpu: '#81C784',
-  temp: '#F5A623',
-  power: '#BA68C8',
+  cpu: PERF_CPU_COLOR,
+  gpu: PERF_GPU_COLOR,
+  temp: PERF_WARN_COLOR,
+  power: PERF_POWER_COLOR,
 };
 
 /** 叠全复合图图例（B43）：色点 + 名称，虚线语义已由图内 5GB/6GB 端点标注承载 */
 const LEGEND_ITEMS: Array<{label: string; color: string}> = [
   {label: 'PSS', color: ''},
-  {label: 'CPU', color: OVERLAY_COLOR.cpu},
-  {label: 'GPU', color: OVERLAY_COLOR.gpu},
-  {label: '温度带', color: OVERLAY_COLOR.temp},
-  {label: '功耗', color: OVERLAY_COLOR.power},
+  {label: 'CPU', color: PERF_CPU_COLOR},
+  {label: 'GPU', color: PERF_GPU_COLOR},
+  {label: '温度带', color: PERF_WARN_COLOR},
+  {label: '功耗', color: PERF_POWER_COLOR},
 ];
 
-/** B43 指标分级阈值（IMAGEGEN_UI_SPEC §9 语义色注册表）：
- *  负载/PSS 沿用既有（>=60 橙 / >=85 红、>5GB 橙 / >6GB 红） */
-const TIER_TEMP = {warn: 45, danger: 55}; // °C
-const TIER_POWER_W = {warn: 7, danger: 10}; // W
-const TIER_CPU_FREQ_G = {warn: 2.0, danger: 1.5}; // GHz，低于=降频警戒
-const TIER_GPU_FREQ_M = {warn: 500, danger: 300}; // MHz，低于=降频警戒
-const TIER_STEP_S = {warn: 12, danger: 20}; // s/步
-
-/** -1/无效 → '--'（原生侧 N/A 统一表达）；opt 把 N/A 归一为 undefined 供 AnimatedNumber */
-const na = (v: number | undefined | null): boolean =>
-  v === undefined || v === null || v < 0;
-const opt = (v: number | undefined | null): number | undefined =>
-  na(v) ? undefined : (v as number);
-// AnimatedNumber 格式化器（同源格式，演出层不改数值）
-const pctFmt = (n: number) => `${Math.round(n)}%`;
-const tempFmt = (n: number) => `${Math.round(n)}°C`;
-const powerFmt = (n: number) => `${(n / 1000).toFixed(1)}W`;
-const freqFmt = (n: number) => `${(n / 1000).toFixed(1)}GHz`;
-const gbFmt = (n: number) => `${n.toFixed(1)} GB`;
-const stepFmt = (n: number) => `${n.toFixed(1)}s`;
+/** 指标分级阈值与三色函数见 utils/perfTiers（2026-08-26 抽取共享，本文件不再重复定义） */
 
 export const PerfPanel: React.FC = observer(() => {
   const theme = useTheme();
@@ -103,12 +104,7 @@ export const PerfPanel: React.FC = observer(() => {
 
   const {perf, perfHistory, stepTime} = imageGenStore;
   const pssKb = perf?.pssKb ?? 0;
-  const pssColor =
-    pssKb > PERF_DANGER_KB
-      ? theme.colors.error
-      : pssKb > PERF_WARN_KB
-        ? PERF_WARN_COLOR
-        : theme.colors.primary;
+  const pssColor = pssColorOf(theme, pssKb, theme.colors.primary);
   const peakPss = perfHistory.reduce((m, p) => Math.max(m, p.pssKb), 0);
 
   const isAll = overlay === 'all';
@@ -148,32 +144,7 @@ export const PerfPanel: React.FC = observer(() => {
   };
 
   // 指标分级色（B43）：统一「正常继承 / 橙警告 / 红危险」两档；invert=低于阈值警戒
-  const tierColor = (
-    v: number | undefined,
-    warn: number,
-    danger: number,
-    invert = false,
-  ): string | undefined => {
-    if (na(v)) {
-      return undefined;
-    }
-    const val = v as number;
-    if (invert) {
-      return val < danger
-        ? theme.colors.error
-        : val < warn
-          ? PERF_WARN_COLOR
-          : undefined;
-    }
-    return val >= danger
-      ? theme.colors.error
-      : val >= warn
-        ? PERF_WARN_COLOR
-        : undefined;
-  };
-  // 胶囊负载分档变色（B39）：>=85 红 / >=60 橙 / 否则继承中性
-  const loadTierColor = (v: number | undefined) => tierColor(v, 60, 85);
-  // 分区温度归一（保持既有选取链：GPU 区 → CPU 区 → 整机）
+  // 实现见 utils/perfTiers（tierColor/loadTierColor 单一事实源，2026-08-26 抽取）
   const tempShown = !na(perf?.tempGpuC)
     ? perf!.tempGpuC
     : !na(perf?.tempCpuC)
@@ -206,7 +177,7 @@ export const PerfPanel: React.FC = observer(() => {
               <AnimatedNumber
                 value={opt(perf?.cpuPct)}
                 format={pctFmt}
-                style={{color: loadTierColor(perf?.cpuPct)}}
+                style={{color: loadTierColor(theme, perf?.cpuPct)}}
               />
             </Text>
           </View>
@@ -216,7 +187,7 @@ export const PerfPanel: React.FC = observer(() => {
               <AnimatedNumber
                 value={opt(perf?.gpuLoadPct)}
                 format={pctFmt}
-                style={{color: loadTierColor(perf?.gpuLoadPct)}}
+                style={{color: loadTierColor(theme, perf?.gpuLoadPct)}}
               />
             </Text>
           </View>
@@ -226,7 +197,12 @@ export const PerfPanel: React.FC = observer(() => {
                 value={opt(tempShown)}
                 format={tempFmt}
                 style={{
-                  color: tierColor(tempShown, TIER_TEMP.warn, TIER_TEMP.danger),
+                  color: tierColor(
+                    theme,
+                    tempShown,
+                    TIER_TEMP.warn,
+                    TIER_TEMP.danger,
+                  ),
                 }}
               />
             </Text>
@@ -238,6 +214,7 @@ export const PerfPanel: React.FC = observer(() => {
                 format={powerFmt}
                 style={{
                   color: tierColor(
+                    theme,
                     powerW,
                     TIER_POWER_W.warn,
                     TIER_POWER_W.danger,
@@ -329,7 +306,7 @@ export const PerfPanel: React.FC = observer(() => {
                 format={pctFmt}
                 style={[
                   s.perfMetricValue,
-                  {color: loadTierColor(perf?.cpuPct)},
+                  {color: loadTierColor(theme, perf?.cpuPct)},
                 ]}
               />
             </View>
@@ -340,7 +317,7 @@ export const PerfPanel: React.FC = observer(() => {
                 format={pctFmt}
                 style={[
                   s.perfMetricValue,
-                  {color: loadTierColor(perf?.gpuLoadPct)},
+                  {color: loadTierColor(theme, perf?.gpuLoadPct)},
                 ]}
               />
             </View>
@@ -353,6 +330,7 @@ export const PerfPanel: React.FC = observer(() => {
                   s.perfMetricValue,
                   {
                     color: tierColor(
+                      theme,
                       perf?.cpuFreqMhz != null && perf.cpuFreqMhz >= 0
                         ? perf.cpuFreqMhz / 1000
                         : undefined,
@@ -373,6 +351,7 @@ export const PerfPanel: React.FC = observer(() => {
                   s.perfMetricValue,
                   {
                     color: tierColor(
+                      theme,
                       perf?.gpuFreqMhz,
                       TIER_GPU_FREQ_M.warn,
                       TIER_GPU_FREQ_M.danger,
@@ -391,6 +370,7 @@ export const PerfPanel: React.FC = observer(() => {
                   s.perfMetricValue,
                   {
                     color: tierColor(
+                      theme,
                       tempShown,
                       TIER_TEMP.warn,
                       TIER_TEMP.danger,
@@ -408,6 +388,7 @@ export const PerfPanel: React.FC = observer(() => {
                   s.perfMetricValue,
                   {
                     color: tierColor(
+                      theme,
                       powerW,
                       TIER_POWER_W.warn,
                       TIER_POWER_W.danger,
@@ -425,6 +406,7 @@ export const PerfPanel: React.FC = observer(() => {
                   s.perfMetricValue,
                   {
                     color: tierColor(
+                      theme,
                       stepTime > 0 ? stepTime : undefined,
                       TIER_STEP_S.warn,
                       TIER_STEP_S.danger,

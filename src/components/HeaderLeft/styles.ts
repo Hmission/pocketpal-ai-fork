@@ -1,12 +1,15 @@
 import {StyleSheet} from 'react-native';
 
-export const styles = StyleSheet.create({
-  menuIcon: {
-    // Minimum 44pt touch target for iOS accessibility guidelines
-    height: 44,
-    width: 44,
-    marginHorizontal: 11,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-});
+import {Theme} from '../../utils/types';
+
+export const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    menuIcon: {
+      // Minimum 44pt touch target for iOS accessibility guidelines
+      height: theme.size.minTapTarget,
+      width: theme.size.minTapTarget,
+      marginHorizontal: 11,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+  });

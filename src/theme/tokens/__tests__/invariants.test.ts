@@ -187,6 +187,60 @@ describe('design-token grep invariants', () => {
       // B46 弹窗范式收尾（2026-08-25）：DownloadErrorDialog 多动作槽下沉 body 链接，
       // 正文/链接改用 typography token（bodyS/uiS）
       'components/DownloadErrorDialog',
+      // B56① token 数值对机械替换（2026-08-26）：radius 数值对（2/4/8/12/16/20/32，24 归 l）
+      // + bodyS/bodyM 字号数值对入 token 表面。spacing 不在此巡检面（offendingPattern 仅
+      // typography|radius|stroke）。等值替换，无视觉改动（radius 24→l(20) 为裁定映射）。
+      'components/BenchmarkHudBar.tsx',
+      'components/Checkbox/styles.ts',
+      'components/ContentReportSheet/styles.ts',
+      'components/EmbeddedVideoView/styles.ts',
+      'components/EnhancedSearchBar/styles.ts',
+      'components/HFTokenSheet/styles.ts',
+      'components/IncreaseContextSheet/styles.ts',
+      'components/LanguageSelector/styles.ts',
+      'components/MemoryRequirement/styles.ts',
+      'components/ModelErrorReportSheet/styles.ts',
+      'components/PalGenerationSettingsSheet/styles.ts',
+      'components/PalsHub/PalDetailSheet/styles.ts',
+      'components/PalsSheets/ColorSection/styles.ts',
+      'components/ProjectionModelSelector/styles.ts',
+      'components/RemoteModelSheet/styles.ts',
+      'components/SearchableSelectSheet/styles.ts',
+      'components/SidebarContent/styles.ts',
+      'components/TTSSetupSheet/styles.ts',
+      'components/UsageStats/styles.ts',
+      'components/VideoPalEmptyPlaceholder/styles.ts',
+      'components/VisionDownloadSheet/styles.ts',
+      'components/WebSearchResultCard/styles.ts',
+      'screens/DevToolsScreen/screens/TestCompletionScreen/styles.ts',
+      'screens/PalsScreen/components/AddPalMenu/styles.ts',
+      'screens/PalsScreen/components/BottomActionBar/styles.ts',
+      'screens/PalsScreen/components/CompactAuthBar/styles.ts',
+      'screens/PalsScreen/components/ExpandableSearch/styles.ts',
+      'screens/PalsScreen/components/FilterChips/styles.ts',
+      'screens/PalsScreen/components/ProfileSheet/styles.ts',
+      'screens/PalsScreen/components/SquarePalCard/styles.ts',
+      // B56② 无档位高频值归一（2026-08-26）：radius 档位外数值收敛入 radius token
+      //（ModelTypeTag 10→s / ServerDetailsSheet 3→full / TextInput 10→m），
+      // 三处新增 radius 消费属本批次受控归一登记
+      'components/ModelTypeTag/styles.ts',
+      'components/ServerDetailsSheet/styles.ts',
+      'components/TextInput/styles.ts',
+      // B56③ fontSize 等值映射（2026-08-26）：11/12/14/16/18 纯字号字面量 →
+      // theme.typography.<档>.fontSize（仅 fontSize 后缀，零视觉回归）；
+      // DatabaseInspector 工具屏整文件归一（间距/圆角/灰度族/字号）
+      'components/Bubble/styles.ts',
+      'components/CodeBlockHeader/styles.ts',
+      'components/CompletionSettings/styles.ts',
+      'components/HubRunSheetHost/styles.ts',
+      'components/InputSlider/styles.ts',
+      'components/PalsHub/AuthSheet/styles.ts',
+      'components/TextDivider/styles.ts',
+      'components/ToolErrorBlock/styles.ts',
+      'components/ToolMetricsFooter/styles.ts',
+      'components/ToolUsedChip/styles.ts',
+      'screens/DevToolsScreen/screens/DatabaseInspectorScreen/styles.ts',
+      'screens/PalsScreen/styles.ts',
     ];
     const files = listFiles(SRC).filter(f => {
       const rel = path.relative(SRC, f).replace(/\\/g, '/');

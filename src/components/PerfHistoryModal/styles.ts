@@ -13,15 +13,17 @@ export const createStyles = (theme: any) =>
     // Sheet 内容区：padding 对齐 Sheet 样板的 upscaleBody 族（padding 16 + 底 28）
     perfModalBody: {
       flex: 1,
-      padding: 16,
+      padding: theme.spacing.m,
       paddingBottom: 28,
-      gap: 10,
+      // B56②：10→sm(12)（区块级 gap）
+      gap: theme.spacing.sm,
     },
     perfSessionList: {flex: 1},
     perfBackBtn: {
       alignSelf: 'flex-start',
-      paddingHorizontal: 10,
-      paddingVertical: 4,
+      // B56②：10→sm(12)（水平性）
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xs,
       borderRadius: theme.radius.s,
       backgroundColor: withOpacity(theme.colors.onSurface, 0.06),
     },
@@ -34,13 +36,14 @@ export const createStyles = (theme: any) =>
       ...theme.typography.uiS,
       color: theme.colors.onSurfaceVariant,
       textAlign: 'center',
-      paddingVertical: 20,
+      paddingVertical: theme.spacing.ml,
     },
     perfSessionRow: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingVertical: 10,
+      // B56②：10→s(8)（垂直紧凑）
+      paddingVertical: theme.spacing.s,
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.outline,
     },
@@ -54,7 +57,10 @@ export const createStyles = (theme: any) =>
       ...theme.typography.captionS,
       color: theme.colors.onSurfaceVariant,
     },
-    perfReplayBody: {gap: 10},
+    perfReplayBody: {
+      // B56②：10→sm(12)（区块级 gap）
+      gap: theme.spacing.sm,
+    },
     perfReplayCursorRow: {
       flexDirection: 'row',
       alignItems: 'baseline',
@@ -73,32 +79,39 @@ export const createStyles = (theme: any) =>
       height: 120,
       flexDirection: 'row',
       alignItems: 'flex-end',
-      gap: 1,
+      // B56②：1→xxs(2)（柱间细距）
+      gap: theme.spacing.xxs,
       overflow: 'hidden',
       justifyContent: 'center',
     },
-    perfReplayBar: {width: 2, borderRadius: 1},
+    perfReplayBar: {
+      width: 2,
+      // B56②：1→xxs(2)（2px 柱圆角）
+      borderRadius: theme.radius.xxs,
+    },
     perfPlayBtn: {
       alignSelf: 'center',
-      paddingHorizontal: 16,
-      paddingVertical: 6,
+      paddingHorizontal: theme.spacing.m,
+      // B56②：6→xs(4)（紧凑垂直）
+      paddingVertical: theme.spacing.xs,
       borderRadius: theme.radius[theme.shapeRoles.pill],
       backgroundColor: theme.colors.primary,
     },
     perfPlayBtnText: {
       ...theme.typography.uiS,
+      // primary 底白字（onPrimary 深棕）——B56②登记评审，保持字面量
       color: '#ffffff',
       fontWeight: '600',
     },
     perfStatGrid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: 8,
+      gap: theme.spacing.s,
     },
     perfStatCell: {
       flexBasis: '30%',
-      gap: 2,
-      padding: 8,
+      gap: theme.spacing.xxs,
+      padding: theme.spacing.s,
       borderRadius: theme.radius.s,
       backgroundColor: withOpacity(theme.colors.onSurface, 0.04),
     },
@@ -116,11 +129,11 @@ export const createStyles = (theme: any) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: 14,
-      padding: 12,
+      padding: theme.spacing.sm,
       borderRadius: theme.radius.m,
       backgroundColor: withOpacity(theme.colors.primary, 0.08),
     },
-    perfScoreTotal: {alignItems: 'center', gap: 2},
+    perfScoreTotal: {alignItems: 'center', gap: theme.spacing.xxs},
     perfScoreTotalNum: {
       ...theme.typography.displayM,
       fontWeight: '800',

@@ -5,11 +5,12 @@ import {Theme} from '../../../../../utils/types';
 export const createStyles = (theme: Theme, isProjectionModel) =>
   StyleSheet.create({
     fileCardContainer: {
-      marginVertical: 6,
+      // B56②：6→xs(4)（紧凑卡距）
+      marginVertical: theme.spacing.xs,
       backgroundColor: isProjectionModel
         ? theme.colors.tertiaryContainer
         : theme.colors.surfaceVariant,
-      borderRadius: 12,
+      borderRadius: theme.radius.m,
       overflow: 'hidden', // Important for gradient containment
       position: 'relative', // For absolute positioning of gradient
     },
@@ -19,26 +20,26 @@ export const createStyles = (theme: Theme, isProjectionModel) =>
       top: 0,
       bottom: 0,
       height: '100%', // Ensures full height
-      borderRadius: 8,
+      borderRadius: theme.radius.s,
     },
     fileContent: {
-      padding: 12,
+      padding: theme.spacing.sm,
     },
     header: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: theme.spacing.s,
       //marginBottom: 4,
     },
     fileInfo: {
       flex: 1,
-      marginRight: 4,
+      marginRight: theme.spacing.xs,
     },
     fileNameContainer: {
       flexDirection: 'row',
       alignItems: 'center',
       flexWrap: 'wrap',
-      gap: 4,
+      gap: theme.spacing.xs,
     },
     fileName: {
       //fontSize: 14,
@@ -51,20 +52,21 @@ export const createStyles = (theme: Theme, isProjectionModel) =>
     metadataRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
-      marginTop: 4,
+      // B56②：6→xs(4)（行内紧凑 gap）
+      gap: theme.spacing.xs,
+      marginTop: theme.spacing.xs,
       flexWrap: 'wrap',
     },
     visionChipContainer: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 0,
-      marginTop: 4,
+      marginTop: theme.spacing.xs,
       flexWrap: 'wrap',
       //backgroundColor: 'red',
     },
     fileSize: {
-      fontSize: 13,
+      fontSize: theme.typography.bodyS.fontSize,
       color: theme.colors.onSurfaceVariant,
       opacity: 0.9,
     },
@@ -79,7 +81,7 @@ export const createStyles = (theme: Theme, isProjectionModel) =>
       //fontWeight: '500',
     },
     fileSizeSeparator: {
-      fontSize: 13,
+      fontSize: theme.typography.bodyS.fontSize,
       color: theme.colors.onSurfaceVariant,
       opacity: 0.5,
     },
@@ -87,10 +89,11 @@ export const createStyles = (theme: Theme, isProjectionModel) =>
       flexDirection: 'row',
       alignItems: 'center',
       backgroundColor: theme.colors.errorContainer,
-      borderRadius: 12,
-      paddingVertical: 2,
-      paddingHorizontal: 6,
-      gap: 4,
+      borderRadius: theme.radius.m,
+      paddingVertical: theme.spacing.xxs,
+      // B56②：6→xs(4)（chip 紧凑水平内距）
+      paddingHorizontal: theme.spacing.xs,
+      gap: theme.spacing.xs,
     },
     warningIcon: {
       width: 14,
@@ -98,7 +101,7 @@ export const createStyles = (theme: Theme, isProjectionModel) =>
       margin: 0,
     },
     warningText: {
-      fontSize: 12,
+      fontSize: theme.typography.uiS.fontSize, // B56③ fontSize→uiS
       color: theme.colors.onErrorContainer,
       fontWeight: '500',
     },
@@ -106,19 +109,19 @@ export const createStyles = (theme: Theme, isProjectionModel) =>
     // LinearGradient 进度覆盖层，见 ModelFileCard.tsx），随迁删除。
     snackbarContent: {
       flexDirection: 'column',
-      gap: 4,
+      gap: theme.spacing.xs,
     },
     snackbarText: {
       color: theme.colors.inverseOnSurface,
     },
     snackbarContainer: {
-      marginBottom: 8,
+      marginBottom: theme.spacing.s,
       width: '90%',
       alignSelf: 'center',
     },
     gatedText: {
       color: theme.colors.primary,
-      fontSize: 11,
+      fontSize: theme.typography.captionS.fontSize, // B56③ fontSize→captionS
     },
     visionChip: {
       backgroundColor: 'transparent',
@@ -127,7 +130,7 @@ export const createStyles = (theme: Theme, isProjectionModel) =>
       //height: 24,
     },
     visionChipText: {
-      fontSize: 11,
+      fontSize: theme.typography.captionS.fontSize, // B56③ fontSize→captionS
       color: theme.colors.text,
       fontWeight: '500',
     },

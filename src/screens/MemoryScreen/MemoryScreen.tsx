@@ -23,7 +23,8 @@ import {
 } from '../../services/aiosMemory';
 import {createWeeklyAlbum, listAlbums, Album} from '../../services/albumBook';
 import {AIOS_MEMORIES_DIR} from '../../utils/paths';
-import {useTheme, useStaggerEntry} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
+import {useStaggerEntry} from '../../hooks/useStaggerEntry';
 import type {Theme} from '../../utils/types';
 import {IconTile} from '../../components/ui';
 import {OverlayCard} from '../../components/ui';
@@ -493,8 +494,9 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.outlineVariant,
     },
     typeBadge: {
-      width: 36,
-      height: 36,
+      // R1：controlHeight 基线（方形控件 36×36）
+      width: theme.size.controlHeight,
+      height: theme.size.controlHeight,
       // 形状角色：图标容器 m(12)（DESIGN_SPEC §4）
       borderRadius: theme.radius.m,
       justifyContent: 'center',

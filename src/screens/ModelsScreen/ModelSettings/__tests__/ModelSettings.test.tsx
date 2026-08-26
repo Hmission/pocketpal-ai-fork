@@ -1,9 +1,10 @@
 import React from 'react';
 import {Keyboard} from 'react-native';
 
-import {render, fireEvent, act} from '../../../../../jest/test-utils';
+import {render, fireEvent, act, within} from '../../../../../jest/test-utils';
 
 import {ModelSettings} from '../ModelSettings';
+import {l10n} from '../../../../locales';
 
 jest.useFakeTimers(); // Mock all timers
 
@@ -124,7 +125,10 @@ describe('ModelSettings', () => {
   it('toggles BOS switch correctly', async () => {
     const {getByTestId} = render(<ModelSettings {...mockProps} />);
 
-    const bosSwitch = getByTestId('BOS-switch');
+    // B57-④：testID 落在 DS Switch 包装层，valueChange 打到内层 Paper Switch
+    const bosSwitch = within(getByTestId('BOS-switch')).getByLabelText(
+      l10n.en.models.modelSettings.tokenSettings.bos,
+    );
 
     await act(async () => {
       fireEvent(bosSwitch, 'valueChange', false);

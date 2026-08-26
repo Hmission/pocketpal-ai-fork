@@ -12,19 +12,18 @@
  * 各 Panel 只读 props 渲染；store 状态经 observer 自动联动。
  */
 import * as React from 'react';
+import {View, FlatList, Text, TouchableOpacity} from 'react-native';
+import {CircularActivityIndicator} from '../../components/CircularActivityIndicator';
 import {
-  View,
-  FlatList,
-  Text,
-  TouchableOpacity,
-  ActivityIndicator,
-} from 'react-native';
-import {KeyboardAwareScrollView} from 'react-native-keyboard-controller';
+  KeyboardAwareScrollView,
+  KeyboardStickyView,
+} from 'react-native-keyboard-controller';
 import {observer} from 'mobx-react-lite';
 import {runInAction} from 'mobx';
 import {launchImageLibrary} from 'react-native-image-picker';
 import {useNavigation} from '@react-navigation/native';
 import Clipboard from '@react-native-clipboard/clipboard';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 import {imageGenStore, GeneratedImage} from '../../store/imageGenStore';
 import {audioStore} from '../../store/audioStore';
@@ -62,6 +61,7 @@ import {ResultPreview, PreviewBanner} from './components/ResultPreview';
 import {BenchmarkHudBar} from '../../components/BenchmarkHudBar';
 import {HistoryStrip} from './components/HistoryStrip';
 import {ComposerPanel} from './components/ComposerPanel';
+import {GenActionBar} from './components/GenActionBar';
 import {UpscalePanel} from './components/UpscalePanel';
 import {AudioWorkshopTab} from './components/AudioWorkshopTab';
 import {confirmDialog} from '../../components/ui/ConfirmDialog';
@@ -92,11 +92,15 @@ const engineState = (id: TtsGenEngineId) =>
       ? ttsStore.supertonicDownloadState
       : ttsStore.kittenDownloadState;
 
+/** 底部吸底操作条固定预留（按钮 ~48 + 上下 padding 8×2 + hairline；insets 动态另加） */
+const ACTION_BAR_RESERVE = 64;
+
 export const ImageGenScreen: React.FC = observer(() => {
   const theme = useTheme();
   const l10n = React.useContext(L10nContext);
   const s = createStyles(theme);
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
 
   const [available, setAvailable] = React.useState<ModelEntry[]>([]);
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
@@ -112,6 +116,8 @@ export const ImageGenScreen: React.FC = observer(() => {
   const [scanning, setScanning] = React.useState(false);
   const [now, setNow] = React.useState(Date.now());
   const [showAdvanced, setShowAdvanced] = React.useState(false);
+  // 2026-08-26 提示词卡折叠（编辑预备态强制展开——派生 effectiveCollapsed）
+  const [promptCollapsed, setPromptCollapsed] = React.useState(false);
   const [showModelDrop, setShowModelDrop] = React.useState(false);
   const [fullscreen, setFullscreen] = React.useState(false);
   const [manageMode, setManageMode] = React.useState(false);
@@ -431,10 +437,13 @@ export const ImageGenScreen: React.FC = observer(() => {
     if (imageGenStore.generating) {
       return;
     }
-    setTaskKind('caption'); // 反推动效：叠在当前图上（用户看被反推的图）
+    // 2026-08-27 大王裁定：反推=生图流程——任务开始即滚入 running 任务页
+    //（blank 页 + 完整 PerfPanel，与生成完全一致），不再叠图遮挡
+    setTaskKind('caption');
+    scrollToPreview(1);
     const text = await imageGenStore.runCaptionTask(targetUri);
     setTaskKind(null);
-    scrollToPreview(1); // 新任务条目在 history[0] → 预览页 1
+    scrollToPreview(1); // 结果回填 history[0] → 结果页
     if (text) {
       setPrompt(text); // 结果回填 composer（用户可见可改）
       showBanner('反推完成，可复制或复刻生图');
@@ -822,7 +831,8 @@ export const ImageGenScreen: React.FC = observer(() => {
       kind: 'generated',
       modelLabel,
     });
-    setTaskKind('edit'); // 编辑动效：叠在当前图上
+    setTaskKind('edit'); // 编辑 blank 任务页（2026-08-27：与生成同一路径，不再叠图）
+    scrollToPreview(1);
     const uri = await imageGenStore.editDreamLiteEntry(
       editRgb,
       sq,
@@ -1161,7 +1171,12 @@ export const ImageGenScreen: React.FC = observer(() => {
 
   return (
     <View style={s.container}>
-      <KeyboardAwareScrollView contentContainerStyle={s.content}>
+      <KeyboardAwareScrollView
+        contentContainerStyle={[
+          s.content,
+          // 底部吸底操作条避让（2026-08-26）：固定预留 + 安全区动态补
+          {paddingBottom: theme.spacing.m + ACTION_BAR_RESERVE + insets.bottom},
+        ]}>
         {/* B39：套件征用本页时的基准测试 HUD（非运行态 null） */}
         <BenchmarkHudBar />
         {workshopTab === 'image' ? (
@@ -1246,6 +1261,8 @@ export const ImageGenScreen: React.FC = observer(() => {
               editRgb={editRgb}
               hasEditableImage={!!editSource || !!currentImage}
               showAdvanced={showAdvanced}
+              promptCollapsed={promptCollapsed && !editArming}
+              onToggleCollapse={() => setPromptCollapsed(v => !v)}
               loading={imageGenStore.loading}
               generating={imageGenStore.generating}
               taskKind={taskKind}
@@ -1267,8 +1284,6 @@ export const ImageGenScreen: React.FC = observer(() => {
               onSizeChange={setSize}
               onRatioChange={setRatio}
               onToggleAdvanced={() => setShowAdvanced(a => !a)}
-              onEditArm={handleEditArm}
-              onGenerate={handleGenerate}
             />
           </>
         ) : (
@@ -1282,6 +1297,25 @@ export const ImageGenScreen: React.FC = observer(() => {
           />
         )}
       </KeyboardAwareScrollView>
+
+      {/* 底部吸底操作条（2026-08-26 大王裁定）：出图/编辑按钮常驻页面底部，
+          键盘弹出随 KeyboardStickyView 上移（同聊天输入条设计语言）；
+          audio tab 不吸底（AudioWorkshopTab 保持自身布局） */}
+      {workshopTab === 'image' ? (
+        <KeyboardStickyView offset={{closed: 0, opened: insets.bottom}}>
+          <GenActionBar
+            isDream={isDream}
+            editArming={editArming}
+            editRgb={editRgb}
+            hasEditableImage={!!editSource || !!currentImage}
+            loading={imageGenStore.loading}
+            generating={imageGenStore.generating}
+            taskKind={taskKind}
+            onEditArm={handleEditArm}
+            onGenerate={handleGenerate}
+          />
+        </KeyboardStickyView>
+      ) : null}
 
       {/* D1：屏级模型下拉 overlay（scrim 起于 AppBar 下沿，点外收起） */}
       <ModelPickerDropdown
@@ -1359,8 +1393,8 @@ export const ImageGenScreen: React.FC = observer(() => {
                     disabled={downloading || audioStore.ttsGenerating}
                     onPress={() => handleAudioEngineAction(e.id, ready)}>
                     {downloading ? (
-                      <ActivityIndicator
-                        size="small"
+                      <CircularActivityIndicator
+                        size={20}
                         color={theme.colors.onPrimary}
                       />
                     ) : (

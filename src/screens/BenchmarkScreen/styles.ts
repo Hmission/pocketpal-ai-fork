@@ -10,26 +10,28 @@ export const createStyles = (theme: Theme) =>
     },
     scrollView: {
       flex: 1,
-      padding: 16,
+      padding: theme.spacing.m,
     },
     card: {
-      marginBottom: 16,
+      marginBottom: theme.spacing.m,
     },
     description: {
       flex: 1,
       color: theme.colors.onSurfaceVariant,
-      paddingRight: 8,
-      fontSize: 12,
+      paddingRight: theme.spacing.s,
+      fontSize: theme.typography.captionM.fontSize, // B56③ fontSize→captionM
       textAlign: 'center',
-      marginTop: 4,
+      marginTop: theme.spacing.xs,
     },
     button: {
-      marginVertical: 6,
+      // B56②：6→s(8)（周围 8 系列 loadingContainer 距）
+      marginVertical: theme.spacing.s,
     },
     loadingContainer: {
       alignItems: 'center',
-      marginVertical: 8,
-      gap: 6,
+      marginVertical: theme.spacing.s,
+      // B56②：6→xs(4)（spinner-文本紧凑 gap）
+      gap: theme.spacing.xs,
     },
     // B46 迁移：确认弹窗正文（Dialog → OverlayCard 后 Message 文本）
     dialogMessage: {
@@ -44,31 +46,31 @@ export const createStyles = (theme: Theme) =>
     },
     warningContainer: {
       backgroundColor: theme.colors.errorContainer,
-      padding: 12,
-      borderRadius: 8,
-      marginVertical: 8,
+      padding: theme.spacing.sm,
+      borderRadius: theme.radius.s,
+      marginVertical: theme.spacing.s,
     },
     warningText: {
       color: theme.colors.error,
-      marginVertical: 2,
+      marginVertical: theme.spacing.xxs,
     },
     resultsHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingHorizontal: 8,
+      paddingHorizontal: theme.spacing.s,
     },
     resultsCard: {
-      marginTop: 16,
+      marginTop: theme.spacing.m,
       padding: 0,
     },
     resultItem: {
-      marginBottom: 16,
+      marginBottom: theme.spacing.m,
     },
     // 结果页分项标签（雷达下/卡片内通用）
     resultLabel: {
       color: theme.colors.onSurfaceVariant,
-      fontSize: 11,
+      fontSize: theme.typography.captionS.fontSize, // B56③ fontSize→captionS
     },
     // 结果页段位行：品牌色 + 居中（rankHighlight 叠加在 resultLabel 上）
     rankHighlight: {

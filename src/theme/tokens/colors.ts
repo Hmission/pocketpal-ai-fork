@@ -178,6 +178,8 @@ export const lightColors: TokenColors = {
   badgeDreamlite: '#D81B60',
   badgeFlux: '#3949AB',
   badgeKrea2: '#E65100',
+  // 图像反推提示词专属紫（IMAGEGEN_UI_SPEC §2；B56③ 登记——原 #6a1b9a 字面量收编）
+  imageInsight: '#6a1b9a',
 
   // 悬浮层表面：半透明+阴影分层（禁 blur；DESIGN_SPEC §1.5）
   surfaceElevated: 'rgba(255, 255, 255, 0.96)',
@@ -348,6 +350,8 @@ export const darkColors: TokenColors = {
   badgeDreamlite: '#F48FB1',
   badgeFlux: '#9FA8DA',
   badgeKrea2: '#FFAB91',
+  // 图像反推提示词专属紫——暗色模式提亮（Material Purple 300）
+  imageInsight: '#B388FF',
 
   // 悬浮层表面：半透明+阴影分层（禁 blur）
   surfaceElevated: 'rgba(30, 30, 32, 0.96)',

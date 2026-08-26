@@ -22,12 +22,14 @@ export const createStyles = ({
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      gap: 10,
+      // B56②：10→sm(12)（水平性）
+      gap: theme.spacing.sm,
     },
     leftSection: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
+      // B56②：10→sm(12)（水平性）
+      gap: theme.spacing.sm,
       flexShrink: 1,
     },
     menuIcon: {
@@ -48,7 +50,7 @@ export const createStyles = ({
     rightSection: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 2,
+      gap: theme.spacing.xxs,
     },
     modelPickerChip: {
       paddingHorizontal: theme.spacing.s,

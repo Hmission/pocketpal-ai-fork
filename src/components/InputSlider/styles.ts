@@ -9,10 +9,10 @@ export const createStyles = (theme: Theme) =>
       color: theme.colors.onSurface,
     },
     description: {
-      fontSize: 12,
+      fontSize: theme.typography.captionM.fontSize, // B56③ fontSize→captionM
       color: theme.colors.textSecondary,
-      marginTop: 2,
-      marginBottom: 8,
+      marginTop: theme.spacing.xxs,
+      marginBottom: theme.spacing.s,
     },
     controlRow: {
       flexDirection: 'row',
@@ -20,7 +20,7 @@ export const createStyles = (theme: Theme) =>
     },
     sliderContainer: {
       flex: 1,
-      marginRight: 8,
+      marginRight: theme.spacing.s,
     },
     slider: {},
     textInput: {},

@@ -3,7 +3,7 @@ import {View} from 'react-native';
 import {useFormContext} from 'react-hook-form';
 
 import type {ParameterDefinition} from '../../types/pal';
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {createStyles} from './styles';
 import {DynamicTextField} from './DynamicTextField';
 import {DynamicOptionField} from './DynamicOptionField';

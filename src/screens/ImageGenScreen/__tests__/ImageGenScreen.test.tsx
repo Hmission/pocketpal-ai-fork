@@ -46,6 +46,7 @@ jest.mock('../../../store/imageGenStore', () => ({
     stepTime: 0,
     genStartedAt: 0,
     gpuRenderer: '',
+    perfHistory: [],
     init: jest.fn().mockResolvedValue(undefined),
     pushHistory: jest.fn(),
     deleteHistory: jest.fn().mockResolvedValue(undefined),
@@ -68,12 +69,13 @@ jest.mock('../../../store/imageGenStore', () => ({
   },
 }));
 
-// KeyboardAwareScrollView 需要原生模块，测试环境降级为纯 View。
+// KeyboardAwareScrollView/KeyboardStickyView 需要原生模块，测试环境降级为纯 View。
 jest.mock('react-native-keyboard-controller', () => {
   const R = require('react');
   const {View} = require('react-native');
   return {
     KeyboardAwareScrollView: (props: any) => R.createElement(View, props),
+    KeyboardStickyView: (props: any) => R.createElement(View, props),
   };
 });
 

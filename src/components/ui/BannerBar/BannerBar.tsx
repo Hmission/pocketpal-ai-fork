@@ -1,7 +1,7 @@
 import * as React from 'react';
 import {Pressable, Text, TouchableOpacity, View} from 'react-native';
 
-import {useTheme} from '../../../hooks';
+import {useTheme} from '../../../hooks/useTheme';
 import {XIcon} from '../../../assets/icons';
 import {Progress} from '../Progress';
 import {createStyles, tintFor, type BannerVariant} from './styles';
@@ -31,6 +31,8 @@ export type BannerBarProps = {
   dismissTestID?: string;
   /** 主体点击（整条横幅可点，如 DownloadBanner → Models 页）；缺省纯展示 */
   onPress?: () => void;
+  /** 纯文案居中（2026-08-26：无动作的提示类横幅居中展示） */
+  centered?: boolean;
   testID?: string;
   style?: React.ComponentProps<typeof View>['style'];
 };
@@ -51,6 +53,7 @@ export const BannerBar: React.FC<BannerBarProps> = ({
   onDismiss,
   dismissTestID,
   onPress,
+  centered = false,
   testID = 'ui-banner',
   style,
 }) => {
@@ -72,7 +75,9 @@ export const BannerBar: React.FC<BannerBarProps> = ({
       style={[styles.root, tint, style]}>
       <View style={styles.row}>
         {icon}
-        <Text style={styles.text} numberOfLines={2}>
+        <Text
+          style={centered ? [styles.text, styles.textCentered] : styles.text}
+          numberOfLines={2}>
           {text}
         </Text>
         {typeof percent === 'number' ? (

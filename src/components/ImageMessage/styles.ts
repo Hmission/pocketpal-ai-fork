@@ -26,7 +26,7 @@ const styles = ({
       borderRadius: theme.borders.messageBorderRadius,
       height: 64,
       marginLeft: theme.insets.messageInsetsVertical,
-      marginRight: 16,
+      marginRight: theme.spacing.m,
       marginVertical: theme.insets.messageInsetsVertical,
       width: 64,
     },
@@ -44,7 +44,7 @@ const styles = ({
     },
     sizeText: {
       ...theme.typography.captionM,
-      marginTop: 4,
+      marginTop: theme.spacing.xs,
     },
     textContainer: {
       flexShrink: 1,

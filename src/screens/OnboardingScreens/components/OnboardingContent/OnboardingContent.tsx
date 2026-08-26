@@ -2,7 +2,7 @@ import React from 'react';
 import {View} from 'react-native';
 import {Text} from 'react-native-paper';
 
-import {useTheme} from '../../../../hooks';
+import {useTheme} from '../../../../hooks/useTheme';
 import {createStyles} from './styles';
 
 export type OnboardingContentProps = {

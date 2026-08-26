@@ -1,7 +1,7 @@
 import React from 'react';
 import {Text, View} from 'react-native';
 
-import {useTheme} from '../../../hooks';
+import {useTheme} from '../../../hooks/useTheme';
 import {ChevronRightIcon} from '../../../assets/icons';
 
 import {IconTile} from '../IconTile';

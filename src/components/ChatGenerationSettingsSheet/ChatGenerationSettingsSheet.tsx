@@ -8,7 +8,7 @@ import {
   palStore,
 } from '../../store';
 import {createStyles} from './styles';
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {
   COMPLETION_PARAMS_METADATA,
   validateCompletionSettings,

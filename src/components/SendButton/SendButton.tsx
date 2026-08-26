@@ -5,7 +5,7 @@ import {
   TouchableOpacityProps,
 } from 'react-native';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 
 import {L10nContext} from '../../utils';
 import {SendIcon} from '../../assets/icons';
@@ -69,8 +69,9 @@ export const SendButton = ({
 // 36px 触区与快捷图标钮/语音钮同基准（2026-08 大王裁定）；图标 20px 同行同尺寸。
 const styles = {
   sendButton: (theme: any, enabled: boolean) => ({
-    minHeight: 36,
-    minWidth: 36,
+    // R1：controlHeight 基线（原 36）
+    minHeight: theme.size.controlHeight,
+    minWidth: theme.size.controlHeight,
     borderRadius: theme.radius.full,
     backgroundColor: enabled ? theme.colors.primary : 'transparent',
     borderWidth: theme.stroke.sm,

@@ -15,7 +15,7 @@ import {
   REGEX_LINK,
 } from '@flyerhq/react-native-link-preview';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {infoDialog} from '../ui/InfoDialog';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
@@ -30,7 +30,7 @@ import {
   L10nContext,
   UserContext,
 } from '../../utils';
-import {imageGenStore} from '../../store/imageGenStore';
+import {imageGenStore} from '../../store';
 
 export interface TextMessageTopLevelProps {
   /** @see {@link LinkPreviewProps.onPreviewDataFetched} */

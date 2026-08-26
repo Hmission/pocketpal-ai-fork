@@ -4,53 +4,54 @@ import {Theme} from '../../utils';
 export const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
-      marginTop: 8,
+      marginTop: theme.spacing.s,
     },
     header: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingVertical: 12,
-      paddingHorizontal: 4,
+      paddingVertical: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.xs,
     },
     headerTitle: {
-      fontSize: 14,
+      fontSize: theme.typography.uiM.fontSize, // B56③ fontSize→uiM
       fontWeight: '600',
       color: theme.colors.primary,
     },
     chevronIcon: {
-      marginLeft: 8,
+      marginLeft: theme.spacing.s,
     },
     content: {
-      paddingTop: 8,
+      paddingTop: theme.spacing.s,
     },
     emptyState: {
       alignItems: 'center',
-      paddingVertical: 16,
+      paddingVertical: theme.spacing.m,
     },
     emptyText: {
       textAlign: 'center',
       color: theme.colors.onSurfaceVariant,
-      fontSize: 12,
-      marginTop: 6,
+      fontSize: theme.typography.captionM.fontSize, // B56③ fontSize→captionM
+      // B56②：6→xs(4)（紧凑）
+      marginTop: theme.spacing.xs,
       fontStyle: 'italic',
     },
     modelsList: {
-      gap: 8,
+      gap: theme.spacing.s,
     },
     singleModelTitle: {
-      fontSize: 12,
+      fontSize: theme.typography.uiS.fontSize, // B56③ fontSize→uiS
       fontWeight: '600',
       color: theme.colors.primary,
-      marginBottom: 8,
+      marginBottom: theme.spacing.s,
     },
     modelItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 12,
-      paddingHorizontal: 12,
+      paddingVertical: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.sm,
       backgroundColor: theme.colors.surface + '20', // Very subtle background
-      borderRadius: 8,
+      borderRadius: theme.radius.s,
       borderLeftWidth: 3,
       borderLeftColor: 'transparent',
     },
@@ -60,35 +61,36 @@ export const createStyles = (theme: Theme) =>
     },
     modelInfo: {
       flex: 1,
-      marginRight: 8, // Reduced from 12 to 8
+      marginRight: theme.spacing.s, // Reduced from 12 to 8
     },
     modelName: {
-      fontSize: 14,
+      fontSize: theme.typography.uiM.fontSize, // B56③ fontSize→uiM
       fontWeight: '500',
       color: theme.colors.onSurface,
-      marginBottom: 2, // Small gap between name and size
+      marginBottom: theme.spacing.xxs, // Small gap between name and size
     },
     selectedModelName: {
       fontWeight: '600',
       color: theme.colors.tertiary,
     },
     modelSize: {
-      fontSize: 11,
+      fontSize: theme.typography.captionS.fontSize, // B56③ fontSize→captionS
       color: theme.colors.onSurfaceVariant,
     },
     modelActions: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 4, // Tighter spacing between action buttons
+      gap: theme.spacing.xs, // Tighter spacing between action buttons
     },
     downloadedActions: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 4, // Reduced from 8 to 4
+      gap: theme.spacing.xs, // Reduced from 8 to 4
     },
     selectArea: {
-      padding: 6, // More compact padding
-      borderRadius: 6,
+      // B56②：6→xs(4)（icon 钮紧凑 padding）/ radius 6→s(8)（按钮档）
+      padding: theme.spacing.xs, // More compact padding
+      borderRadius: theme.radius.s,
       alignItems: 'center',
       justifyContent: 'center',
       minWidth: 32, // Reduced from 70 to 32 for icon-only
@@ -98,14 +100,15 @@ export const createStyles = (theme: Theme) =>
       backgroundColor: theme.colors.tertiaryContainer + '30',
     },
     selectText: {
-      fontSize: 12,
+      fontSize: theme.typography.uiS.fontSize, // B56③ fontSize→uiS
       fontWeight: '500',
       color: theme.colors.onSurfaceVariant,
-      marginLeft: 4,
+      marginLeft: theme.spacing.xs,
     },
     deleteArea: {
-      padding: 6,
-      borderRadius: 6,
+      // B56②：6→xs(4)/radius 6→s(8)
+      padding: theme.spacing.xs,
+      borderRadius: theme.radius.s,
       backgroundColor: theme.colors.errorContainer + '20',
       alignItems: 'center',
       justifyContent: 'center',
@@ -113,8 +116,9 @@ export const createStyles = (theme: Theme) =>
       minHeight: 32,
     },
     downloadArea: {
-      padding: 6, // More compact, icon-only
-      borderRadius: 6,
+      // B56②：6→xs(4)/radius 6→s(8)
+      padding: theme.spacing.xs, // More compact, icon-only
+      borderRadius: theme.radius.s,
       backgroundColor: theme.colors.primaryContainer + '20',
       alignItems: 'center',
       justifyContent: 'center',
@@ -122,22 +126,24 @@ export const createStyles = (theme: Theme) =>
       minHeight: 32,
     },
     downloadText: {
-      fontSize: 12,
+      fontSize: theme.typography.uiS.fontSize, // B56③ fontSize→uiS
       fontWeight: '500',
       color: theme.colors.primary,
-      marginLeft: 4,
+      marginLeft: theme.spacing.xs,
     },
     downloadProgress: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 4,
-      paddingHorizontal: 8,
+      paddingVertical: theme.spacing.xs,
+      paddingHorizontal: theme.spacing.s,
       backgroundColor: theme.colors.primaryContainer + '30',
-      borderRadius: 6,
+      // B56②：radius 6→s(8)（小卡档）
+      borderRadius: theme.radius.s,
     },
     progressText: {
-      marginLeft: 6,
-      fontSize: 11,
+      // B56②：6→xs(4)（紧凑行内 gap）
+      marginLeft: theme.spacing.xs,
+      fontSize: theme.typography.captionS.fontSize, // B56③ fontSize→captionS
       fontWeight: '500',
       color: theme.colors.primary,
     },

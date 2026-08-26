@@ -7,9 +7,10 @@ export const createStyles = (theme: Theme) =>
     container: {
       borderWidth: 1,
       borderColor: theme.colors.border,
-      borderRadius: 10,
-      borderTopStartRadius: 10,
-      borderTopEndRadius: 10,
+      // B56②：10→m(12)（输入框圆角，三角同步）
+      borderRadius: theme.radius.m,
+      borderTopStartRadius: theme.radius.m,
+      borderTopEndRadius: theme.radius.m,
       alignSelf: 'stretch',
       backgroundColor: 'transparent',
     },
@@ -23,6 +24,6 @@ export const createStyles = (theme: Theme) =>
       width: 330,
       height: 0.33,
       backgroundColor: theme.colors.outlineVariant,
-      marginLeft: 20,
+      marginLeft: theme.spacing.ml,
     },
   });

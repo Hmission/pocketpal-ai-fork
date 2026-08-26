@@ -4,35 +4,36 @@ import {Theme} from '../../utils/types';
 export const createStyles = (theme: Theme) => {
   return StyleSheet.create({
     container: {
-      padding: 16,
-      paddingBottom: 32,
+      padding: theme.spacing.m,
+      paddingBottom: theme.spacing.xl,
     },
     description: {
-      marginBottom: 16,
+      marginBottom: theme.spacing.m,
       color: theme.colors.onSurface,
     },
     instructionsContainer: {
-      marginBottom: 24,
+      marginBottom: theme.spacing.l,
       backgroundColor: theme.colors.surfaceContainerLow,
-      padding: 16,
-      borderRadius: 8,
+      padding: theme.spacing.m,
+      borderRadius: theme.radius.s,
     },
     instructionsTitle: {
       fontWeight: 'bold',
-      marginBottom: 8,
+      marginBottom: theme.spacing.s,
       color: theme.colors.onSurface,
     },
     instructionItem: {
-      marginBottom: 6,
+      // B56②：6→s(8)（周围均为 s(8) 系列指令距）
+      marginBottom: theme.spacing.s,
       color: theme.colors.onSurface,
     },
     linkButton: {
-      marginTop: 8,
+      marginTop: theme.spacing.s,
       alignSelf: 'flex-start',
       textDecorationLine: 'underline',
     },
     input: {
-      marginBottom: 8,
+      marginBottom: theme.spacing.s,
     },
     buttonsContainer: {
       flexDirection: 'row',
@@ -42,11 +43,11 @@ export const createStyles = (theme: Theme) => {
     },
     saveButton: {
       flex: 1,
-      marginRight: 8,
+      marginRight: theme.spacing.s,
     },
     resetButton: {
       flex: 1,
-      marginLeft: 8,
+      marginLeft: theme.spacing.s,
     },
     errorSnackbar: {
       backgroundColor: theme.colors.errorContainer,

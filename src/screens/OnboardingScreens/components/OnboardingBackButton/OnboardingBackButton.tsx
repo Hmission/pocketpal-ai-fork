@@ -2,7 +2,7 @@ import React from 'react';
 import {Pressable} from 'react-native';
 
 import {ChevronLeftLgIcon} from '../../../../assets/icons';
-import {useTheme} from '../../../../hooks';
+import {useTheme} from '../../../../hooks/useTheme';
 import {createStyles} from './styles';
 
 export type OnboardingBackButtonProps = {

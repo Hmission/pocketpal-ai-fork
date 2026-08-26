@@ -7,8 +7,7 @@ import {
 import {listMemories} from '../aiosMemory';
 import {listDiaries, readDiary} from '../aiosMemory/rituals';
 import {promptWriter} from '../promptWriter';
-import {modelStore} from '../../store';
-import {imageGenStore} from '../../store/imageGenStore';
+import {modelStore, imageGenStore} from '../../store';
 import {AIOS_ALBUM_DIR} from '../../utils/paths';
 import * as RNFS from '@dr.pogodin/react-native-fs';
 
@@ -28,8 +27,7 @@ jest.mock('../promptWriter', () => ({
 }));
 jest.mock('../../store', () => ({
   modelStore: {engine: undefined as any},
-}));
-jest.mock('../../store/imageGenStore', () => ({
+  // R4-B：service 改走 barrel 后，imageGenStore mock 合并进 barrel（子模块 mock 不生效）
   imageGenStore: {
     generateDreamLiteEntry: jest.fn(),
     error: null,

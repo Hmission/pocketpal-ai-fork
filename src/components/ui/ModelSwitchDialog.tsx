@@ -30,7 +30,7 @@ import {
   Text,
 } from 'react-native';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import type {Theme} from '../../utils/types';
 import {WaveDots} from './WaveDots';
 import {Progress} from './Progress';
@@ -315,7 +315,7 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      minHeight: 44,
+      minHeight: theme.size.minTapTarget,
       borderRadius: theme.radius.s,
       paddingHorizontal: theme.spacing.sm,
       borderWidth: theme.stroke.sm,
@@ -343,7 +343,7 @@ const createStyles = (theme: Theme) =>
     candidateNote: {
       ...theme.typography.captionS,
       color: theme.colors.onSurfaceVariant,
-      marginTop: 2,
+      marginTop: theme.spacing.xxs,
     },
     loadErrorText: {
       ...theme.typography.captionS,

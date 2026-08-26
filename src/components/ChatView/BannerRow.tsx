@@ -5,7 +5,7 @@ import {observer} from 'mobx-react';
 import {BannerBar} from '../ui/BannerBar';
 
 import {AlertIcon} from '../../assets/icons';
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {chatSessionStore, modelStore} from '../../store';
 import {L10nContext} from '../../utils';
 import {MessageType, ModelOrigin} from '../../utils/types';
@@ -87,7 +87,13 @@ export const BannerRow: React.FC<BannerRowProps> = observer(
 
     if (variant === 'html-soft-cap') {
       return (
-        <BannerBar testID="soft-cap-warning" text={l10n.chat.softCapWarning} />
+        // 2026-08-26 去灰：neutral → info 语义 wash + 居中（纯文案无动作）
+        <BannerBar
+          testID="soft-cap-warning"
+          variant="info"
+          centered
+          text={l10n.chat.softCapWarning}
+        />
       );
     }
 
@@ -135,6 +141,8 @@ export const BannerRow: React.FC<BannerRowProps> = observer(
       return (
         <BannerBar
           testID="context-remote-hedged-banner"
+          variant="info"
+          centered
           text={l10n.chat.contextRemoteHedged}
           actions={[
             {

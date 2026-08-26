@@ -13,7 +13,7 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import MaskedView from '@react-native-masked-view/masked-view';
 import {createStyles} from './styles';
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 
 // Enable LayoutAnimation for Android
 if (

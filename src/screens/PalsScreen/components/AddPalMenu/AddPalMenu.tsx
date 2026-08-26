@@ -6,7 +6,7 @@ import {observer} from 'mobx-react-lite';
 import {PlusIcon} from '../../../../assets/icons';
 import {Menu} from '../../../../components/Menu';
 
-import {useTheme} from '../../../../hooks';
+import {useTheme} from '../../../../hooks/useTheme';
 import {L10nContext} from '../../../../utils';
 import {createStyles} from './styles';
 

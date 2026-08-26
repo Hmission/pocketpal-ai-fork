@@ -17,7 +17,7 @@ import {
   modelStore,
   defaultCompletionSettings,
 } from '../store';
-import {imageGenStore} from '../store/imageGenStore';
+import {imageGenStore} from '../store';
 import {getChatSender} from '../debug/actionRegistry';
 import NativeHardwareInfo from '../specs/NativeHardwareInfo';
 import {computePerfScore, type PerfScoreCard} from './perf/perfScore';

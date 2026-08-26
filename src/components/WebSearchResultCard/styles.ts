@@ -7,19 +7,21 @@ export const styles = ({theme}: {theme: Theme}) =>
     row: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 2,
+      paddingVertical: theme.spacing.xxs,
     },
     label: {
       flexShrink: 1,
-      marginHorizontal: 6,
-      fontSize: 12,
+      // B56②：6→xs(4)（紧凑行内 gap）
+      marginHorizontal: theme.spacing.xs,
+      fontSize: theme.typography.uiS.fontSize, // B56③ fontSize→uiS
       color: theme.colors.textSecondary,
       opacity: 0.85,
     },
     count: {
       flexShrink: 0,
-      marginRight: 6,
-      fontSize: 12,
+      // B56②：6→xs(4)（紧凑行内 gap）
+      marginRight: theme.spacing.xs,
+      fontSize: theme.typography.captionM.fontSize, // B56③ fontSize→captionM
       color: theme.colors.textSecondary,
       opacity: 0.85,
     },
@@ -28,32 +30,32 @@ export const styles = ({theme}: {theme: Theme}) =>
 export const sheetStyles = ({theme}: {theme: Theme}) =>
   StyleSheet.create({
     container: {
-      paddingHorizontal: 16,
-      paddingTop: 8,
+      paddingHorizontal: theme.spacing.m,
+      paddingTop: theme.spacing.s,
     },
     subtitle: {
-      marginBottom: 12,
-      fontSize: 13,
+      marginBottom: theme.spacing.sm,
+      fontSize: theme.typography.bodyS.fontSize,
       color: theme.colors.onSurfaceVariant,
     },
     result: {
-      marginBottom: 16,
+      marginBottom: theme.spacing.m,
     },
     title: {
       color: theme.colors.onSurface,
     },
     url: {
-      marginTop: 2,
-      fontSize: 11,
+      marginTop: theme.spacing.xxs,
+      fontSize: theme.typography.captionS.fontSize, // B56③ fontSize→captionS
       color: theme.colors.onSurfaceVariant,
     },
     snippet: {
-      marginTop: 4,
-      fontSize: 12,
+      marginTop: theme.spacing.xs,
+      fontSize: theme.typography.captionM.fontSize, // B56③ fontSize→captionM
       color: theme.colors.onSurface,
     },
     empty: {
-      fontSize: 12,
+      fontSize: theme.typography.captionM.fontSize, // B56③ fontSize→captionM
       color: theme.colors.onSurfaceVariant,
     },
     bottomSpacer: {

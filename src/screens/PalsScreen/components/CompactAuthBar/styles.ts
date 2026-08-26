@@ -5,18 +5,18 @@ export const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
       backgroundColor: theme.colors.surfaceContainerHigh,
-      paddingHorizontal: 16,
-      paddingVertical: 12,
+      paddingHorizontal: theme.spacing.m,
+      paddingVertical: theme.spacing.sm,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.colors.outline,
     },
     authenticatedContent: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: theme.spacing.s,
     },
     welcomeText: {
-      fontSize: 14,
+      fontSize: theme.typography.uiM.fontSize, // B56③ fontSize→uiM
       fontWeight: '500',
       color: theme.colors.onSurface,
       flex: 1,
@@ -25,16 +25,16 @@ export const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: 12,
+      gap: theme.spacing.sm,
     },
     infoSection: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: theme.spacing.s,
       flex: 1,
     },
     infoText: {
-      fontSize: 13,
+      fontSize: theme.typography.bodyS.fontSize,
       color: theme.colors.onSurfaceVariant,
       flex: 1,
       lineHeight: 18,
@@ -42,14 +42,14 @@ export const createStyles = (theme: Theme) =>
     actionsSection: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 4,
+      gap: theme.spacing.xs,
     },
     signInButton: {
-      borderRadius: 20,
+      borderRadius: theme.radius.l,
       minWidth: 80,
     },
     signInButtonLabel: {
-      fontSize: 12,
+      fontSize: theme.typography.uiS.fontSize, // B56③ fontSize→uiS
       fontWeight: '600',
     },
     dismissButton: {

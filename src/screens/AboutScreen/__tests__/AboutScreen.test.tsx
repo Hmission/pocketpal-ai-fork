@@ -4,7 +4,13 @@ import {render, fireEvent} from '../../../../jest/test-utils';
 import {AboutScreen} from '../AboutScreen';
 import {l10n} from '../../../locales';
 import {GITHUB_REPO_URL} from '../../../utils/openSource';
-import * as InfoDialog from '../../../components/ui/InfoDialog';
+
+// B60 修复：B58 拆分后 InfoDialog 命名空间 re-export 为只读 getter，
+// spyOn 无法覆写——对齐 exportUtils.test 范式：mock 指向 api 模块
+jest.mock('../../../components/ui/InfoDialog/api', () => ({
+  infoDialog: jest.fn().mockResolvedValue(undefined),
+}));
+import {infoDialog} from '../../../components/ui/InfoDialog/api';
 
 // Mock DeviceInfo
 jest.mock('react-native-device-info', () => ({
@@ -18,7 +24,6 @@ jest.mock('@react-native-clipboard/clipboard', () => ({
 }));
 
 // 08-25 InfoDialog 统一：错误/信息弹窗已迁 infoDialog（Alert → infoDialog）
-const infoDialogSpy = jest.spyOn(InfoDialog, 'infoDialog').mockResolvedValue();
 
 jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined as any);
 
@@ -63,7 +68,7 @@ describe('AboutScreen', () => {
 
     fireEvent.press(getByText('v1.0.0 (100)'));
 
-    expect(infoDialogSpy).toHaveBeenCalledWith({
+    expect(infoDialog).toHaveBeenCalledWith({
       title: l10n.en.about.versionCopiedTitle,
       message: l10n.en.about.versionCopiedDescription,
     });

@@ -20,7 +20,8 @@ export const styles = ({theme}: {theme: Theme}) =>
     intentCapsule: {
       borderRadius: theme.radius[theme.shapeRoles.pill],
       paddingHorizontal: theme.spacing.xs,
-      paddingVertical: 1,
+      // B56②：1→xxs(2)（胶囊细内边距）
+      paddingVertical: theme.spacing.xxs,
     },
     intentLabel: {
       ...theme.typography.captionS,

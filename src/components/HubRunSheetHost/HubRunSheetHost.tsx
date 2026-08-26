@@ -8,10 +8,12 @@ import React, {
 import {View} from 'react-native';
 
 import {observer} from 'mobx-react';
-import {Text, Button, ActivityIndicator} from 'react-native-paper';
+import {Text, Button} from 'react-native-paper';
+
+import {CircularActivityIndicator} from '../CircularActivityIndicator';
 
 import {Sheet} from '../Sheet';
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {hfStore} from '../../store';
 import {useHubRunSheet} from '../../hooks/useDeepLinking';
 import {
@@ -123,7 +125,7 @@ export const HubRunSheetHost: React.FC = observer(() => {
           style={styles.centered}
           testID="hub-run-resolving"
           accessibilityRole="progressbar">
-          <ActivityIndicator size="small" color={theme.colors.primary} />
+          <CircularActivityIndicator size={20} color={theme.colors.primary} />
           <Text style={styles.resolvingText}>
             {l10n.models.hubRun.resolving}
           </Text>

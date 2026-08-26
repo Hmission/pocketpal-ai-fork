@@ -10,7 +10,7 @@ import {
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 import {getDefaultHeaderHeight} from '@react-navigation/elements';
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {chatSessionStore, modelStore} from '../../store';
 import {promptWriter} from '../../services/promptWriter';
 import {HeaderLeft} from '../HeaderLeft';

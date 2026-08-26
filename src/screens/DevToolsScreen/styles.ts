@@ -11,31 +11,31 @@ export const createStyles = (theme: Theme) =>
       flex: 1,
     },
     card: {
-      marginHorizontal: 16,
-      marginVertical: 8,
+      marginHorizontal: theme.spacing.m,
+      marginVertical: theme.spacing.s,
       backgroundColor: theme.colors.surface,
     },
     title: {
-      marginBottom: 16,
+      marginBottom: theme.spacing.m,
       color: theme.colors.onSurface,
     },
     description: {
-      marginBottom: 16,
+      marginBottom: theme.spacing.m,
       color: theme.colors.onSurfaceVariant,
     },
     buttonContainer: {
-      marginTop: 8,
+      marginTop: theme.spacing.s,
       flexDirection: 'row',
       justifyContent: 'flex-end',
     },
     button: {
-      marginLeft: 8,
+      marginLeft: theme.spacing.s,
     },
     divider: {
-      marginVertical: 16,
+      marginVertical: theme.spacing.m,
     },
     warningText: {
       color: theme.colors.error,
-      marginBottom: 16,
+      marginBottom: theme.spacing.m,
     },
   });

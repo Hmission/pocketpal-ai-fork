@@ -1,7 +1,7 @@
 import React, {useState} from 'react';
 import {Text, TextInput, View, type TextInputProps} from 'react-native';
 
-import {useTheme} from '../../../hooks';
+import {useTheme} from '../../../hooks/useTheme';
 
 import type {CommonDSProps} from '../types';
 

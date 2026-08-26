@@ -2,11 +2,13 @@ import {View} from 'react-native';
 import React from 'react';
 
 import {InputSlider} from '../InputSlider';
-import {Text, Switch, SegmentedButtons} from 'react-native-paper';
+import {Text, SegmentedButtons} from 'react-native-paper';
+
+import {Switch} from '../ui/Switch';
 
 import {TextInput} from '..';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 
 import {createStyles} from './styles';
 
@@ -103,6 +105,7 @@ export const CompletionSettings: React.FC<Props> = ({
             onValueChange={disabled ? () => {} : value => onChange(name, value)}
             disabled={disabled}
             testID={`${name}-switch`}
+            accessibilityLabel={displayName}
           />
         </View>
         <Text style={styles.description}>{l10n.completionParams[name]}</Text>

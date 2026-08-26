@@ -13,12 +13,13 @@ import React, {useState, useContext} from 'react';
 import {observer} from 'mobx-react';
 import {NavigationContext} from '@react-navigation/native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import {Text, Button, Card, ActivityIndicator} from 'react-native-paper';
+import {Text, Button, Card} from 'react-native-paper';
 
 import {Menu} from '../../components';
+import {CircularActivityIndicator} from '../../components/CircularActivityIndicator';
 import {OverlayCard} from '../../components/ui/OverlayCard';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {L10nContext} from '../../utils';
 import {t} from '../../locales';
 
@@ -191,9 +192,9 @@ export const BenchmarkScreen: React.FC = observer(() => {
             {/* ── 总控区：一键跑分 / 进行中横幅 / 失败诚实报错 ── */}
             {suiteRunning ? (
               <View style={styles.loadingContainer} testID="suite-running">
-                <ActivityIndicator
-                  testID="loading-indicator-benchmark"
-                  size="large"
+                <CircularActivityIndicator
+                  size={36}
+                  color={theme.colors.primary}
                 />
                 <Text style={styles.warningText}>{bannerText}</Text>
                 <Text variant="bodySmall" style={styles.description}>

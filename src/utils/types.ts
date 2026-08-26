@@ -12,6 +12,7 @@ import type {
   TokenStroke,
   TokenTypography,
   TokenIconSize,
+  TokenSize,
 } from '../theme/tokens';
 import type {ShapeRole} from '../theme/tokens/radius';
 import {SkillKey} from '.';
@@ -483,6 +484,8 @@ export interface Theme extends MD3Theme {
   shapeRoles: Record<ShapeRole, keyof TokenRadius>;
   /** 图标尺寸（B10）：经 theme.iconSize.<role> 解析，禁硬编码 */
   iconSize: TokenIconSize;
+  /** 控件尺寸/触区基线（R1）：经 theme.size.<role> 解析 */
+  size: TokenSize;
 }
 
 export interface User {

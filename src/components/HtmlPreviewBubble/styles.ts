@@ -31,8 +31,8 @@ export const createStyles = (
       // emits a follow-up text bubble below) gives container a definite
       // width that lets WebView re-measure.
       alignSelf: 'stretch',
-      marginVertical: 8,
-      marginHorizontal: 12,
+      marginVertical: theme.spacing.s,
+      marginHorizontal: theme.spacing.sm,
       borderRadius: theme.radius.m,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: colors.border,
@@ -43,21 +43,23 @@ export const createStyles = (
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingHorizontal: 12,
-      paddingVertical: 6,
+      paddingHorizontal: theme.spacing.sm,
+      // B56②：6→xs(4)（紧凑顶栏垂直内距）
+      paddingVertical: theme.spacing.xs,
       backgroundColor: colors.headerBg,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: colors.border,
     },
     headerTitle: {
-      fontSize: 12,
+      fontSize: theme.typography.uiS.fontSize, // B56③ fontSize→uiS
       fontWeight: '600',
       color: colors.text,
       flex: 1,
     },
     headerButton: {
-      paddingHorizontal: 6,
-      paddingVertical: 2,
+      // B56②：6→xs(4)（紧凑水平内距）
+      paddingHorizontal: theme.spacing.xs,
+      paddingVertical: theme.spacing.xxs,
     },
     collapsedWebView: {
       // 基值 480；运行期由 estimatePreviewHeight 按板面高度覆盖
@@ -73,13 +75,13 @@ export const createStyles = (
       backgroundColor: '#282c34',
     },
     codeContent: {
-      padding: 12,
+      padding: theme.spacing.sm,
       minWidth: '100%',
       flexGrow: 1,
     },
     codeText: {
       fontFamily: 'Menlo',
-      fontSize: 11,
+      fontSize: theme.typography.captionS.fontSize, // B56③ fontSize→captionS
       lineHeight: 16,
       // Default color for any token the highlighter doesn't colorize;
       // atomOneDark lays its own per-token colors on top.
@@ -93,27 +95,27 @@ export const createStyles = (
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingHorizontal: 16,
-      paddingVertical: 12,
+      paddingHorizontal: theme.spacing.m,
+      paddingVertical: theme.spacing.sm,
       backgroundColor: colors.headerBg,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: colors.border,
     },
     modalTitle: {
-      fontSize: 16,
+      fontSize: theme.typography.titleS.fontSize, // B56③ fontSize→titleS
       fontWeight: '600',
       color: colors.text,
       flex: 1,
     },
     closeButton: {
-      fontSize: 16,
+      fontSize: theme.typography.titleS.fontSize, // B56③ fontSize→titleS
       fontWeight: '600',
       color: colors.text,
-      paddingHorizontal: 8,
-      paddingVertical: 4,
+      paddingHorizontal: theme.spacing.s,
+      paddingVertical: theme.spacing.xs,
     },
     modalHeaderButton: {
-      marginRight: 8,
+      marginRight: theme.spacing.s,
     },
     modalWebView: {
       flex: 1,

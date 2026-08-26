@@ -26,7 +26,7 @@ export const createStyles = ({
     footerLoadingPage: {
       alignItems: 'center',
       justifyContent: 'center',
-      marginTop: 16,
+      marginTop: theme.spacing.m,
       height: 32,
     },
     header: {
@@ -37,13 +37,14 @@ export const createStyles = ({
     },
     scrollToBottomButton: {
       position: 'absolute',
-      right: 16,
+      right: theme.spacing.m,
       backgroundColor: theme.colors.primary,
       width: 35,
       height: 35,
       borderRadius: theme.radius.l,
       justifyContent: 'center',
       alignItems: 'center',
+      // B56②豁免：shadow token dark 绑定白不适配（登记评审）
       shadowColor: '#000',
       shadowOffset: {
         width: 0,
@@ -95,16 +96,17 @@ export const createStyles = ({
       // B58：insets 感知（底部手势条设备不贴条，与 TextMessage 保存钮同表达式归一）
       bottom: insets.bottom + theme.spacing.m,
       alignSelf: 'center' as const,
-      paddingHorizontal: 24,
-      paddingVertical: 10,
-      borderRadius: 24,
+      paddingHorizontal: theme.spacing.l,
+      // B56②：10→s(8)（按钮垂直内距紧凑）
+      paddingVertical: theme.spacing.s,
+      borderRadius: theme.radius.l, // B56① radius 不扩档（镜像 Figma 量表），原值 24 归 l 档
       // 浅色浮层：surfaceElevated（全屏查看器浅色面，§12.6 豁免登记）
       backgroundColor: theme.colors.surfaceElevated,
       zIndex: 1,
     },
     viewerEditText: {
       color: theme.colors.onSurface,
-      fontSize: 15,
+      fontSize: theme.typography.bodyM.fontSize,
       fontWeight: '600' as const,
     },
   });

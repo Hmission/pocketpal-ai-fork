@@ -2,15 +2,14 @@ import React, {useContext, useEffect, useRef, useState} from 'react';
 import {Animated, StyleSheet, Text, View} from 'react-native';
 import {observer} from 'mobx-react-lite';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {L10nContext} from '../../utils';
 import {t} from '../../locales';
 import {modelStore} from '../../store';
 import NativeHardwareInfo, {
   type PerfSnapshot,
 } from '../../specs/NativeHardwareInfo';
-import {AnimatedNumber} from '../PerfMotion';
-import {PerfAreaChart} from '../PerfAreaChart';
+import {PerfMiniRow} from '../PerfMiniRow';
 
 import {createStyles, createCountStyle} from './styles';
 
@@ -45,11 +44,7 @@ const TALENT_LABEL_KEYS: Record<
   web_search: 'searching',
 };
 
-// 遥测行格式化（B40 仪式卡，单位语言中立）
-const perfGbFmt = (n: number) => `${n.toFixed(1)}G`;
-const perfPctFmt = (n: number) => `${Math.round(n)}%`;
-const perfTempFmt = (n: number) => `${Math.round(n)}°C`;
-
+// 遥测行格式化/阈值已归一 PerfMiniRow（utils/perfTiers 单一事实源，2026-08-26）
 // 阶段 → 人类可读标签（生成进度监控卡 §18.9）。工具调用阶段走
 // TALENT_LABEL_KEYS（更具体），prefill/streaming/executing 走通用文案。
 // B57：streaming_text 按 reasoningPhase 区分「正在思考…/正在回复…」——
@@ -261,12 +256,8 @@ export const PendingIndicator: React.FC<PendingIndicatorProps> = observer(
     // 实时遥测（B40 仪式卡）：待回复卡驻留期间 1Hz 采样（PSS/CPU/温度）——
     // 仪式感 = 设备在烧电路的活证据；N/A 诚实显 --，不造假。
     // B41：perfHistory 滚动缓冲（最近 60 点）驱动迷你折线，跑分是本体。
-    const PERF_MAX_PSS_KB = 6 * 1024 * 1024;
-    const [perfNow, setPerfNow] = useState<{
-      pssGb: number;
-      cpuPct: number;
-      tempC: number;
-    } | null>(null);
+    // 2026-08-26：展示归一 PerfMiniRow（B43 双线+热力带+坐标轴+演出层），
+    // 采样链不变（latest 点即当前值，无独立 perfNow state）。
     const [perfHistory, setPerfHistory] = useState<PerfSnapshot[]>([]);
     useEffect(() => {
       let alive = true;
@@ -276,16 +267,9 @@ export const PendingIndicator: React.FC<PendingIndicatorProps> = observer(
           if (!alive) {
             return;
           }
-          setPerfNow({
-            pssGb: s.pssKb / 1024 / 1024,
-            cpuPct: s.cpuPct,
-            tempC: s.tempC,
-          });
           setPerfHistory(h => [...h, s].slice(-60));
         } catch {
-          if (alive) {
-            setPerfNow(null);
-          }
+          // 采集失败：跳过该点不插值（诚实），不置空（不闪烁）
         }
       };
       sample();
@@ -383,43 +367,17 @@ export const PendingIndicator: React.FC<PendingIndicatorProps> = observer(
             {l10n.benchmark.messages.initializingModel}
           </Text>
         )}
-        {/* 实时遥测行（B40）：内存/CPU/温度 1Hz，追式缓动数字 */}
-        <Text style={styles.perfRow} testID="pending-indicator-telemetry">
-          <Text style={styles.perfLabel}>内存 </Text>
-          <AnimatedNumber
-            value={perfNow ? perfNow.pssGb : undefined}
-            format={perfGbFmt}
-            style={styles.perfValue}
-          />
-          <Text style={styles.perfSep}> · </Text>
-          <Text style={styles.perfLabel}>CPU </Text>
-          <AnimatedNumber
-            value={perfNow ? perfNow.cpuPct : undefined}
-            format={perfPctFmt}
-            style={styles.perfValue}
-          />
-          <Text style={styles.perfSep}> · </Text>
-          <AnimatedNumber
-            value={perfNow ? perfNow.tempC : undefined}
-            format={perfTempFmt}
-            style={styles.perfValue}
-          />
-        </Text>
-        {/* B41 迷你折线：等待的每一秒都有曲线在跑（跑分是本体）。
-          复用生图页同款 PerfAreaChart，PSS 主图 + 5/6GB 阈值线。 */}
-        {perfHistory.length > 1 && (
-          <View style={styles.perfChartWrap} testID="pending-indicator-chart">
-            <PerfAreaChart
-              history={perfHistory}
-              overlay="pss"
-              max={PERF_MAX_PSS_KB}
-              color={stageColor}
-              warnColor="#F5A623"
-              dangerColor={theme.colors.error}
-              height={44}
-            />
-          </View>
-        )}
+        {/* 实时遥测 + 迷你折线（2026-08-26 归一 PerfMiniRow）：折叠头一行
+            （性能 ▾ + PSS 大字阈值色 + 内存/CPU/温度胶囊分级色）+ 展开体
+            B43 迷你折线（PSS 主色 + CPU 青双线 + 热力带 + 坐标轴 + 演出层），
+            1Hz 滚动缓冲驱动，等待的每一秒都是跑分现场。 */}
+        <PerfMiniRow
+          history={perfHistory}
+          color={stageColor}
+          defaultExpanded
+          chartHeight={56}
+          testIDPrefix="pending-indicator"
+        />
       </View>
     );
   },

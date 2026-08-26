@@ -9,7 +9,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {BottomSheetModalMethods} from '@gorhom/bottom-sheet/lib/typescript/types';
 import {Text} from 'react-native-paper';
 import {CloseIcon} from '../../assets/icons';
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {styles} from './styles';
 import BottomSheetKeyboardAwareScrollView from './BottomSheetAwareScrollview';
 import {Dimensions, TouchableOpacity, View} from 'react-native';

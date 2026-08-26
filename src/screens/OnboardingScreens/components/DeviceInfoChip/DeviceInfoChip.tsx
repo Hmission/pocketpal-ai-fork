@@ -2,7 +2,7 @@ import React, {useEffect, useState} from 'react';
 import {Text, View} from 'react-native';
 import DeviceInfo from 'react-native-device-info';
 
-import {useTheme} from '../../../../hooks';
+import {useTheme} from '../../../../hooks/useTheme';
 import {createStyles} from './styles';
 
 export type DeviceInfoChipProps = {

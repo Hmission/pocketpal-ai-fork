@@ -4,6 +4,7 @@ import {
   fireEvent,
   render as baseRender,
   act,
+  within,
 } from '../../../../jest/test-utils';
 
 import {SystemSettingsScreen} from '../SystemSettingsScreen';
@@ -85,7 +86,10 @@ describe('SystemSettingsScreen（v3.8 系统设置页）', () => {
       withNavigation: true,
     });
 
-    const sw = getByTestId('self-check-switch');
+    // B57-④：testID 落在 DS Switch 包装层，valueChange 打到内层 Paper Switch
+    const sw = within(getByTestId('self-check-switch')).getByLabelText(
+      '自检修正',
+    );
     await act(async () => {
       fireEvent(sw, 'valueChange', true);
     });
@@ -103,7 +107,9 @@ describe('SystemSettingsScreen（v3.8 系统设置页）', () => {
       withNavigation: true,
     });
 
-    const sw = getByTestId('tts-availability-switch');
+    const sw = within(getByTestId('tts-availability-switch')).getByLabelText(
+      l10n.en.settings.ttsAvailability,
+    );
     expect(sw.props.value).toBe(false);
     expect(
       getByText(l10n.en.settings.ttsAvailabilityLowMemoryWarning),
@@ -120,7 +126,9 @@ describe('SystemSettingsScreen（v3.8 系统设置页）', () => {
       withNavigation: true,
     });
 
-    const sw = getByTestId('tts-availability-switch');
+    const sw = within(getByTestId('tts-availability-switch')).getByLabelText(
+      l10n.en.settings.ttsAvailability,
+    );
     await act(async () => {
       fireEvent(sw, 'valueChange', true);
     });

@@ -27,7 +27,7 @@ if (
 }
 
 import {Sheet} from '../Sheet';
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {
   KITTEN_VOICES,
   KOKORO_VOICES,
@@ -384,6 +384,7 @@ export const VoicePickerView: React.FC = observer(() => {
             mode="contained"
             onPress={handleRetry}
             buttonColor={meta.accent}
+            // B56②登记：引擎品牌色（engineMeta accent 族）底白字，无对位 token
             textColor="#FFFFFF"
             style={styles.engineGroupCta}
             labelStyle={styles.engineGroupCtaLabel}
@@ -418,6 +419,7 @@ export const VoicePickerView: React.FC = observer(() => {
           onPress={handleInstall}
           disabled={lowDisk}
           buttonColor={meta.accent}
+          // B56②登记：引擎品牌色（engineMeta accent 族）底白字，无对位 token
           textColor="#FFFFFF"
           style={styles.engineGroupCta}
           labelStyle={styles.engineGroupCtaLabel}

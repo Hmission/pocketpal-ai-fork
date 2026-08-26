@@ -27,6 +27,6 @@ export const createStyles = (theme: Theme) =>
     rowDescription: {
       ...theme.typography.bodyS,
       color: theme.colors.onSurfaceVariant,
-      marginTop: 2,
+      marginTop: theme.spacing.xxs,
     },
   });

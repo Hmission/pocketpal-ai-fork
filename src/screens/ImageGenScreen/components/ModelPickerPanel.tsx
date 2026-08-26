@@ -1,5 +1,7 @@
 import * as React from 'react';
-import {TouchableOpacity, View, Text, ActivityIndicator} from 'react-native';
+import {TouchableOpacity, View, Text} from 'react-native';
+
+import {CircularActivityIndicator} from '../../../components/CircularActivityIndicator';
 
 import {useTheme} from '../../../hooks';
 import {createStyles} from '../styles';
@@ -123,7 +125,7 @@ export const ModelPickerDropdown: React.FC<DropdownProps> = ({
       />
       <View style={s.dropPanelAbs}>
         {scanning ? (
-          <ActivityIndicator size="small" />
+          <CircularActivityIndicator size={20} color={theme.colors.primary} />
         ) : available.length === 0 ? (
           <Text style={s.hint}>
             未找到生图模型，请将 SDXL Turbo / SD3.5 / Z-Image-Turbo
@@ -180,8 +182,8 @@ export const ModelPickerDropdown: React.FC<DropdownProps> = ({
                   disabled={loading || generating || rowIncompat}
                   onPress={() => onRowAction(item)}>
                   {rowLoading ? (
-                    <ActivityIndicator
-                      size="small"
+                    <CircularActivityIndicator
+                      size={20}
                       color={
                         rowLoaded ? theme.colors.danger : theme.colors.onPrimary
                       }

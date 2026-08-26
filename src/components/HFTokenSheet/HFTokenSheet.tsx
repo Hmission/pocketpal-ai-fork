@@ -9,7 +9,7 @@ import {
 import {observer} from 'mobx-react';
 
 import {Sheet, TextInput} from '..';
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {hfStore} from '../../store';
 import {L10nContext} from '../../utils';
 

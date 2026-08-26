@@ -4,25 +4,25 @@ import {Theme} from '../../utils/types';
 export const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
-      padding: 16,
-      paddingBottom: 32,
+      padding: theme.spacing.m,
+      paddingBottom: theme.spacing.xl,
     },
     description: {
-      fontSize: 14,
+      fontSize: theme.typography.bodyS.fontSize, // B56③ fontSize→bodyS
       color: theme.colors.onSurfaceVariant,
-      marginBottom: 24,
+      marginBottom: theme.spacing.l,
       lineHeight: 20,
     },
     optionsContainer: {
-      gap: 12,
-      marginBottom: 24,
+      gap: theme.spacing.sm,
+      marginBottom: theme.spacing.l,
     },
     optionCard: {
-      borderRadius: 12,
+      borderRadius: theme.radius.m,
       borderWidth: 1,
       borderColor: theme.colors.outline + '30',
       backgroundColor: theme.colors.surface,
-      padding: 16,
+      padding: theme.spacing.m,
     },
     optionCardSelected: {
       borderColor: theme.colors.primary,
@@ -32,15 +32,15 @@ export const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: 8,
+      marginBottom: theme.spacing.s,
     },
     optionTitleRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: theme.spacing.s,
     },
     optionTitle: {
-      fontSize: 16,
+      fontSize: theme.typography.titleS.fontSize, // B56③ fontSize→titleS
       fontWeight: '600',
       color: theme.colors.onSurface,
     },
@@ -48,15 +48,16 @@ export const createStyles = (theme: Theme) =>
       color: theme.colors.primary,
     },
     optionDescription: {
-      fontSize: 14,
+      fontSize: theme.typography.bodyS.fontSize, // B56③ fontSize→bodyS
       color: theme.colors.onSurfaceVariant,
-      marginBottom: 12,
+      marginBottom: theme.spacing.sm,
       lineHeight: 18,
     },
     radioButton: {
       width: 20,
       height: 20,
-      borderRadius: 10,
+      // B56②：20px 圆钮 10=半高 → full
+      borderRadius: theme.radius.full,
       borderWidth: 2,
       borderColor: theme.colors.outline,
       justifyContent: 'center',
@@ -68,7 +69,8 @@ export const createStyles = (theme: Theme) =>
     radioButtonInner: {
       width: 10,
       height: 10,
-      borderRadius: 5,
+      // B56②：10×10 内圆点 → full
+      borderRadius: theme.radius.full,
       backgroundColor: theme.colors.primary,
     },
     sizeChip: {
@@ -76,17 +78,17 @@ export const createStyles = (theme: Theme) =>
       backgroundColor: theme.colors.secondaryContainer + '50',
     },
     sizeChipText: {
-      fontSize: 12,
+      fontSize: theme.typography.uiS.fontSize, // B56③ fontSize→uiS
       color: theme.colors.onSecondaryContainer,
     },
     // ProjectionModelSelector-style components
     modelItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 12,
-      paddingHorizontal: 12,
+      paddingVertical: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.sm,
       backgroundColor: theme.colors.surface + '20',
-      borderRadius: 8,
+      borderRadius: theme.radius.s,
       borderLeftWidth: 3,
       borderLeftColor: 'transparent',
     },
@@ -96,18 +98,18 @@ export const createStyles = (theme: Theme) =>
     },
     modelInfo: {
       flex: 1,
-      marginRight: 12,
+      marginRight: theme.spacing.sm,
     },
     modelHeader: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginBottom: 4,
+      marginBottom: theme.spacing.xs,
     },
     modelIcon: {
-      marginRight: 8,
+      marginRight: theme.spacing.s,
     },
     modelName: {
-      fontSize: 14,
+      fontSize: theme.typography.uiM.fontSize, // B56③ fontSize→uiM
       fontWeight: '500',
       color: theme.colors.onSurface,
       flex: 1,
@@ -117,9 +119,9 @@ export const createStyles = (theme: Theme) =>
       color: theme.colors.tertiary,
     },
     modelSize: {
-      fontSize: 11,
+      fontSize: theme.typography.captionS.fontSize, // B56③ fontSize→captionS
       color: theme.colors.onSurfaceVariant,
-      marginLeft: 20,
+      marginLeft: theme.spacing.ml,
     },
     modelActions: {
       minWidth: 80,
@@ -128,9 +130,10 @@ export const createStyles = (theme: Theme) =>
     selectArea: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 6,
-      paddingHorizontal: 8,
-      borderRadius: 6,
+      // B56②：6→xs(4) 垂直 / radius 6→s(8)（小按钮档）
+      paddingVertical: theme.spacing.xs,
+      paddingHorizontal: theme.spacing.s,
+      borderRadius: theme.radius.s,
       minWidth: 70,
       justifyContent: 'center',
     },
@@ -138,90 +141,91 @@ export const createStyles = (theme: Theme) =>
       backgroundColor: theme.colors.tertiaryContainer + '30',
     },
     selectText: {
-      fontSize: 12,
+      fontSize: theme.typography.uiS.fontSize, // B56③ fontSize→uiS
       fontWeight: '500',
       color: theme.colors.onSurfaceVariant,
-      marginLeft: 4,
+      marginLeft: theme.spacing.xs,
     },
     // VisionControlSheet-style components
     toggleContainer: {
-      marginBottom: 16,
+      marginBottom: theme.spacing.m,
     },
     toggleHeader: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 12,
-      paddingVertical: 8,
+      gap: theme.spacing.sm,
+      paddingVertical: theme.spacing.s,
     },
     toggleTextContainer: {
       flex: 1,
     },
     toggleTitle: {
-      fontSize: 16,
+      fontSize: theme.typography.titleS.fontSize, // B56③ fontSize→titleS
       fontWeight: '600',
       color: theme.colors.text,
-      marginBottom: 4,
+      marginBottom: theme.spacing.xs,
     },
     divider: {
-      marginVertical: 16,
+      marginVertical: theme.spacing.m,
     },
     sectionTitle: {
-      fontSize: 16,
+      fontSize: theme.typography.titleS.fontSize, // B56③ fontSize→titleS
       fontWeight: '600',
       color: theme.colors.text,
-      marginBottom: 12,
+      marginBottom: theme.spacing.sm,
     },
     projectionModelsContainer: {
-      marginBottom: 16,
+      marginBottom: theme.spacing.m,
     },
     disabledProjectionSelector: {
       opacity: 0.5,
     },
     projectionModelItem: {
-      paddingVertical: 8,
-      paddingHorizontal: 12,
+      paddingVertical: theme.spacing.s,
+      paddingHorizontal: theme.spacing.sm,
       backgroundColor: theme.colors.surface + '20',
-      borderRadius: 8,
-      marginBottom: 8,
+      borderRadius: theme.radius.s,
+      marginBottom: theme.spacing.s,
     },
     projectionModelInfo: {
       flex: 1,
     },
     projectionModelName: {
-      fontSize: 14,
+      fontSize: theme.typography.uiM.fontSize, // B56③ fontSize→uiM
       fontWeight: '500',
       color: theme.colors.onSurface,
-      marginBottom: 4,
+      marginBottom: theme.spacing.xs,
     },
     projectionModelSize: {
-      fontSize: 12,
+      fontSize: theme.typography.captionM.fontSize, // B56③ fontSize→captionM
       color: theme.colors.onSurfaceVariant,
     },
     emptyState: {
       alignItems: 'center',
-      paddingVertical: 16,
+      paddingVertical: theme.spacing.m,
     },
     emptyText: {
       textAlign: 'center',
       color: theme.colors.onSurfaceVariant,
-      fontSize: 12,
-      marginTop: 6,
+      fontSize: theme.typography.captionM.fontSize, // B56③ fontSize→captionM
+      // B56②：6→xs(4)（紧凑）
+      marginTop: theme.spacing.xs,
       fontStyle: 'italic',
     },
     warningContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
-      padding: 12,
-      borderRadius: 8,
+      gap: theme.spacing.s,
+      padding: theme.spacing.sm,
+      borderRadius: theme.radius.s,
       backgroundColor: theme.colors.errorContainer + '30',
       borderWidth: 1,
       borderColor: theme.colors.error + '50',
-      marginBottom: 16,
+      marginBottom: theme.spacing.m,
     },
     warningText: {
       flex: 1,
-      fontSize: 14,
+      fontSize: theme.typography.bodyS.fontSize, // B56③ fontSize→bodyS
       color: theme.colors.error,
       lineHeight: 18,
     },
@@ -230,6 +234,6 @@ export const createStyles = (theme: Theme) =>
       // justifyContent: 'space-between',
       // alignItems: 'center',
       // width: '100%',
-      paddingHorizontal: 24,
+      paddingHorizontal: theme.spacing.l,
     },
   });

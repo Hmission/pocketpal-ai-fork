@@ -1,5 +1,7 @@
 import React, {useState, useEffect, memo, useContext} from 'react';
-import {Button, Text, Divider, Switch, Chip} from 'react-native-paper';
+import {Button, Text, Divider, Chip} from 'react-native-paper';
+
+import {Switch} from '../ui/Switch';
 
 import {ModelSettings} from '../../screens/ModelsScreen/ModelSettings';
 import {Sheet} from '../Sheet';
@@ -271,6 +273,9 @@ export const ModelSettingsSheet: React.FC<ModelSettingsSheetProps> = memo(
             <Text>{l10n.components.modelSettingsSheet.isReasoningModel}</Text>
             <Switch
               testID="reasoning-is-reasoning-switch"
+              accessibilityLabel={
+                l10n.components.modelSettingsSheet.isReasoningModel
+              }
               value={isReasoningModel}
               onValueChange={onIsReasoningModelChange}
             />
@@ -284,6 +289,9 @@ export const ModelSettingsSheet: React.FC<ModelSettingsSheetProps> = memo(
                 <Text>{l10n.components.modelSettingsSheet.supportsEffort}</Text>
                 <Switch
                   testID="reasoning-supports-effort-switch"
+                  accessibilityLabel={
+                    l10n.components.modelSettingsSheet.supportsEffort
+                  }
                   value={supportsEffort}
                   onValueChange={onSupportsEffortChange}
                 />

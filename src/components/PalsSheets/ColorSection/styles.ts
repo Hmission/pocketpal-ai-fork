@@ -5,16 +5,18 @@ export const createStyles = (theme: Theme) =>
   StyleSheet.create({
     pickerContainer: {
       flexDirection: 'row',
-      paddingVertical: 8,
-      gap: 12,
+      paddingVertical: theme.spacing.s,
+      gap: theme.spacing.sm,
     },
     colorButtonContainer: {
       width: 28,
       height: 28,
-      borderRadius: 100,
+      // B56②：28px 圆钮 100 → full（同 icon 钮裁定）
+      borderRadius: theme.radius.full,
       borderWidth: 1,
       borderColor: '#222222',
-      padding: 1,
+      // B56②：1→xxs(2)（swatch 微内距）
+      padding: theme.spacing.xxs,
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: 'white',
@@ -22,7 +24,7 @@ export const createStyles = (theme: Theme) =>
     colorButton: {
       width: 24,
       height: 24,
-      borderRadius: 12,
+      borderRadius: theme.radius.m,
       overflow: 'hidden',
       flexDirection: 'row',
       transform: [{rotate: '45deg'}],

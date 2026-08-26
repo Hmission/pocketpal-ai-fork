@@ -3,7 +3,7 @@ import {Image, View} from 'react-native';
 import {Text} from 'react-native-paper';
 import {observer} from 'mobx-react';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {createStyles} from './styles';
 import {L10nContext} from '../../utils';
 

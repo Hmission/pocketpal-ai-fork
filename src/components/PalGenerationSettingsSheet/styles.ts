@@ -4,19 +4,19 @@ import {Theme} from '../../utils/types';
 export const createStyles = (theme: Theme) =>
   StyleSheet.create({
     scrollviewContainer: {
-      paddingBottom: 16,
+      paddingBottom: theme.spacing.m,
     },
     actionsContainer: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       width: '100%',
       alignItems: 'center',
-      paddingHorizontal: 16,
-      paddingVertical: 8,
+      paddingHorizontal: theme.spacing.m,
+      paddingVertical: theme.spacing.s,
     },
     rightButtons: {
       flexDirection: 'row',
-      gap: 8,
+      gap: theme.spacing.s,
     },
     button: {
       minWidth: 80,
@@ -33,14 +33,14 @@ export const createStyles = (theme: Theme) =>
     settingsLevelIndicator: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 16,
-      paddingVertical: 8,
+      paddingHorizontal: theme.spacing.m,
+      paddingVertical: theme.spacing.s,
       backgroundColor: theme.colors.surface,
-      borderRadius: 8,
-      marginBottom: 16,
+      borderRadius: theme.radius.s,
+      marginBottom: theme.spacing.m,
     },
     settingsLevelText: {
-      marginLeft: 8,
+      marginLeft: theme.spacing.s,
       color: theme.colors.onSurfaceVariant,
     },
     settingsLevelIcon: {

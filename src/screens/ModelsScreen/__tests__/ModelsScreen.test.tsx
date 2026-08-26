@@ -1,5 +1,4 @@
 import React from 'react';
-import {Alert} from 'react-native';
 
 import * as RNFS from '@dr.pogodin/react-native-fs';
 import {pick} from '@react-native-documents/picker';
@@ -133,7 +132,7 @@ describe('ModelsScreen', () => {
     });
   });
 
-  it('shows a confirmation alert if file already exists and replaces it', async () => {
+  it('shows a confirmation sheet if file already exists and replaces it', async () => {
     (RNFS.exists as jest.Mock).mockResolvedValue(true);
     (pick as jest.Mock).mockResolvedValue([
       {
@@ -141,10 +140,6 @@ describe('ModelsScreen', () => {
         name: 'mockModelFile.bin',
       },
     ]);
-
-    jest.spyOn(Alert, 'alert').mockImplementation((_, __, buttons) => {
-      buttons![0].onPress!();
-    });
 
     const {getByTestId} = render(<ModelsScreen />);
 
@@ -165,8 +160,13 @@ describe('ModelsScreen', () => {
       fireEvent.press(addLocalModelButton);
     });
 
+    // B55②：文件冲突三选一 → Sheet 动作行（点击「替换」）
     await waitFor(() => {
-      expect(Alert.alert).toHaveBeenCalled();
+      expect(getByTestId('conflict-replace-option')).toBeTruthy();
+    });
+    fireEvent.press(getByTestId('conflict-replace-option'));
+
+    await waitFor(() => {
       expect(RNFS.unlink).toHaveBeenCalledWith(
         '/path/to/documents/models/local/mockModelFile.bin',
       );
@@ -187,11 +187,6 @@ describe('ModelsScreen', () => {
       },
     ]);
 
-    jest.spyOn(Alert, 'alert').mockImplementation((_, __, buttons) => {
-      // pressing "Cancel"
-      buttons![2].onPress!();
-    });
-
     const {getByTestId} = render(<ModelsScreen />);
     // Open the FAB group
     const fabGroup = getByTestId('fab-group');
@@ -210,8 +205,13 @@ describe('ModelsScreen', () => {
       fireEvent.press(addLocalModelButton);
     });
 
+    // B55②：点「取消」行
     await waitFor(() => {
-      expect(Alert.alert).toHaveBeenCalled();
+      expect(getByTestId('conflict-cancel-option')).toBeTruthy();
+    });
+    fireEvent.press(getByTestId('conflict-cancel-option'));
+
+    await waitFor(() => {
       expect(RNFS.unlink).not.toHaveBeenCalled(); // File should not be unlinked (deleted)
       expect(RNFS.copyFile).not.toHaveBeenCalled(); // File should not be copied
       expect(modelStore.addLocalModel).not.toHaveBeenCalled(); // Model should not be added
@@ -226,11 +226,6 @@ describe('ModelsScreen', () => {
         name: 'mockModelFile.bin',
       },
     ]);
-
-    jest.spyOn(Alert, 'alert').mockImplementation((_, __, buttons) => {
-      // pressing "Keep Both"
-      buttons![1].onPress!();
-    });
 
     let counter = 1;
     (RNFS.exists as jest.Mock).mockImplementation(async path => {
@@ -259,8 +254,13 @@ describe('ModelsScreen', () => {
       fireEvent.press(addLocalModelButton);
     });
 
+    // B55②：点「保留两者」行
     await waitFor(() => {
-      expect(Alert.alert).toHaveBeenCalled();
+      expect(getByTestId('conflict-keep-option')).toBeTruthy();
+    });
+    fireEvent.press(getByTestId('conflict-keep-option'));
+
+    await waitFor(() => {
       expect(RNFS.unlink).not.toHaveBeenCalled(); // Original file should not be deleted
       expect(RNFS.copyFile).toHaveBeenCalledWith(
         '/mock/file/path',

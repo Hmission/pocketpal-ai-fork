@@ -1,10 +1,12 @@
 import React, {useContext, useMemo} from 'react';
 import {View} from 'react-native';
-import {Switch, Text} from 'react-native-paper';
+import {Text} from 'react-native-paper';
 import {observer} from 'mobx-react-lite';
 import {useFormContext, Controller} from 'react-hook-form';
 
-import {useTheme} from '../../hooks';
+import {Switch} from '../ui/Switch';
+
+import {useTheme} from '../../hooks/useTheme';
 import {L10nContext} from '../../utils';
 import {createStyles} from './styles';
 import {SectionDivider} from './SectionDivider';
@@ -51,6 +53,7 @@ export const TalentSection = observer(() => {
                   </View>
                   <Switch
                     testID={`talent-switch-${engine.name}`}
+                    accessibilityLabel={title}
                     value={isEnabled}
                     onValueChange={checked => {
                       const current = value ?? [];

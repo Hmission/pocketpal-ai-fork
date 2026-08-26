@@ -7,7 +7,7 @@ import {observer} from 'mobx-react';
 import {Button, Text} from 'react-native-paper';
 
 import {Sheet} from '..';
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {modelStore} from '../../store';
 import {L10nContext, formatBytes} from '../../utils';
 import {t} from '../../locales';

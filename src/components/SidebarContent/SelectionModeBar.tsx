@@ -1,7 +1,7 @@
 import React, {useContext} from 'react';
 import {TouchableOpacity, View, Text} from 'react-native';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {createStyles} from './styles';
 import {Checkbox} from '..';
 import {ShareIcon, TrashIcon} from '../../assets/icons';

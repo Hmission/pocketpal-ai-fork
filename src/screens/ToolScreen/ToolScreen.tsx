@@ -1,14 +1,16 @@
 ﻿import * as React from 'react';
 import {Animated, View, FlatList, Text, StyleSheet} from 'react-native';
-import {Appbar, List, Divider, Switch, Button} from 'react-native-paper';
+import {Appbar, List, Divider, Button} from 'react-native-paper';
 import {deriveToolSchemas} from '../../services/talents';
 import {palStore, chatSessionStore} from '../../store';
 import type {ToolDefinition} from '../../services/talents/types';
 import {toJS} from 'mobx';
-import {useTheme, useStaggerEntry} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
+import {useStaggerEntry} from '../../hooks/useStaggerEntry';
 import type {Theme} from '../../utils/types';
 import {withOpacity} from '../../utils/colorUtils';
 import {IconTile} from '../../components/ui';
+import {Switch} from '../../components/ui/Switch';
 import {AtomIcon} from '../../assets/icons';
 import {
   isScreenReaderEnabled,
@@ -42,7 +44,11 @@ const renderToolRowRight = ({
       </Button>
     ) : null
   ) : (
-    <Switch value={enabled} onValueChange={v => onToggle(name, v)} />
+    <Switch
+      value={enabled}
+      onValueChange={v => onToggle(name, v)}
+      accessibilityLabel={`启用工具 ${name}`}
+    />
   );
 
 const StaggeredToolRow = ({

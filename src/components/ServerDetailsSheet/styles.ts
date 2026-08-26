@@ -4,27 +4,27 @@ import {Theme} from '../../utils/types';
 export const createStyles = (theme: Theme) => {
   return StyleSheet.create({
     container: {
-      padding: 16,
-      paddingBottom: 32,
+      padding: theme.spacing.m,
+      paddingBottom: theme.spacing.xl,
     },
     inputSpacing: {
-      marginBottom: 12,
+      marginBottom: theme.spacing.sm,
     },
     apiKeyDescription: {
-      marginTop: 4,
-      marginBottom: 12,
+      marginTop: theme.spacing.xs,
+      marginBottom: theme.spacing.sm,
       color: theme.colors.onSurfaceVariant,
-      fontSize: 12,
+      fontSize: theme.typography.captionM.fontSize, // B56③ fontSize→captionM
     },
     probeStatusContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginTop: 4,
-      marginBottom: 8,
+      marginTop: theme.spacing.xs,
+      marginBottom: theme.spacing.s,
     },
     probeStatusText: {
-      fontSize: 12,
-      marginLeft: 4,
+      fontSize: theme.typography.captionM.fontSize, // B56③ fontSize→captionM
+      marginLeft: theme.spacing.xs,
     },
     probeSuccessText: {
       color: theme.colors.primary,
@@ -33,29 +33,30 @@ export const createStyles = (theme: Theme) => {
       color: theme.colors.error,
     },
     modelsSection: {
-      marginTop: 8,
-      marginBottom: 12,
+      marginTop: theme.spacing.s,
+      marginBottom: theme.spacing.sm,
     },
     modelsSectionLabel: {
-      fontSize: 14,
+      fontSize: theme.typography.uiM.fontSize, // B56③ fontSize→uiM
       fontWeight: '500',
       color: theme.colors.onSurface,
-      marginBottom: 8,
+      marginBottom: theme.spacing.s,
     },
     modelItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 4,
+      paddingVertical: theme.spacing.xs,
     },
     modelDot: {
       width: 6,
       height: 6,
-      borderRadius: 3,
+      // B56②：6×6 圆点 → full（同 28px icon 钮裁定）
+      borderRadius: theme.radius.full,
       backgroundColor: theme.colors.onSurfaceVariant,
-      marginRight: 8,
+      marginRight: theme.spacing.s,
     },
     modelItemText: {
-      fontSize: 14,
+      fontSize: theme.typography.bodyS.fontSize, // B56③ fontSize→bodyS
       color: theme.colors.onSurface,
     },
     buttonsContainer: {
@@ -68,18 +69,18 @@ export const createStyles = (theme: Theme) => {
       flex: 1,
     },
     removeSection: {
-      marginTop: 16,
+      marginTop: theme.spacing.m,
       alignItems: 'center',
     },
     removeDescription: {
-      fontSize: 12,
+      fontSize: theme.typography.captionM.fontSize, // B56③ fontSize→captionM
       color: theme.colors.onSurfaceVariant,
-      marginTop: 4,
+      marginTop: theme.spacing.xs,
     },
     errorText: {
       color: theme.colors.error,
-      fontSize: 12,
-      marginTop: 4,
+      fontSize: theme.typography.captionM.fontSize, // B56③ fontSize→captionM
+      marginTop: theme.spacing.xs,
     },
   });
 };

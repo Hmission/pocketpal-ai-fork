@@ -2,7 +2,7 @@ import React, {useContext, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
 import {Text, TouchableRipple} from 'react-native-paper';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {L10nContext} from '../../utils';
 import {MessageType} from '../../utils/types';
 import {t} from '../../locales';
@@ -56,8 +56,8 @@ export const CompactedBlock: React.FC<CompactedBlockProps> = ({compaction}) => {
 const createStyles = (theme: ReturnType<typeof useTheme>) =>
   StyleSheet.create({
     container: {
-      marginHorizontal: 8,
-      marginVertical: 4,
+      marginHorizontal: theme.spacing.s,
+      marginVertical: theme.spacing.xs,
       borderRadius: 10,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.colors.outline,
@@ -67,24 +67,24 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingHorizontal: 12,
-      paddingVertical: 8,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.s,
     },
     title: {
       flex: 1,
-      fontSize: 12,
+      fontSize: theme.typography.uiS.fontSize, // B56③ fontSize→uiS
       fontWeight: '600',
     },
     chevron: {
-      fontSize: 12,
-      marginLeft: 8,
+      fontSize: theme.typography.captionM.fontSize, // B56③ fontSize→captionM
+      marginLeft: theme.spacing.s,
     },
     summary: {
-      paddingHorizontal: 12,
+      paddingHorizontal: theme.spacing.sm,
       paddingBottom: 10,
     },
     summaryText: {
-      fontSize: 13,
+      fontSize: theme.typography.bodyS.fontSize,
       lineHeight: 19,
     },
   });

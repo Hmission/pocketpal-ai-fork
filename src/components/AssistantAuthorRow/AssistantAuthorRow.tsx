@@ -1,7 +1,7 @@
 import React from 'react';
 import {Text, TouchableOpacity, View} from 'react-native';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 
 import {MessageType} from '../../utils/types';
 import {getModelDisplayName} from '../../utils/modelDisplayNames';

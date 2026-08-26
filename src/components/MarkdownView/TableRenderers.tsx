@@ -14,7 +14,7 @@ import type {
 } from 'react-native-render-html';
 import type {Element} from '@native-html/transient-render-engine';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {createTableStyles} from './tableStyles';
 import {ScrollView} from 'react-native-gesture-handler';
 

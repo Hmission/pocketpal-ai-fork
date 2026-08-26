@@ -10,20 +10,20 @@ export const createStyles = (theme: Theme) =>
     searchWrap: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
-      marginHorizontal: 16,
-      marginBottom: 8,
-      paddingHorizontal: 12,
-      borderRadius: 12,
+      gap: theme.spacing.s,
+      marginHorizontal: theme.spacing.m,
+      marginBottom: theme.spacing.s,
+      paddingHorizontal: theme.spacing.sm,
+      borderRadius: theme.radius.m,
       borderWidth: 1,
       borderColor: theme.colors.outlineVariant,
       backgroundColor: theme.colors.surfaceContainerLow,
     },
     searchInput: {
       flex: 1,
-      height: 44,
+      height: theme.size.minTapTarget,
       color: theme.colors.onSurface,
-      fontSize: 16,
+      fontSize: theme.typography.bodyM.fontSize, // B56③ fontSize→bodyM
       padding: 0,
       // TextInput is not auto-mirrored the way Text is, so this needs the
       // explicit ternary. See rowLabel.
@@ -33,20 +33,20 @@ export const createStyles = (theme: Theme) =>
       flex: 1,
     },
     listContent: {
-      paddingBottom: 24,
+      paddingBottom: theme.spacing.l,
     },
     row: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
       minHeight: 48,
-      paddingVertical: 8,
-      paddingHorizontal: 16,
+      paddingVertical: theme.spacing.s,
+      paddingHorizontal: theme.spacing.m,
     },
     rowLabel: {
       flex: 1,
       color: theme.colors.onSurface,
-      fontSize: 16,
+      fontSize: theme.typography.titleS.fontSize, // B56③ fontSize→titleS
       // 'left' is how "start" is spelled: RN has no textAlign start/end, and
       // auto-mirrors left/right for Text. An isRTL ternary mirrors twice and
       // lands at the end.
@@ -57,9 +57,9 @@ export const createStyles = (theme: Theme) =>
     },
     emptyText: {
       color: theme.colors.onSurfaceVariant,
-      fontSize: 14,
+      fontSize: theme.typography.bodyS.fontSize, // B56③ fontSize→bodyS
       textAlign: 'left',
-      paddingHorizontal: 16,
-      paddingVertical: 16,
+      paddingHorizontal: theme.spacing.m,
+      paddingVertical: theme.spacing.m,
     },
   });

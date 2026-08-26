@@ -1,7 +1,7 @@
 import React from 'react';
 import {View} from 'react-native';
 
-import {useTheme} from '../../../hooks';
+import {useTheme} from '../../../hooks/useTheme';
 import {Button} from '../Button';
 
 import {createStyles} from './styles';

@@ -2,7 +2,7 @@ import type {ReactNode} from 'react';
 import React, {useContext} from 'react';
 import {Animated} from 'react-native';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 
 import {styles} from './styles';
 

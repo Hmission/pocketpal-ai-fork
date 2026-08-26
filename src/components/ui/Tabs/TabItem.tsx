@@ -1,7 +1,7 @@
 import React from 'react';
 import {Text, View} from 'react-native';
 
-import {useTheme} from '../../../hooks';
+import {useTheme} from '../../../hooks/useTheme';
 import {Pressable} from '../primitives/Pressable';
 
 import {createStyles, type TabsSize, type TabsVariant} from './styles';

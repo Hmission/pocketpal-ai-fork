@@ -4,7 +4,7 @@ import {View} from 'react-native';
 import CodeHighlighter from 'react-native-code-highlighter';
 import {atomOneDark} from 'react-syntax-highlighter/dist/esm/styles/hljs';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {CodeBlockHeader} from '../CodeBlockHeader';
 
 import {codeHighlighterPreOverride, createStyles} from './styles';

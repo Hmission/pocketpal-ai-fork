@@ -9,7 +9,7 @@ export const createStyles = (theme: Theme) =>
     content: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: theme.spacing.s,
     },
     message: {
       color: theme.colors.onErrorContainer,

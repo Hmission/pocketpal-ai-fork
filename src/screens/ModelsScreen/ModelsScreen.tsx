@@ -1,12 +1,5 @@
 import React, {useState, useContext, useEffect} from 'react';
-import {
-  FlatList,
-  RefreshControl,
-  Platform,
-  Alert,
-  View,
-  Text,
-} from 'react-native';
+import {FlatList, RefreshControl, Platform, View, Text} from 'react-native';
 
 import {reaction, computed} from 'mobx';
 import {v4 as uuidv4} from 'uuid';
@@ -16,8 +9,15 @@ import * as RNFS from '@dr.pogodin/react-native-fs';
 import {pick, types} from '@react-native-documents/picker';
 import {Portal, Snackbar} from 'react-native-paper';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {infoDialog} from '../../components/ui/InfoDialog';
+
+// B55②：服务器多选列表与文件冲突三选一自系统 Alert → Sheet（
+// SearchableSelectSheet 复用 + Sheet 内嵌动作行）
+import {SearchableSelectSheet} from '../../components/SearchableSelectSheet';
+import {Sheet} from '../../components/Sheet';
+import {Pressable} from '../../components/ui/primitives/Pressable';
 
 import {FABGroup} from './FABGroup';
 import {ModelCard} from './ModelCard';
@@ -64,8 +64,15 @@ export const ModelsScreen: React.FC = observer(() => {
     useState(false);
   const [selectedServerId, setSelectedServerId] = useState<string | null>(null);
 
+  // B55②：服务器多选列表（SearchableSelectSheet）与文件冲突三选一（Sheet 动作行）
+  const [serverPickerVisible, setServerPickerVisible] = useState(false);
+  const [fileConflictResolve, setFileConflictResolve] = useState<
+    ((choice: 'replace' | 'keep' | 'cancel') => void) | null
+  >(null);
+
   const theme = useTheme();
-  const styles = createStyles(theme);
+  const insets = useSafeAreaInsets();
+  const styles = createStyles(theme, insets);
 
   const filters = uiStore.pageStates.modelsScreen.filters;
   const expandedGroups = uiStore.pageStates.modelsScreen.expandedGroups;
@@ -145,13 +152,8 @@ export const ModelsScreen: React.FC = observer(() => {
     if (servers.length === 1) {
       handleOpenServerDetails(servers[0].id);
     } else if (servers.length > 1) {
-      Alert.alert(l10n.settings.manageServers, undefined, [
-        ...servers.map(server => ({
-          text: server.name,
-          onPress: () => handleOpenServerDetails(server.id),
-        })),
-        {text: l10n.common.cancel, style: 'cancel' as const},
-      ]);
+      // B55②：多服务器列表选择 → SearchableSelectSheet（替代系统 Alert 长列表）
+      setServerPickerVisible(true);
     }
   };
 
@@ -221,29 +223,14 @@ export const ModelsScreen: React.FC = observer(() => {
           }
 
           if (await RNFS.exists(permanentPath)) {
+            // B55②：文件冲突三选一 → Sheet 动作行（替代系统 Alert 三按钮），
+            // Promise 语义不变：resolve('replace'|'keep'|'cancel')
             const choice = await new Promise<'replace' | 'keep' | 'cancel'>(
               resolve => {
-                Alert.alert(
-                  l10n.models.fileManagement.fileAlreadyExists,
-                  l10n.models.fileManagement.fileAlreadyExistsMessage,
-                  [
-                    {
-                      text: l10n.models.fileManagement.replace,
-                      onPress: () => resolve('replace'),
-                    },
-                    {
-                      text: l10n.models.fileManagement.keepBoth,
-                      onPress: () => resolve('keep'),
-                    },
-                    {
-                      text: l10n.common.cancel,
-                      onPress: () => resolve('cancel'),
-                      style: 'cancel',
-                    },
-                  ],
-                );
+                setFileConflictResolve(() => resolve);
               },
             );
+            setFileConflictResolve(null);
 
             switch (choice) {
               case 'replace':
@@ -548,6 +535,57 @@ export const ModelsScreen: React.FC = observer(() => {
         }}
         serverId={selectedServerId}
       />
+      {/* B55②：服务器多选列表（SearchableSelectSheet；选中即开详情） */}
+      <SearchableSelectSheet
+        isVisible={serverPickerVisible}
+        onClose={() => setServerPickerVisible(false)}
+        title={l10n.settings.manageServers}
+        searchPlaceholder={l10n.settings.languageSearchPlaceholder}
+        options={serverStore.servers.map(s => ({value: s.id, label: s.name}))}
+        value=""
+        onSelect={handleOpenServerDetails}
+        optionTestIDPrefix="server-picker-option"
+        searchTestID="server-picker-search"
+      />
+      {/* B55②：文件冲突三选一（替换/保留两者/取消，Promise 语义保留） */}
+      <Sheet
+        isVisible={fileConflictResolve !== null}
+        onClose={() => {
+          fileConflictResolve?.('cancel');
+          setFileConflictResolve(null);
+        }}
+        title={l10n.models.fileManagement.fileAlreadyExists}>
+        <Sheet.ScrollView>
+          <Text style={styles.conflictMessage}>
+            {l10n.models.fileManagement.fileAlreadyExistsMessage}
+          </Text>
+          <Pressable
+            testID="conflict-replace-option"
+            accessibilityRole="button"
+            style={styles.conflictRow}
+            onPress={() => fileConflictResolve?.('replace')}>
+            <Text style={styles.conflictRowLabelDanger}>
+              {l10n.models.fileManagement.replace}
+            </Text>
+          </Pressable>
+          <Pressable
+            testID="conflict-keep-option"
+            accessibilityRole="button"
+            style={styles.conflictRow}
+            onPress={() => fileConflictResolve?.('keep')}>
+            <Text style={styles.conflictRowLabel}>
+              {l10n.models.fileManagement.keepBoth}
+            </Text>
+          </Pressable>
+          <Pressable
+            testID="conflict-cancel-option"
+            accessibilityRole="button"
+            style={styles.conflictRow}
+            onPress={() => fileConflictResolve?.('cancel')}>
+            <Text style={styles.conflictRowLabel}>{l10n.common.cancel}</Text>
+          </Pressable>
+        </Sheet.ScrollView>
+      </Sheet>
     </View>
   );
 });

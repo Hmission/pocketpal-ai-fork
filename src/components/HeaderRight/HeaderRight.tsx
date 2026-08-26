@@ -3,7 +3,7 @@ import {Keyboard, TouchableOpacity, View} from 'react-native';
 
 import {observer} from 'mobx-react';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 
 import {
   // ClockFastForwardIcon,
@@ -19,7 +19,7 @@ import {
 import {Menu} from '../Menu';
 import {confirmDialog} from '../ui/ConfirmDialog';
 import {infoDialog} from '../ui/InfoDialog';
-import {styles} from './styles';
+import {createStyles} from './styles';
 
 import {chatSessionStore, uiStore} from '../../store';
 
@@ -36,6 +36,7 @@ import {ChatGenerationSettingsSheet} from '..';
 
 export const HeaderRight: React.FC = observer(() => {
   const theme = useTheme();
+  const styles = createStyles(theme);
   const [menuVisible, setMenuVisible] = React.useState(false);
   // 菜单序列号：每次打开递增，作为 Menu key 强制重建，消除受控竞态残留
   const [menuSeq, setMenuSeq] = React.useState(0);

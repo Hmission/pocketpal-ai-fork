@@ -4,7 +4,7 @@ import {TouchableOpacity, View} from 'react-native';
 import {Text} from 'react-native-paper';
 
 import {ChevronRightIcon, SearchIcon} from '../../assets/icons';
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 
 import {WebSearchResultsSheet} from './WebSearchResultsSheet';
 import {styles} from './styles';

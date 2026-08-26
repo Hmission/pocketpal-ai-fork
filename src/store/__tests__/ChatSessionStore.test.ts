@@ -5,6 +5,7 @@ import {chatSessionRepository} from '../../repositories/ChatSessionRepository';
 
 import {MessageType} from '../../utils/types';
 import {waitFor} from '@testing-library/react-native';
+import {createChatStreamingUpdater} from '../../services/chatStreamingUpdater';
 
 // Use the mock from __mocks__/repositories/ChatSessionRepository.js
 //jest.mock('../../repositories/ChatSessionRepository');
@@ -1227,13 +1228,12 @@ describe('chatSessionStore', () => {
       dateNowSpy = jest.spyOn(Date, 'now').mockImplementation(() => mockTime);
       jest.useFakeTimers();
 
-      // Reset store's internal streaming state
-      (chatSessionStore as any).lastStreamingUpdateTime = 0;
-      (chatSessionStore as any).pendingStreamingUpdate = null;
-      if ((chatSessionStore as any).streamingThrottleTimer) {
-        clearTimeout((chatSessionStore as any).streamingThrottleTimer);
-        (chatSessionStore as any).streamingThrottleTimer = null;
-      }
+      // Reset the streamingUpdater service's throttled slot — the
+      // timer/pending/clock state now lives in its closure (R3-P2),
+      // so recreate the updater (equivalent to the previous white-box
+      // field reset below).
+      (chatSessionStore as any).streamingUpdater =
+        createChatStreamingUpdater(chatSessionStore);
 
       // Create a fresh copy of the message for each test
       testMessage = {

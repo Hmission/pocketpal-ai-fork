@@ -12,43 +12,43 @@ export const createStyles = (theme: Theme) =>
     searchContent: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      gap: 12,
+      paddingHorizontal: theme.spacing.m,
+      paddingVertical: theme.spacing.sm,
+      gap: theme.spacing.sm,
     },
     searchInputContainer: {
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
       backgroundColor: theme.colors.surfaceContainerHigh,
-      borderRadius: 24,
-      paddingHorizontal: 16,
-      paddingVertical: 8,
-      gap: 8,
+      borderRadius: theme.radius.l, // B56① radius 不扩档（镜像 Figma 量表），原值 24 归 l 档
+      paddingHorizontal: theme.spacing.m,
+      paddingVertical: theme.spacing.s,
+      gap: theme.spacing.s,
     },
     searchIcon: {
       opacity: 0.7,
     },
     searchInput: {
       flex: 1,
-      fontSize: 16,
+      fontSize: theme.typography.bodyM.fontSize, // B56③ fontSize→bodyM
       color: theme.colors.onSurface,
       padding: 0,
       margin: 0,
       minHeight: 24,
     },
     clearButton: {
-      padding: 4,
-      borderRadius: 12,
+      padding: theme.spacing.xs,
+      borderRadius: theme.radius.m,
     },
     searchActions: {
       flexDirection: 'row',
-      gap: 8,
+      gap: theme.spacing.s,
     },
 
     closeButton: {
-      padding: 8,
-      borderRadius: 20,
+      padding: theme.spacing.s,
+      borderRadius: theme.radius.l,
       backgroundColor: theme.colors.surfaceContainerHigh,
     },
   });

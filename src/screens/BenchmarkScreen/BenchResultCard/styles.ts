@@ -5,7 +5,7 @@ export const createStyles = (theme: Theme) =>
   StyleSheet.create({
     resultCard: {
       backgroundColor: theme.colors.surface,
-      borderRadius: 16,
+      borderRadius: theme.radius.ml,
       borderWidth: 1,
       borderColor: theme.colors.surfaceVariant,
     },
@@ -13,59 +13,59 @@ export const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'flex-start',
-      marginBottom: 16,
+      marginBottom: theme.spacing.m,
     },
     headerLeft: {
       flex: 1,
-      marginRight: 16,
+      marginRight: theme.spacing.m,
     },
     modelName: {
       color: theme.colors.onSurface,
-      marginBottom: 4,
+      marginBottom: theme.spacing.xs,
       //fontSize: 18,
       //fontWeight: '500',
     },
     modelMeta: {
-      fontSize: 12,
+      fontSize: theme.typography.captionM.fontSize, // B56③ fontSize→captionM
       color: theme.colors.onSurfaceVariant,
     },
     configContainer: {
       borderTopWidth: 1,
       borderBottomWidth: 1,
       borderColor: theme.colors.surfaceVariant,
-      marginVertical: 8,
-      paddingHorizontal: 12,
+      marginVertical: theme.spacing.s,
+      paddingHorizontal: theme.spacing.sm,
     },
     configBar: {
       flexDirection: 'column',
       alignItems: 'flex-start',
-      paddingVertical: 8,
-      gap: 4,
+      paddingVertical: theme.spacing.s,
+      gap: theme.spacing.xs,
     },
     configText: {
-      fontSize: 12,
+      fontSize: theme.typography.captionM.fontSize, // B56③ fontSize→captionM
       color: theme.colors.onSurfaceVariant,
       flex: 1,
     },
     configTextContainer: {
-      gap: 4,
+      gap: theme.spacing.xs,
       width: '100%',
     },
     resultsContainer: {
-      marginBottom: 16,
+      marginBottom: theme.spacing.m,
       backgroundColor: theme.colors.surfaceVariant,
-      borderRadius: 12,
-      padding: 16,
+      borderRadius: theme.radius.m,
+      padding: theme.spacing.m,
     },
     resultRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'stretch',
-      marginBottom: 16,
+      marginBottom: theme.spacing.m,
     },
     resultItem: {
       flex: 1,
-      paddingHorizontal: 8,
+      paddingHorizontal: theme.spacing.s,
     },
     resultValue: {
       // 数字强调（DESIGN_SPEC §2.1 numericM：等宽字体，基准数据专用）
@@ -96,7 +96,7 @@ export const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingTop: 12,
+      paddingTop: theme.spacing.sm,
       borderTopWidth: 1,
       borderColor: theme.colors.surfaceVariant,
     },
@@ -106,61 +106,62 @@ export const createStyles = (theme: Theme) =>
     },
     submitButton: {
       borderColor: theme.colors.primary,
-      borderRadius: 16,
+      borderRadius: theme.radius.ml,
     },
     errorText: {
       color: theme.colors.error,
-      marginTop: 8,
-      fontSize: 12,
+      marginTop: theme.spacing.s,
+      fontSize: theme.typography.captionM.fontSize, // B56③ fontSize→captionM
     },
     submittedText: {
       color: theme.colors.primary,
-      fontSize: 12,
+      fontSize: theme.typography.captionM.fontSize, // B56③ fontSize→captionM
     },
     tooltipContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 4,
+      gap: theme.spacing.xs,
     },
     infoIcon: {
-      fontSize: 14,
+      fontSize: theme.typography.bodyS.fontSize, // B56③ fontSize→bodyS
       opacity: 0.6,
     },
     disabledText: {
       color: theme.colors.onSurfaceVariant,
-      fontSize: 12,
+      fontSize: theme.typography.captionM.fontSize, // B56③ fontSize→captionM
       fontStyle: 'italic',
     },
     shareContainer: {
       alignItems: 'center',
-      gap: 8,
+      gap: theme.spacing.s,
     },
     actionContainer: {
       flex: 1,
       alignItems: 'center',
-      gap: 8,
+      gap: theme.spacing.s,
     },
     shareTextContainer: {
       flex: 1,
-      marginRight: 16,
+      marginRight: theme.spacing.m,
     },
     sharePrompt: {
       color: theme.colors.primary,
       fontWeight: '500',
-      marginBottom: 2,
+      marginBottom: theme.spacing.xxs,
     },
     shareSubtext: {
       color: theme.colors.onSurfaceVariant,
-      fontSize: 11,
+      fontSize: theme.typography.captionS.fontSize, // B56③ fontSize→captionS
     },
     leaderboardLink: {
       color: theme.colors.primary,
       textDecorationLine: 'underline',
     },
     errorContainer: {
-      marginTop: 10,
-      padding: 10,
-      borderRadius: 6,
+      // B56②：10→sm(12)（外层距/卡内边距）/ radius 6→s(8)（小卡档）
+      marginTop: theme.spacing.sm,
+      padding: theme.spacing.sm,
+      borderRadius: theme.radius.s,
       borderWidth: 1,
       backgroundColor: theme.colors.errorContainer,
       borderColor: theme.colors.error,
@@ -182,7 +183,8 @@ export const createStyles = (theme: Theme) =>
       borderColor: theme.colors.error,
     },
     retryButton: {
-      marginTop: 5,
+      // B56②：5→xs(4)（微距）
+      marginTop: theme.spacing.xs,
       alignSelf: 'flex-end',
     },
   });

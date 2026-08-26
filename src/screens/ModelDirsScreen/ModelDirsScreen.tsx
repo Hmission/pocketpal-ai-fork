@@ -6,7 +6,8 @@ import {observer} from 'mobx-react-lite';
 import * as RNFS from '@dr.pogodin/react-native-fs';
 import {pickDirectory} from '@react-native-documents/picker';
 
-import {useTheme, useStaggerEntry} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
+import {useStaggerEntry} from '../../hooks/useStaggerEntry';
 import {infoDialog} from '../../components/ui/InfoDialog';
 import {confirmDialog} from '../../components/ui/ConfirmDialog';
 import {L10nContext} from '../../utils';
@@ -206,7 +207,7 @@ const createStyles = (theme: Theme) =>
     },
     rowBody: {
       flex: 1,
-      gap: 2,
+      gap: theme.spacing.xxs,
     },
     rowTitleLine: {
       flexDirection: 'row',

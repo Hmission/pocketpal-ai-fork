@@ -2,7 +2,7 @@ import React, {useContext} from 'react';
 import {Button, Paragraph, Text} from 'react-native-paper';
 import {modelStore} from '../../store';
 import {Model} from '../../utils/types';
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {View} from 'react-native';
 import {Progress} from '../ui/Progress';
 import {createStyles} from './styles';

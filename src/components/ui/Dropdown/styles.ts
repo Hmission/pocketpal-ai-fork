@@ -39,7 +39,7 @@ export const createStyles = (
 ) => {
   const s = sizeTokens(theme, size);
   const trigger: ViewStyle = {
-    minHeight: 44,
+    minHeight: theme.size.minTapTarget,
     paddingHorizontal: s.paddingHorizontal,
     paddingVertical: s.paddingVertical,
     borderRadius: theme.radius.s,

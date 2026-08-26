@@ -1,7 +1,10 @@
 import {View} from 'react-native';
 import React, {useContext, useState} from 'react';
 
-import {Text, Button, Switch, ActivityIndicator} from 'react-native-paper';
+import {Text, Button} from 'react-native-paper';
+
+import {Switch} from '../ui/Switch';
+import {CircularActivityIndicator} from '../CircularActivityIndicator';
 
 import {Sheet} from '../Sheet/Sheet';
 
@@ -9,7 +12,7 @@ import {submitContentReport} from '../../api/feedback';
 
 import {ChevronDownIcon} from '../../assets/icons';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 
 import {Menu} from '../Menu';
 import {createStyles} from './styles';
@@ -188,8 +191,11 @@ export const ContentReportSheet: React.FC<ContentReportSheetProps> = ({
             </Text>
             <Switch
               value={includeModelInfo && hasActiveModel}
-              onValueChange={hasActiveModel ? setIncludeModelInfo : undefined}
+              onValueChange={setIncludeModelInfo}
               disabled={!hasActiveModel}
+              accessibilityLabel={
+                l10n.components.contentReportSheet.includeModelInfo
+              }
             />
           </View>
           <Text
@@ -220,7 +226,10 @@ export const ContentReportSheet: React.FC<ContentReportSheetProps> = ({
             disabled={isSubmitting}
             style={styles.button}>
             {isSubmitting ? (
-              <ActivityIndicator size="small" />
+              <CircularActivityIndicator
+                size={20}
+                color={theme.colors.primary}
+              />
             ) : (
               l10n.components.contentReportSheet.submit
             )}

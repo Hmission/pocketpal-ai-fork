@@ -3,7 +3,7 @@ import {View} from 'react-native';
 
 import {Button, Text, Icon} from 'react-native-paper';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 
 import {Menu} from '../Menu';
 import {createStyles} from './styles';

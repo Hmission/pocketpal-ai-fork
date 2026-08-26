@@ -1,7 +1,7 @@
 import * as React from 'react';
 import {Animated, StyleSheet, View} from 'react-native';
 
-import {useTheme} from '../../../hooks';
+import {useTheme} from '../../../hooks/useTheme';
 import {useWaveDots, WaveMode, WaveOptions} from './useWaveDots';
 
 /**

@@ -4,7 +4,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {observer} from 'mobx-react';
 
 import {Stepper} from '../../../../components/ui';
-import {useTheme} from '../../../../hooks';
+import {useTheme} from '../../../../hooks/useTheme';
 import {uiStore} from '../../../../store';
 import {L10nContext} from '../../../../utils';
 import {OnboardingSkipButton} from '../OnboardingSkipButton';

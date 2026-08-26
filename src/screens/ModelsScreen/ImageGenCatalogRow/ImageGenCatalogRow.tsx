@@ -3,7 +3,7 @@ import {TouchableOpacity, View} from 'react-native';
 import {Button, Text} from 'react-native-paper';
 import {useNavigation} from '@react-navigation/native';
 
-import {useTheme} from '../../../hooks';
+import {useTheme} from '../../../hooks/useTheme';
 import {L10nContext} from '../../../utils';
 import {ROUTES} from '../../../utils/navigationConstants';
 import {CatalogModel} from '../../../utils/modelCatalog';

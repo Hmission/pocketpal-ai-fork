@@ -7,8 +7,8 @@ import {render, fireEvent} from '@testing-library/react-native';
 import {ChatInput} from '../ChatInput';
 import {UserContext} from '../../../utils';
 
-// Mock the theme hook
-jest.mock('../../../hooks', () => ({
+// Mock the theme hook（R4：桶拆直连后 mock 目标同步为 useTheme 模块）
+jest.mock('../../../hooks/useTheme', () => ({
   useTheme: () => ({
     typography: {
       displayL: {fontSize: 28, lineHeight: 34, fontWeight: '600'},
@@ -31,6 +31,7 @@ jest.mock('../../../hooks', () => ({
       display: {fontSize: 28, lineHeight: 34, fontWeight: '600'},
     },
     radius: {
+      xxs: 2,
       xs: 4,
       s: 6,
       m: 10,
@@ -45,6 +46,24 @@ jest.mock('../../../hooks', () => ({
         inputSmall: 's',
         circle: 'full',
       },
+    },
+    // B56① token 数值对机械替换后补全（等值替换不改变消费面）
+    spacing: {
+      none: 0,
+      xxs: 2,
+      xs: 4,
+      s: 8,
+      sm: 12,
+      m: 16,
+      ml: 20,
+      l: 24,
+      xl: 32,
+      xxl: 40,
+    },
+    // R1：size 域补全（等值于 theme/tokens/size.ts）——本地手工 mock 未从 fixture 派生
+    size: {
+      minTapTarget: 44,
+      controlHeight: 36,
     },
     colors: {
       primary: '#007AFF',
@@ -87,6 +106,16 @@ jest.mock('../../../store', () => ({
     playbackState: {mode: 'idle'},
     openSetupSheet: jest.fn(),
     setAutoSpeak: jest.fn(),
+  },
+  // R4-B：组件改走 barrel 后 mock 需含 imageGenStore（渲染态默认值）
+  imageGenStore: {
+    loading: false,
+    generating: false,
+    chatInlineGenerating: false,
+    modelLoaded: false,
+    dreamliteLoaded: false,
+    pendingPrompt: '',
+    pendingEditSource: null,
   },
 }));
 

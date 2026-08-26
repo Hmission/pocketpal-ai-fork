@@ -10,7 +10,7 @@ export const createStyles = (theme: Theme) => {
   return StyleSheet.create({
     fab: {
       bottom: 0,
-      right: 16,
+      right: theme.spacing.m,
       backgroundColor: theme.colors.background,
       borderColor: theme.colors.outline,
       borderWidth: isDark ? 1 : 0,

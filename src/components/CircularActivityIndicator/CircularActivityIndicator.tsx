@@ -21,16 +21,18 @@ export const CircularActivityIndicator = ({
     // 全局动画规范：Animated.loop 一律 JS driver（切断 NativeAnimatedModule
     // 高频 weak ref 累积源，tombstone_03/04 实锤）。绑定 transform: rotate，
     // JS driver 支持 transform；挂载窗口=sending 态/分页 footer（短窗口）。
-    Animated.loop(
+    const anim = Animated.loop(
       Animated.timing(spinValue, {
         toValue: 1,
         duration: 600,
         easing: Easing.linear,
         useNativeDriver: false,
       }),
-    ).start();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    );
+    anim.start();
+    // B57-④：挂载窗口清理（防 worker 泄漏——循环动画永不停止）
+    return () => anim.stop();
+  }, [spinValue]);
 
   return (
     <Animated.View

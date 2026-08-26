@@ -11,7 +11,7 @@ import {IconSource} from 'react-native-paper/lib/typescript/components/Icon';
 
 import {SubMenu} from '../SubMenu/SubMenu';
 
-import {useTheme} from '../../../hooks';
+import {useTheme} from '../../../hooks/useTheme';
 
 import {createStyles} from './styles';
 

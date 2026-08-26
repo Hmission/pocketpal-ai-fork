@@ -1,7 +1,7 @@
 import React, {useContext, useEffect} from 'react';
 import {StyleSheet, TextInput} from 'react-native';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {OverlayCard} from '../ui/OverlayCard';
 import {L10nContext} from '../../utils';
 import {chatSessionStore, SessionMetaData} from '../../store';
@@ -16,7 +16,7 @@ const createStyles = (theme: Theme) =>
       padding: theme.spacing.s,
       ...theme.typography.bodyS,
       color: theme.colors.onSurface,
-      minHeight: 44,
+      minHeight: theme.size.minTapTarget,
     },
   });
 

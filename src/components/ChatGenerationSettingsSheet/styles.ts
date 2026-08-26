@@ -5,11 +5,11 @@ import {Theme} from '../../utils/types';
 export const createStyles = (theme: Theme) =>
   StyleSheet.create({
     scrollviewContainer: {
-      padding: 16,
+      padding: theme.spacing.m,
     },
     secondaryButtons: {
       flexDirection: 'row',
-      gap: 8,
+      gap: theme.spacing.s,
     },
     actionsContainer: {
       flexDirection: 'row',
@@ -29,7 +29,7 @@ export const createStyles = (theme: Theme) =>
     },
     rightButtons: {
       flexDirection: 'row',
-      gap: 8,
+      gap: theme.spacing.s,
       alignItems: 'center',
       maxWidth: '70%',
     },
@@ -37,12 +37,12 @@ export const createStyles = (theme: Theme) =>
       flex: 1,
     },
     settingsSourceContainer: {
-      marginBottom: 16,
-      paddingHorizontal: 12,
+      marginBottom: theme.spacing.m,
+      paddingHorizontal: theme.spacing.sm,
       borderRadius: theme.radius.s,
     },
     settingsSourceTitle: {
-      marginBottom: 8,
+      marginBottom: theme.spacing.s,
       fontWeight: '500',
     },
   });

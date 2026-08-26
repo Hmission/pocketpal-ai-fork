@@ -4,7 +4,7 @@ import {Text, TextInput as PaperTextInput} from 'react-native-paper';
 import {Controller, useFormContext} from 'react-hook-form';
 
 import type {ParameterDefinition} from '../../types/pal';
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {createStyles} from './styles';
 import {TextInput} from '../TextInput';
 import {Menu} from '../Menu';

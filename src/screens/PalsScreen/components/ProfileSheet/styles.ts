@@ -4,18 +4,18 @@ import {Theme} from '../../../../utils/types';
 export const createStyles = (theme: Theme) =>
   StyleSheet.create({
     content: {
-      padding: 16,
+      padding: theme.spacing.m,
     },
     profileHeader: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 16,
-      marginBottom: 24,
+      gap: theme.spacing.m,
+      marginBottom: theme.spacing.l,
     },
     avatarContainer: {
       width: 64,
       height: 64,
-      borderRadius: 32,
+      borderRadius: theme.radius.xl,
       backgroundColor: theme.colors.primaryContainer,
       alignItems: 'center',
       justifyContent: 'center',
@@ -24,51 +24,51 @@ export const createStyles = (theme: Theme) =>
       flex: 1,
     },
     userName: {
-      fontSize: 18,
+      fontSize: theme.typography.titleM.fontSize, // B56③ fontSize→titleM
       fontWeight: '600',
       color: theme.colors.onSurface,
-      marginBottom: 4,
+      marginBottom: theme.spacing.xs,
     },
     userEmail: {
-      fontSize: 14,
+      fontSize: theme.typography.bodyS.fontSize, // B56③ fontSize→bodyS
       color: theme.colors.onSurfaceVariant,
     },
     divider: {
-      marginVertical: 16,
+      marginVertical: theme.spacing.m,
     },
     actions: {
-      gap: 16,
+      gap: theme.spacing.m,
     },
     sectionTitle: {
-      fontSize: 16,
+      fontSize: theme.typography.titleS.fontSize, // B56③ fontSize→titleS
       fontWeight: '600',
       color: theme.colors.onSurface,
-      marginBottom: 8,
+      marginBottom: theme.spacing.s,
     },
     actionButton: {
       borderColor: theme.colors.outline,
-      borderRadius: 12,
+      borderRadius: theme.radius.m,
     },
     signInPrompt: {
       alignItems: 'center',
-      paddingVertical: 32,
-      gap: 16,
+      paddingVertical: theme.spacing.xl,
+      gap: theme.spacing.m,
     },
     signInTitle: {
-      fontSize: 20,
+      fontSize: theme.typography.headlineH3.fontSize, // B56③ 20→headlineH3（补档归档，等值）
       fontWeight: '600',
       color: theme.colors.onSurface,
       textAlign: 'center',
     },
     signInDescription: {
-      fontSize: 14,
+      fontSize: theme.typography.bodyS.fontSize, // B56③ fontSize→bodyS
       color: theme.colors.onSurfaceVariant,
       textAlign: 'center',
       lineHeight: 20,
-      paddingHorizontal: 16,
+      paddingHorizontal: theme.spacing.m,
     },
     signInButton: {
-      marginTop: 8,
-      paddingHorizontal: 32,
+      marginTop: theme.spacing.s,
+      paddingHorizontal: theme.spacing.xl,
     },
   });

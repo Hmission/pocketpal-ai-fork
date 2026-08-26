@@ -35,6 +35,7 @@ import {imageGenTaskRepository} from '../repositories/ImageGenTaskRepository';
 import {engineMutex} from './engineMutex';
 import {nightTaskRegistry} from './nightTaskRegistry';
 import {perfRecorder} from '../services/perf/perfRecorder';
+import {promptWriter} from '../services/promptWriter';
 
 const VideoTaskService = NativeModules.VideoTaskService;
 // 电池优化豁免引导进程内只发起一次（§7.1 策略 3）：首次长任务未豁免时弹系统弹窗，
@@ -753,6 +754,11 @@ class ImageGenStore {
         console.warn('[DreamLite] unload before sd load failed:', e);
       }
     }
+    // 单槽 v2 联动（B60）：生图加载前确保管家引擎就绪（幂等并发安全）。
+    // 语义：未装管家 = idle 正常态不阻断（UI 占位符决策链已标注「提示词原样
+    // 使用」）；加载失败 = promptWriter 内部已落 error 标注——不 rollback 已获
+    // 的 image 槽（野生内存策略），显式降级而非硬闸门。
+    await promptWriter.ensureLoaded();
     // 互斥：加载 sd 前确保 chat 引擎已释放（自动调 modelStore.releaseContext）
     await engineMutex.acquire('image');
     runInAction(() => {
@@ -945,6 +951,9 @@ class ImageGenStore {
         console.warn('[DreamLite] unload SD failed:', e);
       }
     }
+    // 单槽 v2 联动（B60）：DreamLite 加载前同样前置管家就绪（幂等；
+    // 失败行为同上——不阻断生图、由 promptWriter 内部落状态标注）。
+    await promptWriter.ensureLoaded();
     // 互斥获取（复查 2026-08-20）：释放超时/失败 → 显式失败（落 error），
     // 不再无限挂起——此前 acquire 在 try 外，reject 会穿透到 handleGenerate
     // 造成「无失败卡 + taskKind 卡死」的静默断链。

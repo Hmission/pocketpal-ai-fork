@@ -11,8 +11,8 @@ export const createStyles = (theme: Theme, insets: EdgeInsets) =>
     },
     actionBar: {
       flexDirection: 'row',
-      paddingHorizontal: 8,
-      paddingVertical: 8,
+      paddingHorizontal: theme.spacing.s,
+      paddingVertical: theme.spacing.s,
       paddingBottom: Math.max(insets.bottom, 12),
       justifyContent: 'space-around',
       alignItems: 'center',
@@ -22,16 +22,16 @@ export const createStyles = (theme: Theme, insets: EdgeInsets) =>
       flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
-      paddingVertical: 8,
-      paddingHorizontal: 4,
-      borderRadius: 12,
+      paddingVertical: theme.spacing.s,
+      paddingHorizontal: theme.spacing.xs,
+      borderRadius: theme.radius.m,
     },
     iconContainer: {
-      marginBottom: 4,
-      padding: 4,
+      marginBottom: theme.spacing.xs,
+      padding: theme.spacing.xs,
     },
     actionLabel: {
-      fontSize: 11,
+      fontSize: theme.typography.captionS.fontSize, // B56③ fontSize→captionS
       fontWeight: '500',
       color: theme.colors.onSurfaceVariant,
       textAlign: 'center',

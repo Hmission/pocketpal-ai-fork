@@ -8,84 +8,87 @@ export const createStyles = (theme: Theme) =>
       justifyContent: 'space-between',
     },
     list: {
-      padding: 16,
-      paddingBottom: 100,
+      padding: theme.spacing.m,
+      // R2：100 静态底缘 → xxl（40）。核实结论：bottomOffset={100} 为键盘补偿（KeyboardAwareScrollView），
+      // 与内容底缘留白是两件事——Sheet 92% 底缘无遮挡物，40 留白足够（完整分区列入下批）
+      paddingBottom: theme.spacing.xxl,
     },
     divider: {
-      marginVertical: 12,
+      marginVertical: theme.spacing.sm,
     },
     modelAuthor: {
-      fontSize: 14,
+      fontSize: theme.typography.bodyS.fontSize, // B56③ fontSize→bodyS
       color: theme.colors.onSurfaceVariant,
-      marginBottom: 2,
+      marginBottom: theme.spacing.xxs,
     },
     modelNameContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginBottom: 4,
+      marginBottom: theme.spacing.xs,
       flexWrap: 'wrap',
     },
     modelName: {
-      fontSize: 16,
+      fontSize: theme.typography.titleS.fontSize, // B56③ fontSize→titleS
       fontWeight: '500',
       color: theme.colors.onSurface,
     },
     statsContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 12,
+      gap: theme.spacing.sm,
     },
     statItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 4,
+      gap: theme.spacing.xs,
     },
     statText: {
-      fontSize: 12,
+      fontSize: theme.typography.captionM.fontSize, // B56③ fontSize→captionM
       color: theme.colors.onSurfaceVariant,
     },
     noResultsText: {
       textAlign: 'center',
-      marginTop: 20,
-      fontSize: 16,
+      marginTop: theme.spacing.ml,
+      fontSize: theme.typography.bodyM.fontSize, // B56③ fontSize→bodyM
       color: theme.colors.onSurfaceVariant,
     },
     loadingMoreText: {
       textAlign: 'center',
-      padding: 16,
-      fontSize: 14,
+      padding: theme.spacing.m,
+      fontSize: theme.typography.bodyS.fontSize, // B56③ fontSize→bodyS
       color: theme.colors.onSurfaceVariant,
     },
     gatedChipText: {
-      fontSize: 11,
+      fontSize: theme.typography.captionS.fontSize, // B56③ fontSize→captionS
     },
     emptyStateContainer: {
       alignItems: 'center',
       justifyContent: 'center',
-      marginTop: 20,
-      marginBottom: 20,
-      padding: 16,
+      marginTop: theme.spacing.ml,
+      marginBottom: theme.spacing.ml,
+      padding: theme.spacing.m,
       borderWidth: 1,
       borderColor: theme.colors.outline,
-      borderRadius: 8,
+      borderRadius: theme.radius.s,
       backgroundColor: theme.colors.surfaceVariant,
       width: '90%',
       alignSelf: 'center',
     },
     errorText: {
       color: theme.colors.error,
-      marginTop: 8,
+      marginTop: theme.spacing.s,
     },
     errorHintText: {
       color: theme.colors.onSurfaceVariant,
-      marginTop: 8,
+      marginTop: theme.spacing.s,
       textAlign: 'center',
-      fontSize: 14,
+      fontSize: theme.typography.bodyS.fontSize, // B56③ fontSize→bodyS
       fontStyle: 'italic',
-      paddingHorizontal: 20,
+      paddingHorizontal: theme.spacing.ml,
     },
     disableTokenButton: {
-      marginTop: 10,
+      // B56②：10→sm(12)（外层距）
+      marginTop: theme.spacing.sm,
       alignSelf: 'center',
     },
   });

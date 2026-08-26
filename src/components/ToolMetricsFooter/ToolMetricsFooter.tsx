@@ -3,7 +3,7 @@ import {View} from 'react-native';
 
 import {Text} from 'react-native-paper';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {L10nContext} from '../../utils';
 import {t} from '../../locales';
 import {AgentToolCallMetrics} from '../../utils/types';

@@ -12,36 +12,37 @@ export const createStyles = (theme: Theme) =>
       flex: 1,
     },
     card: {
-      margin: 16,
+      margin: theme.spacing.m,
       backgroundColor: theme.colors.surface,
     },
     title: {
-      marginBottom: 16,
+      marginBottom: theme.spacing.m,
       textAlign: 'center',
     },
     modelSelectorContent: {
       width: '100%',
       justifyContent: 'flex-start',
-      marginBottom: 16,
+      marginBottom: theme.spacing.m,
     },
     loadingContainer: {
       alignItems: 'center',
       justifyContent: 'center',
-      padding: 20,
+      padding: theme.spacing.ml,
     },
     loadingText: {
-      marginTop: 10,
+      // B56②：10→sm(12)（外层距）
+      marginTop: theme.spacing.sm,
       color: theme.colors.onSurfaceVariant,
     },
     warning: {
       color: theme.colors.error,
       textAlign: 'center',
-      marginVertical: 20,
+      marginVertical: theme.spacing.ml,
     },
     optionsHeader: {
       fontWeight: 'bold',
-      marginTop: 16,
-      marginBottom: 8,
+      marginTop: theme.spacing.m,
+      marginBottom: theme.spacing.s,
     },
     radioItem: {
       paddingVertical: 0,
@@ -51,78 +52,79 @@ export const createStyles = (theme: Theme) =>
     },
     testDescription: {
       color: theme.colors.onSurfaceVariant,
-      fontSize: 13,
-      marginBottom: 12,
+      fontSize: theme.typography.bodyS.fontSize,
+      marginBottom: theme.spacing.sm,
     },
     optionsCard: {
-      marginVertical: 12,
-      padding: 12,
+      marginVertical: theme.spacing.sm,
+      padding: theme.spacing.sm,
       backgroundColor: theme.colors.surfaceVariant,
-      borderRadius: 8,
+      borderRadius: theme.radius.s,
     },
     optionBlock: {
-      marginBottom: 12,
+      marginBottom: theme.spacing.sm,
     },
     optionRow: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: 12,
+      marginBottom: theme.spacing.sm,
     },
     nPredictInput: {
       width: 100,
       height: 40,
     },
     runButton: {
-      marginTop: 8,
+      marginTop: theme.spacing.s,
     },
     resultsContainer: {
-      marginTop: 16,
+      marginTop: theme.spacing.m,
     },
     resultCard: {
-      marginBottom: 16,
+      marginBottom: theme.spacing.m,
     },
     resultText: {
       fontFamily: 'monospace',
-      fontSize: 14,
+      fontSize: theme.typography.bodyS.fontSize, // B56③ fontSize→bodyS
       lineHeight: 20,
     },
     streamingText: {
       fontFamily: 'monospace',
-      fontSize: 14,
+      fontSize: theme.typography.bodyS.fontSize, // B56③ fontSize→bodyS
       lineHeight: 20,
-      marginTop: 10,
+      // B56②：10→sm(12)（外层距）
+      marginTop: theme.spacing.sm,
     },
     errorText: {
       color: theme.colors.error,
       fontFamily: 'monospace',
-      fontSize: 14,
+      fontSize: theme.typography.bodyS.fontSize, // B56③ fontSize→bodyS
     },
     divider: {
-      marginVertical: 12,
+      marginVertical: theme.spacing.sm,
     },
     sectionTitle: {
       fontWeight: 'bold',
-      marginBottom: 8,
+      marginBottom: theme.spacing.s,
     },
     codeBlock: {
       fontFamily: 'monospace',
-      fontSize: 12,
+      fontSize: theme.typography.captionM.fontSize, // B56③ fontSize→captionM
       backgroundColor: theme.colors.surfaceVariant,
-      padding: 8,
-      borderRadius: 4,
+      padding: theme.spacing.s,
+      borderRadius: theme.radius.xs,
     },
     testOptionsContainer: {
-      marginVertical: 12,
-      padding: 8,
+      marginVertical: theme.spacing.sm,
+      padding: theme.spacing.s,
       backgroundColor: theme.colors.surfaceVariant,
-      borderRadius: 8,
+      borderRadius: theme.radius.s,
     },
     optionLabel: {
-      marginBottom: 8,
+      marginBottom: theme.spacing.s,
       fontWeight: 'bold',
     },
     jinjaOption: {
-      marginTop: 12,
+      marginTop: theme.spacing.sm,
     },
   });

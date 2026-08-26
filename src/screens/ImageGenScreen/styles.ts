@@ -6,17 +6,47 @@ export const createStyles = (theme: any) =>
   StyleSheet.create({
     container: {flex: 1, backgroundColor: theme.colors.background},
     // D1：预览区顶着顶栏，去顶部 padding；左右/下保留
-    content: {paddingHorizontal: 16, paddingBottom: 16, gap: 12},
+    content: {
+      paddingHorizontal: theme.spacing.m,
+      paddingBottom: theme.spacing.m,
+      gap: theme.spacing.sm,
+    },
     card: {
       backgroundColor: theme.colors.surface,
       borderRadius: theme.radius[theme.shapeRoles.card],
-      padding: 12,
-      gap: 10,
+      padding: theme.spacing.sm,
+      gap: theme.spacing.sm,
     },
     cardTitle: {
       ...theme.typography.titleS,
       fontWeight: '600',
       color: theme.colors.onSurface,
+    },
+    // 2026-08-26 提示词卡折叠头：单行（标签 + 摘要 + token 计数），出图按钮一屏可见
+    collapseHead: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.s,
+    },
+    collapseHeadLabel: {
+      ...theme.typography.uiS,
+      color: theme.colors.primary,
+      fontWeight: '600',
+    },
+    collapseHeadSummary: {
+      ...theme.typography.uiS,
+      color: theme.colors.onSurfaceVariant,
+      flex: 1,
+    },
+    // 2026-08-26 底部吸底操作条（GenActionBar）：surface 实底 + hairline 顶分隔
+    //（同聊天输入条设计语言；paddingBottom 安全区由编排层动态补）
+    bottomBar: {
+      backgroundColor: theme.colors.surface,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.colors.outline,
+      paddingHorizontal: theme.spacing.m,
+      paddingTop: theme.spacing.s,
+      paddingBottom: theme.spacing.s,
     },
     hint: {...theme.typography.captionM, color: theme.colors.onSurfaceVariant},
     modelChip: {
@@ -25,9 +55,9 @@ export const createStyles = (theme: any) =>
       justifyContent: 'space-between',
       backgroundColor: theme.colors.surface,
       borderRadius: theme.radius[theme.shapeRoles.pill],
-      paddingHorizontal: 14,
-      paddingVertical: 10,
-      gap: 8,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.s,
+      gap: theme.spacing.s,
     },
     modelChipText: {
       flex: 1,
@@ -41,13 +71,13 @@ export const createStyles = (theme: any) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: 8,
+      gap: theme.spacing.s,
     },
     modelChipStatus: {...theme.typography.uiS, color: theme.colors.primary},
     // 模型胶囊内快速加载按钮（未加载时显示，不展开下拉）
     chipLoadBtn: {
-      paddingHorizontal: 12,
-      paddingVertical: 5,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xs,
       borderRadius: theme.radius[theme.shapeRoles.pill],
       backgroundColor: theme.colors.primary,
     },
@@ -60,43 +90,45 @@ export const createStyles = (theme: any) =>
     // 无瓷底——BannerBar 自身语义色 wash 透出（大王裁定：不要灰色底）
     bannerOverlay: {
       position: 'absolute',
-      top: 8,
-      left: 8,
-      right: 8,
+      top: theme.spacing.s,
+      left: theme.spacing.s,
+      right: theme.spacing.s,
       zIndex: 10,
       borderRadius: theme.radius.m,
       overflow: 'hidden',
       elevation: 4,
+      // B56②豁免：shadow token dark 绑定白不适配（登记评审）
       shadowColor: '#000',
       shadowOpacity: 0.12,
       shadowRadius: 8,
       shadowOffset: {width: 0, height: 2},
     },
     // 信息条被横幅顶下：横幅显示期间不与其重叠（B58：spacing 表达式 = banner 高 40 + 边距 12）
-    infoOverlayPushed: {top: 52},
+    infoOverlayPushed: {top: theme.spacing.xxl + theme.spacing.sm},
     dropPanel: {
-      marginTop: 6,
+      marginTop: theme.spacing.xs,
       backgroundColor: theme.colors.surface,
       borderRadius: theme.radius[theme.shapeRoles.surface],
-      padding: 12,
-      gap: 8,
+      padding: theme.spacing.sm,
+      gap: theme.spacing.s,
       // 锚定下拉：盖在后续内容之上
       elevation: 8,
+      // B56②豁免：shadow token dark 绑定白不适配（登记评审）
       shadowColor: '#000',
       shadowOpacity: 0.2,
       shadowRadius: 8,
       shadowOffset: {width: 0, height: 4},
     },
     modelRow: {
-      paddingVertical: 10,
-      paddingHorizontal: 10,
+      paddingVertical: theme.spacing.s,
+      paddingHorizontal: theme.spacing.sm,
       // 与浮层面板（dropPanelAbs）同圆角：选中描边视觉与整卡一致（2026-08-26 大王）
       borderRadius: theme.radius[theme.shapeRoles.surface],
       backgroundColor: theme.colors.surface,
       flexDirection: 'row',
       alignItems: 'center',
     },
-    modelRowMain: {flex: 1, paddingRight: 8},
+    modelRowMain: {flex: 1, paddingRight: theme.spacing.s},
     modelRowSelected: {borderWidth: 1, borderColor: theme.colors.primary},
     // 本机不可用行：全行灰置（叠加在 modelRow 上）
     modelRowIncompat: {opacity: 0.45},
@@ -104,13 +136,13 @@ export const createStyles = (theme: any) =>
     modelNote: {
       ...theme.typography.captionS,
       color: theme.colors.onSurfaceVariant,
-      marginTop: 2,
+      marginTop: theme.spacing.xxs,
     },
     // 行内加载/卸载按钮（操作就近，状态可见；卸载需二次确认）
     rowActionBtn: {
       minWidth: 56,
-      paddingVertical: 6,
-      paddingHorizontal: 10,
+      paddingVertical: theme.spacing.xs,
+      paddingHorizontal: theme.spacing.sm,
       borderRadius: theme.radius[theme.shapeRoles.inputSmall],
       alignItems: 'center',
       backgroundColor: theme.colors.primary,
@@ -141,15 +173,17 @@ export const createStyles = (theme: any) =>
     uploadBig: {
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 6,
+      gap: theme.spacing.s,
       borderWidth: 1.5,
       borderStyle: 'dashed',
       borderColor: theme.colors.outline,
       borderRadius: theme.radius.m,
-      paddingHorizontal: 32,
-      paddingVertical: 28,
+      paddingHorizontal: theme.spacing.xl,
+      // R5 裁定：28 → l+xs（24+4=28 等值表达式，spacing 表内语义化）
+      paddingVertical: theme.spacing.l + theme.spacing.xs,
     },
     uploadBigIcon: {
+      // B56③ 豁免：40 为「+」字形尺寸（icon 非文本排版），不入 typography 档（同 audioPlayBigIcon 26 字形）
       fontSize: 40,
       color: theme.colors.primary,
       fontWeight: '300',
@@ -168,41 +202,27 @@ export const createStyles = (theme: any) =>
       bottom: 10,
       backgroundColor: withOpacity(theme.colors.info, 0.9),
       borderRadius: theme.radius.s,
-      paddingHorizontal: 12,
-      paddingVertical: 6,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xs,
     },
     uploadFabText: {
       ...theme.typography.uiS,
       color: theme.colors.onInfo,
       fontWeight: '600',
     },
-    genOverlay: {
-      ...StyleSheet.absoluteFillObject,
-      // 浅色圆角（与卡片设计语言统一；助手气泡点缀色 + 95% 不透明）：出图盖住预览区
-      backgroundColor: theme.colors.assistantBubbleBackground + 'F2',
-      borderRadius: theme.radius.s,
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: 16,
-      gap: 8,
-    },
-    genOverlayEdit: {
-      // 编辑态：更低不透明度，底图可见
-      backgroundColor: theme.colors.assistantBubbleBackground + 'A6',
-    },
     // B57：三点波浪容器保留（AudioWorkshopTab 包 ui/WaveDots）；
     // genDot 单点样式随迁删除（圆点渲染归一组件）
     genDotsRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: theme.spacing.s,
       height: 32,
     },
     genOverlayTitle: {
       ...theme.typography.uiM,
       color: theme.colors.onSurface,
       fontWeight: '600',
-      marginTop: 4,
+      marginTop: theme.spacing.xs,
     },
     overlayText: {
       ...theme.typography.captionS,
@@ -213,18 +233,19 @@ export const createStyles = (theme: any) =>
       color: theme.colors.onSurfaceVariant,
     },
     // 任务化预览页（running 空白进度页 / failed 报错页）：与图片页同规格方形容器
-    // padding 16→6：跑分面板（PerfPanel）向预览图宽度靠拢「更宽一些」，
-    // 仍不超出预览卡片宽度（面板 = pageW-12 < 预览图 pageW）；
-    // 缩字 + 加宽双管齐下，手机端一行内容不再被裁切。
+    // 2026-08-26 容器自适应（根治顶部被切）：去 overflow hidden + 顶对齐 + minHeight 保底——
+    // PerfPanel 默认展开（v1.2 裁定）时内容超高不再双向裁切，自然向下生长。
     taskPage: {
       aspectRatio: 1,
+      minHeight: 240,
       borderRadius: theme.radius.s,
       backgroundColor: theme.colors.surface,
       alignItems: 'center',
-      justifyContent: 'center',
-      padding: 6,
-      gap: 8,
-      overflow: 'hidden',
+      // 内容顶部对齐（原 center：超高时上下对称裁剪 → 顶部 WaveDots/标题被切）
+      justifyContent: 'flex-start',
+      // 紧凑族（perfPanel/audioHistoryCard 同语）：6→xs
+      padding: theme.spacing.xs,
+      gap: theme.spacing.s,
     },
     failedTitle: {
       ...theme.typography.uiM,
@@ -236,11 +257,15 @@ export const createStyles = (theme: any) =>
       color: theme.colors.onSurfaceVariant,
       textAlign: 'center',
     },
-    failedBtns: {flexDirection: 'row', gap: 8, marginTop: 8},
+    failedBtns: {
+      flexDirection: 'row',
+      gap: theme.spacing.s,
+      marginTop: theme.spacing.s,
+    },
     failedBtn: {
       alignItems: 'center',
-      paddingHorizontal: 14,
-      paddingVertical: 8,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.s,
       borderRadius: theme.radius.s,
       backgroundColor: theme.colors.primary,
     },
@@ -251,8 +276,8 @@ export const createStyles = (theme: any) =>
     },
     failedBtnGhost: {
       alignItems: 'center',
-      paddingHorizontal: 14,
-      paddingVertical: 8,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.s,
       borderRadius: theme.radius.s,
       borderWidth: 1,
       borderColor: theme.colors.outline,
@@ -261,11 +286,11 @@ export const createStyles = (theme: any) =>
       ...theme.typography.uiS,
       color: theme.colors.onSurface,
     },
-    actionRow: {flexDirection: 'row', gap: 8},
+    actionRow: {flexDirection: 'row', gap: theme.spacing.s},
     actionBtn: {
       flex: 1,
       alignItems: 'center',
-      paddingVertical: 8,
+      paddingVertical: theme.spacing.s,
       borderRadius: theme.radius.s,
       backgroundColor: theme.colors.surface,
     },
@@ -295,10 +320,11 @@ export const createStyles = (theme: any) =>
       color: theme.colors.onDanger,
       fontWeight: '600',
     },
-    // 反推紫 #6a1b9a（v4 登记，IMAGEGEN_UI_SPEC §2；与族徽章紫 #8e24aa 区分）
-    actionCaption: {backgroundColor: '#6a1b9a'},
+    // 反推紫（IMAGEGEN_UI_SPEC §2；B56③ 登记为 theme.colors.imageInsight）
+    actionCaption: {backgroundColor: theme.colors.imageInsight},
     actionTextOnCaption: {
       ...theme.typography.uiS,
+      // 紫底白字：反推紫底上的恒定白前景（深浅模式均白，§12.6 豁免）
       color: '#ffffff',
       fontWeight: '600',
     },
@@ -306,7 +332,7 @@ export const createStyles = (theme: any) =>
     // v5 产物区整卡切换：反推提示词全卡（占满结果区，banner + 主体 + 操作行）
     captionFullPage: {
       aspectRatio: 1,
-      padding: 16,
+      padding: theme.spacing.m,
       justifyContent: 'space-between',
     },
     captionFullBody: {
@@ -314,49 +340,50 @@ export const createStyles = (theme: any) =>
       backgroundColor: theme.colors.surface,
       borderWidth: 1,
       borderColor: theme.colors.outline,
-      padding: 10,
+      padding: theme.spacing.sm,
     },
     captionCard: {
-      margin: 10,
+      margin: theme.spacing.sm,
       borderRadius: theme.radius.s,
       backgroundColor: theme.colors.surface,
       borderWidth: 1,
       borderColor: theme.colors.outline,
-      padding: 10,
+      padding: theme.spacing.sm,
     },
     captionCardTitle: {
       ...theme.typography.uiS,
-      color: '#6a1b9a',
+      // 反推紫（B56③ 已登记 theme.colors.imageInsight）
+      color: theme.colors.imageInsight,
       fontWeight: '700',
     },
     captionCardBody: {
       ...theme.typography.bodyS,
       color: theme.colors.onSurface,
-      marginTop: 4,
+      marginTop: theme.spacing.xs,
     },
     captionCardHint: {
       ...theme.typography.captionS,
       color: theme.colors.outline,
-      marginTop: 4,
+      marginTop: theme.spacing.xs,
       textAlign: 'right',
     },
-    // 上传图反推 FAB（避开「重新上传」bottom 10 → B58：spacing 表达式 40+4=44；
-    // 颜色为反推紫（IMAGEGEN_UI_SPEC §2 登记语义，随 B56 上收 token）
+    // 上传图反推 FAB（避开「重新上传」bottom 10 → B58：spacing 表达式 40+4=44）
+    // 反推紫已登记 theme.colors.imageInsight（B56③）
     captionFab: {
       bottom: theme.spacing.xxl + theme.spacing.xs,
-      backgroundColor: '#6a1b9a',
+      backgroundColor: theme.colors.imageInsight,
     },
     // ---- 音频工坊（AUDIO_UI_SPEC v1）----
     audioSegBar: {
       flexDirection: 'row',
-      gap: 8,
+      gap: theme.spacing.s,
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.outline,
-      paddingBottom: 8,
+      paddingBottom: theme.spacing.s,
     },
     audioSeg: {
-      paddingHorizontal: 14,
-      paddingVertical: 6,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xs,
       borderRadius: theme.radius[theme.shapeRoles.pill],
     },
     audioSegActive: {
@@ -371,20 +398,20 @@ export const createStyles = (theme: any) =>
       fontWeight: '700',
     },
     audioResult: {
-      padding: 10,
+      padding: theme.spacing.sm,
       borderRadius: theme.radius.s,
       backgroundColor: theme.colors.surface,
       borderWidth: 1,
       borderColor: theme.colors.outline,
-      gap: 6,
+      gap: theme.spacing.s,
     },
     /** B36：结果区三态整卡（running 波浪 / failed 报错页居中布局，对齐生图 taskPage 语义） */
     audioResultStage: {
       minHeight: 150,
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 8,
-      paddingVertical: 14,
+      gap: theme.spacing.s,
+      paddingVertical: theme.spacing.sm,
     },
     /** B36：历史卡选中态（结果区联动高亮，对齐生图相册缩略图选中语义） */
     audioHistoryCardActive: {
@@ -395,10 +422,14 @@ export const createStyles = (theme: any) =>
       ...theme.typography.bodyS,
       color: theme.colors.onSurfaceVariant,
     },
-    audioResultBtns: {flexDirection: 'row', gap: 8, marginTop: 4},
+    audioResultBtns: {
+      flexDirection: 'row',
+      gap: theme.spacing.s,
+      marginTop: theme.spacing.xs,
+    },
     audioBtn: {
-      paddingHorizontal: 12,
-      paddingVertical: 6,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xs,
       borderRadius: theme.radius.s,
       alignItems: 'center',
     },
@@ -408,7 +439,7 @@ export const createStyles = (theme: any) =>
     audioBtnDelete: {backgroundColor: theme.colors.danger},
     audioBtnModel: {backgroundColor: theme.colors.primary},
     advancedToggle: {
-      paddingVertical: 6,
+      paddingVertical: theme.spacing.xs,
       alignSelf: 'flex-start',
     },
     advancedToggleText: {
@@ -417,8 +448,8 @@ export const createStyles = (theme: any) =>
       fontWeight: '600',
     },
     advancedBox: {
-      gap: 8,
-      padding: 10,
+      gap: theme.spacing.s,
+      padding: theme.spacing.sm,
       borderRadius: theme.radius.s,
       backgroundColor: theme.colors.surface,
       borderWidth: 1,
@@ -435,25 +466,27 @@ export const createStyles = (theme: any) =>
     },
     audioBtnText: {
       ...theme.typography.uiS,
+      // 多彩色底（success/info/danger/primary）共用白字：无单一 onX token 可映射
+      // （onPrimary 为深棕）——B56②登记评审，保持字面量
       color: '#ffffff',
       fontWeight: '600',
     },
     /** B35：音频历史横条（B38 方形卡：对齐生图相册 72px 方形缩略图，点击加载预览窗口） */
     audioHistoryStrip: {
-      gap: 8,
-      paddingVertical: 2,
+      gap: theme.spacing.s,
+      paddingVertical: theme.spacing.xxs,
     },
     audioHistoryCard: {
       width: 72,
       height: 72,
-      padding: 6,
+      padding: theme.spacing.xs,
       borderRadius: theme.radius.s,
       backgroundColor: theme.colors.surface,
       borderWidth: 1,
       borderColor: theme.colors.outline,
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 2,
+      gap: theme.spacing.xxs,
     },
     audioHistoryIcon: {
       fontSize: 20,
@@ -463,7 +496,8 @@ export const createStyles = (theme: any) =>
       color: theme.colors.onSurfaceVariant,
       textAlign: 'center',
     },
-    audioComposer: {gap: 10},
+    // B56②：10→sm(12)（区块内 gap）
+    audioComposer: {gap: theme.spacing.sm},
     /** B33：生成输入框单行视觉；B38：默认两行（minHeight 66——怕用户找不到输入处） */
     audioGenInput: {minHeight: 66, maxHeight: 110},
     /** B38：播放器预览窗口（方形大卡，对齐生图预览窗口规格） */
@@ -472,22 +506,23 @@ export const createStyles = (theme: any) =>
       backgroundColor: theme.colors.surface,
       borderWidth: 1,
       borderColor: theme.colors.outline,
-      padding: 14,
-      gap: 10,
+      padding: theme.spacing.m,
+      gap: theme.spacing.sm,
       minHeight: 230,
       justifyContent: 'center',
     },
-    audioPlayerCenter: {alignItems: 'center', gap: 8},
+    audioPlayerCenter: {alignItems: 'center', gap: theme.spacing.s},
     audioPlayBig: {
       width: 64,
       height: 64,
-      borderRadius: 32,
+      borderRadius: theme.radius.xl,
       backgroundColor: theme.colors.primary,
       alignItems: 'center',
       justifyContent: 'center',
     },
     audioPlayBigIcon: {
       fontSize: 26,
+      // primary 底 icon：现状白字（onPrimary 为深棕字）——B56②登记评审，保持字面量
       color: '#ffffff',
       fontWeight: '700',
     },
@@ -501,8 +536,8 @@ export const createStyles = (theme: any) =>
       ...theme.typography.captionS,
       color: theme.colors.onSurfaceVariant,
     },
-    audioTimeline: {gap: 2},
-    audioSlider: {width: '100%', height: 36},
+    audioTimeline: {gap: theme.spacing.xxs},
+    audioSlider: {width: '100%', height: theme.size.controlHeight},
     audioTimeRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
@@ -515,12 +550,16 @@ export const createStyles = (theme: any) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: 8,
+      gap: theme.spacing.s,
     },
-    audioVoiceRow: {flexDirection: 'row', flexWrap: 'wrap', gap: 8},
+    audioVoiceRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: theme.spacing.s,
+    },
     audioVoiceChip: {
-      paddingHorizontal: 10,
-      paddingVertical: 6,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xs,
       borderRadius: theme.radius[theme.shapeRoles.pill],
       backgroundColor: theme.colors.surface,
       borderWidth: 1,
@@ -542,7 +581,7 @@ export const createStyles = (theme: any) =>
     // 点未选中段 = 切换，点选中段 = 不动（防误触反复横跳）；比双胶囊窄约 1/3
     workshopSlider: {
       flexDirection: 'row',
-      marginLeft: 8,
+      marginLeft: theme.spacing.s,
       borderRadius: theme.radius[theme.shapeRoles.pill],
       backgroundColor: withOpacity(theme.colors.primary, 0.08),
     },
@@ -562,7 +601,7 @@ export const createStyles = (theme: any) =>
     workshopSliderSeg: {
       // v5.3：再收窄至 36（原 48）——两字 24px（uiS）+ 左右总留白 12px（大王：留一个字符空间即可甚至不留）
       width: 36,
-      paddingVertical: 6,
+      paddingVertical: theme.spacing.xs,
       alignItems: 'center',
       borderRadius: theme.radius[theme.shapeRoles.pill],
     },
@@ -588,7 +627,7 @@ export const createStyles = (theme: any) =>
     audioHeaderDot: {
       width: 8,
       height: 8,
-      borderRadius: 4,
+      borderRadius: theme.radius.xs,
       backgroundColor: theme.colors.outlineVariant,
     },
     audioHeaderDotReady: {
@@ -612,18 +651,18 @@ export const createStyles = (theme: any) =>
     triggerWrap: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
-      marginRight: 16,
+      gap: theme.spacing.s,
+      marginRight: theme.spacing.m,
     },
     triggerPill: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 4,
+      gap: theme.spacing.xs,
       // 与聊天顶栏模型胶囊同一设计语言：primary 12% 底 + 标准橙黄描边
       backgroundColor: withOpacity(theme.colors.primary, 0.12),
       borderRadius: theme.radius.full,
-      paddingVertical: 4,
-      paddingHorizontal: 8,
+      paddingVertical: theme.spacing.xs,
+      paddingHorizontal: theme.spacing.s,
       // v5.1：maxWidth 180→120（缩短 1/3）——模型名超长截断；flexShrink 让「加载」按钮永不收缩
       maxWidth: 120,
       flexShrink: 1,
@@ -642,8 +681,8 @@ export const createStyles = (theme: any) =>
       color: theme.colors.domain.imageGen,
     },
     triggerLoadBtn: {
-      paddingHorizontal: 10,
-      paddingVertical: 3,
+      paddingHorizontal: theme.spacing.s,
+      paddingVertical: theme.spacing.xs,
       // B8 形状纪律：动作=圆角矩形（radius.s），不再用胶囊
       borderRadius: theme.radius[theme.shapeRoles.inputSmall],
       backgroundColor: theme.colors.primary,
@@ -662,19 +701,21 @@ export const createStyles = (theme: any) =>
     },
     dropBackdrop: {
       ...StyleSheet.absoluteFillObject,
-      backgroundColor: 'rgba(0,0,0,0.25)',
+      // B56②：下拉遮罩 rgba(0,0,0,0.25) 与 scrim 完全等值 → token
+      backgroundColor: theme.colors.scrim,
     },
     dropPanelAbs: {
       position: 'absolute',
       // D1：overlay 起于 AppBar 下沿（overlayTop），面板紧随共后
       top: 6,
-      left: 16,
-      right: 16,
+      left: theme.spacing.m,
+      right: theme.spacing.m,
       backgroundColor: theme.colors.surface,
       borderRadius: theme.radius[theme.shapeRoles.surface],
-      padding: 12,
-      gap: 8,
+      padding: theme.spacing.sm,
+      gap: theme.spacing.s,
       elevation: 12,
+      // B56②豁免：shadow token dark 绑定白不适配（登记评审）
       shadowColor: '#000',
       shadowOpacity: 0.25,
       shadowRadius: 10,
@@ -684,7 +725,7 @@ export const createStyles = (theme: any) =>
     // 点击弹完整生图参数（提示词/耗时/尺寸/模型）——onInfoPress 由编排层接
     infoOverlayWrap: {
       position: 'absolute',
-      top: 8,
+      top: theme.spacing.s,
       left: 0,
       right: 0,
       alignItems: 'center',
@@ -693,8 +734,8 @@ export const createStyles = (theme: any) =>
       maxWidth: '88%',
       backgroundColor: theme.colors.surface + 'D9', // 表面色 85% 不透明（浅色弱化）
       borderRadius: theme.radius.full,
-      paddingHorizontal: 12,
-      paddingVertical: 4,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xs,
     },
     infoOverlayText: {
       color: theme.colors.onSurfaceVariant,
@@ -702,7 +743,7 @@ export const createStyles = (theme: any) =>
     },
     // 参数详情弹窗（信息条点击）：提示词/耗时/尺寸/模型/种子/步数/时间
     // 渲染底座 OverlayCard（DESIGN_SPEC §12.1），本组样式仅保留内容行布局
-    modalRow: {flexDirection: 'row', gap: 8},
+    modalRow: {flexDirection: 'row', gap: theme.spacing.s},
     modalLabel: {
       ...theme.typography.captionS,
       color: theme.colors.onSurfaceVariant,
@@ -730,16 +771,16 @@ export const createStyles = (theme: any) =>
       fontWeight: '600',
     },
     manageText: {...theme.typography.uiS, color: theme.colors.primary},
-    historyItem: {marginRight: 8, position: 'relative'},
+    historyItem: {marginRight: theme.spacing.s, position: 'relative'},
     historyThumb: {width: 72, height: 72, borderRadius: theme.radius.s},
     historyKindBadge: {
       position: 'absolute',
-      bottom: 2,
-      right: 2,
+      bottom: theme.spacing.xxs,
+      right: theme.spacing.xxs,
       backgroundColor: withOpacity(theme.colors.info, 0.9),
       borderRadius: theme.radius.xs,
-      paddingHorizontal: 4,
-      paddingVertical: 1,
+      paddingHorizontal: theme.spacing.xs,
+      paddingVertical: theme.spacing.xxs,
     },
     historyKindText: {
       ...theme.typography.captionS,
@@ -761,18 +802,18 @@ export const createStyles = (theme: any) =>
     button: {
       backgroundColor: theme.colors.primary,
       borderRadius: theme.radius.s,
-      paddingVertical: 12,
+      paddingVertical: theme.spacing.sm,
       alignItems: 'center',
     },
     buttonRow: {flexDirection: 'row', gap: 10},
     // UpscalePanel 内容区（Sheet 载体自带背景/圆角，这里只留内边距与底部安全距）
     upscaleBody: {
-      padding: 16,
+      padding: theme.spacing.m,
       paddingBottom: 28,
     },
     // 复刻生图 Sheet（v4，IMAGEGEN_UI_SPEC §7.3）
     remakeBody: {
-      padding: 16,
+      padding: theme.spacing.m,
       paddingBottom: 28,
     },
     remakeInput: {
@@ -781,8 +822,8 @@ export const createStyles = (theme: any) =>
       borderWidth: 1,
       borderColor: theme.colors.outline,
       borderRadius: theme.radius.s,
-      paddingHorizontal: 8,
-      paddingVertical: 6,
+      paddingHorizontal: theme.spacing.s,
+      paddingVertical: theme.spacing.xs,
       color: theme.colors.onSurface,
       ...theme.typography.bodyS,
     },
@@ -790,20 +831,20 @@ export const createStyles = (theme: any) =>
       borderWidth: 1,
       borderColor: theme.colors.outline,
       borderRadius: theme.radius.s,
-      paddingHorizontal: 8,
-      paddingVertical: 6,
+      paddingHorizontal: theme.spacing.s,
+      paddingVertical: theme.spacing.xs,
       color: theme.colors.onSurface,
       ...theme.typography.bodyS,
     },
     paramRowWrap: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: 8,
-      marginBottom: 10,
+      gap: theme.spacing.s,
+      marginBottom: theme.spacing.sm,
     },
     remakeChip: {
-      paddingHorizontal: 10,
-      paddingVertical: 6,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xs,
       borderRadius: theme.radius.s,
       backgroundColor: theme.colors.surface,
       borderWidth: 1,
@@ -841,12 +882,12 @@ export const createStyles = (theme: any) =>
       borderWidth: 1,
       borderColor: theme.colors.outline,
       borderRadius: theme.radius[theme.shapeRoles.inputSmall],
-      padding: 12,
+      padding: theme.spacing.sm,
       minHeight: 72,
       color: theme.colors.onSurface,
       textAlignVertical: 'top',
     },
-    inputSmall: {minHeight: 44, padding: 8},
+    inputSmall: {minHeight: theme.size.minTapTarget, padding: theme.spacing.s},
     advToggle: {...theme.typography.uiS, color: theme.colors.primary},
     promptHint: {
       ...theme.typography.captionS,
@@ -857,7 +898,7 @@ export const createStyles = (theme: any) =>
       flexDirection: 'row',
       alignItems: 'center',
       flexWrap: 'wrap',
-      gap: 10,
+      gap: theme.spacing.sm,
     },
     paramLabel: {
       ...theme.typography.captionM,
@@ -867,14 +908,14 @@ export const createStyles = (theme: any) =>
       borderWidth: 1,
       borderColor: theme.colors.outline,
       borderRadius: theme.radius[theme.shapeRoles.inputSmall],
-      paddingHorizontal: 10,
-      paddingVertical: 6,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xs,
       width: 60,
       color: theme.colors.onSurface,
     },
     sizeBtn: {
-      paddingHorizontal: 12,
-      paddingVertical: 6,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xs,
       borderRadius: theme.radius.s,
       backgroundColor: theme.colors.surface,
       alignItems: 'center',
@@ -884,20 +925,20 @@ export const createStyles = (theme: any) =>
     sizeBtnSub: {
       ...theme.typography.captionS,
       color: theme.colors.onSurfaceVariant,
-      marginTop: 2,
+      marginTop: theme.spacing.xxs,
     },
-    statusPanel: {marginTop: 6, gap: 3},
+    statusPanel: {marginTop: theme.spacing.xs, gap: theme.spacing.xs},
     progressTrackW70: {width: '70%'},
     progressText: {
       ...theme.typography.captionS,
       color: theme.colors.onSurfaceVariant,
-      marginTop: 2,
+      marginTop: theme.spacing.xxs,
     },
     stageText: {...theme.typography.captionS, color: theme.colors.primary},
     readyText: {
       ...theme.typography.uiS,
       color: theme.colors.primary,
-      marginTop: 4,
+      marginTop: theme.spacing.xs,
     },
     // ADR-0008 跑分式性能面板（IMAGEGEN_UI_SPEC §9）
     // v4：弃灰色底面板（大王：不想要灰色面板）——去 backgroundColor，
@@ -906,15 +947,16 @@ export const createStyles = (theme: any) =>
       alignSelf: 'stretch',
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: theme.colors.outline,
-      paddingHorizontal: 8,
-      paddingTop: 6,
-      paddingBottom: 2,
-      gap: 6,
+      paddingHorizontal: theme.spacing.s,
+      // 紧凑族（taskPage/audioHistoryCard 同语）：6→xs
+      paddingTop: theme.spacing.xs,
+      paddingBottom: theme.spacing.xxs,
+      gap: theme.spacing.xs,
     },
     perfHeader: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
+      gap: theme.spacing.xs,
     },
     perfTitle: {
       ...theme.typography.uiS,
@@ -928,33 +970,33 @@ export const createStyles = (theme: any) =>
     // v2 折叠头指标胶囊横排（CPU/GPU/温/功耗，安兔兔式实时指标行压缩形态）
     perfCapsuleRow: {
       flexDirection: 'row',
-      gap: 3,
+      gap: theme.spacing.xs,
       flexShrink: 1,
     },
     perfCapsule: {
-      paddingHorizontal: 4,
-      paddingVertical: 2,
+      paddingHorizontal: theme.spacing.xs,
+      paddingVertical: theme.spacing.xxs,
       borderRadius: theme.radius[theme.shapeRoles.pill],
       backgroundColor: withOpacity(theme.colors.onSurface, 0.06),
     },
     perfCapsuleText: {
       ...theme.typography.captionS,
       color: theme.colors.onSurfaceVariant,
-      fontSize: 11,
+      fontSize: theme.typography.captionS.fontSize, // B56③ fontSize→captionS
       lineHeight: 14,
     },
-    perfBody: {gap: 5, marginTop: 4},
+    perfBody: {gap: theme.spacing.xs, marginTop: theme.spacing.xs},
     // v2 叠加线切换行：chips 横滑 + 右端峰值文字
     perfOverlayRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
+      gap: theme.spacing.xs,
     },
     perfChipsScroll: {flexGrow: 0},
     perfOverlayChip: {
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-      marginRight: 4,
+      paddingHorizontal: theme.spacing.xs,
+      paddingVertical: theme.spacing.xxs,
+      marginRight: theme.spacing.xs,
       borderRadius: theme.radius[theme.shapeRoles.pill],
       borderWidth: 1,
       borderColor: theme.colors.outline,
@@ -966,15 +1008,16 @@ export const createStyles = (theme: any) =>
     perfOverlayChipText: {
       ...theme.typography.captionS,
       color: theme.colors.onSurfaceVariant,
-      fontSize: 11,
+      fontSize: theme.typography.captionS.fontSize, // B56③ fontSize→captionS
       lineHeight: 14,
     },
+    // primary 底 chip 白字（onPrimary 为深棕字）——B56②登记评审，保持字面量
     perfOverlayChipTextActive: {color: '#ffffff', fontWeight: '600'},
     perfPeak: {
       ...theme.typography.captionS,
       color: theme.colors.onSurfaceVariant,
       marginLeft: 'auto',
-      fontSize: 11,
+      fontSize: theme.typography.captionS.fontSize, // B56③ fontSize→captionS
       lineHeight: 14,
     },
     // B43 图例行（叠全时）：色点 + 通道名横排一行，图表可读性（紫色线=功耗等）
@@ -982,23 +1025,24 @@ export const createStyles = (theme: any) =>
       flexDirection: 'row',
       flexWrap: 'wrap',
       justifyContent: 'center',
-      gap: 8,
-      paddingVertical: 1,
+      gap: theme.spacing.s,
+      paddingVertical: theme.spacing.xxs,
     },
     perfLegendItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 3,
+      gap: theme.spacing.xs,
     },
     perfLegendDot: {
       width: 6,
       height: 6,
-      borderRadius: 3,
+      // 6×6 正圆点：radius 3 半值 → full（B56②）
+      borderRadius: theme.radius.full,
     },
     perfLegendText: {
       ...theme.typography.captionS,
       color: theme.colors.onSurfaceVariant,
-      fontSize: 11,
+      fontSize: theme.typography.captionS.fontSize, // B56③ fontSize→captionS
       lineHeight: 14,
     },
     // B39 图表容器：折线渐变面积图 / B40 多层叠加，加高到 88pt 利用预览卡纵向余量（真机验不溢出）
@@ -1017,28 +1061,28 @@ export const createStyles = (theme: any) =>
       flexDirection: 'row',
       flexWrap: 'wrap',
       justifyContent: 'center',
-      gap: 3,
+      gap: theme.spacing.xs,
     },
     perfMetric: {
-      gap: 1,
+      gap: theme.spacing.xxs,
       width: 58,
     },
     perfMetricLabel: {
       ...theme.typography.captionS,
       color: theme.colors.onSurfaceVariant,
-      fontSize: 11,
+      fontSize: theme.typography.captionS.fontSize, // B56③ fontSize→captionS
       lineHeight: 14,
     },
     perfMetricValue: {
       ...theme.typography.uiS,
       color: theme.colors.onSurface,
       fontWeight: '600',
-      fontSize: 11,
+      fontSize: theme.typography.captionS.fontSize, // B56③ fontSize→captionS
       lineHeight: 14,
     },
     perfHistoryBtn: {
-      paddingHorizontal: 8,
-      paddingVertical: 3,
+      paddingHorizontal: theme.spacing.s,
+      paddingVertical: theme.spacing.xs,
       alignSelf: 'center',
       borderRadius: theme.radius[theme.shapeRoles.pill],
       backgroundColor: withOpacity(theme.colors.primary, 0.12),
@@ -1047,7 +1091,7 @@ export const createStyles = (theme: any) =>
       ...theme.typography.uiS,
       color: theme.colors.primary,
       fontWeight: '600',
-      fontSize: 11,
+      fontSize: theme.typography.captionS.fontSize, // B56③ fontSize→captionS
       lineHeight: 14,
     },
     // B41：回放 Modal 样式随 PerfHistoryModal 迁至 components/PerfHistoryModal/styles.ts

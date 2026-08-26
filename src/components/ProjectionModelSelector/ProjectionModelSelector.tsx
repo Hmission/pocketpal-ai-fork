@@ -2,10 +2,12 @@ import {View, TouchableOpacity} from 'react-native';
 import React, {useContext, useEffect, useState} from 'react';
 
 import {observer} from 'mobx-react';
-import {Text, ActivityIndicator} from 'react-native-paper';
+import {Text} from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
-import {useTheme} from '../../hooks';
+import {CircularActivityIndicator} from '../CircularActivityIndicator';
+
+import {useTheme} from '../../hooks/useTheme';
 import {infoDialog} from '../ui/InfoDialog';
 import {confirmDialog} from '../ui/ConfirmDialog';
 
@@ -279,8 +281,8 @@ export const ProjectionModelSelector = observer(
                               </View>
                             ) : projModel.progress > 0 ? (
                               <View style={styles.downloadProgress}>
-                                <ActivityIndicator
-                                  size="small"
+                                <CircularActivityIndicator
+                                  size={20}
                                   color={theme.colors.primary}
                                 />
                                 <Text style={styles.progressText}>

@@ -11,10 +11,10 @@ export const createStyles = (theme: Theme) =>
     },
     codeLanguage: {
       color: theme.colors.onSurfaceVariant,
-      fontSize: 12,
+      fontSize: theme.typography.captionM.fontSize, // B56③ fontSize→captionM
     },
     iconTouchable: {
-      padding: 4,
+      padding: theme.spacing.xs,
       justifyContent: 'center',
       alignItems: 'center',
     },

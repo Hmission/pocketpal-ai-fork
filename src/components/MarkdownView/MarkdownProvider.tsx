@@ -6,7 +6,10 @@ import {
   defaultSystemFonts,
 } from 'react-native-render-html';
 
-import {useTheme} from '../../hooks';
+// 锋利收口（B61 jest worker 泄漏）：直连模块而非 hooks 桶——
+// 桶会拖进 useChatSession/useMessageActions 等全套聊天引擎依赖图，
+// 而本组件只需要 useTheme（test-utils 经此链污染每个组件套件）。
+import {useTheme} from '../../hooks/useTheme';
 
 import {CodeRenderer} from './CodeRenderer';
 import {createTagsStyles} from './styles';

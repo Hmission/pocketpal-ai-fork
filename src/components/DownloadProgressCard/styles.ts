@@ -43,7 +43,7 @@ export const createStyles = (theme: Theme) =>
     track: {
       backgroundColor: theme.colors.secondaryDefault,
       borderRadius: theme.radius.xxl,
-      padding: 2,
+      padding: theme.spacing.xxs,
       overflow: 'hidden',
     },
     fill: {

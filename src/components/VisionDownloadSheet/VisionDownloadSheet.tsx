@@ -1,17 +1,14 @@
 import React, {useState, useContext, useMemo} from 'react';
 import {View} from 'react-native';
-import {
-  Text,
-  Button,
-  Switch,
-  Divider,
-  ActivityIndicator,
-} from 'react-native-paper';
+import {Text, Button, Divider} from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+
+import {Switch} from '../ui/Switch';
+import {CircularActivityIndicator} from '../CircularActivityIndicator';
 
 import {Sheet} from '../Sheet';
 import {ProjectionModelSelector} from '../ProjectionModelSelector';
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {L10nContext, hfAsModel, getMmprojFiles} from '../../utils';
 import {Model, HuggingFaceModel, ModelFile} from '../../utils/types';
 
@@ -94,7 +91,13 @@ export const VisionDownloadSheet: React.FC<VisionDownloadSheetProps> = ({
             {l10n.models.multimodal.visionControls.visionEnabled}
           </Text>
         </View>
-        <Switch value={visionEnabled} onValueChange={handleVisionToggle} />
+        <Switch
+          value={visionEnabled}
+          onValueChange={handleVisionToggle}
+          accessibilityLabel={
+            l10n.models.multimodal.visionControls.visionEnabled
+          }
+        />
       </View>
     </View>
   );
@@ -151,7 +154,10 @@ export const VisionDownloadSheet: React.FC<VisionDownloadSheetProps> = ({
           loading={isDownloading}
           disabled={isDownloading}>
           {isDownloading ? (
-            <ActivityIndicator size="small" color={theme.colors.onPrimary} />
+            <CircularActivityIndicator
+              size={20}
+              color={theme.colors.onPrimary}
+            />
           ) : (
             l10n.models.multimodal.download
           )}

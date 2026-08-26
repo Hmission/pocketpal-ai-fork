@@ -5,7 +5,7 @@ import {Theme} from '../../utils/types';
 export const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
-      padding: 16,
+      padding: theme.spacing.m,
       backgroundColor: theme.colors.surface,
       borderRadius: theme.borders.default,
     },
@@ -18,18 +18,18 @@ export const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: 4,
+      marginBottom: theme.spacing.xs,
     },
     stopLabel: {
       flexDirection: 'row',
       alignItems: 'center',
     },
     settingItem: {
-      marginBottom: 24,
-      paddingHorizontal: 4,
+      marginBottom: theme.spacing.l,
+      paddingHorizontal: theme.spacing.xs,
     },
     settingLabel: {
-      marginBottom: 2,
+      marginBottom: theme.spacing.xxs,
     },
     settingValue: {
       textAlign: 'right',
@@ -43,33 +43,33 @@ export const createStyles = (theme: Theme) =>
       }),
     },
     divider: {
-      marginVertical: 16,
+      marginVertical: theme.spacing.m,
     },
     segmentedButtons: {
-      marginTop: 8,
+      marginTop: theme.spacing.s,
     },
     inputLabel: {
       flex: 1,
-      fontSize: 16,
-      marginRight: 8,
+      fontSize: theme.typography.titleS.fontSize, // B56③ fontSize→titleS
+      marginRight: theme.spacing.s,
     },
     stopWordsContainer: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: 8,
-      marginBottom: 8,
+      gap: theme.spacing.s,
+      marginBottom: theme.spacing.s,
     },
     stopChip: {
-      marginRight: 4,
-      marginVertical: 4,
+      marginRight: theme.spacing.xs,
+      marginVertical: theme.spacing.xs,
     },
     stopChipText: {
-      fontSize: 12,
+      fontSize: theme.typography.uiS.fontSize, // B56③ fontSize→uiS
     },
     description: {
-      fontSize: 12,
+      fontSize: theme.typography.captionM.fontSize, // B56③ fontSize→captionM
       color: theme.colors.textSecondary,
-      marginTop: 2,
-      marginBottom: 8,
+      marginTop: theme.spacing.xxs,
+      marginBottom: theme.spacing.s,
     },
   });

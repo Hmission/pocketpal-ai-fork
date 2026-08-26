@@ -1,7 +1,8 @@
 import React from 'react';
-import {fireEvent, render, act} from '../../../../jest/test-utils';
+import {fireEvent, render, act, within} from '../../../../jest/test-utils';
 import {ModelSettingsSheet} from '../ModelSettingsSheet';
 import {modelStore} from '../../../store';
+import {l10n} from '../../../locales';
 import {Model, ModelOrigin} from '../../../utils/types';
 import {defaultCompletionParams} from '../../../utils/completionSettingsVersions';
 
@@ -226,14 +227,20 @@ describe('ModelSettingsSheet', () => {
       const {getByTestId} = render(<ModelSettingsSheet {...defaultProps} />);
       await act(async () => {
         fireEvent(
-          getByTestId('reasoning-is-reasoning-switch'),
+          within(getByTestId('reasoning-is-reasoning-switch')).getByLabelText(
+            l10n.en.components.modelSettingsSheet.isReasoningModel,
+          ),
           'valueChange',
           true,
         );
       });
       await act(async () => {
         fireEvent(
-          getByTestId('reasoning-supports-effort-switch'),
+          within(
+            getByTestId('reasoning-supports-effort-switch'),
+          ).getByLabelText(
+            l10n.en.components.modelSettingsSheet.supportsEffort,
+          ),
           'valueChange',
           true,
         );
@@ -260,14 +267,20 @@ describe('ModelSettingsSheet', () => {
       // persists exactly that default.
       await act(async () => {
         fireEvent(
-          getByTestId('reasoning-is-reasoning-switch'),
+          within(getByTestId('reasoning-is-reasoning-switch')).getByLabelText(
+            l10n.en.components.modelSettingsSheet.isReasoningModel,
+          ),
           'valueChange',
           true,
         );
       });
       await act(async () => {
         fireEvent(
-          getByTestId('reasoning-supports-effort-switch'),
+          within(
+            getByTestId('reasoning-supports-effort-switch'),
+          ).getByLabelText(
+            l10n.en.components.modelSettingsSheet.supportsEffort,
+          ),
           'valueChange',
           true,
         );
@@ -295,14 +308,20 @@ describe('ModelSettingsSheet', () => {
 
       await act(async () => {
         fireEvent(
-          getByTestId('reasoning-is-reasoning-switch'),
+          within(getByTestId('reasoning-is-reasoning-switch')).getByLabelText(
+            l10n.en.components.modelSettingsSheet.isReasoningModel,
+          ),
           'valueChange',
           true,
         );
       });
       await act(async () => {
         fireEvent(
-          getByTestId('reasoning-supports-effort-switch'),
+          within(
+            getByTestId('reasoning-supports-effort-switch'),
+          ).getByLabelText(
+            l10n.en.components.modelSettingsSheet.supportsEffort,
+          ),
           'valueChange',
           true,
         );
@@ -335,14 +354,20 @@ describe('ModelSettingsSheet', () => {
 
       await act(async () => {
         fireEvent(
-          getByTestId('reasoning-is-reasoning-switch'),
+          within(getByTestId('reasoning-is-reasoning-switch')).getByLabelText(
+            l10n.en.components.modelSettingsSheet.isReasoningModel,
+          ),
           'valueChange',
           true,
         );
       });
       await act(async () => {
         fireEvent(
-          getByTestId('reasoning-supports-effort-switch'),
+          within(
+            getByTestId('reasoning-supports-effort-switch'),
+          ).getByLabelText(
+            l10n.en.components.modelSettingsSheet.supportsEffort,
+          ),
           'valueChange',
           true,
         );
@@ -372,14 +397,18 @@ describe('ModelSettingsSheet', () => {
       // deliberate user 'no' (marks the reasoning controls dirty).
       await act(async () => {
         fireEvent(
-          getByTestId('reasoning-is-reasoning-switch'),
+          within(getByTestId('reasoning-is-reasoning-switch')).getByLabelText(
+            l10n.en.components.modelSettingsSheet.isReasoningModel,
+          ),
           'valueChange',
           true,
         );
       });
       await act(async () => {
         fireEvent(
-          getByTestId('reasoning-is-reasoning-switch'),
+          within(getByTestId('reasoning-is-reasoning-switch')).getByLabelText(
+            l10n.en.components.modelSettingsSheet.isReasoningModel,
+          ),
           'valueChange',
           false,
         );
@@ -433,7 +462,9 @@ describe('ModelSettingsSheet', () => {
       );
       await act(async () => {
         fireEvent(
-          getByTestId('reasoning-is-reasoning-switch'),
+          within(getByTestId('reasoning-is-reasoning-switch')).getByLabelText(
+            l10n.en.components.modelSettingsSheet.isReasoningModel,
+          ),
           'valueChange',
           true,
         );

@@ -5,23 +5,23 @@ export const createStyles = (theme: Theme) =>
   StyleSheet.create({
     // Pal Detail Sheet
     scrollContent: {
-      paddingBottom: 20,
+      paddingBottom: theme.spacing.ml,
     },
     headerSection: {
-      padding: 20,
+      padding: theme.spacing.ml,
       backgroundColor: theme.colors.surface,
     },
     headerRow: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      marginBottom: 16,
+      marginBottom: theme.spacing.m,
     },
     thumbnailContainer: {
       width: 80,
       height: 80,
-      borderRadius: 12,
+      borderRadius: theme.radius.m,
       backgroundColor: theme.colors.surfaceVariant,
-      marginRight: 16,
+      marginRight: theme.spacing.m,
       overflow: 'hidden',
     },
     thumbnail: {
@@ -39,26 +39,26 @@ export const createStyles = (theme: Theme) =>
       flex: 1,
     },
     title: {
-      fontSize: 24,
+      fontSize: theme.typography.headlineH2.fontSize, // B56③ 24→headlineH2（补档归档，等值）
       fontWeight: '700',
       color: theme.colors.onSurface,
-      marginBottom: 4,
-      lineHeight: 28,
+      marginBottom: theme.spacing.xs,
+      lineHeight: theme.typography.headlineH2.lineHeight, // B56③ lineHeight 同步取 token（等值 28）
     },
     creator: {
-      fontSize: 16,
+      fontSize: theme.typography.bodyM.fontSize, // B56③ fontSize→bodyM
       color: theme.colors.onSurfaceVariant,
-      marginBottom: 8,
+      marginBottom: theme.spacing.s,
     },
     labelRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginBottom: 8,
+      marginBottom: theme.spacing.s,
     },
     priceLabel: {
-      fontSize: 16,
+      fontSize: theme.typography.titleS.fontSize, // B56③ fontSize→titleS
       fontWeight: '600',
-      marginRight: 12,
+      marginRight: theme.spacing.sm,
     },
     freeLabel: {
       color: theme.colors.tertiary,
@@ -67,8 +67,8 @@ export const createStyles = (theme: Theme) =>
       color: theme.colors.secondary,
     },
     statsSection: {
-      paddingHorizontal: 20,
-      paddingVertical: 16,
+      paddingHorizontal: theme.spacing.ml,
+      paddingVertical: theme.spacing.m,
     },
     statsRow: {
       flexDirection: 'row',
@@ -79,13 +79,13 @@ export const createStyles = (theme: Theme) =>
       flex: 1,
     },
     statValue: {
-      fontSize: 18,
+      fontSize: theme.typography.titleM.fontSize, // B56③ fontSize→titleM
       fontWeight: '700',
       color: theme.colors.onSurface,
-      marginBottom: 4,
+      marginBottom: theme.spacing.xs,
     },
     statLabel: {
-      fontSize: 12,
+      fontSize: theme.typography.uiS.fontSize, // B56③ fontSize→uiS
       color: theme.colors.onSurfaceVariant,
       textAlign: 'center',
     },
@@ -94,85 +94,86 @@ export const createStyles = (theme: Theme) =>
       alignItems: 'center',
     },
     ratingText: {
-      fontSize: 18,
+      fontSize: theme.typography.titleM.fontSize, // B56③ fontSize→titleM
       fontWeight: '700',
       color: theme.colors.onSurface,
-      marginLeft: 4,
+      marginLeft: theme.spacing.xs,
     },
     section: {
-      paddingHorizontal: 20,
-      paddingVertical: 16,
+      paddingHorizontal: theme.spacing.ml,
+      paddingVertical: theme.spacing.m,
     },
     sectionTitle: {
-      fontSize: 18,
+      fontSize: theme.typography.titleM.fontSize, // B56③ fontSize→titleM
       fontWeight: '600',
       color: theme.colors.onSurface,
-      marginBottom: 12,
+      marginBottom: theme.spacing.sm,
     },
     description: {
-      fontSize: 16,
+      fontSize: theme.typography.bodyM.fontSize, // B56③ fontSize→bodyM
       lineHeight: 24,
       color: theme.colors.onSurface,
     },
     tagsContainer: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: 8,
+      gap: theme.spacing.s,
     },
     tag: {
       backgroundColor: theme.colors.surfaceVariant,
-      borderRadius: 16,
-      paddingHorizontal: 12,
-      paddingVertical: 6,
+      borderRadius: theme.radius.ml,
+      paddingHorizontal: theme.spacing.sm,
+      // B56②：6→xs(4)（chip 紧凑垂直内距）
+      paddingVertical: theme.spacing.xs,
     },
     tagText: {
-      fontSize: 14,
+      fontSize: theme.typography.bodyS.fontSize, // B56③ fontSize→bodyS
       color: theme.colors.onSurfaceVariant,
     },
     categoriesContainer: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: 8,
+      gap: theme.spacing.s,
     },
     category: {
       backgroundColor: theme.colors.primaryContainer,
-      borderRadius: 20,
-      paddingHorizontal: 16,
-      paddingVertical: 8,
+      borderRadius: theme.radius.l,
+      paddingHorizontal: theme.spacing.m,
+      paddingVertical: theme.spacing.s,
     },
     categoryText: {
-      fontSize: 14,
+      fontSize: theme.typography.uiM.fontSize, // B56③ fontSize→uiM
       fontWeight: '500',
       color: theme.colors.onPrimaryContainer,
     },
     systemPromptContainer: {
       backgroundColor: theme.colors.surfaceVariant,
-      borderRadius: 12,
-      padding: 16,
-      marginTop: 8,
+      borderRadius: theme.radius.m,
+      padding: theme.spacing.m,
+      marginTop: theme.spacing.s,
     },
     systemPrompt: {
-      fontSize: 14,
+      fontSize: theme.typography.bodyS.fontSize, // B56③ fontSize→bodyS
       lineHeight: 20,
       color: theme.colors.onSurfaceVariant,
       fontFamily: 'monospace',
     },
     protectedContent: {
       backgroundColor: theme.colors.errorContainer,
-      borderRadius: 12,
-      padding: 16,
+      borderRadius: theme.radius.m,
+      padding: theme.spacing.m,
       alignItems: 'center',
-      marginTop: 8,
+      marginTop: theme.spacing.s,
     },
     protectedText: {
-      fontSize: 14,
+      fontSize: theme.typography.bodyS.fontSize, // B56③ fontSize→bodyS
       color: theme.colors.onErrorContainer,
       textAlign: 'center',
-      marginTop: 8,
+      marginTop: theme.spacing.s,
     },
     primaryButton: {
       flex: 1,
-      marginBottom: 12,
+      marginBottom: theme.spacing.sm,
     },
     // Buy button + its checkout feedback stack vertically and fill the row,
     // so a wide error/finalizing message never squeezes the button.
@@ -184,33 +185,33 @@ export const createStyles = (theme: Theme) =>
     },
     errorButton: {
       alignSelf: 'stretch',
-      marginTop: 8,
+      marginTop: theme.spacing.s,
     },
     errorContainer: {
       backgroundColor: theme.colors.errorContainer,
-      borderRadius: 8,
-      padding: 12,
-      marginTop: 16,
+      borderRadius: theme.radius.s,
+      padding: theme.spacing.sm,
+      marginTop: theme.spacing.m,
     },
     errorText: {
-      fontSize: 14,
+      fontSize: theme.typography.bodyS.fontSize, // B56③ fontSize→bodyS
       color: theme.colors.onErrorContainer,
       textAlign: 'center',
     },
     divider: {
-      marginVertical: 8,
+      marginVertical: theme.spacing.s,
     },
     accountLinkContainer: {
-      marginTop: 12,
+      marginTop: theme.spacing.sm,
       alignItems: 'center',
     },
     infoTextContainer: {
-      marginTop: 16,
+      marginTop: theme.spacing.m,
       alignItems: 'center',
-      paddingHorizontal: 20,
+      paddingHorizontal: theme.spacing.ml,
     },
     infoText: {
-      fontSize: 14,
+      fontSize: theme.typography.bodyS.fontSize, // B56③ fontSize→bodyS
       color: theme.colors.onSurfaceVariant,
       textAlign: 'center',
       fontStyle: 'italic',

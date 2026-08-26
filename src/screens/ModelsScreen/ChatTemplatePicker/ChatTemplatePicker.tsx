@@ -5,7 +5,7 @@ import {Text} from 'react-native-paper';
 import RNPickerSelect from 'react-native-picker-select';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
-import {useTheme} from '../../../hooks';
+import {useTheme} from '../../../hooks/useTheme';
 import {L10nContext} from '../../../utils';
 
 import {styles} from './styles';

@@ -28,7 +28,7 @@ const styles = ({
       flex: 1,
       flexDirection: 'row',
       marginBottom: message.type === 'dateHeader' ? 0 : 4 + message.offset,
-      marginLeft: 20,
+      marginLeft: theme.spacing.ml,
     },
     contentContainer: {
       backgroundColor:
@@ -59,8 +59,8 @@ const styles = ({
     dateHeader: {
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: 32,
-      marginTop: 16,
+      marginBottom: theme.spacing.xl,
+      marginTop: theme.spacing.m,
     },
     pressable: {
       maxWidth: messageWidth,

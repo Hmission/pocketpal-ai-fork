@@ -37,7 +37,7 @@ export const createStyles = (
       // border + 8px inner dot. Default: 1px light-grey border.
       width: 16,
       height: 16,
-      borderRadius: 16,
+      borderRadius: theme.radius.ml,
       borderWidth: selected ? 1.5 : 1,
       borderColor: selected ? RECOMMENDED_BORDER : theme.colors.outlineVariant,
       backgroundColor: theme.colors.background,
@@ -47,7 +47,7 @@ export const createStyles = (
     radioDot: {
       width: 8,
       height: 8,
-      borderRadius: 8,
+      borderRadius: theme.radius.s,
       backgroundColor: RECOMMENDED_BORDER,
     },
     body: {

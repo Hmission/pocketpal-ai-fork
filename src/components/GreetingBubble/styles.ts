@@ -13,10 +13,11 @@ export const createStyles = (
 ) =>
   StyleSheet.create({
     container: {
-      marginVertical: 8,
-      marginHorizontal: 12,
-      paddingVertical: 12,
-      paddingHorizontal: 14,
+      marginVertical: theme.spacing.s,
+      marginHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.sm,
+      // B56②：14→sm(12)（气泡行内紧凑边距）
+      paddingHorizontal: theme.spacing.sm,
       borderRadius: theme.radius.m,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: colors.border,
@@ -25,16 +26,18 @@ export const createStyles = (
       backgroundColor: colors.background,
       flexDirection: 'row',
       alignItems: 'flex-start',
-      gap: 10,
+      // B56②：10→sm(12)（水平性 icon-text gap）
+      gap: theme.spacing.sm,
     },
     icon: {
-      fontSize: 16,
-      marginTop: 1,
+      fontSize: theme.typography.bodyM.fontSize, // B56③ fontSize→bodyM
+      // B56②：1→xxs(2)（icon 对齐微距）
+      marginTop: theme.spacing.xxs,
     },
     text: {
       flex: 1,
       fontStyle: 'italic',
-      fontSize: 14,
+      fontSize: theme.typography.bodyS.fontSize, // B56③ fontSize→bodyS
       lineHeight: 20,
       color: colors.text,
     },

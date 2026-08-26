@@ -8,6 +8,7 @@ import {L10nContext} from '../../../../utils';
 
 import {HistoryStrip} from '../HistoryStrip';
 import {ComposerPanel} from '../ComposerPanel';
+import {GenActionBar} from '../GenActionBar';
 import {ModelPickerTrigger, ModelPickerDropdown} from '../ModelPickerPanel';
 import {ResultPreview} from '../ResultPreview';
 import {DREAMLITE_MANIFEST, ModelEntry} from '../../constants';
@@ -102,6 +103,9 @@ describe('ComposerPanel', () => {
     // 2026-08-21：非 Dream 编辑按钮显示条件（预览区有可编辑图）
     hasEditableImage: false,
     showAdvanced: false,
+    // 2026-08-26：提示词卡折叠（按钮区已移 GenActionBar 吸底条）
+    promptCollapsed: false,
+    onToggleCollapse: jest.fn(),
     generating: false,
     taskKind: null as 'gen' | 'edit' | null,
     loaded: true,
@@ -121,8 +125,6 @@ describe('ComposerPanel', () => {
     onSizeChange: jest.fn(),
     onRatioChange: jest.fn(),
     onToggleAdvanced: jest.fn(),
-    onEditArm: jest.fn(),
-    onGenerate: jest.fn(),
   };
 
   it('08-18 按 token 显示提示词计数，超上限红字警告', () => {
@@ -141,63 +143,37 @@ describe('ComposerPanel', () => {
     expect(g2(/超出编码上限/)).toBeTruthy();
   });
 
-  it('出图按钮触发 onGenerate', () => {
-    const onGenerate = jest.fn();
-    const {getByText} = wrap(
-      <ComposerPanel {...baseProps} onGenerate={onGenerate} prompt="a cat" />,
-    );
-    fireEvent.press(getByText('出图'));
-    expect(onGenerate).toHaveBeenCalled();
-  });
-
-  it('未加载时出图按钮可点（引导加载由编排层处理，不禁用）', () => {
-    const onGenerate = jest.fn();
-    const {getByText} = wrap(
-      <ComposerPanel {...baseProps} loaded={false} onGenerate={onGenerate} />,
-    );
-    fireEvent.press(getByText('出图'));
-    expect(onGenerate).toHaveBeenCalled();
-  });
-
-  it('任务进行期（loading/generating）出图按钮灰置+转圈且禁点（2026-08-26）', () => {
-    const onGenerate = jest.fn();
-    const {getByTestId, queryByText, rerender} = wrap(
+  it('2026-08-26 折叠态：单行摘要替代输入框，展开态恢复完整输入区；点折叠头切换', () => {
+    const onToggleCollapse = jest.fn();
+    const {
+      getByText,
+      getByTestId,
+      queryByText,
+      getByPlaceholderText,
+      rerender,
+    } = wrap(
       <ComposerPanel
         {...baseProps}
-        generating={true}
-        onGenerate={onGenerate}
+        prompt="一只橘猫坐在窗台上"
+        promptCollapsed={true}
+        onToggleCollapse={onToggleCollapse}
       />,
     );
-    // generating：文字换转圈（灰底 primary 圈），点击不触发
-    expect(queryByText('出图')).toBeNull();
-    fireEvent.press(getByTestId('imagegen-generate'));
-    expect(onGenerate).not.toHaveBeenCalled();
-    // loading（引擎加载期）：同样灰置转圈禁点——首次出图加载模型最耗时时也可见反馈
+    // 折叠态：摘要单行 + 输入框不渲染（placeholder 不可见）
+    expect(getByText('一只橘猫坐在窗台上')).toBeTruthy();
+    expect(queryByText('描述你想生成的画面…')).toBeNull();
+    fireEvent.press(getByTestId('composer-collapse'));
+    expect(onToggleCollapse).toHaveBeenCalled();
+    // 展开态：输入框（placeholder）+ token 行恢复
     rerender(
-      <ComposerPanel {...baseProps} loading={true} onGenerate={onGenerate} />,
-    );
-    expect(queryByText('出图')).toBeNull();
-    fireEvent.press(getByTestId('imagegen-generate'));
-    expect(onGenerate).not.toHaveBeenCalled();
-  });
-
-  it('非 Dream 预览区有图时显示编辑按钮，点击触发 onEditArm；无图不渲染', () => {
-    const onEditArm = jest.fn();
-    const {getByText} = wrap(
       <ComposerPanel
         {...baseProps}
-        hasEditableImage={true}
-        onEditArm={onEditArm}
+        prompt="一只橘猫坐在窗台上"
+        promptCollapsed={false}
       />,
     );
-    expect(getByText('编辑')).toBeTruthy();
-    fireEvent.press(getByText('编辑'));
-    expect(onEditArm).toHaveBeenCalled();
-    // 预览区无图（0 页编辑槽空 + 无历史）时不渲染编辑按钮
-    const {queryByText} = wrap(
-      <ComposerPanel {...baseProps} hasEditableImage={false} />,
-    );
-    expect(queryByText('编辑')).toBeNull();
+    expect(getByPlaceholderText('描述你想生成的画面…')).toBeTruthy();
+    expect(getByText(/~\d+\/77 tokens/)).toBeTruthy();
   });
 
   it('08-18 声明 lora 的模型显示 LoRA 开关，未声明不显示', () => {
@@ -231,6 +207,92 @@ describe('ComposerPanel', () => {
       />,
     );
     expect(getByText(/编辑输出 1024×1024/)).toBeTruthy();
+  });
+});
+
+describe('GenActionBar（2026-08-26 吸底操作条：从 ComposerPanel 按钮区平移）', () => {
+  const baseProps = {
+    isDream: false,
+    editArming: false,
+    editRgb: null,
+    hasEditableImage: false,
+    generating: false,
+    taskKind: null as 'gen' | 'edit' | null,
+    onEditArm: jest.fn(),
+    onGenerate: jest.fn(),
+  };
+
+  it('出图按钮触发 onGenerate', () => {
+    const onGenerate = jest.fn();
+    const {getByText} = wrap(
+      <GenActionBar {...baseProps} onGenerate={onGenerate} />,
+    );
+    fireEvent.press(getByText('出图'));
+    expect(onGenerate).toHaveBeenCalled();
+  });
+
+  it('未加载时出图按钮可点（引导加载由编排层处理，不禁用）', () => {
+    const onGenerate = jest.fn();
+    const {getByText} = wrap(
+      <GenActionBar {...baseProps} onGenerate={onGenerate} />,
+    );
+    fireEvent.press(getByText('出图'));
+    expect(onGenerate).toHaveBeenCalled();
+  });
+
+  it('任务进行期（loading/generating）出图按钮灰置+转圈且禁点（2026-08-26）', () => {
+    const onGenerate = jest.fn();
+    const {getByTestId, queryByText, rerender} = wrap(
+      <GenActionBar {...baseProps} generating={true} onGenerate={onGenerate} />,
+    );
+    // generating：文字换转圈（灰底 primary 圈），点击不触发
+    expect(queryByText('出图')).toBeNull();
+    fireEvent.press(getByTestId('imagegen-generate'));
+    expect(onGenerate).not.toHaveBeenCalled();
+    // loading（引擎加载期）：同样灰置转圈禁点——首次出图加载模型最耗时时也可见反馈
+    rerender(
+      <GenActionBar {...baseProps} loading={true} onGenerate={onGenerate} />,
+    );
+    expect(queryByText('出图')).toBeNull();
+    fireEvent.press(getByTestId('imagegen-generate'));
+    expect(onGenerate).not.toHaveBeenCalled();
+  });
+
+  it('非 Dream 预览区有图时显示编辑按钮，点击触发 onEditArm；无图不渲染', () => {
+    const onEditArm = jest.fn();
+    const {getByText} = wrap(
+      <GenActionBar
+        {...baseProps}
+        hasEditableImage={true}
+        onEditArm={onEditArm}
+      />,
+    );
+    expect(getByText('编辑')).toBeTruthy();
+    fireEvent.press(getByText('编辑'));
+    expect(onEditArm).toHaveBeenCalled();
+    // 预览区无图（0 页编辑槽空 + 无历史）时不渲染编辑按钮
+    const {queryByText} = wrap(<GenActionBar {...baseProps} />);
+    expect(queryByText('编辑')).toBeNull();
+  });
+
+  it('Dream 双按钮：编辑 + 出图并存；编辑预备态文案切换「执行编辑」', () => {
+    const onEditArm = jest.fn();
+    const {getByText, rerender} = wrap(
+      <GenActionBar {...baseProps} isDream={true} onEditArm={onEditArm} />,
+    );
+    expect(getByText('编辑')).toBeTruthy();
+    expect(getByText('出图')).toBeTruthy();
+    fireEvent.press(getByText('编辑'));
+    expect(onEditArm).toHaveBeenCalled();
+    rerender(
+      <GenActionBar
+        {...baseProps}
+        isDream={true}
+        editArming={true}
+        onEditArm={onEditArm}
+      />,
+    );
+    expect(getByText('执行编辑')).toBeTruthy();
   });
 });
 
@@ -390,6 +452,33 @@ describe('ResultPreview', () => {
       />,
     );
     expect(getByText(/正在生成新图/)).toBeTruthy();
+  });
+
+  it('2026-08-27 反推=生图流程：caption running 页 = blank 进度页 + 完整 PerfPanel 默认展开（不叠图不折叠）', () => {
+    const captionRunning: GeneratedImage = {
+      ...historyItem,
+      uri: 'file:///tmp/cap_src.png',
+      taskId: 'task_test_caption_running',
+      kind: 'caption',
+      status: 'running',
+    };
+    const {getByText, getByTestId, queryByTestId} = wrap(
+      <ResultPreview
+        {...baseProps}
+        history={[captionRunning]}
+        generating={true}
+        taskKind="caption"
+        progressText="1/2"
+      />,
+    );
+    // blank 进度页（与生成同一路径）：标题 + 完整 PerfPanel 默认展开
+    expect(getByText(/正在反推提示词/)).toBeTruthy();
+    expect(getByTestId('perf-expand')).toBeTruthy();
+    expect(getByTestId('perf-pss')).toBeTruthy();
+    // 默认展开：指标行在场（不再折叠/不再叠图 overlay 双渲染）
+    expect(getByTestId('perf-metrics')).toBeTruthy();
+    // 无叠图：绝对定位 overlay 已删除（taskKind=caption 时不再额外渲染一层）
+    expect(queryByTestId('imagegen-caption-overlay')).toBeNull();
   });
 
   it('caption 任务页：反推结果卡 + 复制/复刻生图/删除三按钮', () => {

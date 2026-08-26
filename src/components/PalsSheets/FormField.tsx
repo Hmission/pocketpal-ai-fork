@@ -3,7 +3,7 @@ import {View, TextInput as RNTextInput} from 'react-native';
 import {Text} from 'react-native-paper';
 import {Controller, useFormContext} from 'react-hook-form';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {createStyles} from './styles';
 import {TextInput} from '../TextInput';
 // Generic form field that works with any form data

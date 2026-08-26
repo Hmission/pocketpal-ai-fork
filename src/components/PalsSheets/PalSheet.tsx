@@ -14,7 +14,7 @@ import {Button} from 'react-native-paper';
 import {zodResolver} from '@hookform/resolvers/zod';
 import {useForm, FormProvider, Controller} from 'react-hook-form';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 
 import {createStyles} from './styles';
 import {FormField} from './FormField';

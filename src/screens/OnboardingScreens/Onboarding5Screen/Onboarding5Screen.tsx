@@ -4,7 +4,7 @@ import {Text} from 'react-native-paper';
 import {observer} from 'mobx-react';
 
 import {uiStore} from '../../../store';
-import {useTheme} from '../../../hooks';
+import {useTheme} from '../../../hooks/useTheme';
 import type {TopicKey} from '../../../store/onboarding/types';
 import {OnboardingScaffold} from '../components/OnboardingScaffold';
 import {OnboardingBottomBar} from '../components/OnboardingBottomBar';

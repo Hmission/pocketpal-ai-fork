@@ -3,12 +3,14 @@ import React, {useContext, useState, useEffect, useCallback} from 'react';
 
 import {ContextParams} from 'llama.rn';
 import DeviceInfo from 'react-native-device-info';
-import {Text, Button, Checkbox, ActivityIndicator} from 'react-native-paper';
+import {Text, Button, Checkbox} from 'react-native-paper';
+
+import {CircularActivityIndicator} from '../CircularActivityIndicator';
 
 import {submitModelLoadErrorReport} from '../../api/feedback';
 import {infoDialog} from '../ui/InfoDialog';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 
 import {createStyles} from './styles';
 
@@ -327,7 +329,10 @@ export const ModelErrorReportSheet: React.FC<ModelErrorReportSheetProps> = ({
             disabled={isSubmitting}
             style={styles.button}>
             {isSubmitting ? (
-              <ActivityIndicator size="small" />
+              <CircularActivityIndicator
+                size={20}
+                color={theme.colors.primary}
+              />
             ) : (
               l10n.components.modelErrorReportSheet.submit
             )}

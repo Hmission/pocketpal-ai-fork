@@ -2,7 +2,7 @@ import React, {useContext, useState} from 'react';
 import {TouchableOpacity, View, Text, TextInput} from 'react-native';
 import {Divider} from 'react-native-paper';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {createStyles} from './styles';
 import {PlusIcon, SearchIcon, WorkshopIcon} from '../../assets/icons';
 import {L10nContext} from '../../utils';

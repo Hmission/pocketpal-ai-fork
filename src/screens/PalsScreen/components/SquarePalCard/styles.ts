@@ -4,11 +4,11 @@ import {Theme} from '../../../../utils/types';
 export const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
-      marginBottom: 16,
+      marginBottom: theme.spacing.m,
     },
     card: {
       backgroundColor: theme.colors.background,
-      borderRadius: 16,
+      borderRadius: theme.radius.ml,
       borderWidth: 1,
       borderColor: theme.colors.outline,
       // Add subtle shadow for depth (only in light mode)
@@ -23,7 +23,7 @@ export const createStyles = (theme: Theme) =>
           }),
     },
     cardContent: {
-      padding: 12,
+      padding: theme.spacing.sm,
       aspectRatio: 1, // Square aspect ratio - ensures uniform card heights
       justifyContent: 'space-between', // Better space distribution
     },
@@ -31,25 +31,25 @@ export const createStyles = (theme: Theme) =>
       width: '100%',
       height: 80, // Increased from 60px for better image display
       backgroundColor: theme.colors.primaryContainer,
-      borderRadius: 12,
+      borderRadius: theme.radius.m,
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: 8, // Reduced from 12px to save space
+      marginBottom: theme.spacing.s, // Reduced from 12px to save space
       position: 'relative',
       overflow: 'hidden',
     },
     thumbnailImage: {
       width: '100%',
       height: '100%',
-      borderRadius: 12,
+      borderRadius: theme.radius.m,
     },
     thumbnailOverlay: {
       position: 'absolute',
-      bottom: 4,
-      right: 4,
+      bottom: theme.spacing.xs,
+      right: theme.spacing.xs,
       backgroundColor: theme.colors.backdrop,
-      borderRadius: 8,
-      padding: 4,
+      borderRadius: theme.radius.s,
+      padding: theme.spacing.xs,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -61,10 +61,11 @@ export const createStyles = (theme: Theme) =>
 
     chatButton: {
       position: 'absolute',
-      bottom: 6,
-      right: 6,
+      // B56②：6→xs(4)（贴角偏移）/ 14→full（28px 圆钮半高）
+      bottom: theme.spacing.xs,
+      right: theme.spacing.xs,
       backgroundColor: theme.colors.surface,
-      borderRadius: 14,
+      borderRadius: theme.radius.full,
       width: 28,
       height: 28,
       alignItems: 'center',
@@ -85,10 +86,11 @@ export const createStyles = (theme: Theme) =>
     },
     localBadge: {
       position: 'absolute',
-      top: 4,
-      right: 4,
+      top: theme.spacing.xs,
+      right: theme.spacing.xs,
       backgroundColor: theme.colors.primary,
-      borderRadius: 10,
+      // B56②：20px 圆钮 → full
+      borderRadius: theme.radius.full,
       width: 20,
       height: 20,
       alignItems: 'center',
@@ -96,10 +98,10 @@ export const createStyles = (theme: Theme) =>
     },
     protectionBadge: {
       position: 'absolute',
-      top: 4,
-      left: 4,
+      top: theme.spacing.xs,
+      left: theme.spacing.xs,
       backgroundColor: theme.colors.tertiary,
-      borderRadius: 8,
+      borderRadius: theme.radius.s,
       width: 18,
       height: 18,
       alignItems: 'center',
@@ -107,19 +109,20 @@ export const createStyles = (theme: Theme) =>
     },
     premiumBadge: {
       position: 'absolute',
-      top: 16, // 12px card padding + 4px offset from thumbnail edge
-      right: 16, // 12px card padding + 4px offset from thumbnail edge
+      top: theme.spacing.m, // 12px card padding + 4px offset from thumbnail edge
+      right: theme.spacing.m, // 12px card padding + 4px offset from thumbnail edge
       backgroundColor: theme.colors.secondary,
-      borderRadius: 8,
-      paddingHorizontal: 6,
-      paddingVertical: 2,
+      borderRadius: theme.radius.s,
+      // B56②：6→xs(4)（chip 紧凑水平内距）
+      paddingHorizontal: theme.spacing.xs,
+      paddingVertical: theme.spacing.xxs,
       minWidth: 40,
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 10, // Ensure it appears above other elements
     },
     premiumBadgeText: {
-      fontSize: 11,
+      fontSize: theme.typography.captionS.fontSize, // B56③ fontSize→captionS
       fontWeight: '600',
       color: theme.colors.onSecondary,
       letterSpacing: 0.1,
@@ -134,8 +137,8 @@ export const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'flex-start',
       justifyContent: 'space-between',
-      marginBottom: 2, // Reduced from 4px
-      gap: 4,
+      marginBottom: theme.spacing.xxs, // Reduced from 4px
+      gap: theme.spacing.xs,
       minHeight: 18, // Ensure minimum height for content
     },
     middleContent: {
@@ -145,7 +148,7 @@ export const createStyles = (theme: Theme) =>
       justifyContent: 'flex-start',
     },
     palName: {
-      fontSize: 14,
+      fontSize: theme.typography.uiM.fontSize, // B56③ fontSize→uiM
       fontWeight: '600',
       color: theme.colors.onSurface,
       flex: 1,
@@ -156,13 +159,14 @@ export const createStyles = (theme: Theme) =>
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: theme.colors.surfaceVariant,
-      borderRadius: 8,
-      paddingHorizontal: 6,
-      paddingVertical: 2,
+      borderRadius: theme.radius.s,
+      // B56②：6→xs(4)（chip 紧凑水平内距）
+      paddingHorizontal: theme.spacing.xs,
+      paddingVertical: theme.spacing.xxs,
       minWidth: 40,
     },
     price: {
-      fontSize: 11,
+      fontSize: theme.typography.captionS.fontSize, // B56③ fontSize→captionS
       fontWeight: '600',
       color: theme.colors.onSurfaceVariant,
       letterSpacing: 0.1,
@@ -175,65 +179,66 @@ export const createStyles = (theme: Theme) =>
       color: theme.colors.onSecondary,
     },
     creator: {
-      fontSize: 11,
+      fontSize: theme.typography.captionS.fontSize, // B56③ fontSize→captionS
       color: theme.colors.onSurfaceVariant,
-      marginBottom: 2, // Reduced from 4px
+      marginBottom: theme.spacing.xxs, // Reduced from 4px
       fontWeight: '500',
       lineHeight: 14,
     },
     description: {
-      fontSize: 11,
+      fontSize: theme.typography.captionS.fontSize, // B56③ fontSize→captionS
       color: theme.colors.onSurfaceVariant,
       lineHeight: 14,
-      marginBottom: 4, // Reduced from 6px
+      marginBottom: theme.spacing.xs, // Reduced from 6px
     },
     footer: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: 4,
+      gap: theme.spacing.xs,
     },
     leftFooter: {
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: theme.spacing.s,
     },
     ratingContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 3,
+      // B56②：3→xs(4)（微距）
+      gap: theme.spacing.xs,
     },
     rating: {
-      fontSize: 11,
+      fontSize: theme.typography.captionS.fontSize, // B56③ fontSize→captionS
       fontWeight: '600',
       color: theme.colors.onSurface,
     },
     reviewCount: {
-      fontSize: 11,
+      fontSize: theme.typography.captionS.fontSize, // B56③ fontSize→captionS
       color: theme.colors.onSurfaceVariant,
       fontWeight: '500',
     },
     tagsContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 4,
+      gap: theme.spacing.xs,
       flex: 1,
       justifyContent: 'flex-end',
     },
     tag: {
       height: 18,
       borderColor: theme.colors.outline,
-      borderRadius: 4,
+      borderRadius: theme.radius.xs,
       backgroundColor: theme.colors.surfaceContainerHigh,
     },
     tagText: {
-      fontSize: 11,
+      fontSize: theme.typography.captionS.fontSize, // B56③ fontSize→captionS
       lineHeight: 14,
       fontWeight: '500',
     },
     moreTagsText: {
-      fontSize: 11,
+      fontSize: theme.typography.captionS.fontSize, // B56③ fontSize→captionS
       color: theme.colors.onSurfaceVariant,
       fontWeight: '500',
     },
@@ -241,12 +246,12 @@ export const createStyles = (theme: Theme) =>
       flex: 1,
       flexDirection: 'row',
       alignItems: 'flex-start',
-      gap: 4,
+      gap: theme.spacing.xs,
     },
     headerActions: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: theme.spacing.s,
     },
     actionButton: {
       margin: 0,
@@ -257,14 +262,15 @@ export const createStyles = (theme: Theme) =>
     warningContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 2,
-      paddingHorizontal: 6,
-      paddingVertical: 3,
-      borderRadius: 6,
+      gap: theme.spacing.xxs,
+      // B56②：6→xs(4)/3→xs(4)（紧凑 chip 内距）/ radius 6→s(8)（小卡档）
+      paddingHorizontal: theme.spacing.xs,
+      paddingVertical: theme.spacing.xs,
+      borderRadius: theme.radius.s,
       backgroundColor: theme.colors.errorContainer + '20', // 20% opacity
       borderWidth: 0.5,
       borderColor: theme.colors.error + '40', // 40% opacity
-      marginBottom: 4,
+      marginBottom: theme.spacing.xs,
       // Add subtle glow effect in dark mode
       ...(theme.dark
         ? {
@@ -283,7 +289,7 @@ export const createStyles = (theme: Theme) =>
     },
     warningText: {
       flex: 1,
-      fontSize: 11,
+      fontSize: theme.typography.captionS.fontSize, // B56③ fontSize→captionS
       lineHeight: 14,
       color: theme.colors.error,
       fontWeight: '500',

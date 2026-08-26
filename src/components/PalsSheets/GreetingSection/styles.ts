@@ -7,7 +7,7 @@ export const createStyles = (theme: Theme) =>
       gap: theme.spacing.default,
     },
     field: {
-      gap: 4,
+      gap: theme.spacing.xs,
     },
     label: {
       ...theme.fonts.titleMediumLight,
@@ -18,18 +18,18 @@ export const createStyles = (theme: Theme) =>
       color: theme.colors.onSurfaceVariant,
     },
     promptList: {
-      gap: 8,
+      gap: theme.spacing.s,
     },
     promptRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: theme.spacing.s,
     },
     promptInput: {
       flex: 1,
     },
     addButton: {
       alignSelf: 'flex-start',
-      marginTop: 4,
+      marginTop: theme.spacing.xs,
     },
   });

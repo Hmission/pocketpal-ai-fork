@@ -16,12 +16,12 @@ export const createStyles = (theme: Theme, compact: boolean = false) =>
       fontSize: compact ? 10 : 12,
       fontWeight: 'bold',
       color: theme.colors.primary,
-      marginRight: 4,
+      marginRight: theme.spacing.xs,
     },
     skillItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginLeft: 4,
+      marginLeft: theme.spacing.xs,
     },
     specialSkill: {
       // Additional styling for special skills like vision
@@ -46,7 +46,7 @@ export const createStyles = (theme: Theme, compact: boolean = false) =>
       flexShrink: 1,
     },
     warningBadge: {
-      marginLeft: 2,
+      marginLeft: theme.spacing.xxs,
       padding: 0,
     },
     warningIcon: {
@@ -62,6 +62,6 @@ export const createStyles = (theme: Theme, compact: boolean = false) =>
     warningText: {
       fontSize: compact ? 10 : 12,
       color: theme.colors.error,
-      marginLeft: 2,
+      marginLeft: theme.spacing.xxs,
     },
   });

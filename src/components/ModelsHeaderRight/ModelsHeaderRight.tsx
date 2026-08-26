@@ -7,7 +7,7 @@ import {IconButton} from 'react-native-paper';
 import iconHF from '../../assets/icon-hf.png';
 import iconHFLight from '../../assets/icon-hf-light.png';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 
 import {createStyles} from './styles';
 import {ModelsResetDialog} from '../ModelsResetDialog';

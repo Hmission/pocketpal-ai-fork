@@ -15,13 +15,14 @@ export const styles = ({theme}: {theme: Theme}) =>
       paddingVertical: 0,
     },
     icon: {
-      fontSize: 12,
-      marginRight: 6,
+      fontSize: theme.typography.captionM.fontSize, // B56③ fontSize→captionM
+      // B56②：6→xs(4)（紧凑行内 gap）
+      marginRight: theme.spacing.xs,
       color: theme.colors.textSecondary,
       opacity: 0.75,
     },
     label: {
-      fontSize: 11,
+      fontSize: theme.typography.captionS.fontSize, // B56③ fontSize→captionS
       color: theme.colors.textSecondary,
       opacity: 0.85,
     },

@@ -3,7 +3,7 @@ import React, {useContext, useMemo, useState} from 'react';
 
 import {FAB} from 'react-native-paper';
 
-import {useTheme} from '../../../hooks';
+import {useTheme} from '../../../hooks/useTheme';
 import {L10nContext} from '../../../utils';
 import {CloudPlusIcon} from '../../../assets/icons';
 import {createStyles} from './styles';

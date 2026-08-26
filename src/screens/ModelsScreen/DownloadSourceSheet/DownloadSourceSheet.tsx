@@ -2,7 +2,7 @@ import React, {useContext} from 'react';
 import {TouchableOpacity, View} from 'react-native';
 import {Text} from 'react-native-paper';
 
-import {useTheme} from '../../../hooks';
+import {useTheme} from '../../../hooks/useTheme';
 import {L10nContext} from '../../../utils';
 import {Sheet} from '../../../components';
 import {DownloadSource} from '../../../utils/downloadSources';

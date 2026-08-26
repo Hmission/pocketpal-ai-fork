@@ -7,7 +7,7 @@ import {Text, Button, Divider} from 'react-native-paper';
 import {Surface} from '../../ui';
 import {StarIcon, DownloadIcon, UserIcon} from '../../../assets/icons';
 
-import {useTheme} from '../../../hooks';
+import {useTheme} from '../../../hooks/useTheme';
 import {L10nContext} from '../../../utils';
 import {getFullThumbnailUri} from '../../../utils/imageUtils';
 

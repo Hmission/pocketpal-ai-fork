@@ -3,7 +3,7 @@ import {View, Keyboard, Pressable, Text as RNText} from 'react-native';
 import {observer} from 'mobx-react';
 import BottomSheet, {BottomSheetScrollView} from '@gorhom/bottom-sheet';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {createStyles} from './styles';
 import {WaveDots} from '../ui/WaveDots';
 import {Progress} from '../ui/Progress';

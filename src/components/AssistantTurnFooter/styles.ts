@@ -6,10 +6,11 @@ export const styles = ({theme}: {theme: Theme}) =>
   StyleSheet.create({
     // §18.2 双行合并：列容器，行1 动作行 + 行2 统一指标行
     container: {
-      marginTop: 4,
+      marginTop: theme.spacing.xs,
       // 与正文同一水平缩进 token：按钮组对齐文本左缘，不再贴卡片边缘
       marginHorizontal: theme.insets.messageInsetsHorizontal,
-      paddingBottom: 6,
+      // B56②：6→xs(4)（紧凑底部距）
+      paddingBottom: theme.spacing.xs,
     },
     actionsRow: {
       flexDirection: 'row',
@@ -17,7 +18,8 @@ export const styles = ({theme}: {theme: Theme}) =>
       // 固定高度：复制 icon(16) 统一基线，不随内容跳动
       height: 24,
       // task-6ad §20.4：播放/复制/重新生成间距加大防误触（图标 16px 与 hitSlop 14 不变）
-      gap: 14,
+      // B56②：14→m(16)（防误触刻意间距取大档，差 2px 不弱化意图）
+      gap: theme.spacing.m,
     },
     // 重新生成禁用态（agent 运行中 / 无激活模型）
     actionDisabled: {
@@ -25,7 +27,7 @@ export const styles = ({theme}: {theme: Theme}) =>
     },
     interruptedStatus: {
       color: theme.colors.error,
-      fontSize: 11,
+      fontSize: theme.typography.captionS.fontSize, // B56③ fontSize→captionS
     },
     // ── 行2：统一指标行（排版契约：captionS；数值 brandAccent 600；
     //    标签 textSecondary；分隔符 `·` outlineVariant）──
@@ -64,13 +66,13 @@ export const styles = ({theme}: {theme: Theme}) =>
     rateBarTrack: {
       width: 24,
       height: 4,
-      borderRadius: 2,
+      borderRadius: theme.radius.xxs,
       backgroundColor: theme.colors.surfaceContainerHighest,
       overflow: 'hidden',
     },
     rateBarFill: {
       height: 4,
-      borderRadius: 2,
+      borderRadius: theme.radius.xxs,
       backgroundColor: theme.colors.brandAccent,
     },
     // B40 §11.3 指标图形化展开层：双层曲线 + 摘要行，占满卡片宽不越界；

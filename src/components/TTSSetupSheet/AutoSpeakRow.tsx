@@ -1,9 +1,11 @@
 import React, {useContext} from 'react';
 import {View} from 'react-native';
-import {Switch, Text} from 'react-native-paper';
+import {Text} from 'react-native-paper';
 import {observer} from 'mobx-react';
 
-import {useTheme} from '../../hooks';
+import {Switch} from '../ui/Switch';
+
+import {useTheme} from '../../hooks/useTheme';
 import {ttsStore} from '../../store';
 import {L10nContext} from '../../utils';
 
@@ -32,6 +34,7 @@ export const AutoSpeakRow: React.FC = observer(() => {
         value={ttsStore.autoSpeakEnabled}
         onValueChange={v => ttsStore.setAutoSpeak(v)}
         testID="tts-auto-speak-switch"
+        accessibilityLabel={l10n.voiceAndSpeech.autoSpeakLabel}
       />
     </View>
   );

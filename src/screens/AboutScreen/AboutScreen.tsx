@@ -17,7 +17,8 @@ import {BuildInfo} from 'llama.rn';
 import {CopyIcon} from '../../assets/icons';
 import {infoDialog} from '../../components/ui/InfoDialog';
 
-import {useTheme, useStaggerEntry} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
+import {useStaggerEntry} from '../../hooks/useStaggerEntry';
 import {createStyles} from './styles';
 import {L10nContext} from '../../utils';
 import {GITHUB_REPO_URL} from '../../utils/openSource';

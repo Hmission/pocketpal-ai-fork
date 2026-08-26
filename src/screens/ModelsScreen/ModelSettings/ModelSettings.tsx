@@ -2,13 +2,15 @@ import React, {useEffect, useRef, useState, useContext} from 'react';
 import {TextInput as RNTextInput} from 'react-native';
 import {View, Keyboard} from 'react-native';
 
-import {Button, Text, Switch, Chip} from 'react-native-paper';
+import {Button, Text, Chip} from 'react-native-paper';
 import LinearGradient from 'react-native-linear-gradient';
 import MaskedView from '@react-native-masked-view/masked-view';
 
+import {Switch} from '../../../components/ui/Switch';
+
 import {Divider, TextInput} from '../../../components';
 
-import {useTheme} from '../../../hooks';
+import {useTheme} from '../../../hooks/useTheme';
 
 import {createStyles} from './styles';
 import {ChatTemplatePicker} from '../ChatTemplatePicker';
@@ -100,6 +102,7 @@ export const ModelSettings: React.FC<ModelSettingsProps> = ({
         <Text>{label}</Text>
         <Switch
           testID={`${testID}-switch`}
+          accessibilityLabel={label}
           value={isEnabled}
           onValueChange={value => onChange(toggleName, value)}
         />

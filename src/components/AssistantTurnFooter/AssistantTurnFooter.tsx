@@ -8,11 +8,18 @@ import Clipboard from '@react-native-clipboard/clipboard';
 import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
 
 import {CopyIcon, RefreshIcon} from '../../assets/icons';
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {PlayButton} from '../TextMessage/PlayButton';
 import {AnimatedNumber, OdometerNumber} from '../PerfMotion';
 import {PerfAreaChart, type PerfSeriesSpec} from '../PerfAreaChart';
 import type {ChatTurnPerfSummary} from '../../services/perf/chatTurnPerf';
+// 阈值/格式器单一事实源（IMAGEGEN_UI_SPEC §9 注册表，2026-08-26 抽取共享）
+import {
+  PERF_DANGER_KB,
+  PERF_WARN_COLOR,
+  PERF_CPU_COLOR,
+  yTickGbFmt,
+} from '../../utils/perfTiers';
 import {isSpeakableMessage} from '../../utils/speakable';
 import {ROUTES} from '../../utils/navigationConstants';
 
@@ -32,11 +39,7 @@ const hapticOptions = {
 // tok/s 迷你速率条满量程（B39 跑分图示）：端侧 3B 级典型上限，
 // 仅作显示归一（演出层），不影响数值本身。
 const RATE_FULL_SCALE = 30;
-
-// footer 展开层图表语义色（与 PerfPanel 同登记，IMAGEGEN_UI_SPEC §9）
-const PERF_WARN_COLOR = '#F5A623';
-const PERF_CPU_COLOR = '#4FC3F7';
-const PERF_FOOTER_MAX_KB = 6 * 1024 * 1024; // PSS 满量程 = 6GB 硬杀线
+// footer 展开层满量程/语义色已归一 utils/perfTiers（2026-08-26）
 
 /** timing 段（B39）：数值 + 格式化同源，渲染接 AnimatedNumber 追式缓动 */
 interface TimingPart {
@@ -374,13 +377,15 @@ export const AssistantTurnFooter: React.FC<AssistantTurnFooterProps> = observer(
         ) : null}
 
         {/* B40 §11.3：指标图形化展开层（回合遥测双层曲线 + 峰值/温升摘要 +
-            tok/s 翻滚大数字）；无轨迹的旧消息诚实不渲染 */}
+            tok/s 翻滚大数字）；无轨迹的旧消息诚实不渲染。
+            2026-08-26 同步 B43：加坐标轴（axes）+ 温度热力带（tempBand）+
+            演出层（vivid）——与生图页 PerfPanel 同一效果族（紧凑尺度）。 */}
         {perfExpanded && turnPerf ? (
           <View style={componentStyles.perfExpand} testID="footer-perf-expand">
             <PerfAreaChart
               history={turnPerf.points}
               overlay="pss"
-              max={PERF_FOOTER_MAX_KB}
+              max={PERF_DANGER_KB}
               color={theme.colors.primary}
               warnColor={PERF_WARN_COLOR}
               dangerColor={theme.colors.error}
@@ -389,11 +394,16 @@ export const AssistantTurnFooter: React.FC<AssistantTurnFooterProps> = observer(
                   {
                     key: 'pss',
                     color: theme.colors.primary,
-                    max: PERF_FOOTER_MAX_KB,
+                    max: PERF_DANGER_KB,
                   },
                   {key: 'cpu', color: PERF_CPU_COLOR, max: 100},
                 ] as PerfSeriesSpec[]
               }
+              tempBand
+              axes
+              yTick={yTickGbFmt}
+              vivid
+              axisColor={theme.colors.onSurfaceVariant}
               height={72}
               testID="footer-perf-chart"
             />

@@ -25,7 +25,8 @@ export const createStyles = (theme: Theme) =>
     bullet: {
       width: 1.5,
       height: 1.5,
-      borderRadius: 1,
+      // B56②：1→xxs(2)（1.5px 圆点微角）
+      borderRadius: theme.radius.xxs,
       backgroundColor: theme.colors.text,
       opacity: 0.7,
     },

@@ -6,8 +6,8 @@ export const createStyles = (theme: Theme) =>
     container: {
       height: 46,
       backgroundColor: 'transparent',
-      paddingRight: 16,
-      paddingLeft: 16,
+      paddingRight: theme.spacing.m,
+      paddingLeft: theme.spacing.m,
       maxWidth: 'auto',
     },
     leadingContainer: {
@@ -19,8 +19,9 @@ export const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'flex-start',
-      marginLeft: 10,
-      marginRight: 10,
+      // B56②：10→sm(12)（水平性内外距）
+      marginLeft: theme.spacing.sm,
+      marginRight: theme.spacing.sm,
       maxWidth: 'auto',
       flexGrow: 1,
     },
@@ -45,7 +46,7 @@ export const createStyles = (theme: Theme) =>
       alignItems: 'flex-end',
     },
     groupLabel: {
-      paddingTop: 12,
+      paddingTop: theme.spacing.sm,
       opacity: 0.5,
     },
     activeParent: {

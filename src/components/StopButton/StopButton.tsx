@@ -6,7 +6,7 @@ import {
   TouchableOpacityProps,
 } from 'react-native';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {StopIcon} from '../../assets/icons';
 
 export interface StopButtonPropsAdditionalProps {
@@ -55,8 +55,9 @@ const styles = {
     StyleSheet.create({
       stopButton: {
         // §18.4 与 SendButton 同基准：36px 触区、去 marginLeft（间距由容器 gap 控制）
-        minHeight: 36,
-        minWidth: 36,
+        // R1：controlHeight 基线
+        minHeight: theme.size.controlHeight,
+        minWidth: theme.size.controlHeight,
         borderRadius: theme.radius.full,
         backgroundColor: theme.colors.error,
         justifyContent: 'center' as const,

@@ -9,21 +9,21 @@ export const createStyles = (theme: Theme) =>
     },
     tooltip: {
       position: 'absolute',
-      padding: 8,
-      borderRadius: 4,
+      padding: theme.spacing.s,
+      borderRadius: theme.radius.xs,
       backgroundColor: theme.colors.surface,
       elevation: 4,
       width: 120,
     },
     tooltipTitle: {
       color: theme.colors.primary,
-      fontSize: 12,
+      fontSize: theme.typography.uiS.fontSize, // B56③ fontSize→uiS
       fontWeight: 'bold',
-      marginBottom: 4,
+      marginBottom: theme.spacing.xs,
     },
     tooltipText: {
       color: theme.colors.onSurface,
-      fontSize: 11,
-      marginBottom: 2,
+      fontSize: theme.typography.captionS.fontSize, // B56③ fontSize→captionS
+      marginBottom: theme.spacing.xxs,
     },
   });

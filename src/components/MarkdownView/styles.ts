@@ -12,7 +12,7 @@ export const codeHighlighterPreOverride = {
 export const createTagsStyles = (theme: Theme) => ({
   body: {
     color: theme.colors.text,
-    fontSize: 16,
+    fontSize: theme.typography.bodyM.fontSize, // B56③ fontSize→bodyM
     fontFamily:
       '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
     padding: 0,
@@ -31,7 +31,7 @@ export const createTagsStyles = (theme: Theme) => ({
     padding: 4,
     borderRadius: theme.radius.xs,
     color: theme.colors.onSurface, // Color for code text
-    fontSize: 12,
+    fontSize: theme.typography.captionM.fontSize, // B56③ fontSize→captionM
     whiteSpace: 'pre' as const,
   },
   pre: {
@@ -41,27 +41,27 @@ export const createTagsStyles = (theme: Theme) => ({
     marginVertical: 8,
     color: theme.colors.onPrimaryContainer,
     fontFamily: 'Courier',
-    fontSize: 14,
+    fontSize: theme.typography.bodyS.fontSize, // B56③ fontSize→bodyS
     whiteSpace: 'pre' as const,
   },
   // Styles for thinking tags
   thinking: {
     color: theme.colors.thinkingBubbleText,
-    fontSize: 14,
+    fontSize: theme.typography.bodyS.fontSize, // B56③ fontSize→bodyS
     lineHeight: 20,
     fontFamily:
       '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
   },
   think: {
     color: theme.colors.thinkingBubbleText,
-    fontSize: 14,
+    fontSize: theme.typography.bodyS.fontSize, // B56③ fontSize→bodyS
     lineHeight: 20,
     fontFamily:
       '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
   },
   thought: {
     color: theme.colors.thinkingBubbleText,
-    fontSize: 14,
+    fontSize: theme.typography.bodyS.fontSize, // B56③ fontSize→bodyS
     lineHeight: 20,
     fontFamily:
       '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
@@ -81,8 +81,8 @@ export const createStyles = (theme: Theme) =>
     },
     codeHighlighterScrollContent: {
       backgroundColor: theme.colors.surface,
-      padding: 8,
+      padding: theme.spacing.s,
       borderRadius: theme.radius.s,
-      marginTop: 4,
+      marginTop: theme.spacing.xs,
     },
   });

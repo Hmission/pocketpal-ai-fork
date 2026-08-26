@@ -4,7 +4,7 @@ import {Theme} from '../../utils/types';
 export const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
-      gap: 8,
+      gap: theme.spacing.s,
     },
     label: {
       color: theme.colors.onSurface,
@@ -18,7 +18,7 @@ export const createStyles = (theme: Theme) =>
     buttonContent: {
       flexDirection: 'row-reverse', // Icon on the right
       justifyContent: 'space-between',
-      paddingHorizontal: 16,
+      paddingHorizontal: theme.spacing.m,
     },
     buttonError: {
       borderColor: theme.colors.error,
@@ -37,10 +37,10 @@ export const createStyles = (theme: Theme) =>
     },
     helperText: {
       color: theme.colors.onSurfaceVariant,
-      marginTop: 4,
+      marginTop: theme.spacing.xs,
     },
     errorText: {
       color: theme.colors.error,
-      marginTop: 4,
+      marginTop: theme.spacing.xs,
     },
   });

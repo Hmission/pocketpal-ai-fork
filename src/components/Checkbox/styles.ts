@@ -7,11 +7,11 @@ export const createStyles = (theme: Theme) =>
     container: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: theme.spacing.s,
     },
     checkbox: {
       borderWidth: 2,
-      borderRadius: 4,
+      borderRadius: theme.radius.xs,
       justifyContent: 'center',
       alignItems: 'center',
     },

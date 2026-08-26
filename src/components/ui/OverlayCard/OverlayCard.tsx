@@ -1,7 +1,7 @@
 import * as React from 'react';
 import {Modal, Text, TouchableOpacity, View} from 'react-native';
 
-import {useTheme} from '../../../hooks';
+import {useTheme} from '../../../hooks/useTheme';
 import {Actions, type ActionsProps} from './Actions';
 import {createStyles} from './styles';
 

@@ -3,9 +3,9 @@ import {TouchableOpacity} from 'react-native';
 import {DrawerNavigationProp} from '@react-navigation/drawer';
 import {useNavigation, useNavigationState} from '@react-navigation/native';
 
-import {styles} from './styles';
+import {createStyles} from './styles';
 import {ArrowLeftMdIcon, MenuIcon} from '../../assets/icons';
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {ROUTES} from '../../utils/navigationConstants';
 
 /**
@@ -16,6 +16,7 @@ import {ROUTES} from '../../utils/navigationConstants';
  */
 export const HeaderLeft: React.FC = () => {
   const theme = useTheme();
+  const styles = createStyles(theme);
   const navigation = useNavigation<DrawerNavigationProp<any>>();
   const navState = useNavigationState(s => s);
 

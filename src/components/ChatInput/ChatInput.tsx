@@ -30,13 +30,13 @@ import {
   StopIcon,
 } from '../../assets/icons';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 
 import {createStyles} from './styles';
 
 import {chatSessionStore, modelStore, palStore} from '../../store';
 import {promptWriter} from '../../services/promptWriter';
-import {imageGenStore} from '../../store/imageGenStore';
+import {imageGenStore} from '../../store';
 import {audioStore} from '../../store/audioStore';
 
 import {MessageType} from '../../utils/types';
@@ -1016,6 +1016,7 @@ export const ChatInput = observer(
                   <StopIcon
                     width={18}
                     height={18}
+                    // B56②登记：error 底白 icon（onError dark 为深棕字不适配白图标，保持）
                     stroke="#FFFFFF"
                     strokeWidth={2}
                   />

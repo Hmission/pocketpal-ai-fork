@@ -15,7 +15,7 @@ import * as React from 'react';
 import {Text, View, ViewStyle, TextStyle} from 'react-native';
 import {observer} from 'mobx-react';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {MessageType, Theme} from '../../utils/types';
 import {withOpacity} from '../../utils/colorUtils';
 import {L10nContext} from '../../utils';

@@ -25,7 +25,8 @@ import {listToys, readToy, ToyEntry} from '../../services/toyChest';
 import {listProjects, WorkspaceProject} from '../../services/workspace';
 import {HtmlPreviewBubble} from '../../components/HtmlPreviewBubble';
 import {chatSessionStore} from '../../store';
-import {useTheme, useStaggerEntry} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
+import {useStaggerEntry} from '../../hooks/useStaggerEntry';
 import type {Theme} from '../../utils/types';
 import {IconTile, ListItem} from '../../components/ui';
 import {

@@ -3,7 +3,7 @@ import {View, TouchableOpacity, ScrollView} from 'react-native';
 import {observer} from 'mobx-react-lite';
 import {useFormContext, Controller} from 'react-hook-form';
 
-import {useTheme} from '../../../hooks';
+import {useTheme} from '../../../hooks/useTheme';
 import {createStyles} from './styles';
 import {SectionDivider} from '../SectionDivider';
 import type {PalFormData} from '../types';

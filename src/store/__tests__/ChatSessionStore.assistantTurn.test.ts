@@ -5,6 +5,7 @@ import {chatSessionRepository} from '../../repositories/ChatSessionRepository';
 import {AgentStep, AgentToolOutcome, MessageType} from '../../utils/types';
 import {initialAgentUiState} from '../../services/agent';
 import * as eventStream from '../../debug/eventStream';
+import {createChatStreamingUpdater} from '../../services/chatStreamingUpdater';
 
 jest.spyOn(chatSessionRepository, 'updateMessage');
 jest.spyOn(chatSessionRepository, 'updateSessionTitle');
@@ -164,16 +165,14 @@ describe('ChatSessionStore — AssistantTurn extensions', () => {
       jest.useFakeTimers();
       const dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(2_000_000);
       try {
-        // Force the throttle to schedule a setTimeout (rather than
-        // applying inline) by setting lastStreamingUpdateTime to "just
-        // now" — so the first updateActiveStepStreaming call goes
-        // through the timer path.
-        (chatSessionStore as any).lastStreamingUpdateTime = 2_000_000;
-        (chatSessionStore as any).pendingStreamingUpdate = null;
-        if ((chatSessionStore as any).streamingThrottleTimer) {
-          clearTimeout((chatSessionStore as any).streamingThrottleTimer);
-          (chatSessionStore as any).streamingThrottleTimer = null;
-        }
+        // The throttle slot now lives in the streamingUpdater service
+        // closure (R3-P2). Start from a fresh updater (state reset) and
+        // drive the timer path through the public API: the first call
+        // applies inline (coalescing clock starts), the second call
+        // falls into the setTimeout path — equivalent to the previous
+        // white-box lastStreamingUpdateTime hack.
+        (chatSessionStore as any).streamingUpdater =
+          createChatStreamingUpdater(chatSessionStore);
 
         const turn = makeAssistantTurn([
           {content: "I'll generate the page", partial: true},
@@ -190,12 +189,22 @@ describe('ChatSessionStore — AssistantTurn extensions', () => {
         ];
         chatSessionStore.activeSessionId = 'session1';
 
-        // Schedule a pending streaming update for step 0.
+        // Schedule a pending streaming update for step 0. The warm-up
+        // call applies inline; the real call lands in the throttled slot
+        // and must NOT be visible on the step until the flush below.
+        chatSessionStore.updateActiveStepStreaming(turn.id, 'session1', {
+          content: 'warm-up',
+        });
         chatSessionStore.updateActiveStepStreaming(turn.id, 'session1', {
           content: "I'll generate the page",
         });
-        expect((chatSessionStore as any).pendingStreamingUpdate).not.toBeNull();
-        expect((chatSessionStore as any).streamingThrottleTimer).not.toBeNull();
+        // Pending write not yet applied: step 0 still shows warm-up.
+        expect(
+          (
+            chatSessionStore.sessions[0]
+              .messages[0] as MessageType.AssistantTurn
+          ).steps[0].content,
+        ).toBe('warm-up');
 
         // Now push step 1 BEFORE the throttle fires. The flush must
         // drain the pending write onto step 0 first.
@@ -210,9 +219,6 @@ describe('ChatSessionStore — AssistantTurn extensions', () => {
         expect(updated.steps[0].content).toBe("I'll generate the page");
         // Step 1 is empty (NOT polluted with step 0's content).
         expect(updated.steps[1].content).toBeUndefined();
-        // Pending slot drained.
-        expect((chatSessionStore as any).pendingStreamingUpdate).toBeNull();
-        expect((chatSessionStore as any).streamingThrottleTimer).toBeNull();
       } finally {
         dateNowSpy.mockRestore();
         jest.useRealTimers();
@@ -441,12 +447,11 @@ describe('ChatSessionStore — AssistantTurn extensions', () => {
       mockTime = 2000000;
       dateNowSpy = jest.spyOn(Date, 'now').mockImplementation(() => mockTime);
       jest.useFakeTimers();
-      (chatSessionStore as any).lastStreamingUpdateTime = 0;
-      (chatSessionStore as any).pendingStreamingUpdate = null;
-      if ((chatSessionStore as any).streamingThrottleTimer) {
-        clearTimeout((chatSessionStore as any).streamingThrottleTimer);
-        (chatSessionStore as any).streamingThrottleTimer = null;
-      }
+      // Reset the streamingUpdater service's throttled slot — clock/
+      // timer/pending now live in its closure (R3-P2); recreate it so
+      // the first per-test call applies inline.
+      (chatSessionStore as any).streamingUpdater =
+        createChatStreamingUpdater(chatSessionStore);
     });
 
     afterEach(() => {
@@ -515,20 +520,26 @@ describe('ChatSessionStore — AssistantTurn extensions', () => {
       chatSessionStore.updateActiveStepStreaming(turn.id, 'session1', {
         content: 'a-b-c',
       });
-      expect((chatSessionStore as any).pendingStreamingUpdate).toEqual({
-        kind: 'step',
-        id: turn.id,
-        sessionId: 'session1',
-        partial: {content: 'a-b-c'},
-      });
+      // 'a-b'/'a-b-c' coalesced into the throttled slot — the step still
+      // shows 'a' from the inline first call (verified above).
 
       // Mixing in a legacy text update overwrites the same slot — confirms
-      // the throttle slot is shared across paths, not per-shape.
+      // the throttle slot is shared across paths, not per-shape. Draining
+      // applies exactly ONE write: the legacy text update wins (no queue)
+      // — the legacy path never touches `content` on an assistant_turn row,
+      // so the step keeps 'a' and the freshest payload reaches the repo.
       chatSessionStore.updateMessageStreaming(turn.id, 'session1', {
         text: 'legacy',
       });
-      expect((chatSessionStore as any).pendingStreamingUpdate.kind).toBe(
-        'text',
+      (chatSessionStore as any).streamingUpdater.flush();
+      expect(
+        (chatSessionStore.sessions[0].messages[0] as MessageType.AssistantTurn)
+          .steps[0].content,
+      ).toBe('a');
+      expect(chatSessionRepository.updateMessage).toHaveBeenCalledTimes(2);
+      expect(chatSessionRepository.updateMessage).toHaveBeenLastCalledWith(
+        turn.id,
+        {text: 'legacy'},
       );
     });
 

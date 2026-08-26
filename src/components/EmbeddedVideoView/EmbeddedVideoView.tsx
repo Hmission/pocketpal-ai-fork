@@ -1,11 +1,7 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
-import {
-  View,
-  TouchableOpacity,
-  Text,
-  ActivityIndicator,
-  Platform,
-} from 'react-native';
+import {View, TouchableOpacity, Text, Platform} from 'react-native';
+
+import {CircularActivityIndicator} from '../CircularActivityIndicator';
 
 import {observer} from 'mobx-react';
 import 'react-native-get-random-values';
@@ -18,7 +14,7 @@ import {
   CameraPosition,
 } from 'react-native-vision-camera';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 
 import {createStyles} from './styles';
 import {ResponseBubble} from '../ResponseBubble';
@@ -166,7 +162,7 @@ export const EmbeddedVideoView = observer(
           <Text style={styles.permissionText}>
             {l10n.video.requestingPermission}
           </Text>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <CircularActivityIndicator size={36} color={theme.colors.primary} />
         </View>
       );
     }

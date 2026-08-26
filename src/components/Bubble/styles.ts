@@ -44,26 +44,26 @@ export const styles = ({
     dateHeader0: {
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: 32,
-      marginTop: 16,
+      marginBottom: theme.spacing.xl,
+      marginTop: theme.spacing.m,
     },
     dateHeaderContainer: {
       textAlign: 'right',
-      paddingBottom: 12,
+      paddingBottom: theme.spacing.sm,
       marginTop: -8,
-      marginLeft: 20,
+      marginLeft: theme.spacing.ml,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: theme.spacing.s,
     },
     dateHeader: {
       //textAlign: 'right',
       color: theme.colors.textSecondary,
-      fontSize: 11,
+      fontSize: theme.typography.captionS.fontSize, // B56③ fontSize→captionS
     },
     iconContainer: {
       color: theme.colors.textSecondary,
-      fontSize: 16,
+      fontSize: theme.typography.bodyM.fontSize, // B56③ fontSize→bodyM
     },
   });
 };

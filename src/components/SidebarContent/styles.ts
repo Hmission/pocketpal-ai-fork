@@ -15,14 +15,15 @@ export const createStyles = (theme: Theme) =>
     },
     // 顶部固定区：搜索 + 新对话
     topSection: {
-      paddingHorizontal: 12,
-      paddingTop: 8,
+      paddingHorizontal: theme.spacing.sm,
+      paddingTop: theme.spacing.s,
     },
     searchContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
-      paddingHorizontal: 10,
+      gap: theme.spacing.s,
+      // B56②：10→sm(12)（水平性）
+      paddingHorizontal: theme.spacing.sm,
       // 灰色治理（DESIGN_SPEC §1.8）：搜索框不再用 surfaceVariant，改 surface + 描边；
       // 描边提为 1px 实线（hairline 太弱看不清），聚焦态橙黄由组件内联覆盖
       borderRadius: theme.radius[theme.shapeRoles.inputSmall],
@@ -32,39 +33,43 @@ export const createStyles = (theme: Theme) =>
     },
     searchInput: {
       flex: 1,
-      paddingVertical: 8,
-      fontSize: 14,
+      paddingVertical: theme.spacing.s,
+      fontSize: theme.typography.bodyS.fontSize, // B56③ fontSize→bodyS
       color: theme.colors.onSurface,
     },
     newChatRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
-      paddingVertical: 2,
-      paddingHorizontal: 2,
+      // B56②：10→sm(12)（水平性）
+      gap: theme.spacing.sm,
+      paddingVertical: theme.spacing.xxs,
+      paddingHorizontal: theme.spacing.xxs,
     },
     newChatButton: {
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
-      paddingVertical: 10,
+      // B56②：10→sm(12)（水平性）/ 10→s(8)（垂直紧凑）
+      gap: theme.spacing.sm,
+      paddingVertical: theme.spacing.s,
     },
-    // 生图快捷入口：无底框文字按钮（与「+ 新对话」对称），最小触区 44px（padding 补偿）
+    // 生图快捷入口：无底框文字按钮（与「+ 新对话」对称）。注：触区由行高 + padding(s) 构成，
+    // 未配 hitSlop，实际不保证 44 基线（旧注释失实已修正）——如需达标建议补 hitSlop 或 minTapTarget（登记 Gap）
     newChatImageGenButton: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
-      paddingVertical: 10,
-      paddingHorizontal: 8,
+      // B56②：6→xs(4)（紧凑 gap）/ 10→s(8)（垂直紧凑）
+      gap: theme.spacing.xs,
+      paddingVertical: theme.spacing.s,
+      paddingHorizontal: theme.spacing.s,
     },
     imageGenEntryText: {
-      fontSize: 14,
+      fontSize: theme.typography.uiM.fontSize, // B56③ fontSize→uiM
       fontWeight: '500',
       color: theme.colors.primary,
     },
     newChatText: {
-      fontSize: 14,
+      fontSize: theme.typography.uiM.fontSize, // B56③ fontSize→uiM
       fontWeight: '500',
       color: theme.colors.primary,
     },
@@ -81,24 +86,24 @@ export const createStyles = (theme: Theme) =>
     drawerFooter: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 12,
-      paddingVertical: 12,
-      paddingHorizontal: 16,
+      gap: theme.spacing.sm,
+      paddingVertical: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.m,
       borderTopWidth: 1,
       borderTopColor: theme.colors.outline,
       opacity: 1,
     },
     footerText: {
-      fontSize: 14,
+      fontSize: theme.typography.uiM.fontSize, // B56③ fontSize→uiM
       fontWeight: '500',
       color: theme.colors.onSurface,
     },
     emptySearch: {
-      paddingVertical: 24,
+      paddingVertical: theme.spacing.l,
       alignItems: 'center',
     },
     emptySearchText: {
-      fontSize: 13,
+      fontSize: theme.typography.bodyS.fontSize,
       color: theme.colors.onSurfaceVariant,
     },
     sessionDrawerItem: {
@@ -107,15 +112,17 @@ export const createStyles = (theme: Theme) =>
     versionText: {
       color: theme.colors.onSurfaceVariant,
       opacity: 0.7,
-      fontSize: 12,
+      fontSize: theme.typography.uiS.fontSize, // B56③ fontSize→uiS
       fontWeight: '500',
     },
     drawerSection: {
-      marginTop: 10,
+      // B56②：10→sm(12)（外层距）
+      marginTop: theme.spacing.sm,
     },
     dateLabel: {
-      paddingLeft: 16,
-      paddingVertical: 10,
+      paddingLeft: theme.spacing.m,
+      // B56②：10→s(8)（垂直紧凑）
+      paddingVertical: theme.spacing.s,
     },
     scrollViewContent: {
       flexGrow: 1,
@@ -139,21 +146,21 @@ export const createStyles = (theme: Theme) =>
       height: 40,
       alignItems: 'center',
       justifyContent: 'center',
-      marginRight: 4,
+      marginRight: theme.spacing.xs,
     },
     // Selection mode styles
     selectionModeHeader: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingHorizontal: 16,
-      paddingVertical: 12,
+      paddingHorizontal: theme.spacing.m,
+      paddingVertical: theme.spacing.sm,
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.outline,
       backgroundColor: theme.colors.surface,
     },
     selectedCountText: {
-      fontSize: 16,
+      fontSize: theme.typography.titleS.fontSize, // B56③ fontSize→titleS
       fontWeight: '600',
       color: theme.colors.onSurface,
       flex: 1,
@@ -165,20 +172,20 @@ export const createStyles = (theme: Theme) =>
       position: 'relative',
     },
     sessionCheckbox: {
-      marginLeft: 8,
-      marginRight: 4,
+      marginLeft: theme.spacing.s,
+      marginRight: theme.spacing.xs,
     },
     menuDivider: {
-      marginVertical: 4,
+      marginVertical: theme.spacing.xs,
     },
     // Header action buttons (export, delete icons)
     headerActions: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 16,
+      gap: theme.spacing.m,
     },
     headerActionButton: {
-      padding: 4,
+      padding: theme.spacing.xs,
     },
     headerActionButtonDisabled: {
       opacity: 0.4,
@@ -187,15 +194,15 @@ export const createStyles = (theme: Theme) =>
     selectAllRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 12,
-      paddingHorizontal: 16,
+      paddingVertical: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.m,
       backgroundColor: theme.colors.surface,
     },
     selectAllCheckbox: {
-      marginRight: 12,
+      marginRight: theme.spacing.sm,
     },
     selectAllText: {
-      fontSize: 16,
+      fontSize: theme.typography.bodyM.fontSize, // B56③ fontSize→bodyM
       color: theme.colors.onSurface,
     },
     selectAllDivider: {

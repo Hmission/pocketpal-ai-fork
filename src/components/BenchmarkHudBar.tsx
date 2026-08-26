@@ -8,33 +8,40 @@ import * as React from 'react';
 import {StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {observer} from 'mobx-react-lite';
 
-import {useTheme} from '../hooks';
+import {useTheme} from '../hooks/useTheme';
 import {L10nContext} from '../utils';
+import {withOpacity} from '../utils/colorUtils';
 import {benchmarkStore} from '../store/BenchmarkStore';
 import {benchmarkOrchestrator} from '../services/benchmarkOrchestrator';
 import {Theme} from '../utils/types';
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
+    // 2026-08-26 去灰（大王：不喜欢灰色、没设计感）：
+    // surfaceContainerHighest 灰底 → 跑分金 brandAccent 12% wash + hairline 描边
+    //（与 BannerBar 语义色 wash 同一设计语言）；文案居中，abort 右端。
     banner: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingHorizontal: 12,
+      paddingHorizontal: theme.spacing.sm,
       paddingVertical: 6,
-      marginHorizontal: 12,
+      marginHorizontal: theme.spacing.sm,
       marginTop: 6,
-      borderRadius: 8,
-      backgroundColor: theme.colors.surfaceContainerHighest,
+      borderRadius: theme.radius.s,
+      backgroundColor: withOpacity(theme.colors.brandAccent, 0.12),
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: withOpacity(theme.colors.brandAccent, 0.25),
     },
     label: {
       flex: 1,
-      fontSize: 12,
+      fontSize: theme.typography.uiS.fontSize, // B56③ fontSize→uiS
       color: theme.colors.brandAccent,
       fontWeight: '600',
+      textAlign: 'center',
     },
     abortText: {
-      fontSize: 12,
+      fontSize: theme.typography.captionM.fontSize, // B56③ fontSize→captionM
       color: theme.colors.error,
     },
   });

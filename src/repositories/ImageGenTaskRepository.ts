@@ -2,7 +2,7 @@ import {Q} from '@nozbe/watermelondb';
 
 import {database} from '../database';
 import {ImageGenTask} from '../database';
-import type {GeneratedImage} from '../store/imageGenStore';
+import type {GeneratedImage} from '../store';
 import {prepareSharedStorage, scheduleDbSnapshot} from '../utils/paths';
 
 /**

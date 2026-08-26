@@ -32,7 +32,8 @@ export const createStyles = (theme: Theme) =>
     },
     list: {
       paddingHorizontal: theme.spacing.m,
-      paddingBottom: 120,
+      // R2：120 静态底缘 → xxl + xl（72）。Sheet 70% 底部按钮区无遮挡物，bottomOffset=100 键盘补偿管键盘场景（完整分区列入下批）
+      paddingBottom: theme.spacing.xxl + theme.spacing.xl,
     },
     fileRow: {
       flexDirection: 'row',
@@ -54,6 +55,6 @@ export const createStyles = (theme: Theme) =>
     fileSize: {
       ...theme.typography.bodyS,
       color: theme.colors.onSurfaceVariant,
-      marginTop: 2,
+      marginTop: theme.spacing.xxs,
     },
   });

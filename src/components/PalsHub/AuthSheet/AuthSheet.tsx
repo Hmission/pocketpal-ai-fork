@@ -3,11 +3,13 @@ import {View} from 'react-native';
 
 import {observer} from 'mobx-react-lite';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {Text, Button, TextInput, ActivityIndicator} from 'react-native-paper';
+import {Text, Button, TextInput} from 'react-native-paper';
+
+import {CircularActivityIndicator} from '../../CircularActivityIndicator';
 
 import {GoogleIcon} from '../../../assets/icons';
 
-import {useTheme} from '../../../hooks';
+import {useTheme} from '../../../hooks/useTheme';
 
 import {Sheet} from '../../Sheet';
 import {createStyles} from './styles';
@@ -168,7 +170,10 @@ export const AuthSheet: React.FC<AuthSheetProps> = observer(
           {/* Loading Indicator */}
           {authState.isLoading && (
             <View style={styles.authLoadingContainer}>
-              <ActivityIndicator size="large" color={theme.colors.primary} />
+              <CircularActivityIndicator
+                size={36}
+                color={theme.colors.primary}
+              />
               <Text style={styles.authSubtitle}>Signing you in...</Text>
             </View>
           )}

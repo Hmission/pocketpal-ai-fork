@@ -17,8 +17,8 @@ export const createStyles = (theme: Theme) => {
       fontFamily: isFraunces
         ? FONT_FAMILIES.FRAUNCES_MEDIUM
         : FONT_FAMILIES.INTER_MEDIUM,
-      fontSize: 24,
-      lineHeight: 28,
+      fontSize: theme.typography.headlineH2.fontSize, // B56③ 24→headlineH2（补档归档，等值；字体条件保留）
+      lineHeight: theme.typography.headlineH2.lineHeight, // B56③ lineHeight 同步取 token（等值 28）
       color: theme.colors.onBackground,
       textAlign: 'center',
       width: 279,

@@ -3,7 +3,7 @@ import {Pressable, Text, View} from 'react-native';
 
 import {ArrowRightGlyph} from '../../../../assets/onboarding/illustrations';
 import {ChevronLeftLgIcon, DownloadIcon} from '../../../../assets/icons';
-import {useTheme} from '../../../../hooks';
+import {useTheme} from '../../../../hooks/useTheme';
 import {createStyles} from './styles';
 
 export type OnboardingBottomBarProps = {

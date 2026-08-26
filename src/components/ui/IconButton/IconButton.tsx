@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {useTheme} from '../../../hooks';
+import {useTheme} from '../../../hooks/useTheme';
 import {Pressable} from '../primitives/Pressable';
 
 import type {CommonDSProps} from '../types';

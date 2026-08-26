@@ -1,8 +1,9 @@
 import React from 'react';
-import {View, ActivityIndicator, Text, StyleSheet} from 'react-native';
+import {View, Text, StyleSheet} from 'react-native';
 import {observer} from 'mobx-react-lite';
 import {chatSessionStore} from '../../store/ChatSessionStore';
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
+import {CircularActivityIndicator} from '../CircularActivityIndicator';
 
 export const DatabaseMigration = observer(() => {
   const theme = useTheme();
@@ -14,7 +15,7 @@ export const DatabaseMigration = observer(() => {
   return (
     <View
       style={[styles.container, {backgroundColor: theme.colors.background}]}>
-      <ActivityIndicator size="large" color={theme.colors.primary} />
+      <CircularActivityIndicator size={36} color={theme.colors.primary} />
       <Text style={[styles.text, {color: theme.colors.text}]}>
         Upgrading database...
       </Text>

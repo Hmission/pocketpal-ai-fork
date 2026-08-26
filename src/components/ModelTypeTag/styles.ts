@@ -13,10 +13,11 @@ export const createStyles = (
     container: {
       flexDirection: 'row',
       alignItems: 'center',
-      borderRadius: 10,
+      // B56②：10→s(8)（小元素 chip 内缩取小档；两档均安全）
+      borderRadius: theme.radius.s,
       borderWidth: 1,
       paddingHorizontal: size === 'small' ? 4 : 6,
-      marginRight: 4,
+      marginRight: theme.spacing.xs,
       height: size === 'small' ? 20 : 24,
       backgroundColor: (() => {
         switch (type) {
@@ -49,7 +50,7 @@ export const createStyles = (
     text: {
       fontWeight: '600',
       fontSize: size === 'small' ? 10 : 12,
-      marginLeft: 2,
+      marginLeft: theme.spacing.xxs,
       color: (() => {
         switch (type) {
           case 'vision':

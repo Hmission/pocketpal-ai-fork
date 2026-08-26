@@ -1,29 +1,19 @@
 import {chatSessionStore} from '../../store';
-import {imageGenStore} from '../../store/imageGenStore';
+// R4-B：service 改走 store barrel 后，测试对象改用全局 mockImageGenStore（身份对齐）
+import {mockImageGenStore} from '../../../__mocks__/stores/imageGenStore';
 import {promptWriter} from '../promptWriter';
 import {runImageTaskCard, runEditImageTaskCard} from '../chatImageTask';
 
 // DreamLite 单通道（大王裁定 2026-08：聊天闭环只走唯一跑通模型）：
 // generateDreamLiteEntry / editDreamLiteEntry 内部自保加载，驻留时秒级出图
-jest.mock('../../store/imageGenStore', () => ({
-  imageGenStore: {
-    modelLoaded: true,
-    dreamliteLoaded: true,
-    error: null,
-    generateDreamLiteEntry: jest.fn(),
-    editDreamLiteEntry: jest.fn(),
-    decodeEditImage: jest.fn(),
-    setChatInlineGenerating: jest.fn(),
-  },
-}));
 jest.mock('../../services/promptWriter', () => ({
   promptWriter: {isLoaded: false, writePrompt: jest.fn()},
   isPrompterModelName: jest.fn().mockReturnValue(false),
 }));
 
-const mockGenerate = imageGenStore.generateDreamLiteEntry as jest.Mock;
-const mockEdit = imageGenStore.editDreamLiteEntry as jest.Mock;
-const mockDecode = imageGenStore.decodeEditImage as jest.Mock;
+const mockGenerate = mockImageGenStore.generateDreamLiteEntry as jest.Mock;
+const mockEdit = mockImageGenStore.editDreamLiteEntry as jest.Mock;
+const mockDecode = mockImageGenStore.decodeEditImage as jest.Mock;
 const mockWritePrompt = promptWriter.writePrompt as jest.Mock;
 
 describe('runImageTaskCard', () => {
@@ -33,7 +23,9 @@ describe('runImageTaskCard', () => {
     mockEdit.mockReset();
     mockDecode.mockReset();
     mockWritePrompt.mockReset();
-    (imageGenStore as any).error = null;
+    (mockImageGenStore as any).error = null;
+    (mockImageGenStore as any).modelLoaded = true;
+    (mockImageGenStore as any).dreamliteLoaded = true;
     (promptWriter as any).isLoaded = false;
   });
 
@@ -117,7 +109,7 @@ describe('runImageTaskCard', () => {
 
   it('出图失败：回写失败文案 + imageTaskFailed（渲染侧出「重试」动作）', async () => {
     mockGenerate.mockResolvedValue(null);
-    (imageGenStore as any).error = '引擎过热';
+    (mockImageGenStore as any).error = '引擎过热';
 
     await runImageTaskCard('一只猫');
 
@@ -141,7 +133,7 @@ describe('runImageTaskCard', () => {
 
   it('聊天内联生图标志：开始置 true，结束（含失败）finally 复位 false', async () => {
     mockGenerate.mockResolvedValue('file:///tmp/gen_3.png');
-    const setFlag = imageGenStore.setChatInlineGenerating as jest.Mock;
+    const setFlag = mockImageGenStore.setChatInlineGenerating as jest.Mock;
 
     await runImageTaskCard('一只猫');
 
@@ -151,7 +143,7 @@ describe('runImageTaskCard', () => {
     // 失败路径同样复位
     setFlag.mockClear();
     mockGenerate.mockResolvedValue(null);
-    (imageGenStore as any).error = '引擎过热';
+    (mockImageGenStore as any).error = '引擎过热';
     await runImageTaskCard('一条狗');
     expect(setFlag).toHaveBeenNthCalledWith(1, true);
     expect(setFlag).toHaveBeenLastCalledWith(false);
@@ -163,7 +155,9 @@ describe('runEditImageTaskCard（P5 聊天内编辑闭环）', () => {
     jest.clearAllMocks();
     mockEdit.mockReset();
     mockDecode.mockReset();
-    (imageGenStore as any).error = null;
+    (mockImageGenStore as any).error = null;
+    (mockImageGenStore as any).modelLoaded = true;
+    (mockImageGenStore as any).dreamliteLoaded = true;
   });
 
   it('编辑成功：解码源图（双解码 1024²+512²）→DreamLite 编辑（视觉通道）→回写结果图', async () => {
@@ -207,7 +201,7 @@ describe('runEditImageTaskCard（P5 聊天内编辑闭环）', () => {
       .mockResolvedValueOnce(new Float32Array(4 * 1024 * 1024))
       .mockResolvedValueOnce(new Float32Array(3 * 512 * 512));
     mockEdit.mockResolvedValue(null);
-    (imageGenStore as any).error = '源图解码失败';
+    (mockImageGenStore as any).error = '源图解码失败';
 
     await runEditImageTaskCard('file:///tmp/src.png', '把背景改成海边');
 

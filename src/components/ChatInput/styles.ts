@@ -19,14 +19,16 @@ export const createStyles = ({
       width: 28,
       alignItems: 'center',
       justifyContent: 'center',
-      borderRadius: 100,
+      // B56②：28px icon 钮 → full（胶囊意图）
+      borderRadius: theme.radius.full,
     },
     plusButton: {
       height: 28,
       width: 28,
       alignItems: 'center',
       justifyContent: 'center',
-      borderRadius: 100,
+      // B56②：28px icon 钮 → full（胶囊意图）
+      borderRadius: theme.radius.full,
       opacity: 0.9,
     },
     thinkingToggle: {
@@ -34,9 +36,10 @@ export const createStyles = ({
       width: 28,
       alignItems: 'center',
       justifyContent: 'center',
-      borderRadius: 100,
+      // B56②：28px icon 钮 → full（胶囊意图）
+      borderRadius: theme.radius.full,
       borderWidth: 1,
-      marginRight: 8,
+      marginRight: theme.spacing.s,
     },
     thinkingToggleLeft: {
       flexDirection: 'row',
@@ -45,9 +48,9 @@ export const createStyles = ({
       // B18 §17：胶囊 36→24px（与两边 28px 图标钮视觉同量级，不再凸出）；
       // 行基线仍 36，触区由 hitSlop 上下各 +6 补齐（ChatInput 单点）。
       height: 24,
-      borderRadius: 12,
-      paddingHorizontal: 12,
-      marginLeft: 8,
+      borderRadius: theme.radius.m,
+      paddingHorizontal: theme.spacing.sm,
+      marginLeft: theme.spacing.s,
       // 2026-08-16 去描边（与快捷生图/编辑图标钮统一无描边）：状态靠背景填充色表达，
       // 激活=onSurfaceColor 背景，未激活=透明+灰字；灰色描边冗余（DESIGN_SPEC §1.8 一灰一职）
     },
@@ -55,9 +58,9 @@ export const createStyles = ({
       backgroundColor: 'transparent',
     },
     thinkingToggleText: {
-      fontSize: 12,
+      fontSize: theme.typography.uiS.fontSize, // B56③ fontSize→uiS
       fontWeight: '500',
-      marginLeft: 4,
+      marginLeft: theme.spacing.xs,
     },
     thinkingToggleTextDisabled: {
       // Dynamic color will be applied via theme
@@ -65,12 +68,13 @@ export const createStyles = ({
     palSelector: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 4,
+      gap: theme.spacing.xs,
     },
     inputWrapper: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      gap: 13,
+      // B56②：13→sm(12)（行内紧凑）
+      gap: theme.spacing.sm,
       flexShrink: 1,
     },
     input: {
@@ -78,41 +82,44 @@ export const createStyles = ({
       ...theme.typography.bodyM,
       color: theme.colors.inverseOnSurface,
       flex: 1,
+      // R2 裁定：输入高度上限（防无限增高）非底缘留白——归尺寸域豁免，本批不改值
       maxHeight: 150,
       paddingVertical: 0,
     },
     marginRight: {
-      marginRight: 16,
+      marginRight: theme.spacing.m,
     },
     inputContainer: {
       flex: 1,
       flexDirection: 'column',
-      borderRadius: 12,
+      borderRadius: theme.radius.m,
       overflow: 'hidden',
     },
     textInputArea: {
       flex: 1,
-      paddingHorizontal: 24,
-      paddingTop: 24,
-      paddingBottom: 12,
+      paddingHorizontal: theme.spacing.l,
+      paddingTop: theme.spacing.l,
+      paddingBottom: theme.spacing.sm,
     },
     inputDivider: {
       height: StyleSheet.hairlineWidth,
       backgroundColor: theme.colors.outlineVariant,
-      marginHorizontal: 24,
+      marginHorizontal: theme.spacing.l,
     },
     controlBar: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingHorizontal: 24,
-      paddingVertical: 6,
+      paddingHorizontal: theme.spacing.l,
+      // B56②：6→xs(4)（紧凑条）
+      paddingVertical: theme.spacing.xs,
       minHeight: 30,
     },
     leftControls: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
+      // B56②：10→sm(12)（水平性；可 s(8) 与 rightControls 对齐，取水平性档）
+      gap: theme.spacing.sm,
       flex: 1,
     },
     rightControls: {
@@ -120,7 +127,7 @@ export const createStyles = ({
       flexDirection: 'row',
       alignItems: 'center',
       // §18.4 发送/停止/语音钮同基准间距（去按钮 marginLeft 后由容器控制）
-      gap: 8,
+      gap: theme.spacing.s,
     },
     editBar: {
       position: 'absolute',
@@ -132,7 +139,7 @@ export const createStyles = ({
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingHorizontal: 12,
+      paddingHorizontal: theme.spacing.sm,
       borderTopLeftRadius: theme.radius.ml,
       borderTopRightRadius: theme.radius.ml,
       borderBottomWidth: 1,
@@ -151,24 +158,26 @@ export const createStyles = ({
       alignItems: 'center',
       alignSelf: 'flex-start',
       backgroundColor: theme.colors.primary,
-      borderRadius: 8,
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-      marginBottom: 6,
-      gap: 6,
+      borderRadius: theme.radius.s,
+      // B56②：10→sm(12)（水平性）/ 6→xs(4)、1→（紧凑 chip 内距）
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xs,
+      marginBottom: theme.spacing.xs,
+      gap: theme.spacing.xs,
     },
     quickPrefixText: {
       color: theme.colors.surface,
       fontWeight: '600' as const,
-      fontSize: 12,
+      fontSize: theme.typography.uiS.fontSize, // B56③ fontSize→uiS
     },
     // 快捷生图/编辑图标钮（P5 下沉 controlBar：与语音钮同高基准，触摸友好）
     quickIconBtn: {
-      width: 36,
-      height: 36,
+      width: theme.size.controlHeight,
+      height: theme.size.controlHeight,
       alignItems: 'center',
       justifyContent: 'center',
-      borderRadius: 18,
+      // B56②：36px 圆钮半高 18 → full
+      borderRadius: theme.radius.full,
     },
     // busy 禁用态：降透明示不可点（与生图页动作条同语义）
     quickIconBtnBusy: {
@@ -178,44 +187,44 @@ export const createStyles = ({
       flex: 1,
       flexDirection: 'row',
       alignItems: 'flex-end',
-      paddingHorizontal: 24,
-      paddingVertical: 20,
+      paddingHorizontal: theme.spacing.l,
+      paddingVertical: theme.spacing.ml,
       marginTop: isEditMode ? 28 : 0,
     },
     palNameWrapper: {
       fontFamily: FONT_FAMILIES.INTER_REGULAR,
       color: theme.colors.inverseOnSurface,
-      fontSize: 12,
+      fontSize: theme.typography.uiS.fontSize, // B56③ fontSize→uiS
     },
     palName: {
-      fontSize: 12,
+      fontSize: theme.typography.uiS.fontSize, // B56③ fontSize→uiS
       color: theme.colors.inverseOnSurface,
       fontFamily: FONT_FAMILIES.INTER_SEMIBOLD,
     },
     // New compact pal name styles for control bar
     palNameCompact: {
-      fontSize: 11,
+      fontSize: theme.typography.captionS.fontSize, // B56③ fontSize→captionS
       fontFamily: FONT_FAMILIES.INTER_REGULAR,
       color: theme.colors.inverseOnSurface,
     },
     palNameValueCompact: {
-      fontSize: 11,
+      fontSize: theme.typography.captionS.fontSize, // B56③ fontSize→captionS
       fontFamily: FONT_FAMILIES.INTER_SEMIBOLD,
       color: theme.colors.inverseOnSurface,
     },
     // Image preview styles
     imagePreviewContainer: {
-      marginVertical: 8,
-      paddingHorizontal: 16,
+      marginVertical: theme.spacing.s,
+      paddingHorizontal: theme.spacing.m,
     },
     imagePreviewContainerEditMode: {
       marginTop: 36, // Account for edit bar height (28px) + extra spacing (8px)
     },
     imageScrollContent: {
-      paddingHorizontal: 4,
+      paddingHorizontal: theme.spacing.xs,
     },
     imageContainer: {
-      marginHorizontal: 4,
+      marginHorizontal: theme.spacing.xs,
       position: 'relative',
     },
     previewImage: {
@@ -243,10 +252,11 @@ export const createStyles = ({
     cameraButton: {
       width: 40,
       height: 40,
-      borderRadius: 24,
+      borderRadius: theme.radius.l, // B56① radius 不扩档（镜像 Figma 量表），原值 24 归 l 档
       justifyContent: 'center',
       alignItems: 'center',
-      marginBottom: 8,
+      marginBottom: theme.spacing.s,
+      // B56②豁免：shadow token dark 绑定白不适配（登记评审）
       shadowColor: '#000',
       shadowOffset: {
         width: 0,
@@ -260,10 +270,10 @@ export const createStyles = ({
     stopButton: {
       width: 48,
       height: 48,
-      borderRadius: 24,
+      borderRadius: theme.radius.l, // B56① radius 不扩档（镜像 Figma 量表），原值 24 归 l 档
       justifyContent: 'center',
       alignItems: 'center',
-      marginBottom: 8,
+      marginBottom: theme.spacing.s,
     },
 
     // Compact Video Button (for right side)
@@ -271,29 +281,33 @@ export const createStyles = ({
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      height: 36, // 与思考胶囊/发送按钮统一高度
-      paddingHorizontal: 14,
-      borderRadius: 18,
-      gap: 6,
+      // R1：controlHeight 基线（原 36）
+      height: theme.size.controlHeight, // 与思考胶囊/发送按钮统一高度
+      // B56②：14→sm(12)（行内）/ 18→full（36px 胶囊）/ 6→xs(4)（紧凑）
+      paddingHorizontal: theme.spacing.sm,
+      borderRadius: theme.radius.full,
+      gap: theme.spacing.xs,
       minWidth: 85,
     },
     compactButtonText: {
+      // 彩色底（primary/danger）白字：无单一 onX token（onPrimary 深棕）——B56②登记评审
       color: 'white',
-      fontSize: 12,
+      fontSize: theme.typography.uiS.fontSize, // B56③ fontSize→uiS
       fontWeight: '600',
     },
     // 语音输入/停止按钮（36px 圆钮，与思考胶囊同一高度基准）
     voiceButton: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
+      width: theme.size.controlHeight,
+      height: theme.size.controlHeight,
+      // B56②：36px 圆钮半高 18 → full
+      borderRadius: theme.radius.full,
       justifyContent: 'center',
       alignItems: 'center',
-      marginLeft: 16,
+      marginLeft: theme.spacing.m,
     },
     // Prompt Label for Video Pals
     promptLabel: {
-      marginBottom: 4,
+      marginBottom: theme.spacing.xs,
     },
     inputWithLabel: {
       marginTop: 0,
@@ -303,12 +317,14 @@ export const createStyles = ({
       position: 'absolute',
       bottom: '100%',
       right: 0,
-      marginBottom: 4,
+      marginBottom: theme.spacing.xs,
       backgroundColor: theme.colors.errorContainer,
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 8,
+      paddingHorizontal: theme.spacing.sm,
+      // B56②：6→xs(4)（气泡内距）
+      paddingVertical: theme.spacing.xs,
+      borderRadius: theme.radius.s,
       maxWidth: 250,
+      // B56②豁免：shadow token dark 绑定白不适配（登记评审）
       shadowColor: '#000',
       shadowOffset: {
         width: 0,
@@ -320,7 +336,7 @@ export const createStyles = ({
     },
     helperText: {
       color: theme.colors.onErrorContainer,
-      fontSize: 11,
+      fontSize: theme.typography.captionS.fontSize, // B56③ fontSize→captionS
       lineHeight: 14,
     },
   });

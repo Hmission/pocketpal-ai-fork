@@ -1,7 +1,7 @@
 import React, {useMemo} from 'react';
 import {Text, View} from 'react-native';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 
 import {createStyles} from './styles';
 

@@ -1,7 +1,7 @@
 import React from 'react';
 import {useForm, FormProvider} from 'react-hook-form';
 
-import {fireEvent, render, waitFor} from '../../../../jest/test-utils';
+import {fireEvent, render, waitFor, within} from '../../../../jest/test-utils';
 import {l10n} from '../../../locales';
 import {L10nContext} from '../../../utils';
 import {TalentSection} from '../TalentSection';
@@ -42,6 +42,15 @@ const FormWrapper = ({
     </L10nContext.Provider>
   );
 };
+
+// B57-④：testID 落在 DS Switch 包装层，props.value 需从内层 Paper Switch（按 a11y label）读取
+const innerSwitchValue = (
+  getByTestId: (id: string) => any,
+  name: 'render_html' | 'calculate' | 'datetime',
+) =>
+  within(getByTestId(`talent-switch-${name}`)).getByLabelText(
+    l10n.en.components.palSheet.talentNames[name],
+  ).props.value;
 
 describe('TalentSection', () => {
   beforeEach(() => {
@@ -153,8 +162,14 @@ describe('TalentSection', () => {
       // All switches should start off
       expect(getFormValues!().talents).toEqual([]);
 
-      // Toggle calculate on
-      fireEvent(getByTestId('talent-switch-calculate'), 'valueChange', true);
+      // Toggle calculate on（B57-④：testID 落在 DS Switch 包装层，valueChange 需打到内层 Paper Switch）
+      fireEvent(
+        within(getByTestId('talent-switch-calculate')).getByLabelText(
+          l10n.en.components.palSheet.talentNames.calculate,
+        ),
+        'valueChange',
+        true,
+      );
 
       await waitFor(() => {
         expect(getFormValues!().talents).toContain('calculate');
@@ -179,7 +194,13 @@ describe('TalentSection', () => {
       expect(getFormValues!().talents).toContain('datetime');
 
       // Toggle calculate off
-      fireEvent(getByTestId('talent-switch-calculate'), 'valueChange', false);
+      fireEvent(
+        within(getByTestId('talent-switch-calculate')).getByLabelText(
+          l10n.en.components.palSheet.talentNames.calculate,
+        ),
+        'valueChange',
+        false,
+      );
 
       await waitFor(() => {
         const talents = getFormValues!().talents;
@@ -200,13 +221,25 @@ describe('TalentSection', () => {
         </FormWrapper>,
       );
 
-      fireEvent(getByTestId('talent-switch-render_html'), 'valueChange', true);
+      fireEvent(
+        within(getByTestId('talent-switch-render_html')).getByLabelText(
+          l10n.en.components.palSheet.talentNames.render_html,
+        ),
+        'valueChange',
+        true,
+      );
 
       await waitFor(() => {
         expect(getFormValues!().talents).toContain('render_html');
       });
 
-      fireEvent(getByTestId('talent-switch-calculate'), 'valueChange', true);
+      fireEvent(
+        within(getByTestId('talent-switch-calculate')).getByLabelText(
+          l10n.en.components.palSheet.talentNames.calculate,
+        ),
+        'valueChange',
+        true,
+      );
 
       await waitFor(() => {
         const talents = getFormValues!().talents;
@@ -225,11 +258,11 @@ describe('TalentSection', () => {
       );
 
       // calculate and datetime should be on
-      expect(getByTestId('talent-switch-calculate').props.value).toBe(true);
-      expect(getByTestId('talent-switch-datetime').props.value).toBe(true);
+      expect(innerSwitchValue(getByTestId, 'calculate')).toBe(true);
+      expect(innerSwitchValue(getByTestId, 'datetime')).toBe(true);
 
       // render_html should be off
-      expect(getByTestId('talent-switch-render_html').props.value).toBe(false);
+      expect(innerSwitchValue(getByTestId, 'render_html')).toBe(false);
     });
 
     it('all talents pre-selected shows all switches as enabled', () => {
@@ -242,9 +275,9 @@ describe('TalentSection', () => {
         </FormWrapper>,
       );
 
-      expect(getByTestId('talent-switch-render_html').props.value).toBe(true);
-      expect(getByTestId('talent-switch-calculate').props.value).toBe(true);
-      expect(getByTestId('talent-switch-datetime').props.value).toBe(true);
+      expect(innerSwitchValue(getByTestId, 'render_html')).toBe(true);
+      expect(innerSwitchValue(getByTestId, 'calculate')).toBe(true);
+      expect(innerSwitchValue(getByTestId, 'datetime')).toBe(true);
     });
 
     it('no pre-selected talents shows all switches as disabled', () => {
@@ -254,9 +287,9 @@ describe('TalentSection', () => {
         </FormWrapper>,
       );
 
-      expect(getByTestId('talent-switch-render_html').props.value).toBe(false);
-      expect(getByTestId('talent-switch-calculate').props.value).toBe(false);
-      expect(getByTestId('talent-switch-datetime').props.value).toBe(false);
+      expect(innerSwitchValue(getByTestId, 'render_html')).toBe(false);
+      expect(innerSwitchValue(getByTestId, 'calculate')).toBe(false);
+      expect(innerSwitchValue(getByTestId, 'datetime')).toBe(false);
     });
   });
 });

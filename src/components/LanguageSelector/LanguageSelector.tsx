@@ -3,7 +3,7 @@ import {Text} from 'react-native';
 import {observer} from 'mobx-react';
 
 import {ChevronDownIcon} from '../../assets/icons';
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {AvailableLanguage, languageDisplayNames} from '../../locales';
 import {uiStore} from '../../store';
 import {L10nContext} from '../../utils';

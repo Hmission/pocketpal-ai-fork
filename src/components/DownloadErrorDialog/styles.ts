@@ -14,35 +14,36 @@ export const createStyles = (theme: Theme) =>
       ...theme.typography.uiS,
       color: theme.colors.primary,
       fontWeight: '600',
-      marginTop: 12,
+      marginTop: theme.spacing.sm,
     },
     stepItem: {
-      paddingVertical: 8,
-      marginVertical: 2,
+      paddingVertical: theme.spacing.s,
+      marginVertical: theme.spacing.xxs,
     },
     stepRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 8,
+      paddingHorizontal: theme.spacing.s,
     },
     textContainer: {
       flex: 1,
-      marginLeft: 12,
+      marginLeft: theme.spacing.sm,
     },
     stepText: {
-      fontSize: 14,
+      fontSize: theme.typography.bodyS.fontSize, // B56③ fontSize→bodyS
     },
     errorDetails: {
-      marginTop: 10,
-      padding: 8,
+      // B56②：10→sm(12)（外层距）
+      marginTop: theme.spacing.sm,
+      padding: theme.spacing.s,
       backgroundColor: theme.colors.errorContainer,
-      borderRadius: 4,
+      borderRadius: theme.radius.xs,
     },
     errorText: {
       color: theme.colors.error,
-      fontSize: 13,
+      fontSize: theme.typography.bodyS.fontSize,
     },
     stepsContainer: {
-      marginTop: 16,
+      marginTop: theme.spacing.m,
     },
   });

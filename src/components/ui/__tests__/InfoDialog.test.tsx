@@ -34,6 +34,7 @@ jest.mock('../../../hooks', () => ({
     },
     radius: {ml: 16, s: 8, xl: 32, xxs: 4},
     spacing: {ml: 16, sm: 12, xs: 4, s: 8, xxs: 2, m: 16, l: 24},
+    size: {minTapTarget: 44, controlHeight: 36}, // R1 size 域防御补全
     stroke: {sm: 1},
     shapeRoles: {surface: 'xl'},
   }),

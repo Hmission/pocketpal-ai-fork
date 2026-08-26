@@ -1,12 +1,7 @@
 import * as React from 'react';
-import {
-  ActivityIndicator,
-  Switch,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import {Text, TextInput, TouchableOpacity, View} from 'react-native';
+
+import {Switch} from '../../../components/ui/Switch';
 
 import {useTheme} from '../../../hooks';
 import {createStyles} from '../styles';
@@ -30,7 +25,10 @@ interface ComposerPanelProps {
   /** 预览区有可编辑图（0 页编辑槽有图或历史页有图）——非 Dream 下编辑按钮显示条件 */
   hasEditableImage: boolean;
   showAdvanced: boolean;
-  /** 引擎加载中（loading 与 generating 同属任务进行期：按钮灰置+转圈防连点） */
+  /** 提示词卡折叠（2026-08-26 大王裁定：折叠后出图按钮一屏可见；编辑预备态由编排层强制展开） */
+  promptCollapsed: boolean;
+  onToggleCollapse: () => void;
+  /** 引擎加载中（loading 与 generating 同属任务进行期；按钮区已移 GenActionBar 吸底条） */
   loading?: boolean;
   generating: boolean;
   taskKind: 'gen' | 'edit' | 'caption' | null;
@@ -52,12 +50,12 @@ interface ComposerPanelProps {
   onSizeChange: (sz: number) => void;
   onRatioChange: (r: string) => void;
   onToggleAdvanced: () => void;
-  onEditArm: () => void;
-  onGenerate: () => void;
 }
 
 /**
- * ComposerPanel — ③创作区（底部 composer）：提示词 + 折叠高级参数 + 出图/编辑按钮。
+ * ComposerPanel — ③创作区（底部 composer）：提示词 + 折叠高级参数。
+ * 2026-08-26：出图/编辑按钮移出至 GenActionBar 吸底条（本卡只留输入；
+ * 折叠态=单行胶囊，出图按钮一屏可见）。
  * 提示词限长（端侧≤120 字）与高级参数按族分流（DreamLite=画幅档位，通用 SD=尺寸/负面/CFG）。
  * 只读 props 渲染，所有 setter 由编排层注入。
  */
@@ -71,12 +69,14 @@ export const ComposerPanel: React.FC<ComposerPanelProps> = ({
   seed,
   isDream,
   editArming,
-  editRgb,
-  hasEditableImage,
+  editRgb: _editRgb,
+  hasEditableImage: _hasEditableImage,
   showAdvanced,
-  loading = false,
+  promptCollapsed,
+  onToggleCollapse,
+  loading: _loading = false,
   generating,
-  taskKind,
+  taskKind: _taskKind,
   loaded: _loaded,
   tokenLimit,
   hasLora,
@@ -92,35 +92,57 @@ export const ComposerPanel: React.FC<ComposerPanelProps> = ({
   onSizeChange: _onSizeChange,
   onRatioChange,
   onToggleAdvanced,
-  onEditArm,
-  onGenerate,
 }) => {
   const theme = useTheme();
   const s = createStyles(theme);
+  const tokenCount = estimateTokens(prompt);
 
   return (
     <View style={s.card}>
-      <TextInput
-        style={s.input}
-        value={prompt}
-        onChangeText={onPromptChange}
-        placeholder={
-          isDream && editArming
-            ? '输入图像编辑指令，如：把天空换成日落、人物换上红色外套…'
-            : '描述你想生成的画面…'
-        }
-        placeholderTextColor="#999"
-        multiline
-      />
-      <Text
-        style={
-          estimateTokens(prompt) > tokenLimit ? s.promptHintWarn : s.promptHint
-        }>
-        ~{estimateTokens(prompt)}/{tokenLimit} tokens
-        {estimateTokens(prompt) > tokenLimit
-          ? ' · 超出编码上限，出图将被截断'
-          : ' · 端侧建议≤上限，过长拖慢速度'}
-      </Text>
+      {/* 折叠头（2026-08-26）：单行胶囊，出图按钮一屏可见 */}
+      <TouchableOpacity
+        style={s.collapseHead}
+        onPress={onToggleCollapse}
+        activeOpacity={0.7}
+        testID="composer-collapse">
+        <Text style={s.collapseHeadLabel}>
+          提示词 {promptCollapsed ? '▾' : '▴'}
+        </Text>
+        {promptCollapsed ? (
+          <Text style={s.collapseHeadSummary} numberOfLines={1}>
+            {prompt.trim() || '描述你想生成的画面…'}
+          </Text>
+        ) : null}
+        <Text style={tokenCount > tokenLimit ? s.promptHintWarn : s.promptHint}>
+          ~{tokenCount}/{tokenLimit}
+        </Text>
+      </TouchableOpacity>
+      {!promptCollapsed && (
+        <>
+          <TextInput
+            style={s.input}
+            value={prompt}
+            onChangeText={onPromptChange}
+            placeholder={
+              isDream && editArming
+                ? '输入图像编辑指令，如：把天空换成日落、人物换上红色外套…'
+                : '描述你想生成的画面…'
+            }
+            // B56②：#999 占位文字 → placeholder token（语义精确对位，§1.6 灰阶）
+            placeholderTextColor={theme.colors.placeholder}
+            multiline
+          />
+          <Text
+            style={tokenCount > tokenLimit ? s.promptHintWarn : s.promptHint}>
+            ~{tokenCount}/{tokenLimit} tokens
+            {tokenCount > tokenLimit
+              ? ' · 超出编码上限，出图将被截断'
+              : ' · 端侧建议≤上限，过长拖慢速度'}
+          </Text>
+        </>
+      )}
+      {/* 高级参数折叠钮与提示词折叠**平级**【2026-08-27 大王裁定】：
+          高级参数展开/折叠独立于提示词折叠（原实现被误包进 promptCollapsed 作用域） */}
       <TouchableOpacity onPress={onToggleAdvanced}>
         <Text style={s.advToggle}>
           高级参数（
@@ -140,7 +162,7 @@ export const ComposerPanel: React.FC<ComposerPanelProps> = ({
               value={negativePrompt}
               onChangeText={onNegativePromptChange}
               placeholder="负面提示词（可选，如 blurry, low quality）"
-              placeholderTextColor="#999"
+              placeholderTextColor={theme.colors.placeholder}
               multiline
             />
           )}
@@ -208,7 +230,8 @@ export const ComposerPanel: React.FC<ComposerPanelProps> = ({
                   onChangeText={onSeedChange}
                   keyboardType="numeric"
                   placeholder="随机"
-                  placeholderTextColor="#999"
+                  // B56②：#999 占位文字 → placeholder token
+                  placeholderTextColor={theme.colors.placeholder}
                 />
               </>
             )}
@@ -220,6 +243,7 @@ export const ComposerPanel: React.FC<ComposerPanelProps> = ({
                 value={loraEnabled}
                 onValueChange={onLoraEnabledChange}
                 disabled={generating}
+                accessibilityLabel="启用 LoRA"
               />
               <Text style={s.paramLabel}>强度</Text>
               <TextInput
@@ -233,94 +257,11 @@ export const ComposerPanel: React.FC<ComposerPanelProps> = ({
           )}
         </>
       )}
-      {isDream && (
-        <>
-          {editArming && (
-            <Text style={s.promptHint}>
-              已锁定当前预览图（{DREAM_EDIT_SIZE}×{DREAM_EDIT_SIZE}
-              ），编辑指令见上方输入框
-            </Text>
-          )}
-          <View style={s.buttonRow}>
-            <TouchableOpacity
-              style={[
-                s.button,
-                s.buttonEdit,
-                editArming && !editRgb && s.buttonDisabled,
-              ]}
-              disabled={loading || generating || (editArming && !editRgb)}
-              onPress={onEditArm}>
-              {(loading || generating) && taskKind === 'edit' ? (
-                <ActivityIndicator size="small" color={theme.colors.onInfo} />
-              ) : (
-                <Text style={[s.buttonText, s.buttonTextOnInfo]}>
-                  {editArming ? '执行编辑' : '编辑'}
-                </Text>
-              )}
-            </TouchableOpacity>
-            {/* onPress 必须显式无参调用（不可直传 onGenerate）：RN 会把 GestureResponderEvent
-                作为首参传入，若直传 handleGenerate(event)，可选参 promptOverride 会收到 event，
-                入口 (promptOverride ?? prompt).trim() 即抛 TypeError 被事件系统吞掉——
-                现象为「有按压缩放动效但出图无反应」（2026-08-20 两台真机 + 注入三重复现） */}
-            <TouchableOpacity
-              style={[
-                s.button,
-                s.buttonGen,
-                (loading || generating) && s.buttonDisabled,
-              ]}
-              disabled={loading || generating}
-              testID="imagegen-generate"
-              onPress={() => onGenerate()}>
-              {(loading || generating) && taskKind === 'gen' ? (
-                <ActivityIndicator size="small" color={theme.colors.primary} />
-              ) : (
-                <Text
-                  style={[
-                    s.buttonText,
-                    (loading || generating) && s.buttonTextDisabled,
-                  ]}>
-                  出图
-                </Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </>
-      )}
-      {!isDream && (
-        <View style={s.buttonRow}>
-          {/* 非 Dream 编辑入口（2026-08-21）：预览区有图时常驻，点击由编排层
-              确认后自动切 DreamLite（SD3.5/Z-Image 无编辑引擎）；未加载不禁用 */}
-          {hasEditableImage && (
-            <TouchableOpacity
-              style={[s.button, s.buttonEdit]}
-              disabled={loading || generating}
-              onPress={onEditArm}>
-              <Text style={[s.buttonText, s.buttonTextOnInfo]}>编辑</Text>
-            </TouchableOpacity>
-          )}
-          {/* 未加载不再灰置：点击由编排层弹引导（提示+展开模型下拉），新手友好 */}
-          <TouchableOpacity
-            style={[
-              s.button,
-              s.buttonGen,
-              (loading || generating) && s.buttonDisabled,
-            ]}
-            disabled={loading || generating}
-            testID="imagegen-generate"
-            onPress={() => onGenerate()}>
-            {loading || generating ? (
-              <ActivityIndicator size="small" color={theme.colors.primary} />
-            ) : (
-              <Text
-                style={[
-                  s.buttonText,
-                  (loading || generating) && s.buttonTextDisabled,
-                ]}>
-                出图
-              </Text>
-            )}
-          </TouchableOpacity>
-        </View>
+      {isDream && editArming && !promptCollapsed && (
+        <Text style={s.promptHint}>
+          已锁定当前预览图（{DREAM_EDIT_SIZE}×{DREAM_EDIT_SIZE}
+          ），编辑指令见上方输入框
+        </Text>
       )}
       {/* 报错唯一出口 = 预览区 failed 任务页（任务化，2026-08），
           composer 底部不再展示错误文本 */}

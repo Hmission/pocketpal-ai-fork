@@ -41,10 +41,10 @@ export const styles = ({
     },
     size: {
       ...theme.typography.captionM,
-      marginTop: 4,
+      marginTop: theme.spacing.xs,
     },
     textContainer: {
       flexShrink: 1,
-      marginLeft: 16,
+      marginLeft: theme.spacing.m,
     },
   });

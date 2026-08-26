@@ -4,7 +4,7 @@ import {Menu} from 'react-native-paper';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 import {ChevronDownIcon} from '../../../assets/icons';
-import {useTheme} from '../../../hooks';
+import {useTheme} from '../../../hooks/useTheme';
 import {Pressable} from '../primitives/Pressable';
 
 import type {CommonDSProps} from '../types';

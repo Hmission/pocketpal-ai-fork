@@ -2,7 +2,6 @@ import React, {useEffect, useState} from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
   TouchableOpacity,
   SafeAreaView,
@@ -12,8 +11,9 @@ import {database} from '../../../../database';
 import {chatSessionRepository} from '../../../../repositories/ChatSessionRepository';
 import {palRepository} from '../../../../repositories/PalRepository';
 import {useNavigation} from '@react-navigation/native';
-import {radius} from '../../../../theme/tokens';
 import {infoDialog} from '../../../../components/ui/InfoDialog';
+import {useTheme} from '../../../../hooks/useTheme';
+import {createStyles} from './styles';
 
 // Define the collections we want to inspect
 const COLLECTIONS = [
@@ -29,6 +29,8 @@ const COLLECTIONS = [
 
 const DatabaseInspectorScreen = () => {
   const navigation = useNavigation();
+  const theme = useTheme();
+  const styles = createStyles(theme);
   const [collectionData, setCollectionData] = useState<{
     [key: string]: Array<any>;
   }>({});
@@ -390,157 +392,5 @@ const DatabaseInspectorScreen = () => {
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#2c3e50',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: 'white',
-  },
-  closeButton: {
-    padding: 8,
-  },
-  closeButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-  },
-  content: {
-    flex: 1,
-    padding: 16,
-  },
-  card: {
-    marginBottom: 16,
-  },
-  collectionItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  collectionName: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  recordCount: {
-    color: '#666',
-  },
-  recordList: {
-    maxHeight: 400,
-  },
-  recordItem: {
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  recordId: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 4,
-  },
-  recordTitle: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  recordSessionId: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 4,
-  },
-  emptyText: {
-    textAlign: 'center',
-    padding: 20,
-    color: '#666',
-  },
-  recordDetails: {
-    maxHeight: 500,
-  },
-  detailItem: {
-    marginBottom: 8,
-  },
-  detailKey: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#333',
-  },
-  detailValue: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 2,
-  },
-  cardActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  navigationButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  relatedRecordsSection: {
-    marginTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-    paddingTop: 12,
-  },
-  relatedRecordsTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    color: '#333',
-  },
-  relatedCollection: {
-    marginBottom: 12,
-  },
-  relatedCollectionTitle: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#666',
-    marginBottom: 4,
-  },
-  relatedRecord: {
-    backgroundColor: '#f0f0f0',
-    padding: 8,
-    // 形状角色：小元素 s(8)（DESIGN_SPEC §4；debug-only 静态样式）
-    borderRadius: radius.s,
-    marginBottom: 4,
-    marginLeft: 8,
-  },
-  relatedRecordId: {
-    fontSize: 12,
-    color: '#888',
-  },
-  relatedRecordTitle: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  next: {
-    flexDirection: 'row-reverse',
-  },
-  cardActionsColumn: {
-    flexDirection: 'column',
-    alignItems: 'stretch',
-    gap: 8,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  resetButton: {
-    flex: 1,
-  },
-});
 
 export default DatabaseInspectorScreen;

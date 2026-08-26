@@ -5,37 +5,37 @@ export const createStyles = (theme: Theme) =>
   StyleSheet.create({
     // Auth Sheet
     authSheet: {
-      padding: 16,
+      padding: theme.spacing.m,
     },
     authHeader: {
-      padding: 24,
+      padding: theme.spacing.l,
       alignItems: 'center',
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.outline,
     },
     authTitle: {
-      fontSize: 24,
+      fontSize: theme.typography.headlineH2.fontSize, // B56③ 24→headlineH2（补档归档，等值）
       fontWeight: 'bold',
       color: theme.colors.onSurface,
-      marginBottom: 8,
+      marginBottom: theme.spacing.s,
     },
     authSubtitle: {
-      fontSize: 16,
+      fontSize: theme.typography.titleS.fontSize, // B56③ fontSize→titleS
       color: theme.colors.onSurfaceVariant,
       textAlign: 'center',
     },
     authContent: {
-      padding: 24,
+      padding: theme.spacing.l,
     },
     authForm: {
-      gap: 16,
+      gap: theme.spacing.m,
     },
     authInput: {
       backgroundColor: theme.colors.surfaceVariant,
     },
     authButton: {
       height: 48,
-      marginTop: 8,
+      marginTop: theme.spacing.s,
     },
     authButtonContent: {
       height: 48,
@@ -44,7 +44,7 @@ export const createStyles = (theme: Theme) =>
     authDivider: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginVertical: 24,
+      marginVertical: theme.spacing.l,
     },
     authDividerLine: {
       flex: 1,
@@ -52,8 +52,8 @@ export const createStyles = (theme: Theme) =>
       backgroundColor: theme.colors.outline,
     },
     authDividerText: {
-      paddingHorizontal: 16,
-      fontSize: 14,
+      paddingHorizontal: theme.spacing.m,
+      fontSize: theme.typography.bodyS.fontSize, // B56③ fontSize→bodyS
       color: theme.colors.onSurfaceVariant,
     },
     authSocialButton: {
@@ -64,15 +64,15 @@ export const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
-      marginTop: 16,
+      marginTop: theme.spacing.m,
     },
     authToggleText: {
-      fontSize: 14,
+      fontSize: theme.typography.bodyS.fontSize, // B56③ fontSize→bodyS
       color: theme.colors.onSurfaceVariant,
       lineHeight: 20,
     },
     authToggleLink: {
-      fontSize: 14,
+      fontSize: theme.typography.uiM.fontSize, // B56③ fontSize→uiM
       color: theme.colors.primary,
       fontWeight: '600',
     },
@@ -83,24 +83,24 @@ export const createStyles = (theme: Theme) =>
     },
     authLoadingContainer: {
       alignItems: 'center',
-      marginBottom: 16,
+      marginBottom: theme.spacing.m,
     },
     authErrorText: {
       color: theme.colors.error,
-      marginBottom: 16,
+      marginBottom: theme.spacing.m,
     },
     // Auth Prompt
     authPrompt: {
-      padding: 16,
+      padding: theme.spacing.m,
       alignItems: 'center',
       borderTopWidth: 1,
       borderTopColor: theme.colors.outline,
       backgroundColor: theme.colors.surfaceVariant,
     },
     authPromptText: {
-      fontSize: 14,
+      fontSize: theme.typography.bodyS.fontSize, // B56③ fontSize→bodyS
       color: theme.colors.onSurfaceVariant,
       textAlign: 'center',
-      marginBottom: 12,
+      marginBottom: theme.spacing.sm,
     },
   });

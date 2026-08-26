@@ -2,7 +2,7 @@ import React from 'react';
 import {View} from 'react-native';
 import {RadioButton as PaperRadioButton} from 'react-native-paper';
 
-import {useTheme} from '../../../hooks';
+import {useTheme} from '../../../hooks/useTheme';
 
 import type {CommonDSProps} from '../types';
 import {warnIfNoA11yLabel} from '../types';

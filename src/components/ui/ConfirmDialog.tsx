@@ -14,7 +14,7 @@
 import * as React from 'react';
 import {StyleSheet, Text} from 'react-native';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import type {Theme} from '../../utils/types';
 import {OverlayCard} from './OverlayCard';
 import {

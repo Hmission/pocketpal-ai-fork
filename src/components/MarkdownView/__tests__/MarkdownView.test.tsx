@@ -6,7 +6,7 @@ import {ScrollView, StyleSheet} from 'react-native';
 // instead of building its own engine per instance.
 import {render, fireEvent} from '../../../../jest/test-utils';
 import {themeFixtures} from '../../../../jest/fixtures/theme';
-import {useTheme} from '../../../hooks';
+import {useTheme} from '../../../hooks/useTheme';
 
 import {MarkdownView} from '../MarkdownView';
 

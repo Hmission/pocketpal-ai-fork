@@ -11,6 +11,7 @@
 import {lightColors, darkColors} from './colors';
 import {iconSize} from './iconSize';
 import {radius, shapeRoles} from './radius';
+import {size} from './size';
 import {spacing} from './spacing';
 import {stroke} from './stroke';
 import {typography} from './typography';
@@ -25,6 +26,7 @@ export const lightTokens: Tokens = {
   stroke,
   shapeRoles,
   iconSize,
+  size,
 };
 
 export const darkTokens: Tokens = {
@@ -35,6 +37,7 @@ export const darkTokens: Tokens = {
   stroke,
   shapeRoles,
   iconSize,
+  size,
 };
 
 /**
@@ -55,6 +58,7 @@ export type {
   TokenStroke,
   TypographyStyle,
   TokenIconSize,
+  TokenSize,
 } from './types';
 
 export {

@@ -13,16 +13,16 @@ import {
   TextInput as PaperTextInput,
   Chip,
   RadioButton,
-  ActivityIndicator,
   Icon,
 } from 'react-native-paper';
 import {Dropdown} from '../ui';
+import {CircularActivityIndicator} from '../CircularActivityIndicator';
 import {observer} from 'mobx-react';
 import {runInAction} from 'mobx';
 import debounce from 'lodash/debounce';
 
 import {Sheet, TextInput} from '..';
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {serverStore} from '../../store';
 import {L10nContext} from '../../utils';
 import {isLocalHost} from '../../utils/network';
@@ -445,7 +445,10 @@ export const RemoteModelSheet: React.FC<RemoteModelSheetProps> = observer(
               {/* Probe status */}
               {isProbing && (
                 <View style={styles.probeStatusContainer}>
-                  <ActivityIndicator size="small" />
+                  <CircularActivityIndicator
+                    size={20}
+                    color={theme.colors.primary}
+                  />
                   <Text
                     style={[
                       styles.probeStatusText,
@@ -662,7 +665,10 @@ export const RemoteModelSheet: React.FC<RemoteModelSheetProps> = observer(
           {/* Probing indicator for chip selection */}
           {selectedServerId && isProbing && (
             <View style={styles.probeStatusContainer}>
-              <ActivityIndicator size="small" />
+              <CircularActivityIndicator
+                size={20}
+                color={theme.colors.primary}
+              />
               <Text
                 style={[
                   styles.probeStatusText,

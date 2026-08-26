@@ -5,7 +5,7 @@ import {oneOf} from '@flyerhq/react-native-link-preview';
 import {observer} from 'mobx-react';
 import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 
 import styles, {turnBlockStyles} from './styles';
 import {

@@ -15,7 +15,7 @@ import {t} from '../../locales';
 import {ChevronDownIcon} from '../../assets/icons';
 import {Menu} from '../Menu';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {createStyles} from './styles';
 
 interface ResetButtonProps {

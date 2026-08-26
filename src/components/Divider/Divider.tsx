@@ -2,7 +2,7 @@ import React from 'react';
 
 import {Divider as PaperDivider, DividerProps} from 'react-native-paper';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 
 import {createStyles} from './styles';
 

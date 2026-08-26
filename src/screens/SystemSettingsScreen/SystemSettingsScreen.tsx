@@ -7,11 +7,13 @@
  */
 import * as React from 'react';
 import {Platform, ScrollView, StyleSheet, Text, View} from 'react-native';
-import {Appbar, Divider, Switch, Card} from 'react-native-paper';
+import {Appbar, Divider, Card} from 'react-native-paper';
 import {observer} from 'mobx-react';
 
+import {Switch} from '../../components/ui/Switch';
+
 import {uiStore, ttsStore} from '../../store';
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {L10nContext} from '../../utils';
 import type {Theme} from '../../utils/types';
 import {LanguageSelector} from '../../components';
@@ -102,6 +104,7 @@ export const SystemSettingsScreen: React.FC<{navigation?: any}> = observer(
                 </View>
                 <Switch
                   testID="tts-availability-switch"
+                  accessibilityLabel={l10n.settings.ttsAvailability}
                   value={ttsStore.userTTSOverride ?? ttsStore.deviceMeetsMemory}
                   onValueChange={value => ttsStore.setUserTTSOverride(value)}
                 />
@@ -120,6 +123,7 @@ export const SystemSettingsScreen: React.FC<{navigation?: any}> = observer(
                 </View>
                 <Switch
                   testID="self-check-switch"
+                  accessibilityLabel="自检修正"
                   value={uiStore.selfCheckEnabled}
                   onValueChange={value => uiStore.setSelfCheckEnabled(value)}
                 />
@@ -141,6 +145,7 @@ export const SystemSettingsScreen: React.FC<{navigation?: any}> = observer(
                 </View>
                 <Switch
                   testID="persist-user-data-switch"
+                  accessibilityLabel={l10n.settings.persistUserData}
                   value={uiStore.persistUserData}
                   onValueChange={value => {
                     uiStore.setPersistUserData(value);
@@ -173,6 +178,7 @@ export const SystemSettingsScreen: React.FC<{navigation?: any}> = observer(
                     </View>
                     <Switch
                       testID="display-memory-usage-switch"
+                      accessibilityLabel={l10n.settings.displayMemoryUsage}
                       value={uiStore.displayMemUsage}
                       onValueChange={value => uiStore.setDisplayMemUsage(value)}
                     />

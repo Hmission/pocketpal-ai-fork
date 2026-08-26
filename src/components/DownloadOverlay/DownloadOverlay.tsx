@@ -7,7 +7,7 @@ import {reaction} from 'mobx';
 import {modelStore, uiStore} from '../../store';
 import {DownloadBanner} from './DownloadBanner';
 import {overlayStyles as createStyles} from './styles';
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 
 /**
  * Mounts the DownloadBanner over the navigator. Persists across navigation

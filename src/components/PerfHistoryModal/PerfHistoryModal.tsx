@@ -18,7 +18,7 @@ import {
   type PerfSession,
 } from '../../services/perf/perfRecorder';
 import {PSS_DANGER_KB} from '../../services/perf/perfScore';
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {createStyles} from './styles';
 import {Sheet} from '../Sheet';
 

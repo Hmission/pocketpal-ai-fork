@@ -3,7 +3,7 @@ import {Text, View} from 'react-native';
 import {observer} from 'mobx-react';
 
 import {modelStore, uiStore} from '../../../store';
-import {useTheme} from '../../../hooks';
+import {useTheme} from '../../../hooks/useTheme';
 import {
   entryId,
   resolvePalForTopic,

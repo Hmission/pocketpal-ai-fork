@@ -24,7 +24,7 @@ export const createStyles = (theme: Theme) =>
     rowRole: {
       ...theme.typography.bodyS,
       color: theme.colors.onSurfaceVariant,
-      marginTop: 2,
+      marginTop: theme.spacing.xxs,
     },
     rowActions: {
       flexShrink: 0,

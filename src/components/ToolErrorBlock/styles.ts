@@ -5,26 +5,27 @@ import {Theme} from '../../utils/types';
 export const styles = ({theme}: {theme: Theme}) =>
   StyleSheet.create({
     container: {
-      paddingHorizontal: 12,
-      paddingVertical: 4,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xs,
     },
     row: {
       flexDirection: 'row',
       alignItems: 'center',
     },
     icon: {
-      fontSize: 14,
-      marginRight: 6,
+      fontSize: theme.typography.bodyS.fontSize, // B56③ fontSize→bodyS
+      // B56②：6→xs(4)（紧凑行内 gap）
+      marginRight: theme.spacing.xs,
       color: theme.colors.error,
     },
     label: {
-      fontSize: 12,
+      fontSize: theme.typography.uiS.fontSize, // B56③ fontSize→uiS
       color: theme.colors.error,
     },
     message: {
-      fontSize: 11,
-      marginTop: 2,
-      marginLeft: 20,
+      fontSize: theme.typography.captionS.fontSize, // B56③ fontSize→captionS
+      marginTop: theme.spacing.xxs,
+      marginLeft: theme.spacing.ml,
       color: theme.colors.onSurfaceVariant,
     },
   });

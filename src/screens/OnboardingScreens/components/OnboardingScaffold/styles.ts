@@ -30,7 +30,7 @@ export const createStyles = (theme: Theme) =>
     },
     topLeftSlot: {
       position: 'absolute',
-      top: 16,
+      top: theme.spacing.m,
       // Logical start edge: physical left in LTR, physical right in RTL.
       ...(I18nManager.isRTL ? {right: 16} : {left: 16}),
       zIndex: 2,

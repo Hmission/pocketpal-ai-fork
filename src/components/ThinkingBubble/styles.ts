@@ -25,7 +25,8 @@ export const createStyles = (theme: Theme) => {
       // Tightened from 16 → 6 (Idea G). With auto-collapse + text-only
       // collapsed state, the expanded card is rare; the original 16
       // bloated the layout for the common collapsed case.
-      marginVertical: 6,
+      // B56②：6→xs(4)（保持收紧意图，紧凑卡距）
+      marginVertical: theme.spacing.xs,
       // 尾角下移（v4.3）：大模型系卡片左下直角（尾角在左下），其余三角保持圆角。
       // 折叠态 collapsedRow 无卡片背景，不动。
       borderTopLeftRadius: theme.radius.l,
@@ -70,14 +71,15 @@ export const createStyles = (theme: Theme) => {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingHorizontal: 16,
-      paddingVertical: 8,
+      paddingHorizontal: theme.spacing.m,
+      paddingVertical: theme.spacing.s,
       borderBottomWidth: 0,
       backgroundColor: 'transparent',
     },
     collapsedHeaderContainer: {
-      paddingHorizontal: 14,
-      paddingVertical: 6,
+      // B56②：14→sm(12)（行内）/ 6→xs(4)（紧凑垂直）
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xs,
       alignItems: 'center',
     },
     headerText: {
@@ -100,8 +102,8 @@ export const createStyles = (theme: Theme) => {
       borderRadius: theme.radius.s,
     },
     contentContainer: {
-      paddingHorizontal: 16,
-      paddingBottom: 16,
+      paddingHorizontal: theme.spacing.m,
+      paddingBottom: theme.spacing.m,
       backgroundColor: 'transparent',
       borderRadius: 0,
     },
@@ -138,11 +140,12 @@ export const createStyles = (theme: Theme) => {
       alignItems: 'center',
       alignSelf: 'flex-start',
       //paddingVertical: 4,
-      paddingHorizontal: 4,
-      gap: 6,
+      paddingHorizontal: theme.spacing.xs,
+      // B56②：6→xs(4)（行内紧凑 gap）
+      gap: theme.spacing.xs,
     },
     collapsedRowLabel: {
-      fontSize: 12,
+      fontSize: theme.typography.uiS.fontSize, // B56③ fontSize→uiS
       color: textColor,
       opacity: 0.75,
     },

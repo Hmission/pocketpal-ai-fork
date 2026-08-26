@@ -62,6 +62,7 @@ jest.mock('../../../hooks', () => ({
       xl: 20,
       full: 999,
       shapeRoles: {
+        size: {minTapTarget: 44, controlHeight: 36}, // R1 size 域防御补全
         card: 'l',
         surface: 'm',
         pill: 'full',

@@ -8,7 +8,7 @@ import type {SupertonicLanguage} from '@pocketpalai/react-native-speech';
 import {ChevronDownIcon} from '../../assets/icons';
 import {Pressable} from '../ui/primitives/Pressable';
 import {SearchableSelectSheet} from '../SearchableSelectSheet';
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {t} from '../../locales';
 import type {EngineId, SupertonicSteps} from '../../services/tts';
 import {ttsStore} from '../../store';
@@ -147,6 +147,7 @@ export const HeroRow: React.FC = observer(() => {
             theme={{
               colors: {
                 secondaryContainer: accent,
+                // B56②登记：引擎品牌色底白字，无对位 token
                 onSecondaryContainer: '#FFFFFF',
               },
             }}

@@ -7,7 +7,6 @@ import {
   FlatList,
   Animated,
   Modal,
-  StyleSheet,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native';
@@ -139,9 +138,11 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
   // 反推结果卡展开态（组件内局部状态；翻页重置）
   const [captionExpanded, setCaptionExpanded] = React.useState(false);
 
-  // 进度卡内容（running 任务页与编辑态 overlay 共用；
-  // showPerf：仅 running 任务页展示跑分面板（ADR-0008），overlay 叠图模式不展示）
-  const progressBody = (title: string, showPerf = false) => (
+  // 进度卡内容（running 任务页）：完整跑分面板 PerfPanel 默认展开——
+  // 2026-08-27 大王裁定：反推/编辑/放大与生成同属一套引擎任务流，
+  // 一律走 blank 任务页 + 完整 PerfPanel（不叠图、不折叠、不特殊化），
+  // 预览卡片跑分卡与生图完全一致。
+  const progressBody = (title: string) => (
     <>
       {/* 三点波浪呼吸（B57：渲染归一 ui/WaveDots，prop 接线保留） */}
       <WaveDots size={10} />
@@ -165,33 +166,22 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
           ▸ {stage}
         </Text>
       ) : null}
-      {showPerf ? <PerfPanel /> : null}
+      {/* 与生成同一路径：完整跑分面板（ADR-0008，默认展开叠全） */}
+      <PerfPanel />
     </>
   );
 
-  // 编辑态动效：半透明叠在当前图上（图可见）——仅编辑保留 overlay 语义；
-  // 出图进度归 running 任务页（空白页），不再叠在旧图上。
-  const editOverlay =
-    generating && taskKind === 'edit' ? (
-      <View style={[s.genOverlay, s.genOverlayEdit]}>
-        {progressBody('正在编辑此图…')}
-      </View>
-    ) : null;
-
-  // 反推态动效：同编辑语义，半透明叠在当前图上（用户要看被反推的图）
-  const captionOverlay =
-    generating && taskKind === 'caption' ? (
-      <View style={[s.genOverlay, s.genOverlayEdit]}>
-        {progressBody('正在反推提示词…')}
-      </View>
-    ) : null;
+  // 2026-08-27 大王裁定：反推/编辑/放大与生成同一路径（blank 任务页），
+  // 不再有叠图 overlay（旧 absolute 叠图与任务页双渲染导致内容叠加）；
+  // 任务进行中的进度反馈统一由 running 任务页承担（编排层 beginTask 后即 scroll）。
 
   /** FlatList 懒加载分页：只挂载可视页附近（windowSize），避免 50 张全尺寸大图
    *  同时解码导致渲染管线堵塞（HWUI 解码过载 → 全页图片空白）。 */
   const renderItem = ({item}: {item: GeneratedImage}) => {
     const status = item.status ?? 'success';
 
-    // running：空白预览页 + 进度卡（放大任务：原图背景 + 半透明进度，见原图在放大）
+    // running：空白预览页 + 进度卡（2026-08-27 全任务类型统一：
+    // 反推/编辑/放大/生成同一 blank 页 + 完整 PerfPanel，与生图完全一致）
     if (status === 'running') {
       const isUpscale = item.kind === 'upscaled';
       const isCaption = item.kind === 'caption';
@@ -206,31 +196,7 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
       return (
         <View style={{width: pageW}}>
           <View style={[s.taskPage, {width: pageW}]}>
-            {isUpscale && item.sourceUri ? (
-              <>
-                <Image
-                  source={{uri: item.sourceUri}}
-                  style={StyleSheet.absoluteFillObject}
-                  resizeMode="contain"
-                />
-                <View style={[s.genOverlay, s.genOverlayEdit]}>
-                  {progressBody(title)}
-                </View>
-              </>
-            ) : isCaption && item.uri ? (
-              <>
-                <Image
-                  source={{uri: item.uri}}
-                  style={StyleSheet.absoluteFillObject}
-                  resizeMode="contain"
-                />
-                <View style={[s.genOverlay, s.genOverlayEdit]}>
-                  {progressBody(title)}
-                </View>
-              </>
-            ) : (
-              progressBody(title, true)
-            )}
+            {progressBody(title)}
           </View>
         </View>
       );
@@ -452,8 +418,6 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
               renderItem={renderItem}
             />
           ) : null}
-          {editOverlay}
-          {captionOverlay}
           {/* 预览卡片顶部横幅（v4.3：弃屏级 top:458 中间浮条——移入图区顶部，只压预览卡片；
               无灰底，语义色 wash 透出；瞬时横幅整卡点击关闭） */}
           {previewBanner ? (

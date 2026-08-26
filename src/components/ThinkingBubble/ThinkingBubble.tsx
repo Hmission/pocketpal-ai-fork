@@ -15,7 +15,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import MaskedView from '@react-native-masked-view/masked-view';
 import {ChevronRightIcon, ChevronDownIcon} from '../../assets/icons';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {L10nContext} from '../../utils';
 
 import {createStyles} from './styles';

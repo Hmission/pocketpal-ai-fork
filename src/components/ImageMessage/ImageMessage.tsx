@@ -1,7 +1,7 @@
 import * as React from 'react';
 import {Image, ImageBackground, Text, View} from 'react-native';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 
 import styles from './styles';
 

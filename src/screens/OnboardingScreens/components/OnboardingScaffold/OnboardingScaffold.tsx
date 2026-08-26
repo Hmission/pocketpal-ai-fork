@@ -2,7 +2,7 @@ import React from 'react';
 import {View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 
-import {useTheme} from '../../../../hooks';
+import {useTheme} from '../../../../hooks/useTheme';
 import {createStyles} from './styles';
 
 export type OnboardingScaffoldProps = {

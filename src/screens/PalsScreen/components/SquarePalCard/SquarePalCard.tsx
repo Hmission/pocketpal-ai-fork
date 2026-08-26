@@ -14,7 +14,7 @@ import {
   ShareIcon,
 } from '../../../../assets/icons';
 
-import {useTheme} from '../../../../hooks';
+import {useTheme} from '../../../../hooks/useTheme';
 
 import {createStyles} from './styles';
 

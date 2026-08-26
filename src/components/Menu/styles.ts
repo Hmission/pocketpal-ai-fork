@@ -5,6 +5,7 @@ import {Theme} from '../../utils/types';
 export const createStyles = (theme: Theme) =>
   StyleSheet.create({
     menu: {
+      // B56②豁免：shadow token dark 绑定白不适配（登记评审）
       shadowColor: 'rgba(0, 0, 0, 0.05)',
       shadowRadius: 70,
       shadowOffset: {width: 0, height: 0},
@@ -21,7 +22,8 @@ export const createStyles = (theme: Theme) =>
       backgroundColor: theme.colors.menuBackground,
       borderRadius: theme.radius.m,
       // overflow: 'hidden', This removes shadow
-      marginRight: 10,
+      // B56②：10→sm(12)（水平性）
+      marginRight: theme.spacing.sm,
     },
     contentWithSubmenu: {
       backgroundColor: theme.colors.menuBackground,

@@ -23,7 +23,7 @@ import {
   CopyIcon,
   ExpandIcon,
 } from '../../assets/icons';
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {L10nContext} from '../../utils';
 
 import {codeHighlighterPreOverride, createStyles} from './styles';

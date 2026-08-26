@@ -5,7 +5,8 @@ import {observer} from 'mobx-react-lite';
 
 import {PlusIcon} from '../../assets/icons';
 
-import {useTheme} from '../../hooks';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {useTheme} from '../../hooks/useTheme';
 import {createStyles} from './styles';
 import {handlePalByType, isLocalPal} from '../../utils/pal-type-guards';
 import {L10nContext} from '../../utils';
@@ -45,7 +46,8 @@ import type {PalsHubPal} from '../../types/palshub';
 
 export const PalsScreen: React.FC = observer(() => {
   const theme = useTheme();
-  const styles = createStyles(theme);
+  const insets = useSafeAreaInsets();
+  const styles = createStyles(theme, insets);
   const l10n = useContext(L10nContext);
 
   // Navigation state

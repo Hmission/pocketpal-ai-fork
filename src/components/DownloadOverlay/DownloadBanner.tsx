@@ -4,7 +4,7 @@ import {observer} from 'mobx-react';
 import {useNavigation, NavigationProp} from '@react-navigation/native';
 
 import {BannerBar} from '../ui/BannerBar';
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {modelStore, palStore, uiStore} from '../../store';
 import {L10nContext} from '../../utils';
 import {ROUTES} from '../../utils/navigationConstants';

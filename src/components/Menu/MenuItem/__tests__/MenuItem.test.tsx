@@ -1,6 +1,6 @@
 import React from 'react';
 import {MenuItem} from '../MenuItem';
-import {useTheme} from '../../../../hooks';
+import {useTheme} from '../../../../hooks/useTheme';
 import {fireEvent, render} from '../../../../../jest/test-utils';
 
 describe('MenuItem', () => {
@@ -27,6 +27,7 @@ describe('MenuItem', () => {
         display: {fontSize: 28, lineHeight: 34, fontWeight: '600'},
       },
       radius: {
+        xxs: 2,
         xs: 4,
         s: 6,
         m: 10,
@@ -41,6 +42,19 @@ describe('MenuItem', () => {
           inputSmall: 's',
           circle: 'full',
         },
+      },
+      // B56① token 数值对机械替换后补全（等值替换不改变消费面）
+      spacing: {
+        none: 0,
+        xxs: 2,
+        xs: 4,
+        s: 8,
+        sm: 12,
+        m: 16,
+        ml: 20,
+        l: 24,
+        xl: 32,
+        xxl: 40,
       },
       colors: {
         menuText: '#000000',

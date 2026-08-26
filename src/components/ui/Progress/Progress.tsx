@@ -1,7 +1,7 @@
 import * as React from 'react';
 import {StyleSheet, View, ViewStyle} from 'react-native';
 
-import {useTheme} from '../../../hooks';
+import {useTheme} from '../../../hooks/useTheme';
 import {withOpacity} from '../../../utils/colorUtils';
 
 /**

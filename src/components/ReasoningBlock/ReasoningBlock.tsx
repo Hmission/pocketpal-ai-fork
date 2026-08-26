@@ -3,7 +3,7 @@ import React, {useMemo} from 'react';
 import {marked} from 'marked';
 import RenderHtml, {defaultSystemFonts} from 'react-native-render-html';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {ThinkingBubble} from '../ThinkingBubble';
 
 import {createTagsStyles} from '../MarkdownView/styles';

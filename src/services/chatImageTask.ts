@@ -11,7 +11,7 @@
  *
  * 锋利原则：不跳转页面、不静默失败；加载/出图全程在聊天窗口可见。
  */
-import {imageGenStore} from '../store/imageGenStore';
+import {imageGenStore} from '../store';
 import {chatSessionStore} from '../store';
 import {promptWriter} from './promptWriter';
 import {assistant} from '../utils/chat';

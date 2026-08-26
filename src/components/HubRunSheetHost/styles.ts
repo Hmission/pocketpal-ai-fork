@@ -9,26 +9,26 @@ export const createStyles = (theme: Theme) =>
     },
     centered: {
       alignItems: 'center',
-      paddingVertical: 24,
-      paddingHorizontal: 24,
-      gap: 16,
+      paddingVertical: theme.spacing.l,
+      paddingHorizontal: theme.spacing.l,
+      gap: theme.spacing.m,
     },
     resolvingText: {
-      fontSize: 14,
+      fontSize: theme.typography.bodyS.fontSize, // B56③ fontSize→bodyS
       color: theme.colors.onSurface,
       textAlign: 'center',
     },
     repoId: {
-      fontSize: 14,
+      fontSize: theme.typography.bodyS.fontSize, // B56③ fontSize→bodyS
       color: theme.colors.onSurfaceVariant,
     },
     errorText: {
-      fontSize: 14,
+      fontSize: theme.typography.bodyS.fontSize, // B56③ fontSize→bodyS
       color: theme.colors.error,
       textAlign: 'center',
     },
     errorActions: {
       flexDirection: 'row',
-      gap: 8,
+      gap: theme.spacing.s,
     },
   });

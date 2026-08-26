@@ -16,9 +16,9 @@ import {Text, TouchableOpacity, View, ViewStyle, TextStyle} from 'react-native';
 import {observer} from 'mobx-react';
 import {runInAction} from 'mobx';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {Chip} from '../ui/Chip';
-import {imageGenStore} from '../../store/imageGenStore';
+import {imageGenStore} from '../../store';
 import {
   runImageTaskCard,
   runEditImageTaskCard,

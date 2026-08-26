@@ -152,6 +152,8 @@ export interface TokenColors {
   badgeDreamlite: string;
   badgeFlux: string;
   badgeKrea2: string;
+  // 图像反推提示词专属紫（B56③ 登记；IMAGEGEN_UI_SPEC §2）
+  imageInsight: string;
 
   // 悬浮层表面（半透明+阴影分层，禁 blur；DESIGN_SPEC §1.5）
   surfaceElevated: string;
@@ -205,6 +207,8 @@ export interface TokenTypography {
   captionM: TypographyStyle;
   captionS: TypographyStyle;
   headlineH1: TypographyStyle;
+  headlineH2: TypographyStyle;
+  headlineH3: TypographyStyle;
   styledXs: TypographyStyle;
   codeM: TypographyStyle;
   codeS: TypographyStyle;
@@ -262,6 +266,15 @@ export interface TokenIconSize {
 }
 
 /**
+ * Size tokens（R1）：控件尺寸/触区基线。44 最小触控（Apple HIG），
+ * 36 紧凑控件/行高基线（≤36 的图标钮触区由 hitSlop 补偿至 44）。
+ */
+export interface TokenSize {
+  minTapTarget: number;
+  controlHeight: number;
+}
+
+/**
  * The full set of resolved tokens for a given mode. Mode selection is a
  * binding selection (light vs dark), not a mutation.
  */
@@ -275,4 +288,6 @@ export interface Tokens {
   shapeRoles: Record<ShapeRole, keyof TokenRadius>;
   /** 图标尺寸（B10）：经 theme.iconSize.<role> 解析，禁硬编码 */
   iconSize: TokenIconSize;
+  /** 控件尺寸/触区基线（R1）：经 theme.size.<role> 解析 */
+  size: TokenSize;
 }

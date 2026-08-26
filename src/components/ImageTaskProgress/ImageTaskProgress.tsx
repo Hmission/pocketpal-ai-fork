@@ -11,8 +11,8 @@ import * as React from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {observer} from 'mobx-react';
 
-import {useTheme} from '../../hooks';
-import {imageGenStore} from '../../store/imageGenStore';
+import {useTheme} from '../../hooks/useTheme';
+import {imageGenStore} from '../../store';
 import {WaveDots} from '../ui/WaveDots';
 import {Progress} from '../ui/Progress';
 import {withOpacity} from '../../utils/colorUtils';

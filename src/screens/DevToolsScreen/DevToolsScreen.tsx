@@ -6,7 +6,7 @@ import {createStackNavigator} from '@react-navigation/stack';
 import {useNavigation, ParamListBase} from '@react-navigation/native';
 import {DrawerNavigationProp} from '@react-navigation/drawer';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {infoDialog} from '../../components/ui/InfoDialog';
 import {confirmDialog} from '../../components/ui/ConfirmDialog';
 import {createStyles} from './styles';

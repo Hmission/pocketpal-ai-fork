@@ -21,13 +21,16 @@ import {
   Text,
   TouchableRipple,
   Snackbar,
-  Switch,
   HelperText,
 } from 'react-native-paper';
 
+import {Switch} from '../../../components/ui/Switch';
+
 import {ProjectionModelSelector, MemoryRequirement} from '../../../components';
 
-import {useTheme, useMemoryCheck, useStorageCheck} from '../../../hooks';
+import {useTheme} from '../../../hooks/useTheme';
+import {useMemoryCheck} from '../../../hooks/useMemoryCheck';
+import {useStorageCheck} from '../../../hooks/useStorageCheck';
 
 import {createStyles} from './styles';
 import {confirmDialog} from '../../../components/ui/ConfirmDialog';
@@ -895,6 +898,7 @@ export const ModelCard: React.FC<ModelCardProps> = observer(
                       <Switch
                         value={modelStore.getModelVisionPreference(model)}
                         onValueChange={handleVisionToggle}
+                        accessibilityLabel={l10n.models.modelCard.labels.vision}
                         disabled={
                           !projectionModelStatus.isAvailable &&
                           !modelStore.getModelVisionPreference(model) &&

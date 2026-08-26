@@ -1,7 +1,7 @@
 import React from 'react';
 import {View, StyleSheet} from 'react-native';
 import {BottomSheetHandleProps} from '@gorhom/bottom-sheet';
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {radius} from '../../theme/tokens';
 
 export const SheetHandle: React.FC<BottomSheetHandleProps> = () => {

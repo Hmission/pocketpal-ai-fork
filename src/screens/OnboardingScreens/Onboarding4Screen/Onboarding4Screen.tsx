@@ -3,7 +3,7 @@ import {View} from 'react-native';
 import {observer} from 'mobx-react';
 import {Text} from 'react-native-paper';
 
-import {useTheme} from '../../../hooks';
+import {useTheme} from '../../../hooks/useTheme';
 
 import {OnboardingScaffold} from '../components/OnboardingScaffold';
 import {OnboardingBottomBar} from '../components/OnboardingBottomBar';

@@ -7,7 +7,7 @@ import RNDeviceInfo from 'react-native-device-info';
 
 import {Divider} from '../../../components';
 
-import {useTheme} from '../../../hooks';
+import {useTheme} from '../../../hooks/useTheme';
 import {L10nContext} from '../../../utils';
 import {t} from '../../../locales';
 

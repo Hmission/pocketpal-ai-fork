@@ -7,7 +7,7 @@ import {
   TouchableOpacityProps,
 } from 'react-native';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 
 import {L10nContext} from '../../utils';
 

@@ -11,27 +11,27 @@ export const createStyles = ({theme}: {theme: Theme}) =>
       backgroundColor: theme.colors.outline,
       width: 40,
       height: 4,
-      borderRadius: 2,
+      borderRadius: theme.radius.xxs,
     },
     title: {
-      fontSize: 20,
+      fontSize: theme.typography.headlineH3.fontSize, // B56③ 20→headlineH3（补档归档，等值）
       fontWeight: '600',
       color: theme.colors.onSurface,
       textAlign: 'center',
-      marginVertical: 16,
+      marginVertical: theme.spacing.m,
     },
     tabs: {
       flexDirection: 'row',
-      paddingHorizontal: 16,
+      paddingHorizontal: theme.spacing.m,
       alignItems: 'center',
       height: 50,
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.outline,
     },
     tab: {
-      paddingVertical: 8,
-      paddingHorizontal: 16,
-      marginRight: 8,
+      paddingVertical: theme.spacing.s,
+      paddingHorizontal: theme.spacing.m,
+      marginRight: theme.spacing.s,
       borderRadius: theme.radius.s,
     },
     activeTab: {
@@ -46,7 +46,7 @@ export const createStyles = ({theme}: {theme: Theme}) =>
     listItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      padding: 16,
+      padding: theme.spacing.m,
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.outline,
     },
@@ -56,26 +56,26 @@ export const createStyles = ({theme}: {theme: Theme}) =>
     },
     itemContent: {
       flex: 1,
-      marginLeft: 12,
+      marginLeft: theme.spacing.sm,
       justifyContent: 'space-between',
     },
     itemTextContent: {
       flex: 1,
     },
     settingsButton: {
-      padding: 8,
-      marginLeft: 8,
+      padding: theme.spacing.s,
+      marginLeft: theme.spacing.s,
     },
     itemTitle: {
-      fontSize: 16,
+      fontSize: theme.typography.titleS.fontSize, // B56③ fontSize→titleS
       color: theme.colors.onSurface,
-      marginBottom: 4,
+      marginBottom: theme.spacing.xs,
     },
     activeItemTitle: {
       color: theme.colors.onTertiaryContainer,
     },
     itemSubtitle: {
-      fontSize: 14,
+      fontSize: theme.typography.uiM.fontSize, // B56③ fontSize→uiM
       color: theme.colors.onSurfaceVariant,
     },
     activeItemSubtitle: {

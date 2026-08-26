@@ -6,7 +6,7 @@ import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
 
 import {CopyIcon} from '../../assets/icons';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 
 import {createStyles} from './styles';
 

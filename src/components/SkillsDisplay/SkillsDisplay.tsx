@@ -2,7 +2,7 @@ import React from 'react';
 import {View, TouchableOpacity} from 'react-native';
 import {Text, IconButton} from 'react-native-paper';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {getModelSkills, SkillItem} from '../../utils';
 import {L10nContext} from '../../utils';
 

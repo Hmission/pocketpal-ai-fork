@@ -1,5 +1,11 @@
 import React from 'react';
-import {act, fireEvent, render, waitFor} from '../../../../jest/test-utils';
+import {
+  act,
+  fireEvent,
+  render,
+  waitFor,
+  within,
+} from '../../../../jest/test-utils';
 import {PalSheet} from '../PalSheet';
 import {l10n} from '../../../locales';
 import {L10nContext} from '../../../utils';
@@ -708,12 +714,24 @@ describe('PalSheet', () => {
         fireEvent.changeText(nameInput, 'Pal With Talents');
       });
 
-      // Toggle calculate and datetime talents on
+      // Toggle calculate and datetime talents on（B57-④：valueChange 打到内层 Paper Switch）
       await act(async () => {
-        fireEvent(getByTestId('talent-switch-calculate'), 'valueChange', true);
+        fireEvent(
+          within(getByTestId('talent-switch-calculate')).getByLabelText(
+            l10n.en.components.palSheet.talentNames.calculate,
+          ),
+          'valueChange',
+          true,
+        );
       });
       await act(async () => {
-        fireEvent(getByTestId('talent-switch-datetime'), 'valueChange', true);
+        fireEvent(
+          within(getByTestId('talent-switch-datetime')).getByLabelText(
+            l10n.en.components.palSheet.talentNames.datetime,
+          ),
+          'valueChange',
+          true,
+        );
       });
 
       // Submit the form
@@ -748,12 +766,24 @@ describe('PalSheet', () => {
         }),
       );
 
-      // render_html and calculate should be on
-      expect(getByTestId('talent-switch-render_html').props.value).toBe(true);
-      expect(getByTestId('talent-switch-calculate').props.value).toBe(true);
+      // render_html and calculate should be on（props.value 在内层 Paper Switch 上）
+      expect(
+        within(getByTestId('talent-switch-render_html')).getByLabelText(
+          l10n.en.components.palSheet.talentNames.render_html,
+        ).props.value,
+      ).toBe(true);
+      expect(
+        within(getByTestId('talent-switch-calculate')).getByLabelText(
+          l10n.en.components.palSheet.talentNames.calculate,
+        ).props.value,
+      ).toBe(true);
 
       // datetime should be off
-      expect(getByTestId('talent-switch-datetime').props.value).toBe(false);
+      expect(
+        within(getByTestId('talent-switch-datetime')).getByLabelText(
+          l10n.en.components.palSheet.talentNames.datetime,
+        ).props.value,
+      ).toBe(false);
     });
 
     it('removing all talents results in pact with empty talents array', async () => {
@@ -766,11 +796,21 @@ describe('PalSheet', () => {
       );
 
       // Verify calculate is initially on
-      expect(getByTestId('talent-switch-calculate').props.value).toBe(true);
+      expect(
+        within(getByTestId('talent-switch-calculate')).getByLabelText(
+          l10n.en.components.palSheet.talentNames.calculate,
+        ).props.value,
+      ).toBe(true);
 
       // Toggle calculate off
       await act(async () => {
-        fireEvent(getByTestId('talent-switch-calculate'), 'valueChange', false);
+        fireEvent(
+          within(getByTestId('talent-switch-calculate')).getByLabelText(
+            l10n.en.components.palSheet.talentNames.calculate,
+          ),
+          'valueChange',
+          false,
+        );
       });
 
       // Submit the form

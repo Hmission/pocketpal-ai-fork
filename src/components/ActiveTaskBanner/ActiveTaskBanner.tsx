@@ -9,16 +9,16 @@
  * 渲染底座：ui/BannerBar（DESIGN_SPEC §12.3，tools 域色变体）。
  */
 import * as React from 'react';
-import {ActivityIndicator} from 'react-native';
+import {CircularActivityIndicator} from '../CircularActivityIndicator';
 import {observer} from 'mobx-react';
 import {useNavigation} from '@react-navigation/native';
 
 import {BannerBar} from '../ui/BannerBar';
 import {AlertTriangleMdIcon, SettingsMdIcon} from '../../assets/icons';
 import {engineStatus, EngineKind} from '../../store/engineStatus';
-import {imageGenStore} from '../../store/imageGenStore';
+import {imageGenStore} from '../../store';
 import {ROUTES} from '../../utils/navigationConstants';
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 
 const ENGINE_NAME: Record<EngineKind, string> = {
   prompter: '管家模型',
@@ -38,6 +38,15 @@ export const ActiveTaskBanner: React.FC = observer(() => {
   }
   if (!busy) {
     return null;
+  }
+  // 2026-08-26 场景收敛（大王：有一些不需要显示）：
+  // chat/prompter 的 loading 态隐藏——输入框 placeholder 五分支已表达
+  //「加载模型/加载管家模型」（§18.5 单一事实源），双提示冗余；
+  // 保留 running/error 与 image 引擎任务（生图加载无其它可见面）。
+  if (busy === 'chat' || busy === 'prompter') {
+    if (engineStatus.engines[busy].phase === 'loading') {
+      return null;
+    }
   }
   const st = engineStatus.engines[busy];
   const isError = st.phase === 'error';
@@ -67,7 +76,10 @@ export const ActiveTaskBanner: React.FC = observer(() => {
             stroke={theme.colors.danger}
           />
         ) : indeterminate ? (
-          <ActivityIndicator size="small" color={theme.colors.domain.tools} />
+          <CircularActivityIndicator
+            size={20}
+            color={theme.colors.domain.tools}
+          />
         ) : (
           <SettingsMdIcon
             width={14}

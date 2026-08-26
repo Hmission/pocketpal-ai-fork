@@ -5,18 +5,18 @@ export const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
       backgroundColor: theme.colors.surface,
-      paddingVertical: 8,
+      paddingVertical: theme.spacing.s,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.colors.outline,
     },
     scrollContent: {
-      paddingHorizontal: 16,
-      gap: 8,
+      paddingHorizontal: theme.spacing.m,
+      gap: theme.spacing.s,
     },
     chip: {
       borderColor: theme.colors.outline,
       backgroundColor: theme.colors.surface,
-      borderRadius: 20,
+      borderRadius: theme.radius.l,
       height: 32,
     },
     activeChip: {
@@ -24,7 +24,7 @@ export const createStyles = (theme: Theme) =>
       borderColor: theme.colors.primary,
     },
     chipText: {
-      fontSize: 12,
+      fontSize: theme.typography.uiS.fontSize, // B56③ fontSize→uiS
       fontWeight: '500',
       color: theme.colors.onSurfaceVariant,
     },

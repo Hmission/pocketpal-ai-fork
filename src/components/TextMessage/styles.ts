@@ -20,7 +20,7 @@ export const styles = ({
       ...(user?.id === message.author.id
         ? theme.fonts.sentMessageLinkDescriptionTextStyle
         : theme.fonts.receivedMessageLinkDescriptionTextStyle),
-      marginTop: 4,
+      marginTop: theme.spacing.xs,
     },
     headerText: {
       ...theme.fonts.userNameTextStyle,
@@ -28,7 +28,8 @@ export const styles = ({
         message.author,
         theme.colors.userAvatarNameColors,
       ),
-      marginBottom: 6,
+      // B56②：6→xs(4)（紧凑标题距）
+      marginBottom: theme.spacing.xs,
     },
     titleText: {
       ...(user?.id === message.author.id
@@ -45,10 +46,10 @@ export const styles = ({
       marginVertical: theme.insets.messageInsetsVertical,
     },
     imageContainer: {
-      marginBottom: 8,
+      marginBottom: theme.spacing.s,
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: 8,
+      gap: theme.spacing.s,
     },
     // 气泡内动作槽（ADR-0003 同构）：hairline 分隔，动作胶囊贴卡片底部
     actionsSlot: {
@@ -56,8 +57,8 @@ export const styles = ({
       borderTopColor: theme.colors.outline,
       opacity: 0.9,
       marginHorizontal: theme.insets.messageInsetsHorizontal,
-      paddingTop: 8,
-      paddingBottom: 4,
+      paddingTop: theme.spacing.s,
+      paddingBottom: theme.spacing.xs,
     },
     imageThumbnail: {
       width: 80,
@@ -99,15 +100,17 @@ export const styles = ({
       // B58：insets 感知（底部手势条设备不贴条）
       bottom: insets.bottom + theme.spacing.m,
       alignSelf: 'center',
-      paddingHorizontal: 28,
-      paddingVertical: 10,
+      // R5 裁定：28→xl（32）——全屏查看器大按钮取宽松内距档
+      paddingHorizontal: theme.spacing.xl,
+      // B56②：10→s(8)（按钮垂直内距紧凑，同 viewerEditButton 裁定）
+      paddingVertical: theme.spacing.s,
       borderRadius: theme.radius[theme.shapeRoles.pill],
       backgroundColor: theme.colors.primary,
       zIndex: 1,
     },
     imagePreviewSaveText: {
       color: theme.colors.onPrimary,
-      fontSize: 15,
+      fontSize: theme.typography.bodyM.fontSize,
       fontWeight: '600',
     },
   });

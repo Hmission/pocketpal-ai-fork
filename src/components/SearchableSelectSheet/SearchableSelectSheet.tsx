@@ -3,7 +3,7 @@ import {View, Text} from 'react-native';
 import {BottomSheetFlatList} from '@gorhom/bottom-sheet';
 
 import {CheckMdIcon, SearchIcon} from '../../assets/icons';
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {L10nContext} from '../../utils';
 import {Pressable} from '../ui/primitives/Pressable';
 import {Sheet} from '../Sheet';

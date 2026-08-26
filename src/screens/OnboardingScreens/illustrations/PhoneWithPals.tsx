@@ -1,7 +1,7 @@
 import React from 'react';
 import Svg, {Circle, G, Path, Rect} from 'react-native-svg';
 
-import {useTheme} from '../../../hooks';
+import {useTheme} from '../../../hooks/useTheme';
 
 export type PhoneWithPalsProps = {
   /** Outer width in RN points; height scales to keep aspect 85:143. */

@@ -6,7 +6,7 @@ import {
   MenuProps as PaperMenuProps,
 } from 'react-native-paper';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 
 import {createStyles} from './styles';
 import {MenuItem, MenuItemProps} from './MenuItem';

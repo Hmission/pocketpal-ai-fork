@@ -11,15 +11,15 @@ import {
   Text,
   Button,
   TextInput as PaperTextInput,
-  ActivityIndicator,
   Icon,
 } from 'react-native-paper';
 import {Dropdown} from '../ui';
+import {CircularActivityIndicator} from '../CircularActivityIndicator';
 import {observer} from 'mobx-react';
 import debounce from 'lodash/debounce';
 
 import {Sheet, TextInput} from '..';
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {serverStore} from '../../store';
 import {confirmDialog} from '../ui/ConfirmDialog';
 import {L10nContext} from '../../utils';
@@ -256,7 +256,10 @@ export const ServerDetailsSheet: React.FC<ServerDetailsSheetProps> = observer(
           {/* Probe status */}
           {isProbing && (
             <View style={styles.probeStatusContainer}>
-              <ActivityIndicator size="small" />
+              <CircularActivityIndicator
+                size={20}
+                color={theme.colors.primary}
+              />
               <Text
                 style={[
                   styles.probeStatusText,

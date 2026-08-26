@@ -31,6 +31,7 @@ jest.mock('../../../hooks', () => ({
     typography: {captionM: {fontSize: 12}, captionS: {fontSize: 10}},
     radius: {m: 12, full: 999, xs: 4, s: 8},
     shapeRoles: {pill: 'full'},
+    size: {minTapTarget: 44, controlHeight: 36}, // R1 size 域防御补全
     spacing: {sm: 12, xs: 4, xxs: 2, s: 8},
   }),
 }));

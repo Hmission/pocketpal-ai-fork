@@ -8,10 +8,11 @@ export const createStyles = (theme: Theme) =>
       backgroundColor: theme.colors.surface,
     },
     accordionTitle: {
-      fontSize: 14,
+      fontSize: theme.typography.uiM.fontSize, // B56③ fontSize→uiM
     },
     accordionDescription: {
-      fontSize: 12,
-      paddingBottom: 10,
+      fontSize: theme.typography.captionM.fontSize, // B56③ fontSize→captionM
+      // B56②：10→s(8)（垂直紧凑）
+      paddingBottom: theme.spacing.s,
     },
   });

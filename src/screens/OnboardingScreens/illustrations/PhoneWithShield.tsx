@@ -3,7 +3,7 @@ import {StyleSheet} from 'react-native';
 import Svg, {Rect} from 'react-native-svg';
 
 import {ShieldGlyph} from '../../../assets/onboarding/illustrations';
-import {useTheme} from '../../../hooks';
+import {useTheme} from '../../../hooks/useTheme';
 
 // 盾牌徽章定位基态：绝对定位（top/left 由容器尺寸派生，见组件内 glyphPosition）
 const styles = StyleSheet.create({

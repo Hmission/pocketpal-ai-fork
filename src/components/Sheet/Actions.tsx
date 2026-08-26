@@ -1,5 +1,5 @@
 import React, {useMemo} from 'react';
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {StyleProp, View, ViewStyle} from 'react-native';
 

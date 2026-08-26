@@ -4,7 +4,7 @@ import {View, Linking, Text} from 'react-native';
 import {OverlayCard} from '../ui/OverlayCard';
 import type {ActionConfig} from '../ui/OverlayCard';
 import {Model} from '../../utils/types';
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {L10nContext} from '../../utils';
 import {t} from '../../locales';
 import {ErrorState} from '../../utils/errors';

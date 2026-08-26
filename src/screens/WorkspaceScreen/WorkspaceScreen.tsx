@@ -25,7 +25,8 @@ import {
   AIOS_DIARY_DIR,
 } from '../../utils/paths';
 import {listDiaries} from '../../services/aiosMemory/rituals';
-import {useTheme, useStaggerEntry} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
+import {useStaggerEntry} from '../../hooks/useStaggerEntry';
 import type {Theme} from '../../utils/types';
 import {IconTile, ListItem} from '../../components/ui';
 import {infoDialog} from '../../components/ui/InfoDialog';

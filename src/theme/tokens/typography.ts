@@ -168,6 +168,21 @@ export const typography: TokenTypography = {
     fontWeight: '500',
   },
 
+  // 标题层级补全（B56③ 标题族归档；填补 16/18/22/28 间隙，跟随 headlineH1 命名）。
+  // H2(24)/H3(20) 用 Inter（与使用现状一致——这些标题当前非 Fraunces）。
+  headlineH2: {
+    fontFamily: FONT_FAMILIES.INTER_MEDIUM,
+    fontSize: 24,
+    lineHeight: 28,
+    fontWeight: '500',
+  },
+  headlineH3: {
+    fontFamily: FONT_FAMILIES.INTER_MEDIUM,
+    fontSize: 20,
+    lineHeight: 26,
+    fontWeight: '500',
+  },
+
   // Accent italic (Fraunces italic). lineHeight === fontSize per the
   // canonical Styled/xs "100%" multiplier (resolved to absolute px).
   styledXs: {

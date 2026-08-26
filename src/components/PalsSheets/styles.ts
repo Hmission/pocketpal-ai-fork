@@ -4,12 +4,12 @@ import {Theme} from '../../utils/types';
 export const createStyles = (theme: Theme) =>
   StyleSheet.create({
     sliderContainer: {
-      marginBottom: 16,
-      paddingHorizontal: 8,
+      marginBottom: theme.spacing.m,
+      paddingHorizontal: theme.spacing.s,
     },
     sliderLabel: {
       ...theme.fonts.bodyMedium,
-      marginBottom: 8,
+      marginBottom: theme.spacing.s,
     },
     slider: {
       width: '100%',
@@ -42,18 +42,19 @@ export const createStyles = (theme: Theme) =>
       gap: theme.spacing.default,
     },
     modelNotDownloaded: {
-      gap: 12,
+      gap: theme.spacing.sm,
     },
     errorContainer: {
-      gap: 12,
+      gap: theme.spacing.sm,
     },
     errorMessage: {
       color: theme.colors.error,
       lineHeight: 20,
     },
     recommendedModelContainer: {
-      gap: 6,
-      paddingLeft: 4,
+      // B56②：6→xs(4)（紧凑 stack gap）
+      gap: theme.spacing.xs,
+      paddingLeft: theme.spacing.xs,
     },
     recommendedLabel: {
       color: theme.colors.onSurfaceVariant,
@@ -63,7 +64,7 @@ export const createStyles = (theme: Theme) =>
     modelDetailsContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: theme.spacing.s,
     },
     modelDetails: {
       color: theme.colors.onSurface,
@@ -74,7 +75,7 @@ export const createStyles = (theme: Theme) =>
       fontWeight: '500',
     },
     field: {
-      gap: 4,
+      gap: theme.spacing.xs,
     },
     dividerContainer: {
       marginVertical: theme.spacing.default,
@@ -104,12 +105,12 @@ export const createStyles = (theme: Theme) =>
     checkboxContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: theme.spacing.s,
     },
     actions: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      gap: 8,
+      gap: theme.spacing.s,
       width: '100%',
     },
     actionBtn: {
@@ -119,37 +120,37 @@ export const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginTop: 8,
+      marginTop: theme.spacing.s,
     },
     warningText: {
       color: theme.colors.error,
       flex: 1,
     },
     resetButton: {
-      marginLeft: 8,
+      marginLeft: theme.spacing.s,
     },
     // New styles for LookieSheet
     modelDownloadSection: {
-      gap: 16,
-      marginTop: 8,
-      marginBottom: 16,
+      gap: theme.spacing.m,
+      marginTop: theme.spacing.s,
+      marginBottom: theme.spacing.m,
     },
     modelSectionTitle: {
       ...theme.fonts.bodyMedium,
       color: theme.colors.onSurfaceVariant,
-      marginBottom: 8,
+      marginBottom: theme.spacing.s,
     },
     modelItem: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      padding: 12,
+      padding: theme.spacing.sm,
       backgroundColor: theme.colors.surfaceVariant,
       borderRadius: theme.borders.default,
     },
     modelInfo: {
       flex: 1,
-      marginRight: 12,
+      marginRight: theme.spacing.sm,
     },
     modelName: {
       ...theme.fonts.titleSmall,
@@ -163,7 +164,7 @@ export const createStyles = (theme: Theme) =>
       backgroundColor: theme.colors.surfaceVariant,
       borderRadius: theme.borders.default,
       padding: theme.spacing.default,
-      marginTop: 8,
+      marginTop: theme.spacing.s,
       borderWidth: 1,
       borderColor: theme.colors.outline,
     },
@@ -176,7 +177,7 @@ export const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: 8,
+      marginBottom: theme.spacing.s,
     },
     toggleButton: {
       margin: 0,
@@ -184,26 +185,26 @@ export const createStyles = (theme: Theme) =>
     resetOptionsContainer: {
       flexDirection: 'row',
       justifyContent: 'flex-start',
-      gap: 8,
-      marginTop: 8,
+      gap: theme.spacing.s,
+      marginTop: theme.spacing.s,
     },
     generationSettingsSection: {
       paddingHorizontal: theme.spacing.default,
       marginBottom: theme.spacing.default,
     },
     generationSettingsButton: {
-      marginTop: 8,
+      marginTop: theme.spacing.s,
     },
     talentItem: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingVertical: 8,
+      paddingVertical: theme.spacing.s,
       paddingHorizontal: theme.spacing.default,
     },
     talentInfo: {
       flex: 1,
-      marginRight: 12,
+      marginRight: theme.spacing.sm,
     },
     talentDescription: {
       color: theme.colors.onSurfaceVariant,

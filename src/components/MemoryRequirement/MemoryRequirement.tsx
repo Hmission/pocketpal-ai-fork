@@ -3,7 +3,7 @@ import {View} from 'react-native';
 import {Text} from 'react-native-paper';
 import {observer} from 'mobx-react-lite';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {L10nContext, formatBytes} from '../../utils';
 import {t} from '../../locales';
 import {getModelMemoryRequirement} from '../../utils/memoryEstimator';

@@ -2,7 +2,7 @@ import React, {useContext} from 'react';
 import {TouchableOpacity, View} from 'react-native';
 import {Drawer} from 'react-native-paper';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {withOpacity} from '../../utils/colorUtils';
 import {createStyles} from './styles';
 import {SessionMetaData} from '../../store';

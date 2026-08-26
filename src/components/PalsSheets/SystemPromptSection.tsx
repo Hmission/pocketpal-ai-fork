@@ -4,7 +4,7 @@ import {Button, Text, IconButton} from 'react-native-paper';
 import {observer} from 'mobx-react-lite';
 import {Controller, useFormContext} from 'react-hook-form';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {createStyles} from './styles';
 import {FormField} from './FormField';
 import {SectionDivider} from './SectionDivider';

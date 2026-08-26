@@ -3,7 +3,7 @@ import {View} from 'react-native';
 import {Button, IconButton, Text} from 'react-native-paper';
 import {useFormContext, Controller} from 'react-hook-form';
 
-import {useTheme} from '../../../hooks';
+import {useTheme} from '../../../hooks/useTheme';
 import {L10nContext} from '../../../utils';
 import {TextInput} from '../../TextInput';
 import {SectionDivider} from '../SectionDivider';

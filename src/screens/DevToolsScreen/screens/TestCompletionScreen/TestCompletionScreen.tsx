@@ -11,7 +11,6 @@ import {
   Text,
   Button,
   Card,
-  ActivityIndicator,
   Divider,
   IconButton,
   SegmentedButtons,
@@ -19,9 +18,11 @@ import {
   TextInput,
 } from 'react-native-paper';
 
+import {CircularActivityIndicator} from '../../../../components/CircularActivityIndicator';
+
 import {Menu} from '../../../../components';
 
-import {useTheme} from '../../../../hooks';
+import {useTheme} from '../../../../hooks/useTheme';
 
 import {createStyles} from './styles';
 
@@ -1102,7 +1103,10 @@ export const TestCompletionScreen: React.FC = observer(() => {
         <Card.Content>
           {currentTest === testId ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" />
+              <CircularActivityIndicator
+                size={36}
+                color={theme.colors.primary}
+              />
               <Text style={styles.streamingText}>{tokenBuffer}</Text>
             </View>
           ) : result ? (
@@ -1215,7 +1219,10 @@ export const TestCompletionScreen: React.FC = observer(() => {
 
             {modelStore.loadingModel ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" />
+                <CircularActivityIndicator
+                  size={36}
+                  color={theme.colors.primary}
+                />
                 <Text style={styles.loadingText}>Initializing model...</Text>
               </View>
             ) : (

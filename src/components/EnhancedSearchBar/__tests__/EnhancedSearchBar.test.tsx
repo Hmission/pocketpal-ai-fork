@@ -28,6 +28,7 @@ jest.mock('../../../hooks', () => ({
       display: {fontSize: 28, lineHeight: 34, fontWeight: '600'},
     },
     radius: {
+      xxs: 2,
       xs: 4,
       s: 6,
       m: 10,
@@ -42,6 +43,24 @@ jest.mock('../../../hooks', () => ({
         inputSmall: 's',
         circle: 'full',
       },
+    },
+    // B56① token 数值对机械替换后补全（等值替换不改变消费面）
+    spacing: {
+      none: 0,
+      xxs: 2,
+      xs: 4,
+      s: 8,
+      sm: 12,
+      m: 16,
+      ml: 20,
+      l: 24,
+      xl: 32,
+      xxl: 40,
+    },
+    // R1：size 域补全（等值于 theme/tokens/size.ts）——本地手工 mock 未从 fixture 派生
+    size: {
+      minTapTarget: 44,
+      controlHeight: 36,
     },
     colors: {
       surface: '#ffffff',

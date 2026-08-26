@@ -4,7 +4,7 @@ import {StyleSheet} from 'react-native';
 import {List} from 'react-native-paper';
 import {observer} from 'mobx-react-lite';
 
-import {useTheme} from '../../../hooks';
+import {useTheme} from '../../../hooks/useTheme';
 
 import {createStyles} from './styles';
 

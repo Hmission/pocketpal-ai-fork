@@ -35,10 +35,12 @@ const tintFor = (theme: Theme, variant: BannerVariant): BannerTint => {
         borderColor: withOpacity(theme.colors.domain.tools, 0.25),
         fill: theme.colors.domain.tools,
       };
+    // 2026-08-26 消灭 neutral 灰底（大王：不喜欢灰色、没设计感）：
+    // neutral = surface 实底 + outline hairline（与卡片同视觉族），不再 surfaceVariant 灰
     case 'neutral':
     default:
       return {
-        backgroundColor: theme.colors.surfaceVariant,
+        backgroundColor: theme.colors.surface,
         borderColor: theme.colors.outline,
         fill: theme.colors.primary,
       };
@@ -64,6 +66,10 @@ export const createStyles = (theme: Theme) => {
       ...theme.typography.captionM,
       lineHeight: 17,
       color: theme.colors.onSurfaceVariant,
+    },
+    // 纯文案横幅居中（2026-08-26：无动作的提示类横幅 textAlign center）
+    textCentered: {
+      textAlign: 'center',
     },
     percent: {
       ...theme.typography.captionM,

@@ -228,6 +228,7 @@ export const buildTheme = ({
     shapeRoles: tokens.shapeRoles,
     stroke: tokens.stroke,
     iconSize: tokens.iconSize,
+    size: tokens.size,
     typography: localeTypography,
     icons: {},
   };

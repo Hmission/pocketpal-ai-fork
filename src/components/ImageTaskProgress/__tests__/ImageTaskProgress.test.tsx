@@ -1,6 +1,9 @@
 import * as React from 'react';
 import {runInAction} from 'mobx';
 
+// R4-B：组件改走 store barrel（mock）；本测试依赖真实响应式渲染态，unmock 拿真实 store
+jest.unmock('../../../store');
+
 import {render} from '../../../../jest/test-utils';
 import {imageGenStore} from '../../../store/imageGenStore';
 

@@ -7,7 +7,7 @@ export const createStyles = (theme: Theme) =>
     container: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginVertical: 12,
+      marginVertical: theme.spacing.sm,
     },
     line: {
       flex: 1,
@@ -16,9 +16,9 @@ export const createStyles = (theme: Theme) =>
       opacity: 0.5,
     },
     text: {
-      marginHorizontal: 12,
+      marginHorizontal: theme.spacing.sm,
       color: theme.colors.onSurfaceVariant,
-      fontSize: 14,
+      fontSize: theme.typography.uiM.fontSize, // B56③ fontSize→uiM
       fontWeight: '500',
     },
   });

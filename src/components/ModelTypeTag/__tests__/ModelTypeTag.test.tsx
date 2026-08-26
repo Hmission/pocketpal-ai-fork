@@ -19,6 +19,32 @@ jest.mock('../../../hooks', () => ({
       secondary: '#4ECDC4',
       onSurfaceVariant: '#666666',
     },
+    // B56① token 数值对机械替换后补全（等值替换不改变消费面）
+    spacing: {
+      size: {minTapTarget: 44, controlHeight: 36}, // R1 size 域防御补全
+      none: 0,
+      xxs: 2,
+      xs: 4,
+      s: 8,
+      sm: 12,
+      m: 16,
+      ml: 20,
+      l: 24,
+      xl: 32,
+      xxl: 40,
+    },
+    radius: {
+      none: 0,
+      xxs: 2,
+      xs: 4,
+      s: 8,
+      m: 12,
+      ml: 16,
+      l: 20,
+      xl: 32,
+      xxl: 40,
+      full: 999,
+    },
   }),
 }));
 

@@ -35,12 +35,10 @@ import Reanimated, {
 
 import {useComponentSize} from '../KeyboardAccessoryView/hooks';
 
-import {
-  useTheme,
-  useMessageActions,
-  usePrevious,
-  usePalLoadHint,
-} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
+import {useMessageActions} from '../../hooks/useMessageActions';
+import {usePrevious} from '../../hooks/usePrevious';
+import {usePalLoadHint} from '../../hooks/usePalLoadHint';
 
 import ImageView from './ImageView';
 import {BannerRow} from './BannerRow';

@@ -4,7 +4,7 @@ import {Linking, TouchableOpacity, View} from 'react-native';
 import {Snackbar, Text} from 'react-native-paper';
 
 import {Sheet} from '../Sheet';
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 
 import {sheetStyles} from './styles';
 

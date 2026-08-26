@@ -1,7 +1,7 @@
 import React from 'react';
 import {View} from 'react-native';
 
-import {useTheme} from '../../../hooks';
+import {useTheme} from '../../../hooks/useTheme';
 import type {TokenRadius} from '../../../theme/tokens/types';
 
 import type {CommonDSProps} from '../types';

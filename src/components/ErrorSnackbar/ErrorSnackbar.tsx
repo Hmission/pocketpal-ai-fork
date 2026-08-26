@@ -8,7 +8,7 @@ import {
   ShieldMdIcon,
   WifiOffIcon,
 } from '../../assets/icons';
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {ErrorState} from '../../utils/errors';
 import {createStyles} from './styles';
 

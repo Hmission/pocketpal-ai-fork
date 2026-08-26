@@ -9,10 +9,11 @@ export const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       flexShrink: 1,
-      gap: 8,
-      minHeight: 44,
-      paddingHorizontal: 14,
-      borderRadius: 12,
+      gap: theme.spacing.s,
+      minHeight: theme.size.minTapTarget,
+      // B56②：14→sm(12)（触发器行内内边距）
+      paddingHorizontal: theme.spacing.sm,
+      borderRadius: theme.radius.m,
       borderWidth: 1,
       borderColor: theme.colors.outlineVariant,
       backgroundColor: theme.colors.surface,
@@ -20,6 +21,6 @@ export const createStyles = (theme: Theme) =>
     triggerLabel: {
       flexShrink: 1,
       color: theme.colors.onSurface,
-      fontSize: 16,
+      fontSize: theme.typography.titleS.fontSize, // B56③ fontSize→titleS
     },
   });

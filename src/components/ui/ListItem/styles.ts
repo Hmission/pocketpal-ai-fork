@@ -12,7 +12,7 @@ export const createStyles = (theme: Theme) =>
       paddingHorizontal: theme.spacing.s,
       gap: theme.spacing.s,
     },
-    textWrap: {flex: 1, gap: 2},
+    textWrap: {flex: 1, gap: theme.spacing.xxs},
     title: {
       ...theme.typography.bodyM,
       color: theme.colors.onSurface,

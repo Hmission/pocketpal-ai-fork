@@ -2,7 +2,7 @@ import React from 'react';
 import {Image, View, StyleSheet} from 'react-native';
 import Svg, {Circle} from 'react-native-svg';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import type {EngineId} from '../../services/tts';
 
 import {createStyles} from './styles';

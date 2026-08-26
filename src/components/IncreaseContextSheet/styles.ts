@@ -5,9 +5,10 @@ import {Theme} from '../../utils/types';
 export const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
-      paddingHorizontal: 16,
-      paddingVertical: 8,
-      gap: 14,
+      paddingHorizontal: theme.spacing.m,
+      paddingVertical: theme.spacing.s,
+      // B56②：14→m(16)（区块级 stack gap 取大档）
+      gap: theme.spacing.m,
     },
     body: {
       color: theme.colors.onSurfaceVariant,
@@ -16,7 +17,7 @@ export const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'flex-start',
       justifyContent: 'space-between',
-      marginTop: 4,
+      marginTop: theme.spacing.xs,
     },
     pickVal: {
       color: theme.colors.onSurface,
@@ -27,38 +28,40 @@ export const createStyles = (theme: Theme) =>
     },
     pickSub: {
       color: theme.colors.onSurfaceVariant,
-      marginTop: 4,
+      marginTop: theme.spacing.xs,
     },
     fitChip: {
-      paddingHorizontal: 10,
-      paddingVertical: 4,
+      // B56②：10→sm(12)（水平性）
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xs,
       borderRadius: 999,
     },
     fitChipText: {
-      fontSize: 11,
+      fontSize: theme.typography.captionS.fontSize, // B56③ fontSize→captionS
       fontWeight: '700' as const,
       letterSpacing: 0.2,
     },
     sliderWrap: {
-      marginTop: 4,
+      marginTop: theme.spacing.xs,
     },
     slider: {
       width: '100%',
-      height: 36,
+      height: theme.size.controlHeight,
     },
     sliderEnds: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      paddingHorizontal: 4,
+      paddingHorizontal: theme.spacing.xs,
     },
     sliderEndsText: {
       color: theme.colors.onSurfaceVariant,
       fontVariant: ['tabular-nums'],
     },
     statusLine: {
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      borderRadius: 8,
+      paddingHorizontal: theme.spacing.sm,
+      // B56②：10→s(8)（垂直紧凑）
+      paddingVertical: theme.spacing.s,
+      borderRadius: theme.radius.s,
       minHeight: 40,
       justifyContent: 'center',
     },
@@ -70,7 +73,8 @@ export const createStyles = (theme: Theme) =>
       fontStyle: 'italic' as const,
     },
     advancedToggle: {
-      paddingVertical: 6,
+      // B56②：6→xs(4)（紧凑垂直内距）
+      paddingVertical: theme.spacing.xs,
     },
     advancedToggleText: {
       color: theme.colors.onSurfaceVariant,

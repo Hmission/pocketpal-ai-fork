@@ -14,7 +14,7 @@
 import * as React from 'react';
 import {StyleSheet, TouchableOpacity, View, Text} from 'react-native';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import type {Theme} from '../../utils/types';
 import type {IntentKind} from '../../services/aiosMemory/rituals';
 import {OverlayCard} from './OverlayCard';
@@ -119,7 +119,7 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      minHeight: 44,
+      minHeight: theme.size.minTapTarget,
       borderRadius: theme.radius.s,
       paddingHorizontal: theme.spacing.sm,
       borderWidth: theme.stroke.sm,

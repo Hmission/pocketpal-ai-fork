@@ -1826,8 +1826,10 @@ describe('ModelStore', () => {
 
       // Mock console.error and infoDialog（08-25 InfoDialog 统一后错误弹窗改走 infoDialog）
       const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      // B60 修复：B58 拆分后 InfoDialog 命名空间 re-export 为只读 getter，
+      // spyOn 无法覆写——代之以 api 模块（函数声明可写）
       const infoDialogModule = jest.requireActual(
-        '../../components/ui/InfoDialog',
+        '../../components/ui/InfoDialog/api',
       );
       const infoDialogSpy = jest
         .spyOn(

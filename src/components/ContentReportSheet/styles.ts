@@ -4,22 +4,22 @@ import {Theme} from '../../utils/types';
 export const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
-      paddingHorizontal: 16,
-      paddingTop: 8,
+      paddingHorizontal: theme.spacing.m,
+      paddingTop: theme.spacing.s,
     },
     section: {
-      marginBottom: 24,
+      marginBottom: theme.spacing.l,
     },
     label: {
-      marginBottom: 8,
+      marginBottom: theme.spacing.s,
       color: theme.colors.onSurface,
     },
     infoNote: {
       color: theme.colors.onSurfaceVariant,
       lineHeight: 20,
       backgroundColor: theme.colors.surface,
-      padding: 12,
-      borderRadius: 8,
+      padding: theme.spacing.sm,
+      borderRadius: theme.radius.s,
     },
     categoryButton: {
       justifyContent: 'flex-start',
@@ -32,14 +32,14 @@ export const createStyles = (theme: Theme) =>
       backgroundColor: theme.colors.surface,
     },
     switchSection: {
-      marginBottom: 24,
-      paddingVertical: 8,
+      marginBottom: theme.spacing.l,
+      paddingVertical: theme.spacing.s,
     },
     switchContent: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: 4,
+      marginBottom: theme.spacing.xs,
     },
     switchLabel: {
       color: theme.colors.onSurface,
@@ -57,6 +57,6 @@ export const createStyles = (theme: Theme) =>
       justifyContent: 'space-between',
       alignItems: 'center',
       width: '100%',
-      paddingHorizontal: 16,
+      paddingHorizontal: theme.spacing.m,
     },
   });

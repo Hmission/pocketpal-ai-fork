@@ -5,12 +5,12 @@ export const createStyles = (theme: Theme) =>
   StyleSheet.create({
     // DynamicParameterForm styles
     innerForm: {
-      gap: 16,
+      gap: theme.spacing.m,
     },
 
     // DynamicTextField and DynamicDateTimeTagField styles
     field: {
-      gap: 8,
+      gap: theme.spacing.s,
     },
     sublabel: {
       ...theme.fonts.bodySmall,
@@ -18,14 +18,14 @@ export const createStyles = (theme: Theme) =>
     },
     errorText: {
       color: theme.colors.error,
-      marginTop: 4,
+      marginTop: theme.spacing.xs,
     },
 
     // DynamicDateTimeTagField styles
     dateTimeButton: {
       borderWidth: 1,
       borderRadius: theme.borders.default,
-      padding: 16,
+      padding: theme.spacing.m,
       alignItems: 'center',
       justifyContent: 'center',
       minHeight: 56,
@@ -48,7 +48,7 @@ export const createStyles = (theme: Theme) =>
     },
     dateTimeTagSubtext: {
       color: theme.colors.onSurfaceVariant,
-      marginTop: 4,
+      marginTop: theme.spacing.xs,
     },
     dateTimePlaceholderText: {
       color: theme.colors.onSurfaceVariant,

@@ -3,7 +3,7 @@ import {View, ScrollView} from 'react-native';
 import {Chip} from 'react-native-paper';
 import {observer} from 'mobx-react-lite';
 
-import {useTheme} from '../../../../hooks';
+import {useTheme} from '../../../../hooks/useTheme';
 import {createStyles} from './styles';
 import {PAL_FILTER_LABELS} from '../../../../utils/palshub-display';
 

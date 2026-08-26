@@ -2,7 +2,7 @@ import React, {useContext} from 'react';
 import {Pressable} from 'react-native';
 import {observer} from 'mobx-react';
 
-import {useTheme} from '../../hooks';
+import {useTheme} from '../../hooks/useTheme';
 import {modelStore, ttsStore} from '../../store';
 import {L10nContext} from '../../utils';
 import {derivedText, isFinalMessage} from '../../utils/chat';

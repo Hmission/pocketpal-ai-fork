@@ -13,8 +13,8 @@ import {
   ModelErrorReportSheet,
 } from '../../components';
 
-import {useChatSession} from '../../hooks';
-import {useTheme} from '../../hooks';
+import {useChatSession} from '../../hooks/useChatSession';
+import {useTheme} from '../../hooks/useTheme';
 import {usePendingMessage} from '../../hooks/useDeepLinking';
 
 import {
@@ -41,7 +41,7 @@ import {TaskErrorCard} from '../../components/TaskErrorCard/TaskErrorCard';
 import {ButlerUpgradeRow} from '../../components/ButlerUpgradeRow/ButlerUpgradeRow';
 import {TextMessage} from '../../components/TextMessage';
 import {promptWriter} from '../../services/promptWriter';
-import {imageGenStore} from '../../store/imageGenStore';
+import {imageGenStore} from '../../store';
 import {engineStatus} from '../../store/engineStatus';
 import {ROUTES} from '../../utils/navigationConstants';
 
