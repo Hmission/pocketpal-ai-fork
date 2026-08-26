@@ -338,6 +338,7 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
     // 回退：删本行即原 fp32 路径（env 门控，代码保留）。
     // 8-25 修正：klein（qwen_flow 家族）排除——4 步蒸馏模型对分块 half 舍入敏感（马赛克纹理嫌疑），
     // 暂走通用 fp32 路径保真；SD3.5/Z-Image 系维持半精度提速。
+    // 8-26 实证：klein 启用半精度后更糟（G 通道死/全品红），确认 OpenCL 两条 matmul 路径均对 FLUX.2 shape 有 bug，维持排除。
     if (!qwen_flow_family) {
       setenv("GGML_OPENCL_MALI_FP16_LM", "1", 1);
     } else {

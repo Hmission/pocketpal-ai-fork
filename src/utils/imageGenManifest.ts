@@ -121,11 +121,14 @@ export const BUILTIN_MANIFESTS: ImageGenManifest[] = [
     // 本机：引擎 6/25 已支持，CPU 出图质量正常，Q4 sha 验证一致；桌面 CUDA DiT 全 NaN 为上游缺陷（与端侧无关）。
     // 真机（K90 Pro Max 16GB，可用 ~10GB）：加载成功但 9.9GB 预算（TE 2.8G + DiT 6.9G + VAE 0.24G）全驻留
     // 超 OpenCL 全局 7.5GB，生成三次 OOM 被杀（08-26 实测三连）。
-    // 16GB 实机第二轮：te=disk（TE 流式省 2.8G）+ 必要时图切段，峰值贴 10GB 线验证中（MASTER_LOG §96.7）。
+    // 8-26 端侧定论（MASTER_LOG §99.4）：全驻留 9.9GB 超 K90 OpenCL 全局 7.5GB → OOM 三连强杀；
+    // te=disk 因 Krea2 TE（Qwen3-VL-4B）值域 ±1e10 在 ARM CPU f16 溢出 SIGABRT（已回滚禁用，
+    // Klein 的 zimage_llm 值域正常故可用）；Q8_0 CPU/CUDA 全 NaN 为上游缺陷（sha 完好实证）。
+    // 结论：双门槛（内存+精度）均上游可解（ARM f16 精度 / ≥24GB 设备），无应用层招，维持 experimental。
     experimental: true,
     gpuPolicy: 'high-adreno-only',
     defaults: {steps: 8, cfg: 1, size: 512, backend: 'OpenCL'},
-    note: '何时选：审美多样性 + 风格 LoRA（实验性）。体积：套件约 9.9GB（DiT 7.22 + Qwen3-VL TE 2.5 + Wan VAE 0.25）。适配：仅高端 Adreno（K90 16GB 实测 08-26：全驻留三连 OOM；te=disk 治理验证中）',
+    note: '何时选：审美多样性 + 风格 LoRA（实验性）。体积：套件约 9.9GB（DiT 7.22 + Qwen3-VL TE 2.5 + Wan VAE 0.25）。适配：仅高端 Adreno（K90 16GB 实测 08-26：全驻留三连 OOM、te=disk 因 TE f16 溢出回滚——待上游修 ARM f16 精度或 ≥24GB 设备）',
   },
   {
     id: 'flux-klein-4b',
@@ -149,13 +152,16 @@ export const BUILTIN_MANIFESTS: ImageGenManifest[] = [
     // ≠ 不兼容）；侦察实锤 klein 链路零 GDN（FluxRunner DiT + LLMEmbedder TE，引擎侧零 gated_delta
     // 构图），内存靠 te=disk 驻留（JNI Mali 分支）+图切段装下 → 升声明式准入 'high-adreno-or-mali'。
     // K Pad（Mali-G925）实测链路全通：全链 296.77s、采样 35.4 s/步、nan=0；
-    // 但 leejet Q4_0 量化出马赛克——Mali 与 Adreno（08-24 K90）双端复现，量化定罪非设备锅。
-    // 8-25 换 unsloth Q4_K_M（混合渐进量化）待验画质，验收通过除实验标。
+    // 但 leejet Q4_0 量化出马赛克——Mali 与 Adreno（08-24 K90）双端复现。
+    // 8-26 根因终局（13 组对照实证）：马赛克=vendored ggml-opencl 通用内核对 FLUX.2 shape 的 bug，
+    //   与量化无关（Q4_0/Q4_K_M/Q4_K_S 全纹理）、与内核变体无关（fp32 通用/fp16-tiled 均坏，fp16 更糟）、
+    //   VAE/TE/cfg/分辨率/治理组全排除；CPU（桌面+端侧）干净、Z-Image(FLUX.1) OpenCL 干净 → FLUX.2 特有 shape 触发。
+    //   桌面复现被 vendored 设备门禁（白名单/fp16/subgroups）拦截，需移动端 OpenCL 逐 op instrumentation 修内核（上游级）。
+    // 结论：GPU 保持 experimental（已知纹理）不误导用户；CPU 可出正确图（慢）；内核修复专项立项。
+    // 8-26 兑现「能跑」：默认后端切 CPU（正确、慢 ~5h）；仅改此字段，不回滚其它更新。
     experimental: true,
     gpuPolicy: 'high-adreno-or-mali',
-    // 08-24 根因隔离实验（Adreno OpenCL 马赛克 → CPU 对照）收口回滚：CPU 是临时兜底态，
-    // 'OpenCL' 才是生产值；马赛克已经双端交叉验证定罪到 leejet Q4_0 量化本身。
-    defaults: {steps: 4, cfg: 1, size: 512, backend: 'OpenCL'},
+    defaults: {steps: 4, cfg: 1, size: 512, backend: 'CPU'},
     // 08-24 画幅如实化：官方蒸馏契约是 1MP（4 步 1024px），但 klein 尚无端侧完整出图实测，
     // 端侧暂与 SD3.5/Z-Image 同走 512 级档位（SD_RATIOS，内存约束）。
     // 待量化源修复后，再决策是否升 1024 档（升档前必有真机出图证据，不凭官方文案预设）。
