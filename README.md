@@ -50,7 +50,8 @@ Pocket Chick is intentionally not a productivity tool. It's a "digital pet" — 
 | Z-Image cross-attn 值域 ±1e4，Adreno fp16 内核累积溢出 → 白图 | 按模型区分 GPU 策略（manifest note）：SD3.5 恢复 Adreno 内核（提速 4.8–13×），Z-Image 保持双禁用保稳定；排查期曾误全局禁用（XMEM=0 + DISABLE=1），根因确认与 GEMM 无关后已恢复 |
 | Adreno Vulkan 后端 ErrorDeviceLost，社区零成功案例 | 走 OpenCL（ARM 官方推荐路径），Vulkan 不启用 |
 | 量化 embedding（Q6_K）被引擎强制升 F32 → 1483MB 超硬件单次分配上限 → 崩溃 | 改为升 F16（742MB） |
-| HyperOS PSS 看护（6GB 阈值）硬杀进程，n_ctx 档位超预算 | n_ctx 预调天花板取 min(空闲内存, 4GB PSS 安全预算)，启动审计自愈降档 |
+| HyperOS PSS 看护（6GB 阈值）硬杀进程，固定 4GB 预算让 4B 主力只敢给 4096 上下文（装不下工具 schema 基线 ~4.5K，智能体框架跑不开） | 预算改为**设备感知**（启动实测可用内存，上限 9GB，fallback 4GB），策展表重排 4B→16384 / 2B→32768，KV 保持 f16；启动审计自愈降档、用户手调主权不碰 |
+| 上下文压缩目标线 70%：80% 触发时只释放 ~10% 容量 → **每 2-4 轮触发一次 LLM 摘要**，priorSummary 增量退化为整段重写、碎片化叠加损耗 | 目标线对齐行业（Claude Code auto-compact / LangChain）：触发 80% → **压到半水位 50%**（COMPACT_TARGET_WATERMARK=0.5），一次顶 10+ 轮 |
 | ONNX/Llama session 释放未 await → 内存叠加 OOM | 异步释放统一 await 收口 |
 
 排查过程中的一个可用经验：出现 NaN 或崩溃时，先对比跨设备的 NaN 指纹（K90 与小米 13 指纹一致 → 不是设备问题），再深入算子层定位，避免在设备差异上白费时间。
@@ -87,6 +88,41 @@ Pocket Chick is intentionally not a productivity tool. It's a "digital pet" — 
 - **卸载保留开关**：系统设置新增「卸载后保留聊天记录」开关（默认开）。
 
 完整变更详见 [CHANGELOG.md](CHANGELOG.md)。
+
+## 👨‍💻 开发者视角 · 底层改造 / Under the Hood
+
+> 不下载 App 也能看到我们怎么把端侧 AI 做到可用。以下三块是全仓复用价值最高的改造——完整设计与真机数据在 `docs/` 对应 SPEC（见文末文档表）。
+> Skip the install — here is how we made on-device AI actually usable. Three areas with the highest reusability; full designs and real-device data live in the SPECs linked below.
+
+### 1) 模型上下文治理：让每个模型用满它的内存空间 / Context Governance
+
+手机端「默认上下文很短」是通病——直接后果是长对话一轮即满、工具调用跑不开。我们的三层治理（[POCKETPAL_CONTEXT_COMPACTION_SPEC](docs/POCKETPAL_CONTEXT_COMPACTION_SPEC.md) + [CHAT_UI_SPEC §18.6](docs/POCKETPAL_CHAT_UI_SPEC.md)）：
+
+- **每模型人工策展默认 n_ctx 表**：模型越小上下文越长（KV 便宜 + 快），上限 = GGUF `context_length`。主力档：Qwen3.5-4B **16384**、Qwen3.5-2B / MiniCPM5-1B **32768**、Ministral-3-3B 24576、Gemma-3-4B 32768……（原 4B 档只有 4096，装不下工具 schema 注入后的提示词基线 ~4.5K，智能体框架直接跑不开）
+- **设备感知内存预算** `resolvePssSafeBudget`：预算 = 启动实测可用内存（上限 9GB，fallback 4GB），替代固定 4GB 一刀切；KV cache 保持 f16，不加量化旋钮（锋利不预设）
+- **策展表版本化拉齐** `CURATED_TABLE_VERSION`：预设档位随表版本一次性升档（老用户不会被旧短值永久钉死），用户手调主权不碰
+- **压缩目标线行业对齐**：触发 80% → **压到半水位 50%**（`COMPACT_TARGET_WATERMARK=0.5`），治「每 2-4 轮触发一次摘要、碎片化叠加损耗」的小额滚动；摘要输入预算随 n_ctx 上探；水位双源校准（字符估算 + 上轮实测钉底）、生成预留、摘要工作集预算化（B19.1 真机血证链路）
+- **真机数据（Redmi K90 / 骁龙 8 Elite）**：4B + 16K f16 KV 加载 PSS **4.15GB**、推理全量驻留 **4.74GB**，全程无被杀；5275 tokens prefill 仅占上下文 32%，剩余 ≈ 20+ 轮短对话
+
+### 2) 跑分体系：基准不是实验室玩具，是真机实证仪表盘 / Benchmark & Telemetry
+
+设计：[PERF_BENCHMARK_DESIGN](docs/PERF_BENCHMARK_DESIGN.md)
+
+- **基准总控台三用例**：聊天推理（真实流式链路）/ 生图（DreamLite 同源入口）/ 温控耐久（连跑 3 轮），自动导航到页、真实负载、零新链路
+- **1Hz 遥测**：PSS / CPU / 温度 / 功耗 / GPU 负载随采 → 四轴跑分卡 + 段位（走地鸡 → 战斗鸡 → 神鸡），数值全部真机实测、N/A 诚实置灰不编造
+- **任务级 JSONL 落盘 + 统一回放**：进程被杀保留断点轨迹可重算跑分卡；聊天回合与生图任务同库同规
+- **真机数据**：K90 全套件 LLM 77s（10 tok/s）→ 生图 54s → 耐久 3 轮，总时长 4m23s，综合分 46
+- 顺手做过的性能攻坚：Adreno OpenCL 提速 SD3.5 至 10.7 分钟级；Mali 半精度内核 **2.9-3.4×**（[CLPROF] 算子榜单纠偏后命中正确内核，本地内存减半 + fp16 管线）
+
+### 3) 端侧智能体框架：小模型也能跑工具调用 / On-device Agent Framework
+
+从 AIOS 裁剪的完整工具调用栈（[WORKSPACE_SPEC](docs/POCKETPAL_WORKSPACE_SPEC.md) + [WORKSPACE_TOOL_ERROR_FEEDBACK_SPEC](docs/workspace/WORKSPACE_TOOL_ERROR_FEEDBACK_SPEC.md)）：
+
+- **Talent 工具注册表**：pact 声明 → 工具定义 → 多轮 tool loop → 全局重试纪律（同一工具连败 2 次才可放弃，失败先按示例修正重试）
+- **错误回传「定位 + 导航」三字段**：工具失败回传模型时不仅给错误描述，还带正确调用示例（guide）——4B 级小模型靠示例自纠，失败不再是终局（真机实证：Hermes 缺 Buffer 的 `WRITE_FAILED` 透传后模型按示例自动重试）
+- **产物工作区三协议**：写作 / 冒险 / 玩具统一「目录 + 索引 + 分段读取」——对话是过程、产物是文档，上下文压缩只动过程永不碰产物
+- **记忆三段治理（存 → 治 → 用）**：对话落盘 → 事实/事件/见解抽取（事件 30 天 TTL）→ 蒸馏治理按钮 + 时效三闸（瞬时状态/新闻/失败记录不污染记忆）
+- **DRC 远程调试**：事件流 + 指南针三字段（定位/导航/深入），真机问题排查不再靠猜
 
 ## 🛠 技术栈 / Tech Stack
 
@@ -142,6 +178,10 @@ Feel free to reach out if you'd like to discuss on-device AI, digital pets, or a
 | 文档 | 说明 |
 |---|---|
 | [docs/POCKETPAL_PRODUCT_SPEC.md](docs/POCKETPAL_PRODUCT_SPEC.md) | 产品文档（定位/里程碑/功能设计/亮点） |
+| [docs/POCKETPAL_CONTEXT_COMPACTION_SPEC.md](docs/POCKETPAL_CONTEXT_COMPACTION_SPEC.md) | 上下文压缩机制设计（水位双源校准 / 生成预留 / 半水位目标线） |
+| [docs/PERF_BENCHMARK_DESIGN.md](docs/PERF_BENCHMARK_DESIGN.md) | 跑分与遥测设计（三用例总控 / 1Hz 采样 / JSONL 回放 / 跑分卡） |
+| [docs/POCKETPAL_WORKSPACE_SPEC.md](docs/POCKETPAL_WORKSPACE_SPEC.md) | 智能体产物工作区（写作/冒险/玩具三协议：目录+索引+分段读取） |
+| [docs/workspace/WORKSPACE_TOOL_ERROR_FEEDBACK_SPEC.md](docs/workspace/WORKSPACE_TOOL_ERROR_FEEDBACK_SPEC.md) | 工具调用错误回传协议（定位+导航三字段 + 重试纪律） |
 | [CHANGELOG.md](CHANGELOG.md) | 更新日志（Keep a Changelog） |
 | [docs/APP_INTRO_COPY.md](docs/APP_INTRO_COPY.md) | App 介绍文案库（三版式 × 多语言） |
 | [docs/POCKETPAL_CHAT_UI_SPEC.md](docs/POCKETPAL_CHAT_UI_SPEC.md) | 聊天页 UI 设计规范 |
