@@ -1,5 +1,4 @@
 import {makeAutoObservable, runInAction} from 'mobx';
-import {format, isToday, isYesterday} from 'date-fns';
 import * as RNFS from '@dr.pogodin/react-native-fs';
 
 import {
@@ -20,25 +19,24 @@ import {derivedText} from '../utils/chat';
 import {scheduleDbSnapshot} from '../utils/paths';
 import {palStore} from './PalStore';
 import {uiStore} from './UIStore';
-import {deriveToolSchemas} from '../services/talents';
 import {AgentUiState, initialAgentUiState} from '../services/agent';
+import {
+  createChatStreamingUpdater,
+  type MessageUpdate,
+} from '../services/chatStreamingUpdater';
+import {
+  DEFAULT_GROUP_NAMES,
+  groupSessionsByDate,
+  type SessionGroup,
+} from '../services/sessionGroups';
+import {
+  getCurrentCompletionSettings as getCurrentCompletionSettingsService,
+  resolveCompletionSettings as resolveCompletionSettingsService,
+} from '../services/completionSettingsResolver';
 import type {IntentKind} from '../services/aiosMemory/rituals';
-
-/**
- * Update payload accepted by `updateMessage` / `updateMessageStreaming`.
- * Covers both `Text` updates (timings, copyable) and `AssistantTurn`
- * updates which carry top-level `steps` plus arbitrary metadata fields
- * (interrupted, copyable, etc.).
- */
-type MessageUpdate =
-  | Partial<MessageType.Text>
-  | Partial<Omit<MessageType.AssistantTurn, 'type' | 'id' | 'author'>>;
 
 const NEW_SESSION_TITLE = 'New Session';
 const TITLE_LIMIT = 40;
-
-// Coalesce per-token writes into batched UI flushes (~33 Hz).
-const STREAMING_THROTTLE_MS = 30;
 
 export interface SessionMetaData {
   id: string;
@@ -52,23 +50,6 @@ export interface SessionMetaData {
   // 会话级意图状态机（CHAT_UI_SPEC §18.1）：首轮定值后沿用，用户点按胶囊是唯一写入口
   intent?: IntentKind;
 }
-
-interface SessionGroup {
-  [key: string]: SessionMetaData[];
-}
-
-// Default group names in English as fallback
-const DEFAULT_GROUP_NAMES = {
-  today: 'Today',
-  yesterday: 'Yesterday',
-  thisWeek: 'This week',
-  lastWeek: 'Last week',
-  twoWeeksAgo: '2 weeks ago',
-  threeWeeksAgo: '3 weeks ago',
-  fourWeeksAgo: '4 weeks ago',
-  lastMonth: 'Last month',
-  older: 'Older',
-};
 
 export const defaultCompletionSettings = {...defaultCompletionParams};
 delete defaultCompletionSettings.prompt;
@@ -782,207 +763,30 @@ class ChatSessionStore {
     }
   }
 
-  private streamingThrottleTimer: NodeJS.Timeout | null = null;
-  /**
-   * Pending throttled update. Discriminated so the same throttle slot
-   * can serve both legacy `Text` updates (`kind: 'text'`) and the new
-   * AssistantTurn active-step updates (`kind: 'step'`). Per-token writes
-   * coalesce — they don't stack — because each call overwrites this slot.
-   */
-  private pendingStreamingUpdate:
-    | {
-        kind: 'text';
-        id: string;
-        sessionId: string;
-        update: Partial<MessageType.Text>;
-      }
-    | {
-        kind: 'step';
-        id: string;
-        sessionId: string;
-        partial: Partial<AgentStep>;
-      }
-    | null = null;
-  private lastStreamingUpdateTime: number = 0;
+  // 流式节流器 service（R3-P2 抽取）：timer/pending 槽驻留
+  // services/chatStreamingUpdater.ts 闭包（本非观察字段，天然可外置）。
+  private streamingUpdater = createChatStreamingUpdater(this);
 
   /**
-   * Schedule a throttled update through the shared throttle slot. The
-   * scheduling logic is identical for both `text` and `step` shapes; only
-   * the eventual `applyStreamingUpdate` dispatch differs.
+   * 薄委托：实现迁至 services/chatStreamingUpdater.ts（R3-P2，行为零变化）
    */
-  private scheduleStreamingUpdate(): void {
-    if (this.streamingThrottleTimer) {
-      return;
-    }
-
-    const now = Date.now();
-    const timeSinceLastUpdate = now - this.lastStreamingUpdateTime;
-
-    if (timeSinceLastUpdate >= STREAMING_THROTTLE_MS) {
-      this.applyStreamingUpdate();
-      this.lastStreamingUpdateTime = Date.now();
-      return;
-    }
-
-    const remainingTime = STREAMING_THROTTLE_MS - timeSinceLastUpdate;
-    this.streamingThrottleTimer = setTimeout(() => {
-      this.streamingThrottleTimer = null;
-      if (this.pendingStreamingUpdate) {
-        this.applyStreamingUpdate();
-        this.lastStreamingUpdateTime = Date.now();
-      }
-    }, remainingTime);
-  }
-
-  /**
-   * Drain the throttled streaming slot synchronously. Call before any
-   * structural change to `turn.steps` (e.g. pushAgentStep or
-   * finalizeActiveStep) so a pending update scheduled for the previous
-   * `lastIdx` lands on the step it was intended for, not on a freshly
-   * pushed step that happens to be `lastIdx` when the timer fires.
-   *
-   * Without this, the regression sequence is: final `token` for step 0
-   * schedules the throttle (fires in 150ms) → step_finished + tool_call
-   * events run synchronously → step_started(1) pushes step 1 → throttle
-   * timer fires → applies step 0's pending content to step 1, briefly
-   * showing step 0's text duplicated under the talent block until the
-   * follow-up step's first real token replaces it.
-   */
-  private flushStreamingUpdate(): void {
-    if (this.streamingThrottleTimer) {
-      clearTimeout(this.streamingThrottleTimer);
-      this.streamingThrottleTimer = null;
-    }
-    if (this.pendingStreamingUpdate) {
-      this.applyStreamingUpdate();
-      this.lastStreamingUpdateTime = Date.now();
-    }
-  }
-
-  // Update message during streaming - no database write, triggers reactivity
-  // Throttled to avoid excessive re-renders. Accepts either a Text-shaped
-  // partial (legacy path) or an AssistantTurn-shaped partial (new
-  // pipeline). The hook should prefer `updateActiveStepStreaming` for
-  // assistant_turn rows; this remains for the legacy code path.
   updateMessageStreaming(
     id: string,
     sessionId: string,
     update: MessageUpdate,
   ): void {
-    this.pendingStreamingUpdate = {
-      kind: 'text',
-      id,
-      sessionId,
-      update: update as Partial<MessageType.Text>,
-    };
-    this.scheduleStreamingUpdate();
+    this.streamingUpdater.updateMessageStreaming(id, sessionId, update);
   }
 
   /**
-   * Throttled streaming update for an `assistant_turn` row's active
-   * (last) step. Reuses the same `streamingThrottleTimer` slot as
-   * `updateMessageStreaming` so per-token writes coalesce and do not
-   * stack across the two paths.
+   * 薄委托：实现迁至 services/chatStreamingUpdater.ts（R3-P2，行为零变化）
    */
   updateActiveStepStreaming(
     id: string,
     sessionId: string,
     partial: Partial<AgentStep>,
   ): void {
-    this.pendingStreamingUpdate = {kind: 'step', id, sessionId, partial};
-    this.scheduleStreamingUpdate();
-  }
-
-  private applyStreamingUpdate(): void {
-    if (!this.pendingStreamingUpdate) {
-      return;
-    }
-
-    const pending = this.pendingStreamingUpdate;
-    this.pendingStreamingUpdate = null;
-
-    const targetSessionId = pending.sessionId || this.activeSessionId;
-    if (!targetSessionId) {
-      return;
-    }
-
-    const session = this.sessions.find(s => s.id === targetSessionId);
-    if (!session) {
-      return;
-    }
-
-    const message = session.messages.find(msg => msg.id === pending.id);
-    if (!message) {
-      return;
-    }
-
-    if (pending.kind === 'text') {
-      // Legacy text path. Gate widened to also accept assistant_turn so
-      // ad-hoc metadata writes (e.g. error rollback) don't silently no-op
-      // on the new shape.
-      if (message.type !== 'text' && message.type !== 'assistant_turn') {
-        return;
-      }
-      const update = pending.update;
-      runInAction(() => {
-        if (message.type === 'text' && update.text !== undefined) {
-          (message as MessageType.Text).text = update.text;
-        }
-        if (update.metadata !== undefined) {
-          message.metadata = {
-            ...(message.metadata || {}),
-            ...update.metadata,
-          };
-        }
-      });
-      chatSessionRepository
-        .updateMessage(pending.id, update)
-        .catch(error =>
-          console.error('Failed to persist streaming update to DB:', error),
-        );
-      return;
-    }
-
-    // pending.kind === 'step'
-    if (message.type !== 'assistant_turn') {
-      return;
-    }
-    const turn = message as MessageType.AssistantTurn;
-    if (!turn.steps || turn.steps.length === 0) {
-      return;
-    }
-    const partial = pending.partial;
-    runInAction(() => {
-      const lastIdx = turn.steps.length - 1;
-      const last = turn.steps[lastIdx];
-      // Shallow merge of step fields. `pushAgentStep` adds new steps;
-      // this only mutates the active (last) one in place.
-      turn.steps[lastIdx] = {
-        ...last,
-        ...partial,
-      };
-    });
-    // DRC 事件流（观测不为 SPOF）：assistant_turn 流式路径增量（节流
-    // key=messageId）——agent 环 token 在涨就必须有进度可见，否则开发侧
-    // 误判卡死（2026-08-19 K90 血证，DRC_SPEC v1.1）。text=步骤累计内容。
-    const streamedText = derivedText(turn) || '';
-    if (typeof streamedText === 'string' && streamedText.length > 0) {
-      emit(
-        'chat',
-        'chat.assistant_delta',
-        {
-          sessionId: targetSessionId,
-          messageId: pending.id,
-          text: streamedText,
-        },
-        `delta:${pending.id}`,
-      );
-    }
-    chatSessionRepository
-      .updateMessage(pending.id, {steps: turn.steps})
-      .catch(error =>
-        console.error('Failed to persist streaming step update to DB:', error),
-      );
+    this.streamingUpdater.updateActiveStepStreaming(id, sessionId, partial);
   }
 
   async updateMessage(
@@ -1068,7 +872,7 @@ class ChatSessionStore {
     // before structurally extending the array. Otherwise a pending
     // step-0 write would land on the freshly pushed step-1 when the
     // timer fires.
-    this.flushStreamingUpdate();
+    this.streamingUpdater.flush();
     const targetSessionId = sessionId || this.activeSessionId;
     if (!targetSessionId) {
       return;
@@ -1204,7 +1008,7 @@ class ChatSessionStore {
     // and replace the array. Otherwise a late-firing timer could
     // either (a) write to a stale array reference or (b) write to
     // whatever step happens to be lastIdx after this finalize completes.
-    this.flushStreamingUpdate();
+    this.streamingUpdater.flush();
     const targetSessionId = sessionId || this.activeSessionId;
     if (!targetSessionId) {
       return;
@@ -1326,77 +1130,8 @@ class ChatSessionStore {
   }
 
   get groupedSessions(): SessionGroup {
-    const groups: SessionGroup = this.sessions.reduce(
-      (acc: SessionGroup, session) => {
-        const date = new Date(session.date);
-        let dateKey: string = format(date, 'MMMM dd, yyyy');
-        const today = new Date();
-        const daysAgo = Math.ceil(
-          (today.getTime() - date.getTime()) / (1000 * 3600 * 24),
-        );
-
-        if (isToday(date)) {
-          dateKey = this.dateGroupNames.today;
-        } else if (isYesterday(date)) {
-          dateKey = this.dateGroupNames.yesterday;
-        } else if (daysAgo <= 6) {
-          dateKey = this.dateGroupNames.thisWeek;
-        } else if (daysAgo <= 13) {
-          dateKey = this.dateGroupNames.lastWeek;
-        } else if (daysAgo <= 20) {
-          dateKey = this.dateGroupNames.twoWeeksAgo;
-        } else if (daysAgo <= 27) {
-          dateKey = this.dateGroupNames.threeWeeksAgo;
-        } else if (daysAgo <= 34) {
-          dateKey = this.dateGroupNames.fourWeeksAgo;
-        } else if (daysAgo <= 60) {
-          dateKey = this.dateGroupNames.lastMonth;
-        } else {
-          dateKey = this.dateGroupNames.older;
-        }
-
-        if (!acc[dateKey]) {
-          acc[dateKey] = [];
-        }
-        acc[dateKey].push(session);
-        return acc;
-      },
-      {},
-    );
-
-    // Define the order of keys using the localized group names
-    const orderedKeys = [
-      this.dateGroupNames.today,
-      this.dateGroupNames.yesterday,
-      this.dateGroupNames.thisWeek,
-      this.dateGroupNames.lastWeek,
-      this.dateGroupNames.twoWeeksAgo,
-      this.dateGroupNames.threeWeeksAgo,
-      this.dateGroupNames.fourWeeksAgo,
-      this.dateGroupNames.lastMonth,
-      this.dateGroupNames.older,
-    ];
-
-    // Create a new object with keys in the desired order
-    const orderedGroups: SessionGroup = {};
-    orderedKeys.forEach(key => {
-      if (groups[key]) {
-        orderedGroups[key] = groups[key].sort(
-          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-        );
-      }
-    });
-
-    // Add any remaining keys that weren't in our predefined list
-    Object.keys(groups).forEach(key => {
-      if (!orderedGroups[key]) {
-        orderedGroups[key] = groups[key].sort(
-          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-        );
-      }
-    });
-
-    return orderedGroups;
+    // 薄委托：核心算法迁至 services/sessionGroups.ts（R3-P2，行为零变化）
+    return groupSessionsByDate(this.sessions, this.dateGroupNames);
   }
 
   /**
@@ -1646,100 +1381,38 @@ class ChatSessionStore {
   }
 
   /**
-   * Resolves completion settings according to the precedence hierarchy:
-   * System Defaults → Global User Settings → Pal-Specific Settings → Session-Specific Settings (only if explicitly modified)
+   * 薄委托：实现迁至 services/completionSettingsResolver.ts（R3-P1-B，行为零变化）
    */
   async resolveCompletionSettings(
     sessionId?: string,
     palId?: string,
   ): Promise<CompletionParams> {
-    // Start with system defaults
-    let resolvedSettings: CompletionParams = {...defaultCompletionSettings};
-
-    // Apply global user settings
-    resolvedSettings = {
-      ...resolvedSettings,
-      ...this.newChatCompletionSettings,
-    };
-
-    // Apply pal-specific settings if available
-    if (palId) {
-      // Use in-memory pal store as the source of truth (avoids cache invalidation issues)
-      const pal = palStore.pals.find(p => p.id === palId);
-      const palSettings = pal?.completionSettings;
-
-      if (palSettings) {
-        resolvedSettings = {
-          ...resolvedSettings,
-          ...palSettings,
-        };
-      }
-
-      // Inject tool schemas from pact.talents (PACT → completionSettings.tools)
-      const talentNames = pal?.pact?.talents?.map(t => t.name);
-      if (talentNames && talentNames.length > 0) {
-        const tools = deriveToolSchemas(talentNames);
-        if (tools.length > 0) {
-          resolvedSettings = {
-            ...resolvedSettings,
-            tools,
-          };
-        }
-      }
-    }
-
-    // No-session-only: apply user's explicit thinking override last so it
-    // wins over pal's enable_thinking. Overlays the local enable_thinking flag
-    // AND the reasoning carrier (so the remote wire path honors the on/off
-    // intent for the first message of the new chat, not just local thinking).
-    // Does NOT touch any other field, and does NOT affect tool availability.
-    if (!sessionId && this.newChatThinkingOverride !== undefined) {
-      resolvedSettings = {
-        ...resolvedSettings,
-        enable_thinking: this.newChatThinkingOverride,
-        reasoning: {
-          ...resolvedSettings.reasoning,
-          enabled: this.newChatThinkingOverride,
-          effort: this.newChatReasoningEffort,
-        },
-      };
-    }
-
-    // Apply session-specific settings based on explicit user choice
-    if (sessionId) {
-      const session = this.sessions.find(s => s.id === sessionId);
-
-      if (session?.settingsSource === 'custom') {
-        // User explicitly chose custom settings - use session settings.
-        // Preserve PACT-derived tools — custom settings control generation
-        // params (temperature, etc.) but pact.talents is the source of truth
-        // for tool availability.
-        const pactTools = resolvedSettings.tools;
-        resolvedSettings = session.completionSettings;
-        if (pactTools) {
-          resolvedSettings = {...resolvedSettings, tools: pactTools};
-        }
-      }
-    }
-
-    return resolvedSettings;
+    return resolveCompletionSettingsService(
+      {
+        globalSettings: this.newChatCompletionSettings,
+        sessions: this.sessions,
+        palStore,
+        thinkingOverride: this.newChatThinkingOverride,
+        reasoningEffort: this.newChatReasoningEffort,
+      },
+      sessionId,
+      palId,
+    );
   }
 
   /**
-   * Gets the effective completion settings for the current context
+   * 薄委托：实现迁至 services/completionSettingsResolver.ts（R3-P1-B，行为零变化）
    */
   async getCurrentCompletionSettings(): Promise<CompletionParams> {
-    const activePalId = this.activeSessionId
-      ? this.sessions.find(s => s.id === this.activeSessionId)?.activePalId
-      : this.newChatPalId;
-
-    return this.resolveCompletionSettings(
-      this.activeSessionId || undefined,
-      // 无显式 Pal 时兜底 AIOS 女妖——与 useChatSession 系统提示词兜底对仗：
-      // pact.talents 是工具可用性的唯一事实源，否则灵魂注入了、手被砍了，
-      // play/adventure 等工具任务静默退化为纯聊天（2026-08-19 K90 真机实证）。
-      activePalId ?? palStore.getAiosPal()?.id,
-    );
+    return getCurrentCompletionSettingsService({
+      activeSessionId: this.activeSessionId,
+      sessions: this.sessions,
+      newChatPalId: this.newChatPalId,
+      palStore,
+      globalSettings: this.newChatCompletionSettings,
+      thinkingOverride: this.newChatThinkingOverride,
+      reasoningEffort: this.newChatReasoningEffort,
+    });
   }
 }
 

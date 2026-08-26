@@ -9,38 +9,38 @@ export const createStyles = (theme: Theme) =>
       backgroundColor: theme.colors.surface,
     },
     container: {
-      padding: 16,
+      padding: theme.spacing.m,
     },
     scrollViewContent: {
-      paddingVertical: 16,
-      paddingHorizontal: 16,
+      paddingVertical: theme.spacing.m,
+      paddingHorizontal: theme.spacing.m,
     },
     card: {
-      marginVertical: 8,
+      marginVertical: theme.spacing.s,
       // 形状角色：内容卡片 l(20)（DESIGN_SPEC §4）
       borderRadius: theme.radius.l,
       backgroundColor: theme.colors.background,
     },
     settingItemContainer: {
-      marginVertical: 16,
+      marginVertical: theme.spacing.m,
     },
     switchContainer: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginVertical: 8,
+      marginVertical: theme.spacing.s,
     },
     textContainer: {
       flex: 1,
-      marginRight: 16,
+      marginRight: theme.spacing.m,
     },
     labelWithIconContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginBottom: 4,
+      marginBottom: theme.spacing.xs,
     },
     settingIcon: {
-      marginRight: 8,
+      marginRight: theme.spacing.s,
     },
     textLabel: {
       color: theme.colors.onSurface,
@@ -50,14 +50,14 @@ export const createStyles = (theme: Theme) =>
       //marginTop: 4,
     },
     divider: {
-      marginVertical: 12,
+      marginVertical: theme.spacing.sm,
     },
     slider: {
       //marginVertical: 8,
       //height: 40,
     },
     textInput: {
-      marginVertical: 8,
+      marginVertical: theme.spacing.s,
     },
     invalidInput: {
       borderColor: theme.colors.error,
@@ -65,7 +65,7 @@ export const createStyles = (theme: Theme) =>
     },
     errorText: {
       color: theme.colors.error,
-      marginTop: 4,
+      marginTop: theme.spacing.xs,
     },
     menuContainer: {
       position: 'relative',
@@ -74,28 +74,28 @@ export const createStyles = (theme: Theme) =>
       minWidth: 100,
     },
     consentContainer: {
-      marginVertical: 8,
+      marginVertical: theme.spacing.s,
     },
     consentButton: {
       alignSelf: 'flex-end',
-      marginTop: 12,
+      marginTop: theme.spacing.sm,
     },
     buttonContent: {
       flexDirection: 'row-reverse',
       justifyContent: 'space-between',
     },
     advancedSettingsButton: {
-      marginVertical: 8,
+      marginVertical: theme.spacing.s,
     },
     advancedSettingsContent: {
-      marginTop: 8,
+      marginTop: theme.spacing.s,
     },
     advancedAccordion: {
       height: 55,
       //backgroundColor: theme.colors.surface,
     },
     accordionTitle: {
-      fontSize: 14,
+      fontSize: theme.typography.uiM.fontSize, // B56③ fontSize→uiM
       color: theme.colors.secondary,
     },
     menu: {
@@ -104,12 +104,12 @@ export const createStyles = (theme: Theme) =>
     linkContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginTop: 4,
+      marginTop: theme.spacing.xs,
     },
     linkIcon: {
-      marginLeft: 4,
+      marginLeft: theme.spacing.xs,
     },
     segmentedButtons: {
-      marginVertical: 8,
+      marginVertical: theme.spacing.s,
     },
   });

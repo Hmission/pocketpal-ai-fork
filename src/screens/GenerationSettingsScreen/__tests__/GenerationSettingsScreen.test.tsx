@@ -7,11 +7,13 @@ import {
   render as baseRender,
   waitFor,
   act,
+  within,
 } from '../../../../jest/test-utils';
 
 import {GenerationSettingsScreen} from '../GenerationSettingsScreen';
 
 import {modelStore, uiStore} from '../../../store';
+import {l10n} from '../../../locales';
 
 jest.useFakeTimers();
 
@@ -143,7 +145,10 @@ describe('GenerationSettingsScreen', () => {
         withSafeArea: true,
         withNavigation: true,
       });
-      const autoCompactionSwitch = getByTestId('auto-compaction-switch');
+      // B57-④：testID 落在 DS Switch 包装层，valueChange 打到内层 Paper Switch
+      const autoCompactionSwitch = within(
+        getByTestId('auto-compaction-switch'),
+      ).getByLabelText(l10n.en.settings.contextAutoCompaction);
       await act(async () => {
         fireEvent(autoCompactionSwitch, 'valueChange', false);
       });
@@ -160,7 +165,9 @@ describe('GenerationSettingsScreen', () => {
       withSafeArea: true,
       withNavigation: true,
     });
-    const autoOffloadSwitch = getByTestId('auto-offload-load-switch');
+    const autoOffloadSwitch = within(
+      getByTestId('auto-offload-load-switch'),
+    ).getByLabelText(l10n.en.settings.autoOffloadLoad);
 
     await act(async () => {
       fireEvent(autoOffloadSwitch, 'valueChange', false);
@@ -174,7 +181,9 @@ describe('GenerationSettingsScreen', () => {
       withSafeArea: true,
       withNavigation: true,
     });
-    const autoNavigateSwitch = getByTestId('auto-navigate-to-chat-switch');
+    const autoNavigateSwitch = within(
+      getByTestId('auto-navigate-to-chat-switch'),
+    ).getByLabelText(l10n.en.settings.autoNavigateToChat);
 
     await act(async () => {
       fireEvent(autoNavigateSwitch, 'valueChange', false);
