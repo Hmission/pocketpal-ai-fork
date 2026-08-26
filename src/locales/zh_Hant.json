@@ -848,7 +848,8 @@
       "stageGenerating": "正在生成…",
       "stageExecuting": "正在執行工具…",
       "stageHang": "可能卡住，可點擊停止",
-      "reasoningLabel": "思考中"
+      "stageThinking": "正在思考…",
+      "searching": "正在聯網搜尋…"
     },
     "toolMetrics": {
       "tokens": "{{count}} 個詞元",

@@ -35,11 +35,14 @@ const STALL_MS = 300_000;
 // generic "Preparing tool".
 const TALENT_LABEL_KEYS: Record<
   string,
-  'buildingPage' | 'calculating' | 'lookingUpTime'
+  'buildingPage' | 'calculating' | 'lookingUpTime' | 'searching'
 > = {
   render_html: 'buildingPage',
   calculate: 'calculating',
   datetime: 'lookingUpTime',
+  // B57：联网搜索业务语义标签——web_search 全程（生成调用+执行）
+  // 不再 fallback 通用「准备工具/执行工具中」。
+  web_search: 'searching',
 };
 
 // 遥测行格式化（B40 仪式卡，单位语言中立）
@@ -49,12 +52,17 @@ const perfTempFmt = (n: number) => `${Math.round(n)}°C`;
 
 // 阶段 → 人类可读标签（生成进度监控卡 §18.9）。工具调用阶段走
 // TALENT_LABEL_KEYS（更具体），prefill/streaming/executing 走通用文案。
-function stageLabelKey(status: AgentUiState['status']): string | null {
+// B57：streaming_text 按 reasoningPhase 区分「正在思考…/正在回复…」——
+// 思考期与正文期语义不同，用户能分辨模型在思考还是在写答案。
+function stageLabelKey(
+  status: AgentUiState['status'],
+  reasoningPhase: boolean,
+): string | null {
   switch (status) {
     case 'prefill':
       return 'stagePreparing';
     case 'streaming_text':
-      return 'stageGenerating';
+      return reasoningPhase ? 'stageThinking' : 'stageGenerating';
     case 'executing_tool':
       return 'stageExecuting';
     default:
@@ -110,20 +118,26 @@ const Dot: React.FC<DotProps> = ({delay, theme}) => {
     // 全局动画规范：Animated.loop 一律 JS driver。本组件在工具调用期间持续循环，
     // token 流期间 JS 高频活跃，3 个 opacity 插值每帧 JS 开销极小（ChatView
     // observer 隔离已保证 loop 不被 remount 打断），JS driver 下同样成立。
-    const animation = Animated.sequence([
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 500,
-        delay,
-        useNativeDriver: false,
-      }),
-      Animated.timing(opacity, {
-        toValue: 0.3,
-        duration: 500,
-        useNativeDriver: false,
-      }),
-    ]);
-    Animated.loop(animation).start();
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 500,
+          delay,
+          useNativeDriver: false,
+        }),
+        Animated.timing(opacity, {
+          toValue: 0.3,
+          duration: 500,
+          useNativeDriver: false,
+        }),
+      ]),
+    );
+    loop.start();
+    // 锋利根治（B61 jest worker 泄漏）：loop 句柄必须随卸载停止——
+    // JS driver 下 loop 靠 rAF/setTimeout 自续帧，不 stop 就是永动定时器，
+    // 跨套件在 worker 内累积（同 CircularActivityIndicator 收口先例）。
+    return () => loop.stop();
   }, [opacity, delay]);
 
   return (
@@ -169,8 +183,12 @@ interface PendingIndicatorProps {
   runStartedAt?: number | null;
   /** 最近一次 token/工具事件时间戳：心跳判定（>300s → 疑似卡住） */
   lastAgentEventAt?: number | null;
-  /** 思考流尾部（≤200 字符）：TTFT 期「模型在干活」的可视证据 */
-  reasoningTail?: string;
+  /**
+   * streaming_text 期阶段语义（B57）：true = 纯思考流 →「正在思考…」；
+   * false = 正文流 →「正在回复…」。思考内容本身在气泡 ReasoningBlock，
+   * 跑分卡不重复显示。
+   */
+  reasoningPhase?: boolean;
 }
 
 /**
@@ -191,7 +209,7 @@ export const PendingIndicator: React.FC<PendingIndicatorProps> = observer(
     agentStatus,
     runStartedAt = null,
     lastAgentEventAt = null,
-    reasoningTail = '',
+    reasoningPhase = false,
   }) => {
     const theme = useTheme();
     const l10n = useContext(L10nContext);
@@ -316,7 +334,7 @@ export const PendingIndicator: React.FC<PendingIndicatorProps> = observer(
       }
       suffix = parts.join(' · ');
     } else {
-      const key = stageLabelKey(agentStatus ?? 'idle');
+      const key = stageLabelKey(agentStatus ?? 'idle', reasoningPhase);
       const label = key
         ? (l10n.components.pendingIndicator as Record<string, string>)[key]
         : null;
@@ -331,15 +349,6 @@ export const PendingIndicator: React.FC<PendingIndicatorProps> = observer(
       }
       suffix = parts.length > 0 ? parts.join(' · ') : null;
     }
-
-    // 思考流预览（§18.9）：生成期模型内心戏实时可见，TTFT 的
-    // 「在干活」铁证；工具调用/卡住/停止时让位不抢眼。
-    const showReasoning =
-      !isStopping &&
-      !stalled &&
-      !inToolCallMode &&
-      reasoningTail.length > 0 &&
-      (agentStatus === 'prefill' || agentStatus === 'streaming_text');
 
     // 阶段色（B39）：prefill 蓝（info）→ 工具期紫（domain.tools），
     // 全部既有 token 不造新色；流式期监控卡隐藏故无第三态。
@@ -410,14 +419,6 @@ export const PendingIndicator: React.FC<PendingIndicatorProps> = observer(
               height={44}
             />
           </View>
-        )}
-        {showReasoning && (
-          <Text
-            style={styles.reasoning}
-            numberOfLines={2}
-            testID="pending-indicator-reasoning">
-            {l10n.components.pendingIndicator.reasoningLabel}: {reasoningTail}
-          </Text>
         )}
       </View>
     );

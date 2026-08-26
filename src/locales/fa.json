@@ -1043,7 +1043,8 @@
       "buildingPage": "در حال ساخت صفحه",
       "calculating": "در حال محاسبه",
       "lookingUpTime": "در حال یافتن زمان",
-      "stopping": "در حال توقف…"
+      "stopping": "در حال توقف…",
+      "searching": "در حال جستجو در وب…"
     },
     "toolMetrics": {
       "tokens": "{{count}} توکن",

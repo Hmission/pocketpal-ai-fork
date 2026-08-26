@@ -585,7 +585,8 @@
       "calculating": "Obliczanie",
       "lookingUpTime": "Sprawdzanie czasu",
       "stopping": "Zatrzymywanie…",
-      "buildingPage": "Tworzenie strony"
+      "buildingPage": "Tworzenie strony",
+      "searching": "Przeszukiwanie internetu…"
     },
     "contentReportSheet": {
       "submit": "Prześlij Zgłoszenie",

@@ -20,6 +20,7 @@ describe('agentStateReducer', () => {
       status: 'prefill',
       pendingTalentNames: [],
       hitMaxTurns: false,
+      reasoningPhase: false,
     });
   });
 
@@ -36,6 +37,7 @@ describe('agentStateReducer', () => {
       status: 'generating_tool_call',
       pendingTalentNames: ['calculate'],
       hitMaxTurns: false,
+      reasoningPhase: false,
     };
     const event: AgentEvent = {
       type: 'token',
@@ -63,12 +65,13 @@ describe('agentStateReducer', () => {
     expect(next.pendingTalentNames).toEqual(['calculate', 'datetime']);
   });
 
-  it('#5 tool_call_started → executing_tool', () => {
+  it('#5 tool_call_started → executing_tool, keeps pendingTalentNames (B57: tool label survives execution)', () => {
     const next = agentStateReducer(
       {
         status: 'generating_tool_call',
         pendingTalentNames: ['calculate'],
         hitMaxTurns: false,
+        reasoningPhase: false,
       },
       {
         type: 'tool_call_started',
@@ -76,8 +79,9 @@ describe('agentStateReducer', () => {
       },
     );
     expect(next.status).toBe('executing_tool');
-    // pendingTalentNames clears once execution starts
-    expect(next.pendingTalentNames).toEqual([]);
+    // B57：执行期保留工具名——联网搜索等工具执行时跑分卡持续显示
+    // 业务语义标签（web_search →「正在联网搜索…」），不再回退通用文案。
+    expect(next.pendingTalentNames).toEqual(['calculate']);
   });
 
   it('#6 step_started with isFollowUp=true → prefill (covers follow-up dead zone)', () => {
@@ -107,6 +111,7 @@ describe('agentStateReducer', () => {
       status: 'prefill',
       pendingTalentNames: [],
       hitMaxTurns: false,
+      reasoningPhase: false,
     };
     const next = agentStateReducer(prefillState, {
       type: 'token',
@@ -160,6 +165,7 @@ describe('agentStateReducer', () => {
       status: 'executing_tool',
       pendingTalentNames: ['calculate'],
       hitMaxTurns: false,
+      reasoningPhase: false,
     };
     const next = agentStateReducer(before, {
       type: 'run_failed',
@@ -175,6 +181,7 @@ describe('agentStateReducer', () => {
       status: 'streaming_text',
       pendingTalentNames: [],
       hitMaxTurns: false,
+      reasoningPhase: false,
     };
     const next = agentStateReducer(before, {
       type: 'token',
@@ -188,6 +195,7 @@ describe('agentStateReducer', () => {
       status: 'streaming_text',
       pendingTalentNames: [],
       hitMaxTurns: false,
+      reasoningPhase: false,
     };
     const next = agentStateReducer(before, {
       type: 'token',
@@ -201,6 +209,7 @@ describe('agentStateReducer', () => {
       status: 'executing_tool',
       pendingTalentNames: [],
       hitMaxTurns: false,
+      reasoningPhase: false,
     };
     const next = agentStateReducer(before, {
       type: 'tool_call_finished',
@@ -219,6 +228,7 @@ describe('agentStateReducer', () => {
       status: 'streaming_text',
       pendingTalentNames: [],
       hitMaxTurns: false,
+      reasoningPhase: false,
     };
     const next = agentStateReducer(before, {type: 'step_finished', turn: 0});
     expect(next).toEqual(before);
@@ -476,6 +486,79 @@ describe('agentStateReducer', () => {
       });
       expect(after).toEqual(before);
       expect(isPending(after)).toBe(false);
+    });
+  });
+
+  // ---------- B57：reasoningPhase 阶段语义（思考期/回复期） ----------
+
+  describe('reasoningPhase（B57，阶段标签思考/回复区分）', () => {
+    it('首个 reasoning token → streaming_text + 思考期（reasoningPhase=true）', () => {
+      const next = agentStateReducer(
+        {...initialAgentUiState, status: 'prefill'},
+        {type: 'token', delta: {reasoningContent: 'Let me think…'}},
+      );
+      expect(next.status).toBe('streaming_text');
+      expect(next.reasoningPhase).toBe(true);
+    });
+
+    it('首个 content token → streaming_text + 回复期（reasoningPhase=false）', () => {
+      const next = agentStateReducer(
+        {...initialAgentUiState, status: 'prefill'},
+        {type: 'token', delta: {content: 'Hello'}},
+      );
+      expect(next.status).toBe('streaming_text');
+      expect(next.reasoningPhase).toBe(false);
+    });
+
+    it('思考期 → 首个 content delta 翻回复期（正文开始，不再纯思考）', () => {
+      const thinking: AgentUiState = {
+        status: 'streaming_text',
+        pendingTalentNames: [],
+        hitMaxTurns: false,
+        reasoningPhase: true,
+      };
+      const next = agentStateReducer(thinking, {
+        type: 'token',
+        delta: {content: '答案'},
+      });
+      expect(next.status).toBe('streaming_text');
+      expect(next.reasoningPhase).toBe(false);
+    });
+
+    it('思考期纯 reasoning delta 保持思考期 + 同一引用（流式性能守卫）', () => {
+      const thinking: AgentUiState = {
+        status: 'streaming_text',
+        pendingTalentNames: [],
+        hitMaxTurns: false,
+        reasoningPhase: true,
+      };
+      const next = agentStateReducer(thinking, {
+        type: 'token',
+        delta: {reasoningContent: ' continue…'},
+      });
+      expect(next.reasoningPhase).toBe(true);
+      // 引用守卫：phase 未变必须返回同一引用，防每 token 触发
+      // setAgentUiState 拖垮流式渲染（与 toolCalls carryNames 同策略）。
+      expect(next).toBe(thinking);
+    });
+
+    it('工具参数 token（toolCalls delta）不回写 reasoningPhase', () => {
+      const thinking: AgentUiState = {
+        status: 'streaming_text',
+        pendingTalentNames: [],
+        hitMaxTurns: false,
+        reasoningPhase: true,
+      };
+      const next = agentStateReducer(thinking, {
+        type: 'token',
+        delta: {
+          toolCalls: [
+            {id: 'c0', function: {name: 'web_search', arguments: '{"query":"'}},
+          ],
+        },
+      });
+      expect(next.status).toBe('generating_tool_call');
+      expect(next.reasoningPhase).toBe(true);
     });
   });
 });

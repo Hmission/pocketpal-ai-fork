@@ -209,8 +209,8 @@ interface PerfSnapshotV2 {
 ### 10.4 聊天页跑分感（W3，升级既有两面）
 
 - **AssistantTurnFooter 行2**（指标行）：数值接 AnimatedNumber；tok/s 段加 24px 迷你速率条（跑分图示）；布局/分隔符/点按交互（ctx 直达、召回展开）不变。
-- **PendingIndicator**（§18.9 监控卡）：卡顶 2px 阶段色条（prefill 蓝=info / 工具期紫=domain.tools，既有 token）+ 心跳微波形（5 根错峰小条，卡住/停止时平坦隐去——诚实）+ 工具期实时速率（toolCallTokenCount 差分 / 1s 既有心跳 interval，不新增定时器）；保留三点动画、300s 心跳卡住语义、run_failed 收尾。
-  - **落地收敛（W3）**：①流式期监控卡本就隐藏（门控既有），故阶段色收敛为二态、速率只在工具期差分成立后显示；②tok/s 主视觉归 footer 行2（完成态时序链），不造假场景。
+- **PendingIndicator**（§18.9 监控卡）：阶段色（流式期信息蓝=info / 工具期紫=domain.tools，既有 token）+ 心跳微波形（5 根错峰小条，卡住/停止时平坦隐去——诚实）+ 工具期实时速率（toolCallTokenCount 差分 / 1s 既有心跳 interval，不新增定时器）；保留三点动画、300s 心跳卡住语义、run_failed 收尾。B57 阶段语义化：`reasoningPhase` 区分思考期（「正在思考…」）/回复期（「正在回复…」）——TTFT 长思考不再裸「生成中」；执行期保留工具名补业务标签（web_search→「正在联网搜索…」）；思考文本单一交给气泡 ReasoningBlock，跑分卡不重复。
+  - **落地收敛（W3，B41/B57 修订）**：①流式期遥测卡常驻（B41 放开流式期门控，见 CHAT_UI_SPEC §18.9 v4.9），故阶段色收敛为二态（流式期蓝/工具期紫）、速率只在工具期差分成立后显示；②tok/s 主视觉归 footer 行2（完成态时序链），不造假场景。
 
 ### 10.5 生图页跑分感（W4，PerfPanel 留预览卡片内）
 

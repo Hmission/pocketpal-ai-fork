@@ -114,6 +114,7 @@ export const mockChatSessionStore = {
       | 'failed',
     pendingTalentNames: [] as string[],
     hitMaxTurns: false,
+    reasoningPhase: false,
   },
   setAgentUiState: jest.fn(),
   toolCallTokenCount: 0,
@@ -121,7 +122,6 @@ export const mockChatSessionStore = {
   // 生成进度监控卡（§18.9）：字段 + 生命周期方法
   agentRunStartedAt: null as number | null,
   lastAgentEventAt: null as number | null,
-  streamingReasoningTail: '',
   markAgentRunStarted: jest.fn(),
   touchAgentRun: jest.fn(),
   clearAgentRun: jest.fn(),

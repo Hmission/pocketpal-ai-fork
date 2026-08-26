@@ -28,6 +28,7 @@ beforeEach(() => {
     status: 'idle',
     pendingTalentNames: [],
     hitMaxTurns: false,
+    reasoningPhase: false,
   };
 
   modelStore.models = modelsList as any;

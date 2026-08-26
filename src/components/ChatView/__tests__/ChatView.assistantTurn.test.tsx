@@ -63,6 +63,7 @@ beforeEach(() => {
       status: 'idle',
       pendingTalentNames: [],
       hitMaxTurns: false,
+      reasoningPhase: false,
     };
   });
 });
@@ -383,6 +384,7 @@ describe('ChatView — dead-zone phase walk via PendingIndicator', () => {
           status,
           pendingTalentNames: [],
           hitMaxTurns: false,
+          reasoningPhase: false,
         };
       });
       const turn = makeAssistantTurn([{content: 'hi'}], 't1', 1);
@@ -407,6 +409,7 @@ describe('ChatView — dead-zone phase walk via PendingIndicator', () => {
         status: 'streaming_text',
         pendingTalentNames: [],
         hitMaxTurns: false,
+        reasoningPhase: false,
       };
     });
     const turn = makeAssistantTurn([{content: 'h'}], 't1', 1);

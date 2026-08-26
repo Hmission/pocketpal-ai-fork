@@ -394,18 +394,18 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 
 **问题**：小雾 3B + 思考开启 TTFT 实测 45~226s，旧 PendingIndicator 在 prefill 阶段裸三点无耗时无阶段；引擎真挂时永远转圈——用户无法区分「正在干活 vs 挂了」（K90 血证：16 分钟生成全程无进度反馈）。v4.0 落地后真机复查：指示器仍是一行透明文本，视觉权重不足——大王裁定升级为卡片。
 
-**设计**：原位升级 PendingIndicator（头部槽位，不插消息卡——回复气泡本身在流式，插卡=重复污染）。**v4.2 卡片化**：容器对齐 assistant 卡片设计语言（`assistantBubbleBackground` 底色 + `messageBorderRadius` 圆角 + 内边距），与聊天流卡片同一视觉族。四要素：
+**设计**：原位升级 PendingIndicator（头部槽位，不插消息卡——回复气泡本身在流式，插卡=重复污染）。**v4.2 卡片化**：容器对齐 assistant 卡片设计语言（`assistantBubbleBackground` 底色 + `messageBorderRadius` 圆角 + 内边距），与聊天流卡片同一视觉族。**v4.9（B57）阶段语义化**：思考内容单一事实源 = 气泡 ReasoningBlock（跑分卡不再重复显示思考流）；阶段标签按 `reasoningPhase` 区分思考期/回复期；工具期保留工具名并补 web_search 业务标签。
 
 | 要素 | 数据源（单一事实源=chatSessionStore） | 说明 |
 |---|---|---|
-| 阶段标签 | `agentUiState.status` → l10n（准备中/生成中/执行工具/工具名） | prefill 不再裸三点 |
+| 阶段标签 | `agentUiState.status` → l10n（准备中/正在思考/正在回复/执行工具/工具名） | prefill 不再裸三点；streaming_text 按 `reasoningPhase` 区分思考期（reasoning-only）与回复期（content） |
 | 总耗时 | `agentRunStartedAt`（run_started 写入，1s interval） | 覆盖所有阶段含 prefill |
-| 思考流预览 | `streamingReasoningTail`（reasoning 尾部 ≤200 字符） | TTFT 期「模型在干活」铁证，2 行尾随 |
+| 阶段语义 | `agentUiState.reasoningPhase`（reducer 在 token 事件按 delta 翻转） | 思考内容单一事实源=气泡 ReasoningBlock，跑分卡不重复；工具执行期由 `pendingTalentNames` 保留工具名驱动业务标签（web_search→「正在联网搜索…」） |
 | 心跳判定 | `lastAgentEventAt`（token/工具事件写入）>300s → 「疑似卡住，可点停止」 | 纯告知尊重停止钮，不自动杀 |
 
-- **写入入口唯一**：applyEventToStore（run_started=markAgentRunStarted / token+marker+tool= touchAgentRun / run_finished+run_failed=clearAgentRun）；渲染只读，observer 最小化（与 toolCallTokenCount 同策略）。
+- **写入入口唯一**：applyEventToStore（run_started=markAgentRunStarted / token+marker+tool= touchAgentRun（仅心跳，B57 思考尾部已移交气泡）/ run_finished+run_failed=clearAgentRun）；渲染只读，observer 最小化（与 toolCallTokenCount 同策略）。
 - **run_failed 收尾**：失败即 clearAgentRun + reducer 已翻转 status='failed'——进度卡立即退出，杜绝「挂了还在转」误报。
-- **锋利裁剪**：不滚 content（气泡已有 token 流，重复=臃肿）；思考流只在 prefill/streaming 显示，工具/卡住/停止时让位；阈值 300s 定死不配置化（3B 最坏 TTFT 226s 有冗余）。
+- **锋利裁剪（B57 更新）**：思考内容单一交给气泡 ReasoningBlock，跑分卡不滚思考流（重复=臃肿，用户视角两处同显）；阶段语义（思考/回复/搜索）承载业务进度，遥测行+迷你折线承载硬件进度；阈值 300s 定死不配置化（3B 最坏 TTFT 226s 有冗余）。
 - **与生图卡同构**：三点波浪 + 阶段文本 + 耗时，同一视觉语言（ResultPreview/ImageTaskProgress 基准）；v4.2 起容器卡片化，与聊天页生图卡片同族。
 
 ## 19. 上下文压缩机制（B19，2026-08-19 大王裁定）
@@ -518,3 +518,4 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 | 2026-08-20 | 4.4 | §20 聊天页 UI 三处优化（task-6ad）：抽取 `AssistantAuthorRow` 单一事实源（徽章/意图上移助手卡顶行，`assistant_turn` 与 `text` 复用）；圆角区分（用户右上直角 / 回答系左上直角，Bubble·ThinkingBubble·PendingIndicator 同族）；顶栏三控件等距（HeaderRight gap 10）；footer 快捷图标间距 6→14 |
 | 2026-08-20 | 4.6 | §20.2 尾角下移（大王裁定）：用户右下直角 / 回答系左下直角（Bubble·Message·ThinkingBubble·PendingIndicator 同族，roundBorder 逻辑镜像至顶部同侧角）；AssistantTurnFooter 按钮栏与信息栏之间加 hairline 分隔横线（与动作槽同分隔语言） |
 | 2026-08-20 | 4.5 | §20 复查闭环（task-6ad 全量审计，K90 真机像素验证）：**P0** `ChatScreen.renderBubble` 加 `assistant_turn` 门控（turn 级仅一次，根除徽章行 N+1 重复，新增 `renderBubble.test.tsx` 三用例防回归）；`AssistantAuthorRow` 修正（author.id 硬编码 → 真实 `user.id`、意图选择器初始值改会话实时 `activeSessionIntent`、动态 import 改静态）；§20.3 顶栏等距度量重定义（图标视觉空隙为准，`compactBtnLeft` + `marginLeft -6dp`，真机 35/36px delta=1px） |
+| 2026-08-26 | 4.9 | §18.9 进度链路语义化与去重（B57，大王洞察「跑分卡思考流与气泡重复」）：①思考流预览 `streamingReasoningTail` 清退（思考内容单一事实源=气泡 ReasoningBlock，store 字段/触摸方法/touchAgentRun 形参/l10n reasoningLabel 全链删除）；②`AgentUiState` 加 `reasoningPhase`（reducer 在 token 事件按 reasoning/content delta 翻转，引用守卫保流式性能）——streaming_text 标签区分「正在思考…/正在回复…」，200s 思考期用户不再迷茫；③`tool_call_started` 保留 `pendingTalentNames`（执行期工具名不再丢失）+ TALENT_LABEL_KEYS 补 web_search→「正在联网搜索…」——联网搜索全程业务语义可见；阶段色收敛二态（流式期蓝/工具期紫） |

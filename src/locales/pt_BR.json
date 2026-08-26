@@ -611,7 +611,8 @@
       "buildingPage": "Construindo página",
       "calculating": "Calculando",
       "lookingUpTime": "Consultando horário",
-      "stopping": "Parando…"
+      "stopping": "Parando…",
+      "searching": "Pesquisando na web…"
     },
     "toolMetrics": {
       "tokens": "{{count}} tokens",

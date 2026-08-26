@@ -1043,7 +1043,8 @@
       "buildingPage": "Membina halaman",
       "calculating": "Mengira",
       "lookingUpTime": "Mencari masa",
-      "stopping": "Menghentikan…"
+      "stopping": "Menghentikan…",
+      "searching": "Mencari di web…"
     },
     "toolMetrics": {
       "tokens": "{{count}} token",

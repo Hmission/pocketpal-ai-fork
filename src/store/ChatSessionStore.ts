@@ -131,33 +131,27 @@ class ChatSessionStore {
   toolCallTokenCount: number = 0;
 
   // 生成进度监控卡数据（2026-08-19 大王裁定，CHAT_UI_SPEC §18.9）：
-  // 用户必须能区分「正在干活 vs 挂了」——阶段标签 + 总耗时 + 思考流
-  // 预览 + 心跳（lastAgentEventAt）。写入入口唯一：applyEventToStore
+  // 用户必须能区分「正在干活 vs 挂了」——阶段标签 + 总耗时 + 心跳
+  // （lastAgentEventAt）。写入入口唯一：applyEventToStore
   // （run_started / token / tool_call_started / run_finished），渲染
   // 只读；与 toolCallTokenCount 同策略（独立字段，observer 最小化）。
+  // B57：思考流预览（streamingReasoningTail）已清退——思考内容单一
+  // 事实源 = 气泡 ReasoningBlock，跑分卡不持有重复副本。
   agentRunStartedAt: number | null = null;
   lastAgentEventAt: number | null = null;
-  streamingReasoningTail: string = '';
 
-  /** run_started：起算总耗时 + 心跳归位 + 思考尾清空 */
+  /** run_started：起算总耗时 + 心跳归位 */
   markAgentRunStarted(): void {
     runInAction(() => {
       this.agentRunStartedAt = Date.now();
       this.lastAgentEventAt = Date.now();
-      this.streamingReasoningTail = '';
     });
   }
 
-  /** token/tool 事件：心跳更新 + 思考流尾部（200 字符）节流更新 */
-  touchAgentRun(reasoning?: string): void {
+  /** token/tool 事件：心跳更新（B57：仅心跳，思考尾部已移交气泡） */
+  touchAgentRun(): void {
     runInAction(() => {
       this.lastAgentEventAt = Date.now();
-      if (reasoning && reasoning.length > 0) {
-        const tail = reasoning.length > 200 ? reasoning.slice(-200) : reasoning;
-        if (tail !== this.streamingReasoningTail) {
-          this.streamingReasoningTail = tail;
-        }
-      }
     });
   }
 
@@ -166,7 +160,6 @@ class ChatSessionStore {
     runInAction(() => {
       this.agentRunStartedAt = null;
       this.lastAgentEventAt = null;
-      this.streamingReasoningTail = '';
     });
   }
 

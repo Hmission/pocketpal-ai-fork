@@ -645,7 +645,8 @@
       "stageGenerating": "Generating…",
       "stageExecuting": "Running tool…",
       "stageHang": "Seems stuck — tap Stop",
-      "reasoningLabel": "Thinking"
+      "stageThinking": "Thinking…",
+      "searching": "Searching the web…"
     },
     "toolMetrics": {
       "tokens": "{{count}} tokens",

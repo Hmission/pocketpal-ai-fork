@@ -79,12 +79,20 @@ export interface AgentUiState {
     | 'failed';
   pendingTalentNames: string[];
   hitMaxTurns: boolean;
+  /**
+   * streaming_text 期阶段语义（B57）：true = 纯思考流（reasoning-only），
+   * false = 已进入正文流。驱动跑分卡「正在思考…/正在回复…」标签区分——
+   * 用户能分辨模型在思考还是在写答案；思考内容单一事实源是气泡
+   * ReasoningBlock，跑分卡不重复显示思考正文。
+   */
+  reasoningPhase: boolean;
 }
 
 export const initialAgentUiState: AgentUiState = {
   status: 'idle',
   pendingTalentNames: [],
   hitMaxTurns: false,
+  reasoningPhase: false,
 };
 
 /**

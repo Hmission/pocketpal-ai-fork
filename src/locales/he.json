@@ -1043,7 +1043,8 @@
       "buildingPage": "בונה דף",
       "calculating": "מחשב",
       "lookingUpTime": "בודק את השעה",
-      "stopping": "עוצר…"
+      "stopping": "עוצר…",
+      "searching": "מחפש באינטרנט…"
     },
     "toolMetrics": {
       "tokens": "{{count}} טוקנים",

@@ -1043,7 +1043,8 @@
       "buildingPage": "ページを作成中",
       "calculating": "計算中",
       "lookingUpTime": "時刻を確認中",
-      "stopping": "停止中…"
+      "stopping": "停止中…",
+      "searching": "ウェブを検索中…"
     },
     "toolMetrics": {
       "tokens": "{{count}}トークン",

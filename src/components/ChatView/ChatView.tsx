@@ -209,7 +209,8 @@ const PendingIndicatorView: React.FC = observer(() => (
     agentStatus={chatSessionStore.agentUiState.status}
     runStartedAt={chatSessionStore.agentRunStartedAt}
     lastAgentEventAt={chatSessionStore.lastAgentEventAt}
-    reasoningTail={chatSessionStore.streamingReasoningTail}
+    // B57：思考期/回复期语义（跑分卡不再持有思考流正文）
+    reasoningPhase={chatSessionStore.agentUiState.reasoningPhase}
   />
 ));
 

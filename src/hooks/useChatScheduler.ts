@@ -175,6 +175,7 @@ async function butlerReply(
     status: 'prefill',
     pendingTalentNames: [],
     hitMaxTurns: false,
+    reasoningPhase: false,
   });
   chatSessionStore.markAgentRunStarted();
   const reply = await promptWriter.chat(text, systemExtra);
@@ -188,6 +189,7 @@ async function butlerReply(
     status: 'done',
     pendingTalentNames: [],
     hitMaxTurns: false,
+    reasoningPhase: false,
   });
   chatSessionStore.clearAgentRun();
   // AIOS 记忆（P2 真机复测 2026-08-17 修复）：管家直答绕过了 useChatSession 的

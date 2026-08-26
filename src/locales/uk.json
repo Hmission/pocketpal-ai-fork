@@ -1043,7 +1043,8 @@
       "buildingPage": "Створення сторінки",
       "calculating": "Обчислення",
       "lookingUpTime": "Пошук часу",
-      "stopping": "Зупинення…"
+      "stopping": "Зупинення…",
+      "searching": "Пошук в інтернеті…"
     },
     "toolMetrics": {
       "tokens": "{{count}} токен",

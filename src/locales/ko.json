@@ -799,7 +799,8 @@
       "buildingPage": "페이지 생성 중",
       "calculating": "계산 중",
       "lookingUpTime": "시간 확인 중",
-      "stopping": "중단 중…"
+      "stopping": "중단 중…",
+      "searching": "인터넷 검색 중…"
     },
     "toolMetrics": {
       "tokens": "{{count}} 토큰",

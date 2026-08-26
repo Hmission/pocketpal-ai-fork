@@ -44,31 +44,26 @@ describe('ChatSessionStore — AssistantTurn extensions', () => {
     beforeEach(() => {
       (chatSessionStore as any).agentRunStartedAt = null;
       (chatSessionStore as any).lastAgentEventAt = null;
-      (chatSessionStore as any).streamingReasoningTail = '';
     });
 
-    it('markAgentRunStarted 起算耗时 + 心跳归位 + 清思考尾', () => {
-      (chatSessionStore as any).streamingReasoningTail = '旧思考';
+    it('markAgentRunStarted 起算耗时 + 心跳归位', () => {
       chatSessionStore.markAgentRunStarted();
       expect(chatSessionStore.agentRunStartedAt).not.toBeNull();
       expect(chatSessionStore.lastAgentEventAt).not.toBeNull();
-      expect(chatSessionStore.streamingReasoningTail).toBe('');
     });
 
-    it('touchAgentRun 更新心跳 + 思考尾部（>200 字符截尾）', () => {
-      const long = 'a'.repeat(300);
-      chatSessionStore.touchAgentRun(long);
-      expect(chatSessionStore.streamingReasoningTail.length).toBe(200);
+    it('touchAgentRun 只更新心跳（B57：思考尾部已移交气泡，不再持有）', () => {
+      (chatSessionStore as any).lastAgentEventAt = null;
+      chatSessionStore.touchAgentRun();
       expect(chatSessionStore.lastAgentEventAt).not.toBeNull();
     });
 
     it('clearAgentRun 全部复位（run_failed/run_finished 收尾）', () => {
       chatSessionStore.markAgentRunStarted();
-      chatSessionStore.touchAgentRun('x');
+      chatSessionStore.touchAgentRun();
       chatSessionStore.clearAgentRun();
       expect(chatSessionStore.agentRunStartedAt).toBeNull();
       expect(chatSessionStore.lastAgentEventAt).toBeNull();
-      expect(chatSessionStore.streamingReasoningTail).toBe('');
     });
   });
 
@@ -80,6 +75,7 @@ describe('ChatSessionStore — AssistantTurn extensions', () => {
         status: 'generating_tool_call',
         pendingTalentNames: ['calculate'],
         hitMaxTurns: false,
+        reasoningPhase: false,
       });
       expect(chatSessionStore.isGeneratingToolCall).toBe(true);
 
@@ -87,6 +83,7 @@ describe('ChatSessionStore — AssistantTurn extensions', () => {
         status: 'streaming_text',
         pendingTalentNames: [],
         hitMaxTurns: false,
+        reasoningPhase: false,
       });
       expect(chatSessionStore.isGeneratingToolCall).toBe(false);
     });
@@ -96,6 +93,7 @@ describe('ChatSessionStore — AssistantTurn extensions', () => {
         status: 'executing_tool' as const,
         pendingTalentNames: ['render_html'],
         hitMaxTurns: false,
+        reasoningPhase: false,
       };
       chatSessionStore.setAgentUiState(next);
       expect(chatSessionStore.agentUiState).toEqual(next);

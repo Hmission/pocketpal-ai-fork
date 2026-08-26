@@ -43,17 +43,41 @@ describe('PendingIndicator — 生成进度监控卡（§18.9）', () => {
     expect(getByText(/Generating…/)).toBeTruthy();
   });
 
-  it('思考流预览：TTFT 期显示模型内心戏', () => {
-    const {getByTestId} = render(
+  // ── B57：阶段语义（思考期/回复期 + 联网搜索工具标签）──
+  it('思考期（reasoning-only 流）显示「正在思考…」', () => {
+    const {getByText} = render(
       <PendingIndicator
-        agentStatus="prefill"
+        agentStatus="streaming_text"
+        reasoningPhase
         runStartedAt={NOW}
         lastAgentEventAt={NOW}
-        reasoningTail="用户想要一个贪吃蛇，先分析棋盘尺寸…"
       />,
     );
-    const text = getByTestId('pending-indicator-reasoning').props.children;
-    expect(String(text).replace('Thinking: ', '')).toContain('先分析棋盘尺寸');
+    expect(getByText(/Thinking…/)).toBeTruthy();
+  });
+
+  it('回复期（content 流）显示「正在生成…」', () => {
+    const {getByText} = render(
+      <PendingIndicator
+        agentStatus="streaming_text"
+        reasoningPhase={false}
+        runStartedAt={NOW}
+        lastAgentEventAt={NOW}
+      />,
+    );
+    expect(getByText(/Generating…/)).toBeTruthy();
+  });
+
+  it('联网搜索执行期显示业务语义标签（不再回退通用工具文案）', () => {
+    const {getByText} = render(
+      <PendingIndicator
+        pendingTalentNames={['web_search']}
+        agentStatus="executing_tool"
+        runStartedAt={NOW}
+        lastAgentEventAt={NOW}
+      />,
+    );
+    expect(getByText(/Searching the web…/)).toBeTruthy();
   });
 
   it('工具调用模式保留 token 计数', () => {

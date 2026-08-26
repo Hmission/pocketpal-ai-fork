@@ -591,10 +591,9 @@ async function applyEventToStore(
           partial,
         );
       }
-      // 生成进度监控卡：心跳更新 + 思考流尾部（§18.9）。
-      chatSessionStore.touchAgentRun(
-        (event.delta.reasoningContent as string | undefined) ?? undefined,
-      );
+      // 生成进度监控卡：心跳更新（§18.9）。B57：思考流尾部已移除——
+      // 思考内容单一事实源 = 气泡 ReasoningBlock，跑分卡不重复。
+      chatSessionStore.touchAgentRun();
       return;
     }
     case 'marker_seen':

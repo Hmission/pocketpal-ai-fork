@@ -799,7 +799,8 @@
       "buildingPage": "Создание страницы",
       "calculating": "Вычисление",
       "lookingUpTime": "Определение времени",
-      "stopping": "Остановка…"
+      "stopping": "Остановка…",
+      "searching": "Поиск в интернете…"
     },
     "toolMetrics": {
       "tokens": "{{count}} ток.",

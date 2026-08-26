@@ -1086,7 +1086,8 @@
       "stageGenerating": "正在生成…",
       "stageExecuting": "正在执行工具…",
       "stageHang": "疑似卡住，可点停止",
-      "reasoningLabel": "思考"
+      "stageThinking": "正在思考…",
+      "searching": "正在联网搜索…"
     },
     "toolMetrics": {
       "tokens": "{{count}} 个 token",

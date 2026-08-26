@@ -21,6 +21,7 @@ export function agentStateReducer(
         status: 'prefill',
         pendingTalentNames: [],
         hitMaxTurns: false,
+        reasoningPhase: false,
       };
     case 'step_started':
       // Both initial and follow-up steps route through `prefill` so the
@@ -29,6 +30,7 @@ export function agentStateReducer(
         ...state,
         status: 'prefill',
         pendingTalentNames: [],
+        reasoningPhase: false,
       };
     case 'token': {
       const incomingToolCalls = event.delta.toolCalls;
@@ -58,10 +60,32 @@ export function agentStateReducer(
         (event.delta.reasoningContent &&
           event.delta.reasoningContent.length > 0);
       if (state.status === 'prefill' && hasVisibleDelta) {
+        // reasoningPhase 初始相位（B57）：reasoning-only 首 token → 思考期；
+        // 含 content → 回复期。思考期跑分卡标签「正在思考…」与气泡思考
+        // 流同屏（内容不重复，标签语义互补）。
+        const reasoningPhase =
+          !!event.delta.reasoningContent?.length &&
+          !event.delta.content?.length;
         return {
           ...state,
           status: 'streaming_text',
+          reasoningPhase,
         };
+      }
+      // streaming_text 期相位翻转：content delta 出现 → 回复期；纯
+      // reasoning delta → 思考期；无可见 delta 保持。未变必须返回同一
+      // 引用——调用方引用守卫依赖它抑制每 token 的 MobX 写入（流式性能）。
+      if (state.status === 'streaming_text') {
+        const hasContent = !!event.delta.content?.length;
+        const hasReasoning = !!event.delta.reasoningContent?.length;
+        const nextPhase = hasContent
+          ? false
+          : hasReasoning
+            ? true
+            : state.reasoningPhase;
+        if (nextPhase !== state.reasoningPhase) {
+          return {...state, reasoningPhase: nextPhase};
+        }
       }
       return state;
     }
@@ -74,10 +98,16 @@ export function agentStateReducer(
         status: 'generating_tool_call',
       };
     case 'tool_call_started':
+      // B57：执行期保留工具名（不再清空）——联网搜索等工具执行需在
+      // 跑分卡持续显示业务语义标签（web_search →「正在联网搜索…」）。
+      // 取当前执行 call 的名字；名字缺失的旧事件回退保留原值。
+      // step_started/run_finished 仍清空，无跨回合泄漏。
       return {
         ...state,
         status: 'executing_tool',
-        pendingTalentNames: [],
+        pendingTalentNames: event.call?.function?.name
+          ? [event.call.function.name]
+          : state.pendingTalentNames,
       };
     case 'tool_call_finished':
     case 'step_finished':
@@ -88,6 +118,7 @@ export function agentStateReducer(
         status: 'done',
         pendingTalentNames: [],
         hitMaxTurns: !!event.result.hitMaxTurns,
+        reasoningPhase: false,
       };
     case 'run_failed':
       return {
