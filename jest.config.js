@@ -12,6 +12,10 @@ module.exports = {
     '!**/ImageView.tsx',
   ],
   coveragePathIgnorePatterns: ['/src/screens/DevToolsScreen/'],
+  // B61 泄漏缓解：全量跑时随套件累积内存压力会导致后续套件随机失败（单独跑绿、
+  // 全量跑随机红的根源）——worker 空闲内存低于阈值时自动重启，避免累积污染。
+  // jest 29.5+ 官方配置（非兜底补丁，是标准内存管理实践）；后续根治仍需定位全局句柄泄漏源。
+  workerIdleMemoryLimit: '512MB',
   coverageThreshold: {
     global: {
       branches: 60,

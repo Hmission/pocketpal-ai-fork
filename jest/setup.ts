@@ -72,6 +72,8 @@ import {mockServerStore} from '../__mocks__/stores/serverStore';
 import {mockTTSStore} from '../__mocks__/stores/ttsStore';
 import {checkoutFlowStore as mockCheckoutFlowStore} from '../__mocks__/stores/checkoutFlowStore';
 import {mockSearchProviderStore} from '../__mocks__/stores/searchProviderStore';
+// R4-B：imageGenStore mock（组件直连改 barrel 后走此 mock，不再构造真实 store）
+import {mockImageGenStore} from '../__mocks__/stores/imageGenStore';
 
 jest.mock('@react-native-clipboard/clipboard', () => mockClipboard);
 
@@ -140,6 +142,7 @@ jest.mock('../src/store', () => {
     ttsStore: mockTTSStore,
     checkoutFlowStore: mockCheckoutFlowStore,
     searchProviderStore: mockSearchProviderStore,
+    imageGenStore: mockImageGenStore,
     defaultCompletionSettings: mockDefaultCompletionSettings,
   };
 });
