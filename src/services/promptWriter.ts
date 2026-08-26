@@ -19,16 +19,45 @@ const SD_MODELS_DIR = '/sdcard/Documents/AIOS/models';
 // 管家扩写约束（08-18 修复）：默认生图模型 DreamLite 编码器上限 128 tokens（≈80-110 英文词）。
 // 旧 SYSTEM_PROMPT 无长度要求 → MiniCPM 1B 默认输出 ~30 tokens（过短，细节缺失）。
 // v3：1B 对抽象指令遵循弱 → 加 few-shot 示例锚点，让模型模仿示例的长度与结构（1B 最有效手段）。
+// v4（2026-08-27 鹦鹉学舌修复）：示例不再内嵌 system prompt 纯文本——1B 指令遵循弱，
+// 短输入（如「生成一个苹果」）时直接复述示例（海边美女）而非扩写真实主题。
+// 示例抽出为 SSOT 常量，改以 user/assistant 示范对话轮注入（见 writePrompt），
+// 并配 isParrotingExample 检测闸（复读=显式失败，不静默污染出图）。
+const FEW_SHOT_INPUT = '女孩海边散步';
+const FEW_SHOT_OUTPUT =
+  'a young woman walking along a sunlit beach at sunset, long flowing dress ' +
+  'moving in the breeze, gentle waves washing the shore, warm golden light, ' +
+  'soft bokeh, cinematic wide shot, photorealistic, masterpiece, best quality, ' +
+  'highly detailed';
+
 const SYSTEM_PROMPT =
   'You are a Stable Diffusion prompt expert. ' +
   'The user gives a short Chinese description. Expand it into a detailed English ' +
-  'Stable Diffusion prompt with subject, action, clothing, environment, lighting, ' +
-  'camera angle and quality tags, at least 50 words. ' +
-  'Example: 输入“女孩海边散步” → 输出 “a young woman walking along a sunlit beach ' +
-  'at sunset, long flowing dress moving in the breeze, gentle waves washing the ' +
-  'shore, warm golden light, soft bokeh, cinematic wide shot, photorealistic, ' +
-  'masterpiece, best quality, highly detailed”. ' +
+  "Stable Diffusion prompt about THE USER'S OWN SUBJECT with subject, action, " +
+  'clothing, environment, lighting, camera angle and quality tags, at least 50 words. ' +
+  'Never copy or reuse the demonstration example above the last message: the output ' +
+  'must always describe the subject given in the last user message. ' +
   'Follow the example length and detail level. Output ONLY the English prompt.';
+
+/**
+ * 鹦鹉学舌检测闸（纯函数，可单测）：输出词与示例输出重合度过高 → 判定复读。
+ * 阈值 0.7 + 最少命中 15 词：只拦「几乎原样复述」，正常同主题改写不误伤；
+ * 命中由 writePrompt 显式抛错 → 上层回退原文并标记「提示词未增强」（显式失败不静默）。
+ */
+export const isParrotingExample = (out: string): boolean => {
+  const words = (s: string) =>
+    s
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter(Boolean);
+  const outWords = words(out);
+  if (outWords.length < 10) {
+    return false;
+  }
+  const exSet = new Set(words(FEW_SHOT_OUTPUT));
+  const hit = outWords.filter(w => exSet.has(w)).length;
+  return hit / outWords.length >= 0.7 && hit >= 15;
+};
 
 // 管家通用闲聊人设（chitchat 兜底：chat 大模型未加载时由管家直接回答）
 const CHITCHAT_SYSTEM_PROMPT =
@@ -133,16 +162,21 @@ class PromptWriter {
     }
     try {
       let out = '';
-      // guard：管家 context 串行化+冷却窗+重试
+      // guard：管家 context 串行化+冷却窗+重试。
+      // 多轮 few-shot（v4）：示例以 user/assistant 示范轮注入，真实输入是最后一个
+      // user 轮——模型续写位置正确，复读示例概率大降（对比 system 内嵌纯文本）。
       await prompterGuard.run(() =>
         this.ctx!.completion(
           {
             messages: [
               {role: 'system', content: SYSTEM_PROMPT},
+              {role: 'user', content: FEW_SHOT_INPUT},
+              {role: 'assistant', content: FEW_SHOT_OUTPUT},
               {role: 'user', content: chinese},
             ],
             n_predict: 220,
-            temperature: 0.7,
+            // 扩写是确定性改写任务：低温抑制复读与跑题（08-27 由 0.7 下调）
+            temperature: 0.4,
             enable_thinking: false,
             stop: STOP_TOKENS,
           } as any,
@@ -156,10 +190,17 @@ class PromptWriter {
       );
       // 清理可能的 think 残留与首尾空白
       const cleaned = out.replace(/[\s\S]*?<\/think>/g, '').trim();
+      // 鹦鹉学舌闸：复读示例 = 无效增强 → 显式抛错（上层 chatImageTask 捕获后
+      // 回退原文 + 任务卡标记「提示词未增强」），绝不静默污染出图。
+      if (isParrotingExample(cleaned)) {
+        throw new Error(
+          `管家增强无效：输出复读示例（${cleaned.slice(0, 40)}…）`,
+        );
+      }
       return cleaned.length > 0 ? cleaned : null;
     } catch (e) {
       console.warn('[PromptWriter] completion failed:', e);
-      return null;
+      throw e;
     }
   }
 
