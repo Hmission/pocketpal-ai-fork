@@ -257,7 +257,7 @@ export const ServerDetailsSheet: React.FC<ServerDetailsSheetProps> = observer(
           {isProbing && (
             <View style={styles.probeStatusContainer}>
               <CircularActivityIndicator
-                size={20}
+                size={theme.iconSize.m}
                 color={theme.colors.primary}
               />
               <Text

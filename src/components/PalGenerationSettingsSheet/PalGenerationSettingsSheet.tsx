@@ -91,7 +91,7 @@ const SettingsLevelIndicator = ({
     <View style={styles.settingsLevelIndicator}>
       <Icon
         source={hasCustomSettings ? 'account-cog' : 'cog'}
-        size={16}
+        size={theme.iconSize.s}
         color={styles.settingsLevelIcon.color}
       />
       <Text variant="bodySmall" style={styles.settingsLevelText}>

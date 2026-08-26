@@ -77,7 +77,7 @@ export const ActiveTaskBanner: React.FC = observer(() => {
           />
         ) : indeterminate ? (
           <CircularActivityIndicator
-            size={20}
+            size={theme.iconSize.m}
             color={theme.colors.domain.tools}
           />
         ) : (

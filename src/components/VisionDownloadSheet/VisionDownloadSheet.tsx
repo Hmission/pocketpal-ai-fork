@@ -155,7 +155,7 @@ export const VisionDownloadSheet: React.FC<VisionDownloadSheetProps> = ({
           disabled={isDownloading}>
           {isDownloading ? (
             <CircularActivityIndicator
-              size={20}
+              size={theme.iconSize.m}
               color={theme.colors.onPrimary}
             />
           ) : (

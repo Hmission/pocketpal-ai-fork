@@ -125,7 +125,10 @@ export const HubRunSheetHost: React.FC = observer(() => {
           style={styles.centered}
           testID="hub-run-resolving"
           accessibilityRole="progressbar">
-          <CircularActivityIndicator size={20} color={theme.colors.primary} />
+          <CircularActivityIndicator
+            size={theme.iconSize.m}
+            color={theme.colors.primary}
+          />
           <Text style={styles.resolvingText}>
             {l10n.models.hubRun.resolving}
           </Text>

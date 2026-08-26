@@ -1090,7 +1090,10 @@ export const ChatView = observer(
         /* istanbul ignore next */
         isNextPageLoading ? (
           <View style={styles.footerLoadingPage}>
-            <CircularActivityIndicator color={theme.colors.primary} size={16} />
+            <CircularActivityIndicator
+              color={theme.colors.primary}
+              size={theme.iconSize.s}
+            />
           </View>
         ) : (
           <View style={styles.footer} />
@@ -1100,6 +1103,7 @@ export const ChatView = observer(
         styles.footerLoadingPage,
         styles.footer,
         theme.colors.primary,
+        theme.iconSize.s,
       ],
     );
 

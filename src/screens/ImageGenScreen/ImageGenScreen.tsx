@@ -1394,7 +1394,7 @@ export const ImageGenScreen: React.FC = observer(() => {
                     onPress={() => handleAudioEngineAction(e.id, ready)}>
                     {downloading ? (
                       <CircularActivityIndicator
-                        size={20}
+                        size={theme.iconSize.m}
                         color={theme.colors.onPrimary}
                       />
                     ) : (

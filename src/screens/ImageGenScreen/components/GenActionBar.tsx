@@ -61,7 +61,7 @@ export const GenActionBar: React.FC<GenActionBarProps> = ({
             onPress={onEditArm}>
             {(loading || generating) && taskKind === 'edit' ? (
               <CircularActivityIndicator
-                size={20}
+                size={theme.iconSize.m}
                 color={theme.colors.onInfo}
               />
             ) : (
@@ -85,7 +85,7 @@ export const GenActionBar: React.FC<GenActionBarProps> = ({
             onPress={() => onGenerate()}>
             {(loading || generating) && taskKind === 'gen' ? (
               <CircularActivityIndicator
-                size={20}
+                size={theme.iconSize.m}
                 color={theme.colors.primary}
               />
             ) : (
@@ -124,7 +124,7 @@ export const GenActionBar: React.FC<GenActionBarProps> = ({
             onPress={() => onGenerate()}>
             {loading || generating ? (
               <CircularActivityIndicator
-                size={20}
+                size={theme.iconSize.m}
                 color={theme.colors.primary}
               />
             ) : (

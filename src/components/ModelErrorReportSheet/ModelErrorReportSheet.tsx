@@ -330,7 +330,7 @@ export const ModelErrorReportSheet: React.FC<ModelErrorReportSheetProps> = ({
             style={styles.button}>
             {isSubmitting ? (
               <CircularActivityIndicator
-                size={20}
+                size={theme.iconSize.m}
                 color={theme.colors.primary}
               />
             ) : (

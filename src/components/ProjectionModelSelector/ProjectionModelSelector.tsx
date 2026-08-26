@@ -282,7 +282,7 @@ export const ProjectionModelSelector = observer(
                             ) : projModel.progress > 0 ? (
                               <View style={styles.downloadProgress}>
                                 <CircularActivityIndicator
-                                  size={20}
+                                  size={theme.iconSize.m}
                                   color={theme.colors.primary}
                                 />
                                 <Text style={styles.progressText}>

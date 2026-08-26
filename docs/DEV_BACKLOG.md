@@ -40,14 +40,14 @@
 | 8 | **LTX-Video 2B 备选评估** | 8 步蒸馏为速度路线唯一候选；若 Wan 端到端不可用则换 LTX 验证 | 项 7 结论为否时触发 | 对比 Wan 出片速度/质量 | 观望 |
 | 9 | **触发条件监控** | Wan 2.x/LTX 系 ≤16 步蒸馏版且全链 ≤4GB 出现时重新评估（ONDEVICE_VIDEO_GEN_ANALYSIS §8） | 社区模型发布 | 条件满足即立项 | 观望 |
 
-### P5（专业跑分面板升级，✅ 已落地：PERF_BENCHMARK_DESIGN v0.7，待真机验证）
+### P5（专业跑分面板升级，✅ 已落地 + 真机已过：PERF_BENCHMARK_DESIGN v1.3）
 
 | # | 项 | 目标 | 前置 | 验收标准 | 归属 |
 |---|---|---|---|---|---|
-| 18 | **P1 数据扩展** | ✅ HardwareInfoModule 六指标 sysfs 探测（CPU/GPU 频率、GPU 负载、温度分区、功耗）+ TS spec | 无 | K90：GPU 负载>0、温度分区有值、功耗可读或 N/A（待真机） | ✅ 已落地 |
-| 19 | **P2 面板升级** | ✅ PerfPanel 横版化（折叠头胶囊行 + 叠加线切换 + 横向指标行 + 设备小字 + 历史入口） | 项 18 | 真机：卡片内不溢出 + 叠加线可切换（待真机） | ✅ 已落地 |
-| 20 | **P3 落盘 + 历史** | ✅ perfRecorder JSONL（begin/append/finish + 50 条保留）+ store 生命周期接线 + Modal 列表 | 项 19 | 真机：任务结束文件存在 + 历史列表可见（待真机） | ✅ 已落地 |
-| 21 | **P4 回放 + 跑分卡** | ✅ PerfHistoryModal（播放光标/统计卡）+ perfScore 分数体系（内存安全/温控/稳定性） | 项 20 | 真机：回放曲线与实时一致 + 跑分卡展示（待真机） | ✅ 已落地 |
+| 18 | **P1 数据扩展** | ✅ HardwareInfoModule 六指标 sysfs 探测（CPU/GPU 频率、GPU 负载、温度分区、功耗）+ TS spec | 无 | K90 真机复验已过（B40-B43 演进后 v1.x 终态） | ✅ 已落地 |
+| 19 | **P2 面板升级** | ✅ PerfPanel 横版化 + B40-B43 演进（坐标轴/复合图/演出层/三修） | 项 18 | 真机复验已过（08-25 截图在案） | ✅ 已落地 |
+| 20 | **P3 落盘 + 历史** | ✅ perfRecorder JSONL + B42 聊天页统一回放（chat-turn 标签） | 项 19 | 落盘契约测试全绿；真机已过 | ✅ 已落地 |
+| 21 | **P4 回放 + 跑分卡** | ✅ PerfHistoryModal + perfScore + B41 跑分仪式 + B43 坐标轴 | 项 20 | B39-B43 门禁全绿 + 真机已过 | ✅ 已落地 |
 
 ### P4（链路排查欠账，2026-08-23 审计 · 来源：[POCKETPAL_CHAIN_AUDIT_20260823](./POCKETPAL_CHAIN_AUDIT_20260823.md)）
 
@@ -75,5 +75,5 @@
 - [ONDEVICE_VIDEO_GEN_ANALYSIS.md](./ONDEVICE_VIDEO_GEN_ANALYSIS.md)（分析依据：§7 玩具专项 / §8 触发条件）
 - MASTER_LOG §75-79（已完成批次登记，docs/internal/ 留档）
 - [ADR-0008](./adr/ADR-0008-benchmark-style-monitor.md)（跑分面板立项，docs/adr/ 留档）
-- [PERF_BENCHMARK_DESIGN](./PERF_BENCHMARK_DESIGN.md)（专业跑分面板设计 v0.1：四阶段 P1-P4 + 原型图）
+- [PERF_BENCHMARK_DESIGN](./PERF_BENCHMARK_DESIGN.md)（专业跑分面板设计 v1.3：B40-B43 演进 + 真机复验已过）
 - [POCKETPAL_CHAIN_AUDIT_20260823.md](./POCKETPAL_CHAIN_AUDIT_20260823.md)（P4 批次审计依据：欠账 7 / 销账 7 / 开放环 1）

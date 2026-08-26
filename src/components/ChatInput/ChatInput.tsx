@@ -628,7 +628,7 @@ export const ChatInput = observer(
               </Text>
               <IconButton
                 icon="close"
-                size={16}
+                size={theme.iconSize.s}
                 onPress={handleCancel}
                 style={styles.editBarButton}
                 iconColor={theme.colors.onSurfaceVariant}

@@ -125,7 +125,10 @@ export const ModelPickerDropdown: React.FC<DropdownProps> = ({
       />
       <View style={s.dropPanelAbs}>
         {scanning ? (
-          <CircularActivityIndicator size={20} color={theme.colors.primary} />
+          <CircularActivityIndicator
+            size={theme.iconSize.m}
+            color={theme.colors.primary}
+          />
         ) : available.length === 0 ? (
           <Text style={s.hint}>
             未找到生图模型，请将 SDXL Turbo / SD3.5 / Z-Image-Turbo
@@ -183,7 +186,7 @@ export const ModelPickerDropdown: React.FC<DropdownProps> = ({
                   onPress={() => onRowAction(item)}>
                   {rowLoading ? (
                     <CircularActivityIndicator
-                      size={20}
+                      size={theme.iconSize.m}
                       color={
                         rowLoaded ? theme.colors.danger : theme.colors.onPrimary
                       }

@@ -178,7 +178,7 @@ export const EnhancedSearchBar = ({
           </Text>
           <Icon
             name="chevron-down"
-            size={16}
+            size={theme.iconSize.s}
             color={
               isFilterActive('author')
                 ? theme.colors.primary
@@ -204,7 +204,7 @@ export const EnhancedSearchBar = ({
           </Text>
           <Icon
             name="chevron-down"
-            size={16}
+            size={theme.iconSize.s}
             color={
               isFilterActive('sort')
                 ? theme.colors.primary

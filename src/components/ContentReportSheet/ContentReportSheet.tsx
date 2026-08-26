@@ -227,7 +227,7 @@ export const ContentReportSheet: React.FC<ContentReportSheetProps> = ({
             style={styles.button}>
             {isSubmitting ? (
               <CircularActivityIndicator
-                size={20}
+                size={theme.iconSize.m}
                 color={theme.colors.primary}
               />
             ) : (

@@ -815,3 +815,23 @@ relates:
 - 挂账必挂批次号（Gap Ledger）
 - 每窗口收口必提交 + push（防 219 事件/预记账/挂账断链）
 - 并行窗口文件冲突：以并行窗口为准，不擅自修（只修本窗口引入的回归）
+
+---
+
+## §112 B64 收尾批次：图标 token 化 + task 文档状态翻新 + 账目修正（2026-08-27，承接审计 20260827 差集）
+
+### 112.1 来源
+CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补剩余）：①图标裸数字（浅层 15 + 深层 5）；②task 文档滞后群；③DEV_BACKLOG P5 目标态矛盾（v0.7 vs 实际 v1.3）；④星图 frontmatter updated 滞后；⑤MASTER_LOG 双轨分裂。
+
+### 112.2 落地
+- **图标 token 化（B64a，20 处清零）**：浅层 15 处（ChatInput close Icon / EnhancedSearchBar chevron×2 / PalGen cog Icon → `iconSize.s`；ActiveTaskBanner / ContentReportSheet / ModelErrorReportSheet / ProjectionModelSelector / RemoteModelSheet×2 / ServerDetailsSheet / VisionDownloadSheet / ImageGenScreen 行内 / ChatView footer / HubRunSheetHost → `iconSize.m`）+ 深层 5 处（GenActionBar×3 / ModelPickerPanel×2 → `iconSize.m`）。grep 裸 size={16|20|24|28} 全仓零残留（Icon 与 loading 圈统一 token 语义，零视觉回归）；tsc 0 错。
+- **task 文档状态翻新（B64b，10 份）**：.qoder/specs 批量补/改状态行——b37（待办→✅ §74+§81/894b56d）/ 9a1b（待办→✅ 文末验证记录）/ 9f2e（无→✅ 95511de+a890f60）/ 632（无→✅ downloadSources 双源）/ b28（无→✅ WatermelonDB）/ b27（无→✅ §64）/ 6ad（无→✅）/ 3g4（无→✅ aaca505，G5 真机见 P1#2）/ 6db（无→✅ B57 e3d51d8）/ 9ce（无→✅ 主要落地，v1.3 登记）。
+- **账目修正（B64c）**：DEV_BACKLOG P5 v0.7→v1.3 + 真机已过（项 18-21 翻终态）；星图 frontmatter updated 08-23→08-27；internal MASTER_LOG 冻结为历史留档 + 转轨指针（公开版为唯一事实源）；公开版 §112 本文。
+
+### 112.3 门禁与验证
+- tsc 0 错（图标 token 化后）；受影响套件（ChatInput/EnhancedSearchBar/ImageGenScreen 相关）无新增失败；全量基线维持（jest 全量见 B60c 移交）。
+- 真机（待）：图标视觉零回归走查（小米 13）。
+
+### 112.4 移交（不越界）
+- R4-A/C（hooks/utils 桶瘦身）为专用窗任务（§111.3 既有登记）——本窗口不碰。
+- jest 全量偶发红 = 并行 worker 内存泄漏（§101.4 已定因，R4-A/C 根治）——不重复修。
