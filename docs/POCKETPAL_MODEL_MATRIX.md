@@ -3,9 +3,9 @@ doc_id: POCKETPAL_MODEL_MATRIX
 module: root
 type: spec
 status: active
-version: "1.0"
-created: "2026-08-14"
-updated: "2026-08-15"
+version: '1.0'
+created: '2026-08-14'
+updated: '2026-08-15'
 relates: [POCKETPAL_DESIGN_SPEC]
 ---
 
@@ -20,16 +20,16 @@ relates: [POCKETPAL_DESIGN_SPEC]
 
 ## 1. LLM 入选清单（8 件：6 主模型 + 2 视觉伴侣）
 
-| # | 模型 | 文件 | 量化 | 大小 | 定位 |
-|---|---|---|---|---|---|
-| 1 | Qwen3.5-2B 无限制 | `Qwen3.5-2B-Uncensored-HauhauCS-Aggressive-Q8_0.gguf` | Q8_0 | 2.01 GB | 写作/聊天主力 |
-| 2 | Qwen3.5-2B 视觉伴侣 | `mmproj-Qwen3.5-2B-Uncensored-HauhauCS-Aggressive-f16.gguf` | f16 | 0.67 GB | 多模态（配对 #1） |
-| 3 | Qwen3.5-4B 无限制 | `Qwen3.5-4B-Uncensored-HauhauCS-Aggressive-Q4_K_M.gguf` | Q4_K_M | 2.71 GB | 日用 |
-| 4 | Qwen3.5-4B 视觉伴侣 | `mmproj-Qwen3.5-4B-Uncensored-HauhauCS-Aggressive-BF16.gguf` | BF16 | 0.67 GB | 多模态（配对 #3；2026-08-20 补登，SOP 实测在机） |
-| 5 | LFM2.5-2.6B | `LFM2.5-2.6B-Q4_K_M.gguf` | Q4_K_M | 1.67 GB | 代码/玩具匠（工具调用优化，低延迟） |
-| 6 | LFM2.5-8B-A1B | `LFM2.5-8B-A1B-Q4_K_M.gguf` | Q4_K_M | 5.16 GB | MoE 大模型（激活~1.5B）；K90 PSS 看护硬杀不可用（2026-08-19 实证） |
-| 7 | Ministral-3-3B | `Ministral-3-3B-Instruct-2512-Q4_K_M.gguf` | Q4_K_M | 2.15 GB | 代码候选（均衡档） |
-| 8 | MiniCPM5-1B 管家 | `minicpm5_1b_heretic_q4km.gguf` | Q4_K_M | ~0.69 GB | 常驻管家（prompter） |
+| #   | 模型                | 文件                                                         | 量化   | 大小     | 定位                                                               |
+| --- | ------------------- | ------------------------------------------------------------ | ------ | -------- | ------------------------------------------------------------------ |
+| 1   | Qwen3.5-2B 无限制   | `Qwen3.5-2B-Uncensored-HauhauCS-Aggressive-Q8_0.gguf`        | Q8_0   | 2.01 GB  | 写作/聊天主力                                                      |
+| 2   | Qwen3.5-2B 视觉伴侣 | `mmproj-Qwen3.5-2B-Uncensored-HauhauCS-Aggressive-f16.gguf`  | f16    | 0.67 GB  | 多模态（配对 #1）                                                  |
+| 3   | Qwen3.5-4B 无限制   | `Qwen3.5-4B-Uncensored-HauhauCS-Aggressive-Q4_K_M.gguf`      | Q4_K_M | 2.71 GB  | 日用                                                               |
+| 4   | Qwen3.5-4B 视觉伴侣 | `mmproj-Qwen3.5-4B-Uncensored-HauhauCS-Aggressive-BF16.gguf` | BF16   | 0.67 GB  | 多模态（配对 #3；2026-08-20 补登，SOP 实测在机）                   |
+| 5   | LFM2.5-2.6B         | `LFM2.5-2.6B-Q4_K_M.gguf`                                    | Q4_K_M | 1.67 GB  | 代码/玩具匠（工具调用优化，低延迟）                                |
+| 6   | LFM2.5-8B-A1B       | `LFM2.5-8B-A1B-Q4_K_M.gguf`                                  | Q4_K_M | 5.16 GB  | MoE 大模型（激活~1.5B）；K90 PSS 看护硬杀不可用（2026-08-19 实证） |
+| 7   | Ministral-3-3B      | `Ministral-3-3B-Instruct-2512-Q4_K_M.gguf`                   | Q4_K_M | 2.15 GB  | 代码候选（均衡档）                                                 |
+| 8   | MiniCPM5-1B 管家    | `minicpm5_1b_heretic_q4km.gguf`                              | Q4_K_M | ~0.69 GB | 常驻管家（prompter）                                               |
 
 > **代码化清单（2026-08-20）**：`src/utils/modelCatalog.ts` 的 `CATALOG_LLM` 为本表唯一代码事实源
 > （模型页全部可管理：未下载显示下载按钮，无源条目显示「请本地导入」→ 模型目录页）。
@@ -40,6 +40,7 @@ relates: [POCKETPAL_DESIGN_SPEC]
 > resolvePresetModels/deviceRules 服务目录/bundledDeviceRules JSON/rulesVersion 整条死链删除）。
 > 下载源显式声明（2026-08-20 魔搭 API 实测）：`sources: ['hf']` = 仅 Hugging Face；
 > `['hf','modelscope']` = 双源（下载时弹窗选择）。
+>
 > - **双源**：#5 LFM2.5-2.6B、#6 LFM2.5-8B-A1B、#7 Ministral-3-3B（魔搭同名同文件镜像已验 200）、
 >   #1-#4 Qwen3.5×2 与 #8 MiniCPM5-1B 管家（2026-08-20 由 zensignGG 账号镜像上传：
 >   zensignGG/Qwen3.5-2B/4B-Uncensored-HauhauCS-Aggressive-GGUF + zensignGG/MiniCPM5-1B-...-GGUF，
@@ -52,6 +53,7 @@ relates: [POCKETPAL_DESIGN_SPEC]
 >   K0D3IN base heretic（license agpl-3.0）非 Fable5，勿混）
 
 ## 1.1 任务选型优先级（2026-08-20，listModelsForTask）
+
 任务（write/code/play，adventure 归 write，play 归 code）选型返回候选列表，排序：
 
 1. **用户用途标签命中**（设置页打的 capabilities 标签，write 同义键 rewriting/creativity/instructions）——组内 size 降序；
@@ -62,25 +64,27 @@ relates: [POCKETPAL_DESIGN_SPEC]
 
 ## 1.2 多模态能力映射（2026-08-21 创作工坊立项）
 
-| 能力 | 模型组合 | 引擎 | 入口 |
-|---|---|---|---|
+| 能力           | 模型组合                                                                | 引擎                               | 入口                                                       |
+| -------------- | ----------------------------------------------------------------------- | ---------------------------------- | ---------------------------------------------------------- |
 | 图像反推提示词 | **Qwen3.5-4B + mmproj-BF16（#3/#4）**；单次 >3 分钟时评估降 #1/#2（2B） | llama.rn chat 槽（initMultimodal） | 生图页操作条「反推」+ 聊天页发图反推（同源 captionEngine） |
 
 > 社区 2026 验证：`Qwen3.5-4B-Q4_K_M + mmproj-BF16` 是 ComfyUI 反推节点标准组合（禁思考模式、纯净描述）。
 > 零新增文件：视觉伴侣 #2/#4 已于 2026-08-20 入册装机。
 
-## 2. 生图入选清单（4 件）
+## 2. 生图入选清单（5 件）
 
-| # | 模型 | 说明 | 定位 |
-|---|---|---|---|
-| 1 | DreamLite（小黄鸡端侧） | App 内置 manifest，非文件 | **主线主力**（固定置顶默认选中） |
-| 2 | SD 3.5 Medium | DiT + clip_l/clip_g/vae 四件套 | 🥇 画质升级 |
-| 3 | Z-Image-Turbo | DiT + zimage_llm + ae 三件套 | 🥈 中文场景 + 无审查 |
-| 4 | FLUX.2 Klein 4B (Q4_0) | DiT + flux2_vae（TE 复用 zimage_llm） | 🥉 画质天花板（4 步极速，仅高端 Adreno） |
+| #   | 模型                     | 说明                                     | 定位                                                                                      |
+| --- | ------------------------ | ---------------------------------------- | ----------------------------------------------------------------------------------------- |
+| 1   | DreamLite（小黄鸡端侧）  | App 内置 manifest，非文件                | **主线主力**（固定置顶默认选中）                                                          |
+| 2   | SD 3.5 Medium            | DiT + clip_l/clip_g/vae 四件套           | 🥇 画质升级                                                                               |
+| 3   | Z-Image-Turbo            | DiT + zimage_llm + ae 三件套             | 🥈 中文场景 + 无审查                                                                      |
+| 4   | FLUX.2 Klein 4B (Q4_K_M) | DiT + flux2_vae（TE 复用 zimage_llm）    | 🥉 画质天花板（4 步极速，高端 Adreno + Mali 平板）                                        |
+| 5   | Krea2 Turbo (Q4_K_M)     | DiT 12.9B + Qwen3-VL TE + Wan VAE 三件套 | 审美多样性 + 风格 LoRA（**实验性**，仅高端 Adreno；K90 实测双门槛不可用，MASTER_LOG §96） |
 
 > **代码化清单（2026-08-20）**：`src/utils/modelCatalog.ts` 的 `CATALOG_IMAGEGEN` 为本表代码事实源
 > （套件文件清单与 §6.1/§6.2 一致；模型页「生图模型」区可管理）。
 > 下载源（2026-08-20 溯源 + 魔搭 resolve 实测 7/7 全 200，非自制）：
+>
 > - **SD 3.5 四件套 + 自制 LoRA**：双源。main 来自 city96/stable-diffusion-3.5-medium-gguf
 >   （远程名 `sd3.5_medium-Q4_K_M.gguf`）；clip_l/clip_g 来自 Comfy-Org（HF）/AI-ModelScope（魔搭）
 >   stable-diffusion-3.5-fp8 的 `text_encoders/` 子目录；vae 来自 stabilityai（HF）/AI-ModelScope（魔搭）
@@ -90,14 +94,21 @@ relates: [POCKETPAL_DESIGN_SPEC]
 > - **Z-Image-Turbo 三件套**：双源。main 来自 leejet/Z-Image-Turbo-GGUF（远程名 `z_image_turbo-Q4_K.gguf`）；
 >   ae 来自 Comfy-Org/z_image_turbo 的 `split_files/vae/`；zimage_llm 文本塔仅魔搭
 >   （unsloth/Qwen3-4B-GGUF，HF 侧文件名不同未验证——选 HF 源时自动回退魔搭下载）
-> - **FLUX.2 Klein 4B（2026-08-22 新增，Box 清单 P0）**：双源。main 来自 leejet/FLUX.2-klein-4B-GGUF
->   （远程名 `flux-2-klein-4b-Q4_0.gguf`，2460378560 B，Q4_0——leejet 仓仅 Q4_0/Q8_0 两档，无 Q4_K_M；
->   Q4_0 与 Z-Image 同 sd.cpp 工具链转换，端侧首选）；vae 来自 Comfy-Org/vae-text-encorder-for-flux-klein-4b
->   的 `split_files/vae/flux2-vae.safetensors`（336211292 B，落盘名 `flux2_vae.safetensors`；
->   BFL 官方仓 black-forest-labs/FLUX.2-klein-4B 为 401 gated 弃用，2026-08-22 双源 resolve 200 实锤）；
->   **TE 复用 Z-Image 的
->   `zimage_llm.gguf`**（Qwen3-4B-Q4_K_M，与 klein 官方 qwen_3_4b.safetensors 同源——官方是 8.05GB 全精度，
+> - **FLUX.2 Klein 4B（2026-08-22 新增，Box 清单 P0；08-25 量化换源）**：双源。main 来自
+>   unsloth/FLUX.2-klein-4B-GGUF（远程名 `flux-2-klein-4b-Q4_K_M.gguf`，2604311104 B，Q4_K_M 混合渐进量化
+>   ——leejet Q4_0 已双端定罪马赛克废弃，2026-08-26 三台设备旧文件已清理）；vae 来自
+>   Comfy-Org/vae-text-encorder-for-flux-klein-4b 的 `split_files/vae/flux2-vae.safetensors`（336211292 B，
+>   落盘名 `flux2_vae.safetensors`；BFL 官方仓 black-forest-labs/FLUX.2-klein-4B 为 401 gated 弃用，
+>   2026-08-22 双源 resolve 200 实锤）；
+>   TE 复用 Z-Image 的
+>   `zimage_llm.gguf`（Qwen3-4B-Q4_K_M，与 klein 官方 qwen_3_4b.safetensors 同源——官方是 8.05GB 全精度，
 >   端侧只能用 GGUF 量化；Z-Image 已实测该 TE 端侧 fp16/Adreno 无 nan/inf 累积溢出，08-20 数据）。
+> - **Krea2 Turbo（2026-08-26 新增，MASTER_LOG §96）**：双源。main 来自 realrebelai/KREA-2_GGUFs
+>   的 `TURBO/Krea-2-Turbo-Q4_K_M.gguf`（7216993376 B，Q4_K_M）；文本塔 Qwen3-VL-4B-Instruct-Q4_K_M.gguf
+>   （Qwen/Qwen3-VL-4B-Instruct-GGUF 官方，2497281664 B）；vae `wan_2.1_vae.safetensors`
+>   （Comfy-Org/Wan_2.1_ComfyUI_repackaged，253815318 B）。**端侧判定：K90/16GB 实测双门槛不可用**
+>   （9.9GB 预算超 OpenCL 7.5GB → OOM；te=disk 后 ARM CPU f16 溢出 SIGABRT）——维持 experimental + high-adreno-only，
+>   catalog 条目保留（三台设备文件已同步）。
 >   **VAE 与 Z-Image 的 ae.safetensors 非同文件**（flux2-vae 336211292 B / oid 868fe7b3 ≠ ae 335304388 B /
 >   oid afc8e282，2026-08-22 HF API 实锤），不可去重。
 > - **DreamLite**：部署 ONNX 为自制导出（.tmp/dreamlite 本地导出+量化），HF 无公开 ONNX；
@@ -109,23 +120,23 @@ relates: [POCKETPAL_DESIGN_SPEC]
 
 ## 2.2 音频模型清单（2026-08-21 音频工坊立项）
 
-| # | 模型 | 用途 | 大小 | 落盘 | 下载源 |
-|---|---|---|---|---|---|
-| A1 | SenseVoice int8（sherpa-onnx 包） | ASR 转写（中英日韩粤+标点） | 229 MB | `AIOS/audio/` | App 内下载（HF k2-fsa/sherpa-onnx 模型仓库） |
-| A2 | Kokoro-82M FP32（onnx-community） | TTS 朗读（默认） | 330 MB | App documents `tts/kokoro/`（TTSStore 管辖） | App 内下载（HF，TTSStore 既有链路） |
-| A3 | Kitten nano-fp32 | TTS 轻量备选 | 57 MB | App documents `tts/kitten/` | App 内下载（HF，TTSStore 既有链路） |
-| A4 | Supertonic v3 | TTS 高质/多语种 | 380 MB | App documents `tts/supertonic/` | App 内下载（HF，TTSStore 既有链路） |
+| #   | 模型                              | 用途                        | 大小   | 落盘                                         | 下载源                                       |
+| --- | --------------------------------- | --------------------------- | ------ | -------------------------------------------- | -------------------------------------------- |
+| A1  | SenseVoice int8（sherpa-onnx 包） | ASR 转写（中英日韩粤+标点） | 229 MB | `AIOS/audio/`                                | App 内下载（HF k2-fsa/sherpa-onnx 模型仓库） |
+| A2  | Kokoro-82M FP32（onnx-community） | TTS 朗读（默认）            | 330 MB | App documents `tts/kokoro/`（TTSStore 管辖） | App 内下载（HF，TTSStore 既有链路）          |
+| A3  | Kitten nano-fp32                  | TTS 轻量备选                | 57 MB  | App documents `tts/kitten/`                  | App 内下载（HF，TTSStore 既有链路）          |
+| A4  | Supertonic v3                     | TTS 高质/多语种             | 380 MB | App documents `tts/supertonic/`              | App 内下载（HF，TTSStore 既有链路）          |
 
 > 管辖边界：A2-A4 走既有 TTSStore 下载状态机（App 内下载，非手工推送）；A1 新增 `AIOS/audio/` 目录，
 > 装机/补推时按本表核对。推送门禁同 §4（清单外禁推）。
 
 ## 3. 淘汰 / 未选型清单（禁止推送 ❌）
 
-| 模型 | 状态 | 原因 / 记录 |
-|---|---|---|
-| SDXL Turbo | **淘汰** | P5.1 仅作对照（🥉"不换，作对照"），对照使命已完成；fp16 6.9GB 违反 3GB 红线铁律 |
-| Qwen3.5-0.6B（qwen3_06b_q8_0） | **未选型** | 不在 P4 五件套内，型号未钦定 |
-| Qwen3.5-9B 全家桶 | **电脑端弹药（勿动）** | 仅本仓库 API/质检链路用，禁止推送真机 |
+| 模型                           | 状态                   | 原因 / 记录                                                                     |
+| ------------------------------ | ---------------------- | ------------------------------------------------------------------------------- |
+| SDXL Turbo                     | **淘汰**               | P5.1 仅作对照（🥉"不换，作对照"），对照使命已完成；fp16 6.9GB 违反 3GB 红线铁律 |
+| Qwen3.5-0.6B（qwen3_06b_q8_0） | **未选型**             | 不在 P4 五件套内，型号未钦定                                                    |
+| Qwen3.5-9B 全家桶              | **电脑端弹药（勿动）** | 仅本仓库 API/质检链路用，禁止推送真机                                           |
 
 > **勘误（2026-08-14）**：早前版本曾登记 "DeepSeek Hermes 未选型/叫停"——错误。
 > 并行窗口的「安装 DeepSeek Hermes」是**别仓任务，与本仓库（f:\pp）无关**，
@@ -154,14 +165,14 @@ relates: [POCKETPAL_DESIGN_SPEC]
 >
 > **电脑端模型源（2026-08-15 定稿）**：装机/补推模型文件的唯一电脑端源 = `F:\Cursor\OneTakeMVP\models\pocketpal_hf\`（HF 缓存目录，`author__repo` 结构）。
 >
-> | 模型 | 源路径 |
-> |---|---|
-> | Qwen3.5-2B + mmproj-2B | `HauhauCS__Qwen3.5-2B-Uncensored-HauhauCS-Aggressive\` |
-> | Qwen3.5-4B + mmproj-4B | `HauhauCS__Qwen3.5-4B-Uncensored-HauhauCS-Aggressive\` |
-> | LFM2.5-2.6B | `LiquidAI__LFM2.5-2.6B-GGUF\LFM2.5-2.6B-Q4_K_M.gguf` |
-> | LFM2.5-8B-A1B | `LiquidAI__LFM2.5-8B-A1B-GGUF\LFM2.5-8B-A1B-Q4_K_M.gguf` |
+> | 模型                      | 源路径                                                                                |
+> | ------------------------- | ------------------------------------------------------------------------------------- |
+> | Qwen3.5-2B + mmproj-2B    | `HauhauCS__Qwen3.5-2B-Uncensored-HauhauCS-Aggressive\`                                |
+> | Qwen3.5-4B + mmproj-4B    | `HauhauCS__Qwen3.5-4B-Uncensored-HauhauCS-Aggressive\`                                |
+> | LFM2.5-2.6B               | `LiquidAI__LFM2.5-2.6B-GGUF\LFM2.5-2.6B-Q4_K_M.gguf`                                  |
+> | LFM2.5-8B-A1B             | `LiquidAI__LFM2.5-8B-A1B-GGUF\LFM2.5-8B-A1B-Q4_K_M.gguf`                              |
 > | 小雾 3B（Ministral-3-3B） | `unsloth__Ministral-3-3B-Instruct-2512-GGUF\Ministral-3-3B-Instruct-2512-Q4_K_M.gguf` |
-> | MiniCPM5-1B 管家 | `f:\pp\.tmp\models_sd\minicpm5_1b_heretic_q4km.gguf` |
+> | MiniCPM5-1B 管家          | `f:\pp\.tmp\models_sd\minicpm5_1b_heretic_q4km.gguf`                                  |
 >
 > 源文件大小与 §6.1 逐字节一致（2026-08-15 双机补推已核对）；推送后以真机 `ls -la` 复验。
 > 2026-08-15 实录：小米13 曾缺 LFM×2 + 小雾 3B，已从该源 USB 补推，双机对齐。
@@ -172,24 +183,24 @@ relates: [POCKETPAL_DESIGN_SPEC]
 
 ### 6.1 models/ 必须 16 个文件（LLM 8 + 生图 8）
 
-| 文件 | 大小 | 类别 |
-|---|---|---|
-| Qwen3.5-2B-Uncensored-...-Q8_0.gguf | 2.01 GB | LLM |
-| mmproj-Qwen3.5-2B-...-f16.gguf | 0.67 GB | LLM 视觉伴侣 |
-| Qwen3.5-4B-Uncensored-...-Q4_K_M.gguf | 2.71 GB | LLM |
-| mmproj-Qwen3.5-4B-...-BF16.gguf | 0.68 GB | LLM 视觉伴侣（2026-08-20 补录，真机已有） |
-| LFM2.5-2.6B-Q4_K_M.gguf | 1.67 GB | LLM |
-| LFM2.5-8B-A1B-Q4_K_M.gguf | 5.16 GB | LLM |
-| Ministral-3-3B-...-Q4_K_M.gguf | 2.15 GB | LLM |
-| minicpm5_1b_heretic_q4km.gguf | 0.69 GB | LLM 管家 |
-| sd35_medium_q4_k_m.gguf | 1.79 GB | 生图 SD3.5 DiT |
-| sd35_clip_l.safetensors | 0.25 GB | 生图 SD3.5 |
-| sd35_clip_g.safetensors | 1.39 GB | 生图 SD3.5 |
-| sd35_vae.safetensors | 0.17 GB | 生图 SD3.5 |
-| lora_humanpose.safetensors | 0.08 GB | 生图 SD3.5 自制 LoRA（2026-08-20 入册，双平台分发） |
-| z_image_turbo_q4_k.gguf | 3.86 GB | 生图 Z-Image |
-| zimage_llm.gguf | 2.50 GB | 生图 Z-Image TE |
-| ae.safetensors | 0.34 GB | 生图 Z-Image VAE |
+| 文件                                  | 大小    | 类别                                                |
+| ------------------------------------- | ------- | --------------------------------------------------- |
+| Qwen3.5-2B-Uncensored-...-Q8_0.gguf   | 2.01 GB | LLM                                                 |
+| mmproj-Qwen3.5-2B-...-f16.gguf        | 0.67 GB | LLM 视觉伴侣                                        |
+| Qwen3.5-4B-Uncensored-...-Q4_K_M.gguf | 2.71 GB | LLM                                                 |
+| mmproj-Qwen3.5-4B-...-BF16.gguf       | 0.68 GB | LLM 视觉伴侣（2026-08-20 补录，真机已有）           |
+| LFM2.5-2.6B-Q4_K_M.gguf               | 1.67 GB | LLM                                                 |
+| LFM2.5-8B-A1B-Q4_K_M.gguf             | 5.16 GB | LLM                                                 |
+| Ministral-3-3B-...-Q4_K_M.gguf        | 2.15 GB | LLM                                                 |
+| minicpm5_1b_heretic_q4km.gguf         | 0.69 GB | LLM 管家                                            |
+| sd35_medium_q4_k_m.gguf               | 1.79 GB | 生图 SD3.5 DiT                                      |
+| sd35_clip_l.safetensors               | 0.25 GB | 生图 SD3.5                                          |
+| sd35_clip_g.safetensors               | 1.39 GB | 生图 SD3.5                                          |
+| sd35_vae.safetensors                  | 0.17 GB | 生图 SD3.5                                          |
+| lora_humanpose.safetensors            | 0.08 GB | 生图 SD3.5 自制 LoRA（2026-08-20 入册，双平台分发） |
+| z_image_turbo_q4_k.gguf               | 3.86 GB | 生图 Z-Image                                        |
+| zimage_llm.gguf                       | 2.50 GB | 生图 Z-Image TE                                     |
+| ae.safetensors                        | 0.34 GB | 生图 Z-Image VAE                                    |
 
 > **FLUX.2 Klein 不入预置推送包（2026-08-22）**：`requiresHighGpu` 仅高端 Adreno 可用，
 > 走 App 内在线下载（§2 #4，模型页「生图模型」区），不占备用机黄金标准 16 件。
@@ -198,12 +209,12 @@ relates: [POCKETPAL_DESIGN_SPEC]
 
 ### 6.2 dreamlite/ 必须 6 个文件（含 TE，真实文本条件）
 
-| 文件 | 大小 | 说明 |
-|---|---|---|
-| unet_masked.onnx | 1.56 GB | UNet（fp32，带 attention_mask） |
-| vae_decoder.onnx | 4.9 MB | VAE 解码 |
-| vae_encoder.onnx | 4.9 MB | VAE 编码（编辑路径） |
-| te_q8.gguf | 1.83 GB | TE tokenizer（vocab，llama.rn 加载） |
+| 文件                              | 大小    | 说明                                       |
+| --------------------------------- | ------- | ------------------------------------------ |
+| unet_masked.onnx                  | 1.56 GB | UNet（fp32，带 attention_mask）            |
+| vae_decoder.onnx                  | 4.9 MB  | VAE 解码                                   |
+| vae_encoder.onnx                  | 4.9 MB  | VAE 编码（编辑路径）                       |
+| te_q8.gguf                        | 1.83 GB | TE tokenizer（vocab，llama.rn 加载）       |
 | te_fp16.onnx (+te_fp16.onnx.data) | 3.44 GB | TE fp16 ONNX（真实文本条件 hidden_states） |
 
 > **TE 必推**：用户输入 prompt 出图时引擎按 `if (prompt) loadTE()` 加载 TE——缺 te_q8.gguf 报 `unable to load model: te_q8.gguf` → UI 显示「DreamLite: Failed to load model」。
@@ -225,8 +236,6 @@ relates: [POCKETPAL_DESIGN_SPEC]
    - HyperOS 应用详情权限页不显示此权限项，勿用 `appops set`（状态显示 allow 但 PackageManager 层未生效）；授予后 App 重启即生效（RNLlama/DreamLite 加载日志可证）。
    - 备用机 08-14 10:48 授权、新机 08-14 16:14 授权后均恢复正常读取。
 6. 双机对照结论（2026-08-14）：两机系统/App/appops/gids 全一致；差异仅在授权时间；**/proc/pid/root 读文件测试为假阴性（shell 借 mount namespace 无权限），不可用作判断**。
-
-
 
 - **LLM 已装 8 件（6 主 + 2 视觉伴侣）**：Qwen3.5-2B Q8_0(+mmproj) / 4B Q4_K_M(+mmproj) / LFM2.5-2.6B / LFM2.5-8B-A1B / Ministral-3-3B / MiniCPM5-1B 管家 ✓（全部入选清单，2026-08-25 计数口径勘误：原「7 件」漏计 mmproj-4B）
 - **生图已装**：SD3.5 四件套 ✓ + Z-Image 三件套 ✓ + **DreamLite 端侧 ONNX 三件套**（`AIOS/dreamlite/`：unet_masked.onnx 1.56GB + vae_decoder + vae_encoder，08-14 补推）✓

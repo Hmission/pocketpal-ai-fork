@@ -32,13 +32,14 @@ describe('modelCatalog — MODEL_MATRIX 门禁', () => {
     expect(names).toContain('minicpm5_1b_heretic_q4km.gguf');
   });
 
-  it('生图入选清单 = 4 件（MODEL_MATRIX §2：DreamLite/SD3.5/Z-Image/FLUX.2 Klein，Klein 2026-08-25 准入）', () => {
-    expect(CATALOG_IMAGEGEN).toHaveLength(4);
+  it('生图入选清单 = 5 件（MODEL_MATRIX §2：DreamLite/SD3.5/Z-Image/FLUX.2 Klein/Krea2，Klein 2026-08-25 准入 + Krea2 2026-08-26 准入）', () => {
+    expect(CATALOG_IMAGEGEN).toHaveLength(5);
     const ids = CATALOG_IMAGEGEN.map(m => m.id);
     expect(ids.some(id => id.includes('dreamlite'))).toBe(true);
     expect(ids.some(id => id.includes('sd35'))).toBe(true);
     expect(ids.some(id => id.includes('z-image'))).toBe(true);
     expect(ids.some(id => id.includes('flux'))).toBe(true);
+    expect(ids.some(id => id.includes('krea2'))).toBe(true);
   });
 
   it('Qwen 视觉伴侣 mmproj 精确文件名（MODEL_MATRIX §1 #2/#4）', () => {
@@ -79,6 +80,11 @@ describe('modelCatalog — MODEL_MATRIX 门禁', () => {
         'te_fp16.onnx',
         'te_fp16.onnx.data',
       ].sort(),
+    );
+    // Krea2 三件套（2026-08-26 准入，MASTER_LOG §96）
+    const krea2 = CATALOG_IMAGEGEN.find(m => m.id.includes('krea2'))!;
+    expect(krea2.extras?.map(e => e.name).sort()).toEqual(
+      ['Qwen3VL-4B-Instruct-Q4_K_M.gguf', 'wan_2.1_vae.safetensors'].sort(),
     );
   });
 
