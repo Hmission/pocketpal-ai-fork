@@ -1048,3 +1048,22 @@ ealesrgan_x4plus_anime_6B.onnx（APK +14.7MB）
 
 **锋利边界**：不做文件-元数据一致性校验（兜底）；recoverHistory 保持开发工具性质；聊天侧架构不动（已闭环）。
 
+## §6.23 Box 竞品借鉴清单闭环与遗留专项登记（2026-08-27 · B67 复查窗口）
+
+**背景**：2026-08-22 Box（jegly/Box）调研清单 5 开发项 + 全量排查修复升级方案（6D 排查）已全量落地；本段为生图 SSOT 收口登记（详细证据链见 .qoder/specs/Box竞品借鉴开发清单_task-4a1c.md 复查版 + Box清单全面排查与修复升级方案_task-4a1c.md）。
+
+**落地摘要（与本域相关）**：
+1. **FLUX.2 Klein 接入**（08-25 准入）：manifest 'flux' 族 + unsloth Q4_K_M（量化换源，leejet Q4_0 马赛克双端定罪）；TE 复用 zimage_llm.gguf（与 Z-Image 共享，净下载 2.80GB / 省 2.50GB）；VAE 独立（flux2_vae oid ≠ ae.safetensors 实锤）；采样契约 cfg=1.0/steps=4（sd.cpp docs/flux2.md）；JNI 并入 zimage OpenCL 治理组
+2. **马赛克根因终局**（08-26，13 组对照）：vendored ggml-opencl 通用内核对 FLUX.2 shape bug（与量化/内核变体/VAE/TE/cfg 全无关；CPU/Z-Image 干净）→ klein 现状 default CPU + experimental（不误导），画幅暂走 512 档
+3. **新模型 Krea2**（08-26 准入，experimental）：Krea AI 自研（非 FLUX 系，badge 已纠错）；Qwen3-VL-4B TE + Wan VAE；双门槛（9.9GB>K90 OpenCL 全局 7.5GB OOM 三连 / TE ±1e10 值域 ARM f16 溢出）均上游可解
+4. **门控升级**：gpuPolicy 声明式准入（'high-adreno-only' / 'high-adreno-or-mali'）替代 requiresHighGpu 布尔
+5. **PNG 生成参数 metadata**：pngUtil `aios.gen` tEXt 块（插块非重编码、key+schema 双重门控、512B UTF-8 感知截断；SD/DreamLite/超分三通道 finishTask 单点收口）；历史 DB 字段不变
+6. **下载域**：生图下载链挂存储闸门 + 增量判定（共享 TE 已存在不占新空间）；共享文件 exists 跳过去重 + 显式日志
+
+**遗留专项（列入执行清单）**：
+- **A（P0）** FLUX.2 OpenCL 内核修复：vendored ggml-opencl 对 FLUX.2 shape bug（txt_in K=7680 / img_in K=128 / 32 组 patchify）；移动端逐 op tensor instrumentation 定位修内核（上游级）；验收 = K90 + K Pad 双端 GPU 无纹理 → klein 解除 experimental
+- **B（P1）** klein 画幅升档 512→1024：官方蒸馏契约 1MP；待 A + 真机 GPU 出图证据（08-24 画幅如实化裁定：不凭官方文案预设）
+- **C（P2）** Krea2 双门槛观察：均上游可解（ARM f16 精度 / ≥24GB 设备），到点复审
+
+**边界不变**：不做一键 4× 工作流、Bonsai Image 4B、MI-GAN 擦除、多参考融合、SoundGen（闭源+重资产）、GGUF 导入 UI。
+

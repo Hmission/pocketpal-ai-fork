@@ -878,3 +878,31 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
 - **R1 ��С�ջ�**���������� + native activate/��ǩ + ����ҳ + ����ҳ �� һ����ͨȫ��·��
 - **R2 ʱ������**�����ز� + �������� + ״̬˫дУ�顣
 - **R3 �ӹ��տ�**��ǩ����У�� + �����ĥ��
+
+---
+
+## §115 Box 竞品借鉴清单闭环与遗留专项登记（2026-08-27，B67 复查窗口）
+
+### 115.1 背景
+
+- 2026-08-22 四路取证调研 Box（jegly/Box）形成借鉴清单 5 开发项（大王裁定落单：Klein 接入要、一键 4× 砍、其余按推荐执行）；同日另立"全量排查与修复升级方案"长链执行（6D 排查，啄木鸟在岗）。
+- 本窗口（B67）复查：原 5 开发项全量落地复核通过（代码实锤），识别 3 项遗留专项并正式列入执行清单（.qoder/specs/Box清单全面排查与修复升级方案 §六），同步生图 SSOT（UPGRADE_PLAN §6.23）。
+
+### 115.2 复核结论（代码实锤，证据索引见 .qoder/specs 两份 Box 清单文档）
+
+- **项 1 FLUX.2 klein 接入**：manifest 'flux' 族落地（unsloth Q4_K_M 量化换源，TE 复用 zimage_llm 实锤、VAE 独立 oid 实锤）；sd.cpp docs/flux2.md 采样契约 POC 通过；JNI 并入 zimage OpenCL 治理组；K Pad（Mali-G925）全链 296.77s / K90（Adreno）双端实测；马赛克根因终局（vendored ggml-opencl 通用内核对 FLUX.2 shape bug，13 组对照实证与量化无关）；现状定档 default CPU + experimental（已知纹理不误导用户）。
+- **项 2 卡片文案**：5 个 manifest note 全量升级"何时选 + 体积 + 适配"三段式。
+- **项 3 PNG meta**：pngUtil `aios.gen` tEXt 块（插块非重编码、key+schema 双重门控、512B UTF-8 感知截断、三通道 finishTask 单点收口）。
+- **项 4 下载审计**：存储闸门 + 增量判定收口（catalogScanMethods）；原生断点续传/Range 206/416 判脏/指数退避已干净。
+- **项 5 TE 去重**：预扫描 exists 跳过 + 显式日志不静默；klein 净下载 2.80GB（省 2.50GB / -47%）。
+- **新格局**：生图矩阵 3→5 件（MODEL_MATRIX §2：DreamLite/SD3.5/Z-Image/FLUX.2 Klein 08-25 准入/Krea2 08-26 准入 experimental）；gpuPolicy 声明式准入替代 requiresHighGpu 布尔。
+
+### 115.3 遗留专项（列入执行清单，见 .qoder/specs/Box清单全面排查与修复升级方案 §六）
+
+- **A（P0）**：FLUX.2 OpenCL 内核修复（ggml-opencl 对 FLUX.2 shape bug，上游级 work）；验收 = K90 + K Pad 双端 GPU 出图无纹理 → klein 解除 experimental。
+- **B（P1）**：klein 画幅升档 512→1024（官方 1MP 契约；待 A + 真机 GPU 出图证据，不凭官方文案预设）。
+- **C（P2）**：Krea2 双门槛观察（内存 9.9GB > K90 OpenCL 全局 7.5GB OOM 三连 / Qwen3-VL-4B TE ±1e10 值域 ARM f16 溢出；均上游可解，到点复审）。
+
+### 115.4 边界（定稿不变）
+
+- 不做：一键 4× 工作流、Bonsai Image 4B、MI-GAN 擦除、多参考融合、SoundGen 音乐生成（闭源+重资产）、GGUF 导入 UI。
