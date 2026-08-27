@@ -970,3 +970,12 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
 4. **执行中镜像停滞**（镜像同步点仅在 runDraw finally=core 计数前/队列完成后）→ core 注入 onTick 钩子（条目切换/每抽计数后 → syncQueueMirror）。
 
 **遗留**：SD 族（SD3.5/Z-Image）native cancel 即时性需真机验证（DreamLite 无 native cancel 路径，此为设计语义：在途抽自然完成后停止）；done 态汇总卡展示；夜间耐久（30+ 抽息屏）。
+
+### 116.8 提交闭环（2026-08-27）
+
+- **git 提交**：`1fb3319`（feat(imagegen): 任务购物车（连抽队列）P0/P1 落地 + 平板实机验收闭环）——19 文件 +2008/-207
+- **推送**：已 push origin/main（d3757bc..1fb3319）
+- **门禁**：tsc 0 错 / jest 3 套件 20 用例全绿 / prettier 1 文件修整 / commitlint 合规
+- **混窗隔离**：styles.ts 与 ImageGenScreen.tsx 含它窗（caption v5.10）改动，以补丁方式仅暂存本窗 hunk，它窗内容留在工作区未混入
+- **编码修复**：MASTER_LOG §113/§114 GBK 编码损伤（它窗曾以 GBK 提交）→ 30 行 GBK→UTF-8 归一，1400 U+FFFD 替换符清除，随本提交落库
+- **剩余工作区**：它窗在途变更（UI 一致性 caption 改造 / ggml flux 实验 / 巡检日志）与验收临时产物，均非本窗，由它窗各自收口
