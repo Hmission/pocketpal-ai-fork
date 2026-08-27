@@ -838,46 +838,46 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
 
 ---
 
-## ��113 ���� Klein ս�ۻع����ջ���2026-08-27��B65��
+## §113 天玑 Klein 战役回归对齐闭环（2026-08-27，B65）
 
-### 113.1 ��Դ
-���� Mali ����˫�߹��ᣨtask-b75����β���죺Klein ������Դ�������˸��鴰�ڡ��û��ö����ȶ��ĵ�������н��ۣ���99 B63 �ѱգ������ع�ʱʵ�飬�ջ��Ǽǡ�
+### 113.1 来源
+天玑 Mali 提速双线攻坚（task-b75）收尾延伸：Klein 量化换源与马赛克复验窗口。用户裁定：先读文档对齐既有结论（§99 B63 已闭），撤回过时实验，闭环登记。
 
-### 113.2 �����ڻع���루�����ش��Ѷ����۵��̣�
-- **������Դʵ��ջ�**��unsloth Q4_K_M ��ƽ���ȫ�� 231.07s������ 27.8 s/����nan=0��1.28x ���� leejet Q4_0 296.77s/35.4 s/���������û�������"�����˲��ʸ�" �� �� ��99 13 �����һ�£�**�������﷭��**����"˫�˶��� Q4_0 ����"���۷�ֹ����
-- **ʵ���ڄճ���**��CPU ������/K90 ���ռƻ���Ϊ��ʱ֧�ߣ���99 ��֤ CPU �ɾ���K90 CPU 5h ���ܹ�������ƽ�� CPU �ܵ� 45min ����ֹ��K90 �����루����Ŀ�����������٣���
-- **Դ���㾻���**��JNI ���� ��99.5 ����̬��8-25 �ſأ�klein �����ų� FP16_LM + ȫ����ͨ�ԣ��������� CLPROF ̽��ʵ���ѻع���git ʵ֤�ɾ���
-- **�豸״̬����**��K Pad + K90 ��װ 08-27 ������klein ����Ĭ�� backend='CPU'��experimental=true��high-adreno-or-mali����˫���������� manifest ��3��q4km OpenCL / cpu ������Ŀ����
+### 113.2 本窗口回归对齐（不再重打已定结论的仗）
+- **量化换源实测闭环**：unsloth Q4_K_M 推平板后全链 231.07s、采样 27.8 s/步、nan=0（1.28x 优于 leejet Q4_0 296.77s/35.4 s/步）；但用户终验仍"马赛克材质感" → 与 §99 13 组对照一致：**量化无罪翻案**（旧"双端定罪 Q4_0 量化"结论废止）。
+- **实验勤務撤销**：CPU 参照跑/K90 参照计划均为过时支线（§99 已证 CPU 干净、K90 CPU 5h 已跑过）——平板 CPU 跑到 45min 后中止；K90 不参与（任务目标是天玑提速）。
+- **源码零净变更**：JNI 保持 §99.5 定稿态（8-25 门控：klein 家族排除 FP16_LM + 全命名通吃），本窗口 CLPROF 探针实验已回滚，git 实证干净。
+- **设备状态收敛**：K Pad + K90 均装 08-27 整包（klein 内置默认 backend='CPU'、experimental=true、high-adreno-or-mali）；双机清理测试 manifest ×3（q4km OpenCL / cpu 冗余条目）。
 
-### 113.3 ���ӣ��´�������
-**Klein GPU ����ר��**����99.7 ����δ��������vendored ggml-opencl ͨ���ں˶� FLUX.2 ���� shape �� bug��txt_in K=7680 / img_in K=128 / 32 ͨ�� patchify ���ɣ������ƶ��� OpenCL �� op tensor instrumentation ��λ�������� shape/stride/�������� �� �� CPU ��ȷ����� op diff �� �ں˲��� �� ˫����K Pad Mali + K90 Adreno�����顣
+### 113.3 交接（下窗口任务）
+**Klein GPU 提速专项**（§99.7 立项未动工）：vendored ggml-opencl 通用内核对 FLUX.2 张量 shape 的 bug（txt_in K=7680 / img_in K=128 / 32 通道 patchify 嫌疑）——移动端 OpenCL 逐 op tensor instrumentation 定位出错算子 shape/stride/量化类型 → 与 CPU 正确输出逐 op diff → 内核补丁 → 双机（K Pad Mali + K90 Adreno）复验。
 
-### 113.4 ��ѵ
-�ര�ڲ���ʱ�ȶ������� MASTER_LOG��Ψһ��ʵԴ���ٿ�ʵ�飻�豸��������Ŀ���豸��ƽ�壩���ύ�������д�����;�ļ������������տڣ���
+### 113.4 教训
+多窗口并行时先读公开版 MASTER_LOG（唯一事实源）再开实验；设备测试收敛目标设备（平板）；提交不含并行窗口在途文件（各方各自收口）。
 ---
 
-## ��114 ���߼�������Ȩ������ƣ�2026-08-27��B66 �������ڣ�
+## §114 离线激活码授权方案设计（2026-08-27，B66 方案窗口）
 
-### 114.1 ��Դ�붨��
-������Ϊ������ƴ��ڣ��޴���Ķ������������С�Ƽ� App ���߷ַ��밴����Ȩ���󡣾��Ϲ�߽����������� vs ���񣩣�ȷ����ҵģʽΪ��������������Ȩ����ֻ�ṩ App ���塢���ṩģ�͡����ṩ���������˺���ϵ�������� = ���� license������������ʽ AI ���񡣲�Ʒ��ѧ��������ӷ�ס������ײ���������״̬����·��
+### 114.1 来源与定性
+本窗口为方案设计窗口（无代码改动）：大王提出小黄鸡 App 离线分发与按月授权诉求。经合规边界梳理（工具 vs 服务），确定商业模式为「卖工具软件授权」：只提供 App 本体、不提供模型、不提供算力、无账号体系，激活码 = 软件 license，不构成生成式 AI 服务。产品哲学：锋利不臃肿、不兜底不补丁、单状态机链路。
 
-### 114.2 �������壨��ͼ + ���KG + 6D ȫ���Ų飩
-- **��·**��Ԥ���豸ID �� �û����豸ID������ �� �������ߣ�Ed25519 ˽Կ��ֻ�ڴ������أ�ǩ�� �� �û����뼤���� �� native ��ǩ + �豸ƥ�� �� �������� 30 �� �� ����ȫ������ �� ���ѹ������롣
-- **��״̬��**��UNACTIVATED ��(activate ��ǩ+�豸ƥ��ͨ��)�� ACTIVE ��(30��ľ�/��⵽�ز�)�� EXPIRED ��(��������)�� ACTIVE���� 2 ���activate/check����3 ���Ϸ�ת�ƣ��޶��׷�֧��
-- **���������**���� Python �������ߣ�keygen/issue/ledger �����˱������� native LicenseModule��getDeviceId/activate/getStatus����ǩ+���ز�+״̬�־û��³� C++��monocypher + ���� hardware_info.cpp �� JNI ����minSdk 24 ��֧��ϵͳ Ed25519 �� API 28+������ JS LicenseGate + ActivationScreen + LockedScreen��ȫ App Ψһ��Ȩ�ж���ڣ���
-- **���ز�**��max_wall_time �־û�˫д���ļ� + SharedPreferences����һ�¼�����+ elapsedRealtime ����ʱ��ê�㡣
-- **���ƽ�ֻ������**����ǩ�³� C++��ǩ����У����ش������ȷ����������ȫ��Ͱ/bundle ���ܵ�ӷ�׷��������������컨�壨����ƽ�ɱ����Ǿ��Է��ƽ⣩��
-- **��������**���������� 30 �죻������Ϊ����ȫ�������豸�󶨣�Ԥ�󶨣����ں����豸ID��ת����Ч����
+### 114.2 方案定稿（星图 + 洋葱KG + 6D 全量排查）
+- **链路**：预绑定设备ID → 用户发设备ID给大王 → 发卡工具（Ed25519 私钥，只在大王本地）签发 → 用户输入激活码 → native 验签 + 设备匹配 → 激活起算 30 天 → 到期全屏锁定 → 续费购买新码。
+- **单状态机**：UNACTIVATED →(activate 验签+设备匹配通过)→ ACTIVE →(30天耗尽/检测到回拨)→ EXPIRED →(输入新码)→ ACTIVE。仅 2 命令（activate/check）、3 条合法转移，无兜底分支。
+- **组件三件套**：① Python 发卡工具（keygen/issue/ledger 本地账本）；② native LicenseModule（getDeviceId/activate/getStatus，验签+防回拨+状态持久化下沉 C++，monocypher + 复用 hardware_info.cpp 的 JNI 链；minSdk 24 不支持系统 Ed25519 需 API 28+）；③ JS LicenseGate + ActivationScreen + LockedScreen（全 App 唯一授权判断入口）。
+- **防回拨**：max_wall_time 持久化双写（文件 + SharedPreferences，不一致即锁）+ elapsedRealtime 单调时钟锚点。
+- **防破解只做两层**：验签下沉 C++、签名自校验防重打包。明确不做反调试全家桶/bundle 加密等臃肿防御，接受离线天花板（提高破解成本而非绝对防破解）。
+- **到期语义**：激活起算 30 天；到期行为：完全锁定；设备绑定：预绑定（码内焊死设备ID，转卖无效）。
 
-### 114.3 �����������
-- ��ͼ license �� 0 �ڵ� / ĸ�� KG 0 ���� / �ӿ��޼�¼ �� ȫ����·������ʷ������
-- project_search ��ĸ�� PG δ���в����ã����ä���Ѽ�¼����
-- �����������Ŀ֧����״���� + ���߼�������Ȩ�ܹ����� + ��Ʒ������ѧ�淶���� 3 ����
+### 114.3 侦察结论与沉淀
+- 星图 license 域 0 节点 / 母仓 KG 0 命中 / 坑库无记录 → 全新链路，无历史包袱。
+- project_search 因母仓 PG 未运行不可用（侦察盲区已记录）。
+- 记忆沉淀：项目支付现状更新 + 离线激活码授权架构决策 + 产品工程哲学规范，共 3 条。
 
-### 114.4 ���ӣ��´�������
-- **R1 ��С�ջ�**���������� + native activate/��ǩ + ����ҳ + ����ҳ �� һ����ͨȫ��·��
-- **R2 ʱ������**�����ز� + �������� + ״̬˫дУ�顣
-- **R3 �ӹ��տ�**��ǩ����У�� + �����ĥ��
+### 114.4 交接（下窗口任务）
+- **R1 最小闭环**：发卡工具 + native activate/验签 + 激活页 + 锁定页 → 一码走通全链路。
+- **R2 时间纵深**：防回拨 + 到期提醒 + 状态双写校验。
+- **R3 加固收口**：签名自校验 + 体验打磨。
 
 ---
 
@@ -906,3 +906,67 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
 ### 115.4 边界（定稿不变）
 
 - 不做：一键 4× 工作流、Bonsai Image 4B、MI-GAN 擦除、多参考融合、SoundGen 音乐生成（闭源+重资产）、GGUF 导入 UI。
+
+---
+
+## §116 任务购物车（连抽队列）设计+实现闭环（2026-08-27，IMAGEGEN_QUEUE_SPEC 窗口）
+
+### 116.1 任务三件
+
+- **目标**：生图页出图按钮切分 ➕ 队列模式——规划期多任务（不同提示词/参数/模型，同任务多次点击加抽）→ 统一开始依次执行 → 执行中可停止 → 停止后恢复编辑；解决手机端夜间长跑多图生成（Z-Image 单张 10.9 分钟的挂机场景）。
+- **方法**：门禁/路由（zhuo-mu-niao 专工）/守卫 hook 链路；6D + 星图全量排查（nightTask 域复用、native cancel 引擎链取证、WatermelonDB 迁移机制验证）→ IMAGEGEN_QUEUE_SPEC v0.1 决策完备（DECISION D1-A/D2-A/D3-A/D4-A 按推荐定稿）→ P0 数据层+核心+UI 闭环 → P1 native cancel 停止。
+- **结果**：任务购物车 P0（单模型队列闭环）+ P1（停止能力）已实现，门禁三关（tsc/jest/Gradle）全绿。
+
+### 116.2 交付物（代码实锤）
+
+- **数据层**：schema v10 `image_gen_queue` 表（快照 16 字段 + 执行指令 main_path/companion_paths/backend/lora_path）+ migrations toVersion 10 + ImageGenQueue model + ImageGenQueueRepository（upsert/remove/clearAll，B14 快照保护）。
+- **核心**：`store/imageGenQueueCore`（纯逻辑可测）：状态机 idle→planning→running→stopping→done；入队幂等累加（购物车语义）；编辑/删除/清空（运行期锁定）；串行执行器；**停止=在途抽不计数（抽数保留续跑）**；水合恢复（running 遗留回 planning）。
+- **接线**：`imageGenStore.runGenTask`（任务化一体：beginTask→确保模型加载（跨模型自动切换）→生成→finishTask/failTask）+ MobX 镜像（queueState/queuePosition/queueSummary）+ nightTask reaction 四条件（队列 running/stopping 恒 busy，前台服务不抖动）。
+- **UI**：GenActionBar 出图按钮切两半（左 ➕ 入队+右上角计数徽标 + 右出图）；QueuePanel（OverlayCard 唯一底座：条目行 prompt 摘要+模型族徽章+抽数徽标；开始/停止/清空/汇总）；ImageGenScreen 快照组装（manifest 解析 mainPath/伴侣/backend/lora）+ 条目编辑回填 composer（➕ 变更新）。
+- **Native（P1）**：ImageGenJNI `nativeCancelTxt2img`（**不持 g_mutex**——nativeTxt2img 全程持锁跑长任务，持锁会使停止失效；sd_cancel_generation 原子置位，采样/VAE 解码循环消费标志干净退出）+ ImageGenModule `cancelTxt2img` ReactMethod；`sd_cancel_generation` 为 sd.cpp 公开 API，**零引擎改动**。
+- **文档**：IMAGEGEN_QUEUE_SPEC v0.2（§十三接缝清单 S1-S7 状态标注）+ INDEX 登记 + 星图勘误。
+
+### 116.3 门禁结果
+
+- `tsc --noEmit` 0 错 / jest（imageGenQueueCore 11 用例 + imageGenStore.ghost 2 用例）13/13 全绿 / `gradlew assembleProdDebug` 两轮（P0/P1）BUILD SUCCESSFUL（2m）
+- 队列测试覆盖：入队幂等累加/编辑（运行态拒绝、终结条目回开放）/删除/清空/失败继续/停止在途抽不计数+续跑/停止幂等/空队列拒绝/防重入/水合恢复。
+
+### 116.4 D 级差距清单
+
+- **D1（存量，非本窗引入，已取证）**：actionRegistry.test 2 例（mobx 直接赋值 observable 不生效）、ModelTypeTag.test 4 例（颜色 token 断言过期）、全量跑部分组件测试跨文件污染（Dropdown 单文件 PASS）→ 建议单独测试治理窗。
+- **D2（已闭环）**：组件层 handleGenerate 复用 runGenTask 收敛（S1 收口，~100 行 → ~40 行；新增 hooks.onTaskStarted 保持动效时序；ImageGenScreen.test 7 用例契约同步更新全绿）。
+- **D3（收口收益低风险高，维持现状）**：loadEntry 全量下沉 store（快照自包含方案已覆盖队列侧；行内按钮推错链路与 UI 反馈耦合，留测试治理窗后专项）。
+- **D4（待真机）**：Kotlin/JNI cancel 链路真机验证（编译已过，运行期停止即时性待装机）。
+
+### 116.5 建议行动
+
+- 真机验收（G4/G5 门禁）：K90 装机 → 队列 UX 走查（多抽连跑 / 编辑 / 停止即时性 / 重启恢复 planning）。
+- P2 夜间耐久：夜间模拟（息屏充电 30+ 抽不杀进程）+ 电池白名单验证。
+- 存量测试治理窗单独开启（D1）。
+
+### 116.6 装机验证记录（2026-08-27 补充）
+
+- G4 部分完成：`adb install -r` 覆盖安装成功 → 冷启动（`com.pocketpal.MainActivity`）topResumedActivity 确认 + 15s+ 稳定 → 首页（聊天会话页）uiautomator dump 正常渲染（模型胶囊/消息列表/输入栏）→ 无崩溃无 ANR。
+- 遗留：生图页 UX 走查（出图按钮切半 ➕ 渲染、多抽连跑、停止即时性、重启恢复）待大王在场操作验收（投屏已拉起，scrcpy aab688d9）。
+
+### 116.7 平板实机验收记录（2026-08-27，P7AAJZS8Q4C6BAUC / Mali）
+
+**验收链路全通过 + 实机揪出 5 处缺陷（4 修复 + 1 用户贡献）**：
+
+| # | 验证项 | 结果 | 证据 |
+|---|---|---|---|
+| 1 | 出图按钮切两半（➕排队 + 出图） | ✅ | uiautomator resource-id imagegen-enqueue/imagegen-generate 同大按钮两段 |
+| 2 | 连点 ➕ 幂等累加 | ✅ | 连点 3 次 → 面板单条目 3×（快照归一 seed）；连续点击不被面板打断 |
+| 3 | 队列面板（标题/条目/徽章/抽数/汇总） | ✅ | 面板 planning 态完整渲染 + 开始按钮汇总（7 项 · 10 抽） |
+| 4 | 串行连跑出图 | ✅ | DreamLite 每抽 ~2.5 分钟（TE 20s + 4 步 ×25s），连续 saved 3.1MB 正常图（18:55/18:57/19:08） |
+| 5 | 实时镜像（onTick 修复） | ✅ | 第 1 抽完成后面板立即刷新「1 成功 · 第 2/7 项」（旧版滞后一拍） |
+| 6 | 持久化落库 + 水合恢复 | ✅ | upsert record.update() 修复后无 upsert failed；重启水合恢复 7 条条目 |
+| 7 | 停止流程 | ✅ | 停止中… → 规划中；在途抽不消耗抽数（11→10 抽）；停止后引擎不再启动新抽 |
+
+**实机揪出缺陷与修复**：
+1. **seed 随机破坏累加**（buildSnapshot 空 seed 随机 → 快照全字段比较永不相等）→ snapshotKey 归一 seed=0 + runGenTask 执行时随机化（spec §五/§六修订）。
+2. **连点被面板打断**（每次入队弹面板 → 遮罩吞后续点击）→ ➕ 纯入队（banner 反馈）+「🛒 队列」胶囊条作为唯一面板入口（大王增补 ➕ 按钮「排队」文本标签 buttonGenPlusLabel）。
+3. **upsert 直接赋值**（WatermelonDB 抛 Not allowed to change record）→ record.update()（队列计数此前从未落库，重启恢复失效）。
+4. **执行中镜像停滞**（镜像同步点仅在 runDraw finally=core 计数前/队列完成后）→ core 注入 onTick 钩子（条目切换/每抽计数后 → syncQueueMirror）。
+
+**遗留**：SD 族（SD3.5/Z-Image）native cancel 即时性需真机验证（DreamLite 无 native cancel 路径，此为设计语义：在途抽自然完成后停止）；done 态汇总卡展示；夜间耐久（30+ 抽息屏）。

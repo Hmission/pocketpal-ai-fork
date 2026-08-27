@@ -62,6 +62,8 @@ import {BenchmarkHudBar} from '../../components/BenchmarkHudBar';
 import {HistoryStrip} from './components/HistoryStrip';
 import {ComposerPanel} from './components/ComposerPanel';
 import {GenActionBar} from './components/GenActionBar';
+import {QueuePanel} from './components/QueuePanel';
+import {GenParamsSnapshot, QueueItem} from '../../store/imageGenQueueCore';
 import {UpscalePanel} from './components/UpscalePanel';
 import {AudioWorkshopTab} from './components/AudioWorkshopTab';
 import {confirmDialog} from '../../components/ui/ConfirmDialog';
@@ -156,6 +158,9 @@ export const ImageGenScreen: React.FC = observer(() => {
   const [workshopTab, setWorkshopTab] = React.useState<'image' | 'audio'>(
     'image',
   );
+  // 任务购物车（IMAGEGEN_QUEUE_SPEC）：队列面板显隐 + 编辑目标条目
+  const [queueVisible, setQueueVisible] = React.useState(false);
+  const editingQueueIdRef = React.useRef<string | null>(null);
   // B35：音频顶栏引擎选择下拉显隐（模型只在顶栏）
   const [showAudioEngineDrop, setShowAudioEngineDrop] = React.useState(false);
   // 顶栏音频胶囊状态点：当前引擎就绪
@@ -238,6 +243,10 @@ export const ImageGenScreen: React.FC = observer(() => {
     imageGenStore.init();
     scanModels();
   }, [scanModels]);
+  // 任务购物车（IMAGEGEN_QUEUE_SPEC §九）：队列水合（重启恢复 planning 态）
+  React.useEffect(() => {
+    imageGenStore.initQueue();
+  }, []);
 
   // 启动定位：有图片历史直接显示最新一张（页 1），无历史停在 0 页编辑槽
   // v5.3：跳过音频条目（transcribe/tts）——启动定位到首个图片类条目，避免转写结果污染提示词/预览
@@ -885,103 +894,164 @@ export const ImageGenScreen: React.FC = observer(() => {
       return;
     }
     setEditArming(false); // 出图退出编辑预备态
-    const startTs = Date.now();
-    if (isDream) {
-      const modelLabel = selectedEntry?.manifest.label ?? 'DreamLite';
-      // 任务化：先落 running 任务 → 翻到空白预览页 → 成功回填/失败保留
-      const taskId = await imageGenStore.beginTask({
-        uri: '',
-        prompt: p,
-        seed: Date.now() % 1e9,
-        ts: Date.now(),
-        width: dreamW,
-        height: dreamH,
-        steps: parseInt(steps, 10) || 4,
-        family: 'dreamlite',
-        kind: 'generated',
-        modelLabel,
-      });
-      setTaskKind('gen'); // 出图动效：running 任务页（空白页+进度）
-      scrollToPreview(1);
-      const uri = await imageGenStore.generateDreamLiteEntry(
-        dreamW,
-        dreamH,
-        parseInt(steps, 10) || 4,
-        p,
-      );
-      setTaskKind(null);
-      if (!uri) {
-        await failTaskWithReport(taskId, '生成失败', {
-          模型: modelLabel,
-          尺寸: `${dreamW}×${dreamH}`,
-          步数: steps,
-          提示词: p,
-        });
-        scrollToPreview(1);
-        return;
-      }
-      await imageGenStore.finishTask(taskId, uri, {
-        durationMs: Date.now() - startTs,
-      });
-      // 新图在 history[0] → 预览页 1
-      scrollToPreview(1);
-      showBanner(`生成完成（${dreamW}×${dreamH}）`);
+    const snapshot = buildSnapshot(p);
+    if (!snapshot) {
+      showBanner('先输入提示词，再点出图', 'warning');
       return;
     }
-    const m = selectedEntry?.manifest;
-    const seedNum = seed.trim()
-      ? parseInt(seed, 10)
-      : Math.floor(Math.random() * 2 ** 31);
-    const taskId = await imageGenStore.beginTask({
-      uri: '',
-      prompt: p,
-      seed: seedNum,
-      ts: Date.now(),
-      // 08-18 升级：非 Dream 比例档派生宽高
-      width: SD_RATIOS[ratio]?.[0] ?? size,
-      height: SD_RATIOS[ratio]?.[1] ?? size,
-      steps: parseInt(steps, 10) || 2,
-      cfg: parseFloat(cfg) || 2,
-      family: m?.family,
-      kind: 'generated',
-      modelLabel: m?.label,
-    });
-    setTaskKind('gen'); // 出图动效：running 任务页（空白页+进度）
+    const genW = snapshot.width;
+    const genH = snapshot.height;
+    // D2 收口（IMAGEGEN_QUEUE_SPEC §十三 S1）：出图按钮与队列共用 runGenTask
+    // 单链路（任务化一体）；组件层仅保留校验/引导/动效。动效在 running 条目
+    // 落库后触发（onTaskStarted），保持「空白页+进度」时序与旧版一致。
+    setTaskKind('gen');
     scrollToPreview(1);
-    const uri = await imageGenStore.generate(p, {
-      steps: parseInt(steps, 10) || 2,
-      cfg: parseFloat(cfg) || 2,
-      // 08-18 升级：非 Dream 比例档派生宽高（默认 1:1 = 512×512），替代原固定方形
-      width: SD_RATIOS[ratio]?.[0] ?? size,
-      height: SD_RATIOS[ratio]?.[1] ?? size,
-      seed: seedNum,
-      negativePrompt: negativePrompt.trim(),
-      // 08-18 路线 B：LoRA 开关开且 manifest 声明才传 lora（关/未声明 = 空串 = 纯 base）
-      loraPath:
-        loraEnabled && m?.lora ? `${AIOS_MODELS_DIR}/${m.lora}` : undefined,
-      loraMultiplier: loraEnabled
-        ? parseFloat(loraMult) || undefined
-        : undefined,
-      modelLabel: m?.label,
+    const uri = await imageGenStore.runGenTask(snapshot, {
+      onTaskStarted: () => {
+        // 条目已入画廊 history[0] → 翻到 running 任务页（动效叠加）
+        scrollToPreview(1);
+      },
     });
     setTaskKind(null);
     if (uri) {
-      await imageGenStore.finishTask(taskId, uri, {
-        durationMs: Date.now() - startTs,
-      });
       // 新图在 history[0] → 预览页 1
       scrollToPreview(1);
-      showBanner(`生成完成（${size}×${size}）`);
+      showBanner(`生成完成（${genW}×${genH}）`);
     } else {
-      await failTaskWithReport(taskId, '生成失败', {
-        模型: m?.label,
-        尺寸: `${size}×${size}`,
-        步数: steps,
-        CFG: cfg,
-        提示词: p,
-      });
       scrollToPreview(1);
     }
+  };
+
+  // ===== 任务购物车（IMAGEGEN_QUEUE_SPEC）：快照组装与队列动作 =====
+
+  /** 当前表单 + 选中模型 → 自包含快照（mainPath/伴侣/backend/lora 按 manifest 解析）
+   *  promptOverride：任务重试/复刻生图等显式提示词（优先于表单） */
+  const buildSnapshot = (promptOverride?: string): GenParamsSnapshot | null => {
+    const p = (promptOverride ?? prompt).trim();
+    if (!p) {
+      return null;
+    }
+    // seed=0 语义：“未指定，每次随机”（实机验收修正 2026-08-27：随机会破坏
+    // 快照去重累加——同参数重复点击必须加抽而非拆条；执行时每抽随机化）
+    const seedNum = seed.trim() ? parseInt(seed, 10) || 0 : 0;
+    if (isDream) {
+      return {
+        prompt: p,
+        negativePrompt: '',
+        steps: parseInt(steps, 10) || 4,
+        cfg: 1,
+        width: dreamW,
+        height: dreamH,
+        ratio,
+        seed: seedNum,
+        family: 'dreamlite',
+        modelId: DREAMLITE_MANIFEST.id,
+        loraEnabled: false,
+        loraMultiplier: 1,
+      };
+    }
+    const m = selectedEntry;
+    if (!m) {
+      return null;
+    }
+    const comps = m.manifest.companions;
+    return {
+      prompt: p,
+      negativePrompt: negativePrompt.trim(),
+      steps: parseInt(steps, 10) || 2,
+      cfg: parseFloat(cfg) || 2,
+      width: SD_RATIOS[ratio]?.[0] ?? size,
+      height: SD_RATIOS[ratio]?.[1] ?? size,
+      ratio,
+      seed: seedNum,
+      family: m.manifest.family,
+      modelId: m.manifest.id,
+      loraEnabled: loraEnabled && !!m.manifest.lora,
+      loraMultiplier: parseFloat(loraMult) || 1,
+      mainPath: m.mainPath,
+      companionPaths: comps
+        ? {
+            clipL: comps.clipL
+              ? `${AIOS_MODELS_DIR}/${comps.clipL}`
+              : undefined,
+            clipG: comps.clipG
+              ? `${AIOS_MODELS_DIR}/${comps.clipG}`
+              : undefined,
+            llm: comps.llm ? `${AIOS_MODELS_DIR}/${comps.llm}` : undefined,
+            vae: comps.vae ? `${AIOS_MODELS_DIR}/${comps.vae}` : undefined,
+          }
+        : undefined,
+      backend: m.manifest.defaults.backend,
+      loraPath: m.manifest.lora
+        ? `${AIOS_MODELS_DIR}/${m.manifest.lora}`
+        : undefined,
+    };
+  };
+
+  /** ➕ 入队（规划期）；编辑态（editingQueueIdRef）下为「更新条目」 */
+  const handleEnqueue = () => {
+    if (
+      imageGenStore.loading ||
+      imageGenStore.generating ||
+      imageGenStore.queueState === 'running' ||
+      imageGenStore.queueState === 'stopping'
+    ) {
+      return;
+    }
+    if (!isDream && !loaded && !imageGenStore.loading) {
+      setLoadGuideVisible(true); // 未加载引导与出图同链路
+      return;
+    }
+    const snapshot = buildSnapshot();
+    if (!snapshot) {
+      showBanner('先输入提示词，再加进队列', 'warning');
+      return;
+    }
+    const editingId = editingQueueIdRef.current;
+    if (editingId) {
+      imageGenStore.updateQueueItem(editingId, snapshot);
+      editingQueueIdRef.current = null;
+      showBanner('队列条目已更新');
+      return;
+    }
+    // 实机验收收敛（2026-08-27 平板）：➕ = 纯入队（banner 反馈）——面板一律经
+    //「🛒 队列」胶囊条打开（首次弹面板会遮罩吞掉第 2 次连点，交替开合打断加抽）
+    imageGenStore.enqueueQueue(snapshot);
+    showBanner('已加入队列（重复点击可加抽）');
+  };
+
+  /** 面板条目点编辑：快照回填 composer（同 syncFromParams 语义）→ 修改后 ➕ 确认更新 */
+  const handleQueueEdit = (item: QueueItem) => {
+    setSelectedId(item.snapshot.modelId);
+    setEditArming(false);
+    setEditRgb(null);
+    setEditVisRgb(null);
+    setPrompt(item.snapshot.prompt);
+    setNegativePrompt(item.snapshot.negativePrompt);
+    setSteps(String(item.snapshot.steps));
+    setCfg(String(item.snapshot.cfg));
+    const {width: w, height: h} = item.snapshot;
+    const r =
+      item.snapshot.family === 'dreamlite'
+        ? Object.entries(RATIOS).find(
+            ([, wh]) => wh[0] === w && wh[1] === h,
+          )?.[0]
+        : Object.entries(SD_RATIOS).find(
+            ([, wh]) => wh[0] === w && wh[1] === h,
+          )?.[0];
+    if (r) {
+      setRatio(r);
+    } else {
+      setSize(w);
+    }
+    setSeed(String(item.snapshot.seed));
+    if (item.snapshot.family !== 'dreamlite') {
+      setLoraEnabled(item.snapshot.loraEnabled);
+      setLoraMult(String(item.snapshot.loraMultiplier));
+    }
+    editingQueueIdRef.current = item.id;
+    setQueueVisible(false);
+    showBanner('已回填参数，修改后点 ➕ 确认更新');
   };
 
   const toggleDelete = (uri: string) => {
@@ -1313,6 +1383,14 @@ export const ImageGenScreen: React.FC = observer(() => {
             taskKind={taskKind}
             onEditArm={handleEditArm}
             onGenerate={handleGenerate}
+            onEnqueue={handleEnqueue}
+            queueItemCount={imageGenStore.queueItemsCount}
+            queueRunning={
+              imageGenStore.queueState === 'running' ||
+              imageGenStore.queueState === 'stopping'
+            }
+            onOpenQueue={() => setQueueVisible(true)}
+            queueSummary={`${imageGenStore.queueItemsCount} 项 · ${imageGenStore.queueTotalDraws} 抽`}
           />
         </KeyboardStickyView>
       ) : null}
@@ -1511,6 +1589,24 @@ export const ImageGenScreen: React.FC = observer(() => {
           </>
         )}
       </OverlayCard>
+
+      {/* 任务购物车（IMAGEGEN_QUEUE_SPEC）：队列面板（OverlayCard 唯一底座） */}
+      <QueuePanel
+        visible={queueVisible}
+        onRequestClose={() => setQueueVisible(false)}
+        items={imageGenStore.queueItems}
+        state={imageGenStore.queueState}
+        position={imageGenStore.queuePosition}
+        totalDraws={imageGenStore.queueTotalDraws}
+        drawsDone={imageGenStore.queueDrawsDone}
+        drawsFailed={imageGenStore.queueDrawsFailed}
+        busy={imageGenStore.loading || imageGenStore.generating}
+        onStart={() => imageGenStore.startQueue()}
+        onStop={() => imageGenStore.stopQueue()}
+        onClear={() => imageGenStore.clearQueue()}
+        onRemove={id => imageGenStore.removeQueueItem(id)}
+        onEdit={handleQueueEdit}
+      />
     </View>
   );
 });

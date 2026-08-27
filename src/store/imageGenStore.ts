@@ -32,10 +32,18 @@ import {
   PngGenMeta,
 } from '../services/pngUtil';
 import {imageGenTaskRepository} from '../repositories/ImageGenTaskRepository';
+import {imageGenQueueRepository} from '../repositories/ImageGenQueueRepository';
+import {buildErrorReport} from '../utils/errorReport';
 import {engineMutex} from './engineMutex';
 import {nightTaskRegistry} from './nightTaskRegistry';
 import {perfRecorder} from '../services/perf/perfRecorder';
 import {promptWriter} from '../services/promptWriter';
+import {
+  GenParamsSnapshot,
+  ImageGenQueueCore,
+  QueueItem,
+  QueueState,
+} from './imageGenQueueCore';
 
 const VideoTaskService = NativeModules.VideoTaskService;
 // 电池优化豁免引导进程内只发起一次（§7.1 策略 3）：首次长任务未豁免时弹系统弹窗，
@@ -145,6 +153,39 @@ class ImageGenStore {
   /** 夜间长任务模式：reaction disposer（loading/generating 翻转 → 注册表 + 前台服务） */
   private nightTaskReaction: (() => void) | null = null;
 
+  // ===== 任务购物车（IMAGEGEN_QUEUE_SPEC §三-§六）：队列核心 + MobX 镜像 =====
+  /** 队列核心（纯逻辑；repository + runDraw 依赖注入，core 保持可测） */
+  readonly queueCore = new ImageGenQueueCore(
+    imageGenQueueRepository,
+    async snapshot => {
+      try {
+        return (await this.runGenTask(snapshot)) != null;
+      } finally {
+        // 每抽完成后同步镜像（执行中途 UI 可见进度/计数）
+        runInAction(() => this.syncQueueMirror());
+      }
+    },
+    {
+      // 实机修正（2026-08-27 平板）：core 计数在 runDraw 返回后发生——
+      // 仅 finally 镜像会停滞在起点；onTick（条目切换/每抽计数后）补上同步点
+      onTick: () => runInAction(() => this.syncQueueMirror()),
+    },
+  );
+  /** 队列状态镜像（MobX 可观察；UI 全部读镜像，core 内部状态不经 observer） */
+  queueState: QueueState = 'idle';
+  queuePosition = -1;
+  /** 队列条目镜像（浅拷贝数组；每次 mirror 重建引用与对象，observable 可跟踪） */
+  queueItems: QueueItem[] = [];
+  queueItemsCount = 0;
+  queueTotalDraws = 0;
+  queueDrawsDone = 0;
+  queueDrawsFailed = 0;
+  queueSummary: {success: number; failed: number; total: number} = {
+    success: 0,
+    failed: 0,
+    total: 0,
+  };
+
   constructor() {
     makeAutoObservable(this);
     // 互斥：chat 引擎加载前会调本 releaser 释放 sd/dreamlite 双引擎；
@@ -178,7 +219,11 @@ class ImageGenStore {
     // 计数语义：loading 与 generating 视为同一任务的两个阶段，用「布尔翻转」而非「每字段独立计数」，
     // 避免 loading→generating→done 的相位切换造成计数错乱。
     this.nightTaskReaction = reaction(
-      () => this.loading || this.generating,
+      () =>
+        this.loading ||
+        this.generating ||
+        this.queueState === 'running' ||
+        this.queueState === 'stopping',
       busy => {
         // ADR-0008 跑分面板：1Hz 轮询随 loading/generating 翻转自动启停。
         // reaction 一处覆盖全部生图入口——含 DreamLite generateDreamLiteEntry/
@@ -1287,6 +1332,210 @@ class ImageGenStore {
         /* 释放失败静默 */
       }
     }
+  }
+
+  // ===== 任务购物车：执行器接线（IMAGEGEN_QUEUE_SPEC §六）=====
+
+  /** core 内部状态 → MobX 镜像（UI 全部读镜像） */
+  private syncQueueMirror(): void {
+    this.queueState = this.queueCore.state;
+    this.queuePosition = this.queueCore.position;
+    this.queueItems = this.queueCore.items.map(it => ({...it}));
+    this.queueItemsCount = this.queueCore.items.length;
+    this.queueTotalDraws = this.queueCore.totalDraws;
+    this.queueDrawsDone = this.queueCore.drawsDone;
+    this.queueDrawsFailed = this.queueCore.drawsFailed;
+    this.queueSummary = this.queueCore.summary;
+  }
+
+  /** app 启动（生图页 mount）：水合队列 → 镜像（state 不持久化，回 planning） */
+  async initQueue(): Promise<void> {
+    await this.queueCore.hydrate();
+    runInAction(() => this.syncQueueMirror());
+  }
+
+  /** 入队（++ 按钮）：规划期可入；执行期拒绝（锁定即锁定） */
+  enqueueQueue(snapshot: GenParamsSnapshot): void {
+    if (this.queueState === 'running' || this.queueState === 'stopping') {
+      return;
+    }
+    runInAction(() => {
+      this.queueCore.enqueue(snapshot);
+      this.syncQueueMirror();
+    });
+  }
+
+  /** 编辑队列条目（仅 idle/planning/done 态） */
+  updateQueueItem(id: string, snapshot: GenParamsSnapshot): boolean {
+    if (this.queueState === 'running' || this.queueState === 'stopping') {
+      return false;
+    }
+    const ok = this.queueCore.updateItem(id, snapshot);
+    if (ok) {
+      runInAction(() => this.syncQueueMirror());
+    }
+    return ok;
+  }
+
+  /** 删除队列条目 */
+  async removeQueueItem(id: string): Promise<void> {
+    await this.queueCore.removeItem(id);
+    runInAction(() => this.syncQueueMirror());
+  }
+
+  /** 清空队列（全部条目） */
+  async clearQueue(): Promise<void> {
+    await this.queueCore.clear();
+    runInAction(() => this.syncQueueMirror());
+  }
+
+  /** 开始执行：串行消费全部 pending 条目（防重入；单通道：loading/generating 中拒绝） */
+  async startQueue(): Promise<void> {
+    if (this.loading || this.generating) {
+      return;
+    }
+    const runP = this.queueCore.start();
+    runInAction(() => this.syncQueueMirror()); // state 同步段已置 running
+    await runP;
+    runInAction(() => this.syncQueueMirror()); // done / 回 planning
+  }
+
+  /** 停止：置位停止请求 → 在途抽被 native cancel 返回 → 回 planning（幂等） */
+  async stopQueue(): Promise<void> {
+    if (this.queueCore.state !== 'running') {
+      return;
+    }
+    // 停止=显式中断当前抽（IMAGEGEN_QUEUE_SPEC §八）：native cancel 是原子置位
+    // （不阻塞），采样/VAE 解码循环消费标志后干净退出 → generate 返回 null →
+    // core 见 stopRequested 不计抽数。fire-and-forget，失败不阻断停止流程。
+    try {
+      void ImageGen.cancelTxt2img?.().catch?.(() => {});
+    } catch (e) {
+      console.warn('[ImageGenQueue] cancelTxt2img failed:', e);
+    }
+    const stopP = this.queueCore.stop();
+    runInAction(() => this.syncQueueMirror()); // stopping
+    await stopP;
+    runInAction(() => this.syncQueueMirror()); // planning
+  }
+
+  /**
+   * runGenTask — 单抽执行单元（队列执行器依赖注入的 runDraw；IMAGEGEN_QUEUE_SPEC §六）。
+   * 任务化 + 生成一体：beginTask → 确保模型加载（跨模型切换自动 unload+load）→
+   * 生成 → finishTask 回填 / failTask 保留报错页。返回 uri 或 null。
+   * 快照自包含（mainPath/伴侣/backend/loraPath 入队时由组件层按 manifest 解析）。
+   * hooks.onTaskStarted：running 任务条目落库后回调（UI 动效/滚动需在条目就绪后）。
+   */
+  async runGenTask(
+    snapshot: GenParamsSnapshot,
+    hooks?: {onTaskStarted?: (taskId: string) => void},
+  ): Promise<string | null> {
+    const startTs = Date.now();
+    // seed=0 → 每次随机（实机验收修正 2026-08-27：快照去重排除 seed 后，
+    // 累加条目共享 snapshot；多抽必须各抽随机 seed 才能出不同图）
+    const effectiveSeed =
+      snapshot.seed === 0 ? Math.floor(Math.random() * 2 ** 31) : snapshot.seed;
+    const taskId = await this.beginTask({
+      uri: '',
+      prompt: snapshot.prompt,
+      seed: effectiveSeed,
+      ts: startTs,
+      width: snapshot.width,
+      height: snapshot.height,
+      steps: snapshot.steps,
+      cfg: snapshot.family === 'dreamlite' ? undefined : snapshot.cfg,
+      family: snapshot.family,
+      kind: 'generated',
+      modelLabel: snapshot.modelId,
+    });
+    hooks?.onTaskStarted?.(taskId);
+    let uri: string | null = null;
+    if (snapshot.family === 'dreamlite') {
+      if (!this.dreamliteLoaded) {
+        const ok = await this.loadDreamLiteEntry();
+        if (!ok) {
+          uri = null;
+        } else {
+          uri = await this.generateDreamLiteEntry(
+            snapshot.width,
+            snapshot.height,
+            snapshot.steps,
+            snapshot.prompt,
+          );
+        }
+      } else {
+        uri = await this.generateDreamLiteEntry(
+          snapshot.width,
+          snapshot.height,
+          snapshot.steps,
+          snapshot.prompt,
+        );
+      }
+    } else {
+      // SD 族：确保对应模型加载（跨模型条目间自动切换）
+      if (!(this.modelLoaded && this.loadedModelId === snapshot.modelId)) {
+        if (!snapshot.mainPath) {
+          runInAction(() => {
+            this.error = `队列条目缺少模型路径（${snapshot.modelId}）`;
+          });
+        } else {
+          const ok = await this.loadModel(
+            snapshot.mainPath,
+            {...snapshot.companionPaths, backend: snapshot.backend},
+            snapshot.modelId,
+          );
+          if (ok) {
+            uri = await this.generate(snapshot.prompt, {
+              steps: snapshot.steps,
+              cfg: snapshot.cfg,
+              width: snapshot.width,
+              height: snapshot.height,
+              seed: effectiveSeed,
+              negativePrompt: snapshot.negativePrompt,
+              loraPath: snapshot.loraEnabled ? snapshot.loraPath : undefined,
+              loraMultiplier: snapshot.loraEnabled
+                ? snapshot.loraMultiplier
+                : undefined,
+              modelLabel: snapshot.modelId,
+            });
+          }
+        }
+      } else {
+        uri = await this.generate(snapshot.prompt, {
+          steps: snapshot.steps,
+          cfg: snapshot.cfg,
+          width: snapshot.width,
+          height: snapshot.height,
+          seed: effectiveSeed,
+          negativePrompt: snapshot.negativePrompt,
+          loraPath: snapshot.loraEnabled ? snapshot.loraPath : undefined,
+          loraMultiplier: snapshot.loraEnabled
+            ? snapshot.loraMultiplier
+            : undefined,
+          modelLabel: snapshot.modelId,
+        });
+      }
+    }
+    if (uri) {
+      await this.finishTask(taskId, uri, {
+        durationMs: Date.now() - startTs,
+      });
+    } else {
+      const summary = '生成失败';
+      const report = await buildErrorReport({
+        scope: 'imagegen',
+        summary,
+        error: this.error ?? summary,
+        extra: {
+          模型: snapshot.modelId,
+          尺寸: `${snapshot.width}×${snapshot.height}`,
+          步数: snapshot.steps,
+          提示词: snapshot.prompt,
+        },
+      });
+      await this.failTask(taskId, report.summary, report.detail);
+    }
+    return uri;
   }
 }
 

@@ -864,12 +864,70 @@ export const createStyles = (theme: any) =>
     },
     buttonEdit: {flex: 1, backgroundColor: theme.colors.info},
     buttonGen: {flex: 1},
+    // 任务购物车 D1-A：出图按钮切两半（左 ➕ 入队 + 右出图），行内子段拆分
+    buttonGenSplit: {
+      flex: 1,
+      flexDirection: 'row',
+      paddingVertical: 0,
+      overflow: 'hidden',
+    },
+    buttonGenPlus: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+      gap: 3,
+      minWidth: 64,
+      paddingHorizontal: 8,
+      borderRightWidth: 1,
+      borderRightColor: 'rgba(255,255,255,0.35)',
+    },
+    // 8-27 队列按钮文本标签（大王：只有 + 号用户不懂语义）——随段 opacity 统一淡化
+    buttonGenPlusLabel: {
+      color: theme.colors.onPrimary,
+      ...theme.typography.uiS,
+      fontWeight: '600' as const,
+    },
+    buttonGenMain: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: theme.spacing.sm,
+    },
+    // ➕ 上角入队总数微标（队列面板入口提示）
+    buttonGenBadge: {
+      position: 'absolute',
+      top: 2,
+      right: 3,
+      fontSize: 9,
+      fontWeight: '700',
+      color: theme.colors.primary,
+      backgroundColor: theme.colors.surface,
+      borderRadius: 8,
+      paddingHorizontal: 4,
+      overflow: 'hidden',
+    },
+    buttonTextGen: {color: theme.colors.onPrimary},
+    // 队列胶囊条（面板入口，2026-08-27 实机验收增补：连点加抽不弹面板后
+    // 用户经 🛒 胶囊查看/管理队列）
+    queueCapsule: {
+      alignSelf: 'flex-start',
+      marginBottom: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: theme.radius.s,
+      backgroundColor: withOpacity(theme.colors.primary, 0.12),
+    },
+    queueCapsuleText: {
+      ...theme.typography.uiS,
+      color: theme.colors.primary,
+      fontWeight: '600',
+    },
     buttonSecondary: {backgroundColor: theme.colors.surface},
     buttonDanger: {backgroundColor: theme.colors.error},
-    buttonDisabled: {backgroundColor: theme.colors.surface},
-    // 任务进行期（loading/generating）：按钮灰置时文字降级（onSurfaceVariant），
-    // 与转圈（primary 色）共同构成「灰掉+动效」的进行中反馈
-    buttonTextDisabled: {color: theme.colors.onSurfaceVariant},
+    // 8-27 修订：禁用态改半透明主色（opacity 0.45）——旧实现 backgroundColor=surface
+    // 与吸底栏同色导致按钮「漂白隐形」（白钮白字白底栏）；半透明保留主色轮廓，
+    // 即大王原话「出图按钮灰掉」，文字随整段统一淡化。
+    buttonDisabled: {opacity: 0.45},
     buttonText: {
       color: theme.colors.onPrimary,
       ...theme.typography.uiM,

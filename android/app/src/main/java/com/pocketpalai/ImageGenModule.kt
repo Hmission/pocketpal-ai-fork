@@ -37,6 +37,7 @@ class ImageGenModule(reactContext: ReactApplicationContext) :
     llmPath: String, vaePath: String, backend: String,
   ): Boolean
   private external fun nativeUnloadModel(): Boolean
+  private external fun nativeCancelTxt2img(): Boolean
   private external fun nativeTxt2img(
     prompt: String, negativePrompt: String, seed: Long, steps: Int, cfg: Double,
     width: Int, height: Int, loraPath: String, loraMultiplier: Double, outPath: String,
@@ -66,6 +67,19 @@ class ImageGenModule(reactContext: ReactApplicationContext) :
       promise.resolve(nativeUnloadModel())
     } catch (e: Throwable) {
       promise.reject("UNLOAD_FAILED", e.message)
+    }
+  }
+
+  /**
+   * 任务购物车停止（IMAGEGEN_QUEUE_SPEC §八）：取消当前生成。
+   * 原子置位即返回（不阻塞 RN 线程）；native 采样/VAE 解码循环消费标志后干净退出。
+   */
+  @ReactMethod
+  fun cancelTxt2img(promise: Promise) {
+    try {
+      promise.resolve(nativeCancelTxt2img())
+    } catch (e: Throwable) {
+      promise.reject("CANCEL_FAILED", e.message)
     }
   }
 

@@ -66,6 +66,24 @@ jest.mock('../../../store/imageGenStore', () => ({
     failTask: jest.fn(),
     pushFailedTask: jest.fn(),
     deleteTask: jest.fn(),
+    // 任务购物车：镜像字段 + 队列动作（IMAGEGEN_QUEUE_SPEC——UI 全部读镜像）
+    queueState: 'idle',
+    queuePosition: -1,
+    queueItems: [],
+    queueItemsCount: 0,
+    queueTotalDraws: 0,
+    queueDrawsDone: 0,
+    queueDrawsFailed: 0,
+    queueSummary: {success: 0, failed: 0, total: 0},
+    initQueue: jest.fn().mockResolvedValue(undefined),
+    enqueueQueue: jest.fn(),
+    updateQueueItem: jest.fn().mockReturnValue(true),
+    removeQueueItem: jest.fn().mockResolvedValue(undefined),
+    clearQueue: jest.fn().mockResolvedValue(undefined),
+    startQueue: jest.fn().mockResolvedValue(undefined),
+    stopQueue: jest.fn().mockResolvedValue(undefined),
+    // D2 收口（IMAGEGEN_QUEUE_SPEC §十三 S1）：出图/队列共用 runGenTask 单链路
+    runGenTask: jest.fn().mockResolvedValue(null),
   },
 }));
 
@@ -103,6 +121,7 @@ const mockList = listAvailableModels as jest.Mock;
 const mockBeginTask = imageGenStore.beginTask as jest.Mock;
 const mockFinishTask = imageGenStore.finishTask as jest.Mock;
 const mockFailTask = imageGenStore.failTask as jest.Mock;
+const mockRunGenTask = imageGenStore.runGenTask as jest.Mock;
 const {buildErrorReport} = require('../../../utils/errorReport');
 
 describe('ImageGenScreen 编排层（P4 对齐）', () => {
@@ -119,6 +138,8 @@ describe('ImageGenScreen 编排层（P4 对齐）', () => {
     mockBeginTask.mockReturnValue('task_test_1');
     mockFinishTask.mockReset();
     mockFailTask.mockReset();
+    mockRunGenTask.mockReset();
+    mockRunGenTask.mockResolvedValue(null);
     (buildErrorReport as jest.Mock).mockReset();
     (buildErrorReport as jest.Mock).mockResolvedValue({
       summary: '报错摘要mock',
@@ -155,7 +176,7 @@ describe('ImageGenScreen 编排层（P4 对齐）', () => {
     // fireEvent.press 默认不传参，拦不住「onPress 直传带参回调」的回归——
     // 曾导致 handleGenerate(event) → event.trim() TypeError 被事件系统吞掉，
     // 两台真机「有按压缩放动效但出图无反应」（v144 实锤，注入三重复现）。
-    mockGenerate.mockResolvedValue('file:///tmp/gen_event.png');
+    mockRunGenTask.mockResolvedValue('file:///tmp/gen_event.png');
     const {getByPlaceholderText, getByTestId} = await renderAndWaitScan();
 
     await act(async () => {
@@ -171,12 +192,15 @@ describe('ImageGenScreen 编排层（P4 对齐）', () => {
     });
 
     await waitFor(() => {
-      expect(mockGenerate).toHaveBeenCalledWith(1024, 1024, 4, '一只猫');
+      expect(mockRunGenTask).toHaveBeenCalledWith(
+        expect.objectContaining({prompt: '一只猫', width: 1024, height: 1024}),
+        expect.objectContaining({onTaskStarted: expect.any(Function)}),
+      );
     });
   });
 
   it('出图流：输入提示词 → 点出图 → DreamLite 单通道（1024²·4 步）→ 入历史', async () => {
-    mockGenerate.mockResolvedValue('file:///tmp/gen_1.png');
+    mockRunGenTask.mockResolvedValue('file:///tmp/gen_1.png');
     const {getByPlaceholderText, getByText} = await renderAndWaitScan();
 
     await act(async () => {
@@ -190,23 +214,20 @@ describe('ImageGenScreen 编排层（P4 对齐）', () => {
     });
 
     await waitFor(() => {
-      expect(mockGenerate).toHaveBeenCalledWith(1024, 1024, 4, '一只猫');
+      expect(mockRunGenTask).toHaveBeenCalledWith(
+        expect.objectContaining({
+          prompt: '一只猫',
+          family: 'dreamlite',
+          width: 1024,
+          height: 1024,
+          steps: 4,
+        }),
+        expect.objectContaining({onTaskStarted: expect.any(Function)}),
+      );
     });
-    // 任务化契约：先建 running 任务，成功后 finishTask 回填 uri
-    expect(mockBeginTask).toHaveBeenCalledWith(
-      expect.objectContaining({
-        prompt: '一只猫',
-        family: 'dreamlite',
-        kind: 'generated',
-        width: 1024,
-        height: 1024,
-      }),
-    );
-    expect(mockFinishTask).toHaveBeenCalledWith(
-      'task_test_1',
-      'file:///tmp/gen_1.png',
-      expect.objectContaining({durationMs: expect.any(Number)}),
-    );
+    // D2 契约：任务化（beginTask/finishTask）下沉 runGenTask 内部——
+    // 编排层不再直调 beginTask/finishTask（编辑流除外）
+    expect(mockBeginTask).not.toHaveBeenCalled();
     expect(getByText(/生成完成（1024×1024）/)).toBeTruthy();
   });
 
@@ -224,8 +245,8 @@ describe('ImageGenScreen 编排层（P4 对齐）', () => {
     expect(queryByText(/生成完成/)).toBeNull();
   });
 
-  it('出图流：失败（uri=null）→ 任务保留为 failed（failTask 回填报错），不报生成完成', async () => {
-    mockGenerate.mockResolvedValue(null);
+  it('出图流：失败（uri=null）→ 不报生成完成（失败细节由 runGenTask 内部 failTask 保留）', async () => {
+    mockRunGenTask.mockResolvedValue(null);
     (imageGenStore as any).error = '引擎过热';
     const {getByPlaceholderText, getByText, queryByText} =
       await renderAndWaitScan();
@@ -241,17 +262,13 @@ describe('ImageGenScreen 编排层（P4 对齐）', () => {
     });
 
     await waitFor(() => {
-      expect(mockGenerate).toHaveBeenCalledWith(1024, 1024, 4, '一条龙');
-    });
-    expect(mockFinishTask).not.toHaveBeenCalled();
-    // 新契约：失败不再走底部 error 展示，而是 failTask 回填报错（页面保留可复制）
-    await waitFor(() => {
-      expect(mockFailTask).toHaveBeenCalledWith(
-        'task_test_1',
-        '报错摘要mock',
-        '报错详情mock',
+      expect(mockRunGenTask).toHaveBeenCalledWith(
+        expect.objectContaining({prompt: '一条龙'}),
+        expect.any(Object),
       );
     });
+    // D2 契约：失败细节（failTask 回填报错）在 runGenTask 内部——编排层只负责 UI 反馈
+    expect(mockFinishTask).not.toHaveBeenCalled();
     expect(queryByText(/生成完成/)).toBeNull();
   });
 
@@ -365,7 +382,7 @@ describe('ImageGenScreen 编排层（P4 对齐）', () => {
   });
 
   it('画幅档位：切换 16:9 后出图按 1344×768 走单通道', async () => {
-    mockGenerate.mockResolvedValue('file:///tmp/gen_169.png');
+    mockRunGenTask.mockResolvedValue('file:///tmp/gen_169.png');
     const {getByPlaceholderText, getByText} = await renderAndWaitScan();
 
     // 展开高级参数 → 选 16:9 档位
@@ -386,7 +403,10 @@ describe('ImageGenScreen 编排层（P4 对齐）', () => {
     });
 
     await waitFor(() => {
-      expect(mockGenerate).toHaveBeenCalledWith(1344, 768, 4, '海边日落');
+      expect(mockRunGenTask).toHaveBeenCalledWith(
+        expect.objectContaining({prompt: '海边日落', width: 1344, height: 768}),
+        expect.any(Object),
+      );
     });
   });
 });

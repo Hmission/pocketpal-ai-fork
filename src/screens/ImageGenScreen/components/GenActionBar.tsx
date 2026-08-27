@@ -31,6 +31,16 @@ export interface GenActionBarProps {
   taskKind: 'gen' | 'edit' | 'caption' | null;
   onEditArm: () => void;
   onGenerate: () => void;
+  /** 任务购物车：出图按钮切两半，左 ➕ 入队（IMAGEGEN_QUEUE_SPEC D1-A） */
+  onEnqueue?: () => void;
+  /** 入队总数徽标（>0 显示在 ➕ 上角） */
+  queueItemCount?: number;
+  /** 队列执行中（出图/➕ 均锁定） */
+  queueRunning?: boolean;
+  /** 队列面板入口（胶囊条点击）：仅队列非空时渲染 */
+  onOpenQueue?: () => void;
+  /** 胶囊摘要文案（如 “2 项 · 3 抽”） */
+  queueSummary?: string;
 }
 
 export const GenActionBar: React.FC<GenActionBarProps> = ({
@@ -43,12 +53,65 @@ export const GenActionBar: React.FC<GenActionBarProps> = ({
   taskKind,
   onEditArm,
   onGenerate,
+  onEnqueue,
+  queueItemCount = 0,
+  queueRunning = false,
+  onOpenQueue,
+  queueSummary,
 }) => {
   const theme = useTheme();
   const s = createStyles(theme);
+  const locked = loading || generating || queueRunning;
+
+  /** 出图按钮整体（含 ➕ 与「出图」两段）——⬆ 按钮语义与旧版完全等价 */
+  const genButton = (
+    <View style={[s.button, s.buttonGen, s.buttonGenSplit]}>
+      {onEnqueue && (
+        <TouchableOpacity
+          style={[s.buttonGenPlus, locked && s.buttonDisabled]}
+          disabled={locked}
+          onPress={onEnqueue}
+          testID="imagegen-enqueue">
+          <Text style={[s.buttonText, s.buttonTextGen]}>＋</Text>
+          {/* 8-27 队列按钮文本标签（大王：只有 + 号用户不懂语义，随段 opacity 统一淡化） */}
+          <Text style={s.buttonGenPlusLabel}>排队</Text>
+          {queueItemCount > 0 && (
+            <Text style={s.buttonGenBadge} testID="imagegen-queue-badge">
+              {queueItemCount}
+            </Text>
+          )}
+        </TouchableOpacity>
+      )}
+      <TouchableOpacity
+        style={[s.buttonGenMain, locked && s.buttonDisabled]}
+        disabled={locked}
+        testID="imagegen-generate"
+        onPress={() => onGenerate()}>
+        {loading || generating ? (
+          <CircularActivityIndicator
+            size={theme.iconSize.m}
+            color={theme.colors.primary}
+          />
+        ) : (
+          <Text style={[s.buttonText, s.buttonTextGen]}>出图</Text>
+        )}
+      </TouchableOpacity>
+    </View>
+  );
 
   return (
     <View style={s.bottomBar} testID="imagegen-action-bar">
+      {onOpenQueue && queueItemCount > 0 && (
+        <TouchableOpacity
+          onPress={onOpenQueue}
+          disabled={queueRunning}
+          style={[s.queueCapsule, queueRunning && s.buttonDisabled]}
+          testID="imagegen-queue-capsule">
+          <Text style={s.queueCapsuleText}>
+            🛒 队列（{queueSummary ?? `${queueItemCount} 项`}）▸
+          </Text>
+        </TouchableOpacity>
+      )}
       {isDream && (
         <View style={s.buttonRow}>
           <TouchableOpacity
@@ -57,7 +120,7 @@ export const GenActionBar: React.FC<GenActionBarProps> = ({
               s.buttonEdit,
               editArming && !editRgb && s.buttonDisabled,
             ]}
-            disabled={loading || generating || (editArming && !editRgb)}
+            disabled={locked || (editArming && !editRgb)}
             onPress={onEditArm}>
             {(loading || generating) && taskKind === 'edit' ? (
               <CircularActivityIndicator
@@ -70,73 +133,20 @@ export const GenActionBar: React.FC<GenActionBarProps> = ({
               </Text>
             )}
           </TouchableOpacity>
-          {/* onPress 必须显式无参调用（不可直传 onGenerate）：RN 会把 GestureResponderEvent
-              作为首参传入，若直传 handleGenerate(event)，可选参 promptOverride 会收到 event，
-              入口 (promptOverride ?? prompt).trim() 即抛 TypeError 被事件系统吞掉——
-              现象为「有按压缩放动效但出图无反应」（2026-08-20 两台真机 + 注入三重复现） */}
-          <TouchableOpacity
-            style={[
-              s.button,
-              s.buttonGen,
-              (loading || generating) && s.buttonDisabled,
-            ]}
-            disabled={loading || generating}
-            testID="imagegen-generate"
-            onPress={() => onGenerate()}>
-            {(loading || generating) && taskKind === 'gen' ? (
-              <CircularActivityIndicator
-                size={theme.iconSize.m}
-                color={theme.colors.primary}
-              />
-            ) : (
-              <Text
-                style={[
-                  s.buttonText,
-                  (loading || generating) && s.buttonTextDisabled,
-                ]}>
-                出图
-              </Text>
-            )}
-          </TouchableOpacity>
+          {genButton}
         </View>
       )}
       {!isDream && (
         <View style={s.buttonRow}>
-          {/* 非 Dream 编辑入口（2026-08-21）：预览区有图时常驻，点击由编排层
-              确认后自动切 DreamLite（SD3.5/Z-Image 无编辑引擎）；未加载不禁用 */}
           {hasEditableImage && (
             <TouchableOpacity
               style={[s.button, s.buttonEdit]}
-              disabled={loading || generating}
+              disabled={locked}
               onPress={onEditArm}>
               <Text style={[s.buttonText, s.buttonTextOnInfo]}>编辑</Text>
             </TouchableOpacity>
           )}
-          {/* 未加载不再灰置：点击由编排层弹引导（提示+展开模型下拉），新手友好 */}
-          <TouchableOpacity
-            style={[
-              s.button,
-              s.buttonGen,
-              (loading || generating) && s.buttonDisabled,
-            ]}
-            disabled={loading || generating}
-            testID="imagegen-generate"
-            onPress={() => onGenerate()}>
-            {loading || generating ? (
-              <CircularActivityIndicator
-                size={theme.iconSize.m}
-                color={theme.colors.primary}
-              />
-            ) : (
-              <Text
-                style={[
-                  s.buttonText,
-                  (loading || generating) && s.buttonTextDisabled,
-                ]}>
-                出图
-              </Text>
-            )}
-          </TouchableOpacity>
+          {genButton}
         </View>
       )}
     </View>

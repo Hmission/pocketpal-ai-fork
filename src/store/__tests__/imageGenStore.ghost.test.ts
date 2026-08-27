@@ -19,6 +19,26 @@ jest.mock('../../repositories/ImageGenTaskRepository', () => {
   };
 });
 
+// 2026-08-27：任务购物车（IMAGEGEN_QUEUE_SPEC）——队列仓库同款 mock 边界
+// （幽灵治理测试局部替换 react-native，真实仓库链会触碰 paths/Platform）
+jest.mock('../../repositories/ImageGenQueueRepository', () => ({
+  imageGenQueueRepository: {
+    loadAll: jest.fn().mockResolvedValue([]),
+    upsert: jest.fn().mockResolvedValue(undefined),
+    removeByQueueId: jest.fn().mockResolvedValue(undefined),
+    clearAll: jest.fn().mockResolvedValue(undefined),
+  },
+}));
+
+// runGenTask 任务化（IMAGEGEN_QUEUE_SPEC §六）引入 buildErrorReport——
+// errorReport.ts 依赖 react-native Platform，幽灵测试环境需同款 mock 边界
+jest.mock('../../utils/errorReport', () => ({
+  buildErrorReport: jest
+    .fn()
+    .mockResolvedValue({summary: '生成失败', detail: 'detail'}),
+  copyAndSaveErrorReport: jest.fn().mockResolvedValue(''),
+}));
+
 jest.mock('../../services/dreamLiteEngine', () => ({
   loadDreamLite: jest.fn(),
   unloadDreamLite: jest.fn(),

@@ -1,7 +1,7 @@
 import {appSchema, tableSchema} from '@nozbe/watermelondb';
 
 export default appSchema({
-  version: 9,
+  version: 10,
   tables: [
     tableSchema({
       name: 'chat_sessions',
@@ -153,6 +153,35 @@ export default appSchema({
         {name: 'error_summary', type: 'string', isOptional: true},
         {name: 'error_detail', type: 'string', isOptional: true},
         {name: 'created_at', type: 'number'},
+      ],
+    }),
+    // 生图队列（任务购物车，IMAGEGEN_QUEUE_SPEC v0.1）：快照字段入队冻结
+    tableSchema({
+      name: 'image_gen_queue',
+      columns: [
+        {name: 'prompt', type: 'string'},
+        {name: 'negative_prompt', type: 'string'},
+        {name: 'steps', type: 'number'},
+        {name: 'cfg', type: 'number'},
+        {name: 'width', type: 'number'},
+        {name: 'height', type: 'number'},
+        {name: 'ratio', type: 'string'},
+        {name: 'seed', type: 'number'},
+        {name: 'family', type: 'string'},
+        {name: 'model_id', type: 'string', isIndexed: true},
+        {name: 'lora_enabled', type: 'boolean'},
+        {name: 'lora_multiplier', type: 'number'},
+        // SD 族执行指令（入队时由组件层按 manifest 解析；自包含快照，执行零外部依赖）
+        {name: 'main_path', type: 'string', isOptional: true},
+        {name: 'companion_paths', type: 'string', isOptional: true}, // JSON
+        {name: 'backend', type: 'string', isOptional: true},
+        {name: 'lora_path', type: 'string', isOptional: true},
+        {name: 'total', type: 'number'},
+        {name: 'done', type: 'number'},
+        {name: 'failed', type: 'number'},
+        {name: 'status', type: 'string'}, // 'pending' | 'done' | 'failed'
+        {name: 'created_at', type: 'number'},
+        {name: 'updated_at', type: 'number'},
       ],
     }),
   ],

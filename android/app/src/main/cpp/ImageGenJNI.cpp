@@ -325,6 +325,10 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
        strstr(model_path_cstr, "Krea") != nullptr ||
        strstr(model_path_cstr, "krea") != nullptr);
   env->ReleaseStringUTFChars(modelPath, model_path_cstr);
+  // 8-27 Klein GPU 专项临时探针（用后即撤）：open CLPROF 逐 op 打印——编译面已常驻，
+  // 运行期零开销由 env 门控；定位 FLUX.2 出错算子后即删本行回零开销。
+  // 挂通用位置（不节 isMaliGpu）：K Pad 掉线期间临时由 K90(Adreno) 承担取证。
+  setenv("GGML_OPENCL_PROFILE", "1", 1);
   if (isMaliGpu()) {
     // 08-20 Mali 支持（红米平板）：Mali 走通用 fp32 路径。
     // Adreno fp16 内核在 Mali 上未验证且有累积精度风险 → DISABLE=1 强制 use_adreno_kernels=false；
@@ -493,6 +497,22 @@ Java_com_pocketpal_ImageGenModule_nativeUnloadModel(JNIEnv* /*env*/, jobject /*t
   }
   g_model_path.clear();
   return JNI_TRUE;
+}
+
+// 任务购物车停止能力（IMAGEGEN_QUEUE_SPEC §八）：取消当前生成。
+// 不能持 g_mutex——nativeTxt2img 全程持锁跑 generate_image（长任务），持锁会让
+// 本调用阻塞到生成结束（停止失效）。sd_cancel_generation 内部仅是原子 store
+// （sd.cpp cancellation_flag，采样/VAE 解码循环消费后干净退出），线程安全。
+// 指针读取不持锁的悬垂风险：cancel 仅在生成中由 JS 触发，此时 generate_image
+// 持锁运行、UI 锁定卸载——与 unload 时序天然互斥。
+JNIEXPORT jboolean JNICALL
+Java_com_pocketpal_ImageGenModule_nativeCancelTxt2img(JNIEnv* /*env*/, jobject /*thiz*/) {
+  sd_ctx_t* ctx = g_ctx;
+  if (ctx) {
+    sd_cancel_generation(ctx, SD_CANCEL_ALL);
+    return JNI_TRUE;
+  }
+  return JNI_FALSE;
 }
 
 JNIEXPORT jstring JNICALL
