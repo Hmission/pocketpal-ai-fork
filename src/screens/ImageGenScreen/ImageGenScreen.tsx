@@ -1373,25 +1373,34 @@ export const ImageGenScreen: React.FC = observer(() => {
           audio tab 不吸底（AudioWorkshopTab 保持自身布局） */}
       {workshopTab === 'image' ? (
         <KeyboardStickyView offset={{closed: 0, opened: insets.bottom}}>
-          <GenActionBar
-            isDream={isDream}
-            editArming={editArming}
-            editRgb={editRgb}
-            hasEditableImage={!!editSource || !!currentImage}
-            loading={imageGenStore.loading}
-            generating={imageGenStore.generating}
-            taskKind={taskKind}
-            onEditArm={handleEditArm}
-            onGenerate={handleGenerate}
-            onEnqueue={handleEnqueue}
-            queueItemCount={imageGenStore.queueItemsCount}
-            queueRunning={
-              imageGenStore.queueState === 'running' ||
-              imageGenStore.queueState === 'stopping'
-            }
-            onOpenQueue={() => setQueueVisible(true)}
-            queueSummary={`${imageGenStore.queueItemsCount} 项 · ${imageGenStore.queueTotalDraws} 抽`}
-          />
+          {/* 底部安全区避让（2026-08-29）：KeyboardStickyView closed=0 贴窗口物理底边，
+              手势导航设备上按钮被底边裁切；背景 surface 延伸到底 + 内容上移 insets
+              （同聊天输入条 insets 避让设计语言） */}
+          <View
+            style={{
+              paddingBottom: insets.bottom,
+              backgroundColor: theme.colors.surface,
+            }}>
+            <GenActionBar
+              isDream={isDream}
+              editArming={editArming}
+              editRgb={editRgb}
+              hasEditableImage={!!editSource || !!currentImage}
+              loading={imageGenStore.loading}
+              generating={imageGenStore.generating}
+              taskKind={taskKind}
+              onEditArm={handleEditArm}
+              onGenerate={handleGenerate}
+              onEnqueue={handleEnqueue}
+              queueItemCount={imageGenStore.queueItemsCount}
+              queueRunning={
+                imageGenStore.queueState === 'running' ||
+                imageGenStore.queueState === 'stopping'
+              }
+              onOpenQueue={() => setQueueVisible(true)}
+              queueSummary={`${imageGenStore.queueItemsCount} 项 · ${imageGenStore.queueTotalDraws} 抽`}
+            />
+          </View>
         </KeyboardStickyView>
       ) : null}
 
