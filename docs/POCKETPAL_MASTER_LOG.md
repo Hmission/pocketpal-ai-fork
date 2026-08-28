@@ -5,7 +5,7 @@ type: log
 status: active
 version: '1.0'
 created: '2026-08-27'
-updated: '2026-08-27'
+updated: '2026-08-28'
 relates:
   [
     POCKETPAL_UI_REMAINING_FIX_PLAN,
@@ -979,3 +979,29 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
 - **混窗隔离**：styles.ts 与 ImageGenScreen.tsx 含它窗（caption v5.10）改动，以补丁方式仅暂存本窗 hunk，它窗内容留在工作区未混入
 - **编码修复**：MASTER_LOG §113/§114 GBK 编码损伤（它窗曾以 GBK 提交）→ 30 行 GBK→UTF-8 归一，1400 U+FFFD 替换符清除，随本提交落库
 - **剩余工作区**：它窗在途变更（UI 一致性 caption 改造 / ggml flux 实验 / 巡检日志）与验收临时产物，均非本窗，由它窗各自收口
+
+---
+
+## §117 巡检哨兵 WARN「规则 SSOT 缺失 6/6」调查归档（2026-08-28，定时巡检窗口）
+
+### 117.1 背景
+
+- 定时巡检（任务 `fd945c4a-…`，每小时整点）自 17:29 起连续记录 WARN「规则 SSOT 引用缺失 6/6——hook 半激活风险，非 tracked 事故」；退出码始终 0，但 WARN 反复出现，大王要求调查确认是否半激活及对 tracked 防护的影响。
+
+### 117.2 调查结论（证据链）
+
+- **6 处缺失引用**（来源：治理修复方案 `.qoder/specs/治理规则记忆链路修复升级方案_task-6d0f.md` §2.1，被检方：`scripts/guard_tracked_files.js` B1 检查项）：`config/aios_mind_bootstrap.md`、`config/context_bootstrap_manifest.json`、`.cursor/rules/`、`scripts/hooks/compass.py`、`docs/platform/`、AGENTS.md 协议关键词（心智恢复/KG 优先/漏斗层级）。
+- **非无声删除**：5 条路径 `git ls-files --error-unmatch` 全部 `did not match`，`git log --all` 历史 commit 数均为 0——**从未入库**（结构性缺失，方案 6D 定位 D1），非「索引登记但工作区消失」事故形态。
+- **半激活定性**：仅治理类 hook 半激活（hooks_label_map.json B2 标注：gate-guard=partial / zero-shot-inject=partial / compass-711-gate=not-applicable）；`guard_tracked_files.js` 核心检测（git ls-files --deleted − 暂存删除）**不依赖任何 SSOT 引用**，退出码契约 0/1/2 语义不变。
+- **tracked 文件防护实际影响 = 零**：219 文件事故防线（索引对账 + pre-commit 挂载 + 定时巡检）完整生效。
+
+### 117.3 归档动作
+
+- `docs/POCKETPAL_GUARD_INSPECTION_LOG.md` 新增 §〇 归档段（引用清单/根因/半激活定性/处理动作）+ 18:00 巡检记录标注「已知 WARN，已归档见 §〇」。
+- **不补齐引用**：违背治理方案 §四「不搬母仓、不建空壳、不新增 SSOT 文档」边界；**不静默 WARN**：B1 存在意义即防假激活误判（hook 存在 ≠ 已守卫）。
+- 巡检日志文件首次入库（此前跨窗口累积记录均未 git add，随本窗提交落库）。
+
+### 117.4 闭环
+
+- 文档：MASTER_LOG §117 + GUARD_INSPECTION_LOG §〇 + 治理方案 B1 归档注记。
+- Git：commit + push（提交≠落袋，push 才闭环）。
