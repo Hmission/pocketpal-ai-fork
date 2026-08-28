@@ -1005,3 +1005,28 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
 
 - 文档：MASTER_LOG §117 + GUARD_INSPECTION_LOG §〇 + 治理方案 B1 归档注记。
 - Git：commit + push（提交≠落袋，push 才闭环）。
+
+---
+
+## §118 生图页吸底操作条安全区修复（2026-08-29，大王报障窗口）
+
+### 118.1 背景
+
+- 大王报障：生图页底部常驻出图按钮有一部分被页面底边切掉，需上移（真机可见，手势导航设备）。
+
+### 118.2 根因（代码实锤）
+
+- `KeyboardStickyView offset={{closed: 0, opened: insets.bottom}}`：键盘关闭时操作条吸附窗口物理底边（RN 0.82 + Android 15 edge-to-edge），而 `GenActionBar.bottomBar` paddingBottom 仅 8px < 手势条安全区（~15-24px），按钮下缘被导航区遮切。
+- 两侧预留不一致是根：内容区 paddingBottom 已含 `insets.bottom`（spacing.m + ACTION_BAR_RESERVE + insets.bottom），唯独操作条自身未吃进安全区。
+
+### 118.3 修复
+
+- KeyboardStickyView 内包一层 **surface 背景垫层 View**（paddingBottom=insets.bottom）：内容上移避让 + 背景延伸到底无断带。
+- 弃选方案：直接改 closed offset 上移——底部露出 background 色带（深色 #000 vs surface #0E0E0E 可见差异），且与内容区预留错位。
+- 同构参照：聊天输入条 inputContainer（键盘隐藏时 paddingBottom=insets.bottom）、Sheet/Actions 底部动作条（10+insets.bottom）——「背景容器 + insets padding 避让」为本仓底部吸底族既有模式；GenActionBar 组件零改动（保持纯展示可测，安全区由编排层与 KeyboardStickyView offset 同层管理）。
+
+### 118.4 门禁与提交
+
+- tsc 0 错 + 生图页 4 套件 55 用例全绿（Panels/编排层契约零回归）；commit `9493154`（fix(ImageGen): 底部出图按钮条上移避让安全区…）；按大王要求未单独构建（集中构建窗统一打）。
+- **混窗隔离**：ImageGenScreen.tsx 含它窗（caption v5.10 infoScroll）未提交改动，以「备份→临时还原→提交→恢复」隔离，它窗内容在工作区原样保留未混入（同 §116.8 惯例）。
+- **文档先行补课**：本窗口先改代码后补文档，违反 SPEC 首行铁律「UI 迭代先更新文档」，已补记 SPEC v5.11 版本行 + CHANGELOG 条目，向大王说明。
