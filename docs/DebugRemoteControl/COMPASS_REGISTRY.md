@@ -23,6 +23,20 @@ relates: [DRC_SPEC, COMPASS_SYSTEM_SSOT, STATE_COMPASS_ENGINE_SELF_NAVIGATION_SS
 | D4 锚（CP） | `CP-APP-NNN` 错误锚点 → errorRegistry + errorReport |
 | D5 态（ST） | `ST-APP-NNN` 状态指南针 → stateSnapshot STATE_MAP |
 | D6 策（SG） | nextAction 字段（导航=策略建议） |
+## 1.5 链路指南针（TR-APP-NNN）
+
+> 生图链路（提示词参数 -> 模型加载 -> 采样循环 -> VAE -> 图片输出）step 事件锚。与母仓 COMPASS_REGISTRY.md TR-APP-000~006 同编号。Klein Q5_K 链路排查沉淀（2026-08-30）。实现=轻量消费层（子仓不复制机制）。
+>
+> 登记表: | 编号 | 定位(链路断点) | 导航 | 深入 |
+> |---|---|---|---|
+> | TR-APP-000 | 链路异常汇总 chain_error | 断在 TR-APP-00X 段,直连该段排查动作 | sd.cpp 生图主链路 |
+> | TR-APP-001 | 生图入口(prompt/seed/尺寸/步数/cfg 入 JNI) | 参数校验/前后端对齐 | ImageGenJNI.cpp |
+> | TR-APP-002 | 模型加载完成(后端 CPU/OpenCL + 量化) | 权重/后端选择检查 | loadModel 链路 |
+> | TR-APP-003 | 采样 step N/Total(每步耗时) | 耗时/NaN 检查 | 采样器循环 |
+> | TR-APP-004 | UNet 去噪完成(latents 就绪) | latents 数值检查 | UNet 前向 |
+> | TR-APP-005 | VAE 解码完成(图像张量就绪) | 像素范围检查 | VAE decode |
+> | TR-APP-006 | 图片输出(保存/显示完成) | 输出路径/格式检查 | 保存链路 |
+
 
 ## 2. 错误指南针（CP-APP-NNN）
 

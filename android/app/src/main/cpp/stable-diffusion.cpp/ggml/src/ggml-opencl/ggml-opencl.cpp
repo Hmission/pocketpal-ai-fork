@@ -7184,7 +7184,7 @@ static void ggml_backend_opencl_buffer_set_tensor(ggml_backend_buffer_t buffer, 
         CL_CHECK(err);
 
 #ifdef GGML_OPENCL_USE_ADRENO_KERNELS
-        if (use_adreno_moe_kernels(backend_ctx, tensor)) {
+        if (true) { // 8-29 all Q5_K use trans4_ns layout
             cl_kernel kernel = backend_ctx->kernel_convert_block_q5_k_trans4_ns;
 
             int ne00 = tensor->ne[0];
@@ -7204,7 +7204,8 @@ static void ggml_backend_opencl_buffer_set_tensor(ggml_backend_buffer_t buffer, 
             CL_CHECK(clSetKernelArg(kernel, 8, sizeof(cl_uchar), &mask_0F));
             CL_CHECK(clSetKernelArg(kernel, 9, sizeof(cl_uchar), &mask_F0));
 
-            size_t global_work_size[] = {static_cast<size_t>(((ne01 + 63) / 64) * 64), static_cast<size_t>(ne00 / 256), static_cast<size_t>(ne02)};
+            // 8-29 FIX5: work-item owns 4 rows (m = 4*i01+{0..3}); global[0] = ceil(ne01/4) aligned to 64
+            size_t global_work_size[] = {static_cast<size_t>(((ne01 / 4 + 63) / 64) * 64), static_cast<size_t>(ne00 / 256), static_cast<size_t>(ne02)};
             size_t local_work_size[] = {64, 1, 1};
 
             cl_event evt;
@@ -7212,15 +7213,6 @@ static void ggml_backend_opencl_buffer_set_tensor(ggml_backend_buffer_t buffer, 
             CL_CHECK(clWaitForEvents(1, &evt));
             CL_CHECK(clReleaseMemObject(data_device));
 
-            cl_image_format img_format_q = {CL_R, CL_UNSIGNED_INT32};
-            cl_image_desc img_desc_q = {
-                CL_MEM_OBJECT_IMAGE1D_BUFFER,
-                static_cast<size_t>(ggml_nelements(tensor) / 8),
-                0, 0, 0, 0, 0, 0, 0,
-                { extra->q }
-            };
-            extra->q_img = clCreateImage(context, CL_MEM_READ_ONLY, &img_format_q, &img_desc_q, NULL, &err);
-            CL_CHECK(err);
             tensor->extra = extra;
 
             return;
@@ -7228,10 +7220,10 @@ static void ggml_backend_opencl_buffer_set_tensor(ggml_backend_buffer_t buffer, 
 #endif // GGML_OPENCL_USE_ADRENO_KERNELS
 
 #ifdef GGML_OPENCL_USE_ADRENO_KERNELS
+        // 8-29 定谳:Q5_K convert 恒用 shuffle 直拷内核(kernel_convert_block_q5_K)——
+        // 该内核输出 q=qs原样/qh=qh原样/s原样,与 gemm_noshuffle 的读法逐位匹配(CPU 语义!!)。
+        // noshuffle 重排(低半/高半分离)与 gemm 的 u16-连续读错配(偶数权重对、奇数权重错)。
         cl_kernel kernel = backend_ctx->kernel_convert_block_q5_K;
-        if (use_adreno_kernels(backend_ctx, tensor)) {
-            kernel = backend_ctx->kernel_convert_block_q5_K_noshuffle;
-        }
 #else
         cl_kernel kernel = backend_ctx->kernel_convert_block_q5_K;
 #endif
@@ -7268,22 +7260,28 @@ static void ggml_backend_opencl_buffer_set_tensor(ggml_backend_buffer_t buffer, 
             const char * cname = ggml_get_name(tensor);
             if (cname != nullptr && strstr(cname, "txt_mlp.2") != nullptr) {
                 CL_CHECK(clWaitForEvents(1, &evt));
-                ggml_fp16_t cq[16]; unsigned char cqh[16]; unsigned char cs[12]; ggml_fp16_t cd0, cdm0;
-                CL_CHECK(clEnqueueReadBuffer(queue, extra->q,  CL_TRUE, 0, 32,        cq,  0, NULL, NULL));
-                CL_CHECK(clEnqueueReadBuffer(queue, extra->qh, CL_TRUE, 0, 16,        cqh, 0, NULL, NULL));
+                const int64_t cn_q = (int64_t)tensor->ne[0] * tensor->ne[1] / 256; // num blocks
+                const int64_t cpos[4] = {0, cn_q / 4, cn_q / 2, cn_q * 3 / 4};
+                for (int cp_i = 0; cp_i < 4; cp_i++) {
+                    const int64_t c_off = cpos[cp_i] * 128; // q array: 128B per block
+                    ggml_fp16_t cq[8];
+                    unsigned char cqh[8];
+                    GGML_LOG_INFO("[CTXPROBE] q5K-CONV2 src0=%s pos=%lld/%lld off=%lld\n",
+                        cname, (long long)cpos[cp_i], (long long)cn_q, (long long)c_off);
+                    CL_CHECK(clEnqueueReadBuffer(queue, extra->q,  CL_TRUE, c_off, 16, cq,  0, NULL, NULL));
+                    CL_CHECK(clEnqueueReadBuffer(queue, extra->qh, CL_TRUE, c_off / 4, 8, cqh, 0, NULL, NULL)); // 32B per block
+                    GGML_LOG_INFO("[CTXPROBE] q5K-CONV2 q=%04x,%04x,%04x,%04x,%04x,%04x,%04x,%04x qh=%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x\n",
+                        (unsigned)cq[0], (unsigned)cq[1], (unsigned)cq[2], (unsigned)cq[3],
+                        (unsigned)cq[4], (unsigned)cq[5], (unsigned)cq[6], (unsigned)cq[7],
+                        (unsigned)cqh[0], (unsigned)cqh[1], (unsigned)cqh[2], (unsigned)cqh[3],
+                        (unsigned)cqh[4], (unsigned)cqh[5], (unsigned)cqh[6], (unsigned)cqh[7]);
+                }
+                unsigned char cs[12]; ggml_fp16_t cd0, cdm0;
                 CL_CHECK(clEnqueueReadBuffer(queue, extra->s,  CL_TRUE, 0, 12,        cs,  0, NULL, NULL));
                 CL_CHECK(clEnqueueReadBuffer(queue, extra->d,  CL_TRUE, 0, 2,         &cd0, 0, NULL, NULL));
                 CL_CHECK(clEnqueueReadBuffer(queue, extra->dm, CL_TRUE, 0, 2,         &cdm0, 0, NULL, NULL));
-                GGML_LOG_INFO("[CTXPROBE] q5K-CONV src0=%s\n  q=%04x,%04x,%04x,%04x,%04x,%04x,%04x,%04x,%04x,%04x,%04x,%04x,%04x,%04x,%04x,%04x\n  qh=%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x\n  s=%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x d=%.5f dm=%.5f\n",
+                GGML_LOG_INFO("[CTXPROBE] q5K-CONV src0=%s s=%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x d=%.5f dm=%.5f\n",
                     cname,
-                    (unsigned)cq[0], (unsigned)cq[1], (unsigned)cq[2], (unsigned)cq[3],
-                    (unsigned)cq[4], (unsigned)cq[5], (unsigned)cq[6], (unsigned)cq[7],
-                    (unsigned)cq[8], (unsigned)cq[9], (unsigned)cq[10], (unsigned)cq[11],
-                    (unsigned)cq[12], (unsigned)cq[13], (unsigned)cq[14], (unsigned)cq[15],
-                    (unsigned)cqh[0], (unsigned)cqh[1], (unsigned)cqh[2], (unsigned)cqh[3],
-                    (unsigned)cqh[4], (unsigned)cqh[5], (unsigned)cqh[6], (unsigned)cqh[7],
-                    (unsigned)cqh[8], (unsigned)cqh[9], (unsigned)cqh[10], (unsigned)cqh[11],
-                    (unsigned)cqh[12], (unsigned)cqh[13], (unsigned)cqh[14], (unsigned)cqh[15],
                     (unsigned)cs[0], (unsigned)cs[1], (unsigned)cs[2], (unsigned)cs[3],
                     (unsigned)cs[4], (unsigned)cs[5], (unsigned)cs[6], (unsigned)cs[7],
                     (unsigned)cs[8], (unsigned)cs[9], (unsigned)cs[10], (unsigned)cs[11],
@@ -7293,7 +7291,7 @@ static void ggml_backend_opencl_buffer_set_tensor(ggml_backend_buffer_t buffer, 
 
         tensor->extra = extra;
 #ifdef GGML_OPENCL_USE_ADRENO_KERNELS
-        if (use_adreno_kernels(backend_ctx, tensor)) {
+        if (use_adreno_kernels(backend_ctx, tensor) && tensor->type != GGML_TYPE_Q5_K) { // 8-29 Q5_K skipped (trans4 already [kg][m])
 
             int M = tensor->ne[1];
             int K = tensor->ne[0];
@@ -14203,6 +14201,29 @@ static void ggml_cl_mul_mat_q5_K_f32_adreno(ggml_backend_t backend, const ggml_t
 
         backend_ctx->enqueue_ndrange_kernel(kernel, 3, global_work_size, local_work_size, dst);
 
+        // 8-29 q5K-BTRANS: B 转置正确性终审。
+        // b_img_trans(b_sub_buf_trans) = kernel_transpose_32_16 输出 [K][N] F16;
+        // b_sub_buf = 原始激活 [N][K] F32。正确时 trans[i] == b[i*K](⊙列)。
+        if (sname != nullptr &&
+            (strstr(sname, "txt_mlp.2") != nullptr || strstr(sname, "img_mlp.2") != nullptr ||
+             strstr(sname, "qkv") != nullptr)) {
+            clFinish(backend_ctx->queue);
+            std::vector<float> bcol(16);
+            for (int zz = 0; zz < 16 && zz < N; zz++) {
+                CL_CHECK(clEnqueueReadBuffer(backend_ctx->queue, b_sub_buf, CL_TRUE,
+                    (size_t)zz * K * sizeof(float), sizeof(float), &bcol[zz], 0, NULL, NULL));
+            }
+            ggml_fp16_t t0[16];
+            CL_CHECK(clEnqueueReadBuffer(backend_ctx->queue, b_sub_buf_trans, CL_TRUE,
+                0, 16 * sizeof(ggml_fp16_t), t0, 0, NULL, NULL));
+            clFinish(backend_ctx->queue);
+            GGML_LOG_INFO("[CTXPROBE] q5K-BTRANS src0=%s K=%d N=%d\n  bcol=%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f\n  trans=%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f\n",
+                sname, K, N,
+                bcol[0], bcol[1], bcol[2], bcol[3], bcol[4], bcol[5], bcol[6], bcol[7],
+                ggml_fp16_to_fp32(t0[0]), ggml_fp16_to_fp32(t0[1]), ggml_fp16_to_fp32(t0[2]), ggml_fp16_to_fp32(t0[3]),
+                ggml_fp16_to_fp32(t0[4]), ggml_fp16_to_fp32(t0[5]), ggml_fp16_to_fp32(t0[6]), ggml_fp16_to_fp32(t0[7]));
+        }
+
         // CTXPROBE: read back input b for every q5_K GEMM (name shown)
         clFinish(backend_ctx->queue);
         std::vector<float> bbuf((size_t)(K * N));
@@ -14278,6 +14299,17 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
 
     ggml_tensor_extra_cl * extra0 = (ggml_tensor_extra_cl *)src0->extra;
     ggml_tensor_extra_cl * extra1 = (ggml_tensor_extra_cl *)src1->extra;
+    // 8-29 SRC1VIEW: src1 视图/偏移取证(两个内核共享!)——名字+ne+view_offs+offset
+    {
+        const char * s1n = ggml_get_name(src1);
+        const char * s0n = ggml_get_name(src0);
+        if (s0n != nullptr && (strstr(s0n, "txt_mlp.2") != nullptr || strstr(s0n, "qkv") != nullptr)) {
+            GGML_LOG_INFO("[CTXPROBE] SRC1VIEW src0=%s src1=%s src1ne=%lld,%lld view_offs=%lld offset=%lld data_dbg=%p\n",
+                s0n, s1n != nullptr ? s1n : "?", (long long)src1->ne[0], (long long)src1->ne[1],
+                (long long)src1->view_offs, (long long)extra1->offset, (void*)extra1->data_device);
+        }
+    }
+
     ggml_tensor_extra_cl * extrad = (ggml_tensor_extra_cl *)dst->extra;
 
     cl_ulong offset0 = extra0->offset + (src0->type == GGML_TYPE_BF16 ? src0->view_offs * 2 : src0->view_offs);
@@ -14409,7 +14441,7 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
             return;
         }
 
-        // q5_K x fp32
+        // q5_K x fp32 —— 8-29 定谳:adreno 路径恢复(convert 已改 shuffle 直拷)
         if (src0t == GGML_TYPE_Q5_K && src1t == GGML_TYPE_F32) {
             ggml_cl_mul_mat_q5_K_f32_adreno(backend, src0, src1, dst);
             return;

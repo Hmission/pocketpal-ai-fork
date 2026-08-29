@@ -1102,61 +1102,96 @@ kernel void kernel_convert_block_q5_k_trans4_ns(
     uchar mask_0F,
     uchar mask_F0
 ) {
-    uint i00 = get_global_id(1);
-    uint i01 = get_global_id(0);
+    uint i00 = get_global_id(1);   // kb (0..K/256-1)
+    uint i01 = get_global_id(0);   // group: 4 rows m = 4*i01 + {0,1,2,3}
     uint i02 = get_global_id(2);
 
-    if (i01 >= ne01) {
+    uint ne00_blk = ne00 / QK_K;
+
+    // 8-29 FIX5 (FINAL): one work-item owns FOUR rows m0..m3 and packs FOUR
+    // DIFFERENT per-block values into uint writes (4-byte atomic, dodges Adreno
+    // sub-word write bug). gemm reads:
+    //   q   u16[(ki/4)][m]  = (kb*64+jj, m) -> file block (m*36+kb) qs u16[jj]
+    //   qh  u8 [(ki/8)][m]  = (kb*32+k, m) -> file block m*qb+kb qh[k]
+    //   d   half[kb][m]     -> file block m*qb+kb d
+    //   dm  half[kb][m]     -> ...
+    //   s   u8 [m][kb*12+i] -> file block m*qb+kb s[i]
+    // Earlier FIX4 packed identical values across m (block pairing broken:
+    // m and m+1 live in DIFFERENT file blocks -> values differ). File anchors
+    // prove it: blk0/36/72 qs_u16[0] = b063/afa3/fb28 (all different).
+
+    uint m0 = i01 * 4;
+    if (m0 >= ne01) {
         return;
     }
+    uint m1 = m0 + 1, m2 = m0 + 2, m3 = m0 + 3;
+    uint base_blk = i02 * ne00_blk * ne01;
 
-    uint ne00_blk = ne00 / QK_K;
-    uint src_blk_offset = i00 + i01 * ne00_blk + i02 * ne00_blk * ne01;
-    uint dst_blk_offset = i01 + i00 * ne01     + i02 * ne00_blk * ne01;
+    __global struct block_q5_K * b0 = src0 + (m0)     * ne00_blk + i00 + base_blk;
+    __global struct block_q5_K * b1 = src0 + (m1)     * ne00_blk + i00 + base_blk;
+    __global struct block_q5_K * b2 = src0 + (m2)     * ne00_blk + i00 + base_blk;
+    __global struct block_q5_K * b3 = src0 + (m3)     * ne00_blk + i00 + base_blk;
 
-    __global struct block_q5_K * b = src0 + src_blk_offset;
+    // --- d / dm: 4 rows -> 2 uint (half pair per uint) ---
+    {
+        global uint * d32  = (global uint *)dst_d;
+        global uint * dm32 = (global uint *)dst_dm;
+        uint kb = i00 + i02 * ne00_blk;
+        uint ua = kb * (ne01 / 2) + i01 * 2;
+        // 8-29 FIX6: half bit pattern must use as_ushort() (bitcast), NOT (ushort)
+        // numeric cast (half->ushort converts value, e.g. 0.00007 -> 0 -> d all zeros!)
+        d32[ua + 0]  = (uint)as_ushort(b0->d)  | ((uint)as_ushort(b1->d)  << 16);
+        dm32[ua + 0] = (uint)as_ushort(b0->dm) | ((uint)as_ushort(b1->dm) << 16);
+        d32[ua + 1]  = (uint)as_ushort(b2->d)  | ((uint)as_ushort(b3->d)  << 16);
+        dm32[ua + 1] = (uint)as_ushort(b2->dm) | ((uint)as_ushort(b3->dm) << 16);
+    }
 
-    dst_d [dst_blk_offset] = b->d;
-    dst_dm[dst_blk_offset] = b->dm;
-
-    for (int k = 0; k < 8; k++) {
-        uchar b0 = 0, b1 = 0, b2 = 0, b3 = 0;
-        for (int bit = 0; bit < 8; bit++) {
-            b0 |= (uchar)(((b->qh[bit]      >> k) & 1) << bit);
-            b1 |= (uchar)(((b->qh[8  + bit] >> k) & 1) << bit);
-            b2 |= (uchar)(((b->qh[16 + bit] >> k) & 1) << bit);
-            b3 |= (uchar)(((b->qh[24 + bit] >> k) & 1) << bit);
+    // --- qh: 4 rows -> 1 uint (4 distinct uchar) ---
+    {
+        global uint * qh32 = (global uint *)dst_qh;
+        for (int k = 0; k < QK_K/8; ++k) {
+            uint row = i00 * (QK_K/8) + k + i02 * ne00_blk * (QK_K/8);
+            uint ua = row * (ne01 / 4) + i01;
+            uint packed = (uint)b0->qh[k]
+                        | ((uint)b1->qh[k] << 8)
+                        | ((uint)b2->qh[k] << 16)
+                        | ((uint)b3->qh[k] << 24);
+            qh32[ua] = packed;
         }
-        uint packed = (uint)b0 | ((uint)b1 << 8) | ((uint)b2 << 16) | ((uint)b3 << 24);
-        dst_qh[i01 + (i00 * 8 + k) * ne01 + i02 * ne00_blk * 8 * ne01] = packed;
     }
 
-    uint4 qv[8];
-    uchar * qv_bytes = (uchar *)qv;
-    for (int i = 0; i < QK_K / 64; ++i) {
-        for (int j = 0; j < 16; ++j) {
-            uchar x0 = b->qs[i*32 + 2*j];
-            uchar x1 = b->qs[i*32 + 2*j + 1];
-
-            qv_bytes[i*32 + j     ] = convert_uchar(x0 & mask_0F) | convert_uchar((x1 & mask_0F) << 4);
-            qv_bytes[i*32 + j + 16] = convert_uchar((x0 & mask_F0) >> 4) | convert_uchar(x1 & mask_F0);
+    // --- q: 4 rows -> 2 uint (u16 pair per uint) ---
+    {
+        global uint * q32 = (global uint *)dst_qs;
+        for (int jj = 0; jj < QK_K/4; ++jj) {
+            uint row = i00 * (QK_K/4) + jj + i02 * ne00_blk * (QK_K/4);
+            uint ua = row * (ne01 / 2) + i01 * 2;
+            ushort u0 = (ushort)(b0->qs[2*jj] | ((ushort)b0->qs[2*jj+1] << 8));
+            ushort u1 = (ushort)(b1->qs[2*jj] | ((ushort)b1->qs[2*jj+1] << 8));
+            ushort u2 = (ushort)(b2->qs[2*jj] | ((ushort)b2->qs[2*jj+1] << 8));
+            ushort u3 = (ushort)(b3->qs[2*jj] | ((ushort)b3->qs[2*jj+1] << 8));
+            q32[ua + 0] = (uint)u0 | ((uint)u1 << 16);
+            q32[ua + 1] = (uint)u2 | ((uint)u3 << 16);
         }
     }
 
-    uint base = i02 * ne00_blk * ne01 * 32 + i00 * ne01 * 32 + i01;
-    #pragma unroll
-    for (int p = 0; p < 8; ++p) {
-        uint4 v = qv[p];
-        dst_qs[base + (p * 4 + 0) * ne01] = v.x;
-        dst_qs[base + (p * 4 + 1) * ne01] = v.y;
-        dst_qs[base + (p * 4 + 2) * ne01] = v.z;
-        dst_qs[base + (p * 4 + 3) * ne01] = v.w;
-    }
-
-    __global uchar * s_dst = dst_s + (i02 * ne01 + i01) * ne00_blk * K_SCALE_SIZE + i00 * K_SCALE_SIZE;
-    #pragma unroll
-    for (int i = 0; i < K_SCALE_SIZE; ++i) {
-        s_dst[i] = b->s[i];
+    // --- s: 12 bytes per block -> 3 uint (4 distinct bytes per uint) ---
+    // Layout [m][kb*12+i] -> 4 rows per work-item.
+    {
+        global uint * s32 = (global uint *)dst_s;
+        uint s_base = (i02 * ne01 + m0) * (ne00_blk * 3) + i00 * 3;
+        __global struct block_q5_K * bs[4] = {b0, b1, b2, b3};
+        #pragma unroll
+        for (int r = 0; r < 4; ++r) {
+            #pragma unroll
+            for (int j = 0; j < 3; ++j) {
+                uint packed = (uint)bs[r]->s[4*j]
+                            | ((uint)bs[r]->s[4*j+1] << 8)
+                            | ((uint)bs[r]->s[4*j+2] << 16)
+                            | ((uint)bs[r]->s[4*j+3] << 24);
+                s32[s_base + r * (ne00_blk * 3) + j] = packed;
+            }
+        }
     }
 }
 

@@ -1138,4 +1138,72 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
 ### 123.5 闭环与待收口
 
 - Git：本窗口变更精确提交（排除他窗在途文件与巡检自动记录）；**不 push**（网络挂起）。
-- 待网络恢复：补推累计 commit；guard 巡检确认 6/6 归零（junction 已修复）；Klein 探针撤除提醒（§122）；pocketcl 入库决策（本仓 or 独立仓）。
+- 待网络恢复：补推累计 commit；guard 巡检确认 6/6 归零（junction 已修复）；Klein 探针撤除提醒（§122）；pocketcl 入库决策（本仓 or 独立仓）
+
+---
+
+## §124 音频模型直推 + 音频页 UI 合规修复（2026-08-29，小米13 真机窗口）
+
+### 124.1 投屏与装机
+
+- 重新拉起 M13（小米13 66b1777f）+ K90（aab688d9）双投屏（清理旧 scrcpy 僵尸窗口）
+- 后台 adb install 在 PowerShell 会话下静默卡死（CPU≈0 无输出）→ 改前台 push /data/local/tmp + pm install -r（8s 传输，一次 Success）
+- 最新改版 APK 装小米13（覆盖安装，数据完好）
+
+### 124.2 音频模型直推（真机验证全就绪）
+
+- TTS 三引擎（Kokoro 330MB / Supertonic 380MB / Kitten 57MB）推入 App 私有目录 files/tts/{engine}（push /data/local/tmp → chmod a+rX → run-as cp -r）；SHERPA 生成链副本（kokoro tokens.txt 115 音素、supertonic unicode_indexer.bin 65536 ints + F1-F5/M1-M5 voice .bin 各 51760B）PC 端 Node 预生成（对齐 sherpaConvert 逻辑）；kitten_sherpa.onnx 22.7MB 从 hf-mirror 补下载（本地原本缺失）；espeak-ng-data 复用 kokoro 同源标准包（251 文件 17MB）
+- ASR SenseVoice（model.int8.onnx 228MB + tokens.txt）直推共享存储 AIOS/models/audio/sense-voice-zh-en-ja-ko-yue/（MANAGE_EXTERNAL_STORAGE appop 覆盖装后需 App 冷启动重刷 asrState）
+- 真机验证：音频工坊转写段「SenseVoice · 已就绪」+ 顶栏引擎下拉三引擎全部「已就绪」（8 条历史产物/播放器正常）
+
+### 124.3 音频页 UI 合规修复（AUDIO_UI_SPEC v1.9）
+
+- emoji 图标化（§12.5）：历史卡 🎙/🎵/⏸→MicIcon/HeadphonesMdIcon/PauseIcon（新自绘 pause.svg，Lucide 同族 2px）、播放大键 ▶/⏸→PlayIcon/PauseIcon、转写标题 📝 去除
+- 触区合规（§9）：分段钮/操作条按钮/音色步数 chip/折叠钮 hitSlop 补足 44dp
+- 按钮前景语义 token 化（§1.6）：复制/发送/分享/删除 → onSuccess/onInfo/onDanger；primary 底白字（下载模型/播放键）维持 B56② 评审豁免
+- 重生成按钮语义色修正：info 蓝底 → warning 橙底（§1.3 再次生成=warning，对齐生图页）
+- 转写卡标题域色错位修正：反推紫 imageInsight → 中性 onSurface（audioTranscribeTitle）
+- 历史卡选中态差异 SPEC 登记（描边 vs 生图遮罩：音频卡 icon+短文字遮罩不可读）
+- SenseVoice 管理行 spec 闭合（§3.4：与生成段顶栏引擎格局并存）
+
+### 124.4 踩坑
+
+- **Metro 缓存僵死**：styles.ts 改动未进 bundle（gradle up-to-date 判定 + metro transform 缓存陈旧）——症状：bundle 含新 TSX 引用（PauseIcon/MicIcon）但缺新样式键（audioBtnTextCopy/audioBtnWarn/audioTranscribeTitle False）；真机 content-desc 残留 🎵 实体。修复：清 %LOCALAPPDATA%\Temp\metro-cache + gradlew assembleProdDebug --rerun-tasks（817 tasks 全量重跑 6m21s）；验证方法：node grep bundle 关键键
+- 覆盖安装后首启协议弹层属正常流程（数据未丢），天气 App 误前台需「退出」
+
+### 124.5 待收口
+
+- git 提交（本窗口改动：AudioWorkshopTab.tsx/styles.ts/index.ts/pause.svg/SPEC v1.9/测试同步）。
+
+
+## §125 Klein Q5_K OpenCL 链路根治(方案A定谳)窗口闭环(2026-08-30)
+
+### 125.1 任务
+- Klein (FLUX.2 Klein 4B) Q4_K_M 混合量化在 Adreno OpenCL 生图赭石/纯色/纹理,根因定位与修复(第九~十段续接)。
+
+### 125.2 根因定谳(洋葱三层对账:文档/代码/实测)
+- P0-1 trans4 'm方向打包' 错:uint 打包把相邻 2 个 m 写成相同值,但 m 与 m+1 属不同文件块(块 m*36+kb),值必然不同 -> 奇数 m 权重错(文件锚实锤:b063/afa3/fb28/e698 各不同)。
+- P0-2 qh uint* 4 倍膨胀:内核签名 dst_qh 为 uint*,旧写法 dst_qh[addr]=uchar 提升为 uint 写,字节地址 4 倍膨胀(q5K-A 呈 84,00,00,00 模式)。
+- P0-3 d/dm half 数值转换:uint 打包用 (ushort)half 是数值转换(0.00007->0),d/dm 全零 -> GEMM scale=0 -> 输出全零。须 as_ushort() 位级 bitcast(FIX6)。
+- P0-4 Adreno OpenCL sub-word write bug:uchar/ushort/half 写 4 字节对齐地址清零相邻字节(q5K-A 呈 00c5,0000 模式) -> 全面改用 uint 4 字节原子写绕行。
+- 方案A:trans4 内核重写,每 work-item 处理 4 个 m(m=4*i01+{0..3}),从 4 个不同文件块取数打包 4 个不同值入 uint;enqueue global[0]=ceil(ne01/4)。
+
+### 125.3 门禁
+- G3 构建:多次 BUILD SUCCESSFUL(2-3min)。
+- G4 装机:kgV(FIX5)/kgW(FIX6 含 as_ushort)均 adb install -r 成功 + force-stop 冷启。
+- G5 验证:kgV 实锤 q5K-A 锚点全对(b063,afa3,fb28,e698,ebab,4cd0,2309,5052 与 qh=5f,55,27,4d,89,fb,2a,25 逐字节=文件),但 d/dm 全零(见 P0-3);FIX6 后 kgW 待真机验证(判据:d0 非零,node_604 std≈31.86,画面正常)。
+
+### 125.4 变更清单
+- android/.../ggml-opencl/kernels/cvt.cl:trans4 内核方案A重写(FIX5)+ d/dm as_ushort(FIX6)。
+- android/.../ggml-opencl/ggml-opencl.cpp:Q5_K convert 恒走 trans4_ns(if true) + enqueue global[0]=ne01/4 + 转置防御(Q5_K 跳过) + q_img 泄漏源删除。
+- 母仓 F:\Cursor\OneTakeMVP/docs/platform/COMPASS_REGISTRY.md:登记 TR-APP-000~006 生图链路指南针(同步纯净仓 F:\AIOS)。
+
+### 125.5 探针清单(用后即撤,新窗口验证后撤除)
+- q5K-A(权重直出锚)/q5K-DST(GEMM 输出对账)/q5K-BTRANS(B 转置)/q5K-CONV2(convert 四点)/CLEAN b/src1view 等,均在 ggml-opencl.cpp 与 cvt.cl。
+
+### 125.6 待收口(接力新窗口)
+- 1. 跑 kgW 真机验证(判据如上),通过后撤全部探针。
+- 2. 连仓修复:f:\pp 6 处 SSOT 缺失引用(config/aios_mind_bootstrap.md、config/context_bootstrap_manifest.json、.cursor/rules/、scripts/hooks/compass.py、docs/platform/、AGENTS.md 协议关键词)——机制共享母仓,子仓轻量。
+- 3. 生图链路 TR-APP 打点轻量实现(子仓):JNI 入口/模型加载/step/UNet/VAE/输出,失败 chain_error 输出 TR-APP-NNN。
+- 4. 本窗口变更已提交(git);Klein 验证闭环后补验报告。
+
