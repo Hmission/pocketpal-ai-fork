@@ -210,3 +210,38 @@ Pocket Chick 试验田产数据 → PocketCL 萃取公共品 → 社区反馈 �
 - [ ] 审 `src/locales/`，筛通用 key 组 upstream 兼容 PR（与 l10n 维护纪律同轨）
 - [ ] 引擎层补丁走 llama.rn 上游（与 PocketCL T4 合并排期）
 - [ ] 上游发「fork 介绍 + 贡献意向」Discussion（以通用能力表述，不带小黄鸡品牌 IP）
+
+---
+
+## 十三、Phase 1 T0 内核资产剖面（2026-08-29）
+
+> 摸底结论：可合回上游的通用资产 5 项（A 类），项目自研/设备策略 4 项（B 类），在途不剖面 1 项（C 类）。
+
+### 13.1 A 类：可合回上游（ggml/sd.cpp，通用正确性/性能修复）
+
+| 资产 | 载体提交 | 实证 | 上游价值 |
+|---|---|---|---|
+| Mali half-prec tiled GEMM 变体（mul_mm_q4_k/q5_k_f32_l4_lm + PP_MALI_FP16_LM 门控，half local + fp32 累加） | f3b3f2b | 512² 采样 2.86×、512×768 3.42×（画质无损 nan=0） | ★★★★★ 全 Mali 手机受益 |
+| CLPROF 算子级探针（CL_QUEUE_PROFILING 编译开关 + env 门控 + logcat top-N 聚合，运行时零开销） | f3b3f2b | 凭猜 mul_mv flat 1.09× → 探针命中 tiled GEMM 2.86× | ★★★★ 通用优化方法论工具 |
+| qcom 内核运行时 gpu_family 双重守卫（编译期宏 + 运行时家族过滤，Mali 编译 qcom 扩展必炸） | 本仓历史 | 跨厂商编译失败根治 | ★★★★★ 跨平台正确性 |
+| F16 KQ/KQV 路径 use_adreno_kernels 守卫 | 107ae9c | SD3.5 白图 NaN 终极根因修复 | ★★★★ 数值正确性 |
+| 512px VAE tiled 解码（graph 1.94GB→416MB，9 tiles） | f69df2a | OOM 根治 | ★★★★ 内存受限设备通用 |
+
+### 13.2 B 类：项目自研/设备策略（不进上游，归 PocketCL 设备层与调度层）
+
+| 资产 | 载体提交 | 说明 |
+|---|---|---|
+| ggml-opencl 设备白名单（Mali 准入） | e2ad204 | 硬件列表属产品策略，上游不采纳；归设备 DB |
+| q4_0 半精度变体 + te=disk + gpuPolicy 声明式门控 | 1efb267 | klein 平板准入；归 manifest/设备分级 |
+| Adreno 840 xmem/noshuffle/q5/q6 l4_lm 内核族适配 | 本仓历史 | 上游已有基础，我们做适配+修复（DISABLE_ADRENO_KERNELS/XMEM env 组合）；归内核集合 |
+| NaN 指纹排查法（跨设备指纹对比→算子层） | 历次事故复盘 | 归 handbook 排查手册 |
+
+### 13.3 C 类：在途未提交（并行窗口），不剖面
+
+- 工作区 18 文件 +618/−68（mul_mv_q5/q6_k_f32.cl 等），非本窗改动；待对应窗口收口后归入清单。
+
+### 13.4 剖面结论
+
+- A 类 5 项即 Phase 1 T4「上游 PR 探路」的首选载荷（先 Mali half-prec + 双重守卫两枚高价值补丁）；
+- B 类 4 项直接映射 PocketCL 三层（设备 DB / 内核集合 / handbook）；
+- 真正「瘦身提炼独立目录」工作（T0 实体化）待 Phase 1 立项后开工。
