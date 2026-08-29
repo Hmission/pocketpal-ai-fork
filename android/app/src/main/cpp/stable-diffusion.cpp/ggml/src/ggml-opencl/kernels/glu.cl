@@ -1,5 +1,13 @@
 #pragma OPENCL EXTENSION cl_khr_fp16 : enable
 
+#ifdef GGML_OPENCL_DESKTOP_REPRO
+// NVIDIA has no half overloads for math builtins; force float promotion
+#define exp(x)  exp((float)(x))
+#define tanh(x) tanh((float)(x))
+#define sqrt(x) sqrt((float)(x))
+#define pow(x,y) pow((float)(x),(float)(y))
+#endif
+
 #define GELU_COEF_A     0.044715f
 #define GELU_QUICK_COEF -1.702f
 #define SQRT_2_OVER_PI  0.79788456080286535587989211986876f

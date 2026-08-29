@@ -65,14 +65,14 @@ __kernel void mul_mat_f16_f32(
             if (k_vec_start_a + 3 < K) {
                 Alocal[load_row_a][load_vec_k_a] = vload4(0, A + global_row_a * K + k_vec_start_a);
             } else {
-                half4 tempA = (half4)(0.0h);
+                half4 tempA = (half4)(0.0f);
                 if (k_vec_start_a < K) tempA.s0 = A[global_row_a * K + k_vec_start_a];
                 if (k_vec_start_a + 1 < K) tempA.s1 = A[global_row_a * K + k_vec_start_a + 1];
                 if (k_vec_start_a + 2 < K) tempA.s2 = A[global_row_a * K + k_vec_start_a + 2];
                 Alocal[load_row_a][load_vec_k_a] = tempA;
             }
         } else {
-            Alocal[load_row_a][load_vec_k_a] = (half4)(0.0h);
+            Alocal[load_row_a][load_vec_k_a] = (half4)(0.0f);
         }
 
         if (global_row_b < N && k_vec_start_b < K) {

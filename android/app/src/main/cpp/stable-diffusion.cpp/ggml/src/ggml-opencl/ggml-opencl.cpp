@@ -395,6 +395,9 @@ struct ggml_backend_opencl_device_context {
     size_t global_mem_size = 0;
 };
 
+// 8-28 v3 探针 helper 前向声明（实现在 ggml_tensor_extra_cl 定义后）：延迟 1-enqueue 读回 mul_mat dst
+static void cl_probe_flush(cl_command_queue queue, ggml_tensor * pend, int64_t pend_ne0, int64_t pend_ne1);
+
 // backend context
 struct ggml_backend_opencl_context {
     int ref_count;
@@ -840,6 +843,31 @@ struct ggml_backend_opencl_context {
     }
 
     void enqueue_ndrange_kernel(cl_kernel kernel, cl_uint work_dim, size_t *global_work_size, size_t *local_work_size, const ggml_tensor * tensor) {
+        // 8-28 v3 探针：延迟 1-enqueue 同步读回（本函数是全部内核唯一出口）。
+        // 上批登记的 dst 在本批 enqueue 时必然已执行完，且后续内核尚未写入它——
+        // 读回即该算子真实输出（无 allocator 复用污染、无读早问题）。
+        // 8-28 扩大登记：所有 F32 op（不止 MUL_MAT）——抓 silu/mul/split 等 elementwise
+        // 输出统计（值域相关压缩嫌疑区）。同一 dst 的脏读(transpose 占位)会被后续正确读覆盖。
+        // 只登记图内激活 tensor（node_/ggml_runner_cut 前缀）：权重/临时 tensor 的 extra
+        // 是量化自定义结构（extra0_q5_K 等），按标准 ggml_tensor_extra_cl 读会崩（SIGABRT）。
+        if (profiling_enabled) {
+            static ggml_tensor * pend = nullptr;
+            static int64_t pend_ne0 = 0, pend_ne1 = 0;
+            if (pend != nullptr) {
+                cl_probe_flush(queue, pend, pend_ne0, pend_ne1);
+                pend = nullptr;
+            }
+            const char * nm = tensor != nullptr ? ggml_get_name(tensor) : nullptr;
+            // 登记：图内激活(node_/ggml_runner_cut) + 临时 tensor(空名= silu/mul 等的 dst)。
+            // 排除权重(.weight 后缀：extra 是量化自定义结构，按标准 extra 读会崩)。
+            if (tensor != nullptr && tensor->type == GGML_TYPE_F32 && nm != nullptr &&
+                strstr(nm, ".weight") == nullptr &&
+                (nm[0] == '\0' || strncmp(nm, "node_", 5) == 0 || strncmp(nm, "ggml_runner_cut", 15) == 0)) {
+                pend = const_cast<ggml_tensor *>(tensor);
+                pend_ne0 = tensor->ne[0];
+                pend_ne1 = tensor->ne[1];
+            }
+        }
         if (gpu_family == GPU_FAMILY::MALI) {
             // 08-20 Mali: local size 必须对齐 subgroup(16) 倍数，否则驱动返回 -54 (CL_INVALID_WORK_GROUP_SIZE)。
             // 失败时打印尺寸并抛异常（沿 JNI try/catch 返回 ERR_EXCEPTION），不再 GGML_ASSERT 崩溃。
@@ -972,6 +1000,49 @@ inline std::string read_file(const std::string &path) {
 }
 
 static cl_program build_program_from_source(cl_context ctx, cl_device_id dev, const char* program_buffer, const std::string &compile_opts) {
+    std::string opts = compile_opts;
+    // 8-27 桌面复现 hack：NVIDIA PTX 缺 convert_half* 转换函数（cl_khr_fp16 实现不完整），
+    // 注入宏替身（C cast）让 fp16 内核可编译；仅 GGML_OPENCL_DESKTOP_REPRO=1 时生效，真机验证后撤除。
+    if (getenv("GGML_OPENCL_DESKTOP_REPRO") != nullptr) {
+        // 编译标记：kernels/*.cl 内的桌面条件编译分支依赖此宏
+        opts += " -DGGML_OPENCL_DESKTOP_REPRO=1";
+        // 标量：C cast；向量：先标量 cast 各分量再向量构造（NVIDIA 不支持向量间直接 cast）
+        // 注意：编译选项值内不能有空格（命令行 token 切分）
+        // half→float 重定义：NVIDIA 无 half 数学函数（exp 等）overload；fp16 内核在
+        // F32/量化推理中不会被调度，仅需编译通过（布局差异无影响）。
+        opts += " -Dhalf=float -Dhalf2=float2 -Dhalf3=float3 -Dhalf4=float4 -Dhalf8=float8 -Dhalf16=float16";
+        // subgroup 串行替身：NVIDIA 无 cl_khr_subgroups 扩展；所有线程 local_id=0（重复写同值，
+        // 结果正确仅变慢），reduce=恒等。仅复现用；真机（Mali/Adreno 有 subgroup）不受影响。
+        opts += " -Dget_sub_group_id()=0";
+        opts += " -Dget_num_sub_groups()=1";
+        opts += " -Dget_sub_group_local_id()=0";
+        opts += " -Dget_sub_group_size()=1";
+        opts += " -Dget_max_sub_group_size()=1";
+        opts += " -Dsub_group_reduce_add(x)=(x)";
+        opts += " -Dsub_group_reduce_min(x)=(x)";
+        opts += " -Dsub_group_reduce_max(x)=(x)";
+        opts += " -Dsub_group_broadcast(x,i)=((x))";
+        opts += " -Dsub_group_scan_inclusive_add(x)=(x)";
+        opts += " -Dsub_group_scan_exclusive_add(x)=(0.0f)";
+        opts += " -Das_half(x)=((half)(x))";
+        opts += " -Das_half2(x)=((half2)((half)(x).s0,(half)(x).s1))";
+        opts += " -Das_half4(x)=((half4)((half)(x).s0,(half)(x).s1,(half)(x).s2,(half)(x).s3))";
+        opts += " -Das_half8(x)=((half8)((half)(x).s0,(half)(x).s1,(half)(x).s2,(half)(x).s3,(half)(x).s4,(half)(x).s5,(half)(x).s6,(half)(x).s7))";
+        opts += " -Das_half16(x)=((half16)((half)(x).s0,(half)(x).s1,(half)(x).s2,(half)(x).s3,(half)(x).s4,(half)(x).s5,(half)(x).s6,(half)(x).s7,(half)(x).s8,(half)(x).s9,(half)(x).sa,(half)(x).sb,(half)(x).sc,(half)(x).sd,(half)(x).se,(half)(x).sf))";
+        opts += " -Dconvert_half(x)=((half)(x))";
+        opts += " -Dconvert_half2(x)=((half2)((half)(x).s0,(half)(x).s1))";
+        opts += " -Dconvert_half3(x)=((half3)((half)(x).s0,(half)(x).s1,(half)(x).s2))";
+        opts += " -Dconvert_half4(x)=((half4)((half)(x).s0,(half)(x).s1,(half)(x).s2,(half)(x).s3))";
+        opts += " -Dconvert_half8(x)=((half8)((half)(x).s0,(half)(x).s1,(half)(x).s2,(half)(x).s3,(half)(x).s4,(half)(x).s5,(half)(x).s6,(half)(x).s7))";
+        opts += " -Dconvert_half16(x)=((half16)((half)(x).s0,(half)(x).s1,(half)(x).s2,(half)(x).s3,(half)(x).s4,(half)(x).s5,(half)(x).s6,(half)(x).s7,(half)(x).s8,(half)(x).s9,(half)(x).sa,(half)(x).sb,(half)(x).sc,(half)(x).sd,(half)(x).se,(half)(x).sf))";
+        opts += " -Dconvert_half_rtn(x)=((half)(x))";
+        opts += " -Dconvert_half4_rtn(x)=((half4)((half)(x).s0,(half)(x).s1,(half)(x).s2,(half)(x).s3))";
+        opts += " -Dconvert_half_rte(x)=((half)(x))";
+        opts += " -Dconvert_half4_rte(x)=((half4)((half)(x).s0,(half)(x).s1,(half)(x).s2,(half)(x).s3))";
+        // conv2d.cl -DUSE_FP16=1 分支的 vstore_half4_rte 在 half=float 重定义下两个
+        // 地址空间重载同时匹配导致歧义；直接换 vstore4（语义一致，仅桌面编译用）
+        opts += " -Dvstore_half4_rte(d,o,p)=vstore4((d),(o),(p))";
+    }
     cl_program p;
     char *program_log;
     size_t program_size;
@@ -986,7 +1057,7 @@ static cl_program build_program_from_source(cl_context ctx, cl_device_id dev, co
         throw std::runtime_error("OpenCL error creating program");  // 08-20 Mali: 与编译失败路径一致，不 exit(1)
     }
 
-    err = clBuildProgram(p, 0, NULL, compile_opts.c_str(), NULL, NULL);
+    err = clBuildProgram(p, 0, NULL, opts.c_str(), NULL, NULL);
     if(err < 0) {
         clGetProgramBuildInfo(p, dev, CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size);
         program_log = (char*) malloc(log_size + 1);
@@ -4162,6 +4233,14 @@ static bool ggml_opencl_is_device_supported(ggml_backend_dev_t dev) {
         // - GDN/SSM 内核（Z-Image 类）的 sg_size 判断仍拒绝（exit）——SD3.5/MMDiT 不触发，安全
         GGML_LOG_INFO("ggml_opencl: Mali GPU '%s' accepted (generic OpenCL path).\n", dev_ctx->device_name.c_str());
         dev_ctx->gpu_family = GPU_FAMILY::MALI;
+    } else if (strstr(dev_ctx->device_name.c_str(), "NVIDIA") ||
+               strstr(dev_ctx->device_name.c_str(), "GeForce") ||
+               strstr(dev_ctx->device_name.c_str(), "AMD") ||
+               strstr(dev_ctx->device_name.c_str(), "Radeon")) {
+        // 8-27 桌面复现临时放行（用后即撤）：桌面 GPU 走 Mali 通用路径，
+        // 用于桌面 OpenCL 复现 Klein 纯色图（秒级迭代，不劳真机；真机验证通过后撤）。
+        GGML_LOG_INFO("ggml_opencl: desktop GPU '%s' accepted (repro hack, generic path).\n", dev_ctx->device_name.c_str());
+        dev_ctx->gpu_family = GPU_FAMILY::MALI;
     } else {
         GGML_LOG_WARN("ggml_opencl: unsupported GPU '%s'.\n", dev_ctx->device_name.c_str());
         dev_ctx->gpu_family = GPU_FAMILY::UNKNOWN;
@@ -4195,17 +4274,29 @@ static bool ggml_opencl_is_device_supported(ggml_backend_dev_t dev) {
     // Check if ext_buffer contains cl_khr_fp16
     bool fp16_support = strstr(ext_buffer, "cl_khr_fp16") != NULL;
     if (!fp16_support) {
-        GGML_LOG_WARN("ggml_opencl: device does not support FP16\n");
-        return false;
+        // 8-27 桌面复现临时 hack：NVIDIA/AMD 驱动不报 cl_khr_fp16 但通用 F32 路径可用，放行（真机验证通过后撤除）。
+        const char * dn = dev_ctx->device_name.c_str();
+        if (strstr(dn, "NVIDIA") || strstr(dn, "GeForce") || strstr(dn, "AMD") || strstr(dn, "Radeon")) {
+            GGML_LOG_WARN("ggml_opencl: desktop fp16 check bypassed (repro hack)\n");
+        } else {
+            GGML_LOG_WARN("ggml_opencl: device does not support FP16\n");
+            return false;
+        }
     }
 
     // If OpenCL 3.0 is supported, then check for cl_khr_subgroups, which becomes
     // optional in OpenCL 3.0 (cl_khr_subgroup is mandatory in OpenCL 2.x)
     if (opencl_c_version.major == 3 && strstr(ext_buffer, "cl_khr_subgroups") == NULL &&
         strstr(ext_buffer, "cl_intel_subgroups") == NULL) {
-        GGML_LOG_WARN("ggml_opencl: device does not support subgroups (cl_khr_subgroups or cl_intel_subgroups) "
-            "(note that subgroups is an optional feature in OpenCL 3.0)\n");
-        return false;
+        // 8-27 桌面复现临时 hack：NVIDIA 驱动不报 subgroup 扩展名（复现用，真机验证后撤除）
+        const char * dn2 = dev_ctx->device_name.c_str();
+        if (strstr(dn2, "NVIDIA") || strstr(dn2, "GeForce") || strstr(dn2, "AMD") || strstr(dn2, "Radeon")) {
+            GGML_LOG_WARN("ggml_opencl: desktop subgroups check bypassed (repro hack)\n");
+        } else {
+            GGML_LOG_WARN("ggml_opencl: device does not support subgroups (cl_khr_subgroups or cl_intel_subgroups) "
+                "(note that subgroups is an optional feature in OpenCL 3.0)\n");
+            return false;
+        }
     }
 
     clGetDeviceInfo(dev_ctx->device, CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(size_t), &dev_ctx->global_mem_size, NULL);
@@ -4488,6 +4579,43 @@ struct ggml_tensor_extra_cl {
         actual_size = 0;
     }
 };
+
+// 8-28 v3 探针实现：延迟 1-enqueue 读回 mul_mat dst（offset 不含 view_offs；mul_mat dst 非常规 view，
+// 直接用 ex->offset 即真实输出位置）。打印与 CPU [CPUDUMP] 同格式便于对表。
+static void cl_probe_flush(cl_command_queue queue, ggml_tensor * pend, int64_t pend_ne0, int64_t pend_ne1) {
+    ggml_tensor_extra_cl * ex = (ggml_tensor_extra_cl *)pend->extra;
+    const int64_t d0 = pend_ne0, d1 = pend_ne1;
+    const int64_t n = d0 * d1 * pend->ne[2] * pend->ne[3];
+    if (ex == nullptr || ex->data_device == nullptr || n <= 0 || n > 120LL * 1024 * 1024 / 4) {
+        return;
+    }
+    clFinish(queue);
+    std::vector<float> buf((size_t)n);
+    CL_CHECK(clEnqueueReadBuffer(queue, ex->data_device, CL_TRUE,
+        ex->offset, (size_t)n * sizeof(float), buf.data(), 0, NULL, NULL));
+    clFinish(queue);
+    double sum = 0, sumsq = 0;
+    float mn = 1e30f, mx = -1e30f;
+    int64_t nnan = 0, ninf = 0;
+    for (int64_t k = 0; k < n; k++) {
+        const float v = buf[k];
+        if (!std::isfinite(v)) { if (v != v) nnan++; else ninf++; continue; }
+        sum += v; sumsq += (double)v * v;
+        if (v < mn) mn = v;
+        if (v > mx) mx = v;
+    }
+    const double mean = n > 0 ? sum / n : 0.0;
+    const double var = n > 0 ? sumsq / n - mean * mean : 0.0;
+    GGML_LOG_INFO("[CLDUMP] %s ne=%lld,%lld,%lld,%lld n=%lld min=%f max=%f mean=%f std=%f nan=%lld inf=%lld\n",
+        ggml_get_name(pend) != nullptr ? ggml_get_name(pend) : "(anon)", (long long)d0, (long long)d1, (long long)pend->ne[2], (long long)pend->ne[3],
+        (long long)n, mn, mx, mean, var > 0 ? sqrt(var) : 0.0, (long long)nnan, (long long)ninf);
+    for (int64_t r = 0; r < d1 && r < 48; r++) {
+        double rs = 0;
+        for (int64_t c = 0; c < d0; c++) rs += buf[r * d0 + c];
+        rs /= d0;
+        GGML_LOG_INFO("[CLDUMP] row %lld mean %f\n", (long long)r, rs);
+    }
+}
 
 // Additional tensor extra structs for quantized tensors.
 // These tensors are loaded from files and should not be allocated in scratch --
@@ -6992,6 +7120,20 @@ static void ggml_backend_opencl_buffer_set_tensor(ggml_backend_buffer_t buffer, 
         GGML_ASSERT(size_q + size_qh + size_s + size_d + size_dm == ggml_nbytes(tensor) &&
             "Incorrect tensor size");
 
+        // 8-29 q5K-RAW: convert 前原始 GGUF 字节(host 侧 data 指针直读,零 enqueue)。
+        // 与 GGUF 文件 block0(d=-1.9795, dm=-15.29, qs=ea46,6b9f..)对表:
+        // 不一致 → 双重量化/加载错位(lm =是 8-29 已修 wtype 强转 Q4_K 的元凶);
+        // 一致 → convert 内核错。打印全部 Q5_K 层(修复验证:恢复 GGUF 原样)。
+        {
+            const unsigned char * p0 = (const unsigned char *)data;
+            const ggml_fp16_t * h0 = (const ggml_fp16_t *)p0;
+            GGML_LOG_INFO("[CTXPROBE] q5K-RAW src0=%s ne=%lldx%lld first16=%02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x d=%.6f dm=%.6f\n",
+                ggml_get_name(tensor), (long long)tensor->ne[0], (long long)tensor->ne[1],
+                p0[0], p0[1], p0[2], p0[3], p0[4], p0[5], p0[6], p0[7],
+                p0[8], p0[9], p0[10], p0[11], p0[12], p0[13], p0[14], p0[15],
+                ggml_fp16_to_fp32(h0[0]), ggml_fp16_to_fp32(h0[1]));
+        }
+
         cl_int err;
         cl_mem data_device;
         CL_CHECK((data_device = clCreateBuffer(context, CL_MEM_READ_WRITE, ggml_nbytes(tensor), NULL, &err), err));
@@ -7120,6 +7262,35 @@ static void ggml_backend_opencl_buffer_set_tensor(ggml_backend_buffer_t buffer, 
         extra->size_d  = size_d;
         extra->size_dm = size_dm;
 
+        // 8-29 q5K-CONV: convert 直出(未转置)取证 —— 与 PC 手算对表分离 convert/转置 bug。
+        // 只打 txt_mlp.2(blk0):q 前 32B + qh 前 32B + s/d/dm 各一块。
+        {
+            const char * cname = ggml_get_name(tensor);
+            if (cname != nullptr && strstr(cname, "txt_mlp.2") != nullptr) {
+                CL_CHECK(clWaitForEvents(1, &evt));
+                ggml_fp16_t cq[16]; unsigned char cqh[16]; unsigned char cs[12]; ggml_fp16_t cd0, cdm0;
+                CL_CHECK(clEnqueueReadBuffer(queue, extra->q,  CL_TRUE, 0, 32,        cq,  0, NULL, NULL));
+                CL_CHECK(clEnqueueReadBuffer(queue, extra->qh, CL_TRUE, 0, 16,        cqh, 0, NULL, NULL));
+                CL_CHECK(clEnqueueReadBuffer(queue, extra->s,  CL_TRUE, 0, 12,        cs,  0, NULL, NULL));
+                CL_CHECK(clEnqueueReadBuffer(queue, extra->d,  CL_TRUE, 0, 2,         &cd0, 0, NULL, NULL));
+                CL_CHECK(clEnqueueReadBuffer(queue, extra->dm, CL_TRUE, 0, 2,         &cdm0, 0, NULL, NULL));
+                GGML_LOG_INFO("[CTXPROBE] q5K-CONV src0=%s\n  q=%04x,%04x,%04x,%04x,%04x,%04x,%04x,%04x,%04x,%04x,%04x,%04x,%04x,%04x,%04x,%04x\n  qh=%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x\n  s=%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x d=%.5f dm=%.5f\n",
+                    cname,
+                    (unsigned)cq[0], (unsigned)cq[1], (unsigned)cq[2], (unsigned)cq[3],
+                    (unsigned)cq[4], (unsigned)cq[5], (unsigned)cq[6], (unsigned)cq[7],
+                    (unsigned)cq[8], (unsigned)cq[9], (unsigned)cq[10], (unsigned)cq[11],
+                    (unsigned)cq[12], (unsigned)cq[13], (unsigned)cq[14], (unsigned)cq[15],
+                    (unsigned)cqh[0], (unsigned)cqh[1], (unsigned)cqh[2], (unsigned)cqh[3],
+                    (unsigned)cqh[4], (unsigned)cqh[5], (unsigned)cqh[6], (unsigned)cqh[7],
+                    (unsigned)cqh[8], (unsigned)cqh[9], (unsigned)cqh[10], (unsigned)cqh[11],
+                    (unsigned)cqh[12], (unsigned)cqh[13], (unsigned)cqh[14], (unsigned)cqh[15],
+                    (unsigned)cs[0], (unsigned)cs[1], (unsigned)cs[2], (unsigned)cs[3],
+                    (unsigned)cs[4], (unsigned)cs[5], (unsigned)cs[6], (unsigned)cs[7],
+                    (unsigned)cs[8], (unsigned)cs[9], (unsigned)cs[10], (unsigned)cs[11],
+                    ggml_fp16_to_fp32(cd0), ggml_fp16_to_fp32(cdm0));
+            }
+        }
+
         tensor->extra = extra;
 #ifdef GGML_OPENCL_USE_ADRENO_KERNELS
         if (use_adreno_kernels(backend_ctx, tensor)) {
@@ -7130,6 +7301,9 @@ static void ggml_backend_opencl_buffer_set_tensor(ggml_backend_buffer_t buffer, 
             GGML_ASSERT(K % 32 == 0);
 
             // Transpose q, d, dm as ushort, qh as uchar
+            // d/dm 每 256 权重(QK_K=256,K 系列超块)1 个 half:每行 K/256 个。
+            // 8-29 警示:勿改成 K/64!那是 QK_K=64 的旧系假设 —— 本 fork K 系列超块=256,
+            // K/64 会让转置越界读 → GEMM 输出全 NaN。
             transpose_2d_as_16b(backend_ctx, extra->q,  extra->q,  size_q,  K/4,   M);
             transpose_2d_as_8b (backend_ctx, extra->qh, extra->qh, size_qh, K/8,   M);
             transpose_2d_as_16b(backend_ctx, extra->d,  extra->d,  size_d,  K/256, M);
@@ -8861,13 +9035,13 @@ static void ggml_cl_copy_to_contiguous(ggml_backend_t backend, const ggml_tensor
 
     switch (src->type) {
         case GGML_TYPE_F32:
-            kernel = backend_ctx->kernel_cpy_f32_f32;
+            kernel = backend_ctx->kernel_cpy_f32_f32_pack;
             break;
         case GGML_TYPE_F16:
             kernel = backend_ctx->kernel_cpy_f16_f16;
             break;
         case GGML_TYPE_BF16: // stored as f32 on device (6.18: 防 fp16 精度崩坏)
-            kernel = backend_ctx->kernel_cpy_f32_f32;
+            kernel = backend_ctx->kernel_cpy_f32_f32_pack;
             break;
         default:
             GGML_ASSERT(false && "not implemented");
@@ -8896,7 +9070,28 @@ static void ggml_cl_copy_to_contiguous(ggml_backend_t backend, const ggml_tensor
 
     const int nth = MIN(64, ne00);
 
-    size_t global_work_size[] = {(size_t)ne01*nth, (size_t)ne02, (size_t)ne03};
+    if (src->type == GGML_TYPE_F32 || src->type == GGML_TYPE_BF16) {
+        // 8-27 Klein 纯色图根因修复（二次校正）：非 pack 的 kernel_cpy_f32_f32 按
+        // get_group_id(0)=行号工作，但调用方给了 ne01*nth 个 workgroup（nth=64）→
+        // 组号超行 → 源/目标越界错位（attn.proj 等 b 端 view 连续化副本被写乱，
+        // 输出被削 → 纯色图）。kernel_cpy_f32_f32_pack 才是上游正解（每 workgroup
+        // 拷 rpw 行、nrows 全覆盖无越界），global size 照抄 ggml_cl_cpy 的同款调用。
+        const int maxwg = (int)backend_ctx->get_kernel_workgroup_size(kernel);
+        const int base  = MIN(64, maxwg);
+        const int tpr   = MIN(ne00, base);                 // threads per row
+        const int rpw   = MAX(1, base / tpr);              // rows per workgroup
+        const int lsz   = tpr * rpw;                       // <= base <= maxwg
+        const int nrows = ne01*ne02*ne03;
+        const int nwg   = (nrows + rpw - 1) / rpw;
+
+        size_t global_work_size[] = {(size_t)nwg*lsz, 1, 1};
+        size_t local_work_size[]  = {(size_t)lsz, 1, 1};
+
+        backend_ctx->enqueue_ndrange_kernel(kernel, 1, global_work_size, local_work_size, src);
+        return;
+    }
+
+    size_t global_work_size[] = {(size_t)ne01, (size_t)ne02, (size_t)ne03};
     size_t local_work_size[] = {(size_t)nth, 1, 1};
 
     backend_ctx->enqueue_ndrange_kernel(kernel, 3, global_work_size, local_work_size, src);
@@ -9402,6 +9597,37 @@ static void ggml_cl_mul(ggml_backend_t backend, const ggml_tensor * src0, const 
     cl_ulong offset0 = extra0->offset + src0->view_offs;
     cl_ulong offset1 = extra1->offset + src1->view_offs;
     cl_ulong offsetd = extrad->offset + dst->view_offs;
+
+
+    // 8-28 MULPROBE: product 场景(src0=chunk view1 后半 9216 维,非连续)。
+    // 按行 stride 逐行读回 view(行内连续 d0 元素,行间 stride=nb[1])——
+    // 连续区间读会把跨行的下一半混进来,必须按 stride 读才是真 gate/up 内容。
+    if (backend_ctx->profiling_enabled && src0->type == GGML_TYPE_F32 &&
+        ne00 == 9216 && (ne01 == 512 || ne01 == 1536) &&
+        extra0->data_device != nullptr && extra1->data_device != nullptr) {
+        clFinish(backend_ctx->queue);
+        const int64_t nn = (int64_t)ne00 * ne01;
+        std::vector<float> s0((size_t)nn), s1((size_t)nn);
+        const cl_ulong s0str = src0->nb[1], s1str = src1->nb[1];
+        for (int64_t r = 0; r < ne01; r++) {
+            CL_CHECK(clEnqueueReadBuffer(backend_ctx->queue, extra0->data_device, CL_TRUE,
+                offset0 + r * s0str, (size_t)ne00 * 4, s0.data() + r * ne00, 0, NULL, NULL));
+            CL_CHECK(clEnqueueReadBuffer(backend_ctx->queue, extra1->data_device, CL_TRUE,
+                offset1 + r * s1str, (size_t)ne00 * 4, s1.data() + r * ne00, 0, NULL, NULL));
+        }
+        clFinish(backend_ctx->queue);
+        double s0s = 0, s0ss = 0, s1s = 0, s1ss = 0;
+        float s0mn = 1e30f, s0mx = -1e30f, s1mn = 1e30f, s1mx = -1e30f;
+        for (int64_t i2 = 0; i2 < nn; i2++) {
+            const float a = s0[i2], b = s1[i2];
+            if (std::isfinite(a)) { s0s += a; s0ss += (double)a * a; if (a < s0mn) s0mn = a; if (a > s0mx) s0mx = a; }
+            if (std::isfinite(b)) { s1s += b; s1ss += (double)b * b; if (b < s1mn) s1mn = b; if (b > s1mx) s1mx = b; }
+        }
+        const double m0 = s0s / nn, m1 = s1s / nn;
+        GGML_LOG_INFO("[MULPROBE] dst=%s ne=%d,%d s0min=%.3f s0max=%.3f s0std=%.4f | s1min=%.3f s1max=%.3f s1std=%.4f\n",
+            ggml_get_name(dst) != nullptr ? ggml_get_name(dst) : "(anon)", ne00, ne01,
+            s0mn, s0mx, (float)sqrt(s0ss / nn - m0 * m0), s1mn, s1mx, (float)sqrt(s1ss / nn - m1 * m1));
+    }
 
     bool bcast_row = false;
     cl_kernel kernel;
@@ -13771,6 +13997,44 @@ static void ggml_cl_mul_mat_q5_K_f32_adreno(ggml_backend_t backend, const ggml_t
     cl_uchar mask_d4  = 0x0F;
     cl_uchar mask_hi2 = 0xC0;
 
+    // ENTRY probe (unconditional): proves whether this q5K function executes at all
+    const char * sname = ggml_get_name(src0);
+    GGML_LOG_INFO("[CTXPROBE] ENTER q5K-adreno src0=%s ne00=%d ne01=%d ne1=%d\n",
+        sname != nullptr ? sname : "?", ne00, ne01, ne1);
+
+    // 8-29 q5K-A: 权重 A 布局验证(txt_mlp.2/img_mlp.2 才打)——读 q/qh/s/d/dm 前 16 个元素,
+    // + d/dm 全数组 min/max(未初始化/越界必现 NaN/±inf)。K 系列超块=256 → 每行 K/256 个 d/dm。
+    if (sname != nullptr && (strstr(sname, "txt_mlp.2") != nullptr || strstr(sname, "img_mlp.2") != nullptr)) {
+        clFinish(backend_ctx->queue);
+        static const size_t qsz = 16 * sizeof(ggml_fp16_t);
+        ggml_fp16_t q0[16]; unsigned char qh0[16], s0[12]; ggml_fp16_t d0[8], dm0[8];
+        CL_CHECK(clEnqueueReadBuffer(backend_ctx->queue, extra0_q5_k->q,  CL_TRUE, 0, qsz,        q0,  0, NULL, NULL));
+        CL_CHECK(clEnqueueReadBuffer(backend_ctx->queue, extra0_q5_k->qh, CL_TRUE, 0, sizeof(qh0), qh0, 0, NULL, NULL));
+        CL_CHECK(clEnqueueReadBuffer(backend_ctx->queue, extra0_q5_k->s,  CL_TRUE, 0, sizeof(s0),  s0,  0, NULL, NULL));
+        CL_CHECK(clEnqueueReadBuffer(backend_ctx->queue, extra0_q5_k->d,  CL_TRUE, 0, sizeof(d0),  d0,  0, NULL, NULL));
+        CL_CHECK(clEnqueueReadBuffer(backend_ctx->queue, extra0_q5_k->dm, CL_TRUE, 0, sizeof(dm0), dm0, 0, NULL, NULL));
+        const size_t nd = (size_t)M * (K / 256);
+        std::vector<ggml_fp16_t> dv(nd), dmv(nd);
+        CL_CHECK(clEnqueueReadBuffer(backend_ctx->queue, extra0_q5_k->d,  CL_TRUE, 0, nd * sizeof(ggml_fp16_t), dv.data(),  0, NULL, NULL));
+        CL_CHECK(clEnqueueReadBuffer(backend_ctx->queue, extra0_q5_k->dm, CL_TRUE, 0, nd * sizeof(ggml_fp16_t), dmv.data(), 0, NULL, NULL));
+        clFinish(backend_ctx->queue);
+        float dmn = 1e30f, dmx = -1e30f, mmn = 1e30f, mmx = -1e30f;
+        double dsum = 0, msum = 0;
+        for (size_t z = 0; z < nd; z++) {
+            const float a = ggml_fp16_to_fp32(dv[z]), b = ggml_fp16_to_fp32(dmv[z]);
+            if (std::isfinite(a)) { if (a < dmn) dmn = a; if (a > dmx) dmx = a; dsum += a; }
+            if (std::isfinite(b)) { if (b < mmn) mmn = b; if (b > mmx) mmx = b; msum += b; }
+        }
+        GGML_LOG_INFO("[CTXPROBE] q5K-A src0=%s\n  q=%04x,%04x,%04x,%04x,%04x,%04x,%04x,%04x qh=%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x\n  s=%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x\n  d0=%.5f,%.5f,%.5f,%.5f dm0=%.5f,%.5f,%.5f,%.5f\n  d[%f..%f] mean=%.6f dm[%f..%f] mean=%.6f n=%zu\n",
+            sname,
+            (unsigned)q0[0], (unsigned)q0[1], (unsigned)q0[2], (unsigned)q0[3], (unsigned)q0[4], (unsigned)q0[5], (unsigned)q0[6], (unsigned)q0[7],
+            (unsigned)qh0[0], (unsigned)qh0[1], (unsigned)qh0[2], (unsigned)qh0[3], (unsigned)qh0[4], (unsigned)qh0[5], (unsigned)qh0[6], (unsigned)qh0[7],
+            (unsigned)s0[0], (unsigned)s0[1], (unsigned)s0[2], (unsigned)s0[3], (unsigned)s0[4], (unsigned)s0[5], (unsigned)s0[6], (unsigned)s0[7], (unsigned)s0[8], (unsigned)s0[9], (unsigned)s0[10], (unsigned)s0[11],
+            ggml_fp16_to_fp32(d0[0]), ggml_fp16_to_fp32(d0[1]), ggml_fp16_to_fp32(d0[2]), ggml_fp16_to_fp32(d0[3]),
+            ggml_fp16_to_fp32(dm0[0]), ggml_fp16_to_fp32(dm0[1]), ggml_fp16_to_fp32(dm0[2]), ggml_fp16_to_fp32(dm0[3]),
+            dmn, dmx, nd > 0 ? dsum / nd : 0.0, mmn, mmx, nd > 0 ? msum / nd : 0.0, nd);
+    }
+
     if (ne1 == 1) {
         cl_mem q_img  = nullptr;
         cl_mem qh_img = nullptr;
@@ -13842,6 +14106,31 @@ static void ggml_cl_mul_mat_q5_K_f32_adreno(ggml_backend_t backend, const ggml_t
         region.size   = K * N * sizeof(float);
         CL_CHECK((b_sub_buf = clCreateSubBuffer(extra1->data_device, 0, CL_BUFFER_CREATE_TYPE_REGION, &region, &err), err));
 
+        // 8-28 CLEAN b readback: clFinish all prior ops, then read the input buffer.
+        // At this point the producer (the op that wrote node_603 etc.) has finished and
+        // the GEMM has not started, so no ggml-alloc reuse can pollute the readback.
+        if (sname != nullptr &&
+            (strstr(sname, "txt_mlp.2") != nullptr || strstr(sname, "img_mlp.2") != nullptr)) {
+            clFinish(backend_ctx->queue);
+            std::vector<float> bbuf((size_t)(K * N));
+            CL_CHECK(clEnqueueReadBuffer(backend_ctx->queue, b_sub_buf, CL_TRUE,
+                0, (size_t)(K * N) * sizeof(float), bbuf.data(), 0, NULL, NULL));
+            clFinish(backend_ctx->queue);
+            double bs = 0, bss = 0; float bmn = 1e30f, bmx = -1e30f;
+            const int64_t bn = (int64_t)K * N;
+            for (int64_t z = 0; z < bn; z++) {
+                const float v = bbuf[z];
+                if (!std::isfinite(v)) continue;
+                bs += v; bss += (double)v * v;
+                if (v < bmn) bmn = v;
+                if (v > bmx) bmx = v;
+            }
+            const double bmean = bn > 0 ? bs / bn : 0.0;
+            const double bvar = bn > 0 ? bss / bn - bmean * bmean : 0.0;
+            GGML_LOG_INFO("[CTXPROBE] CLEAN b src0=%s ne=%lld,%lld min=%f max=%f mean=%f std=%f\n",
+                sname, (long long)K, (long long)N, bmn, bmx, bmean, bvar > 0 ? sqrt(bvar) : 0.0);
+        }
+
         // image for activations
         img_fmt = {CL_RGBA, CL_FLOAT};
         memset(&img_desc, 0, sizeof(img_desc));
@@ -13897,6 +14186,7 @@ static void ggml_cl_mul_mat_q5_K_f32_adreno(ggml_backend_t backend, const ggml_t
         CL_CHECK(clSetKernelArg(kernel,  2, sizeof(cl_mem),   &extra0_q5_k->s));
         CL_CHECK(clSetKernelArg(kernel,  3, sizeof(cl_mem),   &extra0_q5_k->d));
         CL_CHECK(clSetKernelArg(kernel,  4, sizeof(cl_mem),   &extra0_q5_k->dm));
+        // 8-28: src1_buf(arg6) removed after A/B2 rollback — original arg order restored
         CL_CHECK(clSetKernelArg(kernel,  5, sizeof(cl_mem),   &b_img_trans));
         CL_CHECK(clSetKernelArg(kernel,  6, sizeof(cl_mem),   &extrad->data_device));
         CL_CHECK(clSetKernelArg(kernel,  7, sizeof(cl_ulong), &offsetd));
@@ -13912,6 +14202,52 @@ static void ggml_cl_mul_mat_q5_K_f32_adreno(ggml_backend_t backend, const ggml_t
         size_t local_work_size[3]  = {1, 128, 1};
 
         backend_ctx->enqueue_ndrange_kernel(kernel, 3, global_work_size, local_work_size, dst);
+
+        // CTXPROBE: read back input b for every q5_K GEMM (name shown)
+        clFinish(backend_ctx->queue);
+        std::vector<float> bbuf((size_t)(K * N));
+        CL_CHECK(clEnqueueReadBuffer(backend_ctx->queue, b_sub_buf, CL_TRUE,
+            0, (size_t)(K * N) * sizeof(float), bbuf.data(), 0, NULL, NULL));
+        clFinish(backend_ctx->queue);
+        double bs = 0, bss = 0; float bmn = 1e30f, bmx = -1e30f;
+        const int64_t bn = (int64_t)K * N;
+        for (int64_t z = 0; z < bn; z++) {
+            const float v = bbuf[z];
+            if (!std::isfinite(v)) continue;
+            bs += v; bss += (double)v * v;
+            if (v < bmn) bmn = v;
+            if (v > bmx) bmx = v;
+        }
+        const double bmean = bn > 0 ? bs / bn : 0.0;
+        const double bvar = bn > 0 ? bss / bn - bmean * bmean : 0.0;
+        GGML_LOG_INFO("[CTXPROBE] q5K-GEMM src0=%s ne=%lld,%lld min=%f max=%f mean=%f std=%f\n",
+            ggml_get_name(src0), (long long)K, (long long)N, bmn, bmx, bmean, bvar > 0 ? sqrt(bvar) : 0.0);
+
+        // 8-28 q5K-DST: GEMM 输出 dst 同步读回(GEMM 后立即读,无延迟/复用污染)。
+        // 与 CPU 侧 CPUDUMP(dst stats)直接对账——判定 GEMM 是否真压缩。
+        {
+            const int64_t dn = (int64_t)dst->ne[0] * dst->ne[1] * dst->ne[2] * dst->ne[3];
+            if (dn > 0 && dn <= 120LL * 1024 * 1024 / 4 && dst->type == GGML_TYPE_F32) {
+                std::vector<float> dbuf((size_t)dn);
+                CL_CHECK(clEnqueueReadBuffer(backend_ctx->queue, extrad->data_device, CL_TRUE,
+                    offsetd, (size_t)dn * sizeof(float), dbuf.data(), 0, NULL, NULL));
+                clFinish(backend_ctx->queue);
+                double ds = 0, dss = 0; float dmn = 1e30f, dmx = -1e30f;
+                for (int64_t z = 0; z < dn; z++) {
+                    const float v = dbuf[z];
+                    if (!std::isfinite(v)) continue;
+                    ds += v; dss += (double)v * v;
+                    if (v < dmn) dmn = v;
+                    if (v > dmx) dmx = v;
+                }
+                const double dmean = dn > 0 ? ds / dn : 0.0;
+                const double dvar = dn > 0 ? dss / dn - dmean * dmean : 0.0;
+                GGML_LOG_INFO("[CTXPROBE] q5K-DST src0=%s dst=%s ne=%lld,%lld,%lld,%lld min=%f max=%f mean=%f std=%f\n",
+                    ggml_get_name(src0), ggml_get_name(dst) != nullptr ? ggml_get_name(dst) : "(anon)",
+                    (long long)dst->ne[0], (long long)dst->ne[1], (long long)dst->ne[2], (long long)dst->ne[3],
+                    dmn, dmx, dmean, dvar > 0 ? sqrt(dvar) : 0.0);
+            }
+        }
 
         CL_CHECK(clReleaseMemObject(b_sub_buf));
         CL_CHECK(clReleaseMemObject(b_sub_buf_trans));
@@ -13972,6 +14308,18 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
     int r3 = ne13/ne03;
 
     GGML_ASSERT(ne00 == ne10);
+
+    // 8-27 Klein GPU 专项探针（用后即撤）：GGML_OPENCL_PROFILE=1 时逐 mul_mat 打印
+    // src0/src1/dst 的 name/type/shape/stride，与 cl_profiling.csv 的 kernel 行按顺序对齐，
+    // 供 CPU/OpenCL 逐 op diff 定位 FLUX.2(K=7680/128, 32ch patchify) 出错算子。
+    if (backend_ctx->profiling_enabled) {
+        GGML_LOG_INFO("[CLPROF] mm a=%s:t%d:ne=%d,%d,%d,%d:nb=%llu,%llu,%llu,%llu b=%s:t%d:ne=%d,%d,%d,%d:nb=%llu,%llu,%llu,%llu d=%s:ne=%d,%d,%d,%d\n",
+            ggml_get_name(src0), (int)src0t, ne00, ne01, ne02, ne03,
+            (unsigned long long)nb00, (unsigned long long)nb01, (unsigned long long)nb02, (unsigned long long)nb03,
+            ggml_get_name(src1), (int)src1t, ne10, ne11, ne12, ne13,
+            (unsigned long long)nb10, (unsigned long long)nb11, (unsigned long long)nb12, (unsigned long long)nb13,
+            ggml_get_name(dst), ne0, ne1, ne2, ne3);
+    }
 
     int nth0 = 32;
     int nth1 = 1;
@@ -14694,11 +15042,21 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
 
     // use custom matrix x vector kernel
     switch (src0t) {
-        case GGML_TYPE_F32:
+        case GGML_TYPE_F32: {
             //GGML_ASSERT(ne02 == ne12);
             GGML_ASSERT(src1t == GGML_TYPE_F32);
             kernel = backend_ctx->kernel_mul_mat_f32_f32;
             nrows = 4;
+
+            // 8-27 Klein 马赛克根因修复：BF16 权重设备侧按 F32 存储（cpy_f32_f32 转换，
+            // 见 8869 行注释），此 GEMV 内核用 nb01 字节步长定位权重行——BF16 CPU 步长
+            // 未换算（行距只有 F32 的一半）→ 行定位错位一半 → 输出混合压扁
+            // （double_stream_modulation 等 M=1 GEMV 实测 std 压扁 60 倍，马赛克根因）。
+            // 换算：全部 nb ×2（BF16 2 字节 → 设备 F32 4 字节）。
+            cl_ulong g_nb00 = nb00, g_nb01 = nb01, g_nb02 = nb02, g_nb03 = nb03;
+            if (src0->type == GGML_TYPE_BF16) {
+                g_nb00 *= 2; g_nb01 *= 2; g_nb02 *= 2; g_nb03 *= 2;
+            }
 
             if (backend_ctx->gpu_family == INTEL) {
                 nth0 = 32;
@@ -14720,10 +15078,10 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
             CL_CHECK(clSetKernelArg(kernel,  6, sizeof(int),      &ne00));
             CL_CHECK(clSetKernelArg(kernel,  7, sizeof(int),      &ne01));
             CL_CHECK(clSetKernelArg(kernel,  8, sizeof(int),      &ne02));
-            CL_CHECK(clSetKernelArg(kernel,  9, sizeof(cl_ulong), &nb00));
-            CL_CHECK(clSetKernelArg(kernel, 10, sizeof(cl_ulong), &nb01));
-            CL_CHECK(clSetKernelArg(kernel, 11, sizeof(cl_ulong), &nb02));
-            CL_CHECK(clSetKernelArg(kernel, 12, sizeof(cl_ulong), &nb03));
+            CL_CHECK(clSetKernelArg(kernel,  9, sizeof(cl_ulong), &g_nb00));
+            CL_CHECK(clSetKernelArg(kernel, 10, sizeof(cl_ulong), &g_nb01));
+            CL_CHECK(clSetKernelArg(kernel, 11, sizeof(cl_ulong), &g_nb02));
+            CL_CHECK(clSetKernelArg(kernel, 12, sizeof(cl_ulong), &g_nb03));
             CL_CHECK(clSetKernelArg(kernel, 13, sizeof(int),      &ne10));
             CL_CHECK(clSetKernelArg(kernel, 14, sizeof(int),      &ne11));
             CL_CHECK(clSetKernelArg(kernel, 15, sizeof(int),      &ne12));
@@ -14736,6 +15094,7 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
             CL_CHECK(clSetKernelArg(kernel, 22, sizeof(int),      &r2));
             CL_CHECK(clSetKernelArg(kernel, 23, sizeof(int),      &r3));
             break;
+        }
         case GGML_TYPE_F16:
             //GGML_ASSERT(ne02 == ne12);
             if (backend_ctx->gpu_family == INTEL) {

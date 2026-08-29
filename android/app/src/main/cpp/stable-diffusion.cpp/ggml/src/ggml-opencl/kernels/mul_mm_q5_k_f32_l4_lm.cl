@@ -1,4 +1,23 @@
 #pragma OPENCL EXTENSION cl_khr_fp16 : enable
+#ifdef GGML_OPENCL_DESKTOP_REPRO
+// 8-27 desktop repro hack: global -Dhalf=float would inflate fp16 d/dm fields to
+// 4B and shift every field of the block/stride layout. Keep 2-byte layout with
+// ushort and convert bit patterns to float at read points.
+#undef half
+#define half ushort
+static inline float fp16_bits_to_float(ushort h) {
+    uint s  = (h >> 15) & 0x1u;
+    uint e  = (h >> 10) & 0x1Fu;
+    uint m  = h & 0x3FFu;
+    uint f;
+    if (e == 0) {
+        if (m == 0) { f = s << 31; }
+        else { e = 113; while ((m & 0x400u) == 0) { m <<= 1; e--; } f = (s << 31) | (e << 23) | ((m & 0x3FFu) << 13); }
+    } else if (e == 31) { f = (s << 31) | 0x7F800000u | (m << 13); }
+    else { f = (s << 31) | ((e + 112u) << 23) | (m << 13); }
+    return as_float(f);
+}
+#endif
 
 #define LOAD_VEC_A 4
 #define LOAD_VEC_B 4
@@ -118,8 +137,13 @@ kernel void kernel_mul_mm_q5_k_f32_l4_lm(
                 uchar sc    = (scales[scidx0] & 0xF) | ((scales[scidx1] & scidxmask1) >> scidxshift1);
                 uchar mbyte = ((scales[mbidx0] & mbidxmask0) >> mbidxshift0) | ((scales[mbidx1] & mbidxmask1) >> mbidxshift1);
 
+#ifdef GGML_OPENCL_DESKTOP_REPRO
+                float d =  fp16_bits_to_float(src0_d[ib]) * (float)sc;
+                float m = -fp16_bits_to_float(src0_dm[ib]) * (float)mbyte;
+#else
                 float d =  (float)src0_d[ib]  * (float)sc;
                 float m = -(float)src0_dm[ib] * (float)mbyte;
+#endif
 
                 int qh_base = (iqs % 16) * 2;
                 int bit_pos  = 2*n + b;

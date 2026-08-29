@@ -5,6 +5,14 @@
 //------------------------------------------------------------------------------
 #pragma OPENCL EXTENSION cl_khr_fp16 : enable
 
+#ifdef GGML_OPENCL_DESKTOP_REPRO
+// 8-27 desktop repro hack: global -Dhalf=float makes struct block_q?_{K,x} layouts
+// 4B/fp16D and breaks the GGUF in-memory layout (d/dm are fp16 bit patterns moved
+// verbatim here, no float ops). Restore 2-byte layout with ushort.
+#undef half
+#define half ushort
+#endif
+
 #ifdef cl_intel_required_subgroup_size
 #pragma OPENCL EXTENSION cl_intel_required_subgroup_size : enable
 #define INTEL_GPU 1

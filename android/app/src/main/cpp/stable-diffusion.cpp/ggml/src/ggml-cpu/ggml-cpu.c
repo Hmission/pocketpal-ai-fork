@@ -1598,6 +1598,71 @@ UseGgmlGemm2:;
 
         current_chunk = atomic_fetch_add_explicit(&params->threadpool->current_chunk, 1, memory_order_relaxed);
     }
+
+    // 8-27 Klein GPU 专项 CPU 对照探针（GGML_DUMP_MM=1 时对 img_in/txt_in 输出打统计，用后即撤）：
+    // 与 OpenCL 侧 [CLDUMP] 同格式，桌面 sd-cli CPU 跑 1 步对照定位 FLUX.2 出错算子。
+    // 8-27 扩展：img_attn/txt_attn/img_mlp/txt_mlp/double_stream_modulation 全嫌疑覆盖。
+    if (ith == 0 && getenv("GGML_DUMP_MM") != NULL) {
+        const char * a_name = ggml_get_name(src0);
+        if (a_name != NULL && dst->type == GGML_TYPE_F32 &&
+            (strstr(a_name, "img_in") || strstr(a_name, "txt_in") ||
+             strstr(a_name, "img_attn") || strstr(a_name, "txt_attn") ||
+             strstr(a_name, "img_mlp") || strstr(a_name, "txt_mlp") ||
+             strstr(a_name, "double_stream_modulation"))) {
+            const int64_t n = (int64_t)ne0 * ne1 * ne2 * ne3;
+            if (n > 120LL * 1024 * 1024 / 4) { return; } // 防超大 dump
+            const float * d = (const float *)dst->data;
+            double sum = 0.0, sumsq = 0.0;
+            float mn = FLT_MAX, mx = -FLT_MAX;
+            int64_t nnan = 0, ninf = 0;
+            for (int64_t k = 0; k < n; k++) {
+                const float v = d[k];
+                if (!isfinite(v)) { if (v != v) nnan++; else ninf++; continue; }
+                sum += v; sumsq += (double)v * v;
+                if (v < mn) mn = v;
+                if (v > mx) mx = v;
+            }
+            const double mean = n > 0 ? sum / n : 0.0;
+            const double var = n > 0 ? sumsq / n - mean * mean : 0.0;
+            GGML_LOG_INFO("[CPUMM] %s -> %s ne=%lld,%lld,%lld,%lld n=%lld min=%f max=%f mean=%f std=%f nan=%lld inf=%lld\n",
+                a_name, ggml_get_name(dst), (long long)ne0, (long long)ne1, (long long)ne2, (long long)ne3,
+                (long long)n, mn, mx, mean, var > 0 ? sqrt(var) : 0.0, (long long)nnan, (long long)ninf);
+            for (int64_t r = 0; r < ne1 && r < 48; r++) {
+                double rs = 0;
+                for (int64_t c = 0; c < ne0; c++) rs += d[r * ne0 + c];
+                rs /= ne0;
+                GGML_LOG_INFO("[CPUMM] row %lld mean %f\n", (long long)r, rs);
+            }
+
+            // 8-27 二次取证：src1（激活侧）统计——与 OpenCL [CLDUMP] s1= 行同格式对照
+            // （判别非连续 view 输入是否在 GPU 侧被破坏：输入错 vs 内核算错）。
+            if (src1->type == GGML_TYPE_F32) {
+                const int64_t s1n = (int64_t)src1->ne[0] * src1->ne[1] * src1->ne[2] * src1->ne[3];
+                if (s1n <= 120LL * 1024 * 1024 / 4) {
+                    double s1sum = 0.0, s1ssq = 0.0;
+                    float s1mn = FLT_MAX, s1mx = -FLT_MAX;
+                    int64_t s1cnt = 0;
+                    // 直接用外层 GGML_TENSOR_BINARY_OP_LOCALS 的 ne1x/nb1x（src1）
+                    for (int64_t i3 = 0; i3 < ne13; i3++)
+                        for (int64_t i2 = 0; i2 < ne12; i2++)
+                            for (int64_t i1 = 0; i1 < ne11; i1++)
+                                for (int64_t i0 = 0; i0 < ne10; i0++) {
+                                    const float v = *(const float *)((const char *)src1->data + i0 * nb10 + i1 * nb11 + i2 * nb12 + i3 * nb13);
+                                    if (!isfinite(v)) continue;
+                                    s1sum += v; s1ssq += (double)v * v;
+                                    if (v < s1mn) s1mn = v;
+                                    if (v > s1mx) s1mx = v;
+                                    s1cnt++;
+                                }
+                    const double s1mean = s1cnt > 0 ? s1sum / s1cnt : 0.0;
+                    const double s1var = s1cnt > 0 ? s1ssq / s1cnt - s1mean * s1mean : 0.0;
+                    GGML_LOG_INFO("[CPUMM]   s1=%s ne=%lld,%lld,%lld,%lld n=%lld min=%f max=%f mean=%f std=%f\n",
+                        ggml_get_name(src1), (long long)ne10, (long long)ne11, (long long)ne12, (long long)ne13,
+                        (long long)s1n, s1mn, s1mx, s1mean, s1var > 0 ? sqrt(s1var) : 0.0);
+                }
+            }
+        }
+    }
 }
 
 // ggml_compute_forward_mul_mat_id
@@ -1897,6 +1962,34 @@ static void ggml_compute_forward(struct ggml_compute_params * params, struct ggm
         case GGML_OP_MUL:
             {
                 ggml_compute_forward_mul(params, tensor);
+                // 8-28 CPU MUL probe: product 场景(gate/up split, view 非连续)。
+                // 按行 stride 读 view,与真机 MULPROBE 同构双端对照。
+                if (params->ith == 0 && tensor->ne[0] == 9216 &&
+                    (tensor->ne[1] == 512 || tensor->ne[1] == 1536) &&
+                    tensor->type == GGML_TYPE_F32) {
+                    const struct ggml_tensor * s0 = tensor->src[0];
+                    const struct ggml_tensor * s1 = tensor->src[1];
+                    if (s0 && s1 && s0->type == GGML_TYPE_F32 && s1->type == GGML_TYPE_F32) {
+                        const int64_t d0 = tensor->ne[0], d1 = tensor->ne[1];
+                        const int64_t n1 = (int64_t)s1->ne[0] * s1->ne[1];
+                        double s0s = 0, s0ss = 0, s1s = 0, s1ss = 0;
+                        float s0mn = 1e30f, s0mx = -1e30f, s1mn = 1e30f, s1mx = -1e30f;
+                        const int64_t s0str = s0->nb[1] / 4, s1str = s1->nb[1] / 4;
+                        for (int64_t r = 0; r < d1; r++) {
+                            const float * p0 = (const float *)s0->data + r * s0str;
+                            const float * p1 = (const float *)s1->data + r * s1str;
+                            for (int64_t c = 0; c < d0; c++) {
+                                const float a = p0[c], b = p1[c];
+                                if (isfinite(a)) { s0s += a; s0ss += (double)a * a; if (a < s0mn) s0mn = a; if (a > s0mx) s0mx = a; }
+                                if (isfinite(b)) { s1s += b; s1ss += (double)b * b; if (b < s1mn) s1mn = b; if (b > s1mx) s1mx = b; }
+                            }
+                        }
+                        const double m0 = s0s / n1, m1 = s1s / n1;
+                        GGML_LOG_INFO("[CPUMUL] dst=%s ne=%lld,%lld s0min=%.3f s0max=%.3f s0std=%.4f | s1min=%.3f s1max=%.3f s1std=%.4f\n",
+                            ggml_get_name(tensor), (long long)d0, (long long)d1,
+                            s0mn, s0mx, (double)sqrt(s0ss / n1 - m0 * m0), s1mn, s1mx, (double)sqrt(s1ss / n1 - m1 * m1));
+                    }
+                }
             } break;
         case GGML_OP_DIV:
             {
@@ -1985,6 +2078,60 @@ static void ggml_compute_forward(struct ggml_compute_params * params, struct ggm
         case GGML_OP_MUL_MAT:
             {
                 ggml_compute_forward_mul_mat(params, tensor);
+                // 8-28 CPU 参照探针：与真机 ggml-cl [CLDUMP] 同格式（dst/s1 统计 + 前 48 行均值），
+                // 供 Klein GPU 专项逐 op 对表定位第一个 divergence。仅 ith==0 打一次。
+                if (params->ith == 0) {
+                    const struct ggml_tensor * s0 = tensor->src[0];
+                    const struct ggml_tensor * s1 = tensor->src[1];
+                    const int64_t d0 = tensor->ne[0], d1 = tensor->ne[1];
+                    const int64_t n = d0 * d1 * tensor->ne[2] * tensor->ne[3];
+                    if (n <= 120LL * 1024 * 1024 / 4 && tensor->type == GGML_TYPE_F32) {
+                        const float * buf = (const float *)tensor->data;
+                        double sum = 0, sumsq = 0;
+                        float mn = 1e30f, mx = -1e30f;
+                        int64_t nnan = 0, ninf = 0;
+                        for (int64_t k = 0; k < n; k++) {
+                            const float v = buf[k];
+                            if (!isfinite(v)) { if (v != v) nnan++; else ninf++; continue; }
+                            sum += v; sumsq += (double)v * v;
+                            if (v < mn) mn = v;
+                            if (v > mx) mx = v;
+                        }
+                        const double mean = n > 0 ? sum / n : 0.0;
+                        const double var = n > 0 ? sumsq / n - mean * mean : 0.0;
+                        GGML_LOG_INFO("[CPUDUMP] %s ne=%lld,%lld,%lld,%lld n=%lld min=%f max=%f mean=%f std=%f nan=%lld inf=%lld <- src0=%s src1=%s\n",
+                            ggml_get_name(tensor), (long long)d0, (long long)d1, (long long)tensor->ne[2], (long long)tensor->ne[3],
+                            (long long)n, mn, mx, mean, var > 0 ? sqrt(var) : 0.0, (long long)nnan, (long long)ninf,
+                            ggml_get_name(s0), s1 ? ggml_get_name(s1) : "?");
+                        if (s1 && s1->type == GGML_TYPE_F32) {
+                            const int64_t n1 = (int64_t)s1->ne[0] * s1->ne[1] * s1->ne[2] * s1->ne[3];
+                            if (n1 <= 120LL * 1024 * 1024 / 4) {
+                                const float * b1 = (const float *)s1->data;
+                                double s1sum = 0, s1ssq = 0;
+                                float s1mn = 1e30f, s1mx = -1e30f;
+                                for (int64_t k = 0; k < n1; k++) {
+                                    const float v = b1[k];
+                                    if (!isfinite(v)) continue;
+                                    s1sum += v; s1ssq += (double)v * v;
+                                    if (v < s1mn) s1mn = v;
+                                    if (v > s1mx) s1mx = v;
+                                }
+                                const double s1mean = n1 > 0 ? s1sum / n1 : 0.0;
+                                const double s1var = n1 > 0 ? s1ssq / n1 - s1mean * s1mean : 0.0;
+                                GGML_LOG_INFO("[CPUDUMP]   s1=%s ne=%lld,%lld,%lld,%lld n=%lld min=%f max=%f mean=%f std=%f\n",
+                                    ggml_get_name(s1), (long long)s1->ne[0], (long long)s1->ne[1],
+                                    (long long)s1->ne[2], (long long)s1->ne[3], (long long)n1,
+                                    s1mn, s1mx, s1mean, s1var > 0 ? sqrt(s1var) : 0.0);
+                            }
+                        }
+                        for (int64_t r = 0; r < d1 && r < 48; r++) {
+                            double rs = 0;
+                            for (int64_t c = 0; c < d0; c++) rs += buf[r * d0 + c];
+                            rs /= d0;
+                            GGML_LOG_INFO("[CPUDUMP] row %lld mean %f\n", (long long)r, rs);
+                        }
+                    }
+                }
             } break;
         case GGML_OP_MUL_MAT_ID:
             {

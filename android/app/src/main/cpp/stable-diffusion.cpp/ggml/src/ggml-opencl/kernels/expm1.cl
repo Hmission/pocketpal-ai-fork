@@ -1,4 +1,10 @@
 #pragma OPENCL EXTENSION cl_khr_fp16 : enable
+#ifdef GGML_OPENCL_DESKTOP_REPRO
+// 8-27: injected exp macro casts the arg to (float), which is illegal for the
+// half4->float4 variant below. exp(float/float4) are standard builtins on
+// NVIDIA, so just drop the macro here.
+#undef exp
+#endif
 
 //------------------------------------------------------------------------------
 // expm1
@@ -37,7 +43,7 @@ kernel void kernel_expm1_f16(
     src0 = (global half*)((global char*)src0 + offset0);
     dst  = (global half*)((global char*)dst + offsetd);
 
-    dst[get_global_id(0)] = exp(src0[get_global_id(0)]) - 1.0h;
+    dst[get_global_id(0)] = exp(src0[get_global_id(0)]) - 1.0f;
 }
 
 kernel void kernel_expm1_f16_4(
@@ -49,7 +55,7 @@ kernel void kernel_expm1_f16_4(
     src0 = (global half4*)((global char*)src0 + offset0);
     dst  = (global half4*)((global char*)dst + offsetd);
 
-    dst[get_global_id(0)] = exp(src0[get_global_id(0)]) - 1.0h;
+    dst[get_global_id(0)] = exp(src0[get_global_id(0)]) - 1.0f;
 }
 
 kernel void kernel_expm1_f32_nc(
