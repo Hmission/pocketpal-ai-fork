@@ -240,7 +240,7 @@ describe('GenActionBar（2026-08-26 吸底操作条：从 ComposerPanel 按钮�
     expect(onGenerate).toHaveBeenCalled();
   });
 
-  it('任务进行期（loading/generating）出图按钮灰置+转圈且禁点（2026-08-26）', () => {
+  it('任务进行期（loading/generating/queueRunning）出图按钮灰置+转圈且禁点（2026-08-26/29）', () => {
     const onGenerate = jest.fn();
     const {getByTestId, queryByText, rerender} = wrap(
       <GenActionBar {...baseProps} generating={true} onGenerate={onGenerate} />,
@@ -252,6 +252,17 @@ describe('GenActionBar（2026-08-26 吸底操作条：从 ComposerPanel 按钮�
     // loading（引擎加载期）：同样灰置转圈禁点——首次出图加载模型最耗时时也可见反馈
     rerender(
       <GenActionBar {...baseProps} loading={true} onGenerate={onGenerate} />,
+    );
+    expect(queryByText('出图')).toBeNull();
+    fireEvent.press(getByTestId('imagegen-generate'));
+    expect(onGenerate).not.toHaveBeenCalled();
+    // queueRunning（队列执行中，2026-08-29 补强）：同样转圈禁点，不再仅灰置无动效
+    rerender(
+      <GenActionBar
+        {...baseProps}
+        queueRunning={true}
+        onGenerate={onGenerate}
+      />,
     );
     expect(queryByText('出图')).toBeNull();
     fireEvent.press(getByTestId('imagegen-generate'));

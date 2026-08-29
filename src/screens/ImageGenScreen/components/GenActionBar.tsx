@@ -6,6 +6,8 @@
  * KeyboardStickyView 跟随（同聊天输入条设计语言）。
  * 逻辑与原有完全等价：Dream 双按钮（编辑/出图 + taskKind 转圈）、
  * 非 Dream（hasEditableImage 时编辑 + 出图）、任务进行期灰置禁点。
+ * 任务进行态（疏一事实源）：loading/generating/queueRunning 三段统一转圈——
+ * 2026-08-29 补强：队列执行中出图按钮同样转圈（此前仅灰置不转，真机不可见）。
  * 未加载引导由编排层 onGenerate 处理（按钮不灰置，点击弹引导）。
  */
 import * as React from 'react';
@@ -61,7 +63,9 @@ export const GenActionBar: React.FC<GenActionBarProps> = ({
 }) => {
   const theme = useTheme();
   const s = createStyles(theme);
-  const locked = loading || generating || queueRunning;
+  /** 任务进行态（转圈+灰置）= 三段同源：引擎加载 / 生成中 / 队列执行中 */
+  const busy = loading || generating || queueRunning;
+  const locked = busy;
 
   /** 出图按钮整体（含 ➕ 与「出图」两段）——⬆ 按钮语义与旧版完全等价 */
   const genButton = (
@@ -87,7 +91,7 @@ export const GenActionBar: React.FC<GenActionBarProps> = ({
         disabled={locked}
         testID="imagegen-generate"
         onPress={() => onGenerate()}>
-        {loading || generating ? (
+        {busy ? (
           <CircularActivityIndicator
             size={theme.iconSize.m}
             color={theme.colors.primary}

@@ -305,9 +305,11 @@ class HardwareInfoModule(reactContext: ReactApplicationContext) :
   private var lastCpuNs = 0L
   private var lastWallMs = 0L
 
-  // GPU sysfs 路径探测缓存（首次快照探测一次，之后复用；null = 不可用）
+  // GPU sysfs 路径探测缓存（首次快照探测一次，之后复用；null/空 = 不可用）
   private var gpuBusyPath: String? = null
-  private var gpuFreqPath: String? = null
+  /** GPU 频率候选路径（有序多源：kgsl gpuclk → kgsl devfreq → /sys/class/devfreq 兜底），
+   *  单源返回 0/不可读时自动轮换下一候选（骁龙 8 Gen 2+ 实测 gpuclk 受限/恒 0，K90 复现） */
+  private val gpuFreqCandidates = mutableListOf<String>()
   private var gpuPathProbed = false
 
   // GPU 采样防抖保持（B40）：kgsl gpubusy 在 GPU 电源域切换瞬间会偶发读取失败/返回 0，
@@ -319,7 +321,10 @@ class HardwareInfoModule(reactContext: ReactApplicationContext) :
   private var lastGpuFreqMhz = -1.0
   private var lastGpuFreqAtMs = 0L
 
-  /** 探测 GPU 负载/频率 sysfs 节点：Adreno kgsl 优先，次选 devfreq（Mali/MTK） */
+  /** 探测 GPU 负载/频率 sysfs 节点：Adreno kgsl 优先，devfreq 全目录兜底（Mali/MTK）
+   *  修正 2026-08-29：①kgsl 探测后不再提前 return，频率路径挂多源候选（gpuclk 受限
+   *  → cur_freq → /sys/class/devfreq 兜底）；②devfreq 节点名放宽含 kgsl/mali（MTK
+   *  Mali 节点如 13000000.mali 不含 "gpu"，旧匹配漏探致 K Pad 平板 GPU 读不到） */
   private fun probeGpuPaths() {
     if (gpuPathProbed) return
     gpuPathProbed = true
@@ -329,36 +334,40 @@ class HardwareInfoModule(reactContext: ReactApplicationContext) :
       val busy = File(kgsl, "gpubusy")
       if (busy.exists()) {
         gpuBusyPath = busy.absolutePath
-        val freq = File(kgsl, "gpuclk").takeIf { it.exists() }
-          ?: File(kgsl, "devfreq/cur_freq").takeIf { it.exists() }
-        freq?.let { gpuFreqPath = it.absolutePath }
-        return
       }
+      // 频率候选有序追加：gpuclk 命中但读数 0/受限时会自动轮换（见 readGpuFreqMhzRaw）
+      File(kgsl, "gpuclk").takeIf { it.exists() }?.let { gpuFreqCandidates += it.absolutePath }
+      File(kgsl, "devfreq/cur_freq").takeIf { it.exists() }?.let { gpuFreqCandidates += it.absolutePath }
     }
-    // 2. devfreq（Mali/MTK）：节点名含 "gpu"；load/utilisation 为纯百分比格式
+    // 2. devfreq 全目录兜底：Adreno 新内核节点挂 /sys/class/devfreq/*qcom,kgsl-3d0*，
+    //    Mali/MTK 节点名如 13000000.mali（不含 "gpu"，旧匹配漏探）；load/utilisation 纯百分比
     val devfreq = File("/sys/class/devfreq")
     val gpuNode = try {
-      devfreq.listFiles()?.firstOrNull { it.name.contains("gpu", ignoreCase = true) }
+      devfreq.listFiles()?.firstOrNull {
+        it.name.contains("gpu", ignoreCase = true) ||
+          it.name.contains("kgsl", ignoreCase = true) ||
+          it.name.contains("mali", ignoreCase = true)
+      }
     } catch (_: Throwable) {
       null
     }
     if (gpuNode != null) {
-      // 仅接受纯数字百分比格式（"@ busy" 周期格式无法归一，诚实降级 N/A）
-      val load = listOf("load", "utilisation", "gpu_load")
-        .map { File(gpuNode, it) }
-        .firstOrNull { it.exists() }
-      if (load != null) {
-        val raw = try { load.readText().trim() } catch (_: Throwable) { "" }
-        val v = raw.toLongOrNull()
-        if (v != null && v in 0..100) {
-          gpuBusyPath = load.absolutePath
+      if (gpuBusyPath == null) {
+        // 仅接受纯数字百分比格式（"@ busy" 周期格式无法归一，诚实降级 N/A）
+        val load = listOf("load", "utilisation", "gpu_load")
+          .map { File(gpuNode, it) }
+          .firstOrNull { it.exists() }
+        if (load != null) {
+          val raw = try { load.readText().trim() } catch (_: Throwable) { "" }
+          val v = raw.toLongOrNull()
+          if (v != null && v in 0..100) {
+            gpuBusyPath = load.absolutePath
+          }
         }
       }
-      val freq = File(gpuNode, "cur_freq")
-      if (freq.exists()) {
-        gpuFreqPath = freq.absolutePath
-      }
+      File(gpuNode, "cur_freq").takeIf { it.exists() }?.let { gpuFreqCandidates += it.absolutePath }
     }
+    println("[HardwareInfo] gpu paths: busy=$gpuBusyPath freq=$gpuFreqCandidates")
   }
 
   /** GPU 负载%（Adreno gpubusy 两列比值 / devfreq 纯百分比）；-1 = N/A，带防抖保持 */
@@ -418,16 +427,20 @@ class HardwareInfoModule(reactContext: ReactApplicationContext) :
     return -1.0
   }
 
-  /** GPU 频率 MHz 原始读数；-1 = 本次读取失败/不可用 */
+  /** GPU 频率 MHz 原始读数；-1 = 本次读取失败/不可用。多源候选轮换：
+   *  单源读数 0（骁龙 gpuclk 受限恒 0）或抛错 → 自动尝试下一候选，全败才 -1 */
   private fun readGpuFreqMhzRaw(): Double {
     probeGpuPaths()
-    val path = gpuFreqPath ?: return -1.0
-    return try {
-      val hz = File(path).readText().trim().toLongOrNull() ?: return -1.0
-      if (hz > 0L) hz / 1_000_000.0 else -1.0
-    } catch (_: Throwable) {
-      -1.0
+    if (gpuFreqCandidates.isEmpty()) return -1.0
+    for (path in gpuFreqCandidates) {
+      try {
+        val hz = File(path).readText().trim().toLongOrNull() ?: continue
+        if (hz > 0L) return hz / 1_000_000.0
+      } catch (_: Throwable) {
+        // 该源不可读（SELinux 拦截等），尝试下一候选
+      }
     }
+    return -1.0
   }
 
   /** 大核当前频率 MHz（scaling_cur_freq 取最大，代表当前性能档）；-1 = N/A */
@@ -471,18 +484,52 @@ class HardwareInfoModule(reactContext: ReactApplicationContext) :
     }
   }
 
-  /** 功耗 mW（battery current_now[μA] × voltage_now[μV] / 1e9）；
-   *  读数异常（>60W 或 ≤0）或不可读 → -1 N/A（部分 OEM 拦截 sysfs） */
+  /** 功耗 mW 多源探测（修正 2026-08-29：K90/HyperOS 实测 battery/current_now 常为 0
+   *  或受限 → 恒 -1）。候选链：current_now→current_avg（同 voltage_now）→ 其它
+   *  power_supply 节点（main/bms/fg_*）→ power_now 直读（mW）。任一源有效即返回，
+   *  全败 -1 N/A（诚实降级，不编造）；读数异常（>60W 或 ≤0）视为无效 */
   private fun readPowerMw(): Double {
-    return try {
-      val base = File("/sys/class/power_supply/battery")
-      val curUa = File(base, "current_now").readText().trim().toDoubleOrNull() ?: return -1.0
-      val voltUv = File(base, "voltage_now").readText().trim().toDoubleOrNull() ?: return -1.0
-      val mw = kotlin.math.abs(curUa) * kotlin.math.abs(voltUv) / 1_000_000_000.0
-      if (mw > 0.0 && mw <= 60_000.0) mw else -1.0
+    val battery = File("/sys/class/power_supply/battery")
+    val others = try {
+      File("/sys/class/power_supply").listFiles()
+        ?.filter {
+          it.name != "battery" &&
+            (it.name.contains("main", ignoreCase = true) ||
+              it.name.contains("bms", ignoreCase = true) ||
+              it.name.contains("fg", ignoreCase = true))
+        }
+        ?.toList() ?: emptyList()
     } catch (_: Throwable) {
-      -1.0
+      emptyList()
     }
+    // 电流×电压候选（有序：本机 battery 优先，其它节点兜底）
+    val pairs = mutableListOf<Pair<File, File>>()
+    for (dir in listOf(battery) + others) {
+      val volt = File(dir, "voltage_now")
+      if (!volt.exists()) continue
+      File(dir, "current_now").takeIf { it.exists() }?.let { pairs += it to volt }
+      File(dir, "current_avg").takeIf { it.exists() }?.let { pairs += it to volt }
+    }
+    for ((cur, volt) in pairs) {
+      try {
+        val curUa = cur.readText().trim().toDoubleOrNull() ?: continue
+        val voltUv = volt.readText().trim().toDoubleOrNull() ?: continue
+        val mw = kotlin.math.abs(curUa) * kotlin.math.abs(voltUv) / 1_000_000_000.0
+        if (mw > 0.0 && mw <= 60_000.0) return mw
+      } catch (_: Throwable) {
+        // 该源不可读，尝试下一候选
+      }
+    }
+    // power_now 直读（mW）兜底
+    for (dir in listOf(battery) + others) {
+      try {
+        val pn = File(dir, "power_now").readText().trim().toDoubleOrNull() ?: continue
+        if (pn > 0.0 && pn <= 60_000.0) return pn
+      } catch (_: Throwable) {
+        // 跳过
+      }
+    }
+    return -1.0
   }
 
   override fun getPerfSnapshot(promise: Promise) {

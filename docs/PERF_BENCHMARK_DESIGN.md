@@ -44,11 +44,11 @@
 
 | 指标 | 数据源 | 可用性 | 备注 |
 |---|---|---|---|
-| **GPU 负载%** | `/sys/class/kgsl/kgsl-3d0/gpubusy`（busy/total 两列比值）| Adreno ✅ | Mali/MTK：`/sys/class/devfreq/*.gpu/load` 或 `/proc/mali` |
-| **GPU 频率** | kgsl `gpuclk` / `devfreq/cur_freq` | Adreno ✅ | Mali/MTK：devfreq cur_freq |
+| **GPU 负载%** | `/sys/class/kgsl/kgsl-3d0/gpubusy`（busy/total 两列比值）| Adreno ✅ | Mali/MTK：`/sys/class/devfreq/*.gpu/load` 或 `/proc/mali`（2026-08-29 节点名放宽含 kgsl/mali——MTK 节点如 `13000000.mali` 不含 "gpu"，旧匹配漏探致 K Pad GPU 读不到） |
+| **GPU 频率** | kgsl `gpuclk` / kgsl `devfreq/cur_freq` / `/sys/class/devfreq/*/cur_freq` 多源候选 | Adreno ⚠️ | 逐源轮换：骁龙 8 Gen 2+ 实测 `gpuclk` 受限/恒 0（K90 复现），命中 0 自动换 `cur_freq`；Mali/MTK：devfreq cur_freq |
 | **CPU 实时频率** | `/sys/devices/system/cpu/cpuN/cpufreq/scaling_cur_freq` | ✅ 通用 | 取最大核频率（大核代表） |
 | **温度细分** | thermal_zone*/type 区分 cpu/gpu/battery 三区 | ✅ 通用 | 现在只取最大，升级为分区分取 |
-| **功耗** | `/sys/class/power_supply/battery/current_now`×`voltage_now` | ⚠️ 部分设备可读 | 不可读 N/A（PerfDog 玩法） |
+| **功耗** | `/sys/class/power_supply/battery/current_now`×`voltage_now` 多源链：current_avg→其它节点（main/bms/fg_*）→power_now 直读 | ⚠️ 部分设备可读 | 2026-08-29 增强：K90/HyperOS 实测 battery/current_now 常为 0/受限→恒 -1；任一源有效即返回，全败 N/A（PerfDog 玩法） |
 | **NPU 利用率** | **无标准 API**（QNN/NeuroPilot 需厂商 SDK） | ❌ | 诚实模式：设备卡显示 NPU 型号（SOC_MODEL），实时区显示「—」+ 说明 |
 
 **原则**：每个新指标 = 平台探测 + 失败 N/A 降级（不报错不兜底文案），与现有 perf 链路同哲学。
@@ -355,6 +355,7 @@ interface PerfSnapshotV2 {
 
 | 日期 | 版本 | 变更 |
 |------|------|------|
+| 2026-08-29 | 1.4 | **K90 GPU 频率/功耗多源探测增强（大王报障：频率/功耗恒 --）**：①GPU 频率改多源候选链（kgsl gpuclk → kgsl devfreq/cur_freq → /sys/class/devfreq 全目录兜底），单源读数 0/受限自动轮换——骁龙 8 Gen 2+ gpuclk 受限恒 0（K90 复现）实锤；②devfreq 节点名放宽含 kgsl/mali（旧匹配仅含 "gpu"，MTK `13000000.mali` 漏探→K Pad 平板 GPU 负载/频率一并覆盖）；③功耗多源链（current_now→current_avg→其它 power_supply 节点 main/bms/fg_*→power_now 直读 mW），K90/HyperOS battery current_now 常 0/受限实锤；④首次探测路径 println 留痕供新窗口构建后 logcat 实证。门禁：Kotlin 层修改待新窗口 Gradle 构建后真机验证（本窗口不构建） |
 | 2026-08-27 | 1.3 | **UI 一致性升级（大王五问裁定 + 真机复审三条）**：①**反推=生图流程**——反推/编辑/放大与生成同一路径：beginTask 后即滚入 running 空白任务页（taskPage 自适应）+ **完整 PerfPanel 默认展开**（叠图 overlay 全删：genOverlay/genOverlayEdit/genOverlayBottom 移除，旧 absolute 叠图与任务页双渲染内容叠加根治）；②**聊天页 B43 同步**——PendingIndicator 折线 44→56pt 双线+热力带+坐标轴+演出层（归一共享 `PerfMiniRow`，聊天域自适应形态保留），AssistantTurnFooter 展开层加 axes/tempBand/vivid（72pt）；③**容器自适应**——taskPage 去 overflow:hidden + 顶对齐 + minHeight 240，根治 PerfPanel 默认展开时内容超高双向裁切（顶部 WaveDots 被切）；④阈值/格式器抽取 `utils/perfTiers` 单一事实源（PerfPanel/PerfMiniRow/Footer 三方共用）；⑤**折叠层级平级**——高级参数折叠独立于提示词折叠；⑥顶部横幅去灰——BenchmarkHudBar 灰底 → 跑分金 brandAccent 12% wash + 文案居中。门禁：tsc 0 错 + 受影响 7 套件 178 用例全绿；真机（K90）：折叠/吸底大王确认通过，生成 running 页铁证（标题顶部完整不切 + PerfPanel 完整默认展开：性能 ▴ 4.8GB/CPU/GPU/61°C/峰值 5.5GB/指标行全在场） |
 | 2026-08-25 | 1.2 | **生图页面板四修（大王真机反馈）**：①去 SoC 型号小字行（卡片变矮，底部被切根治）；②弃灰色底面板（shadow 5% 底）→ hairline 顶部细线分隔（与聊天页指标行同一分隔语言，透明融入预览卡）；③卡片加宽（taskPage padding 10→6）+ 字号收紧（PSS 大字 18→16、胶囊/标签 10pt、数值 11pt，胶囊内距 6→4，指标项宽 62→58）——手机端一行内容不再截切；④默认叠全（overlay 默认 'all'，五曲线分色同屏，chip 可切回单线）。另修复 jest 基建：modulePathIgnorePatterns 排除 .tmp（wt-klein 副本 __mocks__ 与根同名致 haste-map duplicate mock 拒绝运行）",
 | 2026-08-23 | 0.1 | 首发：写轮眼同行调研（安兔兔/Geekbench/3DMark/PerfDog）+ 自学习缺口实证 + 四阶段方案 |

@@ -7,6 +7,12 @@
 
 ## [Unreleased]
 
+### 跑分数据链路补全 + 出图按钮任务态转圈统一（2026-08-29，大王报障三项，PERF_BENCHMARK_DESIGN v1.4）
+- **K90 GPU 频率/功耗多源探测（大王报障：跑分卡 GPU 频率/功耗恒 --）**：GPU 频率改多源候选链（kgsl gpuclk → kgsl devfreq/cur_freq → /sys/class/devfreq 全目录兜底），单源读数 0/受限自动轮换（骁龙 8 Gen 2+ gpuclk 受限恒 0，K90 复现）；devfreq 节点名放宽含 kgsl/mali（MTK `13000000.mali` 不含 "gpu"，旧匹配漏探致 K Pad 平板 GPU 负载/频率一并读不到）；功耗多源链（current_now→current_avg→其它 power_supply 节点 main/bms/fg_*→power_now 直读），K90/HyperOS battery current_now 常 0/受限实锤；首次探测路径 println 留痕供新窗口构建后 logcat 实证
+- **出图按钮任务进行态转圈统一（flux 等 SD 族真机观察缺转圈）**：GenActionBar 转圈条件从 loading/generating 扩为三段同源（loading/generating/queueRunning）——队列执行中按钮同样转圈+灰置（此前仅灰置无动效）；静态链路复核：直接出图路径 loading/generating 全覆盖（loadModel→loading / generate→generating），无模型族差异，队列执行期是本处补强点
+- **跑分卡 SSOT 复核确认（大王五问之①）**：5 生图模型（DreamLite/SD3.5/Z-Image/FLUX.2 Klein/Krea2）+ 反推/编辑/放大均走 runGenTask/runCaptionTask→同一 running 任务页→同一 PerfPanel（progressBody 单函数）+ perfTiers 阈值单源，无第二套；成功卡统一 s.preview 容器（文本/图像同一模态）
+- 门禁：tsc 0 错 + Panels 27/27 全绿（新增 queueRunning 转圈用例）；Kotlin 层修改待新窗口 Gradle 构建后 K90 真机验证（本窗口不构建）
+
 ### UI 一致性升级（2026-08-27，大王五问裁定 + 真机复审，IMAGEGEN_UI_SPEC v5.9/v5.10 + CHAT_UI_SPEC v2.1 + PERF_BENCHMARK_DESIGN v1.3）
 - **反推=生图流程（大王真机复审终修）**：反推/编辑/放大与生成同一路径——任务开始即滚入 running 空白任务页 + **完整 PerfPanel 默认展开**（直接复用，不重做不折叠）；叠图 overlay 全删（旧 absolute 叠图与任务页双渲染导致的内容叠加/遮挡根治）；反推跑分卡片与生图完全一致
 - **高级参数与提示词折叠平级（大王复审）**：高级参数钮与内容区独立于提示词折叠（原被误包进 promptCollapsed 作用域），折叠提示词后高级参数仍可用
