@@ -1,0 +1,34 @@
+{
+  "id": "k90-promax-sm8850",
+  "product": "myron",
+  "model": "25102RKBEC",
+  "serial": "aab688d9",
+  "soc": "SM8850",
+  "socAlias": "Snapdragon 8 Elite Gen 5",
+  "gpuFamily": "adreno",
+  "gpuModel": "Adreno 840",
+  "formFactor": "phone",
+  "ramMb": 16384,
+  "verified": [
+    { "key": "soc", "value": "SM8850", "source": "logcat MiPlayQuickCpuInfo getCpuName str4=SM8850（08-14/08-15 日志实锤）" },
+    { "key": "gpuModel", "value": "Adreno 840", "source": "GL_RENDERER + 设备映射表（2026-08-24 getprop 实锤）" },
+    { "key": "product", "value": "myron", "source": "getprop ro.product.marketname（2026-08-24）" },
+    { "key": "model", "value": "25102RKBEC", "source": "getprop ro.product.model（2026-08-24）" },
+    { "key": "noSdcard", "value": true, "source": "getprop（2026-08-24 设备映射表）" },
+    { "key": "ramMb", "value": 16384, "source": "§96 修正：K90 Pro Max 实为 16GB RAM，可用 ~10GB" },
+    { "key": "openclSd35", "value": "10.7min 512² 全链路（CPU 2h+ 对照）", "source": "OpenCL GPU 实证（xmem GEMM 激活）" },
+    { "key": "zimageXmem", "value": "XMEM 真关 655s（10.9min，3.6×，nan/inf=0）", "source": "Z-Image K90 真机实测 08-20" },
+    { "key": "vaeTiled", "value": "graph 1.94GB → 416MB，9 tiles", "source": "512px VAE tiled 实证" },
+    { "key": "nanFingerprint", "value": "与小米 13 指纹一致（跨设备同源 NaN）", "source": "NaN 指纹排查法实证" }
+  ],
+  "pending": [
+    { "key": "openclWaveOccupancy", "note": "驱动黑盒，不可测；仅能经 CLPROF 间接观测" },
+    { "key": "gmemRawAccess", "note": "cl_qcom_onchip_global_mem 是否可经 xmem GEMM 全量利用待复核" }
+  ],
+  "reference": [
+    { "key": "gpuTflops", "value": "FP32 ≈ 3.7 TFLOPS（FP16 约 2×，媒体口径不一）", "source": "媒体拆解（知乎 3.686 / 官方宣传）" },
+    { "key": "gmemMb", "value": 18, "source": "Adreno 840 公开规格（3 slice / 12 CU / 6MB per slice）" },
+    { "key": "memBw", "value": "LPDDR5X 10667 ≈ 85.3 GB/s（峰值理论）", "source": "公开规格" },
+    { "key": "npuTops", "value": "Hexagon HTP v81 ≈ 100 TOPS（INT8 口径，媒体 80-120 不一）", "source": "公开资料；logcat QnnHtpV81Stub 实锤架构 v81" }
+  ]
+}

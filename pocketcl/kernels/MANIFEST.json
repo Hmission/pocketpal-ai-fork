@@ -1,0 +1,88 @@
+{
+  "manifestVersion": 1,
+  "generated": "2026-08-29",
+  "source": "小黄鸡仓 docs/POCKETPAL_OPEN_KERNEL_PLAN.md §十三（T0 资产剖面）",
+  "assets": [
+    {
+      "id": "mali-half-prec-tiled-gemm",
+      "name": "Mali half-prec tiled GEMM 变体（mul_mm_q4_k/q5_k_f32_l4_lm + PP_MALI_FP16_LM 门控）",
+      "ownership": "upstream-first",
+      "carrierCommit": "f3b3f2b",
+      "evidence": "512² 69→24.2 s/步（2.86×）；512×768 113→33 s/步（3.42×）；nan=0 画质无损",
+      "valueScore": 5,
+      "note": "half local + fp32 累加；Mali 编译器对标量 half 生成病态代码，向量化即解"
+    },
+    {
+      "id": "clprof-operator-probe",
+      "name": "CLPROF 算子级探针（CL_QUEUE_PROFILING 编译开关 + env 门控 + logcat top-N 聚合）",
+      "ownership": "upstream-first",
+      "carrierCommit": "f3b3f2b",
+      "evidence": "凭猜 mul_mv flat 仅 1.09× → 探针命中 tiled GEMM 后 2.86-3.42×",
+      "valueScore": 4,
+      "note": "运行时零开销（转正后收掉探针）；优化前必先 profiling"
+    },
+    {
+      "id": "qcom-double-guard",
+      "name": "qcom 内核双重守卫（编译期宏 + 运行时 gpu_family 过滤）",
+      "ownership": "upstream-first",
+      "carrierCommit": "本仓历史（跨厂商修复）",
+      "evidence": "Mali 编译 cl_qcom_* 扩展报错/崩溃根治；Adreno 行为不变",
+      "valueScore": 5,
+      "note": "编译期宏 ≠ 运行时能力；见 kernels/guard-template.c 样板"
+    },
+    {
+      "id": "f16-kqkqv-adreno-guard",
+      "name": "F16 KQ/KQV 路径 use_adreno_kernels 守卫",
+      "ownership": "upstream-first",
+      "carrierCommit": "107ae9c",
+      "evidence": "SD3.5 白图 NaN 终极根因修复（F16 权重 × Adreno fp16 累积内核精度崩坏）",
+      "valueScore": 4,
+      "note": "数值正确性修复，非性能项"
+    },
+    {
+      "id": "vae-tiled-512px",
+      "name": "512px VAE tiled 解码（rel_size=0.5）",
+      "ownership": "upstream-first",
+      "carrierCommit": "f69df2a",
+      "evidence": "graph buffer 1.94GB → 416MB，9 tiles 跑通",
+      "valueScore": 4,
+      "note": "内存受限设备通用；OOM 根治而非缓解"
+    },
+    {
+      "id": "opencl-device-whitelist",
+      "name": "ggml-opencl 设备白名单（Mali 准入）",
+      "ownership": "self",
+      "carrierCommit": "e2ad204",
+      "evidence": "SD3.5 在 Mali-G925 全链路闭环",
+      "valueScore": 3,
+      "note": "硬件列表属产品策略，上游不采纳；归设备 DB（devices/*.json）"
+    },
+    {
+      "id": "q4_0-halfprec-te-disk-gate",
+      "name": "q4_0 半精度变体 + te=disk + gpuPolicy 声明式门控",
+      "ownership": "self",
+      "carrierCommit": "1efb267",
+      "evidence": "klein 模型平板准入（Mali）",
+      "valueScore": 3,
+      "note": "归 manifest/设备分级；声明式门控模式可抽为通用 devicePolicy"
+    },
+    {
+      "id": "adreno-xmem-kernel-family",
+      "name": "Adreno 840 xmem/noshuffle/q5/q6 l4_lm 内核族适配",
+      "ownership": "experimental",
+      "carrierCommit": "本仓历史",
+      "evidence": "SD3.5 OpenCL 2h+ → 10.7min；Z-Image XMEM 真关 3.6×",
+      "valueScore": 3,
+      "note": "上游已有基础，我们做适配+修复（DISABLE_ADRENO_KERNELS / ADRENO_XMEM_GEMM env 组合）；跨设备需白名单分级"
+    },
+    {
+      "id": "nan-fingerprint-method",
+      "name": "NaN 指纹排查法（跨设备指纹对比 → 算子层定位）",
+      "ownership": "self",
+      "carrierCommit": "历次事故复盘",
+      "evidence": "K90 与小米 13 NaN 指纹一致 → 排除设备差异直达算子",
+      "valueScore": 3,
+      "note": "归 handbook（排查手册），不是代码资产"
+    }
+  ]
+}

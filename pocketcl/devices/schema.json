@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PocketCL 设备指纹卡",
+  "description": "每台真机的性能工程身份卡。三态诚实分级：verified（真机实证带 source）/ pending（待测，不作事实）/ reference（公开资料口径，不参与决策）",
+  "type": "object",
+  "required": ["id", "product", "model", "serial", "soc", "gpuFamily", "gpuModel", "ramMb", "verified", "pending"],
+  "properties": {
+    "id": { "type": "string", "description": "设备卡唯一标识，约定 <marketname>-<soc>" },
+    "product": { "type": "string", "description": "getprop ro.product.marketname" },
+    "model": { "type": "string", "description": "getprop ro.product.model" },
+    "serial": { "type": "string", "description": "adb 唯一 serial（身份严禁凭简称推测）" },
+    "soc": { "type": "string", "description": "getprop ro.board.platform / 日志 getCpuName 实锤" },
+    "gpuFamily": { "enum": ["adreno", "mali", "unknown"] },
+    "gpuModel": { "type": "string" },
+    "formFactor": { "enum": ["phone", "tablet"] },
+    "ramMb": { "type": "integer" },
+    "verified": {
+      "type": "array",
+      "items": { "type": "object", "required": ["key", "value", "source"], "properties": { "key": { "type": "string" }, "value": { "type": ["string", "number", "boolean"] }, "source": { "type": "string" } } },
+      "description": "真机实证项（getprop / 日志 / 实测）"
+    },
+    "pending": {
+      "type": "array",
+      "items": { "type": "object", "required": ["key"], "properties": { "key": { "type": "string" }, "note": { "type": "string" } } },
+      "description": "待测项（禁止当作事实发布）"
+    },
+    "reference": {
+      "type": "array",
+      "items": { "type": "object", "required": ["key", "value", "source"], "properties": { "key": { "type": "string" }, "value": { "type": ["string", "number", "boolean"] }, "source": { "type": "string" } } },
+      "description": "公开资料口径，仅参考不参与决策"
+    }
+  }
+}
