@@ -8,6 +8,9 @@
  * 非 Dream（hasEditableImage 时编辑 + 出图）、任务进行期灰置禁点。
  * 任务进行态（疏一事实源）：loading/generating/queueRunning 三段统一转圈——
  * 2026-08-29 补强：队列执行中出图按钮同样转圈（此前仅灰置不转，真机不可见）。
+ * 2026-08-29 真机根因（大王报障：点击后文字消失但无转圈）：出图按钮背景 primary、
+ * 任务期禁用态 opacity 0.45 仍为 primary 色系——转圈同为 primary 色 → 同色相融不可见
+ * （编辑按钮转圈为 onInfo 对比色正常）；转圈改 onPrimary（与「出图」文字同色，高对比可见）。
  * 未加载引导由编排层 onGenerate 处理（按钮不灰置，点击弹引导）。
  */
 import * as React from 'react';
@@ -94,7 +97,7 @@ export const GenActionBar: React.FC<GenActionBarProps> = ({
         {busy ? (
           <CircularActivityIndicator
             size={theme.iconSize.m}
-            color={theme.colors.primary}
+            color={theme.colors.onPrimary}
           />
         ) : (
           <Text style={[s.buttonText, s.buttonTextGen]}>出图</Text>
