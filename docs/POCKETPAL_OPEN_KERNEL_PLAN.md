@@ -191,7 +191,9 @@ Pocket Chick 试验田产数据 → PocketCL 萃取公共品 → 社区反馈 �
 
 ### 12.8 PocketPal 上游回馈策略（同一审视的标准答案）
 
-**现状核查（2026-08-29）**：上游 a-ghorbani/pocketpal-ai 为 MIT，**活跃维护中**（持续迭代，已上线跑分排行榜）；贡献指南明确欢迎 New Models / UI/UX / Documentation / Performance Optimization / **More Languages**；提交规范 Conventional Commits 与本仓一致；我们未添加 upstream remote，回馈记录为零。
+**现状核查（2026-08-29 实锤）**：上游 a-ghorbani/pocketpal-ai 为 MIT，**活跃维护中**；贡献指南明确欢迎 New Models / UI/UX / Documentation / Performance Optimization / **More Languages**；提交规范 Conventional Commits 与本仓一致。
+
+**分叉点实测（2026-08-29）**：本仓基线 `46d43b0`（2026-08-12 快照重建，孤儿根提交，无 parent）——二开仓库未保留上游历史（291 自研提交全部独立）；上游 08-12 之后 ≥100 提交（per_page 封顶，最新 `ed680864` 2026-08-25，iOS 上架合规迭代中）。**结论**：与上游无共享历史 → merge 不可行，同步只能 cherry-pick/手动移植（这正是上游修复长期缺失的根因）；**回馈 PR 不受影响**（PR 是 diff 级，直接在 GitHub 新 fork 即可）。
 
 **风险判定**：合规零风险（署名+LICENSE 保留、免费开源、深度自研差异巨大）；唯一薄弱点是**社区关系面的「回馈记录为零」**——「你们 fork 了 pocketpal，回馈了什么？」的答案不能是零。
 
@@ -204,7 +206,7 @@ Pocket Chick 试验田产数据 → PocketCL 萃取公共品 → 社区反馈 �
 
 **行动清单**：
 
-- [ ] `git remote add upstream https://github.com/a-ghorbani/pocketpal-ai.git` + fetch 分析分叉点
+- [x] `git remote add upstream https://github.com/a-ghorbani/pocketpal-ai.git` + 分叉点分析（2026-08-29 已执行：基线 46d43b0 / 上游 ≥100 提交；全量 fetch 因本机代理 127.0.0.1:7897 未运行而挂起，待代理恢复后补全对象）
 - [ ] 审 `src/locales/`，筛通用 key 组 upstream 兼容 PR（与 l10n 维护纪律同轨）
 - [ ] 引擎层补丁走 llama.rn 上游（与 PocketCL T4 合并排期）
 - [ ] 上游发「fork 介绍 + 贡献意向」Discussion（以通用能力表述，不带小黄鸡品牌 IP）
