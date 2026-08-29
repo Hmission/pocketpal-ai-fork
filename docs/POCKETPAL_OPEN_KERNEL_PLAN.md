@@ -197,19 +197,22 @@ Pocket Chick 试验田产数据 → PocketCL 萃取公共品 → 社区反馈 �
 
 **风险判定**：合规零风险（署名+LICENSE 保留、免费开源、深度自研差异巨大）；唯一薄弱点是**社区关系面的「回馈记录为零」**——「你们 fork 了 pocketpal，回馈了什么？」的答案不能是零。
 
-**回馈分层（按接受概率排序）**：
+**回馈分层（2026-08-29 价值审计后修正排序）**：
 
-1. **l10n 语言包**：官方点名欢迎的方向，PR 接受概率最高；只筛「通用 key」的翻译，品牌/私有 key 不进上游；
+1. **引擎层优化**（升为首位）：OpenCL 补丁走 llama.rn/ggml 上游（与 PocketCL Phase 1 T4 同轨）——这是真正自研、上游没有、且合入后 PocketPal 自动受益的资产（A 类 5 项，T0 剖面 §13.1）；
 2. **bug fix**：共享代码层的通用修复（键盘避让、Menu 竞态、SafeArea 等，若修复点在未重构的共享代码上可回削）；
-3. **引擎层优化**：OpenCL 补丁走 llama.rn/llama.cpp 上游（与 PocketCL Phase 1 T4 同轨），合入后 PocketPal 自动受益——「帮到所有人」的最优解；
-4. **功能级**（生图/智能体/音频工坊）：遵循社区规则**先问后动**——发 Issue/Discussion 提案「we're a fork, built X, aligned with roadmap?」；若无意纳入，独立定位完全正当。
+3. **l10n 降级为零星 key 补全**（原「首选」判断被审计推翻）：十四语言翻译大多是**继承自上游**（零贡献），增量全为品牌/功能/体验改写（不可交）；真实可贡献仅每语言 1-2 个 key（如 zh `pals→伙伴`，上游未译）——量极小，并入第 1 波 PR 之外的低优先项，不再单独成波；
+4. **功能级**（生图/智能体/音频工坊）：先问后动 Discussion 提案；无意纳入则独立定位正当。
 
-**行动清单**：
+**审计证据（2026-08-29，14 语言全量基准）**：上游未翻译 key 14-57 个/语言，我们持有本地化值的仅 1-2 个（几乎全是 `onboarding.splash.brand`，且该 key 的值是品牌名，PR 须改回 PocketPal）；冲突 key 18-38 个/语言（internetSearch 功能语义差异、about.description 品牌改写、talentDescriptions 内置 vs API key、onboarding 体验改写）——均不可提交。结论：**l10n 不是我们的回馈主航道，引擎层才是**。
+
+**行动清单（2026-08-29 修正后）**：
 
 - [x] `git remote add upstream https://github.com/a-ghorbani/pocketpal-ai.git` + 分叉点分析（2026-08-29 已执行：基线 46d43b0 / 上游 ≥100 提交；全量 fetch 因本机代理 127.0.0.1:7897 未运行而挂起，待代理恢复后补全对象）
-- [ ] 审 `src/locales/`，筛通用 key 组 upstream 兼容 PR（与 l10n 维护纪律同轨）
-- [ ] 引擎层补丁走 llama.rn 上游（与 PocketCL T4 合并排期）
+- [x] l10n 价值审计（2026-08-29 已执行：结论见上——增量几乎全为产品化改写，l10n 降级）
+- [ ] 引擎层补丁走 llama.rn 上游（升为首位，与 PocketCL T4 合并排期）
 - [ ] 上游发「fork 介绍 + 贡献意向」Discussion（以通用能力表述，不带小黄鸡品牌 IP）
+- [ ] l10n 零星 key 补全（低优先：如 zh `pals→伙伴`，随第 1 波 PR 附带）
 
 ---
 
