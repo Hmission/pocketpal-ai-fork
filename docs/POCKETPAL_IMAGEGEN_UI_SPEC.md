@@ -33,6 +33,8 @@ relates: [POCKETPAL_DESIGN_SPEC, ADR-0002-imagegen-header-right]
 > 版本：v5.7（2026-08-25 B43 大王反馈收窄）：§9 跑分卡坐标轴升级——① 折线图加坐标轴（左 Y 刻度按维度单位 / 底部 X 时间刻度 / 水平垂直网格 / 5GB·6GB 阈值线端点标注）+ **叠全改复合图**（PSS/功耗折线 + CPU/GPU 负载柱状 + 温度热力带），温度不再与 PSS 主色同橙撞色；② 演出层 vivid 动画（最新点呼吸光圈 + 彗星尾 + 示波器扫掠光）；③ 指标分级色全接入（温度/功耗/频率/步耗时两档阈值，正常继承中性 / 警告橙 / 危险红，不再全黑）；④ 「叠全」chip 移至**最左**（默认项排最前）；⑤ 叠全图例行（色点+通道名，虚线语义由图内端点标注承载）——详见 PERF_BENCHMARK_DESIGN §10.5
 > 版本：v5.8（2026-08-26，B59 大王反馈）：① 出图/编辑按钮**任务进行期灰置 + 转圈 + 禁点**——loading（引擎加载）与 generating 同属任务期，disabled 全链路防连点；灰底（surface）+ 文字降级（onSurfaceVariant），转圈色白 → primary（灰底上可见）；此前仅 generating 转圈且无灰底，引擎加载期按钮零反馈（首次出图加载模型最耗时时最需要）；未加载（非 Dream 未选模型）不灰置引导红线不变（v4.1）；② 模型下拉**选中行圆角对齐浮层面板**——modelRow borderRadius inputSmall(8) → surface(32)，选中描边与整卡一致（音频引擎下拉复用同样式一并统一）
 > 版本：v5.9（2026-08-27，UI 一致性升级）：① **叠图迷你遥测条**——反推/编辑/放大（叠图模式）挂共享 `PerfMiniRow`（折叠头「性能 ▾ + PSS 大字阈值色 + 内存/CPU/温度胶囊」+ 展开 B43 迷你折线，默认折叠一行少遮挡原图；生成 blank 页维持完整 PerfPanel 不动），跑分完整性三态齐平；② **出图按钮吸底**——出图/编辑按钮移出 ComposerPanel → 新组件 `GenActionBar` 底部吸底条（KeyboardStickyView 键盘跟随 + safe-area），提示词卡折叠后一屏可见；③ **提示词卡折叠**——折叠头单行胶囊（提示词 ▾ + 摘要 + token 计数），编辑预备态强制展开；④ **容器自适应**——running/failed 任务页 taskPage 去 overflow:hidden + 顶对齐 + minHeight 240，根治 PerfPanel 默认展开时内容超高双向裁切（顶部 WaveDots 被切）
+> 版本：v5.10（2026-08-27 大王真机复审三条，替代 v5.9①）：① **反推=生图流程**——反推/编辑/放大与生成同一路径：任务开始即滚入 running 空白任务页（taskPage 自适应）+ **完整 PerfPanel 默认展开**（叠图 overlay 全删，`genOverlay/genOverlayEdit/genOverlayBottom` 样式移除；旧 absolute 叠图与任务页双渲染导致的内容叠加根治）；② **折叠层级平级**——高级参数折叠钮与提示词折叠平级（高级参数展开/折叠独立于提示词折叠；折叠提示词后高级参数按钮与内容区仍可用）；③ 出图按钮吸底确认通过（大王实测），保持不变
+> 版本：v5.11（2026-08-29，大王报障修复）：③ 吸底条 safe-area 补全——`KeyboardStickyView offset={{closed: 0}}` 使操作条吸附窗口物理底边，手势导航设备（K90/HyperOS 手势条，insets~15-24px）上按钮下缘被底边裁切（bottomBar paddingBottom 8px < 安全区）；修复 = KeyboardStickyView 内包 **surface 背景垫层**（paddingBottom=insets.bottom：内容上移避让 + 背景延伸到底无断带，同聊天输入条 insets 避让设计语言；不开 closed offset 挪位——底部会露 background 色带，深色模式 #000 vs #0E0E0E 可见差异）
 
 > 上位规范：POCKETPAL_DESIGN_SPEC.md（UI 域 SSOT）
 
@@ -156,10 +158,19 @@ relates: [POCKETPAL_DESIGN_SPEC, ADR-0002-imagegen-header-right]
 ## 6. 约束（实现红线）
 
 - Screen 层零直连 dreamLiteEngine，全部经 imageGenStore 单通道
-- 提示词限长 ≤120 字（端侧约束，超限红色警告但可提交）
+- 提示词限长 ≤120 字（端侧约束，超限红色警告但可提交）；反推输出 ≤200 token（与生图 prompt 上限一致，2026-08-27 大王裁定）
 - 所有色值走 theme token 或本规范登记的语义色，新增色必须登记本文档
 - testID 稳定：imagegen-quick-load（快速加载）等，e2e 依赖不变
 - 反推链路同样收编 store 单通道（captionEngine 经 imageGenStore 收口），Screen 层零直连
+
+### 6.1 UI 复用红线（2026-08-27 大王报障根治：禁止另造一套 UI）
+
+本窗口三次 UI 犯错（PerfMiniRow 重做跑分卡 / captionFullBody 边框卡 / absolute 信息行叠压）的共同根因是**先造后对齐**——新建组件前未读规范确认复用关系。立以下红线：
+
+1. **预览卡片统一模态**：文本/图像/视频等所有产物模态，一律显示在**同一标准预览容器 `s.preview`**（方形 aspectRatio:1）上，仅内容不同；**禁止**为任一模态新建独立卡片容器（captionFullPage/captionFullBody 类）。
+2. **信息胶囊唯一**：预览卡顶部信息条一律复用 `infoOverlay`/`infoOverlayWrap` 组件；**禁止** absolute 叠压第二层信息卡。
+3. **跑分面板唯一**：生图/反推/编辑/放大的跑分一律复用 `PerfPanel`（同一数据链 imageGenStore）；**禁止**新建简化版跑分组件（PerfMiniRow 仅服务聊天窄卡，不进生图域）。
+4. **先读规范后动手**：新建任何 UI 组件/卡片前，必须先读本规范 §1（页面结构）+ §6（红线）确认复用关系，回答三问：①现有容器/组件可复用吗？②与既有设计语言同构吗？③是否违反「不另造一套」？三问皆「否」才可新建。
 
 ## 7. 反推能力规范（v4）
 

@@ -7,13 +7,18 @@
 
 ## [Unreleased]
 
-### UI 一致性升级（2026-08-27，大王五问裁定，IMAGEGEN_UI_SPEC v5.9 + CHAT_UI_SPEC v2.1 + PERF_BENCHMARK_DESIGN v1.3）
-- **预览容器自适应根治顶部被切**：running/failed 任务页 taskPage 去 overflow:hidden + 顶对齐 + minHeight 240——PerfPanel 默认展开时内容超高不再双向裁切（DreamLite 出图顶部 WaveDots 被切一刀的根因），生成状态卡全模型一致
-- **叠图迷你遥测条补齐反推/编辑/放大跑分**：新建共享组件 PerfMiniRow（折叠头「性能 ▾ + PSS 大字阈值色 + 内存/CPU/温度胶囊分级色」+ 展开 B43 迷你折线：PSS+CPU 双线/温度热力带/坐标轴/5·6GB 标注/vivid 演出层），叠图 overlay 挂载（默认折叠一行少遮挡原图）——反推漏跑分卡片闭环
-- **出图按钮吸底 + 提示词卡折叠**：出图/编辑按钮移入新组件 GenActionBar 底部吸底条（KeyboardStickyView 键盘跟随 + safe-area），提示词卡折叠头单行胶囊（摘要 + token 计数，编辑预备态强制展开）——折叠后出图按钮一屏可见
+### UI 一致性升级（2026-08-27，大王五问裁定 + 真机复审，IMAGEGEN_UI_SPEC v5.9/v5.10 + CHAT_UI_SPEC v2.1 + PERF_BENCHMARK_DESIGN v1.3）
+- **反推=生图流程（大王真机复审终修）**：反推/编辑/放大与生成同一路径——任务开始即滚入 running 空白任务页 + **完整 PerfPanel 默认展开**（直接复用，不重做不折叠）；叠图 overlay 全删（旧 absolute 叠图与任务页双渲染导致的内容叠加/遮挡根治）；反推跑分卡片与生图完全一致
+- **高级参数与提示词折叠平级（大王复审）**：高级参数钮与内容区独立于提示词折叠（原被误包进 promptCollapsed 作用域），折叠提示词后高级参数仍可用
+- **预览容器自适应根治顶部被切**：running/failed 任务页 taskPage 去 overflow:hidden + 顶对齐 + minHeight 240——PerfPanel 默认展开时内容超高不再双向裁切（DreamLite 出图顶部 WaveDots 被切一刀的根因），真机铁证：标题顶部完整 + PerfPanel 全展开在场
+- **出图按钮吸底 + 提示词卡折叠**：出图/编辑按钮移入新组件 GenActionBar 底部吸底条（KeyboardStickyView 键盘跟随 + safe-area），提示词卡折叠头单行胶囊——折叠后出图按钮一屏可见（大王真机确认通过）
 - **聊天页跑分卡同步 B43**：PendingIndicator 折线 44→56pt（双线+热力带+坐标轴+演出层，归一 PerfMiniRow 共享）；AssistantTurnFooter 展开层加 axes/tempBand/vivid；阈值/格式器抽取 utils/perfTiers 单一事实源（PerfPanel/PerfMiniRow/Footer 三方共用）
 - **聊天页顶部横幅全量治理**：BannerBar neutral 灰底 → surface 实底 + outline hairline（消灭灰色）+ 新增 centered prop；BenchmarkHudBar 灰底 → 跑分金 brandAccent 12% wash + 文案居中；BannerRow html-soft-cap/context-remote-hedged 灰变体 → info 语义 wash + 居中；ActiveTaskBanner chat/prompter loading 态隐藏（placeholder 五分支已表达，双提示冗余）；死代码 ModelNotLoadedMessage 删除留痕
-- 门禁：tsc 0 错 + 受影响 7 套件 178 用例全绿；待 K90 真机验证（scrcpy 监督 + 人类模拟路径）
+- **反推结果卡与图片参数弹窗溢出根治（大王报障）**：captionFullPage 加 overflow:hidden 防溢出 + captionFullBody 改 flex:1 限高方形内 + 拆为「头行（标题+展开/收起钮）+ ScrollView（提示词可滚 nestedScrollEnabled）」——展开全文不再戳天地、可翻页滚动；OverlayCard 底座加 maxHeight:90% + ImageGenScreen infoItem 弹窗内容包 ScrollView（7行参数+长提示词可滚）
+- **反推卡两层叠压根治（大王报障）**：删 caption 成功页的 infoOverlayWrap（absolute 胶囊叠压在提示词卡上），信息行「反推·模型·耗时」合并入 captionFullBody 内部第一行（卡片内容流纵向排列 + hairline 分隔），不再两层叠压；真机实证：信息行 y=459-514 与标题行 y=526-580 纵向不叠
+- **预览卡片统一模态 + 反推 200 token 限制（大王报障）**：caption 成功页复用标准预览容器 s.preview（方形 aspectRatio:1 与图像页同大小）内 ScrollView 可滚文本（无边框）+ 顶部信息胶囊复用图像页同一 infoOverlay 组件——文本/图像统一同一预览卡片，删 captionFullPage/captionFullBody 等单独卡片 UI；反推 VLM 输出加 CAPTION_INSTRUCTION「within 200 tokens」+ truncateToTokens(200) 截断，不超生图 prompt 上限；真机实证 caption-scroll 1032×1032 与图像预览同尺寸
+- **吸底操作条安全区修复（2026-08-29，大王报障）**：出图按钮条在带手势导航设备上被底边裁切——KeyboardStickyView closed=0 贴窗口物理底边而 bottomBar padding 8px < 安全区；KeyboardStickyView 内包 surface 背景垫层（paddingBottom=insets.bottom 内容上移 + 背景延伸到底无断带），同聊天输入条 insets 避让设计语言（IMAGEGEN_UI_SPEC v5.11）
+- 门禁：tsc 0 错 + eslint 0 问题 + 受影响 10 套件 126 用例全绿；K90 真机验证（折叠/吸底大王确认 + running 页 PerfPanel 完整默认展开实证截图）
 
 ### 上下文治理极限化（2026-08-26，大王裁定「探索上限」，CONTEXT_COMPACTION_SPEC v1.2 + CHAT_UI_SPEC §18.6 v3.8）
 - **策展表 v2 重排 + 设备感知预算**：Qwen3.5-4B 4096→**16384**（大王实测可用）、Qwen3.5-2B/MiniCPM5-1B 24576/16384→**32768**、Ministral-3-3B→24576、Gemma-3-4B→32768、LFM2.5-8B→24576、LFM2.5-2.6B→16384（尺寸档同步上探）；策展预算从固定 4GB 改为 `resolvePssSafeBudget`（启动实测可用内存、上限 9GB、fallback 4GB）；KV 保持 f16 不加量化旋钮（锋利不预设）；`CURATED_TABLE_VERSION=2` 版本化拉齐（preset 低档随表升级一次性升档，解除只降不升钉死；user 主权不碰）；启动审计守卫语义不变（预算值换设备口径）

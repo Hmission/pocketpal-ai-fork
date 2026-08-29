@@ -244,4 +244,4 @@ Pocket Chick 试验田产数据 → PocketCL 萃取公共品 → 社区反馈 �
 
 - A 类 5 项即 Phase 1 T4「上游 PR 探路」的首选载荷（先 Mali half-prec + 双重守卫两枚高价值补丁）；
 - B 类 4 项直接映射 PocketCL 三层（设备 DB / 内核集合 / handbook）；
-- 真正「瘦身提炼独立目录」工作（T0 实体化）待 Phase 1 立项后开工。
+- **T0 实体化已于 2026-08-29 落地（本地）**：仓库根新建 `pocketcl/` 独立目录（README + `specs/architecture.md` + `devices/`（schema.json + K90/K Pad 双设备卡）+ `kernels/`（MANIFEST.json + guard-template.c 双重守卫样板）+ `handbook/rules.md` 五铁律与排查决策树）；**未提交未推送**（网络挂起期间本地开发，待网络恢复统一收口）。
