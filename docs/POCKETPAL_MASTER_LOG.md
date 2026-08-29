@@ -1058,4 +1058,43 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
 
 - 文档：README + PLAN v0.2 + MASTER_LOG §119；**未执行（下窗口）**：upstream remote 分叉分析、l10n 回馈 PR、引擎层补丁（与 PocketCL Phase1-T4 合并排期）。
 - Git：commit + push（提交≠落袋，push 才闭环）。
+
+---
+
+## §120 AIOS 连仓修复：五目录 junction 挂载 + guard 6/6 归零 + gate/KG 激活实证（2026-08-29，大王揭示母仓后修复窗口）
+
+### 120.1 大王揭示与侦察结论
+
+- 大王指出：写轮眼/自学习引擎是真实存在的机制（非话术），AIOS 母仓 F:\AIOS 与混合母仓 F:\Cursor\OneTakeMVP 存在；本仓要么没接要么连仓失效，要求先修连仓再用机制，业务层继续推进。
+- **侦察三链条**：①guard 每次 commit 报「规则 SSOT 引用缺失 6/6」——config/aios_mind_bootstrap.md、config/context_bootstrap_manifest.json、.cursor/rules、scripts/hooks/compass.py、docs/platform、AGENTS.md 协议关键词；母仓 F:\AIOS 全部存在（含 compass 系/aios_funnel_tier2-4/aios_host_bootstrap）；②.gitignore 第 125-130 行「连仓 junction（指向母仓，不入子仓 git）」预留区早已存在（.qoder/hooks/、scripts/agent/、.cursor/）——连仓设计在 gitignore 层面已规划；③scripts/agent（143 文件，含本地进化目录 code_facts_healer_impl/memory_bus_impl/subconscious 等）与 .qoder/hooks（28 钩子 + .skip-* 标记）为 2026-05/08 历史拷贝 = **曾存在拷贝式部分连仓**；subrepo_registry.json 实锤 F:/pp 为母仓登记子仓。
+- **根因定论**：五目录（config/.cursor/scripts/hooks/docs/platform）从未接入 → hooks 因 SSOT 缺失半激活（MASTER_LOG §117 当时结论「从未入库」属实但未连接母仓视角——文件在母仓，本仓缺挂载）。
+
+### 120.2 修复动作（L0 文件层 + L1 验证）
+
+- **junction 只读挂载**：f:\pp\config→F:\AIOS\config、.cursor→.cursor、scripts\hooks、docs\platform（scripts\agent 与 .qoder\hooks 已有拷贝故跳过）；.gitignore 连仓预留区补 /config/、/scripts/hooks/、/docs/platform/（防 git add 遍历母仓）。
+- **AGENTS.md 注入「AIOS 宿主协议接入」章节**（心智恢复/门禁路由/记忆桥接/漏斗指针/KG 优先/指南针引用 + 接入分级 L0✅/L1 验证后/L2 全链 + 优先级：本仓业务契约为准，AIOS 服务业务不覆盖业务）。
+- **guard 验证**：node scripts/guard_tracked_files.js → 6/6 警告消失（只剩正常输出）。
+- **gate 激活实证**：绑定 DWS_SESSION=9ef5e0df 后 gate 返回 idle（governance_stage clear、dws_session_env_set true、exec_permission deny 待 route）；status 返回「大王山（空闲，等待路由）」；**KG 骨架加载成功（module_count 309 / node_count 72，kg_skeleton_loaded true，KG 优先协议就位）**。
+
+### 120.3 结构决策与遗留
+
+- **结构**：可执行层（scripts/agent、.qoder/hooks）= 本仓拷贝（可本地进化）；SSOT/规则/文档层（config/.cursor/scripts/hooks/docs/platform）= junction 只读（跟随母仓）；母仓更新后业务仓即时可见。
+- **遗留**：①Qoder hooks 30 个**未激活**（gate-guard/starmap-scope-guard 等拦截型会改变 Agent 行为，待大王拍板是否全量生效，建议先只验 gate）；②OneTakeMVP 僵尸锁 2 个（data\.locks\session_mind_snapshot.lock、logs\session_mind_events.jsonl.lock，age 33h+ > TTL 300s，待清理）；③DWS_SESSION 每窗独立绑定纪律（多窗并行务必各窗不同 ID）；④路由历史继承自母仓共享状态库（上次路由啄木鸟 08-27）。
+- **文档**：AGENTS.md 协议段 + .gitignore 预留区 + MASTER_LOG §120；**未提交未推送**（网络挂起，统一收口）。
 - **文档先行补课**：本窗口先改代码后补文档，违反 SPEC 首行铁律「UI 迭代先更新文档」，已补记 SPEC v5.11 版本行 + CHANGELOG 条目，向大王说明。
+
+## §121 Klein OpenCL 赭石输出排查战役（2026-08-27~29，专项分析文档立档窗口）
+
+### 121.1 战役概况
+
+- **症状**：FLUX.2 Klein Q4_K_M 在 K90 OpenCL 输出赭石/纯色（非内容图）；桌面 CPU 同 seed 正确、SD3.5 同机 OpenCL 正常 → 组合性 bug。
+- **同 seed 范式**：1718095322 +  red apple on a wooden table, soft light + 512×768/4 步/cfg 1.0。
+- **专项文档**：docs/KLEIN_OPENCL_OCHRE_ANALYSIS.md（证据链/排除清单/弯路复盘/可复用知识点全量归档）。
+
+### 121.2 战役结论（截至 08-29 上午）
+
+- 实锤：GEMM 输出压缩（step4 18.15 vs CPU 77.9）；激活链无罪（双端 MULPROBE 一致）；加载层洗清（q5K-RAW：data=文件原样，data_offset=10816 对齐正确）；权重数据自洽（d≈7e-5 为文件真实值）。
+- **病灶收窄**：convert 内核 q/qh 重排（或紧随转置）与源码语义模拟全不符 → 终审探针 q5K-CONV（convert 直出）已编包，待设备回连一轮二分定谳。
+- **弯路归档**：GGUF data_offset 旧解析错误（1056 非对齐）伪造两轮假结论（9764 错位/wtype 重量化）；QK_K=256 认知缺失（K/64 误改致全 NaN 已回滚）；探针登记过宽致 SIGABRT ×2；CLDUMP 延迟读污染；view 连续区间混读——全部进专项文档 §五（血泪账）。
+- **途中修复**：ImageGenJNI wtype 保留原生量化（62a1e77，防御性）；探针群（99b07d1）；本地 6 commit + bundle 备份（F:\\backups\\pocketpal-bundle-20260829-50fc1a2.bundle）。
+- **遗留**：设备离线；终审后探针撤除 + 修复落地 + 窗口闭环登记。
