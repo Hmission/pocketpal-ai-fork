@@ -80,3 +80,18 @@ Conventional Commits（Husky commitlint 强制）：
 2. `CHANGELOG.md` 把 `[Unreleased]` 收编为定版段 + 顶部新开空 `[Unreleased]`（Keep a Changelog 风格）
 3. 验证：`tsc` 零错 → jest 全绿 → 真机装机验证
 4. git tag + Release（GitHub）
+
+## AIOS 宿主协议接入（母仓联源，2026-08-29 恢复连仓）
+
+本仓是 AIOS 母仓（F:\AIOS）登记子仓（`subrepo_registry.json`），以下机制经 junction 只读接入（`config/` `.cursor/` `scripts/hooks/` `docs/platform/` 指向母仓，不入本仓 git，见 `.gitignore` 连仓预留区）：
+
+- **心智恢复**：`config/aios_mind_bootstrap.md`（§0 心智锚点三步：心智锚点 / 能力扫描 / 视野校验，每轮开始输出）
+- **门禁路由**：`scripts/agent/agent_router.py` gate → route → return（LLM 首个 tool_call 必须 gate）
+- **记忆桥接**：`config/context_bootstrap_manifest.json` + zero-shot-inject 注入（零样本注入器）
+- **漏斗指针**：`config/aios_funnel_tier2_exec.md` / `tier3_guards.md` / `tier4_refs.md`（层级按需加载）
+- **KG 优先**：知识图谱检索（kg_wenpu.py）与星图定界（starmap-scope-guard）
+- **指南针**：`scripts/hooks/compass.py`（compass-711-gate，CP-002 系）
+
+接入分级：L0 文件挂载 ✅（guard 6/6 消除）；L1 hook 激活（`.qoder/hooks/` + `scripts/agent/` 挂载点已预留在 .gitignore）——**待 gate 依赖面验证后启用**；L2 全协议（gate→route→return 全链）。
+
+**优先级**：本文件（Pocket Chick 开发指南）为业务契约；与母仓 AIOS 协议冲突时以本文件为准——AIOS 机制服务业务，不覆盖业务。

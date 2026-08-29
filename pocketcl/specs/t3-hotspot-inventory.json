@@ -1,0 +1,17 @@
+{
+  "source": "kpad-turner-mt6991 CLPROF 实锤榜（2026-08-14）",
+  "collectedVia": "T2 probe-topn.js 聚合（pocketcl/cli）",
+  "algorithm": "top-N 按累计占比覆盖：≥70% 为 T3 搜索对象集（编译器路线必须覆盖的热点）",
+  "hotspots": [
+    { "rank": 1, "kernel": "mul_mm_q4_k_f32_l4_lm", "pct": 55.6, "cumulative": 55.6, "t3Target": true },
+    { "rank": 2, "kernel": "mul_mm_q5_k_f32_l4_lm", "pct": 15.5, "cumulative": 71.1, "t3Target": true },
+    { "rank": 3, "kernel": "mul_mm_f32_f32_l4_lm", "pct": 7.6, "cumulative": 78.7, "t3Target": true },
+    { "rank": 4, "kernel": "mul_mv_q4_k_f32", "pct": 0.1, "cumulative": 78.8, "t3Target": false, "note": "flat GEMV 占比忽略不计，不开搜索" }
+  ],
+  "summary": {
+    "top2covers": 71.1,
+    "top3covers": 78.7,
+    "targetRule": "t3Target=true 的算子进入搜索空间（覆盖 71-79%）",
+    "manualEvidence": "mul_mm_q4_k/q5_k 半精度化后 K Pad 2.86-3.42x——编译器的对照门槛即此成绩"
+  }
+}

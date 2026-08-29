@@ -1,0 +1,24 @@
+{
+  "asset": "qcom-double-guard",
+  "ownership": "upstream-first",
+  "carrierFiles": [
+    "android/app/src/main/cpp/stable-diffusion.cpp/ggml/src/ggml-opencl/ggml-opencl.cpp",
+    "android/app/src/main/cpp/stable-diffusion.cpp/ggml/src/ggml-opencl/kernels/gemm_xmem_f16_f32_os8.cl",
+    "android/app/src/main/cpp/stable-diffusion.cpp/ggml/src/ggml-opencl/kernels/gemm_moe_q4_0_f32_ns.cl",
+    "android/app/src/main/cpp/stable-diffusion.cpp/ggml/src/ggml-opencl/kernels/gemm_moe_q4_k_f32_ns.cl",
+    "android/app/src/main/cpp/stable-diffusion.cpp/ggml/src/ggml-opencl/kernels/gemm_moe_q6_k_f32_ns.cl"
+  ],
+  "carrierNote": "qcom 专属内核家族（gemm_*_ns.cl + gemm_xmem_*.cl 共 9+ 内核）；嵌套仓库 .git 已剥离，以 map.md 为准",
+  "hunks": [
+    { "lines": "ggml-opencl.cpp 4413-4417", "what": "xmem GEMM 使能 = env 编译期开关 + gpu_family 运行时过滤（双守卫）" },
+    { "lines": "ggml-opencl.cpp 4419-4421", "what": "large-buffer 使能同款双守卫（env + gpu_family）" },
+    { "lines": "ggml-opencl.cpp 4188-4193", "what": "GGML_OPENCL_USE_ADRENO_KERNELS 编译期宏包裹日志与开关声明" },
+    { "lines": "9 个内核 .cl 头部", "what": "#pragma OPENCL EXTENSION cl_qcom_subgroup_uniform_load/constant_load/extra_vector_types（无条件声明，由上层守卫拦截编译）" },
+    { "lines": "gemm_xmem_f16_f32_os8.cl 118", "what": "qcom_get_physical_sub_group_id() 调用（Mali 编译器 implicit declaration 崩溃源）" }
+  ],
+  "envGate": "GGML_OPENCL_USE_ADRENO_KERNELS + GGML_OPENCL_ADRENO_XMEM_GEMM（编译期宏/运行期 env）+ gpu_family == ADRENO（运行时过滤）",
+  "evidence": "Mali 设备编译报 unknown extension 'cl_qcom_subgroup_uniform_load' + implicit declaration of 'qcom_get_physical_sub_group_id'；双守卫补上后 Mali 跳过编译、构建成功，Adreno 行为不变",
+  "upstreamTarget": "ggml（ggml-opencl backend 的多 GPU 家族支持分支）",
+  "prNotes": "铁律 2 全文：vendor 专属内核必须「编译期宏 + 运行时 gpu_family 过滤」双保护，缺一即在非目标 GPU 上崩溃；样板见 pocketcl/kernels/guard-template.c",
+  "valueScore": 0.9
+}

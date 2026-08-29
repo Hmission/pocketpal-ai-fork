@@ -1,0 +1,19 @@
+{
+  "asset": "clprof-operator-probe",
+  "ownership": "upstream-first",
+  "carrierFile": "android/app/src/main/cpp/stable-diffusion.cpp/ggml/src/ggml-opencl.cpp",
+  "carrierCommit": null,
+  "carrierNote": "嵌套仓库 .git 已剥离（复制入库时丢失），无法本地 diff 上游基线；以 map.md 改动地图为准",
+  "hunks": [
+    { "lines": "40-41", "what": "include <tuple>/<algorithm>（榜单聚合排序依赖）" },
+    { "lines": "721-730", "what": "取 5 段 CL_PROFILING_COMMAND_* 时间（QUEUED/SUBMIT/START/END/COMPLETE）入库" },
+    { "lines": "782-789", "what": "榜单输出：头行 + 行格式（ms/pct/calls/name）" },
+    { "lines": "4437-4439", "what": "env 门控开启 CL_QUEUE_PROFILING_ENABLE + 日志" },
+    { "lines": "14316", "what": "mm 形状诊断行（[CLPROF] mm a=... b=... d=...）" }
+  ],
+  "envGate": "GGML_OPENCL_PROFILING（运行期门控，编译期常驻，默认零开销）",
+  "evidence": "2026-08-14 K Pad(Mali-G925) 实锤热点：mul_mm_q4_k/q5_k_f32_l4_lm 71.1% + mul_mm_f32_f32_l4_lm 7.6%，mul_mv flat 仅 0.1%",
+  "upstreamTarget": "ggml（llama.cpp 内 ggml-opencl backend）",
+  "prNotes": "探针默认关闭（env 门控）不改变任何行为；建议随 PR 附 exemplar 榜单输出；mm 形状行可选拆独立 PR",
+  "valueScore": 0.9
+}

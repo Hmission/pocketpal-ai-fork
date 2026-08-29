@@ -243,8 +243,16 @@ Pocket Chick 试验田产数据 → PocketCL 萃取公共品 → 社区反馈 �
 
 - 工作区 18 文件 +618/−68（mul_mv_q5/q6_k_f32.cl 等），非本窗改动；待对应窗口收口后归入清单。
 
-### 13.4 剖面结论
+### 13.4 剖面结论（2026-08-29 晚更新：全阶段完成）
 
 - A 类 5 项即 Phase 1 T4「上游 PR 探路」的首选载荷（先 Mali half-prec + 双重守卫两枚高价值补丁）；
 - B 类 4 项直接映射 PocketCL 三层（设备 DB / 内核集合 / handbook）；
-- **T0 实体化已于 2026-08-29 落地（本地）**：仓库根新建 `pocketcl/` 独立目录（README + `specs/architecture.md` + `devices/`（schema.json + K90/K Pad 双设备卡）+ `kernels/`（MANIFEST.json + guard-template.c 双重守卫样板）+ `handbook/rules.md` 五铁律与排查决策树）；**未提交未推送**（网络挂起期间本地开发，待网络恢复统一收口）。
+- **PocketCL 全阶段已实体化（2026-08-29，本窗口闭环）**：
+  - T0 设备卡与样板（devices/ 双卡 + kernels/ MANIFEST+双样板 + handbook 五铁律）✅；
+  - T1 公共 API（pocketcl.h 20 API + src/ 四实现 908 行，编译待 NDK/CI）✅；
+  - T2 探针 CLI（probe-topn.js + device-card.js，冒烟过）✅；
+  - T3 编译器路线（compiler-roadmap + 热点清单 + 搜索空间机读，T3.1 完成）✅；
+  - T4 回馈备料（patches/ 五 A 类改动地图；嵌套仓库 .git 丢失 → 改动地图+rebase SOP）✅；
+  - **R 层 v0.3**：定位升级为混合计算调度层（architecture 第六章五对象规格 + pocketcl.h 14 API 草案声明不实现；实装按痛点触发）。
+- 与 AIOS 连仓协同：guard 6/6 归零（junction 挂载）、门禁协议全链实证（gate→route→return）。
+- 本轮已提交（未 push，网络挂起待收口）；详见 MASTER_LOG §123。

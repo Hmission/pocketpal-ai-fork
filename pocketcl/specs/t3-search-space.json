@@ -1,0 +1,40 @@
+{
+  "spec": "compiler-roadmap.md §5 搜索空间设计 v0.1",
+  "target": "mul_mm_q4_k_f32_l4_lm（试点单算子，CLPROF 55.6%）",
+  "dims": [
+    {
+      "id": "D1_tile",
+      "name": "TM/TN tile 组合",
+      "search": [[4, 8], [5, 8], [8, 8]],
+      "seed": "l4_lm 手动经验（K Pad 验证域）"
+    },
+    {
+      "id": "D2_vec",
+      "name": "向量宽度 VEC",
+      "search": [4, 8],
+      "constraint": "Mali 且无 fp16_storage -> 禁 half 域，VEC 只能 4 且走 fp32 路径"
+    },
+    {
+      "id": "D3_unroll",
+      "name": "unroll 因子",
+      "search": [2, 4],
+      "note": "local 带宽权衡（手动经验：4 有收益，2 为保守对照）"
+    }
+  ],
+  "hardConstraints": [
+    { "rule": "Mali && !(exts & fp16_storage)     -> 禁 half 域", "source": "device card exts 位掩码" },
+    { "rule": "Adreno tier < 2                    -> 禁 xmem 域", "source": "device card tier" },
+    { "rule": "device card 存在 pending 维度字段   -> 该维度降级通用档", "source": "三态诚实原则" },
+    { "rule": "累加器恒 fp32（铁律 3，编译器不得改 half 累加）", "source": "handbook 铁律 3 / 6.18 NaN 事故" }
+  ],
+  "evaluator": {
+    "format": "CLPROF 榜单格式（与 T2 probe-topn.js 同一正则协议）",
+    "benchmark": "512x768（3.42x 手动基线所在尺寸）为主场景",
+    "passThreshold": ">= 手动基线 95% 且 nan=0、值域 ±5"
+  },
+  "output": {
+    "schema": "{ \"device\": \"<card id>\", \"kernel\": \"<name>\", \"best\": { \"tile\": [4,8], \"vec\": 8, \"unroll\": 4 }, \"speedupVsManual\": 0.0, \"nan\": 0, \"evidence\": \"<CLPROF 榜单 JSONL>\" }",
+    "consumer": "policy（T1 pcPolicyBuild 回注 L3 tuning 先例）"
+  },
+  "status": "T3.1 交付物：机读搜索空间定义；T3.2 执行待 GPU/编译环境"
+}

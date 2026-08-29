@@ -1081,6 +1081,15 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
 - **结构**：可执行层（scripts/agent、.qoder/hooks）= 本仓拷贝（可本地进化）；SSOT/规则/文档层（config/.cursor/scripts/hooks/docs/platform）= junction 只读（跟随母仓）；母仓更新后业务仓即时可见。
 - **遗留**：①Qoder hooks 30 个**未激活**（gate-guard/starmap-scope-guard 等拦截型会改变 Agent 行为，待大王拍板是否全量生效，建议先只验 gate）；②OneTakeMVP 僵尸锁 2 个（data\.locks\session_mind_snapshot.lock、logs\session_mind_events.jsonl.lock，age 33h+ > TTL 300s，待清理）；③DWS_SESSION 每窗独立绑定纪律（多窗并行务必各窗不同 ID）；④路由历史继承自母仓共享状态库（上次路由啄木鸟 08-27）。
 - **文档**：AGENTS.md 协议段 + .gitignore 预留区 + MASTER_LOG §120；**未提交未推送**（网络挂起，统一收口）。
+
+---
+
+## §122 技术债登记：CLPROF 探针残留开启（ImageGenJNI.cpp:334，多窗口协作不代劳）
+
+- **债**：`ImageGenJNI.cpp:334` `setenv("GGML_OPENCL_PROFILE", "1", 1)`（8-27 Klein GPU 专项临时探针）。注释明确「定位 FLUX.2 出错算子后即删本行回零开销」——但时至 08-29 仍在（生产构建 profiling 队列常开，有性能损耗）。
+- **为何不撤**：另一窗口专工（Klein GPU 取证）**正在使用该探针**；本窗口按多窗口协作纪律**不代劳**——撤除可能打断在途取证。
+- **处置约定**：①登记本债（本条）；②提醒 Klein 专工/窗口：使用完毕请按注释意图撤除（回零开销）；③后续巡检（guard）持续跟踪状态；④若确认不再需要且无人认领，再按「有主撤队」流程处理。
+- **关联**：探针规范见 PocketCL handbook 铁律 1（编译期常驻 + 运行期 env 门控零开销）；本债违反点 = 门控被长期置 1。
 - **文档先行补课**：本窗口先改代码后补文档，违反 SPEC 首行铁律「UI 迭代先更新文档」，已补记 SPEC v5.11 版本行 + CHANGELOG 条目，向大王说明。
 
 ## §121 Klein OpenCL 赭石输出排查战役（2026-08-27~29，专项分析文档立档窗口）
@@ -1098,3 +1107,35 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
 - **弯路归档**：GGUF data_offset 旧解析错误（1056 非对齐）伪造两轮假结论（9764 错位/wtype 重量化）；QK_K=256 认知缺失（K/64 误改致全 NaN 已回滚）；探针登记过宽致 SIGABRT ×2；CLDUMP 延迟读污染；view 连续区间混读——全部进专项文档 §五（血泪账）。
 - **途中修复**：ImageGenJNI wtype 保留原生量化（62a1e77，防御性）；探针群（99b07d1）；本地 6 commit + bundle 备份（F:\\backups\\pocketpal-bundle-20260829-50fc1a2.bundle）。
 - **遗留**：设备离线；终审后探针撤除 + 修复落地 + 窗口闭环登记。
+
+---
+
+## §123 本窗口闭环：PocketCL 全阶段实体化 + R 层 v0.3 + AIOS 门禁实证（2026-08-29，闭环窗口）
+
+### 123.1 窗口全景
+
+- 承接：§119 开源内核工具调研 → 本窗口将方案落地为**全阶段实体**；同窗完成 **AIOS 连仓修复（§120）** 与 **技术债登记（§122）**。
+- 大王决策轨迹：揭示 AIOS 母仓与 OneTakeMVP 工具包 → 修连仓 → 走门禁路由专工 → PocketCL 定位校准（决策卡 → **混合计算调度层**）→ 按痛点触发原则不提前装。
+
+### 123.2 PocketCL 全阶段实体（10 文件新增 + 多文件更新）
+
+- **T1 公共 API**：pocketcl.h v0.1（20 API）+ src/ 四实现 908 行（device 枚举分级 / program 双守卫编译 / policy 策略引擎 / profiler CLPROF 聚合）；签名 20/20 核对过；编译验证待 NDK/CI（本机无编译器）。
+- **T2 探针 CLI**：cli/probe-topn.js（CLPROF 格式引擎侧实锤 + 样例冒烟 71.1% 热点复现）+ cli/device-card.js（三态诚实校验）。
+- **T3 编译器路线**：specs/compiler-roadmap.md（三选决策：单算子 TVM 替换起步）+ t3-hotspot-inventory.json（71.1% 覆盖）+ t3-search-space.json（3 维空间+硬约束+CLPROF 评估闭环）；T3.1 完成，T3.2 待 GPU 环境。
+- **T4 回馈备料**：patches/ 五 A 类资产改动地图（clprof-probe / mali-half-prec / qcom-guard / f16-kqkqv / vae-tiled）——**重要发现**：嵌套仓库（stable-diffusion.cpp/ggml）`.git` 已剥离、历史丢失 → git diff 路线不可用 → 改「改动地图+rebase SOP」路线。
+- **R 层 v0.3**：architecture.md 第六章（五对象规格：pc_context/queue/event/memory/scheduler + 分层不变量 + 触发点机制）+ pocketcl.h R 层 14 API 草案（声明不实现）。
+
+### 123.3 AIOS 机制实证
+
+- 门禁全链：gate（idle）→ route（啄木鸟，act-babfa425）→ 执行 → return success（trace e4c2fd5a / 5bbff8bb）；KG 骨架 309 模块加载；称谓验证（agent_self=本鸟、专工称大王=头儿，数据完好，此前显示层丢失系 PowerShell GBK 转码）。
+- 连仓结构定稿：可执行层（scripts/agent、.qoder/hooks）= 本仓拷贝；SSOT 层（config/.cursor/scripts\hooks/docs/platform）= junction 只读。
+
+### 123.4 决策存档
+
+- **PocketCL 不装（App 内）**：性能无增量（同源优化已实装于引擎）；维护价值在仓库资产形态已兑现；实装触发点 = ①跨引擎资源冲突事故 ②T3.2 需要回注。
+- **多窗口协作纪律**：ggml-opencl.cpp / ui 取证散件不属于本窗口变更，commit 精确文件、不代劳他窗在途工作（§122 探针案例）。
+
+### 123.5 闭环与待收口
+
+- Git：本窗口变更精确提交（排除他窗在途文件与巡检自动记录）；**不 push**（网络挂起）。
+- 待网络恢复：补推累计 commit；guard 巡检确认 6/6 归零（junction 已修复）；Klein 探针撤除提醒（§122）；pocketcl 入库决策（本仓 or 独立仓）。

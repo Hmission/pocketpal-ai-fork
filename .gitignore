@@ -125,6 +125,9 @@ logs/
 # 连仓 junction（指向母仓，不入子仓 git）
 .qoder/hooks/
 scripts/agent/
+/config/
+/scripts/hooks/
+/docs/platform/
 # Qoder/cursor agent artifacts
 .qodercn/
 .cursor/
