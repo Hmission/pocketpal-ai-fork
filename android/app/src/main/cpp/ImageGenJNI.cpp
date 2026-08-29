@@ -324,6 +324,9 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
        strstr(model_path_cstr, "klein") != nullptr ||
        strstr(model_path_cstr, "Krea") != nullptr ||
        strstr(model_path_cstr, "krea") != nullptr);
+  // 8-28：klein 单独记名（优化族判定释放后不再可用）——klein 不继承 Z-Image 的
+  // DISABLE_ADRENO_KERNELS=1（Q5_K 通用 l4_lm 与转置 SOA 布局不兼容 → 赭石/纯色）。
+  const bool is_klein = model_path_cstr != nullptr && strstr(model_path_cstr, "klein") != nullptr;
   env->ReleaseStringUTFChars(modelPath, model_path_cstr);
   // 8-27 Klein GPU 专项临时探针（用后即撤）：open CLPROF 逐 op 打印——编译面已常驻，
   // 运行期零开销由 env 门控；定位 FLUX.2 出错算子后即删本行回零开销。
@@ -355,7 +358,13 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
     // Vulkan 路线的收益面恰在 fp16 → 解除。coopmat/intdot/bf16 禁用保留（Mali 本就无此扩展，无害空操作）。
     unsetenv("GGML_VK_DISABLE_F16");
   } else if (qwen_flow_family) {
-    setenv("GGML_OPENCL_DISABLE_ADRENO_KERNELS", "1", 1);
+    // 8-28 拆分：klein 不再继承 Z-Image 的双禁用（DISABLE_ADRENO_KERNELS=1 对 Q5_K
+    // 通用 l4_lm 与转置 SOA 布局不兼容 → 输出系统性压缩 → 赭石/纯色）。
+    // Klein 走与 SD3.5 相同的 adreno 内核路径（q5_K gemm_noshuffle 已改 fp32 累加，无 fp16 累积风险）；
+    // z_image / krea2 维持 DISABLE=1（cross-attn ±1e4 下 fp16 累积 NaN 的历史定论）。
+    if (!is_klein) {
+      setenv("GGML_OPENCL_DISABLE_ADRENO_KERNELS", "1", 1);
+    }
     // 08-20 定稿（feat/zimage-xmem-tiled-verify 实测）：XMEM 必须 unset（真关）。
     // 代码事实：xmem 只看 env 存在性（getenv != nullptr），值 0/1 等效——旧"XMEM=0"从未真正关闭。
     // K90 实测对比：xmem 存在（=0/=1）时 8 步采样 2033s（39.7 分钟）；xmem 真关后 8 步采样 512.56s，
@@ -419,7 +428,14 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
   // 且 4 步蒸馏模型对权重精度极敏感，Q4_0→Q4_K 双重量化累积误差把 4 步去噪压成周期性纹理。
   // 单文件（SDXL Turbo 等 f16 safetensors）保留 Q4_K 强制转换以贴合显存。
   const bool is_split_model = !llm.empty() || !clip_l.empty() || !clip_g.empty();
-  params.wtype             = is_split_model ? SD_TYPE_COUNT : SD_TYPE_Q4_K;
+  // 8-29 修复：已量化 GGUF(单文件或 split)一律保留原生量化(wtype=COUNT 不触发重量化)；
+  // 仅 f16 safetensors 单文件保留 Q4_K 强制转换以贴合显存。
+  // 事故背景：Klein 单文件 Q4_K_M(GGUF 内 Q5_K 层)被强制 Q4_K 双重量化 →
+  // 数据变 Q4_K 布局而图上类型仍 Q5_K → GPU 按 Q5_K 解析 Q4_K 数据 → 赭石/压缩。
+  const char * wp = env->GetStringUTFChars(modelPath, nullptr);
+  const bool qmodel = wp != nullptr && strstr(wp, ".gguf") != nullptr;
+  env->ReleaseStringUTFChars(modelPath, wp);
+  params.wtype = is_split_model || qmodel ? SD_TYPE_COUNT : SD_TYPE_Q4_K;
   params.enable_mmap       = true;
   // P2 后端决策：backend 由 manifest defaults 透传（RN → Kotlin → JNI 一条数据流），
   // JNI 不决策。空则用引擎默认（sd_ctx_params_init 清零 → backend null → CPU）。
