@@ -124,6 +124,30 @@ Pocket Chick is intentionally not a productivity tool. It's a "digital pet" — 
 - **记忆三段治理（存 → 治 → 用）**：对话落盘 → 事实/事件/见解抽取（事件 30 天 TTL）→ 蒸馏治理按钮 + 时效三闸（瞬时状态/新闻/失败记录不污染记忆）
 - **DRC 远程调试**：事件流 + 指南针三字段（定位/导航/深入），真机问题排查不再靠猜
 
+### 4) 端侧 GPU 内核优化：把纸面算力变成出图速度 / OpenCL Kernel Optimization
+
+> 手机 SoC 纸面算力（K90 Adreno 840 ≈ 3.7 TFLOPS FP32 / 18MB GMEM）远高于我们实际能吃到的——差距全在内核不在硬件。我们在这块的完整调研结论与开源共建计划见 [POCKETPAL_OPEN_KERNEL_PLAN](docs/POCKETPAL_OPEN_KERNEL_PLAN.md)。**这些优化全部落在 OpenCL/Vulkan 开放 API 之上，不会被官方驱动迭代淘汰。**
+
+真机战绩（全部实测，K90 / Adreno 840 + REDMI K Pad / Mali-G925）：
+
+| 优化 | 设备 | 效果 |
+|---|---|---|
+| OpenCL 后端 + xmem GEMM 激活 | K90 / Adreno 840 | SD3.5 512² 全链路 2h+ → **10.7 min（提速 11×+）** |
+| Z-Image XMEM 真关 + tiled VAE | K90 / Adreno 840 | 655s（**10.9 min，提速 3.6×**，nan/inf=0） |
+| Mali 半精度三内核（half local + **fp32 累加**） | K Pad / Mali-G925 | 512² 采样 69→24.2 s/步（**2.86×**，画质无损 nan=0） |
+| [CLPROF] 算子级探针纠偏 | 同上 | 首轮凭猜改 mul_mv flat 仅 1.09× → 命中 tiled GEMM 后 **2.86×** |
+| tiled VAE 解码 | K90 / Adreno 840 | graph buffer 1.94GB → 416MB，9 tiles 跑通（OOM 根治） |
+
+社区可复用的方法（做引擎的朋友直接拿去用）：
+
+1. **先 profiling 再优化，凭猜必打错靶**：ggml-opencl 自带 `CL_QUEUE_PROFILING` 编译开关 + 运行 env 门控 + logcat top-N 聚合；我们首轮凭猜改 mul_mv flat 只拿到 1.09×，探针命中 mul_mm tiled GEMM（71.1%）后同法半精度化拿到 2.86×
+2. **编译期宏 ≠ 运行时能力**：凡 vendor-specific 内核（`cl_qcom_*` 扩展、qcom 内置函数）必须运行时 `gpu_family` 过滤再编译，否则 Mali 驱动直接编译报错/崩溃
+3. **fp32 累加铁律**：Mali 全 fp16 累积曾致 NaN（6.18 事故）；半精度红利只在 tiled GEMM（画幅越大占比越高），flat GEMV 无收益；fp32 累加 + half 存储是安全组合
+4. **NaN 先对比跨设备指纹**，再查算子，不先怪设备：K90 与小米 13 NaN 指纹一致 → 排除设备差异，直达算子层
+5. **Adreno 正确路径是 OpenCL 不是 Vulkan**：Vulkan 在 Adreno 上 ErrorDeviceLost、社区零成功案例；ARM 官方推荐 OpenCL
+
+我们想把这套经验做成**开源的端侧内核工具（PocketCL）**——设备指纹 DB + 内核集合 + 跑分回注，欢迎引擎作者一起共建（见方案文档）。
+
 ## 🛠 技术栈 / Tech Stack
 
 - **React Native + TypeScript** — 跨平台应用
@@ -188,6 +212,7 @@ Feel free to reach out if you'd like to discuss on-device AI, digital pets, or a
 | [docs/POCKETPAL_IMAGEGEN_UI_SPEC.md](docs/POCKETPAL_IMAGEGEN_UI_SPEC.md) | 生图页 UI 设计规范 |
 | [docs/POCKETPAL_MODEL_MATRIX.md](docs/POCKETPAL_MODEL_MATRIX.md) | 模型选型矩阵 |
 | [docs/POCKETPAL_IMAGE_GEN_UPGRADE_PLAN.md](docs/POCKETPAL_IMAGE_GEN_UPGRADE_PLAN.md) | 生图升级计划（含 DreamLite 接入全记录） |
+| [docs/POCKETPAL_OPEN_KERNEL_PLAN.md](docs/POCKETPAL_OPEN_KERNEL_PLAN.md) | 开源端侧内核工具方案（PocketCL：设备指纹 / 内核集合 / 跑分回注） |
 
 ## 📝 版本记录 / Changelog
 

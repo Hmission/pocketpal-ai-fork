@@ -1029,4 +1029,33 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
 
 - tsc 0 错 + 生图页 4 套件 55 用例全绿（Panels/编排层契约零回归）；commit `9493154`（fix(ImageGen): 底部出图按钮条上移避让安全区…）；按大王要求未单独构建（集中构建窗统一打）。
 - **混窗隔离**：ImageGenScreen.tsx 含它窗（caption v5.10 infoScroll）未提交改动，以「备份→临时还原→提交→恢复」隔离，它窗内容在工作区原样保留未混入（同 §116.8 惯例）。
+
+---
+
+## §119 OpenCL 开源内核工具调研 + README 增补 + 方案文档立档（2026-08-29，调研立档窗口）
+
+### 119.1 动因
+
+- 大王连环追问：K90 SoC 三算力 → GPU 对标桌面显卡 → 雄心想法「开源手机端类 CUDA 内核工具，榨干 SoC 且不被官方驱动迭代淘汰」；随后拍板将经验写入 README 并起草方案文档。
+
+### 119.2 调研结论（写轮眼 + 自学习）
+
+- **封锁面**：GPU 用户态驱动/NPU 固件全闭源（wave 调度/DVFS/GMEM 分配黑盒）；**开放面**：OpenCL 3.0 + `cl_qcom_*` 扩展（on-chip GMEM 计算直通）、QNN SDK 公开（主机本地编译 context binary、免账号/云端）、NeuroPilot 8.0 公开。
+- **四层可做性**：L-Exposed（API 层算子/内核）✅ 主战场；L-Configurable（HTP backend config）⚠️ 只能递话；L-Black-box（驱动内部调度）❌ 签名固件不可碰；L-Driver（turnip/panvk 替换）⚠️ 实验线。
+- **关键外部事实**：Mesa 24.3 起 rusticl 在 freedreno 启用 OpenCL；turnip/freedreno 已支持 Adreno 830/840（2026-01 一加 15 实测，与 K90 同款 840）；MLC/TVM 编译器路线已落地手机；开源 vs 闭源计算负载差距 <10%（Adreno 650 实测）。
+
+### 119.3 布局动作
+
+- **README**：「Under the Hood」新增 §4 端侧 GPU 内核优化（真机战绩表：SD3.5 11× / Z-Image XMEM 3.6× / Mali half-prec 2.86× / tiled VAE；5 条可复用方法：探针先行、双重守卫、fp32 累加铁律、NaN 指纹、OpenCL 路径）+ 文档索引补行。
+- **docs/POCKETPAL_OPEN_KERNEL_PLAN.md v0.2**：十一节方案（背景/开放面地图/四层判定/社区先例/资产盘点/三层架构/路线图/稳定性论证/风险/验收/参考）+ **第十二节内部发布基准**。
+
+### 119.4 内部发布基准（定稿要点，不对外宣传）
+
+- 身份 = Android 端侧**调校层（tuning layer）**，非引擎分支；Upstream-First 铁律：能合回上游的代码全部合回（ggml/sd.cpp/llama.rn）；形态 = patches 补丁集 + cli + devices + handbook；帮人标准 = 可运行/可引用/可无感受益；成功定义不 star 化（上游 ≥1 PR + 可复现基准被引用）。
+- **PocketPal 回馈策略**（同审视标准答案）：上游活跃 + 贡献指南点名欢迎 More Languages；回馈分层 = l10n 语言包（概率最高）→ bug fix → 引擎层 OpenCL 补丁走 llama.rn 上游 → 功能级先问后动；行动清单：upstream remote + l10n 筛 key + 引擎补丁排期 + Discussion 建联。
+
+### 119.5 闭环
+
+- 文档：README + PLAN v0.2 + MASTER_LOG §119；**未执行（下窗口）**：upstream remote 分叉分析、l10n 回馈 PR、引擎层补丁（与 PocketCL Phase1-T4 合并排期）。
+- Git：commit + push（提交≠落袋，push 才闭环）。
 - **文档先行补课**：本窗口先改代码后补文档，违反 SPEC 首行铁律「UI 迭代先更新文档」，已补记 SPEC v5.11 版本行 + CHANGELOG 条目，向大王说明。
