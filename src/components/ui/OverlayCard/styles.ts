@@ -12,8 +12,10 @@ export const createStyles = (theme: Theme) =>
       padding: theme.spacing.ml,
     },
     // 浮层表面角色（DESIGN_SPEC §4）：xl(32)；层级 8（§5.x Modal/弹窗）
+    // 2026-08-27 大王报障：内容超高天地戳出——加 maxHeight 限高不溢出遮罩
     card: {
       width: '100%',
+      maxHeight: '90%',
       backgroundColor: theme.colors.surfaceElevated,
       borderRadius: theme.radius[theme.shapeRoles.surface],
       padding: theme.spacing.ml,

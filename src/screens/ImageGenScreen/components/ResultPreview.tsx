@@ -7,6 +7,7 @@ import {
   FlatList,
   Animated,
   Modal,
+  ScrollView,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native';
@@ -135,9 +136,6 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
   const theme = useTheme();
   const s = createStyles(theme);
 
-  // 反推结果卡展开态（组件内局部状态；翻页重置）
-  const [captionExpanded, setCaptionExpanded] = React.useState(false);
-
   // 进度卡内容（running 任务页）：完整跑分面板 PerfPanel 默认展开——
   // 2026-08-27 大王裁定：反推/编辑/放大与生成同属一套引擎任务流，
   // 一律走 blank 任务页 + 完整 PerfPanel（不叠图、不折叠、不特殊化），
@@ -248,8 +246,21 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
     return (
       <View style={{width: pageW}}>
         {isCaptionItem ? (
-          <View style={[s.captionFullPage, {width: pageW}]}>
-            {/* 顶部 banner 胶囊：反推来源（点击弹参数详情 + 回填） */}
+          <View style={{width: pageW}}>
+            {/* 2026-08-27 大王裁定：文本/图像/视频统一显示在同一预览卡片上——
+                caption 成功页复用标准预览容器（s.preview 方形，与图像页同大小），
+                内容为可滚文本（无边框），顶部信息胶囊与图像页同一组件，不另造一套 UI */}
+            <View style={[s.preview, {width: pageW}]}>
+              <ScrollView
+                style={s.captionScroll}
+                nestedScrollEnabled
+                testID="caption-scroll">
+                <Text style={s.captionCardBody}>
+                  {item.prompt || '（无输出）'}
+                </Text>
+              </ScrollView>
+            </View>
+            {/* 顶部信息胶囊：与图像预览页同一组件（反推 · 模型 · 耗时，点击弹参数详情） */}
             <View
               style={[s.infoOverlayWrap, previewBanner && s.infoOverlayPushed]}
               pointerEvents="box-none">
@@ -270,21 +281,6 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
                 </Text>
               </TouchableOpacity>
             </View>
-            {/* 提示词产物主体：默认 3 行折叠 + 展开收起 */}
-            <TouchableOpacity
-              style={s.captionFullBody}
-              activeOpacity={0.8}
-              onPress={() => setCaptionExpanded(v => !v)}>
-              <Text style={s.captionCardTitle}>✨ 反推提示词</Text>
-              <Text
-                style={s.captionCardBody}
-                numberOfLines={captionExpanded ? undefined : 3}>
-                {item.prompt || '（无输出）'}
-              </Text>
-              <Text style={s.captionCardHint}>
-                {captionExpanded ? '收起 ▲' : '展开 ▼'}
-              </Text>
-            </TouchableOpacity>
             {/* 操作行：复制 / 复刻生图 / 删除 */}
             <View style={s.actionRow}>
               <TouchableOpacity

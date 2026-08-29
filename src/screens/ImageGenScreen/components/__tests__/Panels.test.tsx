@@ -502,7 +502,6 @@ describe('ResultPreview', () => {
         onRemake={onRemake}
       />,
     );
-    expect(getByText('✨ 反推提示词')).toBeTruthy();
     expect(getByText(/a cat sitting/)).toBeTruthy();
     expect(getByText('复制')).toBeTruthy();
     expect(getByText('复刻生图')).toBeTruthy();
@@ -513,6 +512,32 @@ describe('ResultPreview', () => {
     expect(onCopyCaption).toHaveBeenCalledWith(captionItem);
     fireEvent.press(getByText('复刻生图'));
     expect(onRemake).toHaveBeenCalledWith(captionItem);
+  });
+
+  it('2026-08-27 大王裁定：文本/图像统一同一预览卡片（s.preview 同大小 + 统一信息胶囊 + 无边框可滚文本）', () => {
+    const captionItem: GeneratedImage = {
+      ...historyItem,
+      uri: 'file:///tmp/cap.png',
+      taskId: 'task_test_caption2',
+      kind: 'caption',
+      prompt: 'a cat sitting on a windowsill',
+      modelLabel: '反推 VLM',
+      durationMs: 125900,
+      status: 'success',
+    };
+    const {getByText, getByTestId} = wrap(
+      <ResultPreview
+        {...baseProps}
+        currentImage={captionItem.uri}
+        currentItem={captionItem}
+        history={[captionItem]}
+      />,
+    );
+    // 信息胶囊与图像页同一组件（反推 · 反推 VLM · 125.9s，叠在预览卡顶部）
+    expect(getByText(/反推 · 反推 VLM/)).toBeTruthy();
+    // 提示词在标准预览容器内可滚（无边框卡片）
+    expect(getByTestId('caption-scroll')).toBeTruthy();
+    expect(getByText(/a cat sitting/)).toBeTruthy();
   });
 
   it('失败任务页：摘要 + 复制报错/重试/删除按钮', () => {

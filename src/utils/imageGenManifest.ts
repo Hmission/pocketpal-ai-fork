@@ -161,7 +161,9 @@ export const BUILTIN_MANIFESTS: ImageGenManifest[] = [
     // 8-26 兑现「能跑」：默认后端切 CPU（正确、慢 ~5h）；仅改此字段，不回滚其它更新。
     experimental: true,
     gpuPolicy: 'high-adreno-or-mali',
-    defaults: {steps: 4, cfg: 1, size: 512, backend: 'CPU'},
+    // 8-28 探针验证包：临时切 OpenCL 跑 GPU 路径（马赛克现场），CLPROF/CLDUMP 定位 FLUX.2 shape bug。
+    // §99 定稿 CPU 兜底（正确慢 5h）语义未废：内核修复收口后还原本行。
+    defaults: {steps: 4, cfg: 1, size: 512, backend: 'OpenCL'},
     // 08-24 画幅如实化：官方蒸馏契约是 1MP（4 步 1024px），但 klein 尚无端侧完整出图实测，
     // 端侧暂与 SD3.5/Z-Image 同走 512 级档位（SD_RATIOS，内存约束）。
     // 待量化源修复后，再决策是否升 1024 档（升档前必有真机出图证据，不凭官方文案预设）。

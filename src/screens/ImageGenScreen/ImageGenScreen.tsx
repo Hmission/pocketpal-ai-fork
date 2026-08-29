@@ -12,7 +12,7 @@
  * 各 Panel 只读 props 渲染；store 状态经 observer 自动联动。
  */
 import * as React from 'react';
-import {View, FlatList, Text, TouchableOpacity} from 'react-native';
+import {View, FlatList, Text, TouchableOpacity, ScrollView} from 'react-native';
 import {CircularActivityIndicator} from '../../components/CircularActivityIndicator';
 import {
   KeyboardAwareScrollView,
@@ -1558,7 +1558,7 @@ export const ImageGenScreen: React.FC = observer(() => {
             : {}),
         }}>
         {infoItem && (
-          <>
+          <ScrollView style={s.infoScroll} testID="info-scroll">
             <View style={s.modalRow}>
               <Text style={s.modalLabel}>模型</Text>
               <Text style={s.modalValue} numberOfLines={1}>
@@ -1595,7 +1595,7 @@ export const ImageGenScreen: React.FC = observer(() => {
             </View>
             <Text style={s.modalLabel}>提示词</Text>
             <Text style={s.modalPrompt}>{infoItem.prompt || '（无）'}</Text>
-          </>
+          </ScrollView>
         )}
       </OverlayCard>
 

@@ -178,6 +178,9 @@ describe('design-token grep invariants', () => {
       'components/AssistantTurnFooter',
       // B40/B41 跑分仪式卡：PendingIndicator 遥测行 + 迷你折线，token 表面消费（跑分是本体）
       'components/PendingIndicator',
+      // 2026-08-27 UI 一致性升级：PerfMiniRow 共享跑分卡（聊天窄卡自适应形态），
+      // 与 PendingIndicator 同族，token 表面消费（typography/radius）
+      'components/PerfMiniRow',
       // B41 留存：PerfHistoryModal 提共享（聊天回合 + 生图任务统一回放），token 表面消费
       'components/PerfHistoryModal',
       // §18.4 发送钮双态/停止钮重绘（批次B）：token 表面消费

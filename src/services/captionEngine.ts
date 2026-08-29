@@ -26,7 +26,33 @@ const CAPTION_MODEL_RE = /qwen3\.5[-_ ]?4b/i;
  * + 简洁负面清单——小模型遵循短指令 + 可见输出形状最佳。
  */
 export const CAPTION_INSTRUCTION =
-  'Describe this image in English for image generation. Example: "a red apple on a wooden table, soft window light, photorealistic". Output only the description of this image, start directly:';
+  'Describe this image in English for image generation. Example: "a red apple on a wooden table, soft window light, photorealistic". Keep the description concise, within 200 tokens. Output only the description of this image, start directly:';
+
+/** 反推结果 token 上限（2026-08-27 大王裁定：反推提示词须≤生图 prompt 上限 200 token） */
+export const CAPTION_MAX_TOKENS = 200;
+
+/** BPE 近似估算（与 ImageGenScreen/constants.estimateTokens 同算法：英文~4字符/token，中文 1字符/token） */
+const approxTokens = (t: string): number => {
+  let ascii = 0;
+  let nonAscii = 0;
+  for (const ch of t) {
+    if (ch.charCodeAt(0) < 128) {
+      ascii++;
+    } else {
+      nonAscii++;
+    }
+  }
+  return Math.ceil(ascii / 4) + nonAscii;
+};
+
+/** 截断到 max token 内（按字符比例截，不超生图 prompt 上限） */
+const truncateToTokens = (t: string, max: number): string => {
+  if (approxTokens(t) <= max) {
+    return t;
+  }
+  const ratio = max / approxTokens(t);
+  return t.slice(0, Math.floor(t.length * ratio)).trimEnd();
+};
 
 /** 阶段回调（进度卡阶段文本：加载视觉模型 → 编码图片 → 生成描述） */
 export type CaptionStage = 'find' | 'load' | 'encode' | 'generate' | 'done';
@@ -129,7 +155,9 @@ export async function runCaption(
       throw new Error('反推无输出，请重试');
     }
     onStage?.('done');
-    return {text: trimmed, error: null};
+    // 2026-08-27 大王裁定：反推结果作为生图提示词须≤200 token——
+    // VLM 指令已要求简洁，此处截断兑底保证不超生图 prompt 上限
+    return {text: truncateToTokens(trimmed, CAPTION_MAX_TOKENS), error: null};
   } catch (e) {
     return {text: null, error: (e as Error)?.message ?? '反推失败'};
   } finally {

@@ -159,7 +159,13 @@ export const createStyles = (theme: any) =>
     },
     rowActionTextUnload: {color: theme.colors.danger},
     resultWrap: {position: 'relative'},
-    preview: {width: '100%', aspectRatio: 1, borderRadius: theme.radius.s},
+    preview: {
+      width: '100%',
+      aspectRatio: 1,
+      borderRadius: theme.radius.s,
+      // 2026-08-27：caption 文本复用本预览容器（View），overflow hidden 裁剪圆角内可滚文本
+      overflow: 'hidden',
+    },
     // 0 页编辑槽：上传大按钮 / 待编辑图预览 + 重新上传
     editSlot: {
       aspectRatio: 1,
@@ -328,19 +334,15 @@ export const createStyles = (theme: any) =>
       color: '#ffffff',
       fontWeight: '600',
     },
-    // 反推结果卡（v4，IMAGEGEN_UI_SPEC §7.2）
-    // v5 产物区整卡切换：反推提示词全卡（占满结果区，banner + 主体 + 操作行）
-    captionFullPage: {
-      aspectRatio: 1,
-      padding: theme.spacing.m,
-      justifyContent: 'space-between',
-    },
-    captionFullBody: {
-      borderRadius: theme.radius.s,
-      backgroundColor: theme.colors.surface,
-      borderWidth: 1,
-      borderColor: theme.colors.outline,
+    // 2026-08-27 大王裁定：caption 文本复用标准预览容器（s.preview），
+    // 原 captionFullPage/captionFullBody/captionInfoRow/captionHeaderRow 单独卡片 UI 全删（不另造一套）
+    captionCardBody: {
+      ...theme.typography.bodyS,
+      color: theme.colors.onSurface,
       padding: theme.spacing.sm,
+    },
+    captionScroll: {
+      flex: 1,
     },
     captionCard: {
       margin: theme.spacing.sm,
@@ -355,11 +357,6 @@ export const createStyles = (theme: any) =>
       // 反推紫（B56③ 已登记 theme.colors.imageInsight）
       color: theme.colors.imageInsight,
       fontWeight: '700',
-    },
-    captionCardBody: {
-      ...theme.typography.bodyS,
-      color: theme.colors.onSurface,
-      marginTop: theme.spacing.xs,
     },
     captionCardHint: {
       ...theme.typography.captionS,
@@ -758,6 +755,10 @@ export const createStyles = (theme: any) =>
       ...theme.typography.captionM,
       color: theme.colors.onSurface,
       lineHeight: 18,
+    },
+    // 2026-08-27 infoItem 弹窗内容区可滚（提示词长时不溢出天地戳出）
+    infoScroll: {
+      flex: 1,
     },
     historyHeader: {
       flexDirection: 'row',
