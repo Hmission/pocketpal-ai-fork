@@ -1274,3 +1274,29 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
   - push 一律直连（git -c http.proxy= -c https.proxy= push origin main，不改 config），禁走本地代理（对齐 §128.9）；网络不通按 §126.4 留痕待推，勿反复撞代理；
   - 已落：AGENTS.md Git 仓库铁律两处新增条款 + POCKETPAL_UI_REMAINING_FIX_PLAN.md 旧引用更新；
   - 本文档历史窗口登记中「Git：commit + push（提交≠落袋，push 才闭环）」句式为当时现状记录，不追溯改写，后续窗口登记改用「commit（push 待大王指令）」。
+
+
+## 130. Klein Q5_K OpenCL 压缩排查窗口闭环 + 暂停决策（2026-08-30，kgY/kgZ 实测轮）
+
+- 130.1 任务：执行 125.6 收口项①（kgW 真机验证），实测判据 node_604 std≈31.86（CPU 参照）；同时执行 kgZ（FIX7 read_imageh 修复变体）判决轮。
+- 130.2 实测结果（kgY.log，三轮生图数据）：
+  - node_604 std 序列三轮八点：12.01/11.47/15.45/16.60/12.02/11.58/15.50/16.63 —— step1≈15.5、step2≈16.6，与 kgX 完全一致，0.52x 压缩指纹确定性复现；CPU 参照 step1-4=31.86/46.65/67.67/77.90（min/max 重尾 ±3e3~1e4，真机轻尾 ±1e2 尾部消失）。
+  - BTRANS-IMG（clEnqueueReadImage 全数组读回 vs buffer）：113 行 maxerr≤0.03 bad=0 → B 侧 CL_HALF image 视图管线干净。
+  - FIX7（read_imagef→read_imageh + convert_float8）**无效**：压缩依旧 → 采样 API 非根因，已还原。
+- 130.3 E2 实验缺陷实锤：GGML_OPENCL_DISABLE_ADRENO_KERNELS 只控制 use_adreno_kernels()（转置/加速核族），Q5_K GEMM/GEMV 分派不经过该开关（且 8-29 已把 Q5_K 从 adreno 转置剔除）→ E2 轮实为同内核复跑。副产品：压缩确定性 100% 可复现（三轮同指纹）。
+- 130.4 全节点双端对账（CPU e1_cpu.log 31229 条 CPUDUMP vs 真机 CLDUMP 6899 条节点行，按 node_id 对齐）：
+  - **非 Q5_K 节点全部一致**：time_in/modulation_txt/adaLN mod（std ratio=1.00，min/max 逐位相同）、TE 部分层、Q4_K 类 mlp.0（ratio≈1.0~1.8）。
+  - **全部 Q5_K 节点压缩**：ratio 0.04~0.33 → 病灶锁定 Q5_K 专用路径（转换 trans4_ns + noshuffle GEMM）。
+  - 经验：CLDUMP 探针无 clFinish 读回存在时序伪影（全零/陈旧记录），q5K-DST（带 clFinish）为权威探针；对账脚本 .tmp/cpu_gpu_compare.py / full_compare.py / build_cpu_table.py。
+- 130.5 已证伪清单（本专项闭环确认）：周期错位（PERM 分组均匀）/ 写侧布局（q5K-A 锚定与文件一致）/ B 转置全数组（BTRANS-FULL bad=0）/ B 侧 image 视图（BTRANS-IMG bad=0）/ 采样 API（read_imagef↔read_imageh 均压缩）/ E2 通用路径假设（开关对 Q5_K 无效）。
+- 130.6 未验证盲区（遗留标注，供更强心智模型/后续窗口接续）：
+  ① **权重 A 侧 trans4_ns 转换全数组正确性**——q5K-A 仅验前 16 元素+d/dm 范围，全数组从未逐字节对账（最大嫌疑；Q5_K 块为 176B 自定义布局 d2+dm2+s12+qh32+qs128，host 重建脚本 .tmp/a_side_check.py 已备，GGUF 解析已验证）；② **qh 位丢失/错读假设**：权重解化 (q&0x0F)|(qh_bit<<4) 若 qh 高位丢 → 值域 0..31→0..15 方差减半 ≈ 0.52x 压缩指纹，与-Q4_K 干净（无 qh）事实自洽，未实测；③ 桌面 NVIDIA OpenCL 复现（本机无独立显卡暂挂，CMake 已开 GGML_OPENCL/SD_OPENCL 可直接复跑）；④ §99 定谳（通用内核 shape bug）与 8-28 注释（禁用 Adreno 致压缩）的矛盾裁定——本窗口数据支持「压缩仅在 Q5_K 路径」，§99 修订待 130.6 ①②验证后一并定夺。
+- 130.7 暂停决策（大王指令 2026-08-30）：暂时停止 App 开发攻关（Klein GPU 修复），待更强 AI 心智模型发布或生图模型更新后再尝试；本窗口闭环，后续按 130.6 盲区清单接续。
+- 130.8 变更落地：
+  - src/utils/imageGenManifest.ts：Klein defaults.backend 'OpenCL'→'CPU'（恢复 §99 定稿 CPU 兜底：正确、慢 ~5h；GPU 维持 experimental 不误导用户；注释记录 8-30 结论与还原条件）；Krea2 维持 experimental+high-adreno-only（§96.7 双杀定论不变，未调通）。
+  - 探针清理（正式包不带探针/日志刷屏）：ggml-opencl.cpp 与 gemm_noshuffle_q5_k_f32.cl 还原 HEAD（8-28 生产态 read_imagef+fp32 累加）；ggml-cpu.c 撤 CPUDUMP 探针（-54 行）。
+  - .gitignore：根目录 /*.xml /*.png /截图/ 调试产物不入库（41 个 untracked 清零）。
+  - docs：本 §130 + POCKETPAL_MODEL_MATRIX.md Klein 状态同步。
+- 130.9 验证：tsc 零错；release 正式包构建中（assembleProdRelease，探针清理后 NDK 增量）。
+- 130.10 提交：见 git log（commit 待大王指令统一补推，push 纪律按 §129.10）。
+- 130.11 待推清单更新：本窗口提交（文档+manifest+探针清理）+ 129.9 积压 ba71dde / e7178e8 / 9307b60，待网络恢复按 §128.9 直连命令统一补推（禁代理）。
