@@ -187,3 +187,9 @@ docs/internal/
 
 b*_build.log
 assets/index.android.bundle
+
+# 根目录调试产物:UI dump/截图(不入库)
+/*.xml
+/*.png
+/截图/
+
