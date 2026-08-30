@@ -1301,3 +1301,9 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
 - 130.10 提交：cd1beb8 / 25cfd9a / 4ebf16c / 9ff95ae / 8db4a36（见 git log；push 待大王指令，纪律按 §129.10）。
 - 130.11 待推清单（共 10 笔，均未推，待大王指令直连补推）：本窗口 5 笔 cd1beb8 / 25cfd9a / 4ebf16c / 9ff95ae / 8db4a36 + 6aad876（push 纪律修正）+ 129.9 积压 ba71dde / e7178e8 / 9307b60 / a3e4c5c。方法：git -c http.proxy= -c https.proxy= push origin main（禁代理）。
 - 130.12 环境坑（release 构建复用）：assembleProdRelease 在 .cxx/RelWithDebInfo 新目录构建时需重编 ExternalProject vulkan-shaders-gen（host 工具），子进程不继承 MSVC 环境 → C1034 iostream；须先 `gradlew --stop` 后在会话注入 INCLUDE（MSVC+SDK ucrt/um/shared）、LIB、PATH（Windows Kits bin\x64）再启构建（daemon 环境定格，注入后必须重启 daemon）；ggml NDK 增量约 12 分钟。
+- 130.13 push 与 GitHub 发布进度（2026-08-30 大王明确授权「现在可以推远端了，apk 正式版也更新到 github」）：
+  - 已落袋：main 直连推送成功 f30a34b..23c5a25（11 笔，19:41）；本地 v2.0.0 annotated tag 已建（指向 23c5a25）。
+  - 远端旧 v2.0.0 tag 指向 devpreview 旧 commit 970dca3（2026-08-19，无 release 无 asset）；大王同意删旧重建（旧 tag 无关联资产，v1.16.1 历史 release 保留）。
+  - 未完成（github:443 直连断网，2026-08-30 19:45 起，勿撞代理）：①远端 v2.0.0 旧 tag 删除确认 + 重推新 v2.0.0 tag；②API 创建正式 Release v2.0.0；③上传 APK asset（PocketChick-2.0.0-20260830.apk 474MB < 2GB 上限 OK）。工具：gh CLI 未装，用 git credential（Windows 凭据管理器）+ REST API 直连。
+  - 模型包 pocketchick-preset-models-20260830.zip（32.7GB）超 GitHub asset 2GB 上限，不可传 GitHub（留仓库根目录，远端载体待定：魔搭/网盘）。
+  - 恢复后命令：git -c http.proxy= -c https.proxy= push origin --delete v2.0.0；git -c http.proxy= -c https.proxy= push origin v2.0.0；随后 POST /releases + upload_url 传 APK（token 不落日志）。
