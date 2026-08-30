@@ -1262,3 +1262,10 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
 - 129.5 提交：ba71dde（3 文件 +84/-2，Conventional Commits）。
 - 129.6 待推留痕：2026-08-30 网络全断（GitHub 直连 Recv failure/21s 超时、代理 127.0.0.1:7897 未起）——直连命令已按 §128.9 执行（git -c http.proxy= -c https.proxy=），ba71dde 本地落袋，**待网络恢复后按 §128.9 方法补推**。
 - 129.7 后续排期：中文音色接入（Kokoro z_ voices + espeak cmn + native lang 参数 + UI 音色过滤放开）——大王已确认接入，下窗口执行。
+- 129.8 中文音色接入完成（B38c，2026-08-30 大王确认接入后当窗落地）：
+  - voices.ts 接入 zf_xiaobei（小北）/ zm_yunjian（云见）；ttsEngine 音色语言→espeak lang 映射（zh→cmn/en→en-us/en-GB→en-gb）+ 文本-音色语言匹配校验（不匹配显式报错）；
+  - TtsModule.synthesizeToFile 增加 lang 参数（getOrCreate key 含 lang）；AudioWorkshopTab 音色区按语言分组（slice(0,10) 会截掉末尾中文音色）；
+  - espeak-ng-data 已含 cmn_dict + lang/sit/cmn，无需额外数据；z_ 音色 bin 从 hf-mirror 下载（zf_xiaobei/zf_yunjian 522240B×2，hf-mirror 可达、GitHub 不可达）
+  - 真机验证（小米13）：lang=cmn + zf_xiaobei + 中文文本合成成功（logcat config lang=cmn 实据 + tts generate ok + wav 1.7MB）；tsc 零错 / jest 18 过
+  - 提交 9307b60（5 文件 +138/-48）
+- 129.9 待推清单更新：本地已落袋 ba71dde（B38a/b）/ e7178e8（§129 登记）/ 9307b60（B38c），网络仍全断（HF 镜像可达但 GitHub 不可达），待 GitHub 恢复后按 §128.9 直连命令一次补推。
