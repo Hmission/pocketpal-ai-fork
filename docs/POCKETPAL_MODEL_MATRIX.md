@@ -78,7 +78,7 @@ relates: [POCKETPAL_DESIGN_SPEC]
 | 1   | DreamLite（小黄鸡端侧）  | App 内置 manifest，非文件                | **主线主力**（固定置顶默认选中）                                                          |
 | 2   | SD 3.5 Medium            | DiT + clip_l/clip_g/vae 四件套           | 🥇 画质升级                                                                               |
 | 3   | Z-Image-Turbo            | DiT + zimage_llm + ae 三件套             | 🥈 中文场景 + 无审查                                                                      |
-| 4   | FLUX.2 Klein 4B (Q4_K_M) | DiT + flux2_vae（TE 复用 zimage_llm）    | 🥉 画质天花板（4 步极速，高端 Adreno + Mali 平板）                                        |
+| 4   | FLUX.2 Klein 4B (Q4_K_M) | DiT + flux2_vae（TE 复用 zimage_llm）    | 🥉 画质天花板；**GPU 实验性（已知纹理）→ 当前默认 CPU 兜底可用（正确、慢 ~5h）**；内核修复暂停（8-30，MASTER_LOG §130） |
 | 5   | Krea2 Turbo (Q4_K_M)     | DiT 12.9B + Qwen3-VL TE + Wan VAE 三件套 | 审美多样性 + 风格 LoRA（**实验性**，仅高端 Adreno；K90 实测双门槛不可用，MASTER_LOG §96） |
 
 > **代码化清单（2026-08-20）**：`src/utils/modelCatalog.ts` 的 `CATALOG_IMAGEGEN` 为本表代码事实源
