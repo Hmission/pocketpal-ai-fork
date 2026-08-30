@@ -1207,3 +1207,43 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
 - 3. 生图链路 TR-APP 打点轻量实现(子仓):JNI 入口/模型加载/step/UNet/VAE/输出,失败 chain_error 输出 TR-APP-NNN。
 - 4. 本窗口变更已提交(git);Klein 验证闭环后补验报告。
 
+### 127. 音频工坊链路大修复+对照播放+波形（2026-08-30，小米13 用户实测驱动）
+
+- 127.1 播放无声根因实锤:scrcpy 4.x 默认开启音频转发(PlaybackCapture)→ 系统把 STREAM_MUSIC 输出路由到 remote_submix(8000),扬声器零输出。证据链:logcat AudioTrack 23078 frames delivered 但 music group Devices=remote_submix;杀 scrcpy 后立即恢复 speaker(2)。修复=scrcpy 全部加 --no-audio 重拉;AudioTrack 播完 75600 帧(整段 1.5s)验证闭环。
+- 127.2 转写链路验证通过:录音转写 4 次全成功(“你好呀你好呀…/你好，这里是中华。”),SenseVoice 模型直推就绪;用户“传两次录音无输出”疑因 m4a/mp3 手机录音默认格式(wav 16k 红线拦截提示),待定夺是否扩支持。
+- 127.3 历史条渲染 bug(真 bug):transcribeHistory/ttsHistory/transcribeTasks/ttsTasks 用 useMemo 依赖 history.length,finishTask 只 patch status 不改数组长度→新任务成功后历史条永不出现(logcat transcribe ok 但 UI 空)。修复=observer 内直接派生(MobX 字段访问即订阅),新增 running→success 回归测试(数组长度不变场景)。
+- 127.4 转写对照播放(SPEC v1.10②):源音频转写成功后复制持久化 AIOS/audio/transcribe/{taskId}.wav(cache 可清),结果卡操作行加「播放原文」(info 蓝,复用 togglePlay 状态机,播放中变「暂停原文」)。
+- 127.5 波形显示(SPEC v1.10③):新建 WaveformBars 组件(整读 base64→解析 RIFF→前 20s 采样→40 桶 RMS 归一化→柱状渲染,播放进度高亮 primary/未播 outlineVariant,内存缓存)。坑:fmt bits 偏移 +22 错读(+14 正确);RNFS.read 分段 API 在 Hermes 异常改 readFile 整读(50MB 级产物仅截前 20s 可控)。真机验证 40 柱全部渲染(柱高 47-81px 随 RMS 起伏)。
+- 127.6 能力边界如实告知: SenseVoice 转写无词级时间戳输出(时间轴打标文本不做);输入仅 wav 16k 红线不变。
+- 127.7 交付物:audioStore.ts(TRANSCRIBE_DIR+持久化)/AudioWorkshopTab.tsx(派生修复+播放原文+波形集成)/WaveformBars.tsx(新建)/测试 9/9/SPEC v1.10。tsc 零错;jest 9/9(--coverage=false 单文件跑法);APK 重建 3 轮(每轮 --rerun-tasks+验证 bundle 内容,Metro 缓存坑复现——管道吞输出导致误判构建完成,须 Select-String 日志确认 BUILD SUCCESSFUL)。
+
+### 128. 音频生成页跑分卡+吸底条（2026-08-30，对齐生图页裁定）
+
+- 128.1 生成按钮吸底:生图「出图」吸底裁定(08-26)平移——新建 AudioActionBar(ImageGenScreen 层 KeyboardStickyView+insets 避让,与 GenActionBar 同构);仅 generate 段渲染(转写段不吸底不占位);composer 底部原按钮删除(无重复);状态(audioSeg/genText/voiceId/speed/supertonicSteps)组件 state → audioStore(吸底条与 tab 共享);转圈 onPrimary 高对比(8-29 根因沿用)。
+- 128.2 跑分卡:TTS 生成 running 页复用生图 PerfPanel(perfRecorder 由 beginTask 统一触发,TTS 任务同样采样,零接线);转写段不挂(秒级任务无意义)。
+- 128.3 测试生态:audioStore mock 改 mobx observable(deep:false 保 jest.fn 原样——observable 包装函数导致 toHaveBeenCalled 失配);AudioActionBar 本体独立测试(转写段不渲染/空文本禁用/点击调 generateTask 参数/生成中转圈);AudioWorkshopTab 测试改断言(tab 层无吸底条与重复按钮)。jest 55/55 全绿。
+- 128.4 交付物:AudioActionBar.tsx(新建)/audioStore.ts(audioSeg+5 字段+5 setter)/AudioWorkshopTab.tsx(状态入 store+ PerfPanel+删按钮)/ImageGenScreen.tsx(吸底双分支)/AudioActionBar.test.tsx(新建)/SPEC v1.11。坑:JSX 注释含损坏字节导致 prettier/tsc 解析错位(注释提前闭合),重写注释块修复;mobx observable 会包装对象内函数属性(deep:false 规避);InputSlider/TextInput 直接传 store action 引用丢 this(箭头包装)。
+- 128.5 时序 bug 修复(重试连点暴露):generateTask/transcribeTask 的 ttsGenerating/transcribing 置位在 beginTask(await)之后——beginTask 完成瞬间新任务 already running 且 uri 为空、而状态未置位 → 结果区误渲染 success 卡(新 uri='') → WaveformBars 读空 URI(EACCES 日志)。修复=状态前置 beginTask;logcat 复验 EACCES 日志归零。
+- 128.6 M13 环境限制重申(B34 复现):kokoro 引擎在 M13 生成时加载峰值超 HyperOS 单应用配额被 SIGKILL(isAppCrash=false,system_server kill -9)直接回桌面——非 UI bug;M13 上 TTS 生成须用 Kitten(57MB);顶栏默认引擎重装后回 kokoro,测试注意先切。
+- 128.7 音频吸底按钮底部裁切修复（大王报障：生成按钮被底边切掉一半）：前置事实——两 bar 底部同为 2358（insets.bottom=42 避让一致），差异只在按钮体量：生图出图按钮 116px、音频按钮 63px（uiautomator 实测）；63px 按钮整段落入 HyperOS 手势暗区（约 2268 起）→ 目视「被切一半」；修复=AudioActionBar 渲染树与生图同构（buttonRow + buttonGenMain 内衬），真机 [2221,2337] h=116 与生图逐像素一致；tsc 零错/jest 15 过/构建 4m8s/装机 Success/logcat 无错误。教训：吸底条按钮体量必须与参照页同构，仅 insets 避让不解决矮按钮沉底。
+
+
+
+## §126 连仓母仓切换至 F:\AIOS + 机制补齐 + 反哺契约(2026-08-30)
+
+### 126.1 动因
+- 大王定调:F:\AIOS 为干净系统仓(新母仓),F:\Cursor\OneTakeMVP 为 aios+项目混合仓退役;连仓全部指向 AIOS;AIOS 缺的机制补齐;反哺机制在 AIOS 落地。
+
+### 126.2 执行(门禁 G0-G2)
+- P0 机制补齐(F:\AIOS):.cursor/commands x5、.cursor/agents x4、scripts/hooks/cursor_monitor.py、scripts/agent 清理工具 x9、.qoder/hooks skip x2、docs/platform CURSOR_* x12(漏斗记忆等 SSOT)。注:首轮拷贝脚本无即拷即验致假成功,重写带验证后全 PASS。
+- P1 连仓切换:f:\pp 六 junction 全部指向 F:\AIOS(.qoder/hooks、scripts/agent 本次切换,其余 4 个此前已切);Remove-Item 对 junction 需交互确认失败,改用 (Get-Item).Delete() 解链。
+- P2 反哺契约:F:\AIOS\docs\platform\SUBREPO_FEEDBACK_SSOT.md(入口=subrepo_registry+patrol30,四步闭环,质量门禁,首例档案=TR-APP)。
+- P3 提交:AIOS master d111324(26 文件);.cursor/* 被 AIOS .gitignore 忽略(磁盘为准,junction 直读),未入 git。
+
+### 126.3 验证
+- 独立专工交叉验证 5/5 PASS(六 junction 指向/补齐存在性/契约文档/引用合规/subrepo 登记)。
+- 引用链自愈:f:\pp 此前审计 6 处 SSOT 缺失引用全部经 junction 可读。
+
+### 126.4 遗留
+- AIOS 无 remote(本机母仓);OneTakeMVP COMPASS_REGISTRY 提交 9c293765e 待推(port.glams.art 不可达)。
+
