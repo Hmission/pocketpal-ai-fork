@@ -1297,6 +1297,7 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
   - 探针清理（正式包不带探针/日志刷屏）：ggml-opencl.cpp 与 gemm_noshuffle_q5_k_f32.cl 还原 HEAD（8-28 生产态 read_imagef+fp32 累加）；ggml-cpu.c 撤 CPUDUMP 探针（-54 行）。
   - .gitignore：根目录 /*.xml /*.png /截图/ 调试产物不入库（41 个 untracked 清零）。
   - docs：本 §130 + POCKETPAL_MODEL_MATRIX.md Klein 状态同步。
-- 130.9 验证：tsc 零错；release 正式包构建中（assembleProdRelease，探针清理后 NDK 增量）。
-- 130.10 提交：见 git log（commit 待大王指令统一补推，push 纪律按 §129.10）。
-- 130.11 待推清单（共 9 笔，均未推，待大王指令直连补推）：本窗口 4 笔 cd1beb8（探针撤回）/ 25cfd9a（klein CPU 兜底）/ 4ebf16c（§130 登记）/ 9ff95ae（忽略规则+巡检暂停）+ 6aad876（push 纪律修正）+ 129.9 积压 ba71dde / e7178e8 / 9307b60 / a3e4c5c。方法：git -c http.proxy= -c https.proxy= push origin main（禁代理）。
+- 130.9 验证：tsc 零错；release 正式包构建成功（assembleProdRelease 12m11s，app-prod-release.apk 474MB，17:04）；§125.6 收口①已执行（kgY/kgZ 实测+撤探针，见 130.2/130.5），②连仓修复/③TR-APP 打点未执行、待后续窗口（停指标注）。
+- 130.10 提交：cd1beb8 / 25cfd9a / 4ebf16c / 9ff95ae / 8db4a36（见 git log；push 待大王指令，纪律按 §129.10）。
+- 130.11 待推清单（共 10 笔，均未推，待大王指令直连补推）：本窗口 5 笔 cd1beb8 / 25cfd9a / 4ebf16c / 9ff95ae / 8db4a36 + 6aad876（push 纪律修正）+ 129.9 积压 ba71dde / e7178e8 / 9307b60 / a3e4c5c。方法：git -c http.proxy= -c https.proxy= push origin main（禁代理）。
+- 130.12 环境坑（release 构建复用）：assembleProdRelease 在 .cxx/RelWithDebInfo 新目录构建时需重编 ExternalProject vulkan-shaders-gen（host 工具），子进程不继承 MSVC 环境 → C1034 iostream；须先 `gradlew --stop` 后在会话注入 INCLUDE（MSVC+SDK ucrt/um/shared）、LIB、PATH（Windows Kits bin\x64）再启构建（daemon 环境定格，注入后必须重启 daemon）；ggml NDK 增量约 12 分钟。
