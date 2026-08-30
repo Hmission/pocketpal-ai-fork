@@ -60,7 +60,9 @@ export async function isTtsGenInstalled(
     const core =
       engine === 'kokoro'
         ? // B36：sherpa 生成链路用 tokens.txt（tokenizer.json 保留给 fork 播放链路）
-          ['model_fp32.onnx', 'tokens.txt']
+          // B38a：生成链模型必须是 model_fp32_sherpa.onnx（补 sherpa metadata 版）——
+          // model_fp32.onnx 缺 metadata 会 native crash（TtsModule kokoroConfig 同改）
+          ['model_fp32_sherpa.onnx', 'tokens.txt']
         : engine === 'supertonic'
           ? [
               'duration_predictor.onnx',
@@ -97,6 +99,15 @@ export interface TtsSynthOptions {
 }
 
 /**
+ * 非拉丁字符集（B38b）：kokoro/kitten 当前仅挂英文音色（voices.ts v1b 范围，
+ * 中文 z_ 音色未接入），中文/日文/韩文/全角等文本会被 en-us 音素器按英文规则
+ * 朗读（用户可闻的「英文读中文」）。锋利原则：显式失败不产出听不懂的产物——
+ * 检测到非拉丁文本直接报错，提示语言边界；supertonic 为 31 语言多语言模型不拦截。
+ */
+const NON_LATIN_RE =
+  /[\u3000-\u303f\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\u3040-\u30ff\uac00-\ud7af\uff00-\uffef\u0400-\u04ff\u0600-\u06ff]/;
+
+/**
  * 合成文本为 wav 文件（整段非流式）。
  *
  * @returns 产物绝对路径（AIOS/audio/output/tts_{ts}.wav）
@@ -112,6 +123,10 @@ export async function synthesizeToFile(
   }
   if (!(await isTtsGenInstalled(engine))) {
     throw new Error(`${engine} 模型未安装完整`);
+  }
+  // B38b：kokoro/kitten 英文音色集——非拉丁文本显式拒绝，避免产出英文音素读中文
+  if ((engine === 'kokoro' || engine === 'kitten') && NON_LATIN_RE.test(text)) {
+    throw new Error(`${engine} 引擎当前仅支持英文文本（中文等音色接入规划中）`);
   }
   if (Platform.OS !== 'android') {
     throw new Error('生成音频文件仅支持 Android');

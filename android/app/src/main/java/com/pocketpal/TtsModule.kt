@@ -109,8 +109,12 @@ class TtsModule(reactContext: ReactApplicationContext) :
     // B34：sherpa kokoro 的 data_dir 必须指向 espeak-ng-data（Validate 找 phontab）；
     // lexicon 置空——en-us.bin 是 JS phonemizer 的二进制 dict，非 sherpa 文本词典格式。
     // B36：tokens 必须指向 sherpa 文本格式 tokens.txt（tokenizer.json 是 HF 格式，sherpa 不认）
+    // B38a：model 必须指向 model_fp32_sherpa.onnx——08-23 实勘 model_fp32.onnx 缺 sherpa
+    //   metadata（model_type/sample_rate 等），sherpa kokoro Init 报 "sample_rate does not exist"
+    //   后 native crash 整进程消亡（无 Java 栈、恢复后显示「生成中断」，小米13/K90 双机血证）；
+    //   model_fp32_sherpa.onnx 为补 metadata 版（.tmp/tts_diag/kokoro_fix.py 生成，真机合成已验证）。
     val model = OfflineTtsKokoroModelConfig(
-      model = "$modelDir/model_fp32.onnx",
+      model = "$modelDir/model_fp32_sherpa.onnx",
       voices = "$modelDir/voices/$voiceId.bin",
       tokens = "$modelDir/tokens.txt",
       dataDir = "$modelDir/espeak-ng-data",
