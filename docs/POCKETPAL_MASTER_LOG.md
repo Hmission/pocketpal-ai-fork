@@ -1250,3 +1250,15 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
 - AIOS 无 remote(本机母仓);OneTakeMVP COMPASS_REGISTRY 提交 9c293765e 待推(port.glams.art 不可达)。
 - 窗口闭环提交 be1bcda(§126 登记)已本地落袋,2026-08-30 网络全断(GitHub 直连/代理均不可达,curl 000),**待网络恢复后补推**。
 
+
+### 129 音频生成链修复闭环（B38a/B38b，2026-08-30 大王报障）
+
+- 129.1 报障：两台手机音频生成报「生成失败：kokoro 模型未安装完整」（小米13 / K90 双机）。
+- 129.2 根因双机查证（DB + 文件系统取证）：
+  - K90：kokoro 目录缺 tokens.txt（08-22 老推送集无 sherpa 生成链文件），isTtsGenInstalled 检查失败 → 报「kokoro 模型未安装完整」（DB 08-23 09:37 实据）；supertonic 缺 unicode_indexer.bin/voices .bin、kitten 缺 kitten_sherpa.onnx——整套 sherpa 生成链未补推（08-29 补推只做了小米13）。
+  - 小米13：文件齐全但 TtsModule.kokoroConfig 指向 model_fp32.onnx（缺 sherpa metadata），sherpa kokoro Init 报 sample_rate 缺失后 native crash 整进程静默消亡（无 Java 栈），恢复后任务标记「生成中断」（DB 01:36/01:38 实据，logcat 11:58 完整现场）——用户所见第二张报错卡。
+- 129.3 修复：①TtsModule.kokoroConfig 模型 → model_fp32_sherpa.onnx（08-23 补 metadata 版，.tmp/tts_diag/kokoro_fix.py 生成，图结构未变仅 metadata_props）；②ttsEngine.isTtsGenInstalled kokoro 检查对齐生成链文件；③K90 补齐生成链文件（tokens.txt / unicode_indexer.bin / F1-M5.bin / kitten_sherpa.onnx / model_fp32_sherpa.onnx）；④B38b 语言门——kokoro/kitten 非拉丁文本显式报错（中文 z_ 音色接入中），supertonic 31 语种不拦。
+- 129.4 验证：小米13 自动化合成 success（logcat [AudioStore] tts generate ok + wav 落盘，模型路径已指向 sherpa 版）；K90 人工合成成功（中文文本 5.1MB wav 产物）；tsc 零错 / jest 20 过（15 旧 + 新增 ttsEngine.test.ts 5 例）/ prettier 过。
+- 129.5 提交：ba71dde（3 文件 +84/-2，Conventional Commits）。
+- 129.6 待推留痕：2026-08-30 网络全断（GitHub 直连 Recv failure/21s 超时、代理 127.0.0.1:7897 未起）——直连命令已按 §128.9 执行（git -c http.proxy= -c https.proxy=），ba71dde 本地落袋，**待网络恢复后按 §128.9 方法补推**。
+- 129.7 后续排期：中文音色接入（Kokoro z_ voices + espeak cmn + native lang 参数 + UI 音色过滤放开）——大王已确认接入，下窗口执行。
