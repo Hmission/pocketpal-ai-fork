@@ -99,16 +99,31 @@ export interface TtsSynthOptions {
 }
 
 /**
- * 非拉丁字符集（B38b）：kokoro/kitten 当前仅挂英文音色（voices.ts v1b 范围，
- * 中文 z_ 音色未接入），中文/日文/韩文/全角等文本会被 en-us 音素器按英文规则
- * 朗读（用户可闻的「英文读中文」）。锋利原则：显式失败不产出听不懂的产物——
- * 检测到非拉丁文本直接报错，提示语言边界；supertonic 为 31 语言多语言模型不拦截。
+ * 非拉丁字符集（B38b）：中文/日文/韩文/全角等。kokoro 英文音色朗读中文本
+ * 会被 en-us 音素器按英文规则发音（用户可闻的「英文读中文」）。
  */
 const NON_LATIN_RE =
   /[\u3000-\u303f\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\u3040-\u30ff\uac00-\ud7af\uff00-\uffef\u0400-\u04ff\u0600-\u06ff]/;
 
+/** 汉字字符集（B38c：中文音色匹配条件） */
+const CHINESE_RE = /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/;
+
+/** kokoro 音色语言 → sherpa espeak lang（B38c：按音色语言映射，语音 bin 风格与音素语言一致） */
+function kokoroLangForVoice(voiceId: string): string {
+  if (/^z[fm]_/.test(voiceId)) {
+    return 'cmn'; // 中文音色（zf_小北 / zm_云见）
+  }
+  if (/^b[fm]_/.test(voiceId)) {
+    return 'en-gb'; // 英式音色
+  }
+  return 'en-us'; // 美式音色（默认）
+}
+
 /**
  * 合成文本为 wav 文件（整段非流式）。
+ *
+ * B38c：kokoro 支持中英双音色——文本与音色语言不匹配时显式报错
+ *（锋利原则：不产出听不懂的产物，提示切换音色）；kitten 仍为纯英文引擎。
  *
  * @returns 产物绝对路径（AIOS/audio/output/tts_{ts}.wav）
  */
@@ -124,9 +139,26 @@ export async function synthesizeToFile(
   if (!(await isTtsGenInstalled(engine))) {
     throw new Error(`${engine} 模型未安装完整`);
   }
-  // B38b：kokoro/kitten 英文音色集——非拉丁文本显式拒绝，避免产出英文音素读中文
-  if ((engine === 'kokoro' || engine === 'kitten') && NON_LATIN_RE.test(text)) {
-    throw new Error(`${engine} 引擎当前仅支持英文文本（中文等音色接入规划中）`);
+  const hasCjk = NON_LATIN_RE.test(text);
+  const hasHan = CHINESE_RE.test(text);
+  if (engine === 'kokoro') {
+    if (kokoroLangForVoice(voiceId) === 'cmn') {
+      // 中文音色：必须配合中文文本
+      if (!hasHan) {
+        throw new Error('中文音色（小北/云见）请配合中文文本输入');
+      }
+    } else if (hasHan) {
+      // 英文音色 + 中文本：en-us 音素器读不出正确中文
+      throw new Error(
+        '英文音色无法朗读中文，请切换中文音色（小北/云见）或输入英文',
+      );
+    } else if (hasCjk) {
+      // 英文音色 + 日韩等：也不支持
+      throw new Error(`${engine} 英文音色当前仅支持英文文本`);
+    }
+  } else if (engine === 'kitten' && hasCjk) {
+    // kitten 纯英文引擎（无中文音色）
+    throw new Error(`${engine} 引擎当前仅支持英文文本`);
   }
   if (Platform.OS !== 'android') {
     throw new Error('生成音频文件仅支持 Android');
@@ -145,6 +177,7 @@ export async function synthesizeToFile(
     opts.numSteps ?? 5,
     TTS_MODEL_DIRS[engine],
     outPath,
+    engine === 'kokoro' ? kokoroLangForVoice(voiceId) : '',
   );
   return outPath;
 }

@@ -889,28 +889,45 @@ export const AudioWorkshopTab: React.FC<{
             </TouchableOpacity>
             {showAdvanced ? (
               <View style={s.advancedBox}>
-                {/* 音色（B35：引擎选择已移顶栏胶囊，高级参数只留生成参数） */}
+                {/* 音色（B35：引擎选择已移顶栏胶囊，高级参数只留生成参数；
+                    B38c：Kokoro 接入中文音色后共 24 个——slice(0,10) 会截掉末尾中文音色，
+                    改为按语言分组渲染，中文组在前，英文 22 chip 由 flexWrap 换行承载） */}
                 <Text style={s.promptHint}>音色</Text>
-                <View style={s.audioVoiceRow}>
-                  {genVoices.slice(0, 10).map(v => (
-                    <TouchableOpacity
-                      key={v.id}
-                      style={[
-                        s.audioVoiceChip,
-                        audioStore.voiceId === v.id && s.audioVoiceChipActive,
-                      ]}
-                      onPress={() => audioStore.setVoiceId(v.id)}
-                      hitSlop={{top: 10, bottom: 10}}>
-                      <Text
-                        style={[
-                          s.audioVoiceText,
-                          audioStore.voiceId === v.id && s.audioVoiceTextActive,
-                        ]}>
-                        {v.name}
-                      </Text>
-                    </TouchableOpacity>
+                {[
+                  {
+                    label: '中文',
+                    voices: genVoices.filter(v => v.language === 'zh'),
+                  },
+                  {
+                    label: '英文',
+                    voices: genVoices.filter(v => v.language !== 'zh'),
+                  },
+                ]
+                  .filter(g => g.voices.length > 0)
+                  .map(group => (
+                    <View key={group.label} style={s.audioVoiceRow}>
+                      {group.voices.map(v => (
+                        <TouchableOpacity
+                          key={v.id}
+                          style={[
+                            s.audioVoiceChip,
+                            audioStore.voiceId === v.id &&
+                              s.audioVoiceChipActive,
+                          ]}
+                          onPress={() => audioStore.setVoiceId(v.id)}
+                          hitSlop={{top: 10, bottom: 10}}>
+                          <Text
+                            style={[
+                              s.audioVoiceText,
+                              audioStore.voiceId === v.id &&
+                                s.audioVoiceTextActive,
+                            ]}>
+                            {v.name}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
                   ))}
-                </View>
                 {/* 语速 */}
                 <View style={s.ttsSliderRow}>
                   <Text style={s.promptHint}>语速</Text>

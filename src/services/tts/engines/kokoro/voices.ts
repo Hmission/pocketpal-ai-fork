@@ -1,16 +1,16 @@
 import type {Voice} from '../../types';
 
 /**
- * Kokoro 82M v1.0 voice catalog (22 voices).
+ * Kokoro 82M v1.0 voice catalog (24 voices).
  *
  * IDs follow the `<lang><gender>_<name>` convention used by the upstream
  * repo: `a` = American English, `b` = British English, `e` = Spanish,
  * `f` = French, `h` = Hindi, `i` = Italian, `j` = Japanese, `p` =
  * Brazilian Portuguese, `z` = Mandarin Chinese. `f` = female, `m` = male.
  *
- * v1b scope: surface English voices only in the picker (filter at the UI
- * layer by `language === 'en'`). Language switching is deferred to the
- * v1b-TTS-language follow-up.
+ * B38c：接入中文音色（zf_xiaobei 小北 / zm_yunjian 云见）——sherpa 生成链
+ * 的 lang 参数按音色语言映射（zh→cmn / en→en-us / en-GB→en-gb），
+ * espeak-ng-data 已含 cmn 词典 + lang/sit/cmn 语言定义（无需额外数据）。
  */
 export const KOKORO_VOICES: Voice[] = [
   // American English — female
@@ -169,6 +169,21 @@ export const KOKORO_VOICES: Voice[] = [
     name: 'Lewis',
     engine: 'kokoro',
     language: 'en-GB',
+    gender: 'm',
+  },
+  // Mandarin Chinese (B38c：中文音色接入，sherpa lang=cmn)
+  {
+    id: 'zf_xiaobei',
+    name: '小北',
+    engine: 'kokoro',
+    language: 'zh',
+    gender: 'f',
+  },
+  {
+    id: 'zm_yunjian',
+    name: '云见',
+    engine: 'kokoro',
+    language: 'zh',
     gender: 'm',
   },
 ];

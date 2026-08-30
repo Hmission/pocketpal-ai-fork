@@ -54,11 +54,12 @@ class TtsModule(reactContext: ReactApplicationContext) :
    *
    * @param engine   kokoro | supertonic
    * @param text     待合成文本
-   * @param voiceId  音色 id（kokoro: voices/{id}.bin；supertonic: voices/{id}.json）
+   * @param voiceId  音色 id（kokoro: voices/{id}.bin；supertonic: voices/{id}.bin）
    * @param speed    语速 0.5–2.0（默认 1.0）
    * @param numSteps Supertonic 推理步数（1|2|3|5|10|20，kokoro 忽略）
    * @param modelDir 模型目录（AIOS/…/tts/{engine}/）
    * @param outPath  输出 wav 绝对路径
+   * @param lang     kokoro espeak 语言（B38c：en-us/en-gb/cmn，由 JS 按音色映射；其他引擎传空串忽略）
    */
   @ReactMethod
   fun synthesizeToFile(
@@ -69,11 +70,12 @@ class TtsModule(reactContext: ReactApplicationContext) :
     numSteps: Int,
     modelDir: String,
     outPath: String,
+    lang: String,
     promise: Promise,
   ) {
     executor.execute {
       try {
-        val t = getOrCreate(engine, voiceId, modelDir)
+        val t = getOrCreate(engine, voiceId, modelDir, lang)
         val audio = t.generate(text, 0, speed.toFloat())
         val ok = audio.save(outPath)
         if (ok) {
@@ -87,14 +89,19 @@ class TtsModule(reactContext: ReactApplicationContext) :
     }
   }
 
-  private fun getOrCreate(engine: String, voiceId: String, modelDir: String): OfflineTts {
-    val key = "$engine|$voiceId|$modelDir"
+  private fun getOrCreate(
+    engine: String,
+    voiceId: String,
+    modelDir: String,
+    lang: String,
+  ): OfflineTts {
+    val key = "$engine|$voiceId|$modelDir|$lang"
     if (tts != null && loadedKey == key) {
       return tts!!
     }
     tts?.free()
     val config = when (engine) {
-      "kokoro" -> kokoroConfig(modelDir, voiceId)
+      "kokoro" -> kokoroConfig(modelDir, voiceId, lang)
       "supertonic" -> supertonicConfig(modelDir, voiceId)
       "kitten" -> kittenConfig(modelDir)
       else -> throw IllegalArgumentException("不支持的生成引擎: $engine")
@@ -105,7 +112,11 @@ class TtsModule(reactContext: ReactApplicationContext) :
     return t
   }
 
-  private fun kokoroConfig(modelDir: String, voiceId: String): OfflineTtsConfig {
+  private fun kokoroConfig(
+    modelDir: String,
+    voiceId: String,
+    lang: String,
+  ): OfflineTtsConfig {
     // B34：sherpa kokoro 的 data_dir 必须指向 espeak-ng-data（Validate 找 phontab）；
     // lexicon 置空——en-us.bin 是 JS phonemizer 的二进制 dict，非 sherpa 文本词典格式。
     // B36：tokens 必须指向 sherpa 文本格式 tokens.txt（tokenizer.json 是 HF 格式，sherpa 不认）
@@ -113,11 +124,13 @@ class TtsModule(reactContext: ReactApplicationContext) :
     //   metadata（model_type/sample_rate 等），sherpa kokoro Init 报 "sample_rate does not exist"
     //   后 native crash 整进程消亡（无 Java 栈、恢复后显示「生成中断」，小米13/K90 双机血证）；
     //   model_fp32_sherpa.onnx 为补 metadata 版（.tmp/tts_diag/kokoro_fix.py 生成，真机合成已验证）。
+    // B38c：lang 由 JS 按音色映射（zh→cmn / en→en-us / en-GB→en-gb）——语音 bin 风格与音素语言一致。
     val model = OfflineTtsKokoroModelConfig(
       model = "$modelDir/model_fp32_sherpa.onnx",
       voices = "$modelDir/voices/$voiceId.bin",
       tokens = "$modelDir/tokens.txt",
       dataDir = "$modelDir/espeak-ng-data",
+      lang = lang,
     )
     return OfflineTtsConfig(
       model = OfflineTtsModelConfig(
