@@ -62,6 +62,7 @@ import {BenchmarkHudBar} from '../../components/BenchmarkHudBar';
 import {HistoryStrip} from './components/HistoryStrip';
 import {ComposerPanel} from './components/ComposerPanel';
 import {GenActionBar} from './components/GenActionBar';
+import {AudioActionBar} from './components/AudioActionBar';
 import {QueuePanel} from './components/QueuePanel';
 import {GenParamsSnapshot, QueueItem} from '../../store/imageGenQueueCore';
 import {UpscalePanel} from './components/UpscalePanel';
@@ -1369,8 +1370,9 @@ export const ImageGenScreen: React.FC = observer(() => {
       </KeyboardAwareScrollView>
 
       {/* 底部吸底操作条（2026-08-26 大王裁定）：出图/编辑按钮常驻页面底部，
-          键盘弹出随 KeyboardStickyView 上移（同聊天输入条设计语言）；
-          audio tab 不吸底（AudioWorkshopTab 保持自身布局） */}
+          键盘弹出随 KeyboardStickyView 上移（同聊天输入条设计语言）。
+          2026-08-30：audio tab 同样吸底（AudioActionBar 生成音频常驻，
+          与 AudioWorkshopTab 共享 audioStore 状态；转写段不吸底不占位） */}
       {workshopTab === 'image' ? (
         <KeyboardStickyView offset={{closed: 0, opened: insets.bottom}}>
           {/* 底部安全区避让（2026-08-29）：KeyboardStickyView closed=0 贴窗口物理底边，
@@ -1402,7 +1404,17 @@ export const ImageGenScreen: React.FC = observer(() => {
             />
           </View>
         </KeyboardStickyView>
-      ) : null}
+      ) : (
+        <KeyboardStickyView offset={{closed: 0, opened: insets.bottom}}>
+          <View
+            style={{
+              paddingBottom: insets.bottom,
+              backgroundColor: theme.colors.surface,
+            }}>
+            <AudioActionBar onSnackbar={showBanner} />
+          </View>
+        </KeyboardStickyView>
+      )}
 
       {/* D1：屏级模型下拉 overlay（scrim 起于 AppBar 下沿，点外收起） */}
       <ModelPickerDropdown

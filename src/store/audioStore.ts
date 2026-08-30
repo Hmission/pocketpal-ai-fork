@@ -15,6 +15,8 @@ import {imageGenStore} from './imageGenStore';
 import {ttsStore} from './TTSStore';
 import {promptWriter} from '../services/promptWriter';
 import {getAllEngines, Voice} from '../services/tts';
+import * as RNFS from '@dr.pogodin/react-native-fs';
+import {AIOS_ROOT} from '../utils/paths';
 import {
   downloadSenseVoice,
   isSenseVoiceInstalled,
@@ -38,6 +40,15 @@ export type AsrDownloadState =
   | 'ready'
   | 'error';
 
+/** 音频工坊次级分段（v1.11：吸底条与 tab 共享，状态入 store） */
+export type AudioSeg = 'transcribe' | 'generate';
+
+/**
+ * 转写源音频持久目录（AIOS 共享存储；cache 源可被系统回收，
+ * 转写成功后复制到此处供「对照播放」——AUDIO_UI_SPEC v1.10 ②）
+ */
+export const TRANSCRIBE_DIR = `${AIOS_ROOT}/audio/transcribe`;
+
 class AudioStore {
   /** 生成引擎选择（顶栏胶囊 + 生成段共享，B35：模型只在顶栏） */
   genEngine: TtsGenEngineId = 'kokoro';
@@ -54,6 +65,36 @@ class AudioStore {
   ttsError: string | null = null;
   /** 朗读中文本（结果区展示） */
   speakingText = '';
+  /** 次级分段（v1.11：吸底条与 tab 共享，状态入 store——对齐生图 GenActionBar 编排模式） */
+  audioSeg: AudioSeg = 'transcribe';
+  /** 生成输入文本（吸底条禁用判定 + composer 共享） */
+  genText = '';
+  /** 当前音色 id（顶栏换引擎自动重置） */
+  voiceId: string | null = null;
+  /** 语速倍率 */
+  speed = 1.0;
+  /** Supertonic 专属步数 */
+  supertonicSteps = 5;
+
+  setAudioSeg(v: AudioSeg): void {
+    this.audioSeg = v;
+  }
+
+  setGenText(v: string): void {
+    this.genText = v;
+  }
+
+  setVoiceId(v: string | null): void {
+    this.voiceId = v;
+  }
+
+  setSpeed(v: number): void {
+    this.speed = v;
+  }
+
+  setSupertonicSteps(v: number): void {
+    this.supertonicSteps = v;
+  }
 
   constructor() {
     makeAutoObservable(this);
@@ -107,6 +148,12 @@ class AudioStore {
    * 返回转写文本（成功）或 null（失败）。
    */
   async transcribeTask(audioPath: string): Promise<string | null> {
+    // v1.11：transcribing 前置 beginTask（与 generateTask 同构修复——beginTask await
+    // 窗口内误渲染 success 卡的问题同源，前置后转写即显 running 页）
+    runInAction(() => {
+      this.transcribing = true;
+      this.transcribeStage = '准备中…';
+    });
     const startTs = Date.now();
     const taskId = await imageGenStore.beginTask({
       uri: audioPath,
@@ -119,7 +166,6 @@ class AudioStore {
       modelLabel: 'SenseVoice',
     });
     runInAction(() => {
-      this.transcribing = true;
       this.transcribeStage = '加载语音模型…';
     });
     try {
@@ -132,7 +178,17 @@ class AudioStore {
       if (!trimmed) {
         throw new Error('转写无输出');
       }
-      await imageGenStore.finishTask(taskId, audioPath, {
+      // v1.10：源音频持久化（cache 可清、供对照播放）；失败不阻断任务
+      let persistUri = audioPath;
+      try {
+        await RNFS.mkdir(TRANSCRIBE_DIR);
+        const dst = `${TRANSCRIBE_DIR}/${taskId}.wav`;
+        await RNFS.copyFile(audioPath, dst);
+        persistUri = dst;
+      } catch (e) {
+        console.warn('[AudioStore] transcribe persist failed:', e);
+      }
+      await imageGenStore.finishTask(taskId, persistUri, {
         prompt: trimmed,
         durationMs: Date.now() - startTs,
       });
@@ -296,6 +352,13 @@ class AudioStore {
     // 与管家同驻会超 HyperOS 单应用配额被系统杀进程（K90/小米13 双机血证）；
     // 聊天调度链路会自动 ensureLoaded 懒加载恢复，无感。
     await promptWriter.release();
+    // v1.11：ttsGenerating 前置 beginTask——beginTask await 期间若仍为 false，
+    // 结果区会误渲染 success 卡（新任务 uri 为空）+ WaveformBars 读空 URI（EACCES），
+    // 2026-08-30 真机实测（重试连点暴露）；前置后 beginTask 窗口内即 running 页。
+    runInAction(() => {
+      this.ttsGenerating = true;
+      this.ttsStage = '正在准备…';
+    });
     const startTs = Date.now();
     const taskId = await imageGenStore.beginTask({
       uri: '',
@@ -314,7 +377,6 @@ class AudioStore {
             : 'Kitten',
     });
     runInAction(() => {
-      this.ttsGenerating = true;
       this.ttsStage = `正在合成（${voice.name}）…`;
     });
     try {

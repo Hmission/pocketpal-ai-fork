@@ -21,6 +21,10 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_IMAGEGEN_UI_SPEC, POCKETPAL_MODEL_MAT
 > 版本：v1.5（2026-08-22 B36 大王复查，全面对齐生图 tab）：① **引擎选择弃 Menu → 复用生图 ModelPicker 屏级 overlay 交互**（dropOverlay/dropBackdrop/dropPanelAbs + 行内动作，消灭同页双交互模式；行内动作 = 未就绪「下载」/ 就绪「删除」，store 能力现成）；② **结果区升级整卡三态**（对齐生图 taskPage 语义：running = 三点波浪进度卡（复用 useWaveDots）/ success = 全文卡 / failed = ⚠ 摘要 + 复制报错/重试/删除 三按钮）——小卡升级整卡，兑现 §2「整卡切换」；③ **历史条点击联动结果区**（点历史条目 → 结果区切换对应条目，对齐生图相册翻页联动）；④ **模型管理行整治**：composer 三行冗余状态文本删除 → 引擎状态/下载/删除全部并入顶栏下拉行内；⑤ **m4a/mp3 转码删条**（锋利：不做兜底转码，JS 显式只收 wav 16k）
 > 版本：v1.7（2026-08-23 B38 大王复查·多模态统一逻辑）：① **顶栏胶囊与生图 tab 同一设计语言**——废弃 audioHeaderCapsule 独立风格，复用 triggerPill（primary 12% 底 + full 圆角 + primary 1px 描边 + onSurface 文字 + ▾ 箭头），就绪点内嵌保留（音频的「加载」语义 = 引擎就绪点）；② **结果区升级播放器预览窗口**——方形大卡（与生图预览窗口同规格）：中央播放/暂停大按钮 + 时间轴（可拖动跳播）+ 当前/总时长（mm:ss）；running/failed 三态保留；产物操作行（重生成/分享/删除）置于预览卡内；③ **历史卡改方形**（与生图相册缩略图同构：方形卡 + 图标/摘要），**点击 = 加载到预览窗口**（转写=文本预览、生成=播放器预览），不再点卡直接播放/复制（操作归预览窗口）——多模态统一：生图=缩略图→大图预览，音频=方形卡→播放器预览，转写=方形卡→文本预览；④ **输入框默认两行**（minHeight 66，原 44——怕用户找不到输入处，提高存在感）；⑤ **原生播放器全能力**：MediaPlayer 扩展 seekTo/pause/resume/getPosition，JS 侧 500ms 轮询驱动时间轴
 > 版本：v1.6（2026-08-23 B37 生成链路修复）：TTS 生成链路（sherpa 原生）与播放链路（fork 库）对模型文件格式要求不同——下载后由 sherpaConvert.ts 生成 sherpa 格式副本（tokens.txt / unicode_indexer.bin / voice {id}.bin）；kokoro 模型需 sherpa metadata；kitten 生成链路换官方 kitten-nano-en-v0_1（kitten_sherpa.onnx，palshub 0.8 输出纯噪声弃用）
+> 版本：v1.12（2026-08-30 吸底按钮底部裁切修复，对齐生图按钮体量）：用户实测「生成按钮被底边切掉一半」——根因：insets.bottom=42 只避让手势条指示器，按钮 63px 整段落入手势暗区（生图出图按钮 116px 高、上半 47px 逃出暗区故观感正常）；修复=AudioActionBar 渲染树/样式与 GenActionBar 出图按钮逐层同构（bottomBar 内 buttonRow 行容器 + 内衬 buttonGenMain），按钮恢复 116px 完整体量（真机 [2221,2337] h=116 与生图逐像素一致）；转写段无吸底条不占位语义不变。
+> 版本：v1.11（2026-08-30 跑分卡+吸底条，对齐生图页裁定）：① **生成按钮吸底**——生图「出图」吸底常驻裁定（2026-08-26）平移：新建 AudioActionBar（ImageGenScreen 层 KeyboardStickyView + insets 安全区避让，与 GenActionBar 同构封装），「生成音频」按钮常驻页面底部；仅 generate 段渲染（转写段主操作在 composer 不吸底不占位）；composer 底部原生成按钮删除（无重复按钮）；状态（audioSeg/genText/voiceId/speed/supertonicSteps）从组件 state 入 audioStore（吸底条与 tab 共享，AudioSeg 类型入 store）；ttsGenerating 转圈 onPrimary（8-29 真机根因沿用：primary 底转圈须高对比色）；disabled = 任务中/空文本/无音色/引擎未装（buttonDisabled 半透明主色语义同生图）② **跑分卡片**——TTS 生成 running 页复用生图 PerfPanel（完整面板，perfRecorder 由 beginTask 统一触发，TTS 任务同样采样，无需额外接线）；转写段 running 不挂（转写秒级、面板无意义且闪烁）；③ 转写段吸底维持现状（用户裁定向：仅生成按钮吸底）
+> 版本：v1.10（2026-08-30 链路修复+对照播放+波形，用户实测驱动）：① **转写/生成历史条渲染 bug 修复**——useMemo 依赖 history.length 对 finishTask status patch 不重算 → 新转写成功后历史条永不出现（真机实锤：logcat transcribe ok 但 UI 空）；改 observer 内直接派生（MobX 字段访问即订阅），转写段/生成段四份派生（transcribeHistory/ttsHistory/transcribeTasks/ttsTasks）同步改；② **转写对照播放**——转写成功后源音频复制持久化 `AIOS/audio/transcribe/{taskId}.wav`（共享存储，cache 源可清），结果卡操作行加「播放原文」（info 蓝，复用播放器状态机 togglePlay；播放中变「暂停」）；历史卡点击=加载结果区（回听归结果区，与生成段同构不另造）；③ **波形显示**——生成段播放器预览卡时间轴上方加波形条（简单版：读 wav PCM 归一化 40 柱，未播 outline 灰、播放进度高亮 primary；JS 首帧解析 + 内存缓存，读大文件截断前 20s 采样）；④ **能力确认**——SenseVoice 转写无词级时间戳输出（时间轴打标文本不做，如实告知）；输入仅 wav 16k 红线不变（m4a/mp3 不支持，用户误传手机录音默认格式时会提示，扩支持待定夺）
+> 版本：v1.9（2026-08-29 UI 合规修复批，小米13 真机审计驱动）：① **emoji 图标化（DESIGN_SPEC §12.5 铁律）**——历史卡 🎙/🎵/⏸ → MicIcon/HeadphonesMdIcon/PauseIcon、播放大键 ▶/⏸ → PlayIcon/PauseIcon（PauseIcon 自绘新资产，Lucide 同族全描边 2px）、转写卡标题 📝 去除；② **触区合规（DESIGN_SPEC §9）**——次级分段钮/操作条按钮/音色与步数 chip/高级参数折叠钮统一 hitSlop 补足 44dp（线性 72 方卡、64 播放键、大按钮天然达标）；③ **操作按钮文字语义 token 化（§1.6）**——复制/发送/分享/删除白字字面量 → onSuccess/onInfo/onDanger（暗色模式随之深字，语义正确）；primary 底白字（下载模型/播放大键）维持 B56② 登记评审豁免（onPrimary 深棕不适用）；④ **转写卡标题域色错位修正**——captionCardTitle 反推紫（imageInsight 为图像反推域色，B56③ 登记）→ 新 audioTranscribeTitle 中性 onSurface，emoji 同去；⑤ **历史卡选中态差异登记**（设计决策）——音频用 2px primary 描边 vs 生图相册 backdrop 压暗遮罩：音频方卡内容为 icon+短文字，遮罩压暗后不可读，描边语义保留，不强行统一；⑥ **SenseVoice 模型管理行 spec 闭合**——转写段 composer 状态行（已就绪/下载中 X%/下载失败/未下载）+「下载模型」行内按钮（primary 底），与生成段「引擎全在顶栏」格局并存（ASR 单模型无顶栏胶囊，§3.2 定义）；⑦ **模型直推 SOP 验证闭环**——TTS：push /data/local/tmp → chmod a+rX → run-as cp 入 files/tts/{engine}（sherpa 副本 tokens.txt/unicode_indexer.bin/voice {id}.bin 可 PC 端预生成同逻辑）；ASR：直推共享存储 AIOS/models/audio/sense-voice-zh-en-ja-ko-yue/；装完冷启动即就绪
 > 版本：v1.8（2026-08-25 镜像校准销账，DEV_BACKLOG P4#11）：TTS 三引擎下载源 5 处直连 huggingface.co 全部切 hf-mirror.com（constants.ts L33/97/120/137/168：supertonic/kokoro/phonemizer/kitten/sherpa），对齐 ASR 既有镜像链路——§4.1 P2.5 连带项关闭
 > 上位规范：POCKETPAL_DESIGN_SPEC.md（UI 域 SSOT）+ POCKETPAL_IMAGEGEN_UI_SPEC.md（工坊 tab 载体）
 
@@ -83,6 +87,13 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_IMAGEGEN_UI_SPEC, POCKETPAL_MODEL_MAT
 - 选文件：媒体库音频文件 → 转写（复用 image picker 体系）
 - 录音：**v1.3 已实现**——工坊「录音转写」按钮（点按开始，按钮变红「■ 停止并转写」，再点停止 → SenseVoice 自动转写入画廊）；录音模块 AudioRecordModule（AudioRecord PCM16 16kHz mono 直采 → 手写 WAV 头，落 cacheDir/audio_record/；MediaRecorder 不支持 wav 容器故走 PCM 直写）；RECORD_AUDIO 权限 manifest 已声明，JS 侧 PermissionAndroid 先行申请
 
+### 3.4 SenseVoice 模型管理行（v1.9 spec 闭合）
+
+- 位置：转写段创作区顶部一行（状态文本 + 行内按钮）；**与生成段「引擎全在顶栏」格局并存**——ASR 仅单模型无顶栏胶囊，不另造顶栏入口
+- 状态文本：已就绪 / 下载中 X% / 下载失败 / 未下载（captionS/onSurfaceVariant，§6 字号 token 同规矩）
+- 动作：未就绪态行内「下载模型」按钮（primary 底、radius.s、白字维持 B56② 评审豁免）；下载中禁点；就绪态无按钮
+- 模型文件：SenseVoice int8 + tokens.txt 直推共享存储 `AIOS/models/audio/sense-voice-zh-en-ja-ko-yue/`（装机 SOP，见 v1.9⑦）
+
 ## 4. 生成音频文件（v2：由「朗读」升级为「生成文件」）
 
 ### 4.1 引擎与模型（复用现有 TTS 架构）
@@ -120,7 +131,10 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_IMAGEGEN_UI_SPEC, POCKETPAL_MODEL_MAT
 ## 7. 约束（实现红线）
 
 - Screen 层零直连原生引擎，全部经 audioStore 单通道（ASR/TTS 收编）
-- 新色值必须登记本文档（沿用语义色体系：复制绿 #2e7d32 / 发送蓝 #1565c0 / 删除红 #c62828）
-- 模型文件：ASR 落 `AIOS/audio/`（MODEL_MATRIX §7 管辖）；TTS 沿用 `tts/` 目录（TTSStore 管辖，不双轨）
+- 新色值必须登记本文档（沿用语义色体系：复制绿 #2e7d32 / 发送蓝 #1565c0 / 删除红 #c62828；按钮前景用 onSuccess/onInfo/onDanger token）
+- **禁 emoji 作 UI 图标（v1.9，DESIGN_SPEC §12.5）**：历史卡/播放键/标题一律 `src/assets/icons` 自绘（MicIcon/HeadphonesMdIcon/PlayIcon/PauseIcon）；`audioPlayBigIcon` 与 `audioBtnModel` 白字为 primary 底 B56② 登记评审豁免，其余白字字面量已清零
+- **触区（v1.9，DESIGN_SPEC §9）**：次级分段钮/操作条按钮/音色与步数 chip/高级参数折叠钮一律 hitSlop 补足 44dp；新增紧凑元素默认带 hitSlop
+- 历史卡选中态 = 2px primary 描边（v1.9 登记：音频方卡内容为 icon+短文字，backdrop 压暗遮罩不可读，不与生图相册遮罩统一）
+- 模型文件：ASR 落 `AIOS/models/audio/`（MODEL_MATRIX §7 管辖）；TTS 沿用 `files/tts/` 私有目录（TTSStore 管辖，不双轨）；装机直推 SOP 见 v1.9⑦
 - testID 稳定：audio-record / audio-pick / audio-speak / audio-copy 等，e2e 依赖不变
 - 不做：音乐生成、音效合成、多轨混音（产品边界，未来再议）

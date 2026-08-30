@@ -48,6 +48,7 @@ export {default as PalIcon} from './pal.svg';
 export {default as PencilLineIcon} from './pencil-line.svg';
 export {default as PlaceholderIcon} from './placeholder.svg';
 export {default as PlayIcon} from './play.svg';
+export {default as PauseIcon} from './pause.svg';
 export {default as PlusIcon} from './plus.svg';
 export {default as RefreshIcon} from './refresh.svg';
 export {default as ReverseLeftIcon} from './reverse-left.svg';

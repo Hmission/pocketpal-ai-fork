@@ -25,18 +25,23 @@ import {
 
 import {audioStore} from '../../../store/audioStore';
 import {imageGenStore, GeneratedImage} from '../../../store/imageGenStore';
-import {ttsStore} from '../../../store/TTSStore';
 import {useTheme} from '../../../hooks';
 import {createStyles} from '../styles';
 import {chatSessionStore} from '../../../store';
 import {InputSlider} from '../../../components/InputSlider';
 import {WaveDots} from '../../../components/ui/WaveDots';
-import {AlertTriangleMdIcon} from '../../../assets/icons';
+import {
+  AlertTriangleMdIcon,
+  HeadphonesMdIcon,
+  MicIcon,
+  PauseIcon,
+  PlayIcon,
+} from '../../../assets/icons';
+import {WaveformBars} from './WaveformBars';
+import {PerfPanel} from './PerfPanel';
 import {copyAndSaveErrorReport} from '../../../utils/errorReport';
 import {BannerBar} from '../../../components/ui/BannerBar';
 import type {PreviewBanner} from './ResultPreview';
-
-type AudioSeg = 'transcribe' | 'generate';
 
 /**
  * AudioWorkshopTab — 创作工坊「音频工坊」tab（AUDIO_UI_SPEC v1.4）
@@ -55,11 +60,6 @@ export const AudioWorkshopTab: React.FC<{
 }> = observer(({onSnackbar, banner, onDismissBanner}) => {
   const theme = useTheme();
   const s = createStyles(theme);
-  const [seg, setSeg] = React.useState<AudioSeg>('transcribe');
-  const [genText, setGenText] = React.useState('');
-  const [voiceId, setVoiceId] = React.useState<string | null>(null);
-  const [speed, setSpeed] = React.useState(1.0);
-  const [supertonicSteps, setSupertonicSteps] = React.useState(5);
   const [showAdvanced, setShowAdvanced] = React.useState(false);
   /** B33：录音转写进行中（录音按钮态） */
   const [recording, setRecording] = React.useState(false);
@@ -108,36 +108,23 @@ export const AudioWorkshopTab: React.FC<{
   }, [isPlaying]);
 
   // 转写历史（kind='transcribe' success，历史条 + 结果区 success 页）
-  const transcribeHistory = React.useMemo(
-    () =>
-      imageGenStore.history.filter(
-        h => h.kind === 'transcribe' && h.status === 'success',
-      ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [imageGenStore.history.length],
+  // 转写/生成任务派生（v1.10：observer 内直接派生——useMemo 依赖 history.length
+  // 对 finishTask 的 status patch 不重算，新转写成功后历史条/结果三态页永不刷新，
+  // 2026-08-30 真机实锤；MobX 字段访问即订阅，直接 filter 每次渲染派生）
+  const transcribeHistory = imageGenStore.history.filter(
+    h => h.kind === 'transcribe' && h.status === 'success',
   );
 
   // 生成历史（kind='tts' success）
-  const ttsHistory = React.useMemo(
-    () =>
-      imageGenStore.history.filter(
-        h => h.kind === 'tts' && h.status === 'success',
-      ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [imageGenStore.history.length],
+  const ttsHistory = imageGenStore.history.filter(
+    h => h.kind === 'tts' && h.status === 'success',
   );
 
   // B36：本段全部任务（含 failed，结果区三态页数据源；历史条只列 success）
-  const transcribeTasks = React.useMemo(
-    () => imageGenStore.history.filter(h => h.kind === 'transcribe'),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [imageGenStore.history.length],
+  const transcribeTasks = imageGenStore.history.filter(
+    h => h.kind === 'transcribe',
   );
-  const ttsTasks = React.useMemo(
-    () => imageGenStore.history.filter(h => h.kind === 'tts'),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [imageGenStore.history.length],
-  );
+  const ttsTasks = imageGenStore.history.filter(h => h.kind === 'tts');
 
   /** 结果区焦点（fallback 最新任务；删除/新任务自动归位） */
   const transcribeFocus =
@@ -190,13 +177,17 @@ export const AudioWorkshopTab: React.FC<{
   }, [genEngine]);
 
   React.useEffect(() => {
-    if (!voiceId || !genVoices.some(v => v.id === voiceId)) {
-      setVoiceId(genVoices[0]?.id ?? null);
+    if (
+      !audioStore.voiceId ||
+      !genVoices.some(v => v.id === audioStore.voiceId)
+    ) {
+      audioStore.setVoiceId(genVoices[0]?.id ?? null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audioStore.genEngine]);
 
-  const selectedVoice = genVoices.find(v => v.id === voiceId) ?? null;
+  const selectedVoice =
+    genVoices.find(v => v.id === audioStore.voiceId) ?? null;
 
   /** 选音频文件 → 转写任务化（DocumentPicker 选 wav；原生层只收 wav 16k） */
   const handlePickAndTranscribe = async () => {
@@ -254,7 +245,7 @@ export const AudioWorkshopTab: React.FC<{
   };
 
   /** 生成音频（任务化入画廊）；text 缺省用输入框内容（重生成/录音回填可传参） */
-  const handleGenerate = async (text: string = genText) => {
+  const handleGenerate = async (text: string = audioStore.genText) => {
     if (!text.trim()) {
       onSnackbar('请输入要生成的文本', 'warning');
       return;
@@ -268,8 +259,8 @@ export const AudioWorkshopTab: React.FC<{
       text,
       selectedVoice,
       {
-        speed,
-        numSteps: supertonicSteps,
+        speed: audioStore.speed,
+        numSteps: audioStore.supertonicSteps,
       },
     );
     if (out) {
@@ -346,7 +337,7 @@ export const AudioWorkshopTab: React.FC<{
       onSnackbar('无可用提示词，请重新输入', 'warning');
       return;
     }
-    setGenText(item.prompt);
+    audioStore.setGenText(item.prompt);
     handleGenerate(item.prompt);
   };
 
@@ -368,10 +359,6 @@ export const AudioWorkshopTab: React.FC<{
     }
   };
 
-  const genInstalled = ttsStore.kokoroDownloadState === 'ready';
-  const supInstalled = ttsStore.supertonicDownloadState === 'ready';
-  const kittenInstalled = ttsStore.kittenDownloadState === 'ready';
-
   return (
     <View style={s.card}>
       {/* 卡片顶部横幅（v4.3：与生图 tab 同一设计语言——语义色 wash 无灰底，整卡点击关闭） */}
@@ -388,32 +375,40 @@ export const AudioWorkshopTab: React.FC<{
       {/* 次级分段（复用 KnowledgeScreen tabBar 样式语义） */}
       <View style={s.audioSegBar}>
         <TouchableOpacity
-          style={[s.audioSeg, seg === 'transcribe' && s.audioSegActive]}
-          onPress={() => setSeg('transcribe')}
+          style={[
+            s.audioSeg,
+            audioStore.audioSeg === 'transcribe' && s.audioSegActive,
+          ]}
+          onPress={() => audioStore.setAudioSeg('transcribe')}
+          hitSlop={{top: 10, bottom: 10}}
           testID="audio-seg-transcribe">
           <Text
             style={[
               s.audioSegText,
-              seg === 'transcribe' && s.audioSegTextActive,
+              audioStore.audioSeg === 'transcribe' && s.audioSegTextActive,
             ]}>
             转写
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[s.audioSeg, seg === 'generate' && s.audioSegActive]}
-          onPress={() => setSeg('generate')}
+          style={[
+            s.audioSeg,
+            audioStore.audioSeg === 'generate' && s.audioSegActive,
+          ]}
+          onPress={() => audioStore.setAudioSeg('generate')}
+          hitSlop={{top: 10, bottom: 10}}
           testID="audio-seg-generate">
           <Text
             style={[
               s.audioSegText,
-              seg === 'generate' && s.audioSegTextActive,
+              audioStore.audioSeg === 'generate' && s.audioSegTextActive,
             ]}>
             生成
           </Text>
         </TouchableOpacity>
       </View>
 
-      {seg === 'transcribe' ? (
+      {audioStore.audioSeg === 'transcribe' ? (
         <>
           {/* ① 结果区（B36：整卡三态——running 波浪进度 / success 全文卡 / failed 报错页） */}
           <View style={s.audioResult}>
@@ -450,12 +445,14 @@ export const AudioWorkshopTab: React.FC<{
                   <TouchableOpacity
                     style={s.failedBtn}
                     onPress={() => handleCopyError(transcribeFocus)}
+                    hitSlop={{top: 10, bottom: 10, left: 4, right: 4}}
                     testID="audio-copy-error">
                     <Text style={s.failedBtnText}>复制报错信息</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={s.failedBtnGhost}
                     onPress={() => handleTranscribeRetry(transcribeFocus)}
+                    hitSlop={{top: 10, bottom: 10, left: 4, right: 4}}
                     testID="audio-retry-transcribe">
                     <Text style={s.failedBtnGhostText}>重试</Text>
                   </TouchableOpacity>
@@ -463,14 +460,15 @@ export const AudioWorkshopTab: React.FC<{
                     style={s.failedBtnGhost}
                     onPress={() =>
                       imageGenStore.deleteTask(transcribeFocus.taskId)
-                    }>
+                    }
+                    hitSlop={{top: 10, bottom: 10, left: 4, right: 4}}>
                     <Text style={s.failedBtnGhostText}>删除</Text>
                   </TouchableOpacity>
                 </View>
               </View>
             ) : transcribeFocus ? (
               <>
-                <Text style={s.captionCardTitle}>📝 转写结果</Text>
+                <Text style={s.audioTranscribeTitle}>转写结果</Text>
                 <TouchableOpacity
                   activeOpacity={0.8}
                   onPress={() => setTranscribeExpanded(v => !v)}
@@ -485,14 +483,32 @@ export const AudioWorkshopTab: React.FC<{
                   </Text>
                 </TouchableOpacity>
                 <View style={s.audioResultBtns}>
+                  {/* v1.10：对照播放（源音频已持久化 AIOS/audio/transcribe/；播放中变暂停） */}
+                  <TouchableOpacity
+                    style={[s.audioBtn, s.audioBtnSend]}
+                    onPress={() =>
+                      audioStore.togglePlay(transcribeFocus.uri).catch(() => {})
+                    }
+                    hitSlop={{top: 10, bottom: 10, left: 4, right: 4}}
+                    testID="audio-play-source">
+                    <Text style={[s.audioBtnText, s.audioBtnTextSend]}>
+                      {audioStore.playingUri === transcribeFocus.uri &&
+                      audioStore.isPlaying
+                        ? '暂停原文'
+                        : '播放原文'}
+                    </Text>
+                  </TouchableOpacity>
                   <TouchableOpacity
                     style={[s.audioBtn, s.audioBtnCopy]}
                     onPress={() => {
                       Clipboard.setString(transcribeFocus.prompt);
                       onSnackbar('已复制');
                     }}
+                    hitSlop={{top: 10, bottom: 10, left: 4, right: 4}}
                     testID="audio-copy">
-                    <Text style={s.audioBtnText}>复制</Text>
+                    <Text style={[s.audioBtnText, s.audioBtnTextCopy]}>
+                      复制
+                    </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[s.audioBtn, s.audioBtnSend]}
@@ -506,16 +522,22 @@ export const AudioWorkshopTab: React.FC<{
                       } as any);
                       onSnackbar('已发送到聊天');
                     }}
+                    hitSlop={{top: 10, bottom: 10, left: 4, right: 4}}
                     testID="audio-send-chat">
-                    <Text style={s.audioBtnText}>发送到聊天</Text>
+                    <Text style={[s.audioBtnText, s.audioBtnTextSend]}>
+                      发送到聊天
+                    </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[s.audioBtn, s.audioBtnDelete]}
                     onPress={() =>
                       imageGenStore.deleteTask(transcribeFocus.taskId)
                     }
+                    hitSlop={{top: 10, bottom: 10, left: 4, right: 4}}
                     testID="audio-delete-transcribe">
-                    <Text style={s.audioBtnText}>删除</Text>
+                    <Text style={[s.audioBtnText, s.audioBtnTextDelete]}>
+                      删除
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </>
@@ -544,7 +566,11 @@ export const AudioWorkshopTab: React.FC<{
                     ]}
                     onPress={() => setTranscribeFocusId(h.taskId)}
                     testID={`audio-history-transcribe-${h.taskId}`}>
-                    <Text style={s.audioHistoryIcon}>🎙</Text>
+                    <MicIcon
+                      width={20}
+                      height={20}
+                      stroke={theme.colors.onSurfaceVariant}
+                    />
                     <Text style={s.audioHistoryText} numberOfLines={2}>
                       {h.prompt}
                     </Text>
@@ -572,8 +598,9 @@ export const AudioWorkshopTab: React.FC<{
                   style={[s.audioBtn, s.audioBtnModel]}
                   onPress={handleDownloadAsr}
                   disabled={audioStore.asrState === 'downloading'}
+                  hitSlop={{top: 10, bottom: 10, left: 4, right: 4}}
                   testID="audio-download-model">
-                  <Text style={s.audioBtnText}>
+                  <Text style={[s.audioBtnText, s.audioBtnTextModel]}>
                     {audioStore.asrState === 'downloading'
                       ? '下载中…'
                       : '下载模型'}
@@ -625,6 +652,9 @@ export const AudioWorkshopTab: React.FC<{
                   {Math.max(0, Math.round((now - (opStartedAt ?? now)) / 1000))}
                   s
                 </Text>
+                {/* v1.11：跑分面板（复用生图 PerfPanel——任务流统一跑分；
+                    perfRecorder 由 beginTask 统一触发，TTS 任务同样采样） */}
+                <PerfPanel />
               </View>
             ) : ttsFocus?.status === 'failed' ? (
               <View style={s.audioResultStage}>
@@ -641,18 +671,21 @@ export const AudioWorkshopTab: React.FC<{
                   <TouchableOpacity
                     style={s.failedBtn}
                     onPress={() => handleCopyError(ttsFocus)}
+                    hitSlop={{top: 10, bottom: 10, left: 4, right: 4}}
                     testID="audio-copy-error">
                     <Text style={s.failedBtnText}>复制报错信息</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={s.failedBtnGhost}
                     onPress={() => handleTtsRetry(ttsFocus)}
+                    hitSlop={{top: 10, bottom: 10, left: 4, right: 4}}
                     testID="audio-retry-tts">
                     <Text style={s.failedBtnGhostText}>重试</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={s.failedBtnGhost}
-                    onPress={() => imageGenStore.deleteTask(ttsFocus.taskId)}>
+                    onPress={() => imageGenStore.deleteTask(ttsFocus.taskId)}
+                    hitSlop={{top: 10, bottom: 10, left: 4, right: 4}}>
                     <Text style={s.failedBtnGhostText}>删除</Text>
                   </TouchableOpacity>
                 </View>
@@ -666,12 +699,12 @@ export const AudioWorkshopTab: React.FC<{
                       style={s.audioPlayBig}
                       onPress={() => handlePlay(ttsFocus.uri)}
                       testID="audio-play-big">
-                      <Text style={s.audioPlayBigIcon}>
-                        {audioStore.playingUri === ttsFocus.uri &&
-                        audioStore.isPlaying
-                          ? '⏸'
-                          : '▶'}
-                      </Text>
+                      {audioStore.playingUri === ttsFocus.uri &&
+                      audioStore.isPlaying ? (
+                        <PauseIcon width={26} height={26} stroke="#ffffff" />
+                      ) : (
+                        <PlayIcon width={26} height={26} stroke="#ffffff" />
+                      )}
                     </TouchableOpacity>
                     <Text style={s.audioPlayerTitle} numberOfLines={2}>
                       {ttsFocus.prompt}
@@ -686,6 +719,25 @@ export const AudioWorkshopTab: React.FC<{
                       )}
                     </Text>
                   </View>
+                  {/* v1.10：波形条（读 wav PCM 40 柱；播放进度高亮，未播 outline） */}
+                  <WaveformBars
+                    uri={ttsFocus.uri}
+                    playPosition={
+                      audioStore.playingUri === ttsFocus.uri
+                        ? audioStore.playPosition
+                        : 0
+                    }
+                    duration={
+                      audioStore.playingUri === ttsFocus.uri &&
+                      audioStore.playDuration > 0
+                        ? audioStore.playDuration
+                        : (ttsFocus.durationMs ?? 0)
+                    }
+                    isPlaying={
+                      audioStore.playingUri === ttsFocus.uri &&
+                      audioStore.isPlaying
+                    }
+                  />
                   {/* 时间轴：拖动跳播（B38） */}
                   <View style={s.audioTimeline}>
                     <Slider
@@ -736,17 +788,23 @@ export const AudioWorkshopTab: React.FC<{
                   <View style={s.audioResultBtns}>
                     {/* B33：重生成（用产物 prompt 复跑当前引擎/音色，对齐生图页「再次生成」语义） */}
                     <TouchableOpacity
-                      style={[s.audioBtn, s.audioBtnShare]}
+                      style={[s.audioBtn, s.audioBtnWarn]}
                       onPress={() => handleGenerate(ttsFocus.prompt)}
                       disabled={audioStore.ttsGenerating}
+                      hitSlop={{top: 10, bottom: 10, left: 4, right: 4}}
                       testID="audio-regen">
-                      <Text style={s.audioBtnText}>重生成</Text>
+                      <Text style={[s.audioBtnText, s.audioBtnTextWarn]}>
+                        重生成
+                      </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[s.audioBtn, s.audioBtnShare]}
                       onPress={() => handleShare(ttsFocus.uri)}
+                      hitSlop={{top: 10, bottom: 10, left: 4, right: 4}}
                       testID="audio-share">
-                      <Text style={s.audioBtnText}>分享</Text>
+                      <Text style={[s.audioBtnText, s.audioBtnTextShare]}>
+                        分享
+                      </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[s.audioBtn, s.audioBtnDelete]}
@@ -756,8 +814,11 @@ export const AudioWorkshopTab: React.FC<{
                         }
                         imageGenStore.deleteTask(ttsFocus.taskId);
                       }}
+                      hitSlop={{top: 10, bottom: 10, left: 4, right: 4}}
                       testID="audio-delete">
-                      <Text style={s.audioBtnText}>删除</Text>
+                      <Text style={[s.audioBtnText, s.audioBtnTextDelete]}>
+                        删除
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -786,11 +847,19 @@ export const AudioWorkshopTab: React.FC<{
                     ]}
                     onPress={() => setTtsFocusId(h.taskId)}
                     testID={`audio-history-tts-${h.taskId}`}>
-                    <Text style={s.audioHistoryIcon}>
-                      {audioStore.playingUri === h.uri && audioStore.isPlaying
-                        ? '⏸'
-                        : '🎵'}
-                    </Text>
+                    {audioStore.playingUri === h.uri && audioStore.isPlaying ? (
+                      <PauseIcon
+                        width={20}
+                        height={20}
+                        stroke={theme.colors.onSurfaceVariant}
+                      />
+                    ) : (
+                      <HeadphonesMdIcon
+                        width={20}
+                        height={20}
+                        stroke={theme.colors.onSurfaceVariant}
+                      />
+                    )}
                     <Text style={s.audioHistoryText} numberOfLines={2}>
                       {h.prompt}
                     </Text>
@@ -800,18 +869,19 @@ export const AudioWorkshopTab: React.FC<{
             </View>
           )}
 
-          {/* ③ 创作区：文本 + 高级参数 + 模型管理 + 生成 */}
+          {/* ③ 创作区：文本 + 高级参数 + 模型管理 */}
           <View style={s.audioComposer}>
             <TextInput
               style={[s.input, s.audioGenInput]}
-              value={genText}
-              onChangeText={setGenText}
+              value={audioStore.genText}
+              onChangeText={v => audioStore.setGenText(v)}
               placeholder="输入要生成音频的文本…"
               multiline
             />
             <TouchableOpacity
               style={s.advancedToggle}
               onPress={() => setShowAdvanced(v => !v)}
+              hitSlop={{top: 10, bottom: 10}}
               testID="audio-advanced-toggle">
               <Text style={s.advancedToggleText}>
                 {showAdvanced ? '高级参数 ▴' : '高级参数 ▾'}
@@ -827,13 +897,14 @@ export const AudioWorkshopTab: React.FC<{
                       key={v.id}
                       style={[
                         s.audioVoiceChip,
-                        voiceId === v.id && s.audioVoiceChipActive,
+                        audioStore.voiceId === v.id && s.audioVoiceChipActive,
                       ]}
-                      onPress={() => setVoiceId(v.id)}>
+                      onPress={() => audioStore.setVoiceId(v.id)}
+                      hitSlop={{top: 10, bottom: 10}}>
                       <Text
                         style={[
                           s.audioVoiceText,
-                          voiceId === v.id && s.audioVoiceTextActive,
+                          audioStore.voiceId === v.id && s.audioVoiceTextActive,
                         ]}>
                         {v.name}
                       </Text>
@@ -843,14 +914,16 @@ export const AudioWorkshopTab: React.FC<{
                 {/* 语速 */}
                 <View style={s.ttsSliderRow}>
                   <Text style={s.promptHint}>语速</Text>
-                  <Text style={s.ttsSliderValue}>{speed.toFixed(1)}×</Text>
+                  <Text style={s.ttsSliderValue}>
+                    {audioStore.speed.toFixed(1)}×
+                  </Text>
                 </View>
                 <InputSlider
                   min={0.5}
                   max={2}
                   step={0.1}
-                  value={speed}
-                  onValueChange={setSpeed}
+                  value={audioStore.speed}
+                  onValueChange={v => audioStore.setSpeed(v)}
                 />
                 {/* Supertonic 专属：步数（语种由 sherpa-onnx 自动检测，na 语义） */}
                 {audioStore.genEngine === 'supertonic' ? (
@@ -862,13 +935,16 @@ export const AudioWorkshopTab: React.FC<{
                           key={st}
                           style={[
                             s.audioVoiceChip,
-                            supertonicSteps === st && s.audioVoiceChipActive,
+                            audioStore.supertonicSteps === st &&
+                              s.audioVoiceChipActive,
                           ]}
-                          onPress={() => setSupertonicSteps(st)}>
+                          onPress={() => audioStore.setSupertonicSteps(st)}
+                          hitSlop={{top: 10, bottom: 10}}>
                           <Text
                             style={[
                               s.audioVoiceText,
-                              supertonicSteps === st && s.audioVoiceTextActive,
+                              audioStore.supertonicSteps === st &&
+                                s.audioVoiceTextActive,
                             ]}>
                             {st}
                           </Text>
@@ -879,25 +955,6 @@ export const AudioWorkshopTab: React.FC<{
                 ) : null}
               </View>
             ) : null}
-            {/* B36：模型管理行已并入顶栏下拉（引擎状态/下载/删除在顶栏胶囊内） */}
-            <TouchableOpacity
-              style={[s.button, s.buttonGen]}
-              onPress={() => handleGenerate()}
-              disabled={
-                audioStore.ttsGenerating ||
-                !genText.trim() ||
-                !selectedVoice ||
-                (audioStore.genEngine === 'kokoro'
-                  ? !genInstalled
-                  : audioStore.genEngine === 'supertonic'
-                    ? !supInstalled
-                    : !kittenInstalled)
-              }
-              testID="audio-generate">
-              <Text style={s.buttonText}>
-                {audioStore.ttsGenerating ? '生成中…' : '生成音频'}
-              </Text>
-            </TouchableOpacity>
           </View>
         </>
       )}

@@ -358,6 +358,12 @@ export const createStyles = (theme: any) =>
       color: theme.colors.imageInsight,
       fontWeight: '700',
     },
+    /** v1.9：转写卡标题（反推紫为图像反推域色，音频语义改中性 onSurface） */
+    audioTranscribeTitle: {
+      ...theme.typography.uiS,
+      color: theme.colors.onSurface,
+      fontWeight: '700',
+    },
     captionCardHint: {
       ...theme.typography.captionS,
       color: theme.colors.outline,
@@ -433,6 +439,8 @@ export const createStyles = (theme: any) =>
     audioBtnCopy: {backgroundColor: theme.colors.success},
     audioBtnSend: {backgroundColor: theme.colors.info},
     audioBtnShare: {backgroundColor: theme.colors.info},
+    /** v1.9：重生成语义色修正（对齐生图「再次生成」warn，§1.3 warning=再次生成/实验性） */
+    audioBtnWarn: {backgroundColor: theme.colors.warning},
     audioBtnDelete: {backgroundColor: theme.colors.danger},
     audioBtnModel: {backgroundColor: theme.colors.primary},
     advancedToggle: {
@@ -463,11 +471,17 @@ export const createStyles = (theme: any) =>
     },
     audioBtnText: {
       ...theme.typography.uiS,
-      // 多彩色底（success/info/danger/primary）共用白字：无单一 onX token 可映射
-      // （onPrimary 为深棕）——B56②登记评审，保持字面量
-      color: '#ffffff',
       fontWeight: '600',
     },
+    // v1.9：语义前景 token 化（B56② 前为白字字面量；暗色模式随 onX 深字，语义正确）
+    audioBtnTextCopy: {color: theme.colors.onSuccess},
+    audioBtnTextSend: {color: theme.colors.onInfo},
+    audioBtnTextShare: {color: theme.colors.onInfo},
+    audioBtnTextDelete: {color: theme.colors.onDanger},
+    // primary 底白字：onPrimary 为深棕不适用，B56② 登记评审豁免（保持字面量）
+    audioBtnTextModel: {color: '#ffffff'},
+    /** v1.9：重生成前景（warning 底 onWarning 深橙字） */
+    audioBtnTextWarn: {color: theme.colors.onWarning},
     /** B35：音频历史横条（B38 方形卡：对齐生图相册 72px 方形缩略图，点击加载预览窗口） */
     audioHistoryStrip: {
       gap: theme.spacing.s,
@@ -486,7 +500,7 @@ export const createStyles = (theme: any) =>
       gap: theme.spacing.xxs,
     },
     audioHistoryIcon: {
-      fontSize: 20,
+      // v1.9：emoji 已换自绘图标（MicIcon/HeadphonesMdIcon/PauseIcon），此样式仅保留布局位
     },
     audioHistoryText: {
       ...theme.typography.captionS,
@@ -518,10 +532,7 @@ export const createStyles = (theme: any) =>
       justifyContent: 'center',
     },
     audioPlayBigIcon: {
-      fontSize: 26,
-      // primary 底 icon：现状白字（onPrimary 为深棕字）——B56②登记评审，保持字面量
-      color: '#ffffff',
-      fontWeight: '700',
+      // v1.9：字形已换自绘 icon（PlayIcon/PauseIcon stroke 白），样式保留登记 B56② 字形豁免
     },
     audioPlayerTitle: {
       ...theme.typography.uiM,
