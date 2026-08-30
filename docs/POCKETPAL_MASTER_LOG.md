@@ -1226,6 +1226,7 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
 - 128.5 时序 bug 修复(重试连点暴露):generateTask/transcribeTask 的 ttsGenerating/transcribing 置位在 beginTask(await)之后——beginTask 完成瞬间新任务 already running 且 uri 为空、而状态未置位 → 结果区误渲染 success 卡(新 uri='') → WaveformBars 读空 URI(EACCES 日志)。修复=状态前置 beginTask;logcat 复验 EACCES 日志归零。
 - 128.6 M13 环境限制重申(B34 复现):kokoro 引擎在 M13 生成时加载峰值超 HyperOS 单应用配额被 SIGKILL(isAppCrash=false,system_server kill -9)直接回桌面——非 UI bug;M13 上 TTS 生成须用 Kitten(57MB);顶栏默认引擎重装后回 kokoro,测试注意先切。
 - 128.7 音频吸底按钮底部裁切修复（大王报障：生成按钮被底边切掉一半）：前置事实——两 bar 底部同为 2358（insets.bottom=42 避让一致），差异只在按钮体量：生图出图按钮 116px、音频按钮 63px（uiautomator 实测）；63px 按钮整段落入 HyperOS 手势暗区（约 2268 起）→ 目视「被切一半」；修复=AudioActionBar 渲染树与生图同构（buttonRow + buttonGenMain 内衬），真机 [2221,2337] h=116 与生图逐像素一致；tsc 零错/jest 15 过/构建 4m8s/装机 Success/logcat 无错误。教训：吸底条按钮体量必须与参照页同构，仅 insets 避让不解决矮按钮沉底。
+- 128.8 窗口闭环登记（2026-08-30 音频工坊对齐生图页四波收口）：①波次——§128.4 吸底+跑分（AudioActionBar 新建）→ 128.5 时序前置修复 → 128.6 M13 配额限制 → 128.7 底部裁切同构修复；②代码提交 16b2f8a（12 文件 +945/-146：AudioActionBar/WaveformBars/audioStore/AudioWorkshopTab/ImageGenScreen/styles/icons(+pause.svg)/prepare_tts_push.js）；③设计文档 AUDIO_UI_SPEC v1.10（链路修复+对照+波形）/v1.11（吸底+跑分）/v1.12（裁切修复）同步；④验证：tsc 零错/jest 55/prettier+eslint 全仓/真机 dump 按钮 [2221,2337] h=116 与生图逐像素同构/logcat EACCES 归零；⑤push 状态见提交日志（2026-08-30 网络全断风险，若未推入待网络恢复补推量）。
 
 
 
