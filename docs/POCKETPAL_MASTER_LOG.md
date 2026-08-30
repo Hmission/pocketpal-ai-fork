@@ -1246,4 +1246,5 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
 
 ### 126.4 遗留
 - AIOS 无 remote(本机母仓);OneTakeMVP COMPASS_REGISTRY 提交 9c293765e 待推(port.glams.art 不可达)。
+- 窗口闭环提交 be1bcda(§126 登记)已本地落袋,2026-08-30 网络全断(GitHub 直连/代理均不可达,curl 000),**待网络恢复后补推**。
 
