@@ -1269,3 +1269,8 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
   - 真机验证（小米13）：lang=cmn + zf_xiaobei + 中文文本合成成功（logcat config lang=cmn 实据 + tts generate ok + wav 1.7MB）；tsc 零错 / jest 18 过
   - 提交 9307b60（5 文件 +138/-48）
 - 129.9 待推清单更新：本地已落袋 ba71dde（B38a/b）/ e7178e8（§129 登记）/ 9307b60（B38c），网络仍全断（HF 镜像可达但 GitHub 不可达），待 GitHub 恢复后按 §128.9 直连命令一次补推。
+- 129.10 push 纪律修正（2026-08-30 大王裁定，替代旧「提交≠落袋，push 才闭环」）：
+  - 原 AGENTS.md Git 铁律「提交后必须尽快 push」是各窗口提交后自动 push 的依据；大王修正：**push 远端只在大王明确指令时执行**，本地提交照常，禁止自动/顺手 push；
+  - push 一律直连（git -c http.proxy= -c https.proxy= push origin main，不改 config），禁走本地代理（对齐 §128.9）；网络不通按 §126.4 留痕待推，勿反复撞代理；
+  - 已落：AGENTS.md Git 仓库铁律两处新增条款 + POCKETPAL_UI_REMAINING_FIX_PLAN.md 旧引用更新；
+  - 本文档历史窗口登记中「Git：commit + push（提交≠落袋，push 才闭环）」句式为当时现状记录，不追溯改写，后续窗口登记改用「commit（push 待大王指令）」。

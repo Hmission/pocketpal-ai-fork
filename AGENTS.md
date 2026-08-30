@@ -56,9 +56,11 @@ Conventional Commits（Husky commitlint 强制）：
 3. **跑分/信息胶囊唯一**：跑分复用 PerfPanel，信息条复用 infoOverlay；禁止新建简化版/叠压第二层。
 4. **UI 专工交付前自查**：UI 改动交付前对照 SPEC 红线自查一遍，确认无另造 UI、无叠压、无尺寸不一致。
 
-## Git 仓库铁律（2026-08-24 pack 丢失事故复盘）
+## Git 仓库铁律（2026-08-24 pack 丢失事故复盘 + 2026-08-30 push 纪律修正）
 
-- **提交 ≠ 落袋，push 才闭环**：本地 commit 只是暂存；本地 pack 文件一旦丢失（本仓 2026-08-24 凌晨 3 个 `.pack` 全丢，23 个未推送提交对象全灭），未推送内容即无法按原 SHA 恢复。提交后必须尽快 push；多窗口并行开发每窗口收口即 push，禁止积压超过一天。
+- **提交不等于落袋（风险警示）**：本地 commit 只是暂存；本地 pack 文件一旦丢失（本仓 2026-08-24 凌晨 3 个 `.pack` 全丢，23 个未推送提交对象全灭），未推送内容即无法按原 SHA 恢复——注意风险，勿让积压失控。
+- **push 远端必须大王明确指令（2026-08-30 修正，替代旧「提交后必须尽快 push」）**：本地提交照常；**推送远端只在大王明确说「推送/推远端/push」时才执行**，禁止提交后自动 push、禁止收口时顺手 push；多窗口并行每窗口收口至提交即可，待大王指令统一补推。
+- **push 一律直连，禁止走代理（2026-08-30，对齐 MASTER_LOG §128.9）**：`git -c http.proxy= -c https.proxy= push origin main`（仅本次命令生效，不改 git config，禁擅改全局代理配置）；网络不通时按 MASTER_LOG §126.4 惯例留痕（登记待推清单），勿反复撞代理。
 - **工作仓库禁止历史重写/对象清理**：`git filter-repo`、`git gc --aggressive`、`git prune`、手工删 `.git/objects/pack/*` 一律禁止在 F:\pp 工作仓库执行；确需历史重写时先在 `git bundle` 全量备份后再操作。
 - **动 git 前先备份**：任何 reset/init/fetch-重建 类操作前，先 tar 工作区（排除 node_modules/.tmp/build 产物）到仓库外（`F:\backups\`）。
 - **恢复预案**：远程 origin（Hmission/pocketpal-ai-fork）是第一恢复源；`git reflog` + `filter-repo/commit-map` + `commit-graph` 是本地审计线索（对象丢失后仅作记录，不作恢复源）。

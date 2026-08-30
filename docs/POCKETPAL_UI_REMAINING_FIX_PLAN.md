@@ -138,4 +138,4 @@ types.ts 补 TokenSize；tokens/index + theme builder 集成；invariants 白名
 
 **总原则**：不兜底不补丁；每期原子提交可回滚；每期走五关门禁（tsc/jest/eslint/prettier/装机）；真机验证用**小米 13**（K90 被并行窗口占用）；并行窗口在途区（ModelStore P4/上下文极限化相关）避开冲突。
 
-**提醒**：本窗口累计改动未提交（git status ~153 项）+ 并行窗口在途——提交前需核对两窗口边界，遵守"提交≠落袋，push 才闭环"铁律。
+**提醒**：本窗口累计改动未提交（git status ~153 项）+ 并行窗口在途——提交前需核对两窗口边界；本地提交照常，push 远端等大王明确指令（AGENTS.md Git 铁律 2026-08-30 修正）。
