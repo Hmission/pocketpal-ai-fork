@@ -1299,4 +1299,4 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
   - docs：本 §130 + POCKETPAL_MODEL_MATRIX.md Klein 状态同步。
 - 130.9 验证：tsc 零错；release 正式包构建中（assembleProdRelease，探针清理后 NDK 增量）。
 - 130.10 提交：见 git log（commit 待大王指令统一补推，push 纪律按 §129.10）。
-- 130.11 待推清单更新：本窗口提交（文档+manifest+探针清理）+ 129.9 积压 ba71dde / e7178e8 / 9307b60，待网络恢复按 §128.9 直连命令统一补推（禁代理）。
+- 130.11 待推清单（共 9 笔，均未推，待大王指令直连补推）：本窗口 4 笔 cd1beb8（探针撤回）/ 25cfd9a（klein CPU 兜底）/ 4ebf16c（§130 登记）/ 9ff95ae（忽略规则+巡检暂停）+ 6aad876（push 纪律修正）+ 129.9 积压 ba71dde / e7178e8 / 9307b60 / a3e4c5c。方法：git -c http.proxy= -c https.proxy= push origin main（禁代理）。
