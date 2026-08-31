@@ -1324,3 +1324,9 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
 - 131.6 机制落地（防串扰，根治「调 Klein 带坏 SD」）：新建 docs/MODEL_LINK_BASELINE.md——五条链路（DreamLite/SD3.5/Z-Image/Klein/Krea2）引擎+决策链+env 指纹+内核+文件 md5+已验证基线+一键恢复命令；回归矩阵（改 Q5_K 必回归 SD3.5+Z-Image；改 env 必全链复核）；事故台账。
 - 131.7 影响面声明：引擎还原至 8-17 → Mali 平板（8-20 后特性）与 Q5_K trans4 重写（8-29 后）随引擎回退，恢复优先手机 SD3.5 正确性；平板 Mali/Z-Image/Klein 专项后续以「链路隔离」方式重新合入（合入前跑回归矩阵）。
 - 131.8 提交：待 13U 验证通过后一次提交（引擎还原 + ImageGenJNI + 基线文档 + 本段；push 待大王指令，纪律 §129.10）。
+- 131.9 GitHub v2.0.0 正式发布闭环（2026-08-31，大王指令「提交仓库 + 推远端 + 替换 GitHub 2.0 app」）：
+  - main 推送：本地 HEAD 8e43e53（§131 引擎还原提交）已上远端（api 比对 REMOTE_MAIN 确认 sha 一致）；此前 §130.13 登记的积压 10 笔已于 8-30 推送完成。
+  - tag 重建：远端 v2.0.0 旧 tag（970dca3 devpreview，无 release 无 asset）按 §130.13 恢复命令删除，本地 v2.0.0 annotated tag（68e572c，指向 23c5a25）推送成功。
+  - Release：API 创建正式版（非草稿非预发布）Release v2.0.0「Pocket Chick v2.0.0」（id=379795012），上传 APK asset PocketChick-2.0.0-20260830.apk（497,064,945B，HTTP 201，state=uploaded）——正式 APK 替换上线（旧 2.0 无 asset，直接新传即替换）。
+  - 通道经验：github.com:443 仍间歇性 Recv failure（直连 4 次失败），SSH 22 端口本次可用——临时生成 ed25519 deploy key（API 注册 read_only=false，key id=161840407）完成 tag 推送，用后即删（API DELETE 204 + 本地文件清理；Push 主分支本次意外走通 https，通道不稳定时优先 SSH 方案）。
+  - §130.13 遗留（旧 tag 删除/新 tag 重推/Release 创建/APK 上传）全部闭环。
