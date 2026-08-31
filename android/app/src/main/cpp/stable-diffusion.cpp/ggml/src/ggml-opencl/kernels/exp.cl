@@ -1,14 +1,5 @@
 #pragma OPENCL EXTENSION cl_khr_fp16 : enable
 
-#ifdef GGML_OPENCL_DESKTOP_REPRO
-// NVIDIA has no half overloads for math builtins; force float promotion.
-// exp() stays a plain call: kernel_exp_f32_4/f16_4 pass float4 args and
-// exp(float/float4) are standard builtins on NVIDIA.
-#define tanh(x) tanh((float)(x))
-#define sqrt(x) sqrt((float)(x))
-#define pow(x,y) pow((float)(x),(float)(y))
-#endif
-
 kernel void kernel_exp_f32(
         global const float * src0,
         ulong                offset0,

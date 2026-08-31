@@ -30,11 +30,6 @@ typedef struct {
 #define N_R0_Q8_0 4 // number of rows each subgroup works on
 #define N_SG_Q8_0 2 // number of subgroups in a work group
 #define N_SIMDWIDTH 16 // subgroup size
-#elif defined (MALI_GPU)
-// 08-20 Mali: subgroup size 16, values mirror INTEL_GPU
-#define N_R0_Q8_0 4
-#define N_SG_Q8_0 2
-#define N_SIMDWIDTH 16
 #elif defined (ADRENO_GPU)
 #define N_R0_Q8_0 4
 #define N_SG_Q8_0 2

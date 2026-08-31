@@ -1,23 +1,4 @@
 #pragma OPENCL EXTENSION cl_khr_fp16 : enable
-#ifdef GGML_OPENCL_DESKTOP_REPRO
-// 8-27 desktop repro hack: global -Dhalf=float would inflate fp16 d/dm fields to
-// 4B and shift every field of the block/stride layout. Keep 2-byte layout with
-// ushort and convert bit patterns to float at read points.
-#undef half
-#define half ushort
-static inline float fp16_bits_to_float(ushort h) {
-    uint s  = (h >> 15) & 0x1u;
-    uint e  = (h >> 10) & 0x1Fu;
-    uint m  = h & 0x3FFu;
-    uint f;
-    if (e == 0) {
-        if (m == 0) { f = s << 31; }
-        else { e = 113; while ((m & 0x400u) == 0) { m <<= 1; e--; } f = (s << 31) | (e << 23) | ((m & 0x3FFu) << 13); }
-    } else if (e == 31) { f = (s << 31) | 0x7F800000u | (m << 13); }
-    else { f = (s << 31) | ((e + 112u) << 23) | (m << 13); }
-    return as_float(f);
-}
-#endif
 
 #ifdef cl_intel_subgroups
 #pragma OPENCL EXTENSION cl_intel_subgroups : enable
@@ -83,11 +64,6 @@ typedef struct {
 #define N_DST 1 // number of rows each SIMD group works on
 #define N_SIMDGROUP 2 // number of SIMD groups in a thread group
 #define N_SIMDWIDTH 16 // SIMD group size
-#elif defined (MALI_GPU)
-// 08-20 Mali: subgroup size 16, values mirror INTEL_GPU
-#define N_DST 1
-#define N_SIMDGROUP 2
-#define N_SIMDWIDTH 16
 #elif defined (ADRENO_GPU)
 #define N_DST 1
 #define N_SIMDGROUP 2
@@ -184,11 +160,7 @@ kernel void kernel_mul_mv_q6_K_f32(
 
         global float * y = yy + i * QK_K + y_offset;
 
-        #ifdef GGML_OPENCL_DESKTOP_REPRO
-float dall = fp16_bits_to_float(x[i].d);
-#else
-float dall = x[i].d;
-#endif
+        float dall = x[i].d;
 
         float4 sums = {0.f, 0.f, 0.f, 0.f};
 

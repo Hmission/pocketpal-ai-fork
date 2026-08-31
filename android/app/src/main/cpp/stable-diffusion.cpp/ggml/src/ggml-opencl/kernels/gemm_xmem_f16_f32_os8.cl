@@ -48,10 +48,10 @@ __kernel void adreno_xmem_prepack_weight_f16(
     const int o_slice = dst_o*os + dst_ogroup;
     const int k_base = dst_i*4;
 
-    half4 w0 = (half4)(0.0f);
-    half4 w1 = (half4)(0.0f);
-    half4 w2 = (half4)(0.0f);
-    half4 w3 = (half4)(0.0f);
+    half4 w0 = (half4)(0.0h);
+    half4 w1 = (half4)(0.0h);
+    half4 w2 = (half4)(0.0h);
+    half4 w3 = (half4)(0.0h);
 
     const int o0 = o_slice*4 + 0;
     const int o1 = o_slice*4 + 1;
@@ -105,14 +105,14 @@ __kernel void kernel_gemm_xmem_f16_f32_os8(
         return;
     }
 
-    half4 r0 = (half4)(0.0f);
-    half4 r1 = (half4)(0.0f);
-    half4 r2 = (half4)(0.0f);
-    half4 r3 = (half4)(0.0f);
-    half4 r4 = (half4)(0.0f);
-    half4 r5 = (half4)(0.0f);
-    half4 r6 = (half4)(0.0f);
-    half4 r7 = (half4)(0.0f);
+    half4 r0 = (half4)(0.0h);
+    half4 r1 = (half4)(0.0h);
+    half4 r2 = (half4)(0.0h);
+    half4 r3 = (half4)(0.0h);
+    half4 r4 = (half4)(0.0h);
+    half4 r5 = (half4)(0.0h);
+    half4 r6 = (half4)(0.0h);
+    half4 r7 = (half4)(0.0h);
 
     int f_offset = Z*kpack*32;
     int subgroup_id = (int)(0x1F & qcom_get_physical_sub_group_id());

@@ -1307,3 +1307,20 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
   - 未完成（github:443 直连断网，2026-08-30 19:45 起，勿撞代理）：①远端 v2.0.0 旧 tag 删除确认 + 重推新 v2.0.0 tag；②API 创建正式 Release v2.0.0；③上传 APK asset（PocketChick-2.0.0-20260830.apk 474MB < 2GB 上限 OK）。工具：gh CLI 未装，用 git credential（Windows 凭据管理器）+ REST API 直连。
   - 模型包 pocketchick-preset-models-20260830.zip（32.7GB）超 GitHub asset 2GB 上限，不可传 GitHub（留仓库根目录，远端载体待定：魔搭/网盘）。
   - 恢复后命令：git -c http.proxy= -c https.proxy= push origin --delete v2.0.0；git -c http.proxy= -c https.proxy= push origin v2.0.0；随后 POST /releases + upload_url 传 APK（token 不落日志）。
+
+## 131. SD3.5 双机回归事故处置 + 模型执行链路基线建立（2026-08-31，恢复定性成功）
+
+- 131.1 事故（大王报障 2026-08-30）：SD3.5 在 13U 首跑两张「马赛克/纯灰」；8-31 K90 同 2.0.0 复现同模式（一次马赛克一次纯色）→ 双机全坏、DreamLite 正常。
+- 131.2 排查排除项：模型 md5 三方一致（13U=出厂 zip=8-12 源文件 325156927c…）；提示词超长（54-token 复现）；NNAPI（仅 DreamLite 链路）；kernel 缓存（引擎无实现）；双机同错排除单设备驱动。
+- 131.3 引擎全审计（8-17→HEAD 六笔提交 e2ad204/f3b3f2b/1efb267/99b07d1/2fef8b2/cd1beb8 + a97bef9 引擎核心）结论「数值等价」，但 K90 复现推翻——某笔提交存在未识别影响（留待专项定位，见基线文档 §7.1）。
+- 131.4 恢复方案（大王定性「应恢复而非重新研发」，2026-08-31）：`git checkout 43560227 -- android/app/src/main/cpp/stable-diffusion.cpp/` 引擎还原 8-17 + ImageGenJNI 探针撤除（8-27 CLPROF 用后即撤）+ env 回 8-17 语义（SD3.5 unset DISABLE/XMEM，走 Adreno 专用内核线）。
+- 131.5 验证（**2026-08-31 双机闭环**）：**K90 = 8-17 引擎 + Adreno 专用内核线 → ~10min 出图正常**；
+  **13U = 8-17 引擎 + 通用 fp32 路径（DISABLE=1，与 Z-Image 同配置）→ ~3h 出图正确**（慢但可用）；
+  Z-Image/DreamLite 还原后复验通过（K90）；双机策略定格：ImageGenJNI 按设备分流（Adreno 740 →
+  DISABLE=1；其余 Adreno → DISABLE=0，均 8-17 语义 XMEM 真关）。
+- 131.5b 13U 快线找回专项（挂起）：13U Adreno 专用内核线数值坍缩根因 = 疑似 GPU 固件无声更新
+  （驱动 .so 8-14→8-31 未变 0676.76.1，系统镜像 6-17 构建、内核 2025-07 编译）或 8-17 后 JS/Kotlin/CMake
+  层差异；方案：8-17 全量包 A/B + 逐层二分，成功后移除 740 特判。
+- 131.6 机制落地（防串扰，根治「调 Klein 带坏 SD」）：新建 docs/MODEL_LINK_BASELINE.md——五条链路（DreamLite/SD3.5/Z-Image/Klein/Krea2）引擎+决策链+env 指纹+内核+文件 md5+已验证基线+一键恢复命令；回归矩阵（改 Q5_K 必回归 SD3.5+Z-Image；改 env 必全链复核）；事故台账。
+- 131.7 影响面声明：引擎还原至 8-17 → Mali 平板（8-20 后特性）与 Q5_K trans4 重写（8-29 后）随引擎回退，恢复优先手机 SD3.5 正确性；平板 Mali/Z-Image/Klein 专项后续以「链路隔离」方式重新合入（合入前跑回归矩阵）。
+- 131.8 提交：待 13U 验证通过后一次提交（引擎还原 + ImageGenJNI + 基线文档 + 本段；push 待大王指令，纪律 §129.10）。

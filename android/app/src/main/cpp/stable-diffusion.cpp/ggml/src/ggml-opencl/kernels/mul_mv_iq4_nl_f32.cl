@@ -65,11 +65,6 @@ inline float block_iq4_nl_dot_y(
 #define N_DST 4 // each subgroup group works on 4 rows
 #define N_SUBGROUP 1 // number of subgroups in a thread group
 #define N_SUBGROUP_SIZE 16 // assuming subgroup size is 16
-#elif defined (MALI_GPU)
-// 08-20 Mali: subgroup size 16, values mirror INTEL_GPU
-#define N_DST 4
-#define N_SUBGROUP 1
-#define N_SUBGROUP_SIZE 16
 #elif defined (ADRENO_GPU)
 #define N_DST 4
 #define N_SUBGROUP 1

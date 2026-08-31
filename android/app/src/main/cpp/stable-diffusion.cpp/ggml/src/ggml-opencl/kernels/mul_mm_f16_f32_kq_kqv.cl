@@ -25,14 +25,7 @@ inline float16 mm_load_a(
     regA.s0123  = read_imagef(matrix_A, a_texCoord/4);
     regA.s4567  = read_imagef(matrix_A, (a_texCoord+4)/4);
 
-#ifdef GGML_OPENCL_DESKTOP_REPRO
-    // 8-27 desktop repro hack: this kernel is Adreno-only, never dispatched on the
-    // generic MALI path. NVIDIA ptxas rejects as_half16 bitcast on float8; return
-    // zero to keep compilation green.
-    return (float16)0;
-#else
     return convert_float16(as_half16(regA));
-#endif
 }
 
 inline float4 alu_32(

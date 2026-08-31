@@ -331,7 +331,7 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
   // 8-27 Klein GPU 专项临时探针（用后即撤）：open CLPROF 逐 op 打印——编译面已常驻，
   // 运行期零开销由 env 门控；定位 FLUX.2 出错算子后即删本行回零开销。
   // 挂通用位置（不节 isMaliGpu）：K Pad 掉线期间临时由 K90(Adreno) 承担取证。
-  setenv("GGML_OPENCL_PROFILE", "1", 1);
+  // 8-30 已撤（13U SD3.5 回归处置，§130.13 后续窗口）：探针每 enqueue 读回/计时拖慢 ~15% 且每次生成写 4MB csv。
   if (isMaliGpu()) {
     // 08-20 Mali 支持（红米平板）：Mali 走通用 fp32 路径。
     // Adreno fp16 内核在 Mali 上未验证且有累积精度风险 → DISABLE=1 强制 use_adreno_kernels=false；
@@ -371,7 +371,19 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
     // 全流程 655.5s（10.9 分钟），提速 3.6 倍，nan/inf=0，VAE tiled 112s 稳定（三次真机两次正常出图）。
     unsetenv("GGML_OPENCL_ADRENO_XMEM_GEMM");
   } else {
-    unsetenv("GGML_OPENCL_DISABLE_ADRENO_KERNELS");
+    // 8-31 SD3.5 双机定格（回归事故处置，基线见 MODEL_LINK_BASELINE §2）：
+    //   K90(Adreno 8 系)：8-17 引擎 + Adreno 专用内核线（DISABLE unset）→ 10min 正确 ✅
+    //   13U(Adreno 740)：同线在设备/固件层数值坍缩（8-17 同引擎同 env 正常、8-31 灰，
+    //     驱动 .so 8-14→8-31 未变，嫌疑固件无声更新/CMake 宏层，专项挂起）→ 走通用 fp32
+    //     路径（DISABLE=1，与 Z-Image 同配置）→ 3h 正确 ✅（慢但可用，勿回退）
+    const std::string dev = getOpenCLDeviceName();
+    const bool ad740 = dev.find("740") != std::string::npos;  // Adreno 740 = 小米 13 Ultra
+    if (ad740) {
+      setenv("GGML_OPENCL_DISABLE_ADRENO_KERNELS", "1", 1);
+    } else {
+      unsetenv("GGML_OPENCL_DISABLE_ADRENO_KERNELS");
+    }
+    // 8-20 定稿：XMEM 存在即等效（=0/=1 同效），SD3.5/Z-Image/Klein 统一真关
     unsetenv("GGML_OPENCL_ADRENO_XMEM_GEMM");
   }
   // 变体切换期曾用独立缓存目录防污染；转正后回主目录。

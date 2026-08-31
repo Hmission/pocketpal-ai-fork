@@ -52,12 +52,9 @@ kernel void kernel_gemm_noshuffle_q5_k_f32(
     int gx = get_global_id(1);
     int gx_2 = gx << 2;
 
-    // 8-28 final: fp32 accumulation + read_imagef (A/B1, keep) - B side reads the
-    // transposed HALF image via image coords (A/B2 raw-F32-buffer read rolled back:
-    // it broke the transposed layout assumption used by kernel_gemm_noshuffle).
-    float8 c0 = 0, c1 = 0, c2 = 0, c3 = 0;
-    float8 B;
-    float4 dequantized_weights;
+    half8 c0 = 0, c1 = 0, c2 = 0, c3 = 0;
+    half8 B;
+    half4 dequantized_weights;
 
     int num_blocks_K = k / QK_K;
 
@@ -84,8 +81,8 @@ kernel void kernel_gemm_noshuffle_q5_k_f32(
         get_scale_min_k4(sub_idx, sc2, &sv2, &mn2, mask_d6, mask_d4, mask_hi2);
         get_scale_min_k4(sub_idx, sc3, &sv3, &mn3, mask_d6, mask_d4, mask_hi2);
 
-        float4 scale = convert_float4(d) * convert_float4((uchar4)(sv0, sv1, sv2, sv3));
-        float4 mval  = convert_float4(dm) * convert_float4((uchar4)(mn0, mn1, mn2, mn3));
+        half4 scale = convert_half4(convert_float4(d)  * convert_float4((uchar4)(sv0, sv1, sv2, sv3)));
+        half4 mval  = convert_half4(convert_float4(dm) * convert_float4((uchar4)(mn0, mn1, mn2, mn3)));
 
         for (int l = 0; l < 32; l += 4) {
             int ki = i + l;
@@ -94,8 +91,8 @@ kernel void kernel_gemm_noshuffle_q5_k_f32(
             int     qh_shift = ki % 8;
 
             // j=0
-            B.s0123 = read_imagef(src1, gy*2   + (ki+0) * n_4);
-            B.s4567 = read_imagef(src1, gy*2+1 + (ki+0) * n_4);
+            B.s0123 = read_imageh(src1, gy*2   + (ki+0) * n_4);
+            B.s4567 = read_imageh(src1, gy*2+1 + (ki+0) * n_4);
             dequantized_weights.s0 = ((bits4.s0 & 0x000F) | (((qh_bits.s0 >> (qh_shift+0)) & 1) << 4)) * scale.s0 - mval.s0;
             dequantized_weights.s1 = ((bits4.s1 & 0x000F) | (((qh_bits.s1 >> (qh_shift+0)) & 1) << 4)) * scale.s1 - mval.s1;
             dequantized_weights.s2 = ((bits4.s2 & 0x000F) | (((qh_bits.s2 >> (qh_shift+0)) & 1) << 4)) * scale.s2 - mval.s2;
@@ -106,8 +103,8 @@ kernel void kernel_gemm_noshuffle_q5_k_f32(
             c3 += B * dequantized_weights.s3;
 
             // j=1
-            B.s0123 = read_imagef(src1, gy*2   + (ki+1) * n_4);
-            B.s4567 = read_imagef(src1, gy*2+1 + (ki+1) * n_4);
+            B.s0123 = read_imageh(src1, gy*2   + (ki+1) * n_4);
+            B.s4567 = read_imageh(src1, gy*2+1 + (ki+1) * n_4);
             dequantized_weights.s0 = (((bits4.s0 & 0x00F0) >> 4) | (((qh_bits.s0 >> (qh_shift+1)) & 1) << 4)) * scale.s0 - mval.s0;
             dequantized_weights.s1 = (((bits4.s1 & 0x00F0) >> 4) | (((qh_bits.s1 >> (qh_shift+1)) & 1) << 4)) * scale.s1 - mval.s1;
             dequantized_weights.s2 = (((bits4.s2 & 0x00F0) >> 4) | (((qh_bits.s2 >> (qh_shift+1)) & 1) << 4)) * scale.s2 - mval.s2;
@@ -118,8 +115,8 @@ kernel void kernel_gemm_noshuffle_q5_k_f32(
             c3 += B * dequantized_weights.s3;
 
             // j=2
-            B.s0123 = read_imagef(src1, gy*2   + (ki+2) * n_4);
-            B.s4567 = read_imagef(src1, gy*2+1 + (ki+2) * n_4);
+            B.s0123 = read_imageh(src1, gy*2   + (ki+2) * n_4);
+            B.s4567 = read_imageh(src1, gy*2+1 + (ki+2) * n_4);
             dequantized_weights.s0 = (((bits4.s0 & 0x0F00) >> 8) | (((qh_bits.s0 >> (qh_shift+2)) & 1) << 4)) * scale.s0 - mval.s0;
             dequantized_weights.s1 = (((bits4.s1 & 0x0F00) >> 8) | (((qh_bits.s1 >> (qh_shift+2)) & 1) << 4)) * scale.s1 - mval.s1;
             dequantized_weights.s2 = (((bits4.s2 & 0x0F00) >> 8) | (((qh_bits.s2 >> (qh_shift+2)) & 1) << 4)) * scale.s2 - mval.s2;
@@ -130,8 +127,8 @@ kernel void kernel_gemm_noshuffle_q5_k_f32(
             c3 += B * dequantized_weights.s3;
 
             // j=3
-            B.s0123 = read_imagef(src1, gy*2   + (ki+3) * n_4);
-            B.s4567 = read_imagef(src1, gy*2+1 + (ki+3) * n_4);
+            B.s0123 = read_imageh(src1, gy*2   + (ki+3) * n_4);
+            B.s4567 = read_imageh(src1, gy*2+1 + (ki+3) * n_4);
             dequantized_weights.s0 = (((bits4.s0 & 0xF000) >> 12) | (((qh_bits.s0 >> (qh_shift+3)) & 1) << 4)) * scale.s0 - mval.s0;
             dequantized_weights.s1 = (((bits4.s1 & 0xF000) >> 12) | (((qh_bits.s1 >> (qh_shift+3)) & 1) << 4)) * scale.s1 - mval.s1;
             dequantized_weights.s2 = (((bits4.s2 & 0xF000) >> 12) | (((qh_bits.s2 >> (qh_shift+3)) & 1) << 4)) * scale.s2 - mval.s2;

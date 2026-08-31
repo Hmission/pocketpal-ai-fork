@@ -24,17 +24,9 @@ struct block_q4_0
 //------------------------------------------------------------------------------
 void dequantize_q4_0_f32(global struct block_q4_0 * xb, short il, float16 * reg) {
     global ushort * qs = ((global ushort *)xb + 1);
-#ifdef GGML_OPENCL_DESKTOP_REPRO
-    float d1 = il ? (xb->d / 16.0f) : xb->d;
-#else
     float d1 = il ? (xb->d / 16.h) : xb->d;
-#endif
     float d2 = d1 / 256.f;
-#ifdef GGML_OPENCL_DESKTOP_REPRO
-    float md = -8.0f * xb->d;
-#else
     float md = -8.h * xb->d;
-#endif
     ushort mask0 = il ? 0x00F0 : 0x000F;
     ushort mask1 = mask0 << 8;
 

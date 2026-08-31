@@ -95,11 +95,6 @@ inline float block_q_4_0_dot_y_flat(
 #define N_DST 8 // each SIMD group works on 8 rows
 #define N_SIMDGROUP 1 // number of SIMD groups in a thread group
 #define N_SIMDWIDTH 16 // assuming SIMD group size is 32
-#elif defined (MALI_GPU)
-// 08-20 Mali: subgroup size 16, values mirror INTEL_GPU
-#define N_DST 8
-#define N_SIMDGROUP 1
-#define N_SIMDWIDTH 16
 #elif defined (ADRENO_GPU)
 #define N_DST 8
 #define N_SIMDGROUP 1

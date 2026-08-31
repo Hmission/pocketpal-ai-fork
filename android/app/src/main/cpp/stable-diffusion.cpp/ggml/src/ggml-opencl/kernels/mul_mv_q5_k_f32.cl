@@ -1,23 +1,4 @@
 #pragma OPENCL EXTENSION cl_khr_fp16 : enable
-#ifdef GGML_OPENCL_DESKTOP_REPRO
-// 8-27 desktop repro hack: global -Dhalf=float would inflate fp16 d/dm fields to
-// 4B and shift every field of the block/stride layout. Keep 2-byte layout with
-// ushort and convert bit patterns to float at read points.
-#undef half
-#define half ushort
-static inline float fp16_bits_to_float(ushort h) {
-    uint s  = (h >> 15) & 0x1u;
-    uint e  = (h >> 10) & 0x1Fu;
-    uint m  = h & 0x3FFu;
-    uint f;
-    if (e == 0) {
-        if (m == 0) { f = s << 31; }
-        else { e = 113; while ((m & 0x400u) == 0) { m <<= 1; e--; } f = (s << 31) | (e << 23) | ((m & 0x3FFu) << 13); }
-    } else if (e == 31) { f = (s << 31) | 0x7F800000u | (m << 13); }
-    else { f = (s << 31) | ((e + 112u) << 23) | (m << 13); }
-    return as_float(f);
-}
-#endif
 
 #ifdef cl_intel_subgroups
 #pragma OPENCL EXTENSION cl_intel_subgroups : enable
@@ -54,11 +35,6 @@ typedef struct {
 
 #ifdef INTEL_GPU
 #define N_DST       4
-#define N_SIMDGROUP 1
-#define N_SIMDWIDTH 16
-#elif defined (MALI_GPU)
-// 08-20 Mali: subgroup size 16, values mirror INTEL_GPU
-#define N_DST 4
 #define N_SIMDGROUP 1
 #define N_SIMDWIDTH 16
 #elif defined(ADRENO_GPU)
@@ -181,13 +157,8 @@ kernel void kernel_mul_mv_q5_K_f32(
                 acc2.s3 += yh[i+9] * ((q2[i/2] & 0xF000) + (qh[i+1] & u2_hi ? 16.f*4096.f: 0.f));
             }
 
-#ifdef GGML_OPENCL_DESKTOP_REPRO
-            float dall = fp16_bits_to_float(dh[0]);
-            float dmin = fp16_bits_to_float(dh[1]);
-#else
             float dall = dh[0];
             float dmin = dh[1];
-#endif
             sumf[row] += dall * ((acc1.s0 + 1.f/256.f * acc1.s1) * sc8[0] +
                                  (acc1.s2 + 1.f/256.f * acc1.s3) * sc8[1] * 1.f/16.f +
                                  (acc2.s0 + 1.f/256.f * acc2.s1) * sc8[4] +

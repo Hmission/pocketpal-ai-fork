@@ -30,15 +30,12 @@
 #include <fstream>
 #include <vector>
 #include <string>
-#include <stdexcept>  // 08-20 Mali: build_program_from_source 编译失败抛 runtime_error（替代 exit(1)）
 #include <cmath>
 #include <map>
 #include <memory>
 #include <charconv>
 #include <mutex>
 #include <regex>
-#include <tuple>      // 8-25 探针：[CLPROF] 聚合排序
-#include <algorithm>  // 8-25 探针：std::sort
 
 #undef MIN
 #undef MAX
@@ -98,7 +95,6 @@ static fastdiv_vals init_fastdiv_values(uint64_t d_64) {
 enum GPU_FAMILY {
     ADRENO,
     INTEL,
-    MALI,
     UNKNOWN,
 };
 
@@ -394,9 +390,6 @@ struct ggml_backend_opencl_device_context {
     std::string opfilter_str = ""; // regex string for opfilter
     size_t global_mem_size = 0;
 };
-
-// 8-28 v3 探针 helper 前向声明（实现在 ggml_tensor_extra_cl 定义后）：延迟 1-enqueue 读回 mul_mat dst
-static void cl_probe_flush(cl_command_queue queue, ggml_tensor * pend, int64_t pend_ne0, int64_t pend_ne1);
 
 // backend context
 struct ggml_backend_opencl_context {
@@ -700,8 +693,6 @@ struct ggml_backend_opencl_context {
 
     std::vector<ProfilingInfo> profiling_info;
     std::vector<ProfilingInfo> profiling_results;
-    // 8-25 深水区探针：编译期保留 GGML_OPENCL_PROFILING，运行期由 env GGML_OPENCL_PROFILE 门控（不设零开销）。
-    bool profiling_enabled = false;
 
     void flush_profiling_batch() {
         if (profiling_info.empty()) {
@@ -757,42 +748,8 @@ struct ggml_backend_opencl_context {
             return;
         }
 
-        // 8-25：Android app CWD 不可写 → 输出目录走 env（默认 AIOS 共享目录，与取证日志同盘）。
-        std::string out_dir = "/sdcard/Documents/AIOS";
-        if (const char * env_dir = getenv("GGML_OPENCL_PROFILE_OUT")) {
-            out_dir = env_dir;
-        }
-
-        // 算子级聚合 top-N 直接进 logcat（GGML_LOG → ImageGen tag，免 pull 文件）。
-        {
-            std::map<std::string, std::pair<size_t, cl_ulong>> agg; // name -> {count, total_ns}
-            for (const ProfilingInfo & info : profiling_results) {
-                auto & a = agg[info.kernel_name];
-                a.first++;
-                a.second += info.cmd_duration_ns;
-            }
-            std::vector<std::tuple<cl_ulong, size_t, std::string>> sorted;
-            for (const auto & kv : agg) {
-                sorted.emplace_back(kv.second.second, kv.second.first, kv.first);
-            }
-            std::sort(sorted.begin(), sorted.end(),
-                      [](const auto & a, const auto & b) { return std::get<0>(a) > std::get<0>(b); });
-            double total_ms = 0;
-            for (const auto & t : sorted) total_ms += std::get<0>(t) / 1e6;
-            GGML_LOG_INFO("[CLPROF] === kernel time top %zu (total %.1f ms, %zu calls) ===\n",
-                          sorted.size(), total_ms, profiling_results.size());
-            size_t shown = 0;
-            for (const auto & t : sorted) {
-                if (shown++ >= 25) break;
-                GGML_LOG_INFO("[CLPROF] %8.2f ms (%5.1f%%) x%-6zu %s\n",
-                              std::get<0>(t) / 1e6,
-                              total_ms > 0 ? 100.0 * (std::get<0>(t) / 1e6) / total_ms : 0.0,
-                              std::get<1>(t), std::get<2>(t).c_str());
-            }
-        }
-
         // Dump a csv
-        FILE * fperf = fopen((out_dir + "/cl_profiling.csv").c_str(), "w");
+        FILE * fperf = fopen("cl_profiling.csv", "w");
         if (!fperf) {
             GGML_LOG_ERROR("Failed to open cl_profiling.csv\n");
             return;
@@ -810,7 +767,7 @@ struct ggml_backend_opencl_context {
         fclose(fperf);
 
         // Dump a simple chrome trace
-        FILE * ftrace = fopen((out_dir + "/cl_trace.json").c_str(), "w");
+        FILE * ftrace = fopen("cl_trace.json", "w");
         if (!ftrace) {
             GGML_LOG_ERROR("Failed to open cl_trace.json\n");
             return;
@@ -843,90 +800,19 @@ struct ggml_backend_opencl_context {
     }
 
     void enqueue_ndrange_kernel(cl_kernel kernel, cl_uint work_dim, size_t *global_work_size, size_t *local_work_size, const ggml_tensor * tensor) {
-        // 8-28 v3 探针：延迟 1-enqueue 同步读回（本函数是全部内核唯一出口）。
-        // 上批登记的 dst 在本批 enqueue 时必然已执行完，且后续内核尚未写入它——
-        // 读回即该算子真实输出（无 allocator 复用污染、无读早问题）。
-        // 8-28 扩大登记：所有 F32 op（不止 MUL_MAT）——抓 silu/mul/split 等 elementwise
-        // 输出统计（值域相关压缩嫌疑区）。同一 dst 的脏读(transpose 占位)会被后续正确读覆盖。
-        // 只登记图内激活 tensor（node_/ggml_runner_cut 前缀）：权重/临时 tensor 的 extra
-        // 是量化自定义结构（extra0_q5_K 等），按标准 ggml_tensor_extra_cl 读会崩（SIGABRT）。
-        if (profiling_enabled) {
-            static ggml_tensor * pend = nullptr;
-            static int64_t pend_ne0 = 0, pend_ne1 = 0;
-            if (pend != nullptr) {
-                cl_probe_flush(queue, pend, pend_ne0, pend_ne1);
-                pend = nullptr;
-            }
-            const char * nm = tensor != nullptr ? ggml_get_name(tensor) : nullptr;
-            // 登记：图内激活(node_/ggml_runner_cut) + 临时 tensor(空名= silu/mul 等的 dst)。
-            // 排除权重(.weight 后缀：extra 是量化自定义结构，按标准 extra 读会崩)。
-            if (tensor != nullptr && tensor->type == GGML_TYPE_F32 && nm != nullptr &&
-                strstr(nm, ".weight") == nullptr &&
-                (nm[0] == '\0' || strncmp(nm, "node_", 5) == 0 || strncmp(nm, "ggml_runner_cut", 15) == 0)) {
-                pend = const_cast<ggml_tensor *>(tensor);
-                pend_ne0 = tensor->ne[0];
-                pend_ne1 = tensor->ne[1];
-            }
-        }
-        if (gpu_family == GPU_FAMILY::MALI) {
-            // 08-20 Mali: local size 必须对齐 subgroup(16) 倍数，否则驱动返回 -54 (CL_INVALID_WORK_GROUP_SIZE)。
-            // 失败时打印尺寸并抛异常（沿 JNI try/catch 返回 ERR_EXCEPTION），不再 GGML_ASSERT 崩溃。
-            size_t local_aligned[3] = {1, 1, 1};
-            for (cl_uint d = 0; d < work_dim; d++) {
-                size_t ls = local_work_size ? local_work_size[d] : 1;
-                if (ls > 16) {
-                    ls = (ls / 16) * 16;
-                }
-                if (ls == 0) {
-                    ls = 1;
-                }
-                if (ls > global_work_size[d]) {
-                    ls = global_work_size[d];
-                    if (ls == 0) ls = 1;
-                }
-                local_aligned[d] = ls;
-            }
-            if (profiling_enabled) {
-                // 8-25 探针：Mali 分支同样挂事件计时（否则探针失真）。
-                cl_event evt;
-                cl_int err = clEnqueueNDRangeKernel(queue, kernel, work_dim, NULL, global_work_size, local_aligned, 0, NULL, &evt);
-                if (err != CL_SUCCESS) {
-                    GGML_LOG_ERROR("ggml_opencl: enqueue FAILED err=%d dims=%u global=%zux%zux%zu local=%zux%zux%zu\n", err, work_dim,
-                        global_work_size[0], work_dim > 1 ? global_work_size[1] : 1, work_dim > 2 ? global_work_size[2] : 1,
-                        local_aligned[0], work_dim > 1 ? local_aligned[1] : 1, work_dim > 2 ? local_aligned[2] : 1);
-                    throw std::runtime_error("OpenCL enqueue failed");
-                }
-                profiling_info.emplace_back();
-                populateProfilingInfo(profiling_info.back(), evt, kernel, work_dim, global_work_size, local_aligned, tensor);
-                if (profiling_info.size() >= 2048) {
-                    flush_profiling_batch();
-                }
-                return;
-            }
-            cl_int err = clEnqueueNDRangeKernel(queue, kernel, work_dim, NULL, global_work_size, local_aligned, 0, NULL, NULL);
-            if (err != CL_SUCCESS) {
-                GGML_LOG_ERROR("ggml_opencl: enqueue FAILED err=%d dims=%u global=%zux%zux%zu local=%zux%zux%zu\n", err, work_dim,
-                    global_work_size[0], work_dim > 1 ? global_work_size[1] : 1, work_dim > 2 ? global_work_size[2] : 1,
-                    local_aligned[0], work_dim > 1 ? local_aligned[1] : 1, work_dim > 2 ? local_aligned[2] : 1);
-                throw std::runtime_error("OpenCL enqueue failed");
-            }
-            return;
-        }
 #ifdef GGML_OPENCL_PROFILING
-        if (profiling_enabled) {
-            cl_event evt;
-            CL_CHECK(clEnqueueNDRangeKernel(queue, kernel, work_dim, NULL, global_work_size, local_work_size, 0, NULL, &evt));
+        cl_event evt;
+        CL_CHECK(clEnqueueNDRangeKernel(queue, kernel, work_dim, NULL, global_work_size, local_work_size, 0, NULL, &evt));
 
-            profiling_info.emplace_back();
-            populateProfilingInfo(profiling_info.back(), evt, kernel, work_dim, global_work_size, local_work_size, tensor);
-            if (profiling_info.size() >= 2048) {
-                flush_profiling_batch();
-            }
-            return;
+        profiling_info.emplace_back();
+        populateProfilingInfo(profiling_info.back(), evt, kernel, work_dim, global_work_size, local_work_size, tensor);
+        if (profiling_info.size() >= 2048) {
+            flush_profiling_batch();
         }
-#endif
+#else
         GGML_UNUSED(tensor);
         CL_CHECK(clEnqueueNDRangeKernel(queue, kernel, work_dim, NULL, global_work_size, local_work_size, 0, NULL, NULL));
+#endif
     }
 
 #ifdef GGML_OPENCL_USE_ADRENO_KERNELS
@@ -1000,49 +886,6 @@ inline std::string read_file(const std::string &path) {
 }
 
 static cl_program build_program_from_source(cl_context ctx, cl_device_id dev, const char* program_buffer, const std::string &compile_opts) {
-    std::string opts = compile_opts;
-    // 8-27 桌面复现 hack：NVIDIA PTX 缺 convert_half* 转换函数（cl_khr_fp16 实现不完整），
-    // 注入宏替身（C cast）让 fp16 内核可编译；仅 GGML_OPENCL_DESKTOP_REPRO=1 时生效，真机验证后撤除。
-    if (getenv("GGML_OPENCL_DESKTOP_REPRO") != nullptr) {
-        // 编译标记：kernels/*.cl 内的桌面条件编译分支依赖此宏
-        opts += " -DGGML_OPENCL_DESKTOP_REPRO=1";
-        // 标量：C cast；向量：先标量 cast 各分量再向量构造（NVIDIA 不支持向量间直接 cast）
-        // 注意：编译选项值内不能有空格（命令行 token 切分）
-        // half→float 重定义：NVIDIA 无 half 数学函数（exp 等）overload；fp16 内核在
-        // F32/量化推理中不会被调度，仅需编译通过（布局差异无影响）。
-        opts += " -Dhalf=float -Dhalf2=float2 -Dhalf3=float3 -Dhalf4=float4 -Dhalf8=float8 -Dhalf16=float16";
-        // subgroup 串行替身：NVIDIA 无 cl_khr_subgroups 扩展；所有线程 local_id=0（重复写同值，
-        // 结果正确仅变慢），reduce=恒等。仅复现用；真机（Mali/Adreno 有 subgroup）不受影响。
-        opts += " -Dget_sub_group_id()=0";
-        opts += " -Dget_num_sub_groups()=1";
-        opts += " -Dget_sub_group_local_id()=0";
-        opts += " -Dget_sub_group_size()=1";
-        opts += " -Dget_max_sub_group_size()=1";
-        opts += " -Dsub_group_reduce_add(x)=(x)";
-        opts += " -Dsub_group_reduce_min(x)=(x)";
-        opts += " -Dsub_group_reduce_max(x)=(x)";
-        opts += " -Dsub_group_broadcast(x,i)=((x))";
-        opts += " -Dsub_group_scan_inclusive_add(x)=(x)";
-        opts += " -Dsub_group_scan_exclusive_add(x)=(0.0f)";
-        opts += " -Das_half(x)=((half)(x))";
-        opts += " -Das_half2(x)=((half2)((half)(x).s0,(half)(x).s1))";
-        opts += " -Das_half4(x)=((half4)((half)(x).s0,(half)(x).s1,(half)(x).s2,(half)(x).s3))";
-        opts += " -Das_half8(x)=((half8)((half)(x).s0,(half)(x).s1,(half)(x).s2,(half)(x).s3,(half)(x).s4,(half)(x).s5,(half)(x).s6,(half)(x).s7))";
-        opts += " -Das_half16(x)=((half16)((half)(x).s0,(half)(x).s1,(half)(x).s2,(half)(x).s3,(half)(x).s4,(half)(x).s5,(half)(x).s6,(half)(x).s7,(half)(x).s8,(half)(x).s9,(half)(x).sa,(half)(x).sb,(half)(x).sc,(half)(x).sd,(half)(x).se,(half)(x).sf))";
-        opts += " -Dconvert_half(x)=((half)(x))";
-        opts += " -Dconvert_half2(x)=((half2)((half)(x).s0,(half)(x).s1))";
-        opts += " -Dconvert_half3(x)=((half3)((half)(x).s0,(half)(x).s1,(half)(x).s2))";
-        opts += " -Dconvert_half4(x)=((half4)((half)(x).s0,(half)(x).s1,(half)(x).s2,(half)(x).s3))";
-        opts += " -Dconvert_half8(x)=((half8)((half)(x).s0,(half)(x).s1,(half)(x).s2,(half)(x).s3,(half)(x).s4,(half)(x).s5,(half)(x).s6,(half)(x).s7))";
-        opts += " -Dconvert_half16(x)=((half16)((half)(x).s0,(half)(x).s1,(half)(x).s2,(half)(x).s3,(half)(x).s4,(half)(x).s5,(half)(x).s6,(half)(x).s7,(half)(x).s8,(half)(x).s9,(half)(x).sa,(half)(x).sb,(half)(x).sc,(half)(x).sd,(half)(x).se,(half)(x).sf))";
-        opts += " -Dconvert_half_rtn(x)=((half)(x))";
-        opts += " -Dconvert_half4_rtn(x)=((half4)((half)(x).s0,(half)(x).s1,(half)(x).s2,(half)(x).s3))";
-        opts += " -Dconvert_half_rte(x)=((half)(x))";
-        opts += " -Dconvert_half4_rte(x)=((half4)((half)(x).s0,(half)(x).s1,(half)(x).s2,(half)(x).s3))";
-        // conv2d.cl -DUSE_FP16=1 分支的 vstore_half4_rte 在 half=float 重定义下两个
-        // 地址空间重载同时匹配导致歧义；直接换 vstore4（语义一致，仅桌面编译用）
-        opts += " -Dvstore_half4_rte(d,o,p)=vstore4((d),(o),(p))";
-    }
     cl_program p;
     char *program_log;
     size_t program_size;
@@ -1054,23 +897,18 @@ static cl_program build_program_from_source(cl_context ctx, cl_device_id dev, co
     p = clCreateProgramWithSource(ctx, 1, (const char**)&program_buffer, &program_size, &err);
     if(err < 0) {
         GGML_LOG_ERROR("OpenCL error creating program");
-        throw std::runtime_error("OpenCL error creating program");  // 08-20 Mali: 与编译失败路径一致，不 exit(1)
+        exit(1);
     }
 
-    err = clBuildProgram(p, 0, NULL, opts.c_str(), NULL, NULL);
+    err = clBuildProgram(p, 0, NULL, compile_opts.c_str(), NULL, NULL);
     if(err < 0) {
         clGetProgramBuildInfo(p, dev, CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size);
         program_log = (char*) malloc(log_size + 1);
         program_log[log_size] = '\0';
         clGetProgramBuildInfo(p, dev, CL_PROGRAM_BUILD_LOG, log_size + 1, program_log, NULL);
         GGML_LOG_ERROR("ggml_opencl: kernel compile error:\n\n%s\n", program_log);
-        // 08-20 Mali: 编译失败不再 exit(1)（会触发静态析构与其他线程的 mutex 竞态 → FORTIFY abort）。
-        // 抛异常沿 ImageGenJNI 的 try/catch 链路返回 ERR_EXCEPTION，干净失败。
-        std::string msg = "OpenCL kernel compile error: ";
-        msg += program_log;
         free(program_log);
-        clReleaseProgram(p);
-        throw std::runtime_error(msg);
+        exit(1);
     }
 
     return p;
@@ -1083,10 +921,6 @@ static void load_cl_kernels_argsort(ggml_backend_opencl_context *backend_ctx) {
     std::string compile_opts = std::string("-cl-std=") + opencl_c_std +
                                " -cl-mad-enable -cl-unsafe-math-optimizations"
                                " -cl-finite-math-only -cl-fast-relaxed-math";
-    if (backend_ctx->gpu_family == GPU_FAMILY::MALI) {
-        // 08-20 Mali: INTEL_GPU/ADRENO_GPU 宏由驱动扩展定义，Mali 两者皆无 → 显式传入
-        compile_opts += " -DMALI_GPU";
-    }
 
     // argsort
     if (!backend_ctx->kernels_loaded_argsort) {
@@ -1113,10 +947,6 @@ static void load_cl_kernels_flash_attn(ggml_backend_opencl_context *backend_ctx)
     std::string compile_opts = std::string("-cl-std=") + opencl_c_std +
                                " -cl-mad-enable -cl-unsafe-math-optimizations"
                                " -cl-finite-math-only -cl-fast-relaxed-math";
-    if (backend_ctx->gpu_family == GPU_FAMILY::MALI) {
-        // 08-20 Mali: INTEL_GPU/ADRENO_GPU 宏由驱动扩展定义，Mali 两者皆无 → 显式传入
-        compile_opts += " -DMALI_GPU";
-    }
 
     // flash_attn
     if (!backend_ctx->kernels_loaded_flash_attn) {
@@ -1201,21 +1031,6 @@ static void load_cl_kernels(ggml_backend_opencl_context *backend_ctx) {
     std::string compile_opts = std::string("-cl-std=") + opencl_c_std +
                                " -cl-mad-enable -cl-unsafe-math-optimizations"
                                " -cl-finite-math-only -cl-fast-relaxed-math";
-
-    if (backend_ctx->gpu_family == GPU_FAMILY::MALI) {
-        // 08-20 Mali: INTEL_GPU/ADRENO_GPU 宏由驱动扩展定义，Mali 两者皆无 → 显式传入
-        compile_opts += " -DMALI_GPU";
-        // 8-24 B2: q4_k GEMM 半精度变体（fp16 乘法 + fp32 累加，无半精度长程累加）。
-        // env 门控：不设即原 fp32 通用路径；实测负收益/精度崩坏即删 env 回退。
-        if (getenv("GGML_OPENCL_MALI_FP16_GEMM") != nullptr) {
-            compile_opts += " -DPP_MALI_FP16_GEMM";
-        }
-        // 8-25 B2-correct：[CLPROF] 实锤热点是 mul_mm_q4_k/q5_k_f32_l4_lm（71%）——
-        // tiled GEMM 半精度变体（half 缓冲 + half 乘法 + fp32 累加），同样 env 门控。
-        if (getenv("GGML_OPENCL_MALI_FP16_LM") != nullptr) {
-            compile_opts += " -DPP_MALI_FP16_LM";
-        }
-    }
 
     if (backend_ctx->adreno_use_large_buffer) {
         compile_opts += " -qcom-enable-large-buffer ";
@@ -2043,7 +1858,6 @@ static void load_cl_kernels(ggml_backend_opencl_context *backend_ctx) {
 
 #ifdef GGML_OPENCL_USE_ADRENO_KERNELS
     // gemm_xmem_f16_f32_os8
-    if (backend_ctx->gpu_family == GPU_FAMILY::ADRENO) {  // 08-20 Mali: qcom 专属函数仅 Adreno 驱动支持，其余族跳过编译
     {
 #ifdef GGML_OPENCL_EMBED_KERNELS
         const std::string kernel_src {
@@ -2066,7 +1880,6 @@ static void load_cl_kernels(ggml_backend_opencl_context *backend_ctx) {
         CL_CHECK(clReleaseProgram(prog));
         GGML_LOG_CONT(".");
     }
-    }  // 08-20 Mali: Adreno 专属 kernel 编译块结束
 #endif // GGML_OPENCL_USE_ADRENO_KERNELS
 
     // mul_mm_f32_f32_l4_lm
@@ -2951,11 +2764,10 @@ static void load_cl_kernels(ggml_backend_opencl_context *backend_ctx) {
         const int gdn_sizes[4] = { 16, 32, 64, 128 };
         const int sg_size = backend_ctx->gpu_family == GPU_FAMILY::ADRENO ? 64 : backend_ctx->gpu_family == GPU_FAMILY::INTEL ? 32 : -1;
         if (sg_size < 0) {
-            // 08-20 Mali: GDN 内核（Z-Image 类架构）为 Adreno/Intel 专属，SD3.5 等非 GDN 模型用不到。
-            // 跳过编译而非 exit(1)（exit 触发静态析构与线程 mutex 竞态 → FORTIFY abort）。
-            GGML_LOG_WARN("ggml_opencl: gated_delta_net kernels skipped (unsupported GPU family, GDN models unavailable).\n");
+            GGML_LOG_ERROR("Unsupported GPU Family: only Adreno and Intel are supported.\n");
+            exit(1);
         }
-        if (sg_size >= 0) {
+
         for (int si = 0; si < 4; si++) {
             const int S_V = gdn_sizes[si];
 
@@ -3016,7 +2828,6 @@ static void load_cl_kernels(ggml_backend_opencl_context *backend_ctx) {
                 }
             }
         }
-        }  // 08-20 Mali: sg_size >= 0 时编译 GDN
         GGML_LOG_CONT(".");
     }
 
@@ -3102,7 +2913,6 @@ static void load_cl_kernels(ggml_backend_opencl_context *backend_ctx) {
 
     // Adreno kernels
 #ifdef GGML_OPENCL_USE_ADRENO_KERNELS
-    if (backend_ctx->gpu_family == GPU_FAMILY::ADRENO) {  // 08-20 Mali: transpose/noshuffle 为 Adreno 专属（qcom 扩展），其余族跳过编译
     // transpose
     {
 #ifdef GGML_OPENCL_EMBED_KERNELS
@@ -3898,7 +3708,6 @@ static void load_cl_kernels(ggml_backend_opencl_context *backend_ctx) {
         CL_CHECK(clReleaseProgram(prog));
         GGML_LOG_CONT(".");
     }
-    }  // 08-20 Mali: Adreno 专属 kernel 编译块结束
 #endif // GGML_OPENCL_USE_ADRENO_KERNELS
     GGML_LOG_CONT("\n");
     backend_ctx->kernels_loaded = true;
@@ -4226,21 +4035,8 @@ static bool ggml_opencl_is_device_supported(ggml_backend_dev_t dev) {
         if (dev_ctx->adreno_gen == ADRENO_GPU_GEN::ADRENO_UNKNOWN) {
             dev_ctx->adreno_gen = get_adreno_gpu_gen(dev_ctx->device_name.c_str());
         }
-    } else if (strstr(dev_ctx->device_name.c_str(), "Mali")) {
-        // 08-20 Mali 支持（红米平板 MT8799 / Mali-G925 等）：放行走通用 OpenCL 路径。
-        // - Adreno 专属内核由 JNI 侧 GGML_OPENCL_DISABLE_ADRENO_KERNELS=1 强制关闭（fp16 累积精度风险）
-        // - xmem 要求 gpu_family==ADRENO，Mali 天然不启用
-        // - GDN/SSM 内核（Z-Image 类）的 sg_size 判断仍拒绝（exit）——SD3.5/MMDiT 不触发，安全
-        GGML_LOG_INFO("ggml_opencl: Mali GPU '%s' accepted (generic OpenCL path).\n", dev_ctx->device_name.c_str());
-        dev_ctx->gpu_family = GPU_FAMILY::MALI;
-    } else if (strstr(dev_ctx->device_name.c_str(), "NVIDIA") ||
-               strstr(dev_ctx->device_name.c_str(), "GeForce") ||
-               strstr(dev_ctx->device_name.c_str(), "AMD") ||
-               strstr(dev_ctx->device_name.c_str(), "Radeon")) {
-        // 8-27 桌面复现临时放行（用后即撤）：桌面 GPU 走 Mali 通用路径，
-        // 用于桌面 OpenCL 复现 Klein 纯色图（秒级迭代，不劳真机；真机验证通过后撤）。
-        GGML_LOG_INFO("ggml_opencl: desktop GPU '%s' accepted (repro hack, generic path).\n", dev_ctx->device_name.c_str());
-        dev_ctx->gpu_family = GPU_FAMILY::MALI;
+    } else if (strstr(dev_ctx->device_name.c_str(), "Intel")) {
+        dev_ctx->gpu_family = GPU_FAMILY::INTEL;
     } else {
         GGML_LOG_WARN("ggml_opencl: unsupported GPU '%s'.\n", dev_ctx->device_name.c_str());
         dev_ctx->gpu_family = GPU_FAMILY::UNKNOWN;
@@ -4257,7 +4053,7 @@ static bool ggml_opencl_is_device_supported(ggml_backend_dev_t dev) {
     }
 
 #ifdef GGML_OPENCL_USE_ADRENO_KERNELS
-    if (dev_ctx->gpu_family != GPU_FAMILY::ADRENO && dev_ctx->gpu_family != GPU_FAMILY::MALI) {
+    if (dev_ctx->gpu_family != GPU_FAMILY::ADRENO) {
         GGML_LOG_WARN("ggml_opencl: Adreno-specific kernels should not be enabled for non-Adreno GPUs; "
             "run on an Adreno GPU or recompile with CMake option `-DGGML_OPENCL_USE_ADRENO_KERNELS=OFF`\n");
         return false;
@@ -4274,29 +4070,17 @@ static bool ggml_opencl_is_device_supported(ggml_backend_dev_t dev) {
     // Check if ext_buffer contains cl_khr_fp16
     bool fp16_support = strstr(ext_buffer, "cl_khr_fp16") != NULL;
     if (!fp16_support) {
-        // 8-27 桌面复现临时 hack：NVIDIA/AMD 驱动不报 cl_khr_fp16 但通用 F32 路径可用，放行（真机验证通过后撤除）。
-        const char * dn = dev_ctx->device_name.c_str();
-        if (strstr(dn, "NVIDIA") || strstr(dn, "GeForce") || strstr(dn, "AMD") || strstr(dn, "Radeon")) {
-            GGML_LOG_WARN("ggml_opencl: desktop fp16 check bypassed (repro hack)\n");
-        } else {
-            GGML_LOG_WARN("ggml_opencl: device does not support FP16\n");
-            return false;
-        }
+        GGML_LOG_WARN("ggml_opencl: device does not support FP16\n");
+        return false;
     }
 
     // If OpenCL 3.0 is supported, then check for cl_khr_subgroups, which becomes
     // optional in OpenCL 3.0 (cl_khr_subgroup is mandatory in OpenCL 2.x)
     if (opencl_c_version.major == 3 && strstr(ext_buffer, "cl_khr_subgroups") == NULL &&
         strstr(ext_buffer, "cl_intel_subgroups") == NULL) {
-        // 8-27 桌面复现临时 hack：NVIDIA 驱动不报 subgroup 扩展名（复现用，真机验证后撤除）
-        const char * dn2 = dev_ctx->device_name.c_str();
-        if (strstr(dn2, "NVIDIA") || strstr(dn2, "GeForce") || strstr(dn2, "AMD") || strstr(dn2, "Radeon")) {
-            GGML_LOG_WARN("ggml_opencl: desktop subgroups check bypassed (repro hack)\n");
-        } else {
-            GGML_LOG_WARN("ggml_opencl: device does not support subgroups (cl_khr_subgroups or cl_intel_subgroups) "
-                "(note that subgroups is an optional feature in OpenCL 3.0)\n");
-            return false;
-        }
+        GGML_LOG_WARN("ggml_opencl: device does not support subgroups (cl_khr_subgroups or cl_intel_subgroups) "
+            "(note that subgroups is an optional feature in OpenCL 3.0)\n");
+        return false;
     }
 
     clGetDeviceInfo(dev_ctx->device, CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(size_t), &dev_ctx->global_mem_size, NULL);
@@ -4431,12 +4215,7 @@ static ggml_backend_opencl_context * ggml_cl_init(ggml_backend_dev_t dev) {
     //)));
     cl_command_queue_properties command_queue_props = 0;
 #ifdef GGML_OPENCL_PROFILING
-    // 8-25：运行期门控——设 GGML_OPENCL_PROFILE=1 才开 profiling 队列（生产零开销）。
-    backend_ctx->profiling_enabled = (getenv("GGML_OPENCL_PROFILE") != nullptr);
-    if (backend_ctx->profiling_enabled) {
-        command_queue_props |= CL_QUEUE_PROFILING_ENABLE;
-        GGML_LOG_INFO("ggml_opencl: operator-level profiling ENABLED (B-line deep probe)\n");
-    }
+    command_queue_props |= CL_QUEUE_PROFILING_ENABLE;
 #endif
     CL_CHECK((backend_ctx->queue = clCreateCommandQueue(context, device, command_queue_props, &err), err));
 
@@ -4579,43 +4358,6 @@ struct ggml_tensor_extra_cl {
         actual_size = 0;
     }
 };
-
-// 8-28 v3 探针实现：延迟 1-enqueue 读回 mul_mat dst（offset 不含 view_offs；mul_mat dst 非常规 view，
-// 直接用 ex->offset 即真实输出位置）。打印与 CPU [CPUDUMP] 同格式便于对表。
-static void cl_probe_flush(cl_command_queue queue, ggml_tensor * pend, int64_t pend_ne0, int64_t pend_ne1) {
-    ggml_tensor_extra_cl * ex = (ggml_tensor_extra_cl *)pend->extra;
-    const int64_t d0 = pend_ne0, d1 = pend_ne1;
-    const int64_t n = d0 * d1 * pend->ne[2] * pend->ne[3];
-    if (ex == nullptr || ex->data_device == nullptr || n <= 0 || n > 120LL * 1024 * 1024 / 4) {
-        return;
-    }
-    clFinish(queue);
-    std::vector<float> buf((size_t)n);
-    CL_CHECK(clEnqueueReadBuffer(queue, ex->data_device, CL_TRUE,
-        ex->offset, (size_t)n * sizeof(float), buf.data(), 0, NULL, NULL));
-    clFinish(queue);
-    double sum = 0, sumsq = 0;
-    float mn = 1e30f, mx = -1e30f;
-    int64_t nnan = 0, ninf = 0;
-    for (int64_t k = 0; k < n; k++) {
-        const float v = buf[k];
-        if (!std::isfinite(v)) { if (v != v) nnan++; else ninf++; continue; }
-        sum += v; sumsq += (double)v * v;
-        if (v < mn) mn = v;
-        if (v > mx) mx = v;
-    }
-    const double mean = n > 0 ? sum / n : 0.0;
-    const double var = n > 0 ? sumsq / n - mean * mean : 0.0;
-    GGML_LOG_INFO("[CLDUMP] %s ne=%lld,%lld,%lld,%lld n=%lld min=%f max=%f mean=%f std=%f nan=%lld inf=%lld\n",
-        ggml_get_name(pend) != nullptr ? ggml_get_name(pend) : "(anon)", (long long)d0, (long long)d1, (long long)pend->ne[2], (long long)pend->ne[3],
-        (long long)n, mn, mx, mean, var > 0 ? sqrt(var) : 0.0, (long long)nnan, (long long)ninf);
-    for (int64_t r = 0; r < d1 && r < 48; r++) {
-        double rs = 0;
-        for (int64_t c = 0; c < d0; c++) rs += buf[r * d0 + c];
-        rs /= d0;
-        GGML_LOG_INFO("[CLDUMP] row %lld mean %f\n", (long long)r, rs);
-    }
-}
 
 // Additional tensor extra structs for quantized tensors.
 // These tensors are loaded from files and should not be allocated in scratch --
@@ -7120,20 +6862,6 @@ static void ggml_backend_opencl_buffer_set_tensor(ggml_backend_buffer_t buffer, 
         GGML_ASSERT(size_q + size_qh + size_s + size_d + size_dm == ggml_nbytes(tensor) &&
             "Incorrect tensor size");
 
-        // 8-29 q5K-RAW: convert 前原始 GGUF 字节(host 侧 data 指针直读,零 enqueue)。
-        // 与 GGUF 文件 block0(d=-1.9795, dm=-15.29, qs=ea46,6b9f..)对表:
-        // 不一致 → 双重量化/加载错位(lm =是 8-29 已修 wtype 强转 Q4_K 的元凶);
-        // 一致 → convert 内核错。打印全部 Q5_K 层(修复验证:恢复 GGUF 原样)。
-        {
-            const unsigned char * p0 = (const unsigned char *)data;
-            const ggml_fp16_t * h0 = (const ggml_fp16_t *)p0;
-            GGML_LOG_INFO("[CTXPROBE] q5K-RAW src0=%s ne=%lldx%lld first16=%02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x d=%.6f dm=%.6f\n",
-                ggml_get_name(tensor), (long long)tensor->ne[0], (long long)tensor->ne[1],
-                p0[0], p0[1], p0[2], p0[3], p0[4], p0[5], p0[6], p0[7],
-                p0[8], p0[9], p0[10], p0[11], p0[12], p0[13], p0[14], p0[15],
-                ggml_fp16_to_fp32(h0[0]), ggml_fp16_to_fp32(h0[1]));
-        }
-
         cl_int err;
         cl_mem data_device;
         CL_CHECK((data_device = clCreateBuffer(context, CL_MEM_READ_WRITE, ggml_nbytes(tensor), NULL, &err), err));
@@ -7184,7 +6912,7 @@ static void ggml_backend_opencl_buffer_set_tensor(ggml_backend_buffer_t buffer, 
         CL_CHECK(err);
 
 #ifdef GGML_OPENCL_USE_ADRENO_KERNELS
-        if (true) { // 8-29 all Q5_K use trans4_ns layout
+        if (use_adreno_moe_kernels(backend_ctx, tensor)) {
             cl_kernel kernel = backend_ctx->kernel_convert_block_q5_k_trans4_ns;
 
             int ne00 = tensor->ne[0];
@@ -7204,8 +6932,7 @@ static void ggml_backend_opencl_buffer_set_tensor(ggml_backend_buffer_t buffer, 
             CL_CHECK(clSetKernelArg(kernel, 8, sizeof(cl_uchar), &mask_0F));
             CL_CHECK(clSetKernelArg(kernel, 9, sizeof(cl_uchar), &mask_F0));
 
-            // 8-29 FIX5: work-item owns 4 rows (m = 4*i01+{0..3}); global[0] = ceil(ne01/4) aligned to 64
-            size_t global_work_size[] = {static_cast<size_t>(((ne01 / 4 + 63) / 64) * 64), static_cast<size_t>(ne00 / 256), static_cast<size_t>(ne02)};
+            size_t global_work_size[] = {static_cast<size_t>(((ne01 + 63) / 64) * 64), static_cast<size_t>(ne00 / 256), static_cast<size_t>(ne02)};
             size_t local_work_size[] = {64, 1, 1};
 
             cl_event evt;
@@ -7213,6 +6940,15 @@ static void ggml_backend_opencl_buffer_set_tensor(ggml_backend_buffer_t buffer, 
             CL_CHECK(clWaitForEvents(1, &evt));
             CL_CHECK(clReleaseMemObject(data_device));
 
+            cl_image_format img_format_q = {CL_R, CL_UNSIGNED_INT32};
+            cl_image_desc img_desc_q = {
+                CL_MEM_OBJECT_IMAGE1D_BUFFER,
+                static_cast<size_t>(ggml_nelements(tensor) / 8),
+                0, 0, 0, 0, 0, 0, 0,
+                { extra->q }
+            };
+            extra->q_img = clCreateImage(context, CL_MEM_READ_ONLY, &img_format_q, &img_desc_q, NULL, &err);
+            CL_CHECK(err);
             tensor->extra = extra;
 
             return;
@@ -7220,10 +6956,10 @@ static void ggml_backend_opencl_buffer_set_tensor(ggml_backend_buffer_t buffer, 
 #endif // GGML_OPENCL_USE_ADRENO_KERNELS
 
 #ifdef GGML_OPENCL_USE_ADRENO_KERNELS
-        // 8-29 定谳:Q5_K convert 恒用 shuffle 直拷内核(kernel_convert_block_q5_K)——
-        // 该内核输出 q=qs原样/qh=qh原样/s原样,与 gemm_noshuffle 的读法逐位匹配(CPU 语义!!)。
-        // noshuffle 重排(低半/高半分离)与 gemm 的 u16-连续读错配(偶数权重对、奇数权重错)。
         cl_kernel kernel = backend_ctx->kernel_convert_block_q5_K;
+        if (use_adreno_kernels(backend_ctx, tensor)) {
+            kernel = backend_ctx->kernel_convert_block_q5_K_noshuffle;
+        }
 #else
         cl_kernel kernel = backend_ctx->kernel_convert_block_q5_K;
 #endif
@@ -7254,44 +6990,9 @@ static void ggml_backend_opencl_buffer_set_tensor(ggml_backend_buffer_t buffer, 
         extra->size_d  = size_d;
         extra->size_dm = size_dm;
 
-        // 8-29 q5K-CONV: convert 直出(未转置)取证 —— 与 PC 手算对表分离 convert/转置 bug。
-        // 只打 txt_mlp.2(blk0):q 前 32B + qh 前 32B + s/d/dm 各一块。
-        {
-            const char * cname = ggml_get_name(tensor);
-            if (cname != nullptr && strstr(cname, "txt_mlp.2") != nullptr) {
-                CL_CHECK(clWaitForEvents(1, &evt));
-                const int64_t cn_q = (int64_t)tensor->ne[0] * tensor->ne[1] / 256; // num blocks
-                const int64_t cpos[4] = {0, cn_q / 4, cn_q / 2, cn_q * 3 / 4};
-                for (int cp_i = 0; cp_i < 4; cp_i++) {
-                    const int64_t c_off = cpos[cp_i] * 128; // q array: 128B per block
-                    ggml_fp16_t cq[8];
-                    unsigned char cqh[8];
-                    GGML_LOG_INFO("[CTXPROBE] q5K-CONV2 src0=%s pos=%lld/%lld off=%lld\n",
-                        cname, (long long)cpos[cp_i], (long long)cn_q, (long long)c_off);
-                    CL_CHECK(clEnqueueReadBuffer(queue, extra->q,  CL_TRUE, c_off, 16, cq,  0, NULL, NULL));
-                    CL_CHECK(clEnqueueReadBuffer(queue, extra->qh, CL_TRUE, c_off / 4, 8, cqh, 0, NULL, NULL)); // 32B per block
-                    GGML_LOG_INFO("[CTXPROBE] q5K-CONV2 q=%04x,%04x,%04x,%04x,%04x,%04x,%04x,%04x qh=%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x\n",
-                        (unsigned)cq[0], (unsigned)cq[1], (unsigned)cq[2], (unsigned)cq[3],
-                        (unsigned)cq[4], (unsigned)cq[5], (unsigned)cq[6], (unsigned)cq[7],
-                        (unsigned)cqh[0], (unsigned)cqh[1], (unsigned)cqh[2], (unsigned)cqh[3],
-                        (unsigned)cqh[4], (unsigned)cqh[5], (unsigned)cqh[6], (unsigned)cqh[7]);
-                }
-                unsigned char cs[12]; ggml_fp16_t cd0, cdm0;
-                CL_CHECK(clEnqueueReadBuffer(queue, extra->s,  CL_TRUE, 0, 12,        cs,  0, NULL, NULL));
-                CL_CHECK(clEnqueueReadBuffer(queue, extra->d,  CL_TRUE, 0, 2,         &cd0, 0, NULL, NULL));
-                CL_CHECK(clEnqueueReadBuffer(queue, extra->dm, CL_TRUE, 0, 2,         &cdm0, 0, NULL, NULL));
-                GGML_LOG_INFO("[CTXPROBE] q5K-CONV src0=%s s=%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x d=%.5f dm=%.5f\n",
-                    cname,
-                    (unsigned)cs[0], (unsigned)cs[1], (unsigned)cs[2], (unsigned)cs[3],
-                    (unsigned)cs[4], (unsigned)cs[5], (unsigned)cs[6], (unsigned)cs[7],
-                    (unsigned)cs[8], (unsigned)cs[9], (unsigned)cs[10], (unsigned)cs[11],
-                    ggml_fp16_to_fp32(cd0), ggml_fp16_to_fp32(cdm0));
-            }
-        }
-
         tensor->extra = extra;
 #ifdef GGML_OPENCL_USE_ADRENO_KERNELS
-        if (use_adreno_kernels(backend_ctx, tensor) && tensor->type != GGML_TYPE_Q5_K) { // 8-29 Q5_K skipped (trans4 already [kg][m])
+        if (use_adreno_kernels(backend_ctx, tensor)) {
 
             int M = tensor->ne[1];
             int K = tensor->ne[0];
@@ -7299,9 +7000,6 @@ static void ggml_backend_opencl_buffer_set_tensor(ggml_backend_buffer_t buffer, 
             GGML_ASSERT(K % 32 == 0);
 
             // Transpose q, d, dm as ushort, qh as uchar
-            // d/dm 每 256 权重(QK_K=256,K 系列超块)1 个 half:每行 K/256 个。
-            // 8-29 警示:勿改成 K/64!那是 QK_K=64 的旧系假设 —— 本 fork K 系列超块=256,
-            // K/64 会让转置越界读 → GEMM 输出全 NaN。
             transpose_2d_as_16b(backend_ctx, extra->q,  extra->q,  size_q,  K/4,   M);
             transpose_2d_as_8b (backend_ctx, extra->qh, extra->qh, size_qh, K/8,   M);
             transpose_2d_as_16b(backend_ctx, extra->d,  extra->d,  size_d,  K/256, M);
@@ -9033,13 +8731,13 @@ static void ggml_cl_copy_to_contiguous(ggml_backend_t backend, const ggml_tensor
 
     switch (src->type) {
         case GGML_TYPE_F32:
-            kernel = backend_ctx->kernel_cpy_f32_f32_pack;
+            kernel = backend_ctx->kernel_cpy_f32_f32;
             break;
         case GGML_TYPE_F16:
             kernel = backend_ctx->kernel_cpy_f16_f16;
             break;
         case GGML_TYPE_BF16: // stored as f32 on device (6.18: 防 fp16 精度崩坏)
-            kernel = backend_ctx->kernel_cpy_f32_f32_pack;
+            kernel = backend_ctx->kernel_cpy_f32_f32;
             break;
         default:
             GGML_ASSERT(false && "not implemented");
@@ -9068,28 +8766,7 @@ static void ggml_cl_copy_to_contiguous(ggml_backend_t backend, const ggml_tensor
 
     const int nth = MIN(64, ne00);
 
-    if (src->type == GGML_TYPE_F32 || src->type == GGML_TYPE_BF16) {
-        // 8-27 Klein 纯色图根因修复（二次校正）：非 pack 的 kernel_cpy_f32_f32 按
-        // get_group_id(0)=行号工作，但调用方给了 ne01*nth 个 workgroup（nth=64）→
-        // 组号超行 → 源/目标越界错位（attn.proj 等 b 端 view 连续化副本被写乱，
-        // 输出被削 → 纯色图）。kernel_cpy_f32_f32_pack 才是上游正解（每 workgroup
-        // 拷 rpw 行、nrows 全覆盖无越界），global size 照抄 ggml_cl_cpy 的同款调用。
-        const int maxwg = (int)backend_ctx->get_kernel_workgroup_size(kernel);
-        const int base  = MIN(64, maxwg);
-        const int tpr   = MIN(ne00, base);                 // threads per row
-        const int rpw   = MAX(1, base / tpr);              // rows per workgroup
-        const int lsz   = tpr * rpw;                       // <= base <= maxwg
-        const int nrows = ne01*ne02*ne03;
-        const int nwg   = (nrows + rpw - 1) / rpw;
-
-        size_t global_work_size[] = {(size_t)nwg*lsz, 1, 1};
-        size_t local_work_size[]  = {(size_t)lsz, 1, 1};
-
-        backend_ctx->enqueue_ndrange_kernel(kernel, 1, global_work_size, local_work_size, src);
-        return;
-    }
-
-    size_t global_work_size[] = {(size_t)ne01, (size_t)ne02, (size_t)ne03};
+    size_t global_work_size[] = {(size_t)ne01*nth, (size_t)ne02, (size_t)ne03};
     size_t local_work_size[] = {(size_t)nth, 1, 1};
 
     backend_ctx->enqueue_ndrange_kernel(kernel, 3, global_work_size, local_work_size, src);
@@ -9595,37 +9272,6 @@ static void ggml_cl_mul(ggml_backend_t backend, const ggml_tensor * src0, const 
     cl_ulong offset0 = extra0->offset + src0->view_offs;
     cl_ulong offset1 = extra1->offset + src1->view_offs;
     cl_ulong offsetd = extrad->offset + dst->view_offs;
-
-
-    // 8-28 MULPROBE: product 场景(src0=chunk view1 后半 9216 维,非连续)。
-    // 按行 stride 逐行读回 view(行内连续 d0 元素,行间 stride=nb[1])——
-    // 连续区间读会把跨行的下一半混进来,必须按 stride 读才是真 gate/up 内容。
-    if (backend_ctx->profiling_enabled && src0->type == GGML_TYPE_F32 &&
-        ne00 == 9216 && (ne01 == 512 || ne01 == 1536) &&
-        extra0->data_device != nullptr && extra1->data_device != nullptr) {
-        clFinish(backend_ctx->queue);
-        const int64_t nn = (int64_t)ne00 * ne01;
-        std::vector<float> s0((size_t)nn), s1((size_t)nn);
-        const cl_ulong s0str = src0->nb[1], s1str = src1->nb[1];
-        for (int64_t r = 0; r < ne01; r++) {
-            CL_CHECK(clEnqueueReadBuffer(backend_ctx->queue, extra0->data_device, CL_TRUE,
-                offset0 + r * s0str, (size_t)ne00 * 4, s0.data() + r * ne00, 0, NULL, NULL));
-            CL_CHECK(clEnqueueReadBuffer(backend_ctx->queue, extra1->data_device, CL_TRUE,
-                offset1 + r * s1str, (size_t)ne00 * 4, s1.data() + r * ne00, 0, NULL, NULL));
-        }
-        clFinish(backend_ctx->queue);
-        double s0s = 0, s0ss = 0, s1s = 0, s1ss = 0;
-        float s0mn = 1e30f, s0mx = -1e30f, s1mn = 1e30f, s1mx = -1e30f;
-        for (int64_t i2 = 0; i2 < nn; i2++) {
-            const float a = s0[i2], b = s1[i2];
-            if (std::isfinite(a)) { s0s += a; s0ss += (double)a * a; if (a < s0mn) s0mn = a; if (a > s0mx) s0mx = a; }
-            if (std::isfinite(b)) { s1s += b; s1ss += (double)b * b; if (b < s1mn) s1mn = b; if (b > s1mx) s1mx = b; }
-        }
-        const double m0 = s0s / nn, m1 = s1s / nn;
-        GGML_LOG_INFO("[MULPROBE] dst=%s ne=%d,%d s0min=%.3f s0max=%.3f s0std=%.4f | s1min=%.3f s1max=%.3f s1std=%.4f\n",
-            ggml_get_name(dst) != nullptr ? ggml_get_name(dst) : "(anon)", ne00, ne01,
-            s0mn, s0mx, (float)sqrt(s0ss / nn - m0 * m0), s1mn, s1mx, (float)sqrt(s1ss / nn - m1 * m1));
-    }
 
     bool bcast_row = false;
     cl_kernel kernel;
@@ -10624,7 +10270,7 @@ static void ggml_cl_rms_norm(ggml_backend_t backend, const ggml_tensor * src0, c
     } else if (backend_ctx->gpu_family == INTEL) {
         sgs = 32;
     } else {
-        sgs = 16;  // 08-20 Mali: subgroup size 16
+        GGML_ASSERT(false && "Unsupported GPU");
     }
 
     CL_CHECK(clSetKernelArg(kernel,  0, sizeof(cl_mem),    &extra0->data_device));
@@ -10711,7 +10357,7 @@ static void ggml_opencl_op_rms_norm_fused(ggml_backend_t backend, ggml_tensor * 
     } else if (backend_ctx->gpu_family == INTEL) {
         sgs = 32;
     } else {
-        sgs = 16;  // 08-20 Mali: subgroup size 16
+        GGML_ASSERT(false && "Unsupported GPU");
     }
 
     cl_kernel kernel = backend_ctx->kernel_rms_norm_mul;
@@ -10792,7 +10438,7 @@ static void ggml_opencl_op_norm_fused(ggml_backend_t backend, ggml_tensor * norm
     size_t sgs;
     if (backend_ctx->gpu_family == ADRENO) sgs = 64;
     else if (backend_ctx->gpu_family == INTEL) sgs = 32;
-    else sgs = 16;  // 08-20 Mali: subgroup size 16
+    else GGML_ASSERT(false && "Unsupported GPU");
 
     cl_kernel kernel = backend_ctx->kernel_norm_mul_add;
 
@@ -10925,7 +10571,7 @@ static void ggml_cl_group_norm(ggml_backend_t backend, const ggml_tensor * src0,
     } else if (backend_ctx->gpu_family == INTEL) {
         sgs = 32;
     } else {
-        sgs = 16;  // 08-20 Mali: subgroup size 16
+        GGML_ASSERT(false && "Unsupported GPU");
     }
 
     CL_CHECK(clSetKernelArg(kernel, 0, sizeof(cl_mem),   &extra0->data_device));
@@ -10970,7 +10616,7 @@ static void ggml_cl_l2_norm(ggml_backend_t backend, const ggml_tensor * src0, co
     } else if (backend_ctx->gpu_family == INTEL) {
         sgs = 32;
     } else {
-        sgs = 16;  // 08-20 Mali: subgroup size 16
+        GGML_ASSERT(false && "Unsupported GPU");
     }
 
     cl_kernel kernel = backend_ctx->kernel_l2_norm_f32;
@@ -13995,44 +13641,6 @@ static void ggml_cl_mul_mat_q5_K_f32_adreno(ggml_backend_t backend, const ggml_t
     cl_uchar mask_d4  = 0x0F;
     cl_uchar mask_hi2 = 0xC0;
 
-    // ENTRY probe (unconditional): proves whether this q5K function executes at all
-    const char * sname = ggml_get_name(src0);
-    GGML_LOG_INFO("[CTXPROBE] ENTER q5K-adreno src0=%s ne00=%d ne01=%d ne1=%d\n",
-        sname != nullptr ? sname : "?", ne00, ne01, ne1);
-
-    // 8-29 q5K-A: 权重 A 布局验证(txt_mlp.2/img_mlp.2 才打)——读 q/qh/s/d/dm 前 16 个元素,
-    // + d/dm 全数组 min/max(未初始化/越界必现 NaN/±inf)。K 系列超块=256 → 每行 K/256 个 d/dm。
-    if (sname != nullptr && (strstr(sname, "txt_mlp.2") != nullptr || strstr(sname, "img_mlp.2") != nullptr)) {
-        clFinish(backend_ctx->queue);
-        static const size_t qsz = 16 * sizeof(ggml_fp16_t);
-        ggml_fp16_t q0[16]; unsigned char qh0[16], s0[12]; ggml_fp16_t d0[8], dm0[8];
-        CL_CHECK(clEnqueueReadBuffer(backend_ctx->queue, extra0_q5_k->q,  CL_TRUE, 0, qsz,        q0,  0, NULL, NULL));
-        CL_CHECK(clEnqueueReadBuffer(backend_ctx->queue, extra0_q5_k->qh, CL_TRUE, 0, sizeof(qh0), qh0, 0, NULL, NULL));
-        CL_CHECK(clEnqueueReadBuffer(backend_ctx->queue, extra0_q5_k->s,  CL_TRUE, 0, sizeof(s0),  s0,  0, NULL, NULL));
-        CL_CHECK(clEnqueueReadBuffer(backend_ctx->queue, extra0_q5_k->d,  CL_TRUE, 0, sizeof(d0),  d0,  0, NULL, NULL));
-        CL_CHECK(clEnqueueReadBuffer(backend_ctx->queue, extra0_q5_k->dm, CL_TRUE, 0, sizeof(dm0), dm0, 0, NULL, NULL));
-        const size_t nd = (size_t)M * (K / 256);
-        std::vector<ggml_fp16_t> dv(nd), dmv(nd);
-        CL_CHECK(clEnqueueReadBuffer(backend_ctx->queue, extra0_q5_k->d,  CL_TRUE, 0, nd * sizeof(ggml_fp16_t), dv.data(),  0, NULL, NULL));
-        CL_CHECK(clEnqueueReadBuffer(backend_ctx->queue, extra0_q5_k->dm, CL_TRUE, 0, nd * sizeof(ggml_fp16_t), dmv.data(), 0, NULL, NULL));
-        clFinish(backend_ctx->queue);
-        float dmn = 1e30f, dmx = -1e30f, mmn = 1e30f, mmx = -1e30f;
-        double dsum = 0, msum = 0;
-        for (size_t z = 0; z < nd; z++) {
-            const float a = ggml_fp16_to_fp32(dv[z]), b = ggml_fp16_to_fp32(dmv[z]);
-            if (std::isfinite(a)) { if (a < dmn) dmn = a; if (a > dmx) dmx = a; dsum += a; }
-            if (std::isfinite(b)) { if (b < mmn) mmn = b; if (b > mmx) mmx = b; msum += b; }
-        }
-        GGML_LOG_INFO("[CTXPROBE] q5K-A src0=%s\n  q=%04x,%04x,%04x,%04x,%04x,%04x,%04x,%04x qh=%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x\n  s=%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x\n  d0=%.5f,%.5f,%.5f,%.5f dm0=%.5f,%.5f,%.5f,%.5f\n  d[%f..%f] mean=%.6f dm[%f..%f] mean=%.6f n=%zu\n",
-            sname,
-            (unsigned)q0[0], (unsigned)q0[1], (unsigned)q0[2], (unsigned)q0[3], (unsigned)q0[4], (unsigned)q0[5], (unsigned)q0[6], (unsigned)q0[7],
-            (unsigned)qh0[0], (unsigned)qh0[1], (unsigned)qh0[2], (unsigned)qh0[3], (unsigned)qh0[4], (unsigned)qh0[5], (unsigned)qh0[6], (unsigned)qh0[7],
-            (unsigned)s0[0], (unsigned)s0[1], (unsigned)s0[2], (unsigned)s0[3], (unsigned)s0[4], (unsigned)s0[5], (unsigned)s0[6], (unsigned)s0[7], (unsigned)s0[8], (unsigned)s0[9], (unsigned)s0[10], (unsigned)s0[11],
-            ggml_fp16_to_fp32(d0[0]), ggml_fp16_to_fp32(d0[1]), ggml_fp16_to_fp32(d0[2]), ggml_fp16_to_fp32(d0[3]),
-            ggml_fp16_to_fp32(dm0[0]), ggml_fp16_to_fp32(dm0[1]), ggml_fp16_to_fp32(dm0[2]), ggml_fp16_to_fp32(dm0[3]),
-            dmn, dmx, nd > 0 ? dsum / nd : 0.0, mmn, mmx, nd > 0 ? msum / nd : 0.0, nd);
-    }
-
     if (ne1 == 1) {
         cl_mem q_img  = nullptr;
         cl_mem qh_img = nullptr;
@@ -14104,31 +13712,6 @@ static void ggml_cl_mul_mat_q5_K_f32_adreno(ggml_backend_t backend, const ggml_t
         region.size   = K * N * sizeof(float);
         CL_CHECK((b_sub_buf = clCreateSubBuffer(extra1->data_device, 0, CL_BUFFER_CREATE_TYPE_REGION, &region, &err), err));
 
-        // 8-28 CLEAN b readback: clFinish all prior ops, then read the input buffer.
-        // At this point the producer (the op that wrote node_603 etc.) has finished and
-        // the GEMM has not started, so no ggml-alloc reuse can pollute the readback.
-        if (sname != nullptr &&
-            (strstr(sname, "txt_mlp.2") != nullptr || strstr(sname, "img_mlp.2") != nullptr)) {
-            clFinish(backend_ctx->queue);
-            std::vector<float> bbuf((size_t)(K * N));
-            CL_CHECK(clEnqueueReadBuffer(backend_ctx->queue, b_sub_buf, CL_TRUE,
-                0, (size_t)(K * N) * sizeof(float), bbuf.data(), 0, NULL, NULL));
-            clFinish(backend_ctx->queue);
-            double bs = 0, bss = 0; float bmn = 1e30f, bmx = -1e30f;
-            const int64_t bn = (int64_t)K * N;
-            for (int64_t z = 0; z < bn; z++) {
-                const float v = bbuf[z];
-                if (!std::isfinite(v)) continue;
-                bs += v; bss += (double)v * v;
-                if (v < bmn) bmn = v;
-                if (v > bmx) bmx = v;
-            }
-            const double bmean = bn > 0 ? bs / bn : 0.0;
-            const double bvar = bn > 0 ? bss / bn - bmean * bmean : 0.0;
-            GGML_LOG_INFO("[CTXPROBE] CLEAN b src0=%s ne=%lld,%lld min=%f max=%f mean=%f std=%f\n",
-                sname, (long long)K, (long long)N, bmn, bmx, bmean, bvar > 0 ? sqrt(bvar) : 0.0);
-        }
-
         // image for activations
         img_fmt = {CL_RGBA, CL_FLOAT};
         memset(&img_desc, 0, sizeof(img_desc));
@@ -14184,7 +13767,6 @@ static void ggml_cl_mul_mat_q5_K_f32_adreno(ggml_backend_t backend, const ggml_t
         CL_CHECK(clSetKernelArg(kernel,  2, sizeof(cl_mem),   &extra0_q5_k->s));
         CL_CHECK(clSetKernelArg(kernel,  3, sizeof(cl_mem),   &extra0_q5_k->d));
         CL_CHECK(clSetKernelArg(kernel,  4, sizeof(cl_mem),   &extra0_q5_k->dm));
-        // 8-28: src1_buf(arg6) removed after A/B2 rollback — original arg order restored
         CL_CHECK(clSetKernelArg(kernel,  5, sizeof(cl_mem),   &b_img_trans));
         CL_CHECK(clSetKernelArg(kernel,  6, sizeof(cl_mem),   &extrad->data_device));
         CL_CHECK(clSetKernelArg(kernel,  7, sizeof(cl_ulong), &offsetd));
@@ -14200,75 +13782,6 @@ static void ggml_cl_mul_mat_q5_K_f32_adreno(ggml_backend_t backend, const ggml_t
         size_t local_work_size[3]  = {1, 128, 1};
 
         backend_ctx->enqueue_ndrange_kernel(kernel, 3, global_work_size, local_work_size, dst);
-
-        // 8-29 q5K-BTRANS: B 转置正确性终审。
-        // b_img_trans(b_sub_buf_trans) = kernel_transpose_32_16 输出 [K][N] F16;
-        // b_sub_buf = 原始激活 [N][K] F32。正确时 trans[i] == b[i*K](⊙列)。
-        if (sname != nullptr &&
-            (strstr(sname, "txt_mlp.2") != nullptr || strstr(sname, "img_mlp.2") != nullptr ||
-             strstr(sname, "qkv") != nullptr)) {
-            clFinish(backend_ctx->queue);
-            std::vector<float> bcol(16);
-            for (int zz = 0; zz < 16 && zz < N; zz++) {
-                CL_CHECK(clEnqueueReadBuffer(backend_ctx->queue, b_sub_buf, CL_TRUE,
-                    (size_t)zz * K * sizeof(float), sizeof(float), &bcol[zz], 0, NULL, NULL));
-            }
-            ggml_fp16_t t0[16];
-            CL_CHECK(clEnqueueReadBuffer(backend_ctx->queue, b_sub_buf_trans, CL_TRUE,
-                0, 16 * sizeof(ggml_fp16_t), t0, 0, NULL, NULL));
-            clFinish(backend_ctx->queue);
-            GGML_LOG_INFO("[CTXPROBE] q5K-BTRANS src0=%s K=%d N=%d\n  bcol=%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f\n  trans=%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f\n",
-                sname, K, N,
-                bcol[0], bcol[1], bcol[2], bcol[3], bcol[4], bcol[5], bcol[6], bcol[7],
-                ggml_fp16_to_fp32(t0[0]), ggml_fp16_to_fp32(t0[1]), ggml_fp16_to_fp32(t0[2]), ggml_fp16_to_fp32(t0[3]),
-                ggml_fp16_to_fp32(t0[4]), ggml_fp16_to_fp32(t0[5]), ggml_fp16_to_fp32(t0[6]), ggml_fp16_to_fp32(t0[7]));
-        }
-
-        // CTXPROBE: read back input b for every q5_K GEMM (name shown)
-        clFinish(backend_ctx->queue);
-        std::vector<float> bbuf((size_t)(K * N));
-        CL_CHECK(clEnqueueReadBuffer(backend_ctx->queue, b_sub_buf, CL_TRUE,
-            0, (size_t)(K * N) * sizeof(float), bbuf.data(), 0, NULL, NULL));
-        clFinish(backend_ctx->queue);
-        double bs = 0, bss = 0; float bmn = 1e30f, bmx = -1e30f;
-        const int64_t bn = (int64_t)K * N;
-        for (int64_t z = 0; z < bn; z++) {
-            const float v = bbuf[z];
-            if (!std::isfinite(v)) continue;
-            bs += v; bss += (double)v * v;
-            if (v < bmn) bmn = v;
-            if (v > bmx) bmx = v;
-        }
-        const double bmean = bn > 0 ? bs / bn : 0.0;
-        const double bvar = bn > 0 ? bss / bn - bmean * bmean : 0.0;
-        GGML_LOG_INFO("[CTXPROBE] q5K-GEMM src0=%s ne=%lld,%lld min=%f max=%f mean=%f std=%f\n",
-            ggml_get_name(src0), (long long)K, (long long)N, bmn, bmx, bmean, bvar > 0 ? sqrt(bvar) : 0.0);
-
-        // 8-28 q5K-DST: GEMM 输出 dst 同步读回(GEMM 后立即读,无延迟/复用污染)。
-        // 与 CPU 侧 CPUDUMP(dst stats)直接对账——判定 GEMM 是否真压缩。
-        {
-            const int64_t dn = (int64_t)dst->ne[0] * dst->ne[1] * dst->ne[2] * dst->ne[3];
-            if (dn > 0 && dn <= 120LL * 1024 * 1024 / 4 && dst->type == GGML_TYPE_F32) {
-                std::vector<float> dbuf((size_t)dn);
-                CL_CHECK(clEnqueueReadBuffer(backend_ctx->queue, extrad->data_device, CL_TRUE,
-                    offsetd, (size_t)dn * sizeof(float), dbuf.data(), 0, NULL, NULL));
-                clFinish(backend_ctx->queue);
-                double ds = 0, dss = 0; float dmn = 1e30f, dmx = -1e30f;
-                for (int64_t z = 0; z < dn; z++) {
-                    const float v = dbuf[z];
-                    if (!std::isfinite(v)) continue;
-                    ds += v; dss += (double)v * v;
-                    if (v < dmn) dmn = v;
-                    if (v > dmx) dmx = v;
-                }
-                const double dmean = dn > 0 ? ds / dn : 0.0;
-                const double dvar = dn > 0 ? dss / dn - dmean * dmean : 0.0;
-                GGML_LOG_INFO("[CTXPROBE] q5K-DST src0=%s dst=%s ne=%lld,%lld,%lld,%lld min=%f max=%f mean=%f std=%f\n",
-                    ggml_get_name(src0), ggml_get_name(dst) != nullptr ? ggml_get_name(dst) : "(anon)",
-                    (long long)dst->ne[0], (long long)dst->ne[1], (long long)dst->ne[2], (long long)dst->ne[3],
-                    dmn, dmx, dmean, dvar > 0 ? sqrt(dvar) : 0.0);
-            }
-        }
 
         CL_CHECK(clReleaseMemObject(b_sub_buf));
         CL_CHECK(clReleaseMemObject(b_sub_buf_trans));
@@ -14299,17 +13812,6 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
 
     ggml_tensor_extra_cl * extra0 = (ggml_tensor_extra_cl *)src0->extra;
     ggml_tensor_extra_cl * extra1 = (ggml_tensor_extra_cl *)src1->extra;
-    // 8-29 SRC1VIEW: src1 视图/偏移取证(两个内核共享!)——名字+ne+view_offs+offset
-    {
-        const char * s1n = ggml_get_name(src1);
-        const char * s0n = ggml_get_name(src0);
-        if (s0n != nullptr && (strstr(s0n, "txt_mlp.2") != nullptr || strstr(s0n, "qkv") != nullptr)) {
-            GGML_LOG_INFO("[CTXPROBE] SRC1VIEW src0=%s src1=%s src1ne=%lld,%lld view_offs=%lld offset=%lld data_dbg=%p\n",
-                s0n, s1n != nullptr ? s1n : "?", (long long)src1->ne[0], (long long)src1->ne[1],
-                (long long)src1->view_offs, (long long)extra1->offset, (void*)extra1->data_device);
-        }
-    }
-
     ggml_tensor_extra_cl * extrad = (ggml_tensor_extra_cl *)dst->extra;
 
     cl_ulong offset0 = extra0->offset + (src0->type == GGML_TYPE_BF16 ? src0->view_offs * 2 : src0->view_offs);
@@ -14340,18 +13842,6 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
     int r3 = ne13/ne03;
 
     GGML_ASSERT(ne00 == ne10);
-
-    // 8-27 Klein GPU 专项探针（用后即撤）：GGML_OPENCL_PROFILE=1 时逐 mul_mat 打印
-    // src0/src1/dst 的 name/type/shape/stride，与 cl_profiling.csv 的 kernel 行按顺序对齐，
-    // 供 CPU/OpenCL 逐 op diff 定位 FLUX.2(K=7680/128, 32ch patchify) 出错算子。
-    if (backend_ctx->profiling_enabled) {
-        GGML_LOG_INFO("[CLPROF] mm a=%s:t%d:ne=%d,%d,%d,%d:nb=%llu,%llu,%llu,%llu b=%s:t%d:ne=%d,%d,%d,%d:nb=%llu,%llu,%llu,%llu d=%s:ne=%d,%d,%d,%d\n",
-            ggml_get_name(src0), (int)src0t, ne00, ne01, ne02, ne03,
-            (unsigned long long)nb00, (unsigned long long)nb01, (unsigned long long)nb02, (unsigned long long)nb03,
-            ggml_get_name(src1), (int)src1t, ne10, ne11, ne12, ne13,
-            (unsigned long long)nb10, (unsigned long long)nb11, (unsigned long long)nb12, (unsigned long long)nb13,
-            ggml_get_name(dst), ne0, ne1, ne2, ne3);
-    }
 
     int nth0 = 32;
     int nth1 = 1;
@@ -14441,7 +13931,7 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
             return;
         }
 
-        // q5_K x fp32 —— 8-29 定谳:adreno 路径恢复(convert 已改 shuffle 直拷)
+        // q5_K x fp32
         if (src0t == GGML_TYPE_Q5_K && src1t == GGML_TYPE_F32) {
             ggml_cl_mul_mat_q5_K_f32_adreno(backend, src0, src1, dst);
             return;
@@ -15025,11 +14515,7 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
 
                     kernel = backend_ctx->kernel_mul_mat_q4_0_f32_1d_8x_flat;
                 } else {
-                    // 08-20 Mali: 同 Intel（16-lane kernel 对齐 subgroup 16）
-                    nth0 = 16;
-                    nth1 = 1;
-
-                    kernel = backend_ctx->kernel_mul_mat_q4_0_f32_1d_16x_flat;
+                    GGML_ASSERT(false && "TODO: Unknown GPU");
                 }
 
                 CL_CHECK(clSetKernelArg(kernel,  0, sizeof(cl_mem),   &extra0_q4_0->q));
@@ -15074,21 +14560,11 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
 
     // use custom matrix x vector kernel
     switch (src0t) {
-        case GGML_TYPE_F32: {
+        case GGML_TYPE_F32:
             //GGML_ASSERT(ne02 == ne12);
             GGML_ASSERT(src1t == GGML_TYPE_F32);
             kernel = backend_ctx->kernel_mul_mat_f32_f32;
             nrows = 4;
-
-            // 8-27 Klein 马赛克根因修复：BF16 权重设备侧按 F32 存储（cpy_f32_f32 转换，
-            // 见 8869 行注释），此 GEMV 内核用 nb01 字节步长定位权重行——BF16 CPU 步长
-            // 未换算（行距只有 F32 的一半）→ 行定位错位一半 → 输出混合压扁
-            // （double_stream_modulation 等 M=1 GEMV 实测 std 压扁 60 倍，马赛克根因）。
-            // 换算：全部 nb ×2（BF16 2 字节 → 设备 F32 4 字节）。
-            cl_ulong g_nb00 = nb00, g_nb01 = nb01, g_nb02 = nb02, g_nb03 = nb03;
-            if (src0->type == GGML_TYPE_BF16) {
-                g_nb00 *= 2; g_nb01 *= 2; g_nb02 *= 2; g_nb03 *= 2;
-            }
 
             if (backend_ctx->gpu_family == INTEL) {
                 nth0 = 32;
@@ -15097,8 +14573,7 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
                 nth0 = 64;
                 nth1 = 1;
             } else {
-                nth0 = 32;  // 08-20 Mali: subgroup size 16, mirror INTEL
-                nth1 = 1;
+                GGML_ASSERT(false && "TODO: Unknown GPU");
             }
 
             CL_CHECK(clSetKernelArg(kernel,  0, sizeof(cl_mem),   &extra0->data_device));
@@ -15110,10 +14585,10 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
             CL_CHECK(clSetKernelArg(kernel,  6, sizeof(int),      &ne00));
             CL_CHECK(clSetKernelArg(kernel,  7, sizeof(int),      &ne01));
             CL_CHECK(clSetKernelArg(kernel,  8, sizeof(int),      &ne02));
-            CL_CHECK(clSetKernelArg(kernel,  9, sizeof(cl_ulong), &g_nb00));
-            CL_CHECK(clSetKernelArg(kernel, 10, sizeof(cl_ulong), &g_nb01));
-            CL_CHECK(clSetKernelArg(kernel, 11, sizeof(cl_ulong), &g_nb02));
-            CL_CHECK(clSetKernelArg(kernel, 12, sizeof(cl_ulong), &g_nb03));
+            CL_CHECK(clSetKernelArg(kernel,  9, sizeof(cl_ulong), &nb00));
+            CL_CHECK(clSetKernelArg(kernel, 10, sizeof(cl_ulong), &nb01));
+            CL_CHECK(clSetKernelArg(kernel, 11, sizeof(cl_ulong), &nb02));
+            CL_CHECK(clSetKernelArg(kernel, 12, sizeof(cl_ulong), &nb03));
             CL_CHECK(clSetKernelArg(kernel, 13, sizeof(int),      &ne10));
             CL_CHECK(clSetKernelArg(kernel, 14, sizeof(int),      &ne11));
             CL_CHECK(clSetKernelArg(kernel, 15, sizeof(int),      &ne12));
@@ -15126,7 +14601,6 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
             CL_CHECK(clSetKernelArg(kernel, 22, sizeof(int),      &r2));
             CL_CHECK(clSetKernelArg(kernel, 23, sizeof(int),      &r3));
             break;
-        }
         case GGML_TYPE_F16:
             //GGML_ASSERT(ne02 == ne12);
             if (backend_ctx->gpu_family == INTEL) {
@@ -15136,9 +14610,7 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
                 nth0 = 64;
                 nth1 = 1;
             } else {
-                // 08-20 Mali: mirror INTEL (subgroup size 16)
-                nth0 = 32;
-                nth1 = 1;
+                GGML_ASSERT(false && "TODO: Unknown GPU");
             }
 
             if (src1t == GGML_TYPE_F32) {
@@ -15220,10 +14692,7 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
                 kernel = backend_ctx->kernel_mul_mat_q4_0_f32_8x_flat;
                 ndst =8;
             } else {
-                // 08-20 Mali: mirror INTEL (subgroup size 16)
-                nth0 = 16;
-                nth1 = 1;
-                ndst = 8;
+                GGML_ASSERT(false && "TODO: Unknown GPU");
             }
 
             CL_CHECK(clSetKernelArg(kernel,  0, sizeof(cl_mem),   &extra0_q4_0->q));
@@ -15259,10 +14728,7 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
                 kernel = backend_ctx->kernel_mul_mat_q4_0_f32_v;
                 ndst = 4;
             } else {
-                // 08-20 Mali: mirror INTEL (subgroup size 16)
-                nth0 = 16;
-                nth1 = 1;
-                ndst = 4;
+                GGML_ASSERT(false && "TODO: Unknown GPU");
             }
 
             CL_CHECK(clSetKernelArg(kernel,  0, sizeof(cl_mem),   &extra0->data_device));
@@ -15293,10 +14759,7 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
                 nth1 = 1;
                 ndst = 4;
             } else {
-                // 08-20 Mali: mirror INTEL (subgroup size 16)
-                nth0 = 16;
-                nth1 = 1;
-                ndst = 4;
+                GGML_ASSERT(false && "TODO: Unknown GPU");
             }
 
             kernel = backend_ctx->kernel_mul_mv_q4_1_f32_flat;
@@ -15327,10 +14790,7 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
                 nth1 = 1;
                 ndst = 4;
             } else {
-                // 08-20 Mali: mirror INTEL (subgroup size 16)
-                nth0 = 16;
-                nth1 = 1;
-                ndst = 4;
+                GGML_ASSERT(false && "TODO: Unknown GPU");
             }
 
             kernel = backend_ctx->kernel_mul_mv_q4_1_f32;
@@ -15364,10 +14824,7 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
                 nth1 = 1;
                 ndst = 4;
             } else {
-                // 08-20 Mali: mirror INTEL (subgroup size 16)
-                nth0 = 16;
-                nth1 = 1;
-                ndst = 4;
+                GGML_ASSERT(false && "TODO: Unknown GPU");
             }
 
             kernel = backend_ctx->kernel_mul_mv_q5_0_f32_flat;
@@ -15398,10 +14855,7 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
                 nth1 = 1;
                 ndst = 4;
             } else {
-                // 08-20 Mali: mirror INTEL (subgroup size 16)
-                nth0 = 16;
-                nth1 = 1;
-                ndst = 4;
+                GGML_ASSERT(false && "TODO: Unknown GPU");
             }
 
             kernel = backend_ctx->kernel_mul_mv_q5_0_f32;
@@ -15435,10 +14889,7 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
                 nth1 = 1;
                 ndst = 4;
             } else {
-                // 08-20 Mali: mirror INTEL (subgroup size 16)
-                nth0 = 16;
-                nth1 = 1;
-                ndst = 4;
+                GGML_ASSERT(false && "TODO: Unknown GPU");
             }
 
             kernel = backend_ctx->kernel_mul_mv_q5_1_f32_flat;
@@ -15470,10 +14921,7 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
                 nth1 = 1;
                 ndst = 4;
             } else {
-                // 08-20 Mali: mirror INTEL (subgroup size 16)
-                nth0 = 16;
-                nth1 = 1;
-                ndst = 4;
+                GGML_ASSERT(false && "TODO: Unknown GPU");
             }
 
             kernel = backend_ctx->kernel_mul_mv_q5_1_f32;
@@ -15512,9 +14960,7 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
                 nth1 = 2;
                 ndst = nth1*4;
             } else {
-                // 08-20 Mali: mirror INTEL (subgroup size 16)
-                nth0 = 16;
-                nth1 = 2;
+                GGML_ASSERT(false && "TODO: Unknown GPU");
             }
 
             CL_CHECK(clSetKernelArg(kernel,  0, sizeof(cl_mem),   &extra0_q8_0->q));
@@ -15551,9 +14997,7 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
                 nth1 = 2;
                 ndst = nth1*4;
             } else {
-                // 08-20 Mali: mirror INTEL (subgroup size 16)
-                nth0 = 16;
-                nth1 = 2;
+                GGML_ASSERT(false && "TODO: Unknown GPU");
             }
 
             CL_CHECK(clSetKernelArg(kernel,  0, sizeof(cl_mem),   &extra0->data_device));
@@ -15591,10 +15035,7 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
                 nth1 = 1;
                 ndst = 8;
             } else {
-                // 08-20 Mali: mirror INTEL (subgroup size 16)
-                nth0 = 16;
-                nth1 = 1;
-                ndst = 8;
+                GGML_ASSERT(false && "TODO: Unknown GPU");
             }
 
             CL_CHECK(clSetKernelArg(kernel,  0, sizeof(cl_mem),   &extra0_iq4_nl->q));
@@ -15624,10 +15065,7 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
                 nth1 = 1;
                 ndst = 4;
             } else {
-                // 08-20 Mali: mirror INTEL (subgroup size 16)
-                nth0 = 16;
-                nth1 = 1;
-                ndst = 4;
+                GGML_ASSERT(false && "TODO: Unknown GPU");
             }
 
             CL_CHECK(clSetKernelArg(kernel,  0, sizeof(cl_mem),   &extra0->data_device));
@@ -15663,10 +15101,7 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
                 nth1 = 2;
                 ndst = 16;
             } else {
-                // 08-20 Mali: mirror INTEL (subgroup size 16)
-                nth0 = 16;
-                nth1 = 1;
-                ndst = 4;
+                GGML_ASSERT(false && "TODO: Unknown GPU");
             }
 
             CL_CHECK(clSetKernelArg(kernel,  0, sizeof(cl_mem),   &extra0_q4_K->q));
@@ -15702,11 +15137,7 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
                 nth1 = 1;
                 ndst = 4;
             } else {
-                // 08-20 Mali: mirror INTEL (subgroup size 16)
-                // 8-24 B1 var1 reverted after measurement (N_SIMDGROUP=2: 114.5 vs 113 s/step, no gain).
-                nth0 = 16;
-                nth1 = 1;
-                ndst = 4;
+                GGML_ASSERT(false && "TODO: Unknown GPU");
             }
 
             CL_CHECK(clSetKernelArg(kernel,  0, sizeof(cl_mem),     &extra0->data_device));
@@ -15744,10 +15175,7 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
                 nth1 = 2;
                 ndst = 16;
             } else {
-                // 08-20 Mali: mirror INTEL (subgroup size 16)
-                nth0 = 16;
-                nth1 = 1;
-                ndst = 4;
+                GGML_ASSERT(false && "TODO: Unknown GPU");
             }
 
             CL_CHECK(clSetKernelArg(kernel,  0, sizeof(cl_mem),   &extra0_q5_K->q));
@@ -15784,10 +15212,7 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
                 nth1 = 1;
                 ndst = 4;
             } else {
-                // 08-20 Mali: mirror INTEL (subgroup size 16)
-                nth0 = 16;
-                nth1 = 1;
-                ndst = 4;
+                GGML_ASSERT(false && "TODO: Unknown GPU");
             }
 
             CL_CHECK(clSetKernelArg(kernel,  0, sizeof(cl_mem),   &extra0->data_device));
@@ -15825,10 +15250,7 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
                 nth1 = 2;
                 ndst = 16;
             } else {
-                // 08-20 Mali: mirror INTEL (subgroup size 16)
-                nth0 = 16;
-                nth1 = 2;
-                ndst = 4;
+                GGML_ASSERT(false && "TODO: Unknown GPU");
             }
 
             CL_CHECK(clSetKernelArg(kernel,  0, sizeof(cl_mem),   &extra0_q6_K->ql));
@@ -15860,10 +15282,7 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
                 nth1 = 2;
                 ndst = 1;
             } else {
-                // 08-20 Mali: mirror INTEL (subgroup size 16)
-                nth0 = 16;
-                nth1 = 2;
-                ndst = 1;
+                GGML_ASSERT(false && "TODO: Unknown GPU");
             }
 
             CL_CHECK(clSetKernelArg(kernel,  0, sizeof(cl_mem),   &extra0->data_device));
@@ -15901,9 +15320,7 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
 
                 q = extra0_mxfp4->q_img;
             } else {
-                // 08-20 Mali: mirror INTEL (subgroup size 16)
-                nth0 = 16;
-                nth1 = 2;
+                GGML_ASSERT(false && "TODO: Unknown GPU");
             }
 
             CL_CHECK(clSetKernelArg(kernel,  0, sizeof(cl_mem),   &q));
@@ -15936,9 +15353,7 @@ static void ggml_cl_mul_mat(ggml_backend_t backend, const ggml_tensor * src0, co
                 nth1 = 2;
                 ndst = nth1*2;
             } else {
-                // 08-20 Mali: mirror INTEL (subgroup size 16)
-                nth0 = 16;
-                nth1 = 2;
+                GGML_ASSERT(false && "TODO: Unknown GPU");
             }
 
             CL_CHECK(clSetKernelArg(kernel,  0, sizeof(cl_mem),   &extra0->data_device));
@@ -16425,10 +15840,7 @@ static void ggml_cl_mul_mat_id(ggml_backend_t backend, const ggml_tensor * src0,
                 nsg  = 1;
                 ndst = 8;
             } else {
-                // 08-20 Mali: mirror INTEL (subgroup size 16)
-                sgs  = 16;
-                nsg  = 1;
-                ndst = 8;
+                GGML_ASSERT(false && "TODO: Unknown GPU");
             }
 
             CL_CHECK(clSetKernelArg(kernel,  0, sizeof(cl_mem),   &extra0_q4_0->q));
@@ -17001,10 +16413,7 @@ static void ggml_cl_mul_mat_id(ggml_backend_t backend, const ggml_tensor * src0,
                 nsg  = 2;
                 ndst = 4;
             } else {
-                // 08-20 Mali: mirror INTEL (subgroup size 16)
-                sgs  = 16;
-                nsg  = 2;
-                ndst = 4;
+                GGML_ASSERT(false && "TODO: Unknown GPU");
             }
 
             CL_CHECK(clSetKernelArg(kernel,  0, sizeof(cl_mem),   &extra0_q8_0->q));
@@ -17040,10 +16449,7 @@ static void ggml_cl_mul_mat_id(ggml_backend_t backend, const ggml_tensor * src0,
                 nsg  = 2;
                 ndst = 4;
             } else {
-                // 08-20 Mali: mirror INTEL (subgroup size 16)
-                sgs  = 16;
-                nsg  = 2;
-                ndst = 4;
+                GGML_ASSERT(false && "TODO: Unknown GPU");
             }
 
             CL_CHECK(clSetKernelArg(kernel,  0, sizeof(cl_mem),   &extra0->data_device));
@@ -17788,10 +17194,7 @@ static void ggml_cl_mul_mat_id(ggml_backend_t backend, const ggml_tensor * src0,
 
                 q = extra0_mxfp4->q_img;
             } else {
-                // 08-20 Mali: mirror INTEL (subgroup size 16)
-                sgs  = 16;
-                nsg  = 2;
-                ndst = 2;
+                GGML_ASSERT(false && "TODO: Unknown GPU");
             }
 
             CL_CHECK(clSetKernelArg(kernel,  0, sizeof(cl_mem),   &q));
@@ -17830,10 +17233,7 @@ static void ggml_cl_mul_mat_id(ggml_backend_t backend, const ggml_tensor * src0,
                 nsg  = 2;
                 ndst = 2;
             } else {
-                // 08-20 Mali: mirror INTEL (subgroup size 16)
-                sgs  = 16;
-                nsg  = 2;
-                ndst = 2;
+                GGML_ASSERT(false && "TODO: Unknown GPU");
             }
 
             CL_CHECK(clSetKernelArg(kernel,  0, sizeof(cl_mem),   &extra0->data_device));
@@ -18318,8 +17718,7 @@ static void ggml_cl_soft_max(ggml_backend_t backend, const ggml_tensor * src0, c
     else if (backend_ctx->gpu_family == ADRENO) {
         nth = 64;
     } else {
-        // 08-20 Mali: subgroup size 16
-        nth = MIN(16, ne00);
+        GGML_ASSERT(false && "TODO: Unknown GPU");
     }
 
     cl_kernel kernel;
@@ -19167,8 +18566,8 @@ static void ggml_cl_gated_delta_net(ggml_backend_t backend, ggml_tensor * dst) {
     // Subgroup size is 64 for Adreno and 32 for Intel
     const int sg_size = backend_ctx->gpu_family == GPU_FAMILY::ADRENO ? 64 : backend_ctx->gpu_family == GPU_FAMILY::INTEL ? 32 : -1;
     if (sg_size < 0) {
-        // 08-20 Mali: 与编译块一致，不再 exit(1)（静态析构 mutex 竞态 → FORTIFY abort）
-        throw std::runtime_error("gated_delta_net execution requires Adreno or Intel GPU");
+        GGML_LOG_ERROR("Unsupported GPU Family: only Adreno and Intel are supported.\n");
+        exit(1);
     }
 
     // For the subgroup-shuffle kernel, we can safely prefer 8 lanes/column for S_v>=128

@@ -41,11 +41,6 @@ typedef struct {
 #define N_DST       4
 #define N_SIMDGROUP 1
 #define N_SIMDWIDTH 16
-#elif defined (MALI_GPU)
-// 08-20 Mali: subgroup size 16, values mirror INTEL_GPU
-#define N_DST 4
-#define N_SIMDGROUP 1
-#define N_SIMDWIDTH 16
 #elif defined(ADRENO_GPU)
 #define N_DST       16
 #define N_SIMDGROUP 2

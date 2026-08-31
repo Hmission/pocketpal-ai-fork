@@ -1,23 +1,4 @@
 #pragma OPENCL EXTENSION cl_khr_fp16 : enable
-#ifdef GGML_OPENCL_DESKTOP_REPRO
-// 8-27 desktop repro hack: global -Dhalf=float would inflate fp16 d/dm fields to
-// 4B and shift every field of the block/stride layout. Keep 2-byte layout with
-// ushort and convert bit patterns to float at read points.
-#undef half
-#define half ushort
-static inline float fp16_bits_to_float(ushort h) {
-    uint s  = (h >> 15) & 0x1u;
-    uint e  = (h >> 10) & 0x1Fu;
-    uint m  = h & 0x3FFu;
-    uint f;
-    if (e == 0) {
-        if (m == 0) { f = s << 31; }
-        else { e = 113; while ((m & 0x400u) == 0) { m <<= 1; e--; } f = (s << 31) | (e << 23) | ((m & 0x3FFu) << 13); }
-    } else if (e == 31) { f = (s << 31) | 0x7F800000u | (m << 13); }
-    else { f = (s << 31) | ((e + 112u) << 23) | (m << 13); }
-    return as_float(f);
-}
-#endif
 
 #define LOAD_VEC_A 4
 #define LOAD_VEC_B 4
@@ -27,17 +8,6 @@ static inline float fp16_bits_to_float(ushort h) {
 #define BK 32
 #define TM 4
 #define TN 8
-
-// 8-25 B2-correct: Mali fp16 variant for the tiled GEMM hot path ([CLPROF] 55.6%).
-// half local buffers (halves local-mem traffic) + half multiply, fp32 accumulate.
-// Gate: -DPP_MALI_FP16_LM, runtime env GGML_OPENCL_MALI_FP16_LM (unset = original).
-#ifdef PP_MALI_FP16_LM
-typedef half pp_buf_t;
-#define PP_STORE(x) ((half)(x))
-#else
-typedef float pp_buf_t;
-#define PP_STORE(x) (x)
-#endif
 
 kernel void kernel_mul_mm_q4_k_f32_l4_lm(
     global uchar4 * src0_q,
@@ -69,8 +39,8 @@ kernel void kernel_mul_mm_q4_k_f32_l4_lm(
     src1 = (global float4*)((global char*)src1 + offset1);
     dst  = (global float *)((global char*)dst  + offsetd);
 
-    local pp_buf_t buf_a[BM * BK];
-    local pp_buf_t buf_b[BN * BK];
+    local float buf_a[BM * BK];
+    local float buf_b[BN * BK];
 
     const int batch_idx = get_global_id(2);
 
@@ -101,8 +71,8 @@ kernel void kernel_mul_mm_q4_k_f32_l4_lm(
     int pos_b = (batch_idx   * batch_stride_b + ic * BN * stride_b) / LOAD_VEC_B;
 
     float sums[TM * TN];
-    pp_buf_t cache_a[TM];
-    pp_buf_t cache_b[TN];
+    float cache_a[TM];
+    float cache_b[TN];
 
     for (int i = 0; i < TM * TN; i++) {
         sums[i] = 0.0f;
@@ -136,42 +106,37 @@ kernel void kernel_mul_mm_q4_k_f32_l4_lm(
                 uchar sc    = (scales[scidx0] & 0xF) | ((scales[scidx1] & scidxmask1) >> scidxshift1);
                 uchar mbyte = ((scales[mbidx0] & mbidxmask0) >> mbidxshift0) | ((scales[mbidx1] & mbidxmask1) >> mbidxshift1);
 
-#ifdef GGML_OPENCL_DESKTOP_REPRO
-                float d =  fp16_bits_to_float(src0_d[ib]) * (float)sc;
-                float m = -fp16_bits_to_float(src0_dm[ib]) * (float)mbyte;
-#else
                 float d =  (float)src0_d[ib]  * (float)sc;
                 float m = -(float)src0_dm[ib] * (float)mbyte;
-#endif
 
                 global uchar4 * qs = src0_q + ib*32 + (qsi >> 2);
                 uchar4 q = *qs;
                 float4 v1 = (convert_float4((uchar4)((q.s0 >> (b * 4))&0x0F, (q.s1 >> (b * 4))&0x0F, (q.s2 >> (b * 4))&0x0F, (q.s3 >> (b * 4))&0x0F)))*d + m;
 
-                buf_a[(loadr_a * LOAD_VEC_A + 0) * BM + loadc_a + l] = PP_STORE(v1.s0);
-                buf_a[(loadr_a * LOAD_VEC_A + 1) * BM + loadc_a + l] = PP_STORE(v1.s1);
-                buf_a[(loadr_a * LOAD_VEC_A + 2) * BM + loadc_a + l] = PP_STORE(v1.s2);
-                buf_a[(loadr_a * LOAD_VEC_A + 3) * BM + loadc_a + l] = PP_STORE(v1.s3);
+                buf_a[(loadr_a * LOAD_VEC_A + 0) * BM + loadc_a + l] = v1.s0;
+                buf_a[(loadr_a * LOAD_VEC_A + 1) * BM + loadc_a + l] = v1.s1;
+                buf_a[(loadr_a * LOAD_VEC_A + 2) * BM + loadc_a + l] = v1.s2;
+                buf_a[(loadr_a * LOAD_VEC_A + 3) * BM + loadc_a + l] = v1.s3;
             } else {
-                buf_a[(loadr_a * LOAD_VEC_A + 0) * BM + loadc_a + l] = PP_STORE(0.0f);
-                buf_a[(loadr_a * LOAD_VEC_A + 1) * BM + loadc_a + l] = PP_STORE(0.0f);
-                buf_a[(loadr_a * LOAD_VEC_A + 2) * BM + loadc_a + l] = PP_STORE(0.0f);
-                buf_a[(loadr_a * LOAD_VEC_A + 3) * BM + loadc_a + l] = PP_STORE(0.0f);
+                buf_a[(loadr_a * LOAD_VEC_A + 0) * BM + loadc_a + l] = 0.0f;
+                buf_a[(loadr_a * LOAD_VEC_A + 1) * BM + loadc_a + l] = 0.0f;
+                buf_a[(loadr_a * LOAD_VEC_A + 2) * BM + loadc_a + l] = 0.0f;
+                buf_a[(loadr_a * LOAD_VEC_A + 3) * BM + loadc_a + l] = 0.0f;
             }
         }
 
         for (int l = 0; l < BN; l += loadstride_b) {
             if (ic*BN + loadc_b + l < ne11) {
                 int idx = pos_b + (loadc_b + l) * stride_b / LOAD_VEC_B + loadr_b;
-                buf_b[(loadr_b * LOAD_VEC_B + 0) * BN + loadc_b + l] = PP_STORE(src1[idx].s0);
-                buf_b[(loadr_b * LOAD_VEC_B + 1) * BN + loadc_b + l] = PP_STORE(src1[idx].s1);
-                buf_b[(loadr_b * LOAD_VEC_B + 2) * BN + loadc_b + l] = PP_STORE(src1[idx].s2);
-                buf_b[(loadr_b * LOAD_VEC_B + 3) * BN + loadc_b + l] = PP_STORE(src1[idx].s3);
+                buf_b[(loadr_b * LOAD_VEC_B + 0) * BN + loadc_b + l] = src1[idx].s0;
+                buf_b[(loadr_b * LOAD_VEC_B + 1) * BN + loadc_b + l] = src1[idx].s1;
+                buf_b[(loadr_b * LOAD_VEC_B + 2) * BN + loadc_b + l] = src1[idx].s2;
+                buf_b[(loadr_b * LOAD_VEC_B + 3) * BN + loadc_b + l] = src1[idx].s3;
             } else {
-                buf_b[(loadr_b * LOAD_VEC_B + 0) * BN + loadc_b + l] = PP_STORE(0.0f);
-                buf_b[(loadr_b * LOAD_VEC_B + 1) * BN + loadc_b + l] = PP_STORE(0.0f);
-                buf_b[(loadr_b * LOAD_VEC_B + 2) * BN + loadc_b + l] = PP_STORE(0.0f);
-                buf_b[(loadr_b * LOAD_VEC_B + 3) * BN + loadc_b + l] = PP_STORE(0.0f);
+                buf_b[(loadr_b * LOAD_VEC_B + 0) * BN + loadc_b + l] = 0.0f;
+                buf_b[(loadr_b * LOAD_VEC_B + 1) * BN + loadc_b + l] = 0.0f;
+                buf_b[(loadr_b * LOAD_VEC_B + 2) * BN + loadc_b + l] = 0.0f;
+                buf_b[(loadr_b * LOAD_VEC_B + 3) * BN + loadc_b + l] = 0.0f;
             }
         }
 
@@ -192,12 +157,7 @@ kernel void kernel_mul_mm_q4_k_f32_l4_lm(
             for (int cc = 0; cc < TN; cc++) {
                 for (int cr = 0; cr < TM; cr++) {
                     const int sums_idx = cc*TM + cr;
-#ifdef PP_MALI_FP16_LM
-                    // half multiply on the fp16 pipe, fp32 accumulate (6.18 NaN lesson).
-                    sums[sums_idx] += (float)(cache_a[cr] * cache_b[cc]);
-#else
                     sums[sums_idx] = mad(cache_a[cr], cache_b[cc], sums[sums_idx]);
-#endif
                 }
             }
         }
