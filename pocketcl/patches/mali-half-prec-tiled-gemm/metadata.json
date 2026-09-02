@@ -9,15 +9,29 @@
     "android/app/src/main/cpp/stable-diffusion.cpp/ggml/src/ggml-opencl/ggml-opencl.cpp"
   ],
   "carrierCommit": null,
-  "carrierNote": "嵌套仓库 .git 已剥离，无法本地 diff 上游基线；以 map.md 改动地图为准",
+  "carrierNote": "2026-09-02 已通过镜像工作树（ggml master 共同历史）提交 PR#1612；语义移植基线 ggml master（d471637），非 v0.15.3",
   "hunks": [
-    { "files": "4 个 l4_lm 内核 .cl", "lines": "文件头 31-37 或 12-19", "what": "pp_buf_t 抽象：PP_MALI_FP16_LM 下 half 缓冲 + PP_STORE 强转；否则 float（原行为）" },
-    { "files": "4 个 l4_lm 内核 .cl", "lines": "accumulate 段 195-197/208-210/155-157/138-140", "what": "half 乘法（fp16 pipe）+ fp32 累加（sums 恒 float，6.18 NaN 事故铁律）" },
-    { "files": "ggml-opencl.cpp", "lines": "1213-1217", "what": "编译门控：env GGML_OPENCL_MALI_FP16_LM 存在 -> -DPP_MALI_FP16_LM" }
+    {
+      "files": "4 个 l4_lm 内核 .cl",
+      "lines": "文件头 31-37 或 12-19",
+      "what": "pp_buf_t 抽象：PP_MALI_FP16_LM 下 half 缓冲 + PP_STORE 强转；否则 float（原行为）"
+    },
+    {
+      "files": "4 个 l4_lm 内核 .cl",
+      "lines": "accumulate 段 195-197/208-210/155-157/138-140",
+      "what": "half 乘法（fp16 pipe）+ fp32 累加（sums 恒 float，6.18 NaN 事故铁律）"
+    },
+    {
+      "files": "ggml-opencl.cpp",
+      "lines": "1213-1217",
+      "what": "编译门控：env GGML_OPENCL_MALI_FP16_LM 存在 -> -DPP_MALI_FP16_LM"
+    }
   ],
   "envGate": "GGML_OPENCL_MALI_FP16_LM（运行期 env 门控，unset = 原 float 行为）",
   "evidence": "K Pad(Mali-G925)：512² 24.2s/步 vs 原 2.86x；512x768 33s/步 vs 原 3.42x；nan=0、值域 ±5 画质无损；2026-06-18 全 fp16 累积 NaN 事故为此放弃 half 累加",
   "upstreamTarget": "ggml（stable-diffusion.cpp 内置 ggml 的 ggml-opencl backend）",
   "prNotes": "铁律 3 全文：半精度只碰存储/乘法，累加恒 fp32——PR message 必须写明 NaN 事故背景；q4_0 变体（Klein-on-Mali）可与主变体同 PR",
-  "valueScore": 0.95
+  "valueScore": 0.95,
+  "prUrl": "https://github.com/ggml-org/ggml/pull/1612",
+  "prStatus": "open"
 }

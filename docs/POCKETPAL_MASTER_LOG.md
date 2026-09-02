@@ -1330,3 +1330,44 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
   - Release：API 创建正式版（非草稿非预发布）Release v2.0.0「Pocket Chick v2.0.0」（id=379795012），上传 APK asset PocketChick-2.0.0-20260830.apk（497,064,945B，HTTP 201，state=uploaded）——正式 APK 替换上线（旧 2.0 无 asset，直接新传即替换）。
   - 通道经验：github.com:443 仍间歇性 Recv failure（直连 4 次失败），SSH 22 端口本次可用——临时生成 ed25519 deploy key（API 注册 read_only=false，key id=161840407）完成 tag 推送，用后即删（API DELETE 204 + 本地文件清理；Push 主分支本次意外走通 https，通道不稳定时优先 SSH 方案）。
   - §130.13 遗留（旧 tag 删除/新 tag 重推/Release 创建/APK 上传）全部闭环。
+
+---
+
+## §132 开源回馈链路执行：长链打穿首波（2026-09-02，啄木鸟在岗）
+
+### 132.1 任务与门禁
+
+- 大王指令（2026-09-02）：按 §131.9 前窗口交付的回馈方案执行——「先写文档→落代码→验证提交→SOP 闭环，一次性长链打穿」；产品三原则（锋利/不兜底/不补丁）+ 洋葱 KG + 6D + 迭代思维。
+- 门禁链：gate（idle，session 7cb45bc1）→ route 啄木鸟（trace cb237477 / act-2c7bae28）；协作链：穿山甲/黑熊精/蛛四娘；审计：谛听/獬豸。
+- 边界（EPEV）：不动本仓引擎代码（§131 红区 SD3.5 正确性禁扰动）；B 类自研不混入 PR；不改 git config；不 push 到小黄鸡本仓之外无需大王确认（回馈自身动作=大王已批复）。
+
+### 132.2 基线锚定（实证）
+
+- vendored ggml = **v0.15.3**（CMakeLists GGML_VERSION 0.15.3）；上游 ggml-org/ggml 最新 v0.22.0（34dc0e5）；v0.15.3 annotated tag = 9ec395b0fc 存在、codeload 通道可达（443 间歇可用）。
+- 回馈目标勘正：A 类 4 项（mali-half-prec/qcom-double-guard/f16-kqkqv/clprof-probe）载体 = ggml-opencl → **ggml-org/ggml**；vae-tiled-512px 载体 = backend_fit.cpp → **leejet/stable-diffusion.cpp**（§12.8 原写「llama.rn」勘正为 ggml-org/ggml）。
+- 文档先行：OPEN_KERNEL_PLAN 新增 §14 回馈执行记录（路线/状态回填）；pocketcl/patches/README.md SOP 更新（见 132.4）。
+
+### 132.3 执行路线（镜像工作树法）
+
+1. codeload 下载 ggml v0.15.3 基线 → .tmp/ggml-upstream（干净工作树，不 clone 不碰本仓）；
+2. 按 map.md hunks 施加首波两枚补丁（mali-half-prec-tiled-gemm / qcom-double-guard），与 vendored 交叉核对；
+3. 逐粒干净 commit（基线版本号 + 回归证据）；
+4. API fork ggml-org/ggml → Hmission/ggml + SSH 22 直连 push；
+5. API 开 PR 两枚（prUrl 回填 metadata.json）；
+6. pocketpal-ai 上游 Discussion 建联；
+7. 波次 2/3 排期（f16-kqkqv + clprof-probe → vae-tiled）。
+
+### 132.4 执行结果（2026-09-02 长链完成，全部实证）
+
+- **文档先行**：OPEN_KERNEL_PLAN 新增 §14（回馈执行记录）；pocketcl/patches/README.md SOP 更新（基线 V0 = ggml master d471637）；MASTER_LOG 本段。
+- **镜像工作树**：.tmp/ggml-upstream（v0.15.3 纯净基线）+ .tmp/ggml-master（上游 master 快照，git init 两粒 commit）。
+- **语义移植**：mali 4 内核（q4_k/q5_k/q4_0/f32_f32 l4_lm + PP_MALI_FP16_LM 门控）从 f3b3f2b/1efb267 提取，f16 守卫从 107ae9c 提取——全部以提交对象为权威源（工作区已回退 8-17 无 PP 代码，§131 红区未触碰）。
+- **质量验证**：mali 内核 diff 纯净（无 B 类混杂，已逐文件 numstat+内容审查）；基准差异 kernel 20-36 行（版本演进）语义适配完成；两分支基于上游共同历史（d471637）cherry-pick 零冲突。
+- **PR 两枚**（ggml-org/ggml，fork = Hmission/ggml）：
+  - **#1612** https://github.com/ggml-org/ggml/pull/1612（mali-half-prec-tiled-gemm，5 文件 88+/28-）
+  - **#1613** https://github.com/ggml-org/ggml/pull/1613（f16-kqkqv-adreno-guard，1 行守卫）
+- **Discussion 建联**：#889 https://github.com/a-ghorbani/pocketpal-ai/discussions/889（fork 介绍 + 贡献意向，含两 PR 引用，通用能力表述不带品牌 IP）
+- **通道**：codeload 443 可达（下载基线）；SSH 22 + 临时 deploy key（id=162071302）完成 fork push，用后即删。
+- **回馈分层修正**：qcom-double-guard 实测上游 v0.15.3 已含双守卫（增量≈0）→ 从待提交队列除名（见 OPEN_KERNEL_PLAN §14.5）。
+- **§12.8 行动清单终态**：引擎层补丁 ✅（首波两枚 PR）；Discussion 建联 ✅；l10n 零星 key 低优先待排；波次 2（clprof-probe / vae-tiled-512px → sd.cpp 上游）下窗口。
+- **本仓提交**：（执行完成后一次提交 docs + metadata，push 待大王指令）。

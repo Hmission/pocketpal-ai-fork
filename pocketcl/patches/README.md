@@ -22,13 +22,16 @@
 | f16-kqkqv-adreno-guard/ | F16 KQ/KQV 守卫（三重复合，107ae9c 快照） | ggml-opencl.cpp + kq_kqv.cl | ✅ 已整理（2026-08-29） |
 | vae-tiled-512px/ | VAE tiled 512px（默认参数修复 + Z-Image 强制） | src/core/backend_fit.cpp + stable-diffusion.cpp | ✅ 已整理（2026-08-29） |
 
-## 3. 生成正式 patch 的 SOP（网络恢复后）
+## 3. 生成正式 patch 的 SOP（**2026-09-02 已锚定基线 V0**）
 
-1. `git fetch` 上游 sd.cpp（`ggml-org/stable-diffusion.cpp`）+ ggml 子模块基线；
-2. 按 `map.md` 的行段在工作副本上对照确认改动范围；
+**基线 V0（2026-09-02 实锤）**：vendored ggml = **v0.15.3**（CMakeLists GGML_VERSION 0.15.3），上游 `ggml-org/ggml` 同名 tag 存在（object 9ec395b0fc），codeload 下载通道可达。回馈目标勘正：A 类 OpenCL 相关 4 项 → `ggml-org/ggml`；vae-tiled-512px → `leejet/stable-diffusion.cpp`（§12.8 旧写「llama.rn」已勘正，见 OPEN_KERNEL_PLAN §14.2）。
+
+1. codeload 下载 ggml v0.15.3 基线 tarball → `.tmp/ggml-upstream` 解压为干净工作树（无需 clone、不碰本仓引擎副本）；
+2. 按 `map.md` 的行段在工作副本上对照确认改动范围（与 vendored 版本 diff 交叉核对）；
 3. `git diff <上游基线> -- <carrierFile>` 提取 → 按资产切分 hunk；
 4. 每条 PR 独立 commit：asset 一粒，message 带基准版本号 + 回归证据（nan=0/加速倍数）；
-5. `metadata.json` 补 `prUrl` 字段后收尾。
+5. `metadata.json` 的 `prUrl` 字段回填收尾。
+6. 首波执行中（2026-09-02）：mali-half-prec + qcom-double-guard 两枚（状态见 OPEN_KERNEL_PLAN §14.4）。
 
 ## 4. 锋利边界（提交前自查）
 

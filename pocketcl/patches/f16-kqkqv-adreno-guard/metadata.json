@@ -5,16 +5,30 @@
     "android/app/src/main/cpp/stable-diffusion.cpp/ggml/src/ggml-opencl/ggml-opencl.cpp",
     "android/app/src/main/cpp/stable-diffusion.cpp/ggml/src/ggml-opencl/kernels/mul_mm_f16_f32_kq_kqv.cl"
   ],
-  "carrierNote": "嵌套仓库 .git 已剥离，以 map.md 为准；当前代码形态 = 修复后（commit 107ae9c）",
+  "carrierNote": "2026-09-02 已通过镜像工作树（ggml master 共同历史）提交 PR#1613；语义移植基线 ggml master（d471637）",
   "hunks": [
-    { "lines": "ggml-opencl.cpp 503-504/589-590", "what": "program/kernel 声明（mul_mm_f16_f32_kq/kqv）" },
-    { "lines": "ggml-opencl.cpp 2252-2269", "what": "构建段：KQV 变体 -DKQV 编译选项；kernel 创建" },
-    { "lines": "ggml-opencl.cpp 12310+", "what": "ggml_cl_mul_mat_kq_kqv_adreno dispatch（KQ/KQV 内核选择 by nb01/nb02）" },
-    { "lines": "ggml-opencl.cpp 14332-14356", "what": "dispatch 守卫：#ifdef GGML_OPENCL_USE_ADRENO_KERNELS + use_adreno_kernels() + 形状/布局条件" }
+    {
+      "lines": "ggml-opencl.cpp 503-504/589-590",
+      "what": "program/kernel 声明（mul_mm_f16_f32_kq/kqv）"
+    },
+    {
+      "lines": "ggml-opencl.cpp 2252-2269",
+      "what": "构建段：KQV 变体 -DKQV 编译选项；kernel 创建"
+    },
+    {
+      "lines": "ggml-opencl.cpp 12310+",
+      "what": "ggml_cl_mul_mat_kq_kqv_adreno dispatch（KQ/KQV 内核选择 by nb01/nb02）"
+    },
+    {
+      "lines": "ggml-opencl.cpp 14332-14356",
+      "what": "dispatch 守卫：#ifdef GGML_OPENCL_USE_ADRENO_KERNELS + use_adreno_kernels() + 形状/布局条件"
+    }
   ],
   "envGate": "GGML_OPENCL_USE_ADRENO_KERNELS（编译期）+ use_adreno_kernels()/gpu_family（运行时）",
   "evidence": "2026-08-2x SD3.5 白图事故：F16 KQ/KQV 路径 × Adreno fp16 累积内核精度崩坏；K90 与小米 13 NaN 指纹一致 → 算子层；commit 107ae9c 守卫修复后 nan=0 画质恢复",
   "upstreamTarget": "ggml（mul_mat dispatch 的 F16 KQ/KQV Adreno 路径）",
   "prNotes": "与 qcom-double-guard 同族（守卫模式一致，可先后两粒 PR）；dispatch 条件复杂（布局/尺寸判定），PR 需附白图事故分析 + 交叉设备 NaN 指纹对比方法",
-  "valueScore": 0.85
+  "valueScore": 0.85,
+  "prUrl": "https://github.com/ggml-org/ggml/pull/1613",
+  "prStatus": "open"
 }

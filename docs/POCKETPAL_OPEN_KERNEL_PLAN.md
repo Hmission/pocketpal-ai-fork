@@ -210,8 +210,8 @@ Pocket Chick 试验田产数据 → PocketCL 萃取公共品 → 社区反馈 �
 
 - [x] `git remote add upstream https://github.com/a-ghorbani/pocketpal-ai.git` + 分叉点分析（2026-08-29 已执行：基线 46d43b0 / 上游 ≥100 提交；全量 fetch 因本机代理 127.0.0.1:7897 未运行而挂起，待代理恢复后补全对象）
 - [x] l10n 价值审计（2026-08-29 已执行：结论见上——增量几乎全为产品化改写，l10n 降级）
-- [ ] 引擎层补丁走 llama.rn 上游（升为首位，与 PocketCL T4 合并排期）
-- [ ] 上游发「fork 介绍 + 贡献意向」Discussion（以通用能力表述，不带小黄鸡品牌 IP）
+- [ ] 引擎层补丁走 llama.rn 上游（升为首位，与 PocketCL T4 合并排期）——**2026-09-02 执行中**（见 §14：基线 v0.15.3 镜像工作树，首波 mali-half-prec + qcom-double-guard）
+- [ ] 上游发「fork 介绍 + 贡献意向」Discussion（以通用能力表述，不带小黄鸡品牌 IP）——**2026-09-02 执行中**（随首波 PR 并列推进）
 - [ ] l10n 零星 key 补全（低优先：如 zh `pals→伙伴`，随第 1 波 PR 附带）
 
 ---
@@ -256,3 +256,45 @@ Pocket Chick 试验田产数据 → PocketCL 萃取公共品 → 社区反馈 �
   - **R 层 v0.3**：定位升级为混合计算调度层（architecture 第六章五对象规格 + pocketcl.h 14 API 草案声明不实现；实装按痛点触发）。
 - 与 AIOS 连仓协同：guard 6/6 归零（junction 挂载）、门禁协议全链实证（gate→route→return）。
 - 本轮已提交（未 push，网络挂起待收口）；详见 MASTER_LOG §123。
+
+---
+
+## 十四、回馈执行记录（2026-09-02，大王批复长链打穿）
+
+### 14.1 任务形态
+
+- 大王指令（2026-09-02）：「按规划执行，走门禁路由专工，先写文档→落代码→验证提交→SOP 闭环，一次性长链打穿」。
+- 门禁链：gate idle → route 啄木鸟（trace cb237477 / act-2c7bae28）；协作链穿山甲/黑熊精/蛛四娘，审计谛听/獬豸。
+- 执行原则（产品锋利三原则）：不碰本仓引擎代码（§131 红区，SD3.5 正确性已恢复禁扰动）；B 类自研增量绝不混入 PR；asset 一粒一 commit。
+
+### 14.2 基线锚定（2026-09-02 实锤）
+
+- **vendored ggml = v0.15.3**（CMakeLists `GGML_VERSION_MAJOR 0 / MINOR 15 / PATCH 3`）；上游 ggml-org/ggml 最新 v0.22.0（34dc0e5），v0.15.3 annotated tag object = 9ec395b0fc ✅ 存在且 codeload 可达。
+- leejet/stable-diffusion.cpp 无 semver（workflow-*/master-* 形态），vae-tiled 载体（backend_fit.cpp）目标 = sd.cpp 上游。
+- **回馈目标修正**（勘正 §12.8「走 llama.rn」）：A 类 4 项（mali-half-prec / qcom-double-guard / f16-kqkqv / clprof-probe）实际载体为 ggml-opencl（sd.cpp 捆绑 ggml 0.15.3），llama.rn 的 ggml 非同一基线——PR 目标 = `ggml-org/ggml`（opencl backend），vae-tiled-512px = `leejet/stable-diffusion.cpp`。
+
+### 14.3 执行路线（镜像工作树法，替代「地图+手工对照」兜底）
+
+1. codeload 下载 ggml v0.15.3 基线 tarball → .tmp/ggml-upstream 解压为干净工作树（不 clone、不碰本仓引擎）；
+2. 按 map.md hunks 逐粒施加首波两枚补丁（mali-half-prec-tiled-gemm ★★★★★ / qcom-double-guard ★★★★★），与 vendored 版本交叉核对一致；
+3. 逐粒生成干净 commit（message 带基准版本号 + 回归证据）；
+4. API fork ggml-org/ggml → Hmission/ggml，SSH 22 直连 push 分支；
+5. API 开 PR（asset 一粒一 PR，首波两枚）；
+6. pocketpal-ai 上游 Discussion 建联（fork 介绍 + 贡献意向，通用能力表述不带品牌）；
+7. 波次：第 2 波 f16-kqkqv + clprof-probe（ggml）→ 第 3 波 vae-tiled-512px（sd.cpp）。
+
+### 14.4 状态（2026-09-02 长链执行完成）
+
+- [x] 基线锚定（14.2）
+- [x] 镜像工作树就绪（.tmp/ggml-upstream v0.15.3 + .tmp/ggml-master）
+- [x] 首波两枚补丁 commit 生成（ggml master 共同历史：d471637 ← ee84f637 mali / 8d4c5ba8 f16）
+- [x] fork + push（Hmission/ggml，SSH 22 直连 + 临时 deploy key 用后即删）
+- [x] PR 两枚发出：**ggml-org/ggml#1612**（mali，prUrl 已回填 metadata）+ **ggml-org/ggml#1613**（f16）
+- [x] Discussion 建联：**pocketpal-ai/discussions#889**（fork 介绍 + 贡献意向，通用能力表述）
+- [ ] 波次 2/3 排期（f16-kqkqv 已在首波完成；qcom-double-guard 经实测**上游 v0.15.3 已含双守卫**——增量≈0，从回馈队列除名；剩余 clprof-probe / vae-tiled-512px → 下波次）
+
+### 14.5 经验修正（2026-09-02 长链实测）
+
+- **qcom-double-guard 撤回**：上游 ggml v0.15.3 已自带「env + gpu_family 双守卫」（ggml-opencl.cpp 4190-4196 与 vendored 完全一致）——我们的维护版仅是复制，非增量；回馈分层表同步修正（不再列为 A 类待提交）。
+- **PR 共同历史前提**：GitHub 拒绝对无共同祖先的分支开 PR（422 custom: no history in common）——镜像工作树必须 fetch 上游真 master 作为基底，不能以 tarball 孤儿快照为基。
+- **语义移植优于整文件替换**：vendored 引擎已回退 8-17（§131），工作区无 PP_MALI 代码；权威补丁源 = 载体提交对象（f3b3f2b/1efb267/107ae9c）而非工作区。
