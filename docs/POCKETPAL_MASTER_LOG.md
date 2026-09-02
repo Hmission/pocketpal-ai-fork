@@ -1383,3 +1383,10 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
 - **红线**：§131 红区未触碰（零引擎改）；fork 残留清理（deploy key id=162081570 用后即删）；push 远端本仓仍待大王指令。
 - **波次 2 后 A 类待提交清零**：mali#1612、f16#1613、vae-tiled#1932、l10n#890 全部发出；qcom、clprof 增量=0 实锤归档。
 - **本仓提交**：（本次 docs + metadata 变更已提交，push 待大王指令）
+
+## §134 本仓推送完成（2026-09-03，大王指令「推送呀，目前梯子就绪」）
+
+- 大王明确指令推送（§126.4 待推清单清零）：直连推送 `git -c http.proxy= -c https.proxy= push origin main`（仅本次生效，不改 config）
+- 推送内容：dc5d719（回馈首波闭环）+ d174e89（回馈波次 2 闭环），`602e82b..d174e89`
+- 推送后 fetch 验证：本地 HEAD == origin/main（d174e89），工作树干净，无遗留待推项
+- 四枚 PR（ggml#1612/#1613、sd.cpp#1932、pocketpal#890）与 Release v2.0.0 均在远端齐备
