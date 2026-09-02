@@ -298,3 +298,10 @@ Pocket Chick 试验田产数据 → PocketCL 萃取公共品 → 社区反馈 �
 - **qcom-double-guard 撤回**：上游 ggml v0.15.3 已自带「env + gpu_family 双守卫」（ggml-opencl.cpp 4190-4196 与 vendored 完全一致）——我们的维护版仅是复制，非增量；回馈分层表同步修正（不再列为 A 类待提交）。
 - **PR 共同历史前提**：GitHub 拒绝对无共同祖先的分支开 PR（422 custom: no history in common）——镜像工作树必须 fetch 上游真 master 作为基底，不能以 tarball 孤儿快照为基。
 - **语义移植优于整文件替换**：vendored 引擎已回退 8-17（§131），工作区无 PP_MALI 代码；权威补丁源 = 载体提交对象（f3b3f2b/1efb267/107ae9c）而非工作区。
+
+### 14.6 波次 2 战果（2026-09-02 追加）
+
+- **vae-tiled-512px → leejet/stable-diffusion.cpp PR#1932 ✅ open**：`backend_fit.cpp`（rel_size 0.5 默认）+ `stable-diffusion.cpp`（decode 失败无条件 tiling 重试，不再依赖 --auto-fit）；迁移基底 = fork master（6b3edaaf，因 fork 创建晚于 tarball 下载、两时点间上游有提交，diff_verify.py 字节级确认双文件除迁移行外一致）；通过 Git Data API（base_tree + 双 blob 替换 + commit + ref）远程构建，绕开 github.com:443 断连与 SSH 慢传。
+- **clprof-probe → ggml 增量≈0 不发 PR**：ggml master 已含完整算子级 profiling（write_profiling_info CSV+Chrome trace、enqueue 统一探针、CL_QUEUE_PROFILING_ENABLE），与 8-25 探针同构且更完整 → 资产归档（metadata `prStatus: superseded`）。
+- **l10n → a-ghorbani/pocketpal-ai PR#890 ✅ open**：`zh.json sidebarContent.menuItems.pals`（"Pals"→"伙伴"）为 zh 全部语言残留中唯一真实增量（其余均为 onboarding.splash.brand 需改回 PocketPal 的品牌红线）；Git Data API 单文件替换构建。
+- 波次 2 后 A 类待提交清零：mali#1612、f16#1613、vae-tiled#1932、l10n#890 均发出；qcom/clprof 实锤增量=0。

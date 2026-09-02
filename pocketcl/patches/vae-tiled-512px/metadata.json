@@ -5,14 +5,22 @@
     "android/app/src/main/cpp/stable-diffusion.cpp/src/core/backend_fit.cpp",
     "android/app/src/main/cpp/stable-diffusion.cpp/src/stable-diffusion.cpp"
   ],
-  "carrierNote": "嵌套仓库 .git 已剥离，以 map.md 为准；两处改动跨主进程（非 ggml）",
+  "carrierNote": "2026-09-02 已通过 Git Data API 基于上游 master 共同历史提交 PR#1932；基底 = fork master（6b3edaaf）非 tarball 基线（两时点间上游有提交，diff_verify.py 字节级确认双文件除迁移行外一致）",
   "hunks": [
-    { "lines": "backend_fit.cpp 374-380", "what": "512px VAE 解码内存修复：get_tile_sizes 默认 rel_size=1.0 致 tiling 失效，设 0.5 → tile=latent 一半（256px 像素 tile，2x2）" },
-    { "lines": "stable-diffusion.cpp 3106-3109", "what": "Z-Image（6.9GB 权重）强制 tiled VAE：1664MB→416MB 峰值；vae_tiling_params.enabled + rel_size_x=0.5" }
+    {
+      "lines": "backend_fit.cpp 374-380",
+      "what": "512px VAE 解码内存修复：get_tile_sizes 默认 rel_size=1.0 致 tiling 失效，设 0.5 → tile=latent 一半（256px 像素 tile，2x2）"
+    },
+    {
+      "lines": "stable-diffusion.cpp 3106-3109",
+      "what": "Z-Image（6.9GB 权重）强制 tiled VAE：1664MB→416MB 峰值；vae_tiling_params.enabled + rel_size_x=0.5"
+    }
   ],
   "envGate": "无（默认路径修正，非开关型改动）",
   "evidence": "VAE 解码峰值驻留 1.94GB→416MB；512px tiled 修复后 Z-Image 端侧可用；K90 实测 Z-Image 全程 10.9min（XMEM 关 + tiled VAE）",
   "upstreamTarget": "stable-diffusion.cpp 主工程（VAE tiling / get_tile_sizes 逻辑）",
   "prNotes": "上游已有 vae tiling 框架，本改动是默认参数修复（rel_size 默认 0.5）+ Z-Image 强制分支；PR 需夹 内存峰值前后对比证据",
-  "valueScore": 0.9
+  "valueScore": 0.9,
+  "prUrl": "https://github.com/leejet/stable-diffusion.cpp/pull/1932",
+  "prStatus": "open"
 }

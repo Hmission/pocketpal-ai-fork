@@ -1371,3 +1371,15 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
 - **回馈分层修正**：qcom-double-guard 实测上游 v0.15.3 已含双守卫（增量≈0）→ 从待提交队列除名（见 OPEN_KERNEL_PLAN §14.5）。
 - **§12.8 行动清单终态**：引擎层补丁 ✅（首波两枚 PR）；Discussion 建联 ✅；l10n 零星 key 低优先待排；波次 2（clprof-probe / vae-tiled-512px → sd.cpp 上游）下窗口。
 - **本仓提交**：（执行完成后一次提交 docs + metadata，push 待大王指令）。
+
+## §133 开源回馈波次 2：vae-tiled + l10n + clprof 判定（2026-09-02，啄木鸟在岗）
+
+大王指令「继续剩余任务」——波次 2 回馈链路闭环（延续 §132）：
+
+- **vae-tiled-512px → leejet/stable-diffusion.cpp PR#1932 ✅ open**：`backend_fit.cpp`（rel_size 0.5 默认，修 get_tile_sizes rel_size=1.0 导致 tiling 失效，512px 解码 1.94GB→416MB）+ `stable-diffusion.cpp`（decode 失败无条件 tiling 重试，原依赖 --auto-fit 默认 off）。迁移基底 = fork master（6b3edaaf）：fork 创建晚于 tarball 下载、两时点间上游有提交，diff_verify.py 字节级比对确认双文件除迁移行外一致；GitHub 认可本地 blob sha（upload 后 sha 不变），内容校验通过。
+- **clprof-operator-probe → ggml 增量≈0 不发 PR（实锤）**：ggml master 已含完整算子级 profiling（write_profiling_info CSV+Chrome trace L983-1027、enqueue_ndrange_kernel 统一探针 L1040-1052、CL_QUEUE_PROFILING_ENABLE L6133），与 8-25 CLPROF 探针同构且更完整 → 资产归档（metadata prStatus=superseded）。
+- **l10n → a-ghorbani/pocketpal-ai PR#890 ✅ open**：upstream zh.json 实测仅 `sidebarContent.menuItems.pals`（"Pals"）未译（其余含 "Pals（实验性）" 均已译）→ "伙伴"（本仓现有译法）。Git Data API 单 blob 替换构建（blob 6677905 → tree → commit 6ffa8cb → ref l10n/zh-pals）。
+- **通道演进（Git Data API 直构法）**：github.com:443 对 git 协议持续断连、SSH 22 认证通但 129MB 仓库浅 fetch 30min+ 未完成 → 改用 Git Data API 远程构建提交（base_tree + 受限 blob 替换 + commit + ref），绕开整仓传输，全程 api.github.com 单点；blob 内容 sha 与本地一致性作为正确性锚。
+- **红线**：§131 红区未触碰（零引擎改）；fork 残留清理（deploy key id=162081570 用后即删）；push 远端本仓仍待大王指令。
+- **波次 2 后 A 类待提交清零**：mali#1612、f16#1613、vae-tiled#1932、l10n#890 全部发出；qcom、clprof 增量=0 实锤归档。
+- **本仓提交**：（本次 docs + metadata 变更已提交，push 待大王指令）
