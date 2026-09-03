@@ -1399,3 +1399,16 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
 - **补全落位（本次）**：kpad-turner 卡 pending `q4_0HalfPrec` 复核 → 升 verified 三项（`gpuPolicyKlein: high-adreno-or-mali` 2026-08-25 实测准入 / `teDiskResidency: te=disk` 驻留 / `q4_0HalfPrec` 已随 ggml PR#1612 上游化）；MANIFEST.json 四条 B 类资产补落位指针 + xmem 设备分级映射。
 - **红线**：零引擎代码改动，零新建容器，资产按既有 schema/MANIFEST/handbook 结构落位（锋利原则）。
 - **本仓提交**：（本次 devices/*.json + MANIFEST + docs 变更已提交，push 待大王指令）
+
+## §136 Z-Image-Edit 端侧可行性调研（2026-09-03，答疑窗口登记）
+
+- 背景：大王问询「Z-Image-Edit 本地/手机端能否跑」+「手机端 Z-Image 多大」。纯调研答疑窗口，**零代码变更**。
+- **手机端 Z-Image 套件体积实据**（src/utils/modelCatalog.ts sizeBytes）：z_image_turbo_q4_k.gguf 3.86GB（3,864,250,304B）+ zimage_llm.gguf 2.50GB（Qwen3-4B Q4_K_M，2,497,281,312B）+ ae.safetensors 0.34GB（335,304,388B）≈ **套件 6.9GB（十进制，3.6+2.3+0.3 GiB）**。
+- Z-Image-Edit 定位：阿里通义 Z-Image 家族编辑专用变体（S3-DiT 6B，基于 Z-Image 微调，自然语言指令编辑，bf16 safetensors）。
+- **端侧判定：不可跑（三层缺口）**：
+  - ① 应用层：BUILTIN_MANIFESTS 仅 z-image-turbo-q4 纯文生图；无 Edit manifest / 下载入口 / 编辑 UI 接线；
+  - ② 权重层：官方仅 bf16 safetensors（~12GB+），社区现成 GGUF 仅 Z-Image-Turbo（leejet），Edit 版无广泛可用量化；
+  - ③ 引擎/内存层：vendored sd.cpp 已含 z_image_omni 参考图预设（model.hpp REF_IMAGE_PRESETS，编辑式条件输入架构可行），但端侧 6B 套件本已 6.9GB 且仅高端 Adreno 准入（小米13 内存硬顶不可跑，§96 前实证），编辑链路再叠加 VAE encode + LLM 视觉通道，预算更紧。
+- 编辑能力现状：**DreamLite 编辑已闭环承担**（VAE Encoder 编码源图作 cond + TE 视觉通道 512²→256 视觉 token + diptych 指令；生图页编辑模式 + 聊天内编辑闭环，固定 1024² 4 步 ~25s）。
+- 后续机会（未立项探索区）：待社区出 Z-Image-Edit GGUF 量化（或自量化 bf16→Q4）后方可评估真机内存预算；参考 Krea2 前车（9.9GB 预算超 OpenCL 7.5GB → OOM 三连，§96.7），Edit 版 6B 全链预算大概率同样越限。
+- 提交：docs（本段 + MODEL_MATRIX 备注）；push 待大王指令（纪律 §129.10）

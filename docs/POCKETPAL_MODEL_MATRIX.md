@@ -81,6 +81,8 @@ relates: [POCKETPAL_DESIGN_SPEC]
 | 4   | FLUX.2 Klein 4B (Q4_K_M) | DiT + flux2_vae（TE 复用 zimage_llm）    | 🥉 画质天花板；**GPU 实验性（已知纹理）→ 当前默认 CPU 兜底可用（正确、慢 ~5h）**；内核修复暂停（8-30，MASTER_LOG §130） |
 | 5   | Krea2 Turbo (Q4_K_M)     | DiT 12.9B + Qwen3-VL TE + Wan VAE 三件套 | 审美多样性 + 风格 LoRA（**实验性**，仅高端 Adreno；K90 实测双门槛不可用，MASTER_LOG §96） |
 
+> **Z-Image-Edit 评估（2026-09-03，MASTER_LOG §136）**：Z-Image 家族编辑专用变体（S3-DiT 6B，指令编辑）**未部署、端侧不可跑**——社区无 Edit 版现成 GGUF 量化（仅 Turbo 版）、本仓无 manifest/下载入口/编辑 UI 接线、6B 套件 6.9GB 全链预算大概率越高端 Adreno 上限（Krea2 前车 §96.7）；编辑能力由 DreamLite 闭环承担，待社区量化后另行评估。
+
 > **代码化清单（2026-08-20）**：`src/utils/modelCatalog.ts` 的 `CATALOG_IMAGEGEN` 为本表代码事实源
 > （套件文件清单与 §6.1/§6.2 一致；模型页「生图模型」区可管理）。
 > 下载源（2026-08-20 溯源 + 魔搭 resolve 实测 7/7 全 200，非自制）：
