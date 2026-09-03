@@ -166,7 +166,12 @@ Pocket Chick is intentionally not a productivity tool. It's a "digital pet" — 
   <img src="assets/screenshots/screenshot-1.jpg" alt="Screenshot 1" width="230" />
   <img src="assets/screenshots/screenshot-2.jpg" alt="Screenshot 2" width="230" />
   <img src="assets/screenshots/screenshot-3.jpg" alt="Screenshot 3" width="230" />
+</p>
+
+<p align="center">
   <img src="assets/screenshots/screenshot-4.jpg" alt="Screenshot 4" width="230" />
+  <img src="assets/screenshots/screenshot-5.jpg" alt="Screenshot 5" width="230" />
+  <img src="assets/screenshots/screenshot-6.jpg" alt="Screenshot 6" width="230" />
 </p>
 
 ## 🚀 快速开始 / Quick Start
