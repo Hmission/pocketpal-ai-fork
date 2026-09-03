@@ -1420,3 +1420,15 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
 - 未用图：8/17 png（600×1289 分辨率低，放大糊）、8/27 余 1 张备选；原图在 F:\pp\截图（未跟踪，不入 git）。
 - 过程中处理：首窗 commit 曾混入并行窗口 18 个文件（暂存区竞争），先 bundle 备份再 reset --soft 拆分，并行窗口工作内容未丢失；后由另一窗口手动提交 5491717（fix(chat) 慢速回归，task-47d）。
 - **待推留痕（§126.4 惯例）**：本窗 4794690（+2 图布局两行三列）+ 5491717（另一窗口手动提交）+ 本段登记——2026-09-03 直连两次失败（Recv failure: Connection was reset / github.com:443 21s 超时），未走代理，**待网络恢复后按 §128.9 直连命令一次补推**。
+
+## §138 v2.0.1 发布闭环（2026-09-03，大王指令「app 记得更新，今天修了一个 bug」）
+
+- 发布指令：大王确认「发布新版本」（AskUserQuestion 选完整发布流程）；当天修复 = 5491717（fix(chat) 聊天页慢速回归 + 跑分卡数值修复，task-47d 窗口）
+- 版本同步：bump-version.js patch → 2.0.1（.version / package.json / build.gradle versionCode 144→145 / pbxproj 四处同步，单点命令）
+- CHANGELOG：[Unreleased] 收编为 [2.0.1] - 2026-09-03（聊天页慢速回归 + 跑分卡两条），顶部新开空 [Unreleased]
+- 验证：tsc 0 错；jest 全量 2 套件失败（actionRegistry 2 例 / ModelTypeTag 4 例 = D1 存量登记 §936，与本次零交集）；ImageGenScreen / PalHeaderRight 全量跑挂但单跑全绿（跨文件污染 flaky，D1 已登记此现象，非回归）
+- 构建：assembleRelease 4m47s（71 executed / 1428 up-to-date），app-prod-release.apk 497,002,065B（prod flavor），发布命名为 PocketChick-2.0.1-20260903.apk（git 忽略不入库）
+- 提交与 tag：4c0d69d（版本四件套 + CHANGELOG 5 文件）；annotated tag v2.0.1 推送成功
+- Release：GitHub API 创建正式版 v2.0.1「Pocket Chick v2.0.1」（id=382025486，非草稿非预发布）+ APK asset 上传（state=uploaded，sha256 与本地一致）；下载 https://github.com/Hmission/pocketpal-ai-fork/releases/tag/v2.0.1
+- 网络通道实测（本窗）：git push 默认配置（全局代理 127.0.0.1:7897，大王已开梯子）一次成功补推 3 笔（5491717/4794690/4237b07）；-c proxy= 直连对 github.com 被 reset（curl 000 / 8-21s 超时）、api.github.com 直连 200、uploads.github.com 直连上传 497MB 一次成功——§128.9「禁走代理」与本次「大王开梯子授权 + 直连被墙」以用户指令优先，已在大王知情下走通既有全局代理配置
+- 待办：APK 装机验证（真机覆盖安装 2.0.1，用户侧执行）；README 无版本引用需改
