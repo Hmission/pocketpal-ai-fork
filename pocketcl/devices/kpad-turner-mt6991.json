@@ -10,23 +10,87 @@
   "formFactor": "tablet",
   "ramMb": null,
   "verified": [
-    { "key": "soc", "value": "mt6991", "source": "getprop ro.board.platform（2026-08-24 设备映射表实锤）" },
-    { "key": "gpuModel", "value": "Immortalis-G925 / Mali", "source": "GL_RENDERER + 设备映射表" },
-    { "key": "product", "value": "turner", "source": "getprop ro.product.marketname（2026-08-24）" },
-    { "key": "formFactor", "value": "tablet", "source": "getprop ro.build.characteristics（2026-08-24）" },
-    { "key": "openclWhitelist", "value": "ggml-opencl 白名单介入后 SD3.5 全链路闭环", "source": "commit e2ad204（Mali GPU OpenCL 白名单支持）" },
-    { "key": "halfPrecGemm", "value": "512² 69→24.2 s/步（2.86×）；512×768 113→33 s/步（3.42×）；nan=0 画质无损", "source": "tiled GEMM 半精度变体 + CLPROF 探针实证（f3b3f2b）" },
-    { "key": "probeHotspot", "value": "mul_mm_q4_k/q5_k_f32_l4_lm tiled GEMM 71.1% + mul_mm_f32_f32_l4_lm 7.6%", "source": "[CLPROF] 算子级探针 top-N（CL_QUEUE_PROFILING）" },
-    { "key": "fp32Accum", "value": "全 fp16 累积 NaN 事故 → fp32 累加 + half 存储转正", "source": "6.18 事故复盘 + PP_MALI_FP16_LM 门控" }
+    {
+      "key": "soc",
+      "value": "mt6991",
+      "source": "getprop ro.board.platform（2026-08-24 设备映射表实锤）"
+    },
+    {
+      "key": "gpuModel",
+      "value": "Immortalis-G925 / Mali",
+      "source": "GL_RENDERER + 设备映射表"
+    },
+    {
+      "key": "product",
+      "value": "turner",
+      "source": "getprop ro.product.marketname（2026-08-24）"
+    },
+    {
+      "key": "formFactor",
+      "value": "tablet",
+      "source": "getprop ro.build.characteristics（2026-08-24）"
+    },
+    {
+      "key": "openclWhitelist",
+      "value": "ggml-opencl 白名单介入后 SD3.5 全链路闭环",
+      "source": "commit e2ad204（Mali GPU OpenCL 白名单支持）"
+    },
+    {
+      "key": "halfPrecGemm",
+      "value": "512² 69→24.2 s/步（2.86×）；512×768 113→33 s/步（3.42×）；nan=0 画质无损",
+      "source": "tiled GEMM 半精度变体 + CLPROF 探针实证（f3b3f2b）"
+    },
+    {
+      "key": "probeHotspot",
+      "value": "mul_mm_q4_k/q5_k_f32_l4_lm tiled GEMM 71.1% + mul_mm_f32_f32_l4_lm 7.6%",
+      "source": "[CLPROF] 算子级探针 top-N（CL_QUEUE_PROFILING）"
+    },
+    {
+      "key": "fp32Accum",
+      "value": "全 fp16 累积 NaN 事故 → fp32 累加 + half 存储转正",
+      "source": "6.18 事故复盘 + PP_MALI_FP16_LM 门控"
+    },
+    {
+      "key": "gpuPolicyKlein",
+      "value": "high-adreno-or-mali（Klein 实测准入：K Pad 天玑9400+/Mali-G925）",
+      "source": "commit 1efb267（§91 引擎窗口）+ imageGenManifest.ts GpuPolicy 注释 2026-08-25 实测"
+    },
+    {
+      "key": "teDiskResidency",
+      "value": "TE 磁盘驻留按需流读（llm 拆分系生效，采样期不驻留；PSS 7.83GB→<6GB 阈值内）",
+      "source": "ImageGenJNI.nativeLoadModel params_backend=\"te=disk\"（1efb267，llm 非空分支）"
+    },
+    {
+      "key": "q4_0HalfPrec",
+      "value": "q4_0 半精度变体已上游化（mul_mm_q4_0_f32_l4_lm + PP_MALI_FP16_LM 门控）",
+      "source": "ggml PR#1612（mali-half-prec-tiled-gemm，2026-09-02 提交）"
+    }
   ],
   "pending": [
-    { "key": "ramMb", "note": "待 getprop meminfo 实锤（当前 null）" },
-    { "key": "q4_0HalfPrec", "note": "klein 平板准入 q4_0 半精度变体状态待复核" },
-    { "key": "vulkanAdrenoX", "note": "Mali Vulkan 路径未启用（本项目走 OpenCL）" }
+    {
+      "key": "ramMb",
+      "note": "待 getprop meminfo 实锤（当前 null）"
+    },
+    {
+      "key": "vulkanAdrenoX",
+      "note": "Mali Vulkan 路径未启用（本项目走 OpenCL）"
+    }
   ],
   "reference": [
-    { "key": "socAlias", "value": "Dimensity 9400+ / MT8799", "source": "公开资料" },
-    { "key": "gpuArch", "value": "Mali-G925（5th Gen，CSF 命令流前端）", "source": "公开资料" },
-    { "key": "apuTops", "value": "APU 790 ≈ 50 TOPS", "source": "公开资料（NeuroPilot 口径）" }
+    {
+      "key": "socAlias",
+      "value": "Dimensity 9400+ / MT8799",
+      "source": "公开资料"
+    },
+    {
+      "key": "gpuArch",
+      "value": "Mali-G925（5th Gen，CSF 命令流前端）",
+      "source": "公开资料"
+    },
+    {
+      "key": "apuTops",
+      "value": "APU 790 ≈ 50 TOPS",
+      "source": "公开资料（NeuroPilot 口径）"
+    }
   ]
 }

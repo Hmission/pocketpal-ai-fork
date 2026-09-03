@@ -1390,3 +1390,12 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
 - 推送内容：dc5d719（回馈首波闭环）+ d174e89（回馈波次 2 闭环），`602e82b..d174e89`
 - 推送后 fetch 验证：本地 HEAD == origin/main（d174e89），工作树干净，无遗留待推项
 - 四枚 PR（ggml#1612/#1613、sd.cpp#1932、pocketpal#890）与 Release v2.0.0 均在远端齐备
+
+## §135 波次 3：B 类资产收编 PocketCL（2026-09-03，啄木鸟在岗）
+
+大王指令「依次执行波次3」——§13.2 B 类四项对账收编：
+
+- **对账结论**：4 项中 3 项 T0 已落位（白名单→kpad 卡 verified、NaN 指纹→handbook 铁律4+决策树、xmem 族→k90 卡 verified），真实缺口仅 q4_0/gpuPolicy 项。
+- **补全落位（本次）**：kpad-turner 卡 pending `q4_0HalfPrec` 复核 → 升 verified 三项（`gpuPolicyKlein: high-adreno-or-mali` 2026-08-25 实测准入 / `teDiskResidency: te=disk` 驻留 / `q4_0HalfPrec` 已随 ggml PR#1612 上游化）；MANIFEST.json 四条 B 类资产补落位指针 + xmem 设备分级映射。
+- **红线**：零引擎代码改动，零新建容器，资产按既有 schema/MANIFEST/handbook 结构落位（锋利原则）。
+- **本仓提交**：（本次 devices/*.json + MANIFEST + docs 变更已提交，push 待大王指令）

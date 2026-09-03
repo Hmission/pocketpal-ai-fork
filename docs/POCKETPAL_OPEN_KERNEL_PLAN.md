@@ -305,3 +305,13 @@ Pocket Chick 试验田产数据 → PocketCL 萃取公共品 → 社区反馈 �
 - **clprof-probe → ggml 增量≈0 不发 PR**：ggml master 已含完整算子级 profiling（write_profiling_info CSV+Chrome trace、enqueue 统一探针、CL_QUEUE_PROFILING_ENABLE），与 8-25 探针同构且更完整 → 资产归档（metadata `prStatus: superseded`）。
 - **l10n → a-ghorbani/pocketpal-ai PR#890 ✅ open**：`zh.json sidebarContent.menuItems.pals`（"Pals"→"伙伴"）为 zh 全部语言残留中唯一真实增量（其余均为 onboarding.splash.brand 需改回 PocketPal 的品牌红线）；Git Data API 单文件替换构建。
 - 波次 2 后 A 类待提交清零：mali#1612、f16#1613、vae-tiled#1932、l10n#890 均发出；qcom/clprof 实锤增量=0。
+
+### 14.7 波次 3 收编（2026-09-03，B 类资产对账落位）
+
+大王指令「依次执行波次3」——§13.2 B 类四项按既有结构（devices/schema + kernels/MANIFEST + handbook）对账收编：
+
+- **opencl-device-whitelist（Mali 准入，e2ad204）✅ 已落位**：kpad 卡 verified `openclWhitelist`（T0 已登记，无需重造）。
+- **q4_0-halfprec-te-disk-gate（1efb267）✅ 本次补全**：kpad 卡 pending `q4_0HalfPrec` 复核后升 verified 三项——`gpuPolicyKlein: high-adreno-or-mali`（2026-08-25 K Pad 实测准入，替代 requiresHighGpu 布尔）、`teDiskResidency: te=disk`（TE 磁盘驻留，PSS 7.83GB→<6GB）、`q4_0HalfPrec`（变体已随 PR#1612 上游化）；pending 对应项移除。
+- **adreno-xmem-kernel-family ✅ 补齐分级映射**：k90 允许（verified zimageXmem 3.6× / openclSd35 10.7min）、Mali 系不启用，映射写入 MANIFEST note。
+- **nan-fingerprint-method ✅ 已落位**：handbook 铁律 4 + 排查决策树（T0 已写，零增量）。
+- MANIFEST.json 四条目补充落位指针与 carrierNote；无新建容器、无代码改动、无重复资产（锋利原则）。

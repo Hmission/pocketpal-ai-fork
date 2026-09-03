@@ -55,7 +55,7 @@
       "carrierCommit": "e2ad204",
       "evidence": "SD3.5 在 Mali-G925 全链路闭环",
       "valueScore": 3,
-      "note": "硬件列表属产品策略，上游不采纳；归设备 DB（devices/*.json）"
+      "note": "已落位 devices/kpad-turner-mt6991.json（verified openclWhitelist，e2ad204）"
     },
     {
       "id": "q4_0-halfprec-te-disk-gate",
@@ -64,7 +64,8 @@
       "carrierCommit": "1efb267",
       "evidence": "klein 模型平板准入（Mali）",
       "valueScore": 3,
-      "note": "归 manifest/设备分级；声明式门控模式可抽为通用 devicePolicy"
+      "note": "已落位 devices/kpad-turner-mt6991.json（gpuPolicyKlein: high-adreno-or-mali + teDiskResidency）；q4_0 变体已上游化（ggml PR#1612）；gpuPolicy 声明式门控替代 requiresHighGpu 布尔（imageGenManifest.ts GpuPolicy）",
+      "carrierNote": "波次3 收编（2026-09-03）：设备卡 verified 落位"
     },
     {
       "id": "adreno-xmem-kernel-family",
@@ -73,7 +74,8 @@
       "carrierCommit": "本仓历史",
       "evidence": "SD3.5 OpenCL 2h+ → 10.7min；Z-Image XMEM 真关 3.6×",
       "valueScore": 3,
-      "note": "上游已有基础，我们做适配+修复（DISABLE_ADRENO_KERNELS / ADRENO_XMEM_GEMM env 组合）；跨设备需白名单分级"
+      "note": "上游已有基础，我们做适配+修复（DISABLE_ADRENO_KERNELS / ADRENO_XMEM_GEMM env 组合）；设备分级：k90-promax 允许（verified zimageXmem 3.6× / openclSd35 10.7min），Mali 系不启用（pending vulkanAdrenoX 同线）",
+      "carrierNote": "波次3 收编（2026-09-03）：设备分级映射落位"
     },
     {
       "id": "nan-fingerprint-method",
@@ -82,7 +84,7 @@
       "carrierCommit": "历次事故复盘",
       "evidence": "K90 与小米 13 NaN 指纹一致 → 排除设备差异直达算子",
       "valueScore": 3,
-      "note": "归 handbook（排查手册），不是代码资产"
+      "note": "已落位 handbook/rules.md 铁律4 + 排查决策树；k90 卡 verified nanFingerprint"
     }
   ]
 }
