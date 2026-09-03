@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-09-03
+
 ### 聊天页慢速回归修复 + 跑分卡数值位数修复（2026-09-03，大王报障两项，task-47d 窗口）
 - **A1 跑分卡单位换算修复（大王报障：内存 16G 显示几万 G）**：PerfMiniRow 两处 PSS 显示（大字/内存胶囊）缺 KB→GB 换算（pssKb 直接喂 gbTinyFmt → 4.2GB 显示成 4404019.0G），与 PerfPanel/AssistantTurnFooter 峰值/PerfHistoryModal 同口径对齐（/1024/1024，组件 2026-08-27 ae26403 重构引入即错）；新建 PerfMiniRow 单测 5 例钉死换算与 N/A 契约 + AssistantTurnFooter 峰值换算哨兵断言
 - **A2 回复慢真机取证（K90，大王报障：新会话也慢、所有聊天模型都慢）**：历史回复 footer 实测 104ms/token / 9.61 tok/s / **73007ms TTFT**（「正在准备 100+ 秒」复现）；logcat 加载时序证实 2B 主上下文 n_threads=6 正常（n_threads=4 属管家 promptWriter 独立链路写死）、CPU 是 K90 唯一稳定路径（OpenCL 仅支持 Q4_0/Q6_K，Hexagon 加载 2B 即 App died）——**慢的放大器 = 11 工具 schema+grounding 全量常驻 prefill + enable_thinking 默认 true**

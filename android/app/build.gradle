@@ -101,8 +101,8 @@ android {
         applicationId "com.pocketpalai"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 144
-        versionName "2.0.0"
+        versionCode 145
+        versionName "2.0.1"
         // 开发者预览版迭代区分：构建时间注入（打包机 GMT+8），AboutScreen 展示
         def buildTime = new Date().format("yyyy-MM-dd HH:mm", TimeZone.getTimeZone("GMT+08:00"))
         buildConfigField "String", "BUILD_TIMESTAMP", "\"${buildTime}\""
