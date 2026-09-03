@@ -160,7 +160,14 @@ Pocket Chick is intentionally not a productivity tool. It's a "digital pet" — 
 
 ## 📸 截图 / Screenshots
 
-> TODO: 补充截图（欢迎贡献）
+> 真机实拍（Redmi K90 / HyperOS），更多界面见 `assets/screenshots/`。
+
+<p align="center">
+  <img src="assets/screenshots/screenshot-1.jpg" alt="Screenshot 1" width="230" />
+  <img src="assets/screenshots/screenshot-2.jpg" alt="Screenshot 2" width="230" />
+  <img src="assets/screenshots/screenshot-3.jpg" alt="Screenshot 3" width="230" />
+  <img src="assets/screenshots/screenshot-4.jpg" alt="Screenshot 4" width="230" />
+</p>
 
 ## 🚀 快速开始 / Quick Start
 
