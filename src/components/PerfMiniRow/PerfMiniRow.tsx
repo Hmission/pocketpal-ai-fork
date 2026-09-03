@@ -61,6 +61,10 @@ export const PerfMiniRow: React.FC<PerfMiniRowProps> = ({
 
   const latest = history.length > 0 ? history[history.length - 1] : undefined;
   const pssKb = latest?.pssKb;
+  // KB → GB 换算（与 PerfPanel/Footer 峰值/PerfHistoryModal 同口径，2026-08-31 修复
+  // 引入即错：pssKb 直接喂 gbTinyFmt 会把 4.2GB 显示成 4404019.0G）；N/A 诚实 '--'。
+  const pssGb =
+    pssKb === undefined || pssKb < 0 ? undefined : pssKb / 1024 / 1024;
   const mainColor = color ?? theme.colors.primary;
   const pssColor = pssColorOf(theme, pssKb ?? 0, mainColor);
   // 分区温度归一（与 PerfPanel 同选取链：GPU 区 → CPU 区 → 整机）
@@ -88,7 +92,7 @@ export const PerfMiniRow: React.FC<PerfMiniRowProps> = ({
         testID={`${testIDPrefix}-perf-toggle`}>
         <Text style={s.foldTitle}>性能 {expanded ? '▴' : '▾'}</Text>
         <AnimatedNumber
-          value={opt(pssKb)}
+          value={pssGb}
           format={gbTinyFmt}
           style={[s.pssBig, {color: pssColor}]}
           testID={`${testIDPrefix}-pss`}
@@ -97,7 +101,7 @@ export const PerfMiniRow: React.FC<PerfMiniRowProps> = ({
           <View style={s.capsule}>
             <Text style={s.capsuleText}>
               <AnimatedNumber
-                value={opt(pssKb)}
+                value={pssGb}
                 format={gbTinyFmt}
                 style={{color: loadTierColor(theme, pssKb)}}
               />

@@ -542,23 +542,28 @@ describe('useChatSession', () => {
       return captured;
     };
 
-    const send = async () => {
+    const send = async (textOverride?: string) => {
+      const message = textOverride
+        ? {...textMessage, text: textOverride}
+        : textMessage;
       const {result} = renderHook(() =>
-        useChatSession({current: null}, textMessage.author, mockAssistant),
+        useChatSession({current: null}, message.author, mockAssistant),
       );
       await act(async () => {
-        await result.current.handleSendPress(textMessage);
+        await result.current.handleSendPress(message);
       });
     };
 
     // Strict templates reject a second system message ("must be at the
     // beginning"), so grounding folds into the pal's system message.
+    // A2 任务驱动裁剪（2026-09-03）：搜索工具只在文本命中唤起词时注入，
+    // 故用搜索意图消息验证 grounding 折叠（纯闲聊不再携带 grounding）。
     it('sends exactly one system message carrying both the pal prompt and the grounding', async () => {
       const pal = useSessionWithPal('You are a research assistant.');
       await activateSearchTools();
       const captured = captureMessages();
 
-      await send();
+      await send('帮我搜一下最近的新闻');
 
       const systemMessages = captured.messages.filter(
         msg => msg.role === 'system',
@@ -581,7 +586,7 @@ describe('useChatSession', () => {
       await activateSearchTools();
       const captured = captureMessages();
 
-      await send();
+      await send('帮我查一下明天的天气');
 
       const systemMessages = captured.messages.filter(
         msg => msg.role === 'system',

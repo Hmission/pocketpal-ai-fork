@@ -14,7 +14,7 @@ import {CompletionParams} from './completionTypes';
 
 // Current version of the completion settings schema
 // Increment this when adding new settings or changing existing ones
-export const CURRENT_COMPLETION_SETTINGS_VERSION = 4;
+export const CURRENT_COMPLETION_SETTINGS_VERSION = 5;
 
 /**
  * Default completion parameters used throughout the app
@@ -45,7 +45,10 @@ export const defaultCompletionParams: CompletionParams = {
   n_probs: 0, // If greater than 0, the response also contains the probabilities of top N tokens for each generated token given the sampling settings.
   stop: ['</s>'],
   jinja: true, // Whether to use Jinja templating for chat formatting
-  enable_thinking: true, // Whether to enable thinking mode for compatible models
+  // A2（2026-09-03 真机取证）：默认关闭思考——本地 CPU 上每轮长思考流会放大
+  // TTFT（2B 实测 73s 级），v3 迁移曾强制开启（见 migrateCompletionSettings）。
+  // 思考仍是用户主权：聊天页 thinking pill 可随时显式开启。
+  enable_thinking: false, // Whether to enable thinking mode for compatible models
   // emit_partial_completion: true, // This is not used in the current version of llama.rn
 };
 
@@ -91,6 +94,22 @@ export function migrateCompletionSettings(settings: any): any {
       migratedSettings.n_predict = defaultCompletionParams.n_predict;
     }
     migratedSettings.version = 4;
+  }
+
+  if (migratedSettings.version < 5) {
+    // Migration to version 5（A2 2026-09-03 K90 真机取证）：v3 迁移把
+    // enable_thinking 默认强制写成 true，CPU 上每轮思考流放大 TTFT（2B 实测
+    // 73s 级首 token 等待）→ 回退为默认关闭。仅回退「迁移注入」的 true——
+    // 用户显式开启会成对写入 reasoning.enabled=true（ChatScreen
+    // persistReasoning），迁移注入只写 enable_thinking（reasoning 缺失/未启用），
+    // 保留用户主权：显式开启的思考不被动关闭。
+    if (
+      migratedSettings.enable_thinking === true &&
+      migratedSettings.reasoning?.enabled !== true
+    ) {
+      migratedSettings.enable_thinking = false;
+    }
+    migratedSettings.version = 5;
   }
 
   // Add future migrations here as needed

@@ -45,6 +45,53 @@ async function readFileSafe(path: string): Promise<string> {
   return '';
 }
 
+// B2（2026-08-31）：人设/规范静态文件按 mtime 缓存——每轮推理前重复读盘是
+// 可省固定开销（文件只在编辑时变化）；stat 失败回退直读（缓存失效），不拦截。
+const staticFileCache = new Map<string, {mtimeMs: number; content: string}>();
+/** in-flight 共享：并发组装（罕见）不双读（同 mtime 的冗余 readFile 是纯浪费） */
+const staticFileInFlight = new Map<string, Promise<string>>();
+
+/** mtime 兼容 Date/number 两种返回形态（不同 RNFS 版本） */
+const mtimeOf = (v: Date | number | null | undefined): number =>
+  v instanceof Date ? v.getTime() : Number(v ?? 0);
+
+async function readStaticFileSafe(path: string): Promise<string> {
+  const inflight = staticFileInFlight.get(path);
+  if (inflight) {
+    return inflight;
+  }
+  const task = (async (): Promise<string> => {
+    try {
+      if (!(await RNFS.exists(path))) {
+        return '';
+      }
+      const cached = staticFileCache.get(path);
+      let mtimeMs: number | null = null;
+      try {
+        const st = await RNFS.stat(path);
+        mtimeMs = mtimeOf(st.mtime);
+      } catch {
+        mtimeMs = null; // stat 失败：跳过命中判断，直读并刷新缓存
+      }
+      if (cached && mtimeMs !== null && cached.mtimeMs === mtimeMs) {
+        return cached.content;
+      }
+      const content = await RNFS.readFile(path, 'utf8');
+      if (mtimeMs !== null) {
+        staticFileCache.set(path, {mtimeMs, content});
+      }
+      return content;
+    } catch (e) {
+      console.warn(`[contextAssembler] read ${path} failed:`, e);
+    }
+    return '';
+  })().finally(() => {
+    staticFileInFlight.delete(path);
+  });
+  staticFileInFlight.set(path, task);
+  return task;
+}
+
 /**
  * \u7ec4\u88c5\u63a8\u7406\u4e0a\u4e0b\u6587\u3002
  *
@@ -77,9 +124,11 @@ export async function assembleContext(
         : maxRecallFragments;
 
   // 1. system 层：SOUL（人设）+ USER（大王画像）+ AGENTS（规范）+ MEMORY（注入知识文档，截断防臃肿）+ 记忆碎片
-  const soul = await readFileSafe(AIOS_SOUL_FILE);
-  const user = await readFileSafe(AIOS_USER_FILE);
-  const agents = await readFileSafe(AIOS_AGENTS_FILE);
+  // B2（2026-08-31）：SOUL/USER/AGENTS 静态文件 mtime 缓存（每轮省 3 次读盘）；
+  // MEMORY 与召回每轮重读（内容随记忆写盘变化）。
+  const soul = await readStaticFileSafe(AIOS_SOUL_FILE);
+  const user = await readStaticFileSafe(AIOS_USER_FILE);
+  const agents = await readStaticFileSafe(AIOS_AGENTS_FILE);
   const memoryDoc = (await readFileSafe(AIOS_MEMORY_FILE)).slice(0, 2000);
   // 9-3 意图引导装填：会话级意图（调用方从会话状态机传入，不每轮重判）
   const memoryFragment = await buildMemoryFragment(

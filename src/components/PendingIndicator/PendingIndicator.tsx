@@ -6,9 +6,8 @@ import {useTheme} from '../../hooks/useTheme';
 import {L10nContext} from '../../utils';
 import {t} from '../../locales';
 import {modelStore} from '../../store';
-import NativeHardwareInfo, {
-  type PerfSnapshot,
-} from '../../specs/NativeHardwareInfo';
+import type {PerfSnapshot} from '../../specs/NativeHardwareInfo';
+import {chatTurnPerf} from '../../services/perf/chatTurnPerf';
 import {PerfMiniRow} from '../PerfMiniRow';
 
 import {createStyles, createCountStyle} from './styles';
@@ -253,27 +252,22 @@ export const PendingIndicator: React.FC<PendingIndicatorProps> = observer(
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [runStartedAt]);
 
-    // 实时遥测（B40 仪式卡）：待回复卡驻留期间 1Hz 采样（PSS/CPU/温度）——
-    // 仪式感 = 设备在烧电路的活证据；N/A 诚实显 --，不造假。
-    // B41：perfHistory 滚动缓冲（最近 60 点）驱动迷你折线，跑分是本体。
-    // 2026-08-26：展示归一 PerfMiniRow（B43 双线+热力带+坐标轴+演出层），
-    // 采样链不变（latest 点即当前值，无独立 perfNow state）。
+    // 实时遥测（B40 仪式卡 → B1 2026-08-31 采样合并）：数据源 = chatTurnPerf
+    // 本轮 1Hz 轨迹（run_started→run_finished 全周期覆盖跑分卡驻留期），本组件
+    // 不再自建 NativeHardwareInfo 采样器——双 1Hz 采样（每点 ~10 个 sysfs 读 +
+    // Debug.getMemoryInfo）合一，生成期只有一个采样源。运行外（无轨迹）诚实
+    // 显 '--'，不插值不编造；轨迹随 chatTurnPerf.cancel（失败回合）同步清空。
     const [perfHistory, setPerfHistory] = useState<PerfSnapshot[]>([]);
     useEffect(() => {
       let alive = true;
-      const sample = async () => {
-        try {
-          const s = await NativeHardwareInfo.getPerfSnapshot();
-          if (!alive) {
-            return;
-          }
-          setPerfHistory(h => [...h, s].slice(-60));
-        } catch {
-          // 采集失败：跳过该点不插值（诚实），不置空（不闪烁）
+      const sync = () => {
+        if (!alive) {
+          return;
         }
+        setPerfHistory(chatTurnPerf.livePoints.slice(-60));
       };
-      sample();
-      const iv = setInterval(sample, 1000);
+      sync();
+      const iv = setInterval(sync, 1000);
       return () => {
         alive = false;
         clearInterval(iv);

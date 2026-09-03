@@ -33,6 +33,16 @@ class ChatTurnPerf {
   private startedAt = 0;
   private taskId: string | null = null;
 
+  /**
+   * B1（2026-08-31）：只读当前回合轨迹缓冲。
+   * PendingIndicator 订阅面——聊天进度卡不再自建第二套 1Hz NativeHardwareInfo
+   * 采样器（双采样 = 每点 ~10 个 sysfs 读 + Debug.getMemoryInfo 的翻倍固定开销），
+   * 生成期只有一个采样源（本服务）；运行外（未 begin/已 finish）诚实返空。
+   */
+  get livePoints(): PerfPoint[] {
+    return this.points.slice();
+  }
+
   /** run_started：落盘 meta + 起 1Hz 采样（每点增量落盘）。
    *  调用方 fire-and-forget（内部自捕获异常，不抛给主链）。 */
   begin(meta: {taskId: string; modelLabel: string}): void {

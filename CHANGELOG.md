@@ -7,6 +7,16 @@
 
 ## [Unreleased]
 
+### 聊天页慢速回归修复 + 跑分卡数值位数修复（2026-09-03，大王报障两项，task-47d 窗口）
+- **A1 跑分卡单位换算修复（大王报障：内存 16G 显示几万 G）**：PerfMiniRow 两处 PSS 显示（大字/内存胶囊）缺 KB→GB 换算（pssKb 直接喂 gbTinyFmt → 4.2GB 显示成 4404019.0G），与 PerfPanel/AssistantTurnFooter 峰值/PerfHistoryModal 同口径对齐（/1024/1024，组件 2026-08-27 ae26403 重构引入即错）；新建 PerfMiniRow 单测 5 例钉死换算与 N/A 契约 + AssistantTurnFooter 峰值换算哨兵断言
+- **A2 回复慢真机取证（K90，大王报障：新会话也慢、所有聊天模型都慢）**：历史回复 footer 实测 104ms/token / 9.61 tok/s / **73007ms TTFT**（「正在准备 100+ 秒」复现）；logcat 加载时序证实 2B 主上下文 n_threads=6 正常（n_threads=4 属管家 promptWriter 独立链路写死）、CPU 是 K90 唯一稳定路径（OpenCL 仅支持 Q4_0/Q6_K，Hexagon 加载 2B 即 App died）——**慢的放大器 = 11 工具 schema+grounding 全量常驻 prefill + enable_thinking 默认 true**
+- **A2 任务驱动工具裁剪（新模块 services/talents/taskGating.ts）**：chitchat 仅常驻轻工具（datetime/calculate/note_save/search_memory），web_search/read_url/device_control/writing_doc/render_html/read_html 按显式唤起词补注入，write/code/play/adventure 任务会话全量原样；useChatSession tools 注入面与 allowedTalentNames 面共用同一 gate（纯函数幂等保序）；pact.talents 对账基准不动——每轮 prefill 工具开销大幅收窄，模型不再倾向先调工具
+- **A2 thinking 默认值回归 false + v5 迁移回退**：defaultCompletionParams.enable_thinking → false（v3 迁移曾强制开启、CPU 上每轮思考流放大 TTFT）；v5 迁移仅回退「迁移注入的 true」（无 reasoning.enabled=true 配对），用户经 thinking pill 显式开启的保留主权；ChatScreen pill 初始态/fallback 同步
+- **B1 双 1Hz 采样器合并**：PendingIndicator 自采样 perfHistory 与 chatTurnPerf 回合遥测在生成期叠加两套 NativeHardwareInfo.getPerfSnapshot()——删除组件内自建采样，chatTurnPerf 唯一采样源 + livePoints 订阅
+- **B2 assembleContext 静态文件缓存**：SOUL/USER/AGENTS 三静态文件按 mtime 缓存解析（readStaticFileSafe + in-flight 去重），仅 MEMORY 与 FTS5 召回每轮重读；失败回退直读
+- 门禁：tsc 0 错 + jest 330 套件 4676 用例全绿（新增 taskGating 13 例 / PerfMiniRow 5 例 / contextAssembler.cache 4 例；2 个既有失败与本次零交集）
+- **真机对照闭环（2026-09-03 覆盖安装新版后 K90 重测）**：同会话「重新生成」——TTFT 73007ms→38614ms（**-47.1%**）、tok/s 9.61→9.99；thinking-toggle 显示「启用思考模式」（v5 回退存量迁移注入的 true 实证）
+
 ### 跑分数据链路补全 + 出图按钮任务态转圈统一（2026-08-29，大王报障三项，PERF_BENCHMARK_DESIGN v1.4）
 - **K90 GPU 频率/功耗多源探测（大王报障：跑分卡 GPU 频率/功耗恒 --）**：GPU 频率改多源候选链（kgsl gpuclk → kgsl devfreq/cur_freq → /sys/class/devfreq 全目录兜底），单源读数 0/受限自动轮换（骁龙 8 Gen 2+ gpuclk 受限恒 0，K90 复现）；devfreq 节点名放宽含 kgsl/mali（MTK `13000000.mali` 不含 "gpu"，旧匹配漏探致 K Pad 平板 GPU 负载/频率一并读不到）；功耗多源链（current_now→current_avg→其它 power_supply 节点 main/bms/fg_*→power_now 直读），K90/HyperOS battery current_now 常 0/受限实锤；首次探测路径 println 留痕供新窗口构建后 logcat 实证
 - **出图按钮任务进行态转圈统一（flux 等 SD 族真机观察缺转圈）**：GenActionBar 转圈条件从 loading/generating 扩为三段同源（loading/generating/queueRunning）——队列执行中按钮同样转圈+灰置（此前仅灰置无动效）；静态链路复核：直接出图路径 loading/generating 全覆盖（loadModel→loading / generate→generating），无模型族差异，队列执行期是本处补强点

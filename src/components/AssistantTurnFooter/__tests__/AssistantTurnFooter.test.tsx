@@ -443,7 +443,7 @@ describe('AssistantTurnFooter', () => {
           turnPerf: turnPerfFixture,
         },
       });
-      const {getByTestId, queryByTestId, getByText} = render(
+      const {getByTestId, queryByTestId, getByText, queryByText} = render(
         <AssistantTurnFooter message={message} />,
       );
       expect(queryByTestId('footer-perf-expand')).toBeNull(); // 默认折叠
@@ -452,6 +452,9 @@ describe('AssistantTurnFooter', () => {
       expect(getByTestId('footer-perf-chart')).toBeTruthy();
       expect(getByTestId('footer-perf-toks')).toBeTruthy();
       expect(getByText(/峰值 5.0G/)).toBeTruthy();
+      // 换算哨兵（2026-08-31 与 PerfMiniRow 同口径对齐）：峰值必须 KB→GB，
+      // 原始 KB 位数（5GB=5242880KB 显示成 5242880.0G）一律不许出现
+      expect(queryByText(/峰值 5242880/)).toBeNull();
       expect(getByText(/3 采样点/)).toBeTruthy();
     });
   });

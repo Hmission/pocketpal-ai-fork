@@ -63,7 +63,7 @@ describe('migrateCompletionSettings', () => {
     expect(migrated.temperature).toBe(0.7);
   });
 
-  it('should migrate from version 3 to version 4 when n_predict is old default (1024)', () => {
+  it('should migrate from version 3 to version 5 when n_predict is old default (1024)', () => {
     const settings = {
       version: 3,
       temperature: 0.7,
@@ -74,12 +74,12 @@ describe('migrateCompletionSettings', () => {
     };
     const migrated = migrateCompletionSettings(settings);
 
-    expect(migrated.version).toBe(4);
+    expect(migrated.version).toBe(5);
     expect(migrated.n_predict).toBe(-1);
     expect(migrated.temperature).toBe(0.7);
   });
 
-  it('should preserve custom n_predict value during v3 to v4 migration', () => {
+  it('should preserve custom n_predict value during v3 to v5 migration', () => {
     const settings = {
       version: 3,
       temperature: 0.7,
@@ -90,18 +90,18 @@ describe('migrateCompletionSettings', () => {
     };
     const migrated = migrateCompletionSettings(settings);
 
-    expect(migrated.version).toBe(4);
+    expect(migrated.version).toBe(5);
     expect(migrated.n_predict).toBe(2048);
   });
 
-  it('should preserve n_predict=500 (per-model default) during v3 to v4 migration', () => {
+  it('should preserve n_predict=500 (per-model default) during v3 to v5 migration', () => {
     const settings = {
       version: 3,
       n_predict: 500,
     };
     const migrated = migrateCompletionSettings(settings);
 
-    expect(migrated.version).toBe(4);
+    expect(migrated.version).toBe(5);
     expect(migrated.n_predict).toBe(500);
   });
 
@@ -125,7 +125,7 @@ describe('migrateCompletionSettings', () => {
     expect(migrated.top_p).toBe(0.9);
   });
 
-  it('should migrate from v0 to v4 applying all migrations including conditional n_predict', () => {
+  it('should migrate from v0 to v5 applying all migrations including conditional n_predict', () => {
     const settings = {
       version: 0,
       temperature: 0.5,
@@ -133,7 +133,7 @@ describe('migrateCompletionSettings', () => {
     };
     const migrated = migrateCompletionSettings(settings);
 
-    expect(migrated.version).toBe(4);
+    expect(migrated.version).toBe(5);
     expect(migrated.include_thinking_in_context).toBe(
       defaultCompletionParams.include_thinking_in_context,
     );
@@ -145,7 +145,7 @@ describe('migrateCompletionSettings', () => {
     expect(migrated.temperature).toBe(0.5);
   });
 
-  it('should migrate from v0 to v4 preserving custom n_predict', () => {
+  it('should migrate from v0 to v5 preserving custom n_predict', () => {
     const settings = {
       version: 0,
       temperature: 0.5,
@@ -153,7 +153,7 @@ describe('migrateCompletionSettings', () => {
     };
     const migrated = migrateCompletionSettings(settings);
 
-    expect(migrated.version).toBe(4);
+    expect(migrated.version).toBe(5);
     expect(migrated.n_predict).toBe(2048);
   });
 
@@ -171,15 +171,57 @@ describe('migrateCompletionSettings', () => {
     expect(migrated).toEqual(settings);
   });
 
-  it('should not modify n_predict when already at version 4', () => {
+  it('should not modify n_predict when already at version 5', () => {
     const settings = {
-      version: 4,
+      version: 5,
       n_predict: 1024,
     };
     const migrated = migrateCompletionSettings(settings);
 
-    expect(migrated.version).toBe(4);
+    expect(migrated.version).toBe(5);
     expect(migrated.n_predict).toBe(1024);
+  });
+
+  it('should roll back migration-injected enable_thinking=true to false (v4 to v5)', () => {
+    // v3 迁移只写 enable_thinking（无 reasoning）——A2 真机取证后 v5 回退默认关闭。
+    const settings = {
+      version: 4,
+      enable_thinking: true,
+      jinja: true,
+      include_thinking_in_context: true,
+    };
+    const migrated = migrateCompletionSettings(settings);
+
+    expect(migrated.version).toBe(5);
+    expect(migrated.enable_thinking).toBe(false);
+  });
+
+  it('should preserve user-explicit enable_thinking=true (reasoning.enabled) during v4 to v5', () => {
+    // 用户经 thinking pill 显式开启会成对写入 reasoning.enabled=true——保留主权。
+    const settings = {
+      version: 4,
+      enable_thinking: true,
+      reasoning: {enabled: true, effort: 'medium'},
+      jinja: true,
+      include_thinking_in_context: true,
+    };
+    const migrated = migrateCompletionSettings(settings);
+
+    expect(migrated.version).toBe(5);
+    expect(migrated.enable_thinking).toBe(true);
+    expect(migrated.reasoning.enabled).toBe(true);
+  });
+
+  it('should keep enable_thinking=false untouched during v4 to v5', () => {
+    const settings = {
+      version: 4,
+      enable_thinking: false,
+      jinja: true,
+    };
+    const migrated = migrateCompletionSettings(settings);
+
+    expect(migrated.version).toBe(5);
+    expect(migrated.enable_thinking).toBe(false);
   });
 
   it('should preserve existing values during migration', () => {
@@ -235,8 +277,8 @@ describe('defaultCompletionParams', () => {
     );
   });
 
-  it('should have enable_thinking set to true by default', () => {
-    expect(defaultCompletionParams.enable_thinking).toBe(true);
+  it('should have enable_thinking set to false by default (A2 CPU thinking cost)', () => {
+    expect(defaultCompletionParams.enable_thinking).toBe(false);
   });
 
   it('should have include_thinking_in_context set to true by default', () => {
@@ -251,7 +293,7 @@ describe('defaultCompletionParams', () => {
     expect(defaultCompletionParams.n_predict).toBe(-1);
   });
 
-  it('should have CURRENT_COMPLETION_SETTINGS_VERSION equal to 4', () => {
-    expect(CURRENT_COMPLETION_SETTINGS_VERSION).toBe(4);
+  it('should have CURRENT_COMPLETION_SETTINGS_VERSION equal to 5', () => {
+    expect(CURRENT_COMPLETION_SETTINGS_VERSION).toBe(5);
   });
 });

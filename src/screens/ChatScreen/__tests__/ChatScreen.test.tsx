@@ -397,10 +397,13 @@ describe('ChatScreen', () => {
         withNavigation: true,
       });
 
-      // Initial state: thinkingEnabled defaults true → toggle label is
-      // "Disable thinking mode". Tapping it should write `false` into the
-      // override field.
-      const toggle = getByLabelText('Disable thinking mode');
+      // A2（2026-09-03）：pill 初始为 off（默认关思考）；effect 异步读回
+      // pal completionSettings {enable_thinking: true} 后切到 on——
+      // 故先 waitFor 再断言 "Disable thinking mode"。点击应写 `false`
+      // 进 override 字段。
+      const toggle = await waitFor(() =>
+        getByLabelText('Disable thinking mode'),
+      );
       await act(async () => {
         fireEvent.press(toggle);
       });
@@ -931,8 +934,10 @@ describe('ChatScreen on/off toggle → reasoning carrier (remote)', () => {
     useRemoteEffortUnknownModel();
     const {getByLabelText} = render(<ChatScreen />, {withNavigation: true});
 
-    // Default thinkingEnabled true → label is "Disable thinking mode".
-    const toggle = getByLabelText('Disable thinking mode');
+    // A2（2026-09-03）：pill 初始为 off，effect 异步读回 persisted
+    // enable_thinking:true 后切到 on——先 waitFor 再断言 "Disable
+    // thinking mode"。
+    const toggle = await waitFor(() => getByLabelText('Disable thinking mode'));
     await act(async () => {
       fireEvent.press(toggle);
     });

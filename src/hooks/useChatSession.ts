@@ -66,6 +66,7 @@ import {
   seedReadUrlAllowlist,
   talentRegistry,
 } from '../services/talents';
+import {resolveGatedTalentNames} from '../services/talents/taskGating';
 import type {ToolDefinition} from '../services/talents/types';
 import {
   agentStateReducer,
@@ -101,8 +102,25 @@ const prepareCompletion = async ({
   l10n: any;
   currentMessages: MessageType.Any[];
 }) => {
+  // A2 任务驱动工具裁剪（2026-09-03 K90 真机取证）：chitchat 只常驻轻工具，
+  // 重量工具按显式唤起词补注入；任务会话（write/code/play/adventure）全量。
+  // 裁剪发生在注入面（tools/grounding 同步收窄，prefill 固定开销下降），
+  // 与 handleSendPress 的 allowedTalentNames 共用同一 gate，两侧严格一致。
+  const settings = await chatSessionStore.getCurrentCompletionSettings();
+  const allToolNames = (
+    (settings.tools as ToolDefinition[] | undefined) ?? []
+  ).map(tool => tool.function?.name ?? '');
+  const gatedToolNames = resolveGatedTalentNames(message.text, allToolNames);
+  const gatedToolSet = new Set(gatedToolNames);
   const sessionCompletionSettings =
-    await chatSessionStore.getCurrentCompletionSettings();
+    allToolNames.length === gatedToolNames.length
+      ? settings
+      : {
+          ...settings,
+          tools: (
+            (settings.tools as ToolDefinition[] | undefined) ?? []
+          ).filter(tool => gatedToolSet.has(tool.function?.name ?? '')),
+        };
   const stopWords = toJS(modelStore.activeModel?.stopWords);
 
   // Check if we have images and if multimodal is enabled
@@ -889,7 +907,13 @@ export const useChatSession = (
 
     // Allowed talent names for this Pal. The runner rejects any
     // tool call whose function.name isn't in this list.
-    const palTalents = (pal?.pact?.talents ?? []).map(t => t.name);
+    // A2 任务驱动裁剪（与 prepareCompletion 注入面同 gate）：chitchat 裁剪
+    // 后模型只被允许调用常驻轻工具 + 显式唤起补注入的工具，保证
+    // allowedTalentNames 与 completionParams.tools 严格一致。
+    const palTalents = resolveGatedTalentNames(
+      message.text ?? '',
+      (pal?.pact?.talents ?? []).map(t => t.name),
+    );
 
     abortRef.current = new AbortController();
     const completionStartTime = Date.now();
