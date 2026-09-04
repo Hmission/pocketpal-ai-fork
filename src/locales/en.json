@@ -605,6 +605,20 @@
     "attachmentButton": {
       "attachmentButtonAccessibilityLabel": "Send media"
     },
+    "phoneCall": {
+      "title": "Phone Call",
+      "listening": "Listening…",
+      "thinking": "Thinking…",
+      "speaking": "Speaking…",
+      "holdToTalk": "Hold to talk",
+      "releaseToSend": "Release to send",
+      "hangUp": "Hang up",
+      "emptySpeech": "No speech detected, please try again",
+      "asrNotReady": "Voice model not downloaded yet",
+      "permissionDenied": "Microphone permission required",
+      "guideToText": "This action requires text mode",
+      "failed": "Transcription or sending failed, please try again"
+    },
     "bubble": {
       "msPerToken": "{{value}}ms/token",
       "tokensPerSec": "{{value}} tokens/sec",

@@ -62,4 +62,15 @@ export const createStyles = ({
       borderWidth: 1,
       borderColor: theme.colors.primary,
     },
+    // CHAT_UI_SPEC §21：电话模式入口图标（36px 触区，对齐顶栏控件族）
+    phoneButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    phoneButtonDisabled: {
+      opacity: 0.4,
+    },
   });

@@ -3,9 +3,9 @@ doc_id: POCKETPAL_CHAT_UI_SPEC
 module: root
 type: spec
 status: active
-version: "4.9"
+version: "5.0"
 created: "2026-08-14"
-updated: "2026-09-03"
+updated: "2026-09-04"
 relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-footer-unification]
 ---
 
@@ -18,6 +18,7 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 > 版本：v2.1（2026-08-27，UI 一致性升级，五大类）：① **跑分卡 B43 同步**——PendingIndicator 折线 44→56pt（PSS+CPU 双线 + 温度热力带 + 坐标轴 + 5/6GB 阈值标注 + vivid 演出层），遥测行归一共享 `PerfMiniRow`（折叠头 PSS 大字阈值色 + 内存/CPU/温度胶囊分级色）；AssistantTurnFooter 展开层加 axes/tempBand/vivid（72pt）——与生图页 PerfPanel 同一效果族（紧凑尺度）；② **顶部横幅去灰**——BannerBar neutral 灰底（surfaceVariant）→ surface 实底 + outline hairline，新增 `centered` prop；BenchmarkHudBar 灰底 → 跑分金 brandAccent 12% wash + 文案居中；BannerRow html-soft-cap/context-remote-hedged 灰变体 → info 语义 wash + 居中；③ **场景收敛**——ActiveTaskBanner chat/prompter loading 态隐藏（输入框 placeholder 五分支已表达「加载模型/加载管家模型」，双提示冗余），保留 running/error 与 image 引擎任务；④ **死代码清理**——ModelNotLoadedMessage（无引用仅测试自引用）git rm 留痕；⑤ 阈值/格式器单一事实源 `utils/perfTiers`（IMAGEGEN_UI_SPEC §9 注册表抽取共享）
 > 版本：v2.2（2026-08-27，管家提示词增强链路修订）：聊天生图小模型扩写根治「鹦鹉学舌」（画苹果出海边美女——§13.4 增强链路第 4 条）：few-shot 示例由 system 内嵌纯文本改 user/assistant 示范轮 + temperature 0.7→0.4 + isParrotingExample 检测闸（复读=显式失败，任务卡标「提示词未增强」）；「管家优化为」展示语义与契约不变
 > 版本：v2.3（2026-09-03，聊天页慢速回归修复，A2）：① **thinking 默认关思考**——defaultCompletionParams.enable_thinking 回归 false + completionSettingsVersions v5 迁移回退（仅回退迁移注入的 true：v3 曾强制开启；用户经 thinking pill 显式开启的 reasoning.enabled=true 保留主权）；ChatScreen pill 初始态/fallback 同步 false，「启用思考模式」为默认显示；② **任务驱动工具裁剪**——chitchat 常驻轻工具（datetime/calculate/note_save/search_memory），web_search/device_control/writing_doc/render_html 等重量工具按显式唤起词补注入，write/code/play/adventure 任务会话全量；③ **采样单源**——PendingIndicator 删除自建 1Hz NativeHardwareInfo 采样，订阅 chatTurnPerf.livePoints（生成期全 App 唯一采样源）；④ **跑分卡单位换算修复**——PerfMiniRow PSS 大字/内存胶囊补 KB→GB 换算（与 PerfPanel/Footer 峰值/PerfHistoryModal 同口径，旧显示 4404019.0G 类位数爆掉根治）
+> 版本：v4.10（2026-09-04，电话模式登记，PHONE_SPEC v1.0）：① **顶栏电话图标**——ChatHeader 右区 HeaderRight 之前新增 PhoneIcon 入口（testID `phone-call-button`），点击进入全屏通话 overlay（详见 §21）；② 通话界面语义：surface 全底 + 状态区（聆听/思考/播报三态 l10n）+ 按住说话 84dp 大圆钮 + 挂断，动效复用 useWaveDots；③ 入/出边界：音频能力域复用 audio 域 assets，编排层新服务 src/services/phoneCall（纯 TS 可单测），不改引擎层；④ 工具禁用经 useChatSession systemPrompt 注入（phoneMode 标记轮次单次注入），聊天页不动 AgentRunner
 > 并列文档：POCKETPAL_IMAGEGEN_UI_SPEC.md（生图页）/ POCKETPAL_UI_INTERACTION_SPEC.md（全局交互）
 > 上位规范：POCKETPAL_DESIGN_SPEC.md（UI 域 SSOT）
 
@@ -497,6 +498,27 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
   （`Message.assistantTurn` / `ChatView.assistantTurn` / `ThinkingBubble` / `PendingIndicator` / `HeaderRight` / `ChatHeader` / `AssistantTurnFooter`）全绿 →
   真机覆盖安装 + 冷启动目测：① 徽章行 → 思考卡 → 正文卡顺序；② 用户卡右下直角、回答卡/思考卡/进度卡左下直角（v4.6 尾角下移）；③ 顶栏三控件间距等距。
 
+## 21. 电话模式（v5.0 新增，2026-09-04）
+
+> 全量规格见 POCKETPAL_PHONE_SPEC.md（本文档仅登记聊天页侧 UI 契约）。
+
+- **入口**：ChatHeader 右区新增 PhoneIcon 图标（HeaderRight 之前，顶栏模型胶囊之后），testID `phone-call-button`；
+  禁用态 `audioStore.asrState !== 'ready'` 时 0.4 透明 + 点击提示「语音模型未下载」引导。
+- **通话界面**：ChatScreen 根节点内全屏 overlay（surface 全底，弹窗范式 OverlayCard 语义对齐，不另造容器）：
+  ① 顶栏伙伴名 + 模型胶囊 + 右上「收起」；② 状态区（聆听中「我在听…」/ 思考中「思考中…」/ 播报中「播报中…」三态
+  l10n + 最近消息 2 行摘要）；③ 控制区（按住说话 84dp 大圆钮，录音中变「松开发送」红色 + 挂断）。
+- **动效**：三态波复用 useWaveDots（生图三点波浪同源，不新建动画体系）。
+- **编排**：src/services/phoneCall（纯 TS 服务类，依赖注入{record,transcribe,send,speak}，单测覆盖全流水线）；
+  UI 层仅 PhoneCallOverlay 组件 + ChatHeader 图标，不新增气泡类型（复用现有消息卡）。
+- **testID 登记**：
+
+| testID | 位置 |
+|---|---|
+| phone-call-button | ChatHeader 顶栏电话图标 |
+| phone-overlay | 通话 overlay 根容器 |
+| phone-hold-talk | 按住说话大圆钮 |
+| phone-hangup | 挂断按钮 |
+
 ## 变更日志
 
 | 日期 | 版本 | 变更 |
@@ -525,4 +547,5 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 | 2026-08-20 | 4.4 | §20 聊天页 UI 三处优化（task-6ad）：抽取 `AssistantAuthorRow` 单一事实源（徽章/意图上移助手卡顶行，`assistant_turn` 与 `text` 复用）；圆角区分（用户右上直角 / 回答系左上直角，Bubble·ThinkingBubble·PendingIndicator 同族）；顶栏三控件等距（HeaderRight gap 10）；footer 快捷图标间距 6→14 |
 | 2026-08-20 | 4.6 | §20.2 尾角下移（大王裁定）：用户右下直角 / 回答系左下直角（Bubble·Message·ThinkingBubble·PendingIndicator 同族，roundBorder 逻辑镜像至顶部同侧角）；AssistantTurnFooter 按钮栏与信息栏之间加 hairline 分隔横线（与动作槽同分隔语言） |
 | 2026-08-20 | 4.5 | §20 复查闭环（task-6ad 全量审计，K90 真机像素验证）：**P0** `ChatScreen.renderBubble` 加 `assistant_turn` 门控（turn 级仅一次，根除徽章行 N+1 重复，新增 `renderBubble.test.tsx` 三用例防回归）；`AssistantAuthorRow` 修正（author.id 硬编码 → 真实 `user.id`、意图选择器初始值改会话实时 `activeSessionIntent`、动态 import 改静态）；§20.3 顶栏等距度量重定义（图标视觉空隙为准，`compactBtnLeft` + `marginLeft -6dp`，真机 35/36px delta=1px） |
-| 2026-08-26 | 4.9 | §18.9 进度链路语义化与去重（B57，大王洞察「跑分卡思考流与气泡重复」）：①思考流预览 `streamingReasoningTail` 清退（思考内容单一事实源=气泡 ReasoningBlock，store 字段/触摸方法/touchAgentRun 形参/l10n reasoningLabel 全链删除）；②`AgentUiState` 加 `reasoningPhase`（reducer 在 token 事件按 reasoning/content delta 翻转，引用守卫保流式性能）——streaming_text 标签区分「正在思考…/正在回复…」，200s 思考期用户不再迷茫；③`tool_call_started` 保留 `pendingTalentNames`（执行期工具名不再丢失）+ TALENT_LABEL_KEYS 补 web_search→「正在联网搜索…」——联网搜索全程业务语义可见；阶段色收敛二态（流式期蓝/工具期紫） |
+| 2026-08-26 | 4.9 | §18.9 进度链路语义化与去重（B57，大王洞察「跑分卡思考流与气泡重复」）：①思考流预览 `streamingReasoningTail` 清退（思考内容单一事实源=气泡 ReasoningBlock，store 字段/触摸方法/touchAgentRun 形参/l10n reasoningLabel 全链删除）；②`AgentUiState` 加 `reasoningPhase`（reducer 在 token 事件按 reasoning/content delta 翻转，引用守卫保流式性能）——streaming_text 标签区分「正在思考…/正在回复…」，200s 思考期用户不再迷茫；③`tool_call_started` 保留 `pendingTalentNames`（执行期工具名不再丢失）+ TALENT_LABEL_KEYS 补 web_search→「正在联网搜索…」——联网搜索全程业务语义可见；阶段色收敛二态（流式期蓝/工具期紫）
+| 2026-09-04 | 5.0 | §21 电话模式（PHONE_SPEC v1.0）：顶栏电话图标（phone-call-button）+ 全屏通话 overlay（三态 + 按住说话 + 挂断）+ 复用 audio 域编排新服务 phoneCall（纯 TS 可单测）——不新增模型/引擎/气泡类型 |

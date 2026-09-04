@@ -1,7 +1,18 @@
 import React from 'react';
-import {render} from '../../../../jest/test-utils';
+import {StyleSheet} from 'react-native';
+import {render, fireEvent} from '../../../../jest/test-utils';
 import {ChatHeader} from '../ChatHeader';
 import {chatSessionStore} from '../../../store';
+
+// CHAT_UI_SPEC §21：电话入口依赖 SenseVoice 就绪态（mock 可控）
+const mockAsrState = {value: 'ready'};
+jest.mock('../../../store/audioStore', () => ({
+  audioStore: {
+    get asrState() {
+      return mockAsrState.value;
+    },
+  },
+}));
 
 // Mock the child components
 jest.mock('../../HeaderLeft', () => ({
@@ -71,6 +82,40 @@ describe('ChatHeader', () => {
     expect(headerView.props.style[1]).toMatchObject({
       backgroundColor: expect.any(String),
     });
+  });
+
+  // ===== CHAT_UI_SPEC §21：电话模式入口 =====
+
+  it('未传 onPhoneCallPress → 不渲染电话图标（不占位）', () => {
+    const {queryByTestId} = render(<ChatHeader />);
+    expect(queryByTestId('phone-call-button')).toBeNull();
+  });
+
+  it('SenseVoice 就绪 + 传入回调 → 图标可点，点击触发回调', () => {
+    mockAsrState.value = 'ready';
+    const onPhoneCallPress = jest.fn();
+    const {getByTestId} = render(
+      <ChatHeader onPhoneCallPress={onPhoneCallPress} />,
+      {withSafeArea: true},
+    );
+    const btn = getByTestId('phone-call-button');
+    // 就绪态：不禁用（flatten 后 opacity 非 0.4；Touchable 自带 opacity:1）
+    expect(StyleSheet.flatten(btn.props.style).opacity).not.toBe(0.4);
+    fireEvent.press(btn);
+    expect(onPhoneCallPress).toHaveBeenCalledTimes(1);
+  });
+
+  it('SenseVoice 未就绪 → 图标禁用态（半透明），点击不触发回调', () => {
+    mockAsrState.value = 'not_installed';
+    const onPhoneCallPress = jest.fn();
+    const {getByTestId} = render(
+      <ChatHeader onPhoneCallPress={onPhoneCallPress} />,
+      {withSafeArea: true},
+    );
+    const btn = getByTestId('phone-call-button');
+    expect(StyleSheet.flatten(btn.props.style)).toMatchObject({opacity: 0.4});
+    fireEvent.press(btn);
+    expect(onPhoneCallPress).not.toHaveBeenCalled();
   });
 
   // [已裁剪 2026-08] 头部生图入口（imagegen-button）用例随按钮一并删除：

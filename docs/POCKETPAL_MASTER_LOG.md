@@ -1421,6 +1421,16 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
 - 过程中处理：首窗 commit 曾混入并行窗口 18 个文件（暂存区竞争），先 bundle 备份再 reset --soft 拆分，并行窗口工作内容未丢失；后由另一窗口手动提交 5491717（fix(chat) 慢速回归，task-47d）。
 - **待推留痕（§126.4 惯例）**：本窗 4794690（+2 图布局两行三列）+ 5491717（另一窗口手动提交）+ 本段登记——2026-09-03 直连两次失败（Recv failure: Connection was reset / github.com:443 21s 超时），未走代理，**待网络恢复后按 §128.9 直连命令一次补推**。
 
+## §139 电话模式（语音通话）首版落地（2026-09-04，chat 域登记）
+
+- 背景：大王规划豆包式语音通话——聊天页右上角电话图标，点击直接语音对话；考察两轮定案**路线 A**（复用既有资产编排，零新引擎/零新模型）：录音 AudioRecord（B33）→ SenseVoice 转写（audioStore）→ AgentRunner 全链路（人设/记忆/智能体）→ 流式 TTS 播报（ttsStore）。
+- **首版红线（PHONE_SPEC §2）**：工具禁用 + 引导（端到端语音链路工具调用未验证 + 端侧多轮工具 loop 延迟不可接受）；人设/记忆 100% 走既有 assembleContext 链路；聊天记录全量落库（记忆系统照常消费）。
+- **文档**：新建 POCKETPAL_PHONE_SPEC.md v1.0（全规格 SSOT）；CHAT_UI_SPEC v4.10→v5.0（§21 电话模式登记 + 4 个 testID）；STARMAP_DOMAINS v2.2→v2.3（chat 域登记）；l10n phoneCall 段 12 key（en/zh 双源）。
+- **代码**：① src/services/phoneCall/session.ts —— PhoneCallSession 纯 TS 编排（状态机 idle→recording→transcribing→awaiting_reply→speaking，五件套依赖注入，语音优先打断/挂断作废在途转写/错误码四类）；② prompt.ts —— PHONE_MODE_GUIDE（工具禁用引导，§5 单一事实源）；③ PhoneCallOverlay 通话界面（surface 全底 + 三态 + 按住说话 84dp + 挂断 + useWaveDots 波形同源）；④ ChatHeader 电话图标（phone-call-button，SenseVoice 未就绪禁用半透明）；⑤ ChatView 透传；⑥ ChatScreen 集成（惰性 session + 权限申请 + 错误 chatWarning + 回合生命周期接线）；⑦ useChatSession 四参 callbacks（onPhoneTurnStarted/Finished）+ phoneMode 单轮 systemPrompt 注入 + 强制流式 TTS；⑧ 新图标 phone.svg（Lucide 同族 stroke）。
+- **验证**：tsc 零错；eslint 零错；l10n:validate 通过；jest 新增 13 用例（phoneCall session）+ 3 用例（ChatHeader）+ 回归 10 套件 125/125 全绿。
+- **提交**：本窗提交（docs + spec + 代码 + 单测）；push 待大王指令（§129.10 纪律：推送只在大王明确指令时执行）。
+- **实验分支后置**：路线 B（端到端语音模型直通，llama.rn 0.12.7 vocoder API 已备）数据说话再定；工具调用恢复待链路口测数据。
+
 ## §138 v2.0.1 发布闭环（2026-09-03，大王指令「app 记得更新，今天修了一个 bug」）
 
 - 发布指令：大王确认「发布新版本」（AskUserQuestion 选完整发布流程）；当天修复 = 5491717（fix(chat) 聊天页慢速回归 + 跑分卡数值修复，task-47d 窗口）

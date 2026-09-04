@@ -1,5 +1,5 @@
 import React, {useRef, ReactNode, useState} from 'react';
-import {View} from 'react-native';
+import {View, PermissionsAndroid, Platform, NativeModules} from 'react-native';
 
 import {observer} from 'mobx-react';
 import {runInAction} from 'mobx';
@@ -23,6 +23,7 @@ import {
   palStore,
   serverStore,
   uiStore,
+  ttsStore,
 } from '../../store';
 import {hasVideoCapability} from '../../utils/pal-capabilities';
 
@@ -44,6 +45,14 @@ import {promptWriter} from '../../services/promptWriter';
 import {imageGenStore} from '../../store';
 import {engineStatus} from '../../store/engineStatus';
 import {ROUTES} from '../../utils/navigationConstants';
+import {PhoneCallOverlay} from '../../components/PhoneCallOverlay/PhoneCallOverlay';
+import {
+  PhoneCallSession,
+  type PhoneCallErrorCode,
+  type PhoneCallStatus,
+} from '../../services/phoneCall/session';
+import {audioStore} from '../../store/audioStore';
+import {getModelDisplayName} from '../../utils/modelDisplayNames';
 
 import {VideoPalScreen} from './VideoPalScreen';
 
@@ -198,6 +207,11 @@ export const ChatScreen: React.FC = observer(() => {
     currentMessageInfo,
     user,
     assistant,
+    {
+      // PHONE_SPEC §4.3：电话回合生命周期 → 驱动 PhoneCallSession 状态机
+      onPhoneTurnStarted: () => phoneSessionRef.current?.notifyReplyStarted(),
+      onPhoneTurnFinished: () => phoneSessionRef.current?.notifyReplyFinished(),
+    },
   );
 
   // 任务驱动调度（调度叙事，实现在 hooks/useChatScheduler）：
@@ -207,6 +221,110 @@ export const ChatScreen: React.FC = observer(() => {
   // - upgradeButlerReply → 用户主权升级（L2 2026-08-21）：管家卡片「换个更聪明的模型」
   const {wrappedSendPress, upgradeButlerReply} =
     useChatScheduler(handleSendPress);
+
+  // ==================== 电话模式（PHONE_SPEC §4） ====================
+  const [phoneVisible, setPhoneVisible] = useState(false);
+  const [phoneStatus, setPhoneStatus] = useState<PhoneCallStatus>('idle');
+
+  /** 电话错误 → chatWarning Snackbar（与聊天页既有警示同一视觉，不另造） */
+  const handlePhoneError = React.useCallback(
+    (code: PhoneCallErrorCode) => {
+      const phoneCallL10n = l10n.components.phoneCall;
+      const message =
+        code === 'PERMISSION_DENIED'
+          ? phoneCallL10n.permissionDenied
+          : code === 'EMPTY_SPEECH'
+            ? phoneCallL10n.emptySpeech
+            : phoneCallL10n.failed;
+      uiStore.setChatWarning({
+        code: 'unknown',
+        message,
+        context: 'chat',
+        recoverable: true,
+        severity: 'warning',
+      });
+    },
+    [l10n],
+  );
+
+  // 惰性构造会话编排（依赖四件套全注入，纯 TS 可单测；录音权限在此层申请）
+  const phoneSessionRef = useRef<PhoneCallSession | null>(null);
+  if (!phoneSessionRef.current) {
+    phoneSessionRef.current = new PhoneCallSession({
+      record: {
+        start: async () => {
+          if (Platform.OS === 'android') {
+            const granted = await PermissionsAndroid.request(
+              PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+            );
+            if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+              throw new Error('RECORD_AUDIO denied');
+            }
+          }
+          return (await NativeModules.AudioRecord.startRecording()) as string;
+        },
+        stop: () => NativeModules.AudioRecord.stopRecording(),
+      },
+      transcribe: path => audioStore.transcribeTask(path),
+      send: text => {
+        // PHONE_SPEC §5：phoneMode 标记随消息透传（wrappedSendPress 全透传）
+        const phoneMsg = {text} as MessageType.PartialText;
+        phoneMsg.metadata = {phoneMode: true};
+        return wrappedSendPress(phoneMsg);
+      },
+      stopInference: handleStopPress,
+      speakStop: () => ttsStore.stop(),
+      notify: setPhoneStatus,
+      onError: handlePhoneError,
+    });
+  }
+
+  /** 顶栏电话图标（PHONE_SPEC §3.1）：SenseVoice 未就绪时的点击引导 */
+  const handlePhoneCallPress = React.useCallback(() => {
+    if (audioStore.asrState !== 'ready') {
+      uiStore.setChatWarning({
+        code: 'unknown',
+        message: l10n.components.phoneCall.asrNotReady,
+        context: 'chat',
+        recoverable: true,
+        severity: 'warning',
+      });
+      return;
+    }
+    setPhoneVisible(true);
+  }, [l10n]);
+
+  /** 挂断：停播 + 打断推理 + 关闭通话界面（已落库消息保留） */
+  const handlePhoneHangUp = React.useCallback(() => {
+    void phoneSessionRef.current?.hangUp();
+    setPhoneVisible(false);
+  }, []);
+
+  // 通话界面「最近消息」摘要（最后一条文本内容，2 行截断）。
+  // observer 组件内直接派生（MobX 字段访问即订阅，AudioWorkshopTab B38 同款模式）
+  const phoneRecentText = (() => {
+    const msgs = chatSessionStore.currentSessionMessages;
+    for (let i = msgs.length - 1; i >= 0; i -= 1) {
+      const m = msgs[i];
+      if (m.type === 'text' && !m.metadata?.system && m.text) {
+        return m.text;
+      }
+      if (m.type === 'assistant_turn') {
+        const steps = (m as MessageType.AssistantTurn).steps ?? [];
+        for (let j = steps.length - 1; j >= 0; j -= 1) {
+          if (steps[j].content) {
+            return steps[j].content as string;
+          }
+        }
+      }
+    }
+    return '';
+  })();
+
+  const phonePartnerName = activePal?.name ?? '';
+  const phoneModelLabel = modelStore.activeModel
+    ? getModelDisplayName(modelStore.activeModel)
+    : '';
 
   // DRC 聊天发送槽（debug/E2E 构建）：ChatScreen 在岗时注册 wrappedSendPress，
   // 卸载注销——command chat.send 复用完整调度链路（意图路由/管家直答），单一事实源。
@@ -407,6 +525,7 @@ export const ChatScreen: React.FC = observer(() => {
       <BenchmarkHudBar />
       <ChatView
         headerAccessory={<ActiveTaskBanner />}
+        onPhoneCallPress={handlePhoneCallPress}
         renderBubble={args => renderBubble({...args, theme})}
         renderTextMessage={(msg, w, showName) =>
           renderTextMessage(msg, w, showName, {
@@ -473,6 +592,18 @@ export const ChatScreen: React.FC = observer(() => {
         isVisible={isErrorReportVisible}
         onClose={handleCloseErrorReport}
         error={errorToReport}
+      />
+      {/* PHONE_SPEC §3.2：通话 overlay（挂 ChatScreen 根节点，与 useChatSession 同实例） */}
+      <PhoneCallOverlay
+        visible={phoneVisible}
+        status={phoneStatus}
+        recentText={phoneRecentText}
+        partnerName={phonePartnerName}
+        modelLabel={phoneModelLabel}
+        onStartRecording={() => phoneSessionRef.current?.startRecording()}
+        onStopRecording={() => phoneSessionRef.current?.stopAndSend()}
+        onHangUp={handlePhoneHangUp}
+        onClose={handlePhoneHangUp}
       />
     </>
   );

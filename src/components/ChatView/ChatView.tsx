@@ -133,6 +133,8 @@ export interface ChatProps extends ChatTopLevelProps {
   customDateHeaderText?: (dateTime: number) => string;
   /** Custom content to display between the header and chat list */
   customContent?: React.ReactNode;
+  /** PHONE_SPEC §3.1：电话模式入口回调（透传 ChatHeader，SenseVoice 就绪才亮） */
+  onPhoneCallPress?: () => void;
   /** Allows you to customize the date format. IMPORTANT: only for the date,
    * do not return time here. @see {@link ChatProps.timeFormat} to customize the time format.
    * @see {@link ChatProps.customDateHeaderText} for more customization. */
@@ -253,6 +255,7 @@ export const ChatView = observer(
     user,
     editSourceUri,
     onEditSourceChange,
+    onPhoneCallPress,
   }: ChatProps) => {
     // ============ THEME & LOCALIZATION ============
     const l10n = React.useContext(L10nContext);
@@ -1292,7 +1295,10 @@ export const ChatView = observer(
           onLayout={onLayout}>
           {/* Header */}
           <View style={styles.headerWrapper}>
-            <ChatHeader onModelPickerPress={() => setIsPickerVisible(true)} />
+            <ChatHeader
+              onModelPickerPress={() => setIsPickerVisible(true)}
+              onPhoneCallPress={onPhoneCallPress}
+            />
             {headerAccessory}
           </View>
 

@@ -5,6 +5,8 @@ import {observer} from 'mobx-react';
 import {createStyles} from './styles';
 import {HeaderRight} from '../HeaderRight';
 import {ChatHeaderTitle} from '../ChatHeaderTitle';
+import {PhoneIcon} from '../../assets/icons';
+import {audioStore} from '../../store/audioStore';
 import {
   useSafeAreaFrame,
   useSafeAreaInsets,
@@ -21,8 +23,21 @@ import {
 
 export const ChatHeader: React.FC<{
   onModelPickerPress?: () => void;
-}> = observer(({onModelPickerPress}) => {
+  /** PHONE_SPEC §3.1：电话模式入口（点击进入通话 overlay） */
+  onPhoneCallPress?: () => void;
+}> = observer(({onModelPickerPress, onPhoneCallPress}) => {
   const theme = useTheme();
+
+  // PHONE_SPEC §3.1：SenseVoice 未就绪 → 电话入口禁用（半透明示禁用，点击提示引导）
+  const phoneReady = audioStore.asrState === 'ready';
+
+  const handlePhonePress = () => {
+    if (!phoneReady) {
+      // 未就绪：图标禁用态点击不触发入口，由 ChatScreen 统一弹引导
+      return;
+    }
+    onPhoneCallPress?.();
+  };
 
   const insets = useSafeAreaInsets();
   const layout = useSafeAreaFrame();
@@ -75,6 +90,27 @@ export const ChatHeader: React.FC<{
                 }}>
                 {modelShort} ⌄
               </Text>
+            </TouchableOpacity>
+          )}
+          {/* PHONE_SPEC §3.1 + CHAT_UI_SPEC §21：电话模式入口（模型胶囊后、菜单前）
+              禁用态 = SenseVoice 未就绪（半透明 + 不触发，点击引导在 ChatScreen） */}
+          {onPhoneCallPress && (
+            <TouchableOpacity
+              testID="phone-call-button"
+              onPress={handlePhonePress}
+              accessibilityLabel="phone call"
+              hitSlop={8}
+              style={[
+                styles.phoneButton,
+                !phoneReady && styles.phoneButtonDisabled,
+              ]}>
+              <PhoneIcon
+                width={20}
+                height={20}
+                color={
+                  phoneReady ? theme.colors.onSurface : theme.colors.outline
+                }
+              />
             </TouchableOpacity>
           )}
           {/* [已裁剪 2026-08] 头部生图入口（CameraIcon imagegen-button）：

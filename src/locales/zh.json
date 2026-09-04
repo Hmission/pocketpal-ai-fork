@@ -605,6 +605,20 @@
     "attachmentButton": {
       "attachmentButtonAccessibilityLabel": "发送媒体"
     },
+    "phoneCall": {
+      "title": "电话通话",
+      "listening": "我在听…",
+      "thinking": "思考中…",
+      "speaking": "播报中…",
+      "holdToTalk": "按住说话",
+      "releaseToSend": "松开发送",
+      "hangUp": "挂断",
+      "emptySpeech": "没有听到声音，请再试一次",
+      "asrNotReady": "语音模型未下载，请先下载语音模型",
+      "permissionDenied": "需要麦克风权限",
+      "guideToText": "这个操作需要回到文字模式",
+      "failed": "转写或发送失败，请稍后重试"
+    },
     "exportUtils": {
       "fileSaved": "文件已保存",
       "fileSavedMessage": "文件已保存到您的下载文件夹，文件名为 {{filename}}",

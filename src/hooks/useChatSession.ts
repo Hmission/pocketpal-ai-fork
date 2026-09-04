@@ -67,6 +67,7 @@ import {
   talentRegistry,
 } from '../services/talents';
 import {resolveGatedTalentNames} from '../services/talents/taskGating';
+import {PHONE_MODE_GUIDE} from '../services/phoneCall/prompt';
 import type {ToolDefinition} from '../services/talents/types';
 import {
   agentStateReducer,
@@ -499,6 +500,8 @@ async function applyEventToStore(
     hasImages: boolean;
     isMultimodalEnabled: boolean;
     tts: TtsRunState;
+    // PHONE_SPEC §4.3：首个内容 token 到达（电话模式回合开始标记）
+    onFirstContentToken?: () => void;
     // B19：本回合发送前压缩的消息条数（turnMetrics 指标）
     compactedCount: number;
   },
@@ -565,6 +568,7 @@ async function applyEventToStore(
             (event.delta.content || event.delta.reasoningContent)
           ) {
             ctx.tts.started = true;
+            ctx.onFirstContentToken?.();
             ttsStore.onAssistantMessageStart(ctx.messageId);
           }
           const contentDelta =
@@ -775,6 +779,16 @@ async function applyEventToStore(
   }
 }
 
+/**
+ * 可选回调（PHONE_SPEC §4.3）：电话模式回合生命周期 ——
+ * onPhoneTurnStarted：回复首个内容 token（驱动 PhoneCallSession → speaking）；
+ * onPhoneTurnFinished：回合收尾（完成/失败/被打断 → idle）。
+ */
+export interface ChatSessionCallbacks {
+  onPhoneTurnStarted?: () => void;
+  onPhoneTurnFinished?: () => void;
+}
+
 export const useChatSession = (
   currentMessageInfo: React.MutableRefObject<{
     createdAt: number;
@@ -783,6 +797,7 @@ export const useChatSession = (
   } | null>,
   user: User,
   assistant: User,
+  callbacks?: ChatSessionCallbacks,
 ) => {
   const l10n = React.useContext(L10nContext);
   const conversationIdRef = useRef<string>(randId());
@@ -845,6 +860,9 @@ export const useChatSession = (
 
     const imageUris = message.imageUris;
     const hasImages = !!(imageUris && imageUris.length > 0);
+    // PHONE_SPEC §5：电话模式标记随消息 metadata 透传（wrappedSendPress 全透传），
+    // 作用 = 单轮强制 TTS 播报 + systemPrompt 注入工具禁用引导。
+    const phoneMode = message.metadata?.phoneMode === true;
 
     const isMultimodalEnabled = modelStore.activeModelCaps.visionActive;
 
@@ -905,6 +923,15 @@ export const useChatSession = (
 
     currentMessageInfo.current = messageInfo;
 
+    // PHONE_SPEC §5：电话模式工具禁用引导（单轮注入，后续轮由上下文延续）。
+    // 挂 system 消息尾部（prefill 首 token 即生效，不逐轮重复）。
+    if (phoneMode) {
+      cleanCompletionParams.messages = [
+        ...(cleanCompletionParams.messages ?? []),
+        {role: 'system' as const, content: PHONE_MODE_GUIDE},
+      ];
+    }
+
     // Allowed talent names for this Pal. The runner rejects any
     // tool call whose function.name isn't in this list.
     // A2 任务驱动裁剪（与 prepareCompletion 注入面同 gate）：chitchat 裁剪
@@ -919,10 +946,24 @@ export const useChatSession = (
     const completionStartTime = Date.now();
     const timeToFirstTokenMs: {value: number | null} = {value: null};
     const tts: TtsRunState = {
-      enabled: ttsStore.autoSpeakEnabled,
+      // PHONE_SPEC §4.3：电话模式强制流式播报（与 autoSpeak 开关无关）
+      enabled: phoneMode ? true : ttsStore.autoSpeakEnabled,
       started: false,
       prevContent: '',
       prevReasoning: '',
+    };
+    // 空标签槽：applyEventToStore 内 token 首帧判定的真实内容（不占用 TTS 字段）
+    let phoneTurnStarted = false;
+    const firePhoneTurnStarted = () => {
+      if (phoneMode && !phoneTurnStarted) {
+        phoneTurnStarted = true;
+        callbacks?.onPhoneTurnStarted?.();
+      }
+    };
+    const firePhoneTurnFinished = () => {
+      if (phoneMode && phoneTurnStarted) {
+        callbacks?.onPhoneTurnFinished?.();
+      }
     };
     let uiState: AgentUiState = initialAgentUiState;
 
@@ -1039,6 +1080,7 @@ export const useChatSession = (
           hasImages,
           isMultimodalEnabled,
           tts,
+          onFirstContentToken: firePhoneTurnStarted,
           compactedCount: turnCompactedCount,
         });
 
@@ -1056,12 +1098,14 @@ export const useChatSession = (
       modelStore.setIsStreaming(false);
       chatSessionStore.setIsGenerating(false);
       chatSessionStore.setIsStopping(false);
+      firePhoneTurnFinished();
     } catch (error) {
       console.error('Completion error:', error);
       modelStore.setInferencing(false);
       modelStore.setIsStreaming(false);
       chatSessionStore.setIsGenerating(false);
       chatSessionStore.setIsStopping(false);
+      firePhoneTurnFinished();
       // Reset agentUiState back to idle so renderers don't get
       // stuck in a failed state across the next user message.
       chatSessionStore.setAgentUiState(initialAgentUiState);
