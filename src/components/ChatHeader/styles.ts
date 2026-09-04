@@ -62,17 +62,16 @@ export const createStyles = ({
       borderWidth: 1,
       borderColor: theme.colors.primary,
     },
-    // CHAT_UI_SPEC §21 + PHONE_SPEC §10.1：电话入口 icon 胶囊化（triggerPill
-    // 设计语言：primary 12% 底 + full 圆角 + primary 1px 描边，与模型胶囊同族）
+    // CHAT_UI_SPEC §21 v5.1 + PHONE_SPEC §11.1：电话入口触区——与
+    // HeaderRight.styles.compactBtn 同族（controlHeight 36 透明触区，无底衬无描边）。
+    // v2.0 的 triggerPill 胶囊化已撤销：底衬+描边与左右图标按钮不同族，
+    // 真机报「圆圈过大、跟左右图标高度不一致」；图标本身不可见的真因是
+    // 误传 `color=`（见 DESIGN_SPEC §3 svgr 传参红线），不是缺底衬。
     phoneButton: {
-      width: 36,
-      height: 36,
-      borderRadius: theme.radius[theme.shapeRoles.pill],
+      width: theme.size.controlHeight,
+      height: theme.size.controlHeight,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: withOpacity(theme.colors.primary, 0.12),
-      borderWidth: 1,
-      borderColor: theme.colors.primary,
     },
     phoneButtonDisabled: {
       opacity: 0.4,

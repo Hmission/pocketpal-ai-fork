@@ -779,7 +779,7 @@ describe('useChatSession', () => {
       expect(ttsStore.onAssistantMessageComplete).toHaveBeenCalledWith(
         expect.any(String),
         finalText,
-        {hadReasoning: true},
+        {hadReasoning: true, forceSpeak: false},
       );
     });
 
@@ -815,7 +815,7 @@ describe('useChatSession', () => {
       expect(ttsStore.onAssistantMessageComplete).toHaveBeenCalledWith(
         expect.any(String),
         finalText,
-        {hadReasoning: false},
+        {hadReasoning: false, forceSpeak: false},
       );
     });
 
@@ -863,7 +863,7 @@ describe('useChatSession', () => {
       expect(ttsStore.onAssistantMessageComplete).toHaveBeenCalledWith(
         expect.any(String),
         finalText,
-        {hadReasoning: false},
+        {hadReasoning: false, forceSpeak: false},
       );
     });
 
@@ -956,6 +956,60 @@ describe('useChatSession', () => {
 
       expect(ttsStore.onAssistantMessageStart).not.toHaveBeenCalled();
       expect(ttsStore.onAssistantMessageChunk).not.toHaveBeenCalled();
+    });
+
+    it('电话模式轮次：autoSpeak 关闭仍强制播报（forceSpeak 放行 store 门，PHONE_SPEC §11.3）', async () => {
+      // v2.0 失音根因回归测试：store 内 autoSpeakEnabled 门若不被 forceSpeak
+      // 放行，电话模式全程静默（大王 2026-09-05 复测报障）。
+      (ttsStore as any).autoSpeakEnabled = false;
+
+      const finalText = '你好呀';
+      if (modelStore.context) {
+        modelStore.context.completion = jest
+          .fn()
+          .mockImplementation(async (_params, onData) => {
+            if (onData) {
+              onData({token: 'tok', content: finalText});
+            }
+            return {
+              timings: {total: 100},
+              usage: {},
+              text: finalText,
+              content: finalText,
+              reasoning_content: '',
+            };
+          });
+      }
+
+      const onPhoneTurnStarted = jest.fn();
+      const onPhoneTurnFinished = jest.fn();
+      const {result} = renderHook(() =>
+        useChatSession({current: null}, textMessage.author, mockAssistant, {
+          onPhoneTurnStarted,
+          onPhoneTurnFinished,
+        }),
+      );
+
+      const phoneMessage = {
+        ...textMessage,
+        metadata: {phoneMode: true},
+      };
+      await act(async () => {
+        await result.current.handleSendPress(phoneMessage);
+      });
+
+      expect(ttsStore.onAssistantMessageStart).toHaveBeenCalledWith(
+        expect.any(String),
+        {forceSpeak: true},
+      );
+      expect(ttsStore.onAssistantMessageChunk).toHaveBeenCalled();
+      expect(ttsStore.onAssistantMessageComplete).toHaveBeenCalledWith(
+        expect.any(String),
+        finalText,
+        {hadReasoning: false, forceSpeak: true},
+      );
+      expect(onPhoneTurnStarted).toHaveBeenCalledTimes(1);
+      expect(onPhoneTurnFinished).toHaveBeenCalledTimes(1);
     });
   });
 });

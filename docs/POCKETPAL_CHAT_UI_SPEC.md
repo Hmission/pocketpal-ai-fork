@@ -3,9 +3,9 @@ doc_id: POCKETPAL_CHAT_UI_SPEC
 module: root
 type: spec
 status: active
-version: "5.0"
+version: "5.1"
 created: "2026-08-14"
-updated: "2026-09-04"
+updated: "2026-09-05"
 relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-footer-unification]
 ---
 
@@ -498,15 +498,20 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
   （`Message.assistantTurn` / `ChatView.assistantTurn` / `ThinkingBubble` / `PendingIndicator` / `HeaderRight` / `ChatHeader` / `AssistantTurnFooter`）全绿 →
   真机覆盖安装 + 冷启动目测：① 徽章行 → 思考卡 → 正文卡顺序；② 用户卡右下直角、回答卡/思考卡/进度卡左下直角（v4.6 尾角下移）；③ 顶栏三控件间距等距。
 
-## 21. 电话模式（v5.0 新增，2026-09-04）
+## 21. 电话模式（v5.0 新增，2026-09-04；v5.1 布居修正，2026-09-05）
 
 > 全量规格见 POCKETPAL_PHONE_SPEC.md（本文档仅登记聊天页侧 UI 契约）。
 
 - **入口**：ChatHeader 右区新增 PhoneIcon 图标（HeaderRight 之前，顶栏模型胶囊之后），testID `phone-call-button`；
   禁用态 `audioStore.asrState !== 'ready'` 时 0.4 透明 + 点击提示「语音模型未下载」引导。
-- **通话界面**：ChatScreen 根节点内全屏 overlay（surface 全底，弹窗范式 OverlayCard 语义对齐，不另造容器）：
-  ① 顶栏伙伴名 + 模型胶囊 + 右上「收起」；② 状态区（聆听中「我在听…」/ 思考中「思考中…」/ 播报中「播报中…」三态
-  l10n + 最近消息 2 行摘要）；③ 控制区（按住说话 84dp 大圆钮，录音中变「松开发送」红色 + 挂断）。
+  **v5.1 几何修正**：触区 = `theme.size.controlHeight`（36）透明方形 + 图标 `theme.iconSize.m`（20），
+  与 `HeaderRight.compactBtn` 同族同基线；**v2.0 的 triggerPill 胶囊化已撤销**（与左右控件不同族，
+  造成「圆圈过大、高度不一致」——见 DESIGN_SPEC §3 触区几何红线）；着色必传 `fill`（见 DESIGN_SPEC §3 传参红线）。
+- **通话界面**（v5.1）：ChatScreen 根节点内全屏 overlay（surface 全底，弹窗范式 OverlayCard 语义对齐，不另造容器）：
+  ① 联系人区（品牌小鸡图头像圆裁 + 伙伴名回落链 pal.name→会话标题→「小黄鸡」 + 模型名 · 通话时长）；
+  ② 状态区（六态主文案 + 副提示 + 转写轮次级常驻回显 + 播报通路行）；③ 跑分迷你行（PerfMiniRow 默认展开）；
+  ④ 控制区 **横向同一行**：〔按住说话 96px·麦〕+〔挂断 64px·红〕，caption 在各自圆钮下方。
+  **右上「收起 ✕」已删除**（与挂断同函数 = 重复入口）。
 - **动效**：三态波复用 useWaveDots（生图三点波浪同源，不新建动画体系）。
 - **编排**：src/services/phoneCall（纯 TS 服务类，依赖注入{record,transcribe,send,speak}，单测覆盖全流水线）；
   UI 层仅 PhoneCallOverlay 组件 + ChatHeader 图标，不新增气泡类型（复用现有消息卡）。
@@ -522,6 +527,12 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 | phone-transcript | 转写文本回显 |
 | phone-engine-progress | 引擎加载进度条 |
 | phone-perf-row | 跑分迷你行（PerfMiniRow 复用，testIDPrefix=phone-perf） |
+| phone-avatar | 联系人区头像（品牌小鸡图，v5.1） |
+| phone-hint | 六态副提示行（v5.1） |
+| phone-tts-status | 播报通路行（不可用时可点拉起 TTSSetupSheet，v5.1） |
+| phone-controls | 控制区容器（横向同一行，布局契约可断言，v5.1） |
+
+> `phone-close`（右上收起 ✕）随 v5.1 删除，不再登记。
 
 ## 变更日志
 

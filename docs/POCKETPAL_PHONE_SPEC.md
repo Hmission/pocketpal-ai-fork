@@ -3,7 +3,7 @@ doc_id: POCKETPAL_PHONE_SPEC
 module: chat
 type: spec
 status: active
-version: "2.0"
+version: "2.1"
 created: "2026-09-04"
 updated: "2026-09-05"
 relates: [POCKETPAL_CHAT_UI_SPEC, POCKETPAL_AUDIO_UI_SPEC, POCKETPAL_STARMAP_DOMAINS, POCKETPAL_DESIGN_SPEC]
@@ -22,6 +22,7 @@ relates: [POCKETPAL_CHAT_UI_SPEC, POCKETPAL_AUDIO_UI_SPEC, POCKETPAL_STARMAP_DOM
 > 无 token 回调，ChatScreen observer 派生最后一条回复，落流即 ttsStore.play 播报 + 回聆听（防双播 handledRef
 > 先到者胜）；③真机证：录音/AudioRecord→SenseVoice 转写→落库→管家回复→播报 全链闭环（K90 aab688d9）。
 > 版本：v2.0（2026-09-05 大王四问题升级方案，真机排查取证驱动）：①顶栏电话图标可见性——overlay 残留遮罩根因（自动化关闭 tap 被 HyperOS 拦截）+ 图标视觉弱（20px 灰 stroke）→ icon 胶囊化（triggerPill 语言）；②通话页「打电话式」UI 重设计——联系人区/通话时长/三态波形/跑分迷你行（复用 PerfMiniRow + chatTurnPerf）；③输入反馈与引擎就绪门控——engineStatus 单源进度条，未就绪禁录；④防锁屏防清后台——keep awake + nightTaskRegistry 前台服务双保活。详见 §10。
+> 版本：v2.1（2026-09-05 大王上手复测，**根因纠正 + 深化设计**）：①图标「看不见」真因 = svgr `.svgrrc` 将 #333333 映射为 `{props.fill}`，v2.0 误传 `color=` → 图标从未渲染（**推翻 v2.0 遮罩结论**，胶囊化同步撤销，回归 controlHeight 同族触区）；②通话页 v2.1——控制区横向化（按住说话 / 挂断 同一行）+ 头像真实化（品牌小鸡图 + 名字回落链，消除问号）+ 删右上重复 ✕ + 跑分行默认展开；③**播报强制贯通**——ttsStore 流式/回落两道的 `autoSpeakEnabled` 门改 `autoSpeakEnabled || forceSpeak`（电话模式 forceSpeak，根除「听不到语音输出」）+ 播报不可用显式提示行（复用 TTSSetupSheet）；④**转写回显持久化**——轮次级常驻（修「不显示我说过的话」）；⑤六态提示文案体系 + 图标规范。详见 §11。
 
 ## 1. 产品定位
 
@@ -185,6 +186,9 @@ sync 至 en 基准 + zh 同源（l10n 缺失回退英文，既有机制）。
 
 ## 10. 升级设计 v2.0（2026-09-05 大王四问题，真机排查取证）
 
+> ⚠️ **本节 10.1 根因判定已被 §11.0 推翻**（图标「看不见」真因是 svgr 传参错用 `color`，
+> 不是 overlay 残留遮罩）；胶囊化方案已被 §11.1 撤销。其余小节（10.2~10.4）仍有效。
+
 > 排查结论先行（像素级取证）：顶栏图标渲染**无静态缺陷**——冷启动截图像素证
 > （顶栏橙色胶囊描边 3.1K px + 深灰图标 2.3K px）；「看不见」= ①通话 overlay 关闭
 > tap 被 HyperOS 拦截导致 overlay 残留全屏遮盖（截图证：顶栏/中部空白 + 底部中央
@@ -263,3 +267,98 @@ sync 至 en 基准 + zh 同源（l10n 缺失回退英文，既有机制）。
 3. 引擎未就绪：hold 禁用 + 进度条；就绪自动解锁。
 4. 通话中熄屏超时不断电（keep awake）；HyperOS 杀后台列表不出现 App（nightTask）。
 5. tsc 零错；jest 新增（useElapsed / 门控逻辑）全绿；回归不破。
+
+## 11. 复测定案 v2.1（2026-09-05 大王上手复测，四报障根因纠正 + 深化设计）
+
+### 11.0 根因纠正（诚实推翻 v2.0 排查结论）
+
+| 报障 | v2.0 判定 | v2.1 真因（代码级铁证） |
+|---|---|---|
+| 顶栏图标看不见 | overlay 残留遮罩 + 视觉弱 | **svgr 传参错用**：`.svgrrc` 把 `#333333` 一律换成 `{props.fill}`（phone.svg 是 `stroke="#333333"`），v2.0 传 `color=` → `stroke=undefined` → **图标从未渲染**，只剩胶囊底衬——恰好是「有圆圈、里面没内容」；同一错面波及通话页 MicIcon / PhoneIcon / CloseIcon 共 5 处 |
+| 圆圈过大/高度不一致 | —— | 胶囊化自身造错：36px 底衬 + 描边与左右 `compactBtn`（36px 透明触区）不同族 |
+| 顶部圆圈 + 问号 | —— | 头像首字母回落链断裂：`partnerName = activePal?.name ?? ''` → `''.slice(0,1) \|\| '?'` → 问号；无 pal 绑定的会话必现 |
+| 听不到语音输出 | —— | **双重门不同源**：useChatSession 电话模式 `ctx.tts.enabled=true`，但 `ttsStore.onAssistantMessageStart` 内部另有一道 `!autoSpeakEnabled → return`（onAssistantMessageComplete 回落分支同门）→ 流式播报从未开流，全程静默且无任何提示 |
+| 我说的话没显示 | —— | 观测窗口为 0：`onTranscript` 在转写完成那一刻才 fire，下一行即 `setStatus('awaiting_reply')`，而渲染条件是 `transcribing && transcript` |
+
+纪律落点：图标传参红线 + 同行触区几何红线已写入 **DESIGN_SPEC §3**（全 App 适用，非电话域私有）。
+
+### 11.1 顶栏入口（撤销胶囊化，回归同族触区）
+
+- `phoneButton` = `theme.size.controlHeight` 方形**透明**触区（与 `HeaderRight.styles.compactBtn`
+  同几何同基线）+ `PhoneIcon` `theme.iconSize.m` 尺寸；**无底衬、无描边、不另造一族**。
+- 着色走 `fill`：就绪 `primary`，未就绪 `outline` + `opacity 0.4`（禁用语义不变）。
+- testID `phone-call-button`、点击引导（未就绪弹下载提示）均不变。
+
+### 11.2 通话页布局 v2.1（横向控制区 + 头像真实化 + 去重复入口）
+
+```
+┌────────────────────────────────────┐
+│ ① 联系人区                       │
+│   头像：品牌小鸡图（聊天空态同资产）  │
+│   伙伴名回落链：pal.name → 会话标题 → 「小黄鸡」
+│   模型名 · 通话时长 mm:ss         │
+├────────────────────────────────────┤
+│ ② 状态区（图标 + 一句话状态 + 副提示）  │
+│   我说：「转写文本」（本轮常驻，见 11.4） │
+│   它说：回复摘要（2 行截断）          │
+│   播报通路行（图标 + 可点提示，见 11.3）  │
+│ ③ 跑分迷你行（PerfMiniRow，**默认展开**） │
+├────────────────────────────────────┤
+│ ④ 控制区（**同一横行、同一基线**）：    │
+│   〔96px 按住说话·麦〕   〔64px 挂断·红·电话横置〕 │
+│   caption 均在各自圆钮下方（不再挤进圆内） │
+└────────────────────────────────────┘
+```
+
+- **右上 ✕ 删除**：`onClose` 与 `onHangUp` 同函数 = 重复入口（锋利原则）；挂断即退出通话页。
+- **caption 不再坐在圆钮内**：v2.0 把 `Text` 放在 84px 固定圆内，与 40px 图标抢高→文案被裁；
+  改为「圆钮列：图标居中 + caption 在圆外下方」，控制区 `flexDirection: row`。
+- **头像零新资产**：复用 `src/assets/pocketpal-dark-v2.png`（聊天空态已用）圆裁；
+  名字回落链兼顶（消除问号）。
+- 跑分卡是核心：**默认展开**（大王复测报「默认折叠」= 看不到）；仍复用 PerfMiniRow，不另造 SSOT。
+
+### 11.3 播报强制贯通（单一门）+ 播报可用性显式化
+
+- **修门**（ttsStore，单一事实源）：`onAssistantMessageStart(messageId, opts?: {forceSpeak})`
+  与 `onAssistantMessageComplete(messageId, text, {hadReasoning, forceSpeak})` 的自动朗读门
+  改为 `autoSpeakEnabled || forceSpeak`；可用性/声音存在/idempotency 三门**不变**。
+- **源**（useChatSession）：`phoneMode` 单一来源同时控 `ctx.tts.enabled` 与向两处 hook 传
+  `forceSpeak: phoneMode`——不再第二处判断，也不新增 store 字段（无泄漏态）。
+- **语义**：电话模式 = 用户主动要求语音交互，播报强制 且**不修改**用户的「自动朗读」开关。
+- **显式化**（不静默失败）：通话页状态区常驻一行「播报通路」：
+  - `currentVoice == null` → 「还没选播报语音 · 点这里选」
+  - `!isTTSAvailable` → 「语音播报已关闭 · 点这里开启」
+  - 两者均就绪 → 「播报就绪」（`VolumeOnIcon`）
+  点击→ `ttsStore.openSetupSheet()`（**复用既有 TTSSetupSheet**，不新建任何设置 UI）。
+
+### 11.4 转写回显持久化
+
+- `phoneTranscript` 生命周期改为**轮次级**：新一轮录音按下时清空 → 以后 awaiting_reply /
+  speaking / idle 全程常驻显示「我说：「…」」→ 挂断清空。
+- 渲染不再看 `status === 'transcribing'`（该态只存在几十毫秒，不构成可观测反馈）。
+
+### 11.5 提示文案体系（六态一句话 + 一行副提示，zh/en 双源）
+
+| 态 | 主状态（titleM） | 副提示（captionS / onSurfaceVariant） |
+|---|---|---|
+| idle 就绪 | 我在听… | 按住下方按钮说话，松开我就回答 |
+| recording | 松开发送 | 正在听你说… |
+| transcribing | 识别中… | 正在把你说的话认出来 |
+| awaiting_reply | 思考中… | 想好我就说，按住按钮可以打断 |
+| speaking | 播报中… | 我在说话，按住按钮可以打断 |
+| 引擎未就绪 | 正在加载语音助手… | 加载好就能说话（+ 进度条与 stage） |
+
+文案风格红线（DESIGN_SPEC §10）：全角标点、第一人称「我」、无技术术语、无「错误/失败」式冷冰冰。
+
+### 11.6 验收标准（v2.1）
+
+1. 真机顶栏：电话图标**有像素**（primary 色出现在图标笔画区域，非仅底衬）且触区与左右
+   `+`/`⋮` 同高（36px，截图像素等高验证）。
+2. 通话页：按住说话与挂断**同一横行**（testID `phone-controls` 断言 flexDirection=row）；
+   头像为小鸡图非问号；右上无重复关闭钮。
+3. 输入反馈：说一句话→「我说：「…」」在思考/播报态仍可见（截图取证）。
+4. 语音输出：**「自动朗读」关**的前提下，电话模式仍能听到播报（forceSpeak 贯通）；
+   未选语音/播报已关闭时，通话页出现可点提示行并拉起 TTSSetupSheet。
+5. 跑分迷你行默认展开可见。
+6. tsc 零错；jest 全绿（含新增 ttsStore forceSpeak 门用例 + overlay 布局/回显用例）；
+   eslint / l10n:validate 零错。

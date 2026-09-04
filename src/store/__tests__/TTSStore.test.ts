@@ -527,6 +527,43 @@ describe('TTSStore', () => {
       expect(mockSystemPlayStreaming).not.toHaveBeenCalled();
     });
 
+    // PHONE_SPEC §11.3：电话模式单轮强制播报（v2.0 失音根因回归）。
+    it('forceSpeak 放行 autoSpeak 门（电话模式仍可开流）', async () => {
+      const store = await setupEligible();
+      store.setAutoSpeak(false);
+
+      store.onAssistantMessageStart('msg-1', {forceSpeak: true});
+
+      expect(mockSystemPlayStreaming).toHaveBeenCalledWith(
+        SYSTEM_VOICE,
+        expect.anything(),
+      );
+      expect(store.playbackState.mode).toBe('streaming');
+    });
+
+    it('forceSpeak 不绕过可用性/已选语音两门（不假播报）', async () => {
+      const store = await setupEligible();
+      store.setAutoSpeak(false);
+      store.setCurrentVoice(null);
+
+      store.onAssistantMessageStart('msg-1', {forceSpeak: true});
+
+      expect(mockSystemPlayStreaming).not.toHaveBeenCalled();
+      expect(store.playbackState.mode).toBe('idle');
+    });
+
+    it('forceSpeak 同样适用于回落播报分支（无前置开流）', async () => {
+      const store = await setupEligible();
+      store.setAutoSpeak(false);
+
+      store.onAssistantMessageComplete('msg-phone', '你好呀', {
+        forceSpeak: true,
+      });
+      await flush();
+
+      expect(mockSystemPlay).toHaveBeenCalledWith('你好呀', SYSTEM_VOICE);
+    });
+
     it('onAssistantMessageStart no-ops when currentVoice is null', async () => {
       const store = await setupEligible();
       store.setCurrentVoice(null);

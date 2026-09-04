@@ -92,7 +92,10 @@ export const ChatHeader: React.FC<{
               </Text>
             </TouchableOpacity>
           )}
-          {/* PHONE_SPEC §3.1 + CHAT_UI_SPEC §21：电话模式入口（模型胶囊后、菜单前）
+          {/* PHONE_SPEC §3.1 + §11.1 / CHAT_UI_SPEC §21 v5.1：电话模式入口（模型胶囊后、菜单前）
+              着色走 fill：本仓 svgr 把 #333333 映射为 {props.fill}，传 color 无效
+              （图标不渲染，见 DESIGN_SPEC §3 传参红线）；触区与 HeaderRight.compactBtn
+              同族（controlHeight 透明方形）。
               禁用态 = SenseVoice 未就绪（半透明 + 不触发，点击引导在 ChatScreen） */}
           {onPhoneCallPress && (
             <TouchableOpacity
@@ -105,9 +108,9 @@ export const ChatHeader: React.FC<{
                 !phoneReady && styles.phoneButtonDisabled,
               ]}>
               <PhoneIcon
-                width={24}
-                height={24}
-                color={phoneReady ? theme.colors.primary : theme.colors.outline}
+                fill={phoneReady ? theme.colors.primary : theme.colors.outline}
+                width={theme.iconSize.m}
+                height={theme.iconSize.m}
               />
             </TouchableOpacity>
           )}

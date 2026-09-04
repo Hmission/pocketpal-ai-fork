@@ -1,5 +1,5 @@
 import React from 'react';
-import {Animated, Pressable, Text, View} from 'react-native';
+import {Animated, Image, Pressable, Text, View} from 'react-native';
 
 import {observer} from 'mobx-react';
 
@@ -9,21 +9,32 @@ import {useTheme} from '../../hooks/useTheme';
 import {useWaveDots} from '../ui/WaveDots/useWaveDots';
 import {PerfMiniRow} from '../PerfMiniRow';
 import {L10nContext} from '../../utils';
+import {ttsStore} from '../../store';
 import type {PerfSnapshot} from '../../specs/NativeHardwareInfo';
 
-import {CloseIcon, MicIcon, PhoneIcon} from '../../assets/icons';
+import {
+  MicIcon,
+  PhoneIcon,
+  VolumeOffIcon,
+  VolumeOnIcon,
+} from '../../assets/icons';
 import {formatElapsed} from '../../hooks/useElapsed';
 
 import type {PhoneCallStatus} from '../../services/phoneCall/session';
 
 /**
- * PhoneCallOverlay v2 — 电话模式通话界面（PHONE_SPEC §10.2「打电话式」UI）。
+ * PhoneCallOverlay v2.1 — 电话模式通话界面（PHONE_SPEC §11.2 复测定案）。
  *
- * 布局：①联系人区（头像+名字+模型+通话时长）②状态区（聆听/识别/思考/播报
- * 三态 + 转写回显 + 最近消息摘要）③跑分迷你行（复用 PerfMiniRow，chatTurnPerf
- * 数据源，零另造）④控制区（按住说话 84dp 涟漪 + 挂断）。
- * 引擎门控（§10.3）：engineReady=false → hold 禁用 + 加载进度条；就绪自动解锁。
- * 纯展示 + 手势转发，状态机在 PhoneCallSession。
+ * 布局（自上而下）：① 联系人区（品牌小鸡图头像 + 名字回落链 + 模型 · 通话时长）
+ * ② 状态区（小图标 + 一句话状态 + 副提示，六态文案见 §11.5）③ 对话回显
+ * （「我说」轮次级常驻 + 「它说」回复摘要）④ 播报通路行（不可用时可点拉起
+ * 既有 TTSSetupSheet，不静默失败）⑤ 跑分迷你行（复用 PerfMiniRow，默认展开）
+ * ⑥ 控制区（**同一横行**：按住说话 96 + 挂断 64，caption 在圆钮下方）。
+ *
+ * v2.1 三条纠正：①图标着色一律走 `fill`（本仓 svgr 把 #333333 映射为
+ * {props.fill}，传 color 无效 → v2.0 图标全部不渲染，见 DESIGN_SPEC §3）；
+ * ②删除右上 ✕（与挂断同函数 = 重复入口）；③大空圆改为贴边状态行（不再
+ * 88px 空底衬）。纯展示 + 手势转发，状态机在 PhoneCallSession。
  */
 export interface PhoneCallOverlayProps {
   visible: boolean;
@@ -38,15 +49,17 @@ export interface PhoneCallOverlayProps {
   engineLoading: {progress: number; stage: string} | null;
   /** 通话时长秒数（useElapsed 驱动） */
   elapsedSeconds: number;
-  /** 转写回显文本（transcribing 态显示） */
+  /** 本轮转写文本（轮次级常驻回显，§11.4） */
   transcript: string;
   /** 跑分迷你行数据（chatTurnPerf.livePoints 尾窗） */
   perfHistory: PerfSnapshot[];
   onStartRecording: () => void;
   onStopRecording: () => void;
   onHangUp: () => void;
-  onClose: () => void;
 }
+
+/** 联系人头像：品牌小鸡图（与聊天空态同一资产，零新增——§11.2） */
+const PARTNER_AVATAR = require('../../assets/pocketpal-dark-v2.png');
 
 export const PhoneCallOverlay: React.FC<PhoneCallOverlayProps> = observer(
   ({
@@ -63,19 +76,29 @@ export const PhoneCallOverlay: React.FC<PhoneCallOverlayProps> = observer(
     onStartRecording,
     onStopRecording,
     onHangUp,
-    onClose,
   }) => {
     const theme = useTheme();
     const l10n = React.useContext(L10nContext);
     const styles = createStyles({theme});
-    const phoneCallL10n = l10n.components.phoneCall;
+    const t = l10n.components.phoneCall;
 
-    // 播报/思考中波形（bounce 三点，生图三点波浪同源——不新建动画体系）
+    // 播报通路显式化（§11.3）：observer 直读 ttsStore（MobX 字段访问即订阅），
+    // 不经 props 接线——单一事实源，零 prop 膨胀。
+    const ttsAvailable = ttsStore.isTTSAvailable;
+    const hasVoice = ttsStore.currentVoice != null;
+    const ttsReady = ttsAvailable && hasVoice;
+    const ttsStatusText = !ttsAvailable
+      ? t.ttsDisabled
+      : !hasVoice
+        ? t.ttsNoVoice
+        : t.ttsReady;
+
+    // 思考/播报中波形（bounce 三点，生图三点波浪同源——不新建动画体系）
     const wave = useWaveDots(
       status === 'speaking' || status === 'awaiting_reply',
     );
 
-    // 按住涟漪脉冲（录音中 scale 呼吸，JS driver——动画纪律收口）
+    // 按住涟漪脉冲（录音中整钮呼吸，JS driver——动画纪律收口）
     const pulse = React.useRef(new Animated.Value(0)).current;
     React.useEffect(() => {
       if (status === 'recording') {
@@ -110,62 +133,123 @@ export const PhoneCallOverlay: React.FC<PhoneCallOverlayProps> = observer(
     const speaking = status === 'speaking';
     const unlocked = engineReady;
 
-    // 三态文案（§10.3 反馈闭环：识别中独立于思考中）
+    // 六态主文案 + 副提示（§11.5 一句话体系，全角标点，第一人称「我」）
     const statusLabel = recording
-      ? phoneCallL10n.releaseToSend
+      ? t.releaseToSend
       : transcribing
-        ? phoneCallL10n.recognizing
+        ? t.recognizing
         : thinking
-          ? phoneCallL10n.thinking
+          ? t.thinking
           : speaking
-            ? phoneCallL10n.speaking
+            ? t.speaking
             : unlocked
-              ? phoneCallL10n.listening
-              : phoneCallL10n.engineLoading;
+              ? transcript
+                ? t.listening
+                : t.readyToTalk
+              : t.engineLoading;
+    const hintText = recording
+      ? t.hintRecording
+      : transcribing
+        ? t.hintTranscribing
+        : thinking
+          ? t.hintThinking
+          : speaking
+            ? t.hintSpeaking
+            : unlocked
+              ? t.hintIdle
+              : t.hintEngineLoading;
 
     const holdScale = pulse.interpolate({
       inputRange: [0, 1],
-      outputRange: [1, 1.06],
+      outputRange: [1, 1.04],
     });
-    const partnerInitial = partnerName.trim().slice(0, 1) || '?';
     const loadingPct =
       engineLoading && engineLoading.progress >= 0
         ? Math.round(engineLoading.progress * 100)
         : null;
+    // 「它说」= 回复落流后的摘要；与「我说」同文（回复未落流时末条仍是自己）
+    // 时不重复显示。
+    const partnerText =
+      (thinking || speaking) &&
+      recentText.trim() &&
+      recentText.trim() !== transcript.trim()
+        ? recentText
+        : '';
+
+    // 状态行小图标（§11.2：不再用 88px 大空圆）
+    const renderStatusGlyph = () => {
+      if (thinking || speaking) {
+        return (
+          <View style={styles.waveRow}>
+            {wave.map((v, i) => (
+              <Animated.View
+                key={i}
+                style={[
+                  styles.waveDot,
+                  {
+                    transform: [
+                      {
+                        translateY: v.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0, -6],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              />
+            ))}
+          </View>
+        );
+      }
+      const glyphColor = recording
+        ? theme.colors.error
+        : speaking
+          ? theme.colors.primary
+          : theme.colors.onSurfaceVariant;
+      const Glyph = speaking ? VolumeOnIcon : MicIcon;
+      return (
+        <Glyph
+          fill={glyphColor}
+          width={theme.iconSize.s}
+          height={theme.iconSize.s}
+        />
+      );
+    };
 
     return (
       <View testID="phone-overlay" style={styles.root}>
-        {/* ① 联系人区（打电话仪式）：头像 + 名字 + 模型 + 通话时长 */}
+        {/* ① 联系人区（打电话仪式）：小鸡头像 + 名字 + 模型 · 通话时长 */}
         <View style={styles.contactArea} testID="phone-contact">
           <View style={styles.avatarRing}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{partnerInitial}</Text>
-            </View>
+            <Image
+              testID="phone-avatar"
+              source={PARTNER_AVATAR}
+              style={styles.avatar}
+              resizeMode="cover"
+            />
           </View>
           <Text style={styles.partnerName} numberOfLines={1}>
             {partnerName}
           </Text>
           <View style={styles.contactMetaRow}>
-            <Text style={styles.modelLabel} numberOfLines={1}>
-              {modelLabel}
-            </Text>
+            {modelLabel ? (
+              <Text style={styles.modelLabel} numberOfLines={1}>
+                {modelLabel}
+              </Text>
+            ) : null}
             <Text style={styles.elapsed} testID="phone-elapsed">
               {formatElapsed(elapsedSeconds)}
             </Text>
           </View>
         </View>
 
-        {/* ② 状态区：三态 + 转写回显 + 最近消息摘要 / 引擎加载进度 */}
+        {/* ② 状态区：引擎加载门控 或 （小图标 + 状态 + 副提示 + 对话回显 + 播报通路 + 跑分行） */}
         <View style={styles.statusArea}>
           {!unlocked && engineLoading ? (
             <View
               style={styles.engineLoadingWrap}
               testID="phone-engine-progress">
-              <View style={styles.waveRowSmall}>
-                {[0, 1, 2].map(i => (
-                  <View key={i} style={styles.waveDotSmall} />
-                ))}
-              </View>
               <Text style={styles.statusLabel}>{statusLabel}</Text>
               {loadingPct !== null ? (
                 <View style={styles.progressTrack}>
@@ -179,139 +263,137 @@ export const PhoneCallOverlay: React.FC<PhoneCallOverlayProps> = observer(
                   {engineLoading.stage}
                 </Text>
               ) : null}
+              <Text style={styles.hintText}>{hintText}</Text>
             </View>
           ) : (
-            <>
-              {recording ? (
-                <Animated.View
-                  style={[
-                    styles.statusIconWrap,
-                    styles.statusIconWrapRecording,
-                    {transform: [{scale: holdScale}]},
-                  ]}>
-                  <MicIcon width={40} height={40} color={theme.colors.error} />
-                </Animated.View>
-              ) : speaking || thinking ? (
-                <View style={styles.waveRow}>
-                  {wave.map((v, i) => (
-                    <Animated.View
-                      key={i}
-                      style={[
-                        styles.waveDot,
-                        {
-                          transform: [
-                            {
-                              translateY: v.interpolate({
-                                inputRange: [0, 1],
-                                outputRange: [0, -10],
-                              }),
-                            },
-                          ],
-                        },
-                      ]}
-                    />
-                  ))}
+            <View style={styles.dialogArea}>
+              <View style={styles.statusRow}>
+                {renderStatusGlyph()}
+                <Text style={styles.statusLabel}>{statusLabel}</Text>
+              </View>
+              <Text style={styles.hintText}>{hintText}</Text>
+
+              {/* 对话回显（§11.4：转写轮次级常驻，不再只在 transcribing 一瞬） */}
+              {transcript ? (
+                <View style={styles.lineRow}>
+                  <Text style={styles.lineLabel}>{t.mineLabel}</Text>
+                  <Text
+                    testID="phone-transcript"
+                    style={styles.lineContent}
+                    numberOfLines={2}>
+                    {`「${transcript}」`}
+                  </Text>
                 </View>
-              ) : (
-                <View style={styles.statusIconWrap}>
-                  <MicIcon
-                    width={40}
-                    height={40}
-                    color={theme.colors.primary}
+              ) : null}
+              {partnerText ? (
+                <View style={styles.lineRow}>
+                  <Text style={styles.lineLabel}>{t.partnerLabel}</Text>
+                  <Text style={styles.lineContentMuted} numberOfLines={2}>
+                    {partnerText}
+                  </Text>
+                </View>
+              ) : null}
+
+              {/* 播报通路（§11.3：不可静默失败，不可用时可点去设置） */}
+              <Pressable
+                testID="phone-tts-status"
+                onPress={ttsReady ? undefined : () => ttsStore.openSetupSheet()}
+                hitSlop={8}
+                style={styles.ttsRow}>
+                {ttsReady ? (
+                  <VolumeOnIcon
+                    fill={theme.colors.primary}
+                    width={theme.iconSize.xs}
+                    height={theme.iconSize.xs}
                   />
-                </View>
-              )}
-              <Text style={styles.statusLabel}>{statusLabel}</Text>
-              {/* 转写实时回显（§10.3：输入成功反馈） */}
-              {transcribing && transcript ? (
+                ) : (
+                  <VolumeOffIcon
+                    fill={theme.colors.error}
+                    width={theme.iconSize.xs}
+                    height={theme.iconSize.xs}
+                  />
+                )}
                 <Text
-                  testID="phone-transcript"
-                  style={styles.transcript}
-                  numberOfLines={2}>
-                  「{transcript}」
+                  style={[styles.ttsText, !ttsReady && styles.ttsTextAction]}>
+                  {ttsStatusText}
                 </Text>
-              ) : null}
-              {recentText && !transcribing ? (
-                <Text style={styles.recentText} numberOfLines={2}>
-                  {recentText}
-                </Text>
-              ) : null}
-              {/* ③ 跑分迷你行（复用 PerfMiniRow——核心资产，chatTurnPerf 同源） */}
+              </Pressable>
+
+              {/* ③ 跑分迷你行（复用 PerfMiniRow——核心资产，chatTurnPerf 同源，默认展开） */}
               <View
                 style={styles.perfRow}
                 testID="phone-perf-row"
                 pointerEvents="box-none">
                 <PerfMiniRow
                   history={perfHistory}
-                  defaultExpanded={false}
+                  defaultExpanded
                   chartHeight={48}
                   testIDPrefix="phone-perf"
                 />
               </View>
-            </>
+            </View>
           )}
         </View>
 
-        {/* ④ 控制区：按住说话（未就绪禁用）+ 挂断 */}
-        <View style={styles.controlArea}>
-          <Pressable
-            testID="phone-hold-talk"
-            onPressIn={unlocked ? onStartRecording : undefined}
-            onPressOut={unlocked ? onStopRecording : undefined}
-            disabled={!unlocked}
-            style={({pressed}) => [
-              styles.holdButton,
-              recording && styles.holdButtonRecording,
-              !unlocked && styles.holdButtonDisabled,
-              pressed && unlocked && styles.holdButtonPressed,
-            ]}>
-            {recording ? (
-              <MicIcon width={40} height={40} color={theme.colors.onError} />
-            ) : (
-              <PhoneIcon
-                width={40}
-                height={40}
-                color={
-                  unlocked
-                    ? theme.colors.onPrimary
-                    : theme.colors.onSurfaceDisabled
+        {/* ④ 控制区：按住说话 + 挂断（同一横行、同一基线，§11.2） */}
+        <View style={styles.controlArea} testID="phone-controls">
+          <Animated.View
+            style={[styles.controlItem, {transform: [{scale: holdScale}]}]}>
+            <Pressable
+              testID="phone-hold-talk"
+              onPressIn={unlocked ? onStartRecording : undefined}
+              onPressOut={unlocked ? onStopRecording : undefined}
+              disabled={!unlocked}
+              style={({pressed}) => [
+                styles.holdButton,
+                recording && styles.holdButtonRecording,
+                !unlocked && styles.holdButtonDisabled,
+                pressed && unlocked && styles.holdButtonPressed,
+              ]}>
+              <MicIcon
+                fill={
+                  recording
+                    ? theme.colors.onError
+                    : unlocked
+                      ? theme.colors.onPrimary
+                      : theme.colors.onSurfaceVariant
                 }
+                width={theme.iconSize.xl}
+                height={theme.iconSize.xl}
               />
-            )}
+            </Pressable>
             <Text
               style={[
-                styles.holdLabel,
-                recording && styles.holdLabelRecording,
-                !unlocked && styles.holdLabelDisabled,
+                styles.controlCaption,
+                recording && styles.controlCaptionRecording,
+                !unlocked && styles.controlCaptionDisabled,
               ]}>
               {recording
-                ? phoneCallL10n.releaseToSend
+                ? t.releaseToSend
                 : unlocked
-                  ? phoneCallL10n.holdToTalk
-                  : phoneCallL10n.engineLoading}
+                  ? t.holdToTalk
+                  : t.engineLoading}
             </Text>
-          </Pressable>
-          <Pressable
-            testID="phone-hangup"
-            onPress={onHangUp}
-            hitSlop={12}
-            style={styles.hangUpBtn}>
-            <Text style={styles.hangUpLabel}>{phoneCallL10n.hangUp}</Text>
-          </Pressable>
-        </View>
+          </Animated.View>
 
-        {/* 右上角收起（悬浮，避开联系人区） */}
-        <Pressable
-          testID="phone-close"
-          onPress={onClose}
-          hitSlop={12}
-          style={styles.closeBtn}>
-          <CloseIcon
-            width={20}
-            height={20}
-            color={theme.colors.onSurfaceVariant}
-          />
-        </Pressable>
+          <View style={styles.controlItem}>
+            <Pressable
+              testID="phone-hangup"
+              onPress={onHangUp}
+              hitSlop={8}
+              style={styles.hangupButton}>
+              {/* 挂断符号 = 电话图标横置（业界通话结束语义，不另造图标资产） */}
+              <View style={styles.hangupGlyph}>
+                <PhoneIcon
+                  fill={theme.colors.onError}
+                  width={theme.iconSize.l}
+                  height={theme.iconSize.l}
+                />
+              </View>
+            </Pressable>
+            <Text style={styles.controlCaption}>{t.hangUp}</Text>
+          </View>
+        </View>
       </View>
     );
   },

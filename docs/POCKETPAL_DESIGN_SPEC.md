@@ -225,6 +225,15 @@ supersedes: []
 - 应用位置：设置页全部条目、AIOS 四屏列表行、抽屉底部设置入口。
 - 列表行结构（三段式）：IconTile + (标题 bodyM / onSurface + 辅助说明 captionM / onSurfaceVariant) + chevron-right（onSurfaceVariant）。分组用 Surface 卡片包裹（radius.l=20）+ 分组标题 captionM/onSurfaceVariant。
 - 触区 44 不变；图标资产沿用 `src/assets/icons/` Lucide 族，不引入 icon-font。
+- **传参红线（v3.4，2026-09-05 电话模式根治）**：本仓 SVG 经 `.svgrrc` 的 `replaceAttrValues`
+  把 `#333333`/`#858585`/`#FF653F` **一律替换为 `{props.fill}`**（无论原属性是 `fill` 还是
+  `stroke`——Lucide 族全是 `fill="none"` + `stroke="#333333"`）。因此着色**只能传 `fill`**
+  （范式：`ArrowLeftMdIcon fill=` / `DotsVerticalIcon fill=`）。
+  **传 `color=` 无效**：生成的 `stroke={props.fill}` 取到 undefined → 图标整体不渲染，
+  只剩容器底衬，表现为「有圆圈、里面没内容」（PHONE_SPEC §11.0 实例）。新增图标使用点一律自查此项。
+- 触区几何红线：同一行内的图标按钮一律取 `theme.size.controlHeight`（36）透明触区 +
+  `theme.iconSize.m`（20）图标（范式 `HeaderRight.styles.compactBtn`）；**禁止**为单个入口
+  自加底衬/描边/改尺寸造成同行高低不齐（电话入口 v2.0 胶囊化即因此被 v2.1 撤销）。
 
 ## 4. 形状语言与材质（v2 规范化，解决「圆角矩形/矩形/圆形无逻辑」）
 

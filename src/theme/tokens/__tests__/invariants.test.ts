@@ -244,6 +244,9 @@ describe('design-token grep invariants', () => {
       'components/ToolUsedChip/styles.ts',
       'screens/DevToolsScreen/screens/DatabaseInspectorScreen/styles.ts',
       'screens/PalsScreen/styles.ts',
+      // PHONE_SPEC §11.2 通话页 v2.1（2026-09-05）：联系人/状态/对话/控制区样式
+      // 全面走 token 表面（typography + radius/pill 角色），与 PerfMiniRow 同族消费。
+      'components/PhoneCallOverlay',
     ];
     const files = listFiles(SRC).filter(f => {
       const rel = path.relative(SRC, f).replace(/\\/g, '/');

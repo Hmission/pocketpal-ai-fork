@@ -448,6 +448,10 @@ type TtsRunState = {
   // Snapshot of autoSpeakEnabled at run start; gates the per-chunk
   // TTS hook. Per-run so mid-stream toggles don't flicker audio.
   enabled: boolean;
+  // PHONE_SPEC §11.3：本轮是否为「强制播报」（电话模式）。单一来源同时控
+  // `enabled` 与向 ttsStore 两 hook 传 `forceSpeak`——store 内的 autoSpeakEnabled
+  // 门若不被放行，电话模式会全程静默（v2.0 失音根因，大王 2026-09-05 复测报障）。
+  forced: boolean;
   started: boolean;
   prevContent: string;
   prevReasoning: string;
@@ -569,7 +573,9 @@ async function applyEventToStore(
           ) {
             ctx.tts.started = true;
             ctx.onFirstContentToken?.();
-            ttsStore.onAssistantMessageStart(ctx.messageId);
+            ttsStore.onAssistantMessageStart(ctx.messageId, {
+              forceSpeak: ctx.tts.forced,
+            });
           }
           const contentDelta =
             cumulativeContent.length > ctx.tts.prevContent.length
@@ -738,7 +744,11 @@ async function applyEventToStore(
         ttsStore.onAssistantMessageComplete(
           ctx.messageId,
           finalResult.text ?? '',
-          {hadReasoning: !!finalResult.reasoning_content?.trim()},
+          {
+            hadReasoning: !!finalResult.reasoning_content?.trim(),
+            // PHONE_SPEC §11.3：电话模式放行 autoSpeakEnabled 门（与开流同源）
+            forceSpeak: ctx.tts.forced,
+          },
         );
       } catch (ttsErr) {
         console.warn('[useChatSession] TTS complete hook failed:', ttsErr);
@@ -948,6 +958,7 @@ export const useChatSession = (
     const tts: TtsRunState = {
       // PHONE_SPEC §4.3：电话模式强制流式播报（与 autoSpeak 开关无关）
       enabled: phoneMode ? true : ttsStore.autoSpeakEnabled,
+      forced: phoneMode,
       started: false,
       prevContent: '',
       prevReasoning: '',

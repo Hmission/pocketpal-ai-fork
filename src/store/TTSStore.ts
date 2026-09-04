@@ -532,11 +532,20 @@ export class TTSStore {
     );
   }
 
-  /** First token / message creation. Opens a streaming session. */
-  onAssistantMessageStart(messageId: string): void {
+  /** First token / message creation. Opens a streaming session.
+   *
+   * `opts.forceSpeak`（PHONE_SPEC §11.3）：电话模式单轮强制播报——与用户
+   * 「自动朗读」偏好正交（不修改开关）。门条件 = `autoSpeakEnabled ||
+   * forceSpeak`；可用性（isTTSAvailable）/已选语音/idempotency 三门不变。
+   * 根治：v2.0 电话模式 useChatSession 已强制 tts.enabled，但本方法另有一道
+   * autoSpeakEnabled 门 → 流式播报从未开流（听不到语音输出）。 */
+  onAssistantMessageStart(
+    messageId: string,
+    opts?: {forceSpeak?: boolean},
+  ): void {
     if (
       !this.isTTSAvailable ||
-      !this.autoSpeakEnabled ||
+      !(opts?.forceSpeak || this.autoSpeakEnabled) ||
       this.currentVoice == null ||
       messageId === this.lastSpokenMessageId
     ) {
@@ -604,11 +613,13 @@ export class TTSStore {
     }
   }
 
-  /** Final completion — flushes streaming or falls back to replay. */
+  /** Final completion — flushes streaming or falls back to replay.
+   * `opts.forceSpeak`：与 onAssistantMessageStart 同一门语义（PHONE_SPEC §11.3），
+   * 回落播报分支也认同一条规则，不另设第二处判断。 */
   onAssistantMessageComplete(
     messageId: string,
     text: string,
-    opts?: {hadReasoning?: boolean},
+    opts?: {hadReasoning?: boolean; forceSpeak?: boolean},
   ) {
     const state = this.playbackState;
     if (state.mode === 'streaming' && state.messageId === messageId) {
@@ -647,7 +658,7 @@ export class TTSStore {
 
     if (
       !this.isTTSAvailable ||
-      !this.autoSpeakEnabled ||
+      !(opts?.forceSpeak || this.autoSpeakEnabled) ||
       this.currentVoice == null ||
       messageId === this.lastSpokenMessageId
     ) {

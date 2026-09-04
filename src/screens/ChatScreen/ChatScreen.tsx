@@ -52,7 +52,10 @@ import {
   type PhoneCallStatus,
 } from '../../services/phoneCall/session';
 import {audioStore} from '../../store/audioStore';
-import {getModelDisplayName} from '../../utils/modelDisplayNames';
+import {
+  getModelDisplayName,
+  BUTLER_DISPLAY_NAME,
+} from '../../utils/modelDisplayNames';
 import {useElapsed} from '../../hooks/useElapsed';
 import {chatTurnPerf} from '../../services/perf/chatTurnPerf';
 import {nightTaskRegistry} from '../../store/nightTaskRegistry';
@@ -349,7 +352,8 @@ export const ChatScreen: React.FC = observer(() => {
     setPhoneVisible(true);
   }, [l10n]);
 
-  /** 挂断：停播 + 打断推理 + 关闭通话界面（已落库消息保留） */
+  /** 挂断：停播 + 打断推理 + 关闭通话界面（已落库消息保留）。
+   *  右上 ✕ 随 v2.1 删除（与本函数同为退出入口，不重复设口）。 */
   const handlePhoneHangUp = React.useCallback(() => {
     setPhoneTranscript('');
     void phoneSessionRef.current?.hangUp();
@@ -377,10 +381,19 @@ export const ChatScreen: React.FC = observer(() => {
     return '';
   })();
 
-  const phonePartnerName = activePal?.name ?? '';
+  const phonePartnerName =
+    activePal?.name?.trim() ||
+    chatSessionStore.sessions
+      .find(s => s.id === activeSessionId)
+      ?.title?.trim() ||
+    l10n.components.phoneCall.defaultPartnerName;
+  // 模型胶囊回落（PHONE_SPEC §11.2）：未加载聊天模型但管家驻场 → 显示管家名
+  // （与顶栏胶囊三档链同一语义，不另造口径）。
   const phoneModelLabel = modelStore.activeModel
     ? getModelDisplayName(modelStore.activeModel)
-    : '';
+    : promptWriter.isLoaded
+      ? BUTLER_DISPLAY_NAME
+      : '';
 
   // 电话模式回复同步（PHONE_SPEC §4.3 补强）：管家直答链路无回合 token 回调，
   // observer 派生「最后一条回复」——落流即播报（ttsStore.play）+ 播完回聆听。
@@ -722,10 +735,13 @@ export const ChatScreen: React.FC = observer(() => {
         elapsedSeconds={phoneElapsed}
         transcript={phoneTranscript}
         perfHistory={phonePerfHistory}
-        onStartRecording={() => phoneSessionRef.current?.startRecording()}
+        onStartRecording={() => {
+          // 新一轮开口 = 上一轮转写作废（§11.4：本轮常驻，下一轮重置）
+          setPhoneTranscript('');
+          void phoneSessionRef.current?.startRecording();
+        }}
         onStopRecording={() => phoneSessionRef.current?.stopAndSend()}
         onHangUp={handlePhoneHangUp}
-        onClose={handlePhoneHangUp}
       />
     </>
   );

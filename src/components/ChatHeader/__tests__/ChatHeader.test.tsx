@@ -2,6 +2,7 @@ import React from 'react';
 import {StyleSheet} from 'react-native';
 import {render, fireEvent} from '../../../../jest/test-utils';
 import {ChatHeader} from '../ChatHeader';
+import {themeFixtures} from '../../../../jest/fixtures/theme';
 import {chatSessionStore} from '../../../store';
 
 // CHAT_UI_SPEC §21：电话入口依赖 SenseVoice 就绪态（mock 可控）
@@ -91,7 +92,7 @@ describe('ChatHeader', () => {
     expect(queryByTestId('phone-call-button')).toBeNull();
   });
 
-  it('SenseVoice 就绪 + 传入回调 → 图标可点，点击触发回调', () => {
+  it('SenseVoice 就绪 + 传入回调 → 图标可点且着色走 fill，点击触发回调', () => {
     mockAsrState.value = 'ready';
     const onPhoneCallPress = jest.fn();
     const {getByTestId} = render(
@@ -99,12 +100,20 @@ describe('ChatHeader', () => {
       {withSafeArea: true},
     );
     const btn = getByTestId('phone-call-button');
-    // 就绪态：icon 胶囊（triggerPill 语言——primary 12% 底衬 + 描边；
-    // Touchable 自带 opacity:1，禁用态 opacity 0.4 不出现）
+    // CHAT_UI_SPEC §21 v5.1 / PHONE_SPEC §11.1：触区与 HeaderRight.compactBtn 同族
+    // ——controlHeight 透明方形（无底衬无描边；v2.0 胶囊化已撤销）
     const flattened = StyleSheet.flatten(btn.props.style);
     expect(flattened.opacity).not.toBe(0.4);
-    expect(flattened.borderWidth).toBe(1); // primary 1px 描边
-    expect(typeof flattened.backgroundColor).toBe('string'); // primary 12% 底
+    expect(flattened.width).toBe(themeFixtures.lightTheme.size.controlHeight);
+    expect(flattened.height).toBe(themeFixtures.lightTheme.size.controlHeight);
+    expect(flattened.borderWidth).toBeUndefined();
+    expect(flattened.backgroundColor).toBeUndefined();
+    // DESIGN_SPEC §3 传参红线：本仓 svgr 把 #333333 映射为 {props.fill}，
+    // 传 color 无效（图标不渲染）——着色必须落在 fill 上。
+    // jest 下 svg 经 __mocks__/external/react-native-svg.js 渲染为宿主元素 'SvgMock'
+    const [icon] = btn.findAllByType('SvgMock' as unknown as React.ElementType);
+    expect(icon.props.fill).toBe(themeFixtures.lightTheme.colors.primary);
+    expect(icon.props.width).toBe(themeFixtures.lightTheme.iconSize.m);
     fireEvent.press(btn);
     expect(onPhoneCallPress).toHaveBeenCalledTimes(1);
   });
