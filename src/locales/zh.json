@@ -608,6 +608,9 @@
     "phoneCall": {
       "title": "电话通话",
       "listening": "我在听…",
+      "recognizing": "识别中…",
+      "engineLoading": "正在加载语音助手…",
+      "readyToTalk": "可以说话啦",
       "thinking": "思考中…",
       "speaking": "播报中…",
       "holdToTalk": "按住说话",

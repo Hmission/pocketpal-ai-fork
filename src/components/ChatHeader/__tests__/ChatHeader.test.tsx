@@ -99,8 +99,12 @@ describe('ChatHeader', () => {
       {withSafeArea: true},
     );
     const btn = getByTestId('phone-call-button');
-    // 就绪态：不禁用（flatten 后 opacity 非 0.4；Touchable 自带 opacity:1）
-    expect(StyleSheet.flatten(btn.props.style).opacity).not.toBe(0.4);
+    // 就绪态：icon 胶囊（triggerPill 语言——primary 12% 底衬 + 描边；
+    // Touchable 自带 opacity:1，禁用态 opacity 0.4 不出现）
+    const flattened = StyleSheet.flatten(btn.props.style);
+    expect(flattened.opacity).not.toBe(0.4);
+    expect(flattened.borderWidth).toBe(1); // primary 1px 描边
+    expect(typeof flattened.backgroundColor).toBe('string'); // primary 12% 底
     fireEvent.press(btn);
     expect(onPhoneCallPress).toHaveBeenCalledTimes(1);
   });

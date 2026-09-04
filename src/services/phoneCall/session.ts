@@ -22,6 +22,11 @@ export type PhoneCallErrorCode =
   | 'TRANSCRIBE_FAILED'
   | 'SEND_FAILED';
 
+/** 回复看门狗超时（ms）：send 后超过该时长仍无回复开始事件 → 回到聆听态。
+ *  真实场景：引擎 busy 等待（awaitEngineReady 超时提前 return）或管家直答
+ *  通道无回合生命周期回调时，onPhoneTurnFinished 不会触发——不悬挂（锋利原则）。 */
+export const REPLY_TIMEOUT_MS = 90_000;
+
 export interface PhoneCallDeps {
   record: {
     start(): Promise<string>;
@@ -34,6 +39,8 @@ export interface PhoneCallDeps {
   stopInference?: () => Promise<void>;
   /** 中止当前 TTS 播报（ttsStore.stop） */
   speakStop(): Promise<void>;
+  /** 转写结果回调（PHONE_SPEC §10.3：通话界面实时回显识别文本） */
+  onTranscript?: (text: string) => void;
   /** 状态发布（UI 订阅刷新） */
   notify(status: PhoneCallStatus): void;
   /** 错误提示（UI 展示对应 l10n） */
@@ -45,6 +52,8 @@ export class PhoneCallSession {
   private deps: PhoneCallDeps;
   /** 挂断标记：转写在途时作废结果（stopAndSend 转写完成后检查，不发送） */
   private closing = false;
+  /** 回复看门狗：awaiting_reply/speaking 超时自动回聆听（回调丢失兜底） */
+  private replyWatchdog: ReturnType<typeof setTimeout> | null = null;
 
   constructor(deps: PhoneCallDeps) {
     this.deps = deps;
@@ -72,6 +81,24 @@ export class PhoneCallSession {
     this.deps.notify(next);
   }
 
+  private clearReplyWatchdog(): void {
+    if (this.replyWatchdog) {
+      clearTimeout(this.replyWatchdog);
+      this.replyWatchdog = null;
+    }
+  }
+
+  private armReplyWatchdog(): void {
+    this.clearReplyWatchdog();
+    this.replyWatchdog = setTimeout(() => {
+      this.replyWatchdog = null;
+      // 回复超时（引擎 busy 等待超时/回调丢失）→ 回聆听态，不悬挂
+      if (this.status === 'awaiting_reply' || this.status === 'speaking') {
+        this.setStatus('idle');
+      }
+    }, REPLY_TIMEOUT_MS);
+  }
+
   /**
    * 开始录音（语音优先）：speaking/awaiting_reply 中按住 = 打断当前环节。
    * idle 直接进录音；已在录音 = 幂等忽略。
@@ -80,8 +107,9 @@ export class PhoneCallSession {
     if (this.status === 'recording' || this.status === 'transcribing') {
       return;
     }
-    // 新一轮说话 = 会话恢复（清挂断标记）
+    // 新一轮说话 = 会话恢复（清挂断标记与看门狗）
     this.closing = false;
+    this.clearReplyWatchdog();
     if (this.status === 'speaking') {
       await this.deps.speakStop();
     } else if (this.status === 'awaiting_reply') {
@@ -127,8 +155,11 @@ export class PhoneCallSession {
         this.deps.onError('EMPTY_SPEECH');
         return;
       }
+      this.deps.onTranscript?.(text.trim());
       await this.deps.send(text.trim());
       this.setStatus('awaiting_reply');
+      // 回复看门狗：回调丢失/引擎超时时自动回聆听（不悬挂）
+      this.armReplyWatchdog();
     } catch (e) {
       console.warn('[PhoneCall] stopAndSend failed:', e);
       this.setStatus('idle');
@@ -139,12 +170,14 @@ export class PhoneCallSession {
   /** 回复首个内容 token 到达（useChatSession 生命周期回调驱动） */
   notifyReplyStarted(): void {
     if (this.status === 'awaiting_reply') {
+      this.clearReplyWatchdog();
       this.setStatus('speaking');
     }
   }
 
   /** 回复回合收尾（完成/失败/被打断，useChatSession 生命周期回调驱动） */
   notifyReplyFinished(): void {
+    this.clearReplyWatchdog();
     if (this.status === 'speaking' || this.status === 'awaiting_reply') {
       this.setStatus('idle');
     }
@@ -152,6 +185,7 @@ export class PhoneCallSession {
 
   /** 挂断：停播 + 打断推理 + 归 idle（已落库消息保留；在途转写结果作废） */
   async hangUp(): Promise<void> {
+    this.clearReplyWatchdog();
     this.closing = true;
     if (this.status === 'recording') {
       // 录音中挂断：先停录（麦克风归还），丢弃本次录音

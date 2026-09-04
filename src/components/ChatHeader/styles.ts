@@ -62,13 +62,17 @@ export const createStyles = ({
       borderWidth: 1,
       borderColor: theme.colors.primary,
     },
-    // CHAT_UI_SPEC §21：电话模式入口图标（36px 触区，对齐顶栏控件族）
+    // CHAT_UI_SPEC §21 + PHONE_SPEC §10.1：电话入口 icon 胶囊化（triggerPill
+    // 设计语言：primary 12% 底 + full 圆角 + primary 1px 描边，与模型胶囊同族）
     phoneButton: {
       width: 36,
       height: 36,
-      borderRadius: 18,
+      borderRadius: theme.radius[theme.shapeRoles.pill],
       alignItems: 'center',
       justifyContent: 'center',
+      backgroundColor: withOpacity(theme.colors.primary, 0.12),
+      borderWidth: 1,
+      borderColor: theme.colors.primary,
     },
     phoneButtonDisabled: {
       opacity: 0.4,

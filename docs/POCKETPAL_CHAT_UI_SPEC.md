@@ -518,6 +518,10 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 | phone-overlay | 通话 overlay 根容器 |
 | phone-hold-talk | 按住说话大圆钮 |
 | phone-hangup | 挂断按钮 |
+| phone-contact | 联系人区（头像+名字+时长） |
+| phone-transcript | 转写文本回显 |
+| phone-engine-progress | 引擎加载进度条 |
+| phone-perf-row | 跑分迷你行（PerfMiniRow 复用，testIDPrefix=phone-perf） |
 
 ## 变更日志
 

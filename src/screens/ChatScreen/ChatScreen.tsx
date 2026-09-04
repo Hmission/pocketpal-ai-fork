@@ -53,6 +53,10 @@ import {
 } from '../../services/phoneCall/session';
 import {audioStore} from '../../store/audioStore';
 import {getModelDisplayName} from '../../utils/modelDisplayNames';
+import {useElapsed} from '../../hooks/useElapsed';
+import {chatTurnPerf} from '../../services/perf/chatTurnPerf';
+import {nightTaskRegistry} from '../../store/nightTaskRegistry';
+import {activateKeepAwake, deactivateKeepAwake} from '../../utils/keepAwake';
 
 import {VideoPalScreen} from './VideoPalScreen';
 
@@ -208,8 +212,12 @@ export const ChatScreen: React.FC = observer(() => {
     user,
     assistant,
     {
-      // PHONE_SPEC §4.3：电话回合生命周期 → 驱动 PhoneCallSession 状态机
-      onPhoneTurnStarted: () => phoneSessionRef.current?.notifyReplyStarted(),
+      // PHONE_SPEC §4.3：电话回合生命周期 → 驱动 PhoneCallSession 状态机。
+      // handledRef 置位：token 流播报由 ttsStore 流式接管，落流同步不再介入（防双播）
+      onPhoneTurnStarted: () => {
+        phoneReplyHandledRef.current = true;
+        phoneSessionRef.current?.notifyReplyStarted();
+      },
       onPhoneTurnFinished: () => phoneSessionRef.current?.notifyReplyFinished(),
     },
   );
@@ -225,6 +233,49 @@ export const ChatScreen: React.FC = observer(() => {
   // ==================== 电话模式（PHONE_SPEC §4） ====================
   const [phoneVisible, setPhoneVisible] = useState(false);
   const [phoneStatus, setPhoneStatus] = useState<PhoneCallStatus>('idle');
+  // 转写实时回显（§10.3：输入成功反馈）
+  const [phoneTranscript, setPhoneTranscript] = useState('');
+  // 通话时长（§10.2 打电话仪式）
+  const phoneElapsed = useElapsed(phoneVisible);
+  // 跑分迷你行数据（§10.2：chatTurnPerf 同源，零接线——generating 期 1Hz 采样）
+  const phonePerfHistory = chatTurnPerf.livePoints.slice(-60);
+
+  // 引擎就绪门控（§10.3）：chat 引擎/管家任一 ready 即可通话；未就绪时取
+  // 加载中引擎的 progress/stage 作进度条（engineStatus 单一事实源）。
+  // observer 内直接派生（MobX 字段访问即订阅，AudioWorkshopTab B38 同款模式）。
+  const phoneEngineReady =
+    engineStatus.engines.chat.phase === 'ready' ||
+    engineStatus.engines.prompter.phase === 'ready';
+  const phoneEngineLoading = (() => {
+    if (phoneEngineReady || !phoneVisible) {
+      return null;
+    }
+    const active = [engineStatus.engines.chat, engineStatus.engines.prompter]
+      .filter(e => e.phase === 'loading')
+      .sort((a, b) => b.progress - a.progress)[0];
+    return active
+      ? {progress: active.progress, stage: active.stage}
+      : {progress: -1, stage: ''};
+  })();
+
+  // PHONE_SPEC §10.4：通话中双保活——亮屏（keep awake）+ 前台服务防杀。
+  // nightTask 机制同构接线（imageGenStore §7.1 同款：registry 引用计数 +
+  // VideoTaskService 前后台服务；计数归零才 stop，与生图/推理共用不互相误停）。
+  React.useEffect(() => {
+    if (!phoneVisible) {
+      return;
+    }
+    activateKeepAwake();
+    nightTaskRegistry.begin();
+    NativeModules.VideoTaskService?.start?.().catch(() => {});
+    return () => {
+      nightTaskRegistry.end();
+      if (!nightTaskRegistry.isBusy) {
+        NativeModules.VideoTaskService?.stop?.().catch(() => {});
+      }
+      deactivateKeepAwake();
+    };
+  }, [phoneVisible]);
 
   /** 电话错误 → chatWarning Snackbar（与聊天页既有警示同一视觉，不另造） */
   const handlePhoneError = React.useCallback(
@@ -249,6 +300,8 @@ export const ChatScreen: React.FC = observer(() => {
 
   // 惰性构造会话编排（依赖四件套全注入，纯 TS 可单测；录音权限在此层申请）
   const phoneSessionRef = useRef<PhoneCallSession | null>(null);
+  // 回复接管标记：chat 引擎回合（onPhoneTurn 回调）与管家直答（落流同步）二选一，先到者胜
+  const phoneReplyHandledRef = React.useRef(false);
   if (!phoneSessionRef.current) {
     phoneSessionRef.current = new PhoneCallSession({
       record: {
@@ -270,10 +323,12 @@ export const ChatScreen: React.FC = observer(() => {
         // PHONE_SPEC §5：phoneMode 标记随消息透传（wrappedSendPress 全透传）
         const phoneMsg = {text} as MessageType.PartialText;
         phoneMsg.metadata = {phoneMode: true};
+        phoneReplyHandledRef.current = false;
         return wrappedSendPress(phoneMsg);
       },
       stopInference: handleStopPress,
       speakStop: () => ttsStore.stop(),
+      onTranscript: setPhoneTranscript,
       notify: setPhoneStatus,
       onError: handlePhoneError,
     });
@@ -296,6 +351,7 @@ export const ChatScreen: React.FC = observer(() => {
 
   /** 挂断：停播 + 打断推理 + 关闭通话界面（已落库消息保留） */
   const handlePhoneHangUp = React.useCallback(() => {
+    setPhoneTranscript('');
     void phoneSessionRef.current?.hangUp();
     setPhoneVisible(false);
   }, []);
@@ -325,6 +381,67 @@ export const ChatScreen: React.FC = observer(() => {
   const phoneModelLabel = modelStore.activeModel
     ? getModelDisplayName(modelStore.activeModel)
     : '';
+
+  // 电话模式回复同步（PHONE_SPEC §4.3 补强）：管家直答链路无回合 token 回调，
+  // observer 派生「最后一条回复」——落流即播报（ttsStore.play）+ 播完回聆听。
+  // chat 引擎路径由 onPhoneTurn 回调接管（phoneReplyHandledRef 先到者胜）。
+  const phoneLastReply = (() => {
+    if (!phoneVisible) {
+      return null;
+    }
+    const msgs = chatSessionStore.currentSessionMessages;
+    for (let i = msgs.length - 1; i >= 0; i -= 1) {
+      const m = msgs[i];
+      if (m.type === 'assistant_turn') {
+        const steps = (m as MessageType.AssistantTurn).steps ?? [];
+        const last = steps[steps.length - 1];
+        if (last?.content) {
+          return {id: m.id, text: String(last.content)};
+        }
+        continue;
+      }
+      if (m.type === 'text' && m.metadata?.butler) {
+        // butler 卡片占位（「管家思考中…」）不算回复
+        if (!m.text || m.text === l10n.chat.butlerThinking) {
+          continue;
+        }
+        return {id: m.id, text: m.text};
+      }
+    }
+    return null;
+  })();
+  const phoneLastReplyKey = phoneLastReply
+    ? `${phoneLastReply.id}:${phoneLastReply.text.length}`
+    : '';
+
+  React.useEffect(() => {
+    if (!phoneVisible) {
+      return;
+    }
+    if (phoneStatus !== 'awaiting_reply' && phoneStatus !== 'speaking') {
+      return;
+    }
+    if (!phoneLastReply || !phoneLastReplyKey) {
+      return;
+    }
+    if (phoneReplyHandledRef.current) {
+      return;
+    }
+    // 回调未接管（管家直答/非回合链路）→ 落流同步：进播报 → play → 回聆听
+    phoneReplyHandledRef.current = true;
+    phoneSessionRef.current?.notifyReplyStarted();
+    void (async () => {
+      try {
+        await ttsStore.play(phoneLastReply.id, phoneLastReply.text, {
+          hadReasoning: false,
+        });
+      } catch (e) {
+        console.warn('[ChatScreen] phone butler reply play failed:', e);
+      }
+      phoneSessionRef.current?.notifyReplyFinished();
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phoneVisible, phoneStatus, phoneLastReplyKey]);
 
   // DRC 聊天发送槽（debug/E2E 构建）：ChatScreen 在岗时注册 wrappedSendPress，
   // 卸载注销——command chat.send 复用完整调度链路（意图路由/管家直答），单一事实源。
@@ -600,6 +717,11 @@ export const ChatScreen: React.FC = observer(() => {
         recentText={phoneRecentText}
         partnerName={phonePartnerName}
         modelLabel={phoneModelLabel}
+        engineReady={phoneEngineReady}
+        engineLoading={phoneEngineLoading}
+        elapsedSeconds={phoneElapsed}
+        transcript={phoneTranscript}
+        perfHistory={phonePerfHistory}
         onStartRecording={() => phoneSessionRef.current?.startRecording()}
         onStopRecording={() => phoneSessionRef.current?.stopAndSend()}
         onHangUp={handlePhoneHangUp}

@@ -1,4 +1,4 @@
-import {PhoneCallSession, PhoneCallStatus} from '../session';
+import {PhoneCallSession, PhoneCallStatus, REPLY_TIMEOUT_MS} from '../session';
 
 /**
  * PhoneCallSession 流水线单测（PHONE_SPEC §4.2）。
@@ -13,6 +13,7 @@ const makeDeps = (
     send: jest.Mock;
     stopInference: jest.Mock;
     speakStop: jest.Mock;
+    onTranscript: jest.Mock;
   }> = {},
 ) => {
   const recordStart =
@@ -28,6 +29,7 @@ const makeDeps = (
     overrides.speakStop ?? jest.fn().mockResolvedValue(undefined);
   const notify = jest.fn();
   const onError = jest.fn();
+  const onTranscript = overrides.onTranscript ?? jest.fn();
   const statuses: PhoneCallStatus[] = [];
   notify.mockImplementation((s: PhoneCallStatus) => statuses.push(s));
   const session = new PhoneCallSession({
@@ -38,6 +40,7 @@ const makeDeps = (
     speakStop,
     notify,
     onError,
+    onTranscript,
   });
   return {
     session,
@@ -49,13 +52,14 @@ const makeDeps = (
     speakStop,
     notify,
     onError,
+    onTranscript,
     statuses,
   };
 };
 
 describe('PhoneCallSession', () => {
   it('#1 完整闭环：录音 → 转写 → 发送 → 等回复 → 播报 → 聆听（状态机全链路）', async () => {
-    const {session, transcribe, send, statuses} = makeDeps();
+    const {session, transcribe, send, statuses, onTranscript} = makeDeps();
 
     expect(session.getStatus()).toBe('idle');
     expect(session.isActive()).toBe(false);
@@ -68,6 +72,8 @@ describe('PhoneCallSession', () => {
     await session.stopAndSend();
     expect(transcribe).toHaveBeenCalledWith('/tmp/a.wav');
     expect(send).toHaveBeenCalledWith('你好');
+    // §10.3：转写结果回调（通话界面实时回显）
+    expect(onTranscript).toHaveBeenCalledWith('你好');
     expect(session.getStatus()).toBe('awaiting_reply');
 
     session.notifyReplyStarted();
@@ -249,5 +255,43 @@ describe('PhoneCallSession', () => {
     expect(transcribe).not.toHaveBeenCalled();
     expect(send).not.toHaveBeenCalled();
     expect(session.getStatus()).toBe('idle');
+  });
+
+  it('#14 回复回调丢失（引擎 busy 等待超时）→ 看门狗自动回聆听，不悬挂', async () => {
+    jest.useFakeTimers();
+    try {
+      const {session} = makeDeps();
+
+      await session.startRecording();
+      await session.stopAndSend();
+      expect(session.getStatus()).toBe('awaiting_reply');
+
+      // 无任何 onPhoneTurn 回调（模拟提前 return / 管家直答无回调）；
+      // 推进超时 → 自动回聆听
+      jest.advanceTimersByTime(REPLY_TIMEOUT_MS + 1000);
+      expect(session.getStatus()).toBe('idle');
+      expect(session.isActive()).toBe(false);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('#15 正常回复到达 → 看门狗清除（超时不触发）', async () => {
+    jest.useFakeTimers();
+    try {
+      const {session} = makeDeps();
+
+      await session.startRecording();
+      await session.stopAndSend();
+      session.notifyReplyStarted();
+      session.notifyReplyFinished();
+      expect(session.getStatus()).toBe('idle');
+
+      // 回复已完成后再推进超时 → 不产生多余状态（看门狗已清）
+      jest.advanceTimersByTime(REPLY_TIMEOUT_MS + 1000);
+      expect(session.getStatus()).toBe('idle');
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });

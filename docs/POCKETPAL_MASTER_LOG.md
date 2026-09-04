@@ -1431,6 +1431,15 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
 - **提交**：本窗提交（docs + spec + 代码 + 单测）；push 待大王指令（§129.10 纪律：推送只在大王明确指令时执行）。
 - **实验分支后置**：路线 B（端到端语音模型直通，llama.rn 0.12.7 vocoder API 已备）数据说话再定；工具调用恢复待链路口测数据。
 
+## §140 电话模式 v1.1 双修复 + v2.0 四升级（2026-09-04/05，真机取证驱动）
+
+- **v1.1 双修复**（真机验证暴露）：①回复看门狗——handleSendPress 提前 return/管家直答无回合回调时 session 不悬挂（REPLY_TIMEOUT_MS 90s 自动回聆听，#14/#15 单测）；②落流同步——管家直答无 token 回调，ChatScreen observer 派生最后一条回复，落流即 ttsStore.play 播报+回聆听（handledRef 先到者胜防双播）。
+- **v2.0 四升级**（2026-09-05 大王四问题，像素级排查取证）：①顶栏电话图标「看不见」根因=自动化关闭 tap 被 HyperOS 拦截致 overlay 残留遮罩（截图像素证：顶栏/中部空白+底部 hold 钮 47K px）+图标视觉弱——修复=icon 胶囊化（triggerPill 语言：primary 12% 底+1px 描边+24px primary 图标）；②通话页「打电话式」UI（联系人区/头像环/通话时长 useElapsed/三态波形/红挂断/涟漪脉冲）+跑分迷你行复用 PerfMiniRow+chatTurnPerf（零另造）；③输入反馈与引擎就绪门控（engineStatus 单源：chat/prompter 任一 ready 解锁，未就绪 hold 禁用+加载进度条；转写实时回显 onTranscript）；④防锁屏防清后台双保活（keep awake + nightTaskRegistry/VideoTaskService 前台服务，与生图同构接线）。
+- **真机验证**（K90 aab688d9，覆盖装机+冷启动+像素双取证）：图标胶囊（primary 12% 底 8K px+图标色 642px）✓；overlay v2（联系人区/红挂断钮 7.2K px）✓；VideoTaskService 前台服务在册 ✓；语音全链闭环（v1.1 时已验证）。
+- **验证**：tsc 本窗面零错（aiosCore 4 错为并行窗口 untracked 挂载，留痕待其收口）；eslint 零错；jest 131/131（11 套件，含新增 useElapsed 2 例/Overlay 4 例/看门狗 2 例）；l10n:validate 通过。
+- **提交**：本窗提交（docs+spec+代码+单测）；push 待大王指令（§129.10）。
+- **待办**：大王体验确认（跑分行/时长/门控/保活观感）；aiosCore 并行窗口 4 错待其收口；HyperOS 自动化 tap 拦截现象已登记（自动化恢复现场用 force-stop SOP）。
+
 ## §138 v2.0.1 发布闭环（2026-09-03，大王指令「app 记得更新，今天修了一个 bug」）
 
 - 发布指令：大王确认「发布新版本」（AskUserQuestion 选完整发布流程）；当天修复 = 5491717（fix(chat) 聊天页慢速回归 + 跑分卡数值修复，task-47d 窗口）

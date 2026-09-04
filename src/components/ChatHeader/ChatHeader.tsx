@@ -105,11 +105,9 @@ export const ChatHeader: React.FC<{
                 !phoneReady && styles.phoneButtonDisabled,
               ]}>
               <PhoneIcon
-                width={20}
-                height={20}
-                color={
-                  phoneReady ? theme.colors.onSurface : theme.colors.outline
-                }
+                width={24}
+                height={24}
+                color={phoneReady ? theme.colors.primary : theme.colors.outline}
               />
             </TouchableOpacity>
           )}

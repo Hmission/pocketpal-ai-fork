@@ -608,6 +608,9 @@
     "phoneCall": {
       "title": "Phone Call",
       "listening": "Listening…",
+      "recognizing": "Recognizing…",
+      "engineLoading": "Loading voice assistant…",
+      "readyToTalk": "Ready to talk",
       "thinking": "Thinking…",
       "speaking": "Speaking…",
       "holdToTalk": "Hold to talk",

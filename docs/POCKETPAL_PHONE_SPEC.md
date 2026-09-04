@@ -3,9 +3,9 @@ doc_id: POCKETPAL_PHONE_SPEC
 module: chat
 type: spec
 status: active
-version: "1.0"
+version: "2.0"
 created: "2026-09-04"
-updated: "2026-09-04"
+updated: "2026-09-05"
 relates: [POCKETPAL_CHAT_UI_SPEC, POCKETPAL_AUDIO_UI_SPEC, POCKETPAL_STARMAP_DOMAINS, POCKETPAL_DESIGN_SPEC]
 ---
 
@@ -17,6 +17,11 @@ relates: [POCKETPAL_CHAT_UI_SPEC, POCKETPAL_AUDIO_UI_SPEC, POCKETPAL_STARMAP_DOM
 > 任何电话模式迭代必须先更新本文档再改代码（文档先行门禁）。
 > 上游契约：CHAT_UI_SPEC（聊天页布局/顶栏）+ AUDIO_UI_SPEC（ASR/TTS 引擎资产）+ STARMAP_DOMAINS（chat 域）。
 > 版本：v1.0（2026-09-04 首版定稿，路线 A 定案）
+> 版本：v1.1（2026-09-04 真机验证两修复）：①**回复看门狗**——handleSendPress 提前 return/管家直答无回合回调时
+> session 不悬挂（REPLY_TIMEOUT_MS 90s 自动回聆听，#14/#15 单测）；②**落流同步**——管家直答路径
+> 无 token 回调，ChatScreen observer 派生最后一条回复，落流即 ttsStore.play 播报 + 回聆听（防双播 handledRef
+> 先到者胜）；③真机证：录音/AudioRecord→SenseVoice 转写→落库→管家回复→播报 全链闭环（K90 aab688d9）。
+> 版本：v2.0（2026-09-05 大王四问题升级方案，真机排查取证驱动）：①顶栏电话图标可见性——overlay 残留遮罩根因（自动化关闭 tap 被 HyperOS 拦截）+ 图标视觉弱（20px 灰 stroke）→ icon 胶囊化（triggerPill 语言）；②通话页「打电话式」UI 重设计——联系人区/通话时长/三态波形/跑分迷你行（复用 PerfMiniRow + chatTurnPerf）；③输入反馈与引擎就绪门控——engineStatus 单源进度条，未就绪禁录；④防锁屏防清后台——keep awake + nightTaskRegistry 前台服务双保活。详见 §10。
 
 ## 1. 产品定位
 
@@ -177,3 +182,84 @@ sync 至 en 基准 + zh 同源（l10n 缺失回退英文，既有机制）。
 - 不做通话专属气泡/专属消息类型（复用现有消息卡）。
 - 不新增 Drawer/设置页入口（单入口 = 聊天页顶栏图标）。
 - 不改引擎层（llama.rn / sherpa / ONNX JNI 为 UI 改造禁区，星图红线）。
+
+## 10. 升级设计 v2.0（2026-09-05 大王四问题，真机排查取证）
+
+> 排查结论先行（像素级取证）：顶栏图标渲染**无静态缺陷**——冷启动截图像素证
+> （顶栏橙色胶囊描边 3.1K px + 深灰图标 2.3K px）；「看不见」= ①通话 overlay 关闭
+> tap 被 HyperOS 拦截导致 overlay 残留全屏遮盖（截图证：顶栏/中部空白 + 底部中央
+> 84dp 橙色 hold 钮 47K px）；②图标视觉弱（20px 灰 stroke 2px）。
+
+### 10.1 顶栏电话图标可见性（icon 胶囊化）
+
+- **视觉增强**：图标 20→24px；就绪态图标色 primary + 36px 底衬（primary 12% 底 + full 圆角
+  + primary 1px 描边——**triggerPill 设计语言**，与模型胶囊/生图顶栏胶囊同族，不另造）；
+  禁用态（SenseVoice 未就绪）outline 色 + 0.4 透明不变。
+- **交互不变**：testID `phone-call-button`、禁用点击引导下载均保留。
+- **残留遮罩防御**（自动化/特殊路径）：overlay 关闭路径统一收口（hangUp/close 共用
+  closeOverlay 单函数 + force-stop 恢复现场 SOP 登记 MASTER_LOG）；overlay 打开时
+  ChatHeader 不响应（isPhoneCallVisible 门控，双保险）。
+
+### 10.2 通话页「打电话式」UI（v2 布局）
+
+```
+┌─────────────────────────────────────┐
+│ ① 联系人区（打电话仪式）：             │
+│    伙伴头像（pal avatar 资产/品牌黄圆）│
+│    名字 + 模型胶囊 + 通话时长 mm:ss    │
+├─────────────────────────────────────┤
+│ ② 状态区：                           │
+│    聆听：大麦克风 + 波纹涟漪（按住脉冲）│
+│    思考：三点波浪（useWaveDots 复用）  │
+│    播报：波形条 + 「播报中…」          │
+│    最近消息摘要（2 行截断，保留）      │
+├─────────────────────────────────────┤
+│ ③ 跑分迷你行（复用 PerfMiniRow）：     │
+│    PSS/内存/CPU/温度 + tok/s + 阶段态 │
+│    （chatTurnPerf 数据源，与聊天页同款）│
+├─────────────────────────────────────┤
+│ ④ 控制区：                           │
+│    按住说话 84dp（录音中红 + 涟漪脉冲）│
+│    挂断（红）                        │
+└─────────────────────────────────────┘
+```
+
+- **复用清单（禁止另造）**：useWaveDots（生图三点波浪）/ PerfMiniRow（chat 域跑分迷你行，
+  含 PSS 大字/胶囊分级色）/ chatTurnPerf（生成期唯一采样源）/ pal 头像资产 / 通话时长
+  计时 = 新轻量 hook（useElapsed，纯数字，无 UI 资产新建）。
+- 跑分卡是核心：**复用 PerfMiniRow 完整组件**（含遥测/表演层），仅位置差异；
+  数据源 chatTurnPerf 由 handleSendPress 既有链路驱动，零接线成本。
+
+### 10.3 输入反馈 + 引擎就绪门控
+
+- **引擎就绪门控**（解决「没加载完就输入、输入无效」）：
+  - 数据源：engineStatus（单一事实源）——chat 引擎 phase（idle/loading/ready/error）
+    + 管家（prompter）phase 任一 ready 即可通话（管家直答/chat 引擎二选一）。
+  - UI：通话界面进入时若双引擎均未 ready → hold 按钮禁用 + 显示加载进度条
+    （engineStatus .progress/.stage 数据，同模型加载卡片三点波浪语言）；
+    ready 后自动解锁并短提示「可以说话啦」。
+- **输入反馈闭环**：
+  - 录音中：红钮 + 「松开发送」+ 按压涟漪（既有）+ 新增录音振幅波形（AudioRecord
+    音量回调可选，首版不做——涟漪脉冲即可，不扩面）。
+  - 转写中：状态「识别中…」+ 转写文本实时回显（转写结果区，SenseVoice 无词级
+    时间戳，整句回显即可——AUDIO_UI_SPEC 已确认）；空文本走既有 EMPTY_SPEECH。
+  - 已发送：状态「思考中…」（既有 awaiting_reply）即反馈；回复落流同步播报（v1.1 修复）不变。
+
+### 10.4 防锁屏防清后台（双保活）
+
+- **亮屏保活**：overlay 打开 → activateKeepAwake()；挂断/关闭 → deactivateKeepAwake()
+  （复用 utils/keepAwake；推理期 handleSendPress 既有 activateKeepAwake 不冲突——
+  同一原生 WakeLock，引用语义幂等）。
+- **防清后台**：通话进行中（overlay 打开）→ nightTaskRegistry 引用计数 +1（复用
+  nightTask 机制：前台服务 + PARTIAL_WAKE_LOCK，HyperOS 不杀）；挂断 → -1。
+  与生图/聊天推理共用同一引用计数，无新机制。
+- **边界**：通话 = 用户使用中，聆听态同样保活（不漏任务）；锁屏后推理期
+  handleSendPress 既有 keep awake 继续持有；挂断释放全部。
+
+### 10.5 验收标准（v2.0）
+
+1. 冷启动聊天页：顶栏电话图标胶囊化可见（像素对比 24px primary）。
+2. overlay 打开时：通话时长走秒、hold 涟漪、三态波形、跑分迷你行与聊天页同款同源。
+3. 引擎未就绪：hold 禁用 + 进度条；就绪自动解锁。
+4. 通话中熄屏超时不断电（keep awake）；HyperOS 杀后台列表不出现 App（nightTask）。
+5. tsc 零错；jest 新增（useElapsed / 门控逻辑）全绿；回归不破。
