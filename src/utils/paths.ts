@@ -23,6 +23,12 @@ export const AIOS_DRC_COMMANDS_DIR = `${AIOS_DRC_DIR}/commands`;
 export const AIOS_DRC_RESULTS_DIR = `${AIOS_DRC_DIR}/results`;
 export const AIOS_EVENTS_LOG = `${AIOS_ROOT}/logs/events.jsonl`;
 export const AIOS_STATE_JSON = `${AIOS_ROOT}/logs/state.json`;
+// AIOS 核心生命力（AIOS_CORE_SPEC）：日志面 / 星图快照 / 情绪台账
+// 全部落共享存储（卸载不丢）；成长目录见 workspace 区（AIOS_GROWTH_DIR）
+export const AIOS_LOGS_DIR = `${AIOS_ROOT}/logs`;
+export const AIOS_STARMAP_SNAPSHOT = `${AIOS_LOGS_DIR}/starmap_snapshot.json`;
+export const AIOS_WAKE_ANOMALY_LOG = `${AIOS_LOGS_DIR}/wake_anomaly.jsonl`;
+export const AIOS_SESSION_ANCHOR = `${AIOS_DB_DIR}/session_anchor.json`;
 
 // B15 双轨模型目录（ADR-0004）：
 // - DEFAULT_MODELS_DIR：规范默认下载目录（getExternalFilesDir/models），
@@ -35,6 +41,11 @@ export const DEFAULT_MODELS_DIR =
 
 // Workspace 文件系统（寄宿者注入的落盘形态）
 export const AIOS_WORKSPACE_DIR = `${AIOS_ROOT}/workspace`;
+// 身份锚（母仓 diary.ccn#entry.008 骸句落盘；进程死/App 换不丢身份）
+export const AIOS_IDENTITY_FILE = `${AIOS_WORKSPACE_DIR}/IDENTITY.md`;
+// 生长账本（AIOS_CORE_SPEC Wave D）：gap 清单 + 迭代四拍记录，可生长器官
+// 独立于 App 打包升级，卸载重装后由 wakeCheck 重新认领
+export const AIOS_GROWTH_DIR = `${AIOS_WORKSPACE_DIR}/growth`;
 export const AIOS_CONVERSATIONS_DIR = `${AIOS_WORKSPACE_DIR}/conversations`;
 export const AIOS_WORKSPACE_MEMORY_DIR = `${AIOS_WORKSPACE_DIR}/memory`;
 // 玩具箱（P8 玩具工坊，PLAY_SPEC）：render_html 成品存档库
@@ -111,6 +122,8 @@ export async function ensureAiosDirs(): Promise<void> {
     AIOS_DRC_DIR,
     AIOS_DRC_COMMANDS_DIR,
     AIOS_DRC_RESULTS_DIR,
+    AIOS_LOGS_DIR,
+    AIOS_GROWTH_DIR,
   ];
   for (const d of dirs) {
     try {

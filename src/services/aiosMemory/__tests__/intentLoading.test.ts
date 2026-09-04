@@ -29,6 +29,7 @@ jest.mock('@dr.pogodin/react-native-fs', () => ({
   exists: jest.fn().mockResolvedValue(false),
   readFile: jest.fn().mockResolvedValue('[]'),
   writeFile: jest.fn().mockResolvedValue(undefined),
+  appendFile: jest.fn().mockResolvedValue(undefined),
   unlink: jest.fn().mockResolvedValue(undefined),
   readDir: jest.fn().mockResolvedValue([]),
   stat: jest.fn().mockResolvedValue({size: 0}),

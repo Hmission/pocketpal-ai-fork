@@ -74,15 +74,18 @@ export function emit(
     throttleTable.set(throttleKey, now);
   }
   try {
-    void ensureEventFile().then(() =>
-      RNFS.appendFile(
-        AIOS_EVENTS_LOG,
-        buildEventLine(domain, type, payload) + '\n',
-        'utf8',
-      ).catch(() => {
-        // 观测失败静默降级（BT07）：不阻断业务
-      }),
-    );
+    void ensureEventFile()
+      .then(() =>
+        RNFS.appendFile(
+          AIOS_EVENTS_LOG,
+          buildEventLine(domain, type, payload) + '\n',
+          'utf8',
+        ),
+      )
+      .catch(() => {
+        // 观测失败静默降级（BT07）：外层 catch 兜住 then 回调内的同步抛错
+        // （如宿主 RNFS 缺失方法）——观测不为 SPOF。
+      });
     return true;
   } catch {
     return false;

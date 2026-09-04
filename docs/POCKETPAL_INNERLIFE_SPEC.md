@@ -6,7 +6,7 @@ status: active
 version: "1.0"
 created: "2026-08-18"
 updated: "2026-08-18"
-relates: [POCKETPAL_PLAY_SPEC, POCKETPAL_PRODUCT_SPEC, POCKETPAL_STARMAP_DOMAINS]
+relates: [POCKETPAL_PLAY_SPEC, POCKETPAL_PRODUCT_SPEC, POCKETPAL_STARMAP_DOMAINS, POCKETPAL_AIOS_CORE_SPEC]
 ---
 
 <!-- D-FORMAT:v3 -->
@@ -18,6 +18,7 @@ relates: [POCKETPAL_PLAY_SPEC, POCKETPAL_PRODUCT_SPEC, POCKETPAL_STARMAP_DOMAINS
 > **定位**：让写作模型从「应答工具」升格为「有内心生活的伙伴」——开场白不再模板化，
 > 收尾时写自己的日记、给明天的自己留话。数字生命玩具的第二层：活着的质感。
 > **配套**：仪式四件套在 `src/services/aiosMemory/rituals.ts`；收尾时机 = 当日对话满阈值。
+> **生长升级**：收尾三件套 → 四拍（inspect/plan/upgrade/reflect）与迭代账本由 AIOS_CORE_SPEC Wave D 契约定稿，本文档为基线。
 
 ## 一、定位与边界
 

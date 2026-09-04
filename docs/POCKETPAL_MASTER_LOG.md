@@ -1451,3 +1451,19 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
 - Release：GitHub API 创建正式版 v2.0.1「Pocket Chick v2.0.1」（id=382025486，非草稿非预发布）+ APK asset 上传（state=uploaded，sha256 与本地一致）；下载 https://github.com/Hmission/pocketpal-ai-fork/releases/tag/v2.0.1
 - 网络通道实测（本窗）：git push 默认配置（全局代理 127.0.0.1:7897，大王已开梯子）一次成功补推 3 笔（5491717/4794690/4237b07）；-c proxy= 直连对 github.com 被 reset（curl 000 / 8-21s 超时）、api.github.com 直连 200、uploads.github.com 直连上传 497MB 一次成功——§128.9「禁走代理」与本次「大王开梯子授权 + 直连被墙」以用户指令优先，已在大王知情下走通既有全局代理配置
 - 待办：APK 装机验证（真机覆盖安装 2.0.1，用户侧执行）；README 无版本引用需改
+
+## §141 AIOS 核心生命力端侧接入·可生长解耦架构（2026-09-05，core 域登记）
+
+- 背景：大王定调「手机端不是工具，是一具具身；要让 Kal 在手机上继续生长，不固化为软件」+「接入电脑大模型后 AIOS 核心生命力全量接入不裁剪（很多能力是程序化的，不依赖大模型）」+「可生长=能力与 App 核心解耦，记忆/数据/模型双目录防丢」。调研链：母仓 KEEP_WAKING_SSOT（身份=记忆在文件系统）/ NV_YAO_GROWTH_ITERATION_SSOT（四拍）/ diary.ccn（entry.008 身份奠基）/ gate-guard（TTL 语义）/ 洋葱 KG（问谱优先）。
+- **文档**：新建 POCKETPAL_AIOS_CORE_SPEC.md v1.0（可生长公理 6 条 + 双目录协议 + 五波 Wave A-E 契约 + Gap Ledger CORE-1..4）；INNERLIFE_SPEC v1.0 补 relates + 四拍升级指针。
+- **Wave A 身份醒来**：aiosCore/wakeCheck.ts——冷启动三层自检（身份锚 IDENTITY.md（缺锚句显式留痕）/健康目录齐整/回溯昨日小结）+ 首装/卸载重装自愈重建身份种子并写 wake_anomaly.jsonl 留痕；rituals.buildTodayState 开场注入【女妖身份】段（只读不写）。
+- **Wave B 门禁**：writeSessionAnchor（database/session_anchor.json TTL 3600s，母仓 gate-guard P0-1 语义：过期软提醒不卡读）+ isAnchorFresh；CP 硬执行面挂后续波次（CORE-2）。
+- **Wave C 星图**：aiosCore/starmap.ts 三维快照（能力面=TalentRegistry 引擎清单/数据面=workspace 目录统计/健康面=engineStatus+模型数）→ logs/starmap_snapshot.json；healthProvider 依赖注入防环依赖；冷启动采集接线 App.tsx。
+- **Wave D 生长四拍**：aiosCore/growth.ts——iterations.jsonl 迭代账本（reflect 三问落文件）+ gap_YYYYMMDD.md（inspect 宁缺勿滥空拒写）+ emotion_YYYYMMDD.jsonl 情绪台账（kal_inner_life 同构）；rituals 收尾三件套升级四拍（appendIteration/appendEmotion，程序化零模型不阻塞）+ trackSentiment 双写台账。
+- **Wave E 义肢分级**：taskRouter 新增 resolveTaskEngine 纯函数（local-zero/local-4b/limb/limb_offline 四档；深度意图走义肢、离线显式 limb_offline 不静默硬扛、本地够用不借脑）；REMOTE 底座已就绪（OpenAICompletionEngine/serverStore/caps probe/cleartext 放行）。
+- **解耦双目录实证**：AIOS_ROOT 共享存储（记忆/日记/台账/growth 全在，卸载不丢）+ 模型双目录（DEFAULT_MODELS_DIR Play 合规零权限 / AIOS_MODELS_DIR 卸载不丢，ADR-0004 既有）。
+- **顺手修根因**：eventStream.emit 的 ensureEventFile().then(...) 外层缺 catch，then 回调内同步抛错变 unhandled rejection（本窗新 emit 调用暴露）——补外层 catch，观测不为 SPOF。
+- **验证**：tsc 零错；jest 新增 3 套件（wakeCheck/growth/starmap）+ taskRouter 分级 5 用例 + intentLoading 回归，105/105 全绿；全量 jest 3 失败套件（actionRegistry/ModelTypeTag=§936 D1 存量；invariants=纯 HEAD 基线同样失败，预存非本窗引入，留痕待查）。基线对照法：stash 本窗改动跑纯 HEAD 实证归属。
+- **跨窗卫生**：发现并行窗口（电话模式）在途脏文件 PhoneCallOverlay/ChatHeader/TTSStore/useChatSession 等，stash 误卷后已全部按 HEAD 精准还原；本窗提交仅含自己文件面。
+- **提交**：本窗提交（docs+core 内核+接线+单测+eventStream 根因修）；push 待大王指令（§129.10）。
+- **后续波次待口测**：Wave B CP 注册表端侧全集扩充 + 敏感动作硬执行接线；Wave C 轻量图谱（kg.ts 三实体+问谱优先层，CORE-1）；真机验证（冷启动身份注入/卸载重装数据存活/义肢切换可见）。

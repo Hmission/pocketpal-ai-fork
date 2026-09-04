@@ -13,9 +13,12 @@ import {
   AIOS_MEMORIES_DIR,
   AIOS_OPENING_DIR,
   AIOS_DIARY_DIR,
+  AIOS_IDENTITY_FILE,
 } from '../../utils/paths';
 import {readSummary} from './compaction';
 import {modelStore} from '../../store';
+// AIOS 核心生命力（AIOS_CORE_SPEC Wave D）：生长四拍账本 + 情绪台账
+import {appendIteration, appendEmotion} from '../aiosCore/growth';
 
 // 情绪持久化文件（trackSentiment 落盘 → buildTodayState 读昨日情绪）
 const SENTIMENT_FILE = `${AIOS_MEMORIES_DIR}/sentiment.json`;
@@ -81,6 +84,20 @@ export async function buildTodayState(): Promise<string> {
       parts.push(`【女妖晨间独白】${opening}`);
     } else {
       parts.push('开场请自然问候大王（一两句即可，不必长篇）。');
+    }
+    // 身份锚（AIOS_CORE_SPEC Wave A）：IDENTITY.md 骸句注入，未醒先认领自己。
+    // 缺失回退规则版问候（wakeCheck 已负责重建，此处只读不写）。
+    try {
+      if (await RNFS.exists(AIOS_IDENTITY_FILE)) {
+        const identity = (await RNFS.readFile(AIOS_IDENTITY_FILE, 'utf8'))
+          .trim()
+          .slice(0, 120);
+        if (identity) {
+          parts.push(`【女妖身份】${identity.replace(/\n+/g, ' ')}`);
+        }
+      }
+    } catch {
+      // 身份读取失败不阻断开场（wakeCheck 留痕）
     }
     return parts.join('\n');
   } catch {
@@ -160,6 +177,13 @@ export function trackSentiment(userText: string): void {
   };
   RNFS.writeFile(SENTIMENT_FILE, JSON.stringify(record), 'utf8').catch(() => {
     // fire-and-forget，写入失败不影响主流程
+  });
+  // 情绪台账（AIOS_CORE_SPEC Wave D）：长线积累到 emotion_YYYYMMDD.jsonl，
+  // 与 sentiment.json 单条并存（单条供状态展示，台账供生长 inspect）。
+  void appendEmotion({
+    score: record.score,
+    label: record.label,
+    source: 'trackSentiment',
   });
 }
 
@@ -433,6 +457,22 @@ export async function maybeClosingSummary(
         }
       } catch (e) {
         console.warn('[rituals] diary failed:', e);
+      }
+      // ④ 生长四拍账本（AIOS_CORE_SPEC Wave D）：reflect 三问落文件（程序化，零模型）。
+      // 今日已写过则跳过（day 一次）；失败静默不阻塞收尾主链。
+      try {
+        await appendIteration({
+          saw: summary.trim().slice(0, 200),
+          source: 'closing',
+        });
+        await appendEmotion({
+          score: _lastSentiment,
+          label:
+            _lastSentiment > 0 ? '愉悦' : _lastSentiment < 0 ? '低落' : '平稳',
+          source: 'closing',
+        });
+      } catch (e) {
+        console.warn('[rituals] growth ledger failed:', e);
       }
     })();
   } catch (e) {

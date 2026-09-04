@@ -1,4 +1,4 @@
-import {routeTask, isCaptionIntent} from '../taskRouter';
+import {routeTask, isCaptionIntent, resolveTaskEngine} from '../taskRouter';
 
 describe('taskRouter', () => {
   describe('image 任务', () => {
@@ -208,6 +208,43 @@ describe('taskRouter', () => {
     it('不误伤含 error 的日常对话', () => {
       // 收紧的 CODE_RE 不应把闲聊里的 error 判成代码任务
       expect(routeTask('我今天心情有点 error 的感觉').task).toBe('chitchat');
+    });
+  });
+
+  describe('resolveTaskEngine 义肢双策略分级（AIOS_CORE_SPEC Wave E）', () => {
+    it('生图/玩具/冒险永远本地引擎闭环', () => {
+      expect(resolveTaskEngine('image', '画一只猫', true)).toBe('local-4b');
+      expect(resolveTaskEngine('play', '做个玩具：贪吃蛇', true)).toBe(
+        'local-4b',
+      );
+      expect(resolveTaskEngine('adventure', '来场冒险：地牢', true)).toBe(
+        'local-4b',
+      );
+    });
+
+    it('显式深度意图 + 义肢在线 → limb', () => {
+      expect(resolveTaskEngine('write', '帮我做一次深度复盘', true)).toBe(
+        'limb',
+      );
+      expect(
+        resolveTaskEngine('chitchat', '全面分析一下这周的进展', true),
+      ).toBe('limb');
+      expect(resolveTaskEngine('code', '撰写一份技术方案', true)).toBe('limb');
+    });
+
+    it('显式深度意图 + 义肢离线 → limb_offline（不静默本地硬扛）', () => {
+      expect(resolveTaskEngine('write', '帮我做一次深度复盘', false)).toBe(
+        'limb_offline',
+      );
+    });
+
+    it('普通写作/代码默认本地（本地够用不借脑）', () => {
+      expect(resolveTaskEngine('write', '帮我写一首诗', true)).toBe('local-4b');
+      expect(resolveTaskEngine('code', '写一个正则', true)).toBe('local-4b');
+    });
+
+    it('闲聊走零模型/管家档', () => {
+      expect(resolveTaskEngine('chitchat', '你好呀', true)).toBe('local-zero');
     });
   });
 });

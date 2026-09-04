@@ -27,6 +27,18 @@ import {
 import {ensureStorageAccess} from './src/utils/androidPermission';
 import {promptWriter} from './src/services/promptWriter';
 import {initIndex} from './src/services/aiosMemory/searchEngine';
+// AIOS 核心生命力（AIOS_CORE_SPEC）：身份醒来 + 会话锚 + 星图快照
+import {
+  wakeCheck,
+  writeSessionAnchor,
+  ensureGrowthDir,
+} from './src/services/aiosCore/wakeCheck';
+import {
+  captureStarmap,
+  registerHealthProvider,
+} from './src/services/aiosCore/starmap';
+import {engineStatus} from './src/store/engineStatus';
+import {talentRegistry} from './src/services/talents/TalentRegistry';
 import {useTheme} from './src/hooks';
 import {useDeepLinking} from './src/hooks/useDeepLinking';
 import {Theme} from './src/utils/types';
@@ -311,7 +323,21 @@ const App = observer(() => {
           .then(() => {
             initIndex();
             return modelStore.scanLocalModels();
-          }),
+          })
+          .then(() =>
+            // AIOS 核心生命力（AIOS_CORE_SPEC Wave A/B/C）：醒来自检 + 门禁会话锚 + 星图快照。
+            // 全部 fire-and-forget 不阻断启动主链；wakeCheck 内部自愈身份种子并留痕。
+            (async () => {
+              await ensureGrowthDir();
+              await wakeCheck();
+              await writeSessionAnchor();
+              registerHealthProvider({
+                getEngines: () => engineStatus.engines,
+                getModelCount: () => modelStore.models.length,
+              });
+              await captureStarmap(talentRegistry.getAll().map(e => e.name));
+            })(),
+          ),
       )
       .then(() => {
         // 启动即就绪：常驻管家模型（MiniCPM5-1B）。失败静默不阻断，

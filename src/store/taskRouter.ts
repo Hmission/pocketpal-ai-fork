@@ -153,3 +153,38 @@ export function routeTask(text: string): TaskSignal {
 
   return {task: 'chitchat', payload: t};
 }
+
+// ─── 义肢双策略分级（AIOS_CORE_SPEC Wave E：调不动的才借脑）───
+
+export type TaskEngineTier =
+  | 'local-zero' // 程序化/记忆/收尾：零模型或 1B 管家
+  | 'local-4b' // 闲聊/简单 QA/玩具：本地 4B 够用
+  | 'limb' // 重推理：REMOTE 义肢（OpenAICompletionEngine）
+  | 'limb_offline'; // 义肢离线：显式降级提示，不静默本地硬扛
+
+export const LIMB_RE =
+  /(?:深度|全面|详细|系统)[的]?(?:复盘|分析|总结|规划|设计|排查)|(?:写|写一|撰写|起草)[^。！？!?\n]{0,20}?(?:报告|论文|方案|长篇|小说|合集)|(?:多|复杂|长)[的]?(?:步|链路|任务)/i;
+
+/**
+ * 任务→引擎分级（纯函数，AIOS_CORE_SPEC Wave E）。
+ * 优先级：显式义肢词 > 任务域默认。image 永远本地（生图引擎本地就绪）；
+ * write/code 深度任务走义肢；chitchat 本地；machine 类（程序化）零模型。
+ * limbOnline 为 false 时重推理任务返回 'limb_offline'（调用方负责 UI 提示）。
+ */
+export function resolveTaskEngine(
+  task: TaskKind,
+  text: string,
+  limbOnline: boolean,
+): TaskEngineTier {
+  if (task === 'image' || task === 'play' || task === 'adventure') {
+    return 'local-4b'; // 生图/玩具/冒险本地引擎闭环
+  }
+  if (LIMB_RE.test(text.trim())) {
+    return limbOnline ? 'limb' : 'limb_offline';
+  }
+  if (task === 'write' || task === 'code') {
+    // 非显式深度意图的写作/代码：默认本地（锋利：本地够用不借脑）
+    return 'local-4b';
+  }
+  return 'local-zero'; // chitchat：管家/常驻
+}
