@@ -774,9 +774,12 @@ export const ChatView = observer(
       ];
 
       // 全文朗读（P4#15 收尾，B52）：与 PlayButton 同一门控单一事实源
-      // （isSpeakableMessage + isFinalMessage + TTS 可用）；voice 缺失时引导 setup。
+      // （isSpeakableMessage + isFinalMessage + 播报入口 `speakEntry`）。
+      // 旧写法在这里另拼一套（`isTTSAvailable` + `currentVoice == null`），与
+      // PlayButton / store 口径不同源（W1a 门合并后统一走 speakEntry）。
+      const speakEntry = ttsStore.speakEntry;
       const speakable =
-        ttsStore.isTTSAvailable &&
+        speakEntry !== null &&
         isSpeakableMessage(selectedMessage) &&
         (isFinalMessage(selectedMessage) || !streamingNow);
 
@@ -791,7 +794,7 @@ export const ChatView = observer(
         baseItems.push({
           label: speakLabel,
           onPress: () => {
-            if (ttsStore.currentVoice == null) {
+            if (speakEntry === 'setup') {
               ttsStore.openSetupSheet();
             } else {
               ttsStore

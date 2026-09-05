@@ -669,7 +669,8 @@ sync 至 en 基准 + zh 同源（l10n 缺失回退英文，既有机制）。
 ### 15.4 未做（诚实登记，不谎报）
 
 - 输入框「边说边出字」的流式体验：需流式 ASR 资产（zipformer 类），属新增模型资产，**未立项不动**。
-- 引擎能力位（`supportsLanguage` 等声明式契约）与两套播报门合并：W1a 剩余项，下一波。
+- ~~引擎能力位（`supportsLanguage` 等声明式契约）与两套播报门合并：W1a 剩余项，下一波。~~
+  **已于同日 §16 做完**（能力位落 `requiresModelFile`；播报门收 `speakBlock` / `speakEntry`）。
 - **新发现（本轮真机）**：播报前的 `stop()` 会抛 `Failed to initialize TTS engine (speech_error)`
   但**不影响后续 Kokoro 正常加载与播放**（日志实锤：抛错后紧接
   `[Speech][Api] Initializing engine: kokoro` → `Model loaded in 875ms`）——
@@ -677,7 +678,95 @@ sync 至 en 基准 + zh 同源（l10n 缺失回退英文，既有机制）。
   `speakIssue='failed'`**（否则会把能播的场景误报为失败）；根治归入上一条「能力位 + 门合并」。
 - 真机未触发项：`speakIssue='lang'` / `'failed'` 两条提示本轮**未实际看到**（当前音色是
   Kokoro 中文、播报成功）——判定逻辑有单测钉住，提示文案的可见性待选英文音色时补验。
-- `phoneMode` 全链透传（8 条丢标记路径）、录音启停三路径归一、原生侧统一日志：W2。
+- ~~`phoneMode` 全链透传（8 条丢标记路径）、录音启停三路径归一、原生侧统一日志：W2。~~
+  电话轮判定已于同日 §16.4 收口（改为单一状态源，透传路径全删）；
+  **录音启停三路径归一与原生侧统一日志仍未做**（登记为 W2b）。
+
+## 16. W1a 收尾 + W2 电话轮判定收口（2026-09-06，大王指令「按最佳实践依次执行」）
+
+### 16.1 播报门合并：`speakBlock` 单一事实源
+
+旧写法四处各拼一套口径（互不相同，就是「UI 说就绪、实际播不出」的结构根因）：
+
+| 位置 | 旧写法 | 现统一为 |
+|---|---|---|
+| `TTSStore.play` / `preview` / 流式两入口 | `isTTSAvailable` + `currentVoice == null`（各自手拼） | `canSpeakVoice(voice)`（类型谓词） |
+| 通话页状态行 | `isTTSAvailable && currentVoice != null` | `speakBlock` + `speakIssue` |
+| 消息页朗读钮 / footer | `isTTSAvailable` | `speakEntry` |
+| 长按菜单「全文朗读」 | `isTTSAvailable` + `currentVoice == null → 引导 setup` | `speakEntry` |
+
+- `voiceBlock(voice)` 返回第一个拦路原因：`'device'`（内存/用户开关）→ `'noVoice'` → `'engine'`（引擎未就绪）。
+- **`speakBlock` 与 `speakIssue` 分工不重叠**：前者答「门为何不放行」（静态可派生），
+  后者答「试着播了但出问题」（语种不匹配 / 引擎报错）；状态行把两者合成一行文案。
+- `speakEntry`：`'speak'` 可播 / `'setup'` 只差选音色（点了去设置，**引导不是兜底**：
+  播的仍是用户自己选的音色）/ `null` 其余拦路（不显示入口）。
+- l10n 新增 1 key：`components.phoneCall.ttsEngineUnavailable`（en+zh）。
+
+### 16.2 就绪同源：探测全部引擎（含 OS 那颗）
+
+- `init()` 改为 `getAllEngines()` 全量并行探测：需模型文件的落 `xxxDownloadState`，
+  OS 引擎落新字段 `osTTSReady`（`null` = 未探测）——旧写法只探三颗神经引擎，
+  OS 那颗被硬编码 `true` 顶过，于是「播报就绪」与实际能否播完全脱钩。
+- HyperOS 实证口径：系统语音引擎未激活 → `getAvailableVoices()` 给不出目录 →
+  `osTTSReady=false` → 选系统音色时状态行直接显示「语音引擎不可用，点此处理」（不假装就绪）。
+
+### 16.3 引擎能力位 + 停播归一（噪音根治）
+
+- `Engine` 新增能力位 `requiresModelFile`（true = 需下载端侧模型；system = false），
+  门判定只读这一位，`engine !== 'system'` 特判全删（新增引擎不再需要改 store）。
+- **删 `Engine.stop()` 接口与四颗实现**：底层 `Speech.stop()` 是全局调用，包成引擎方法
+  是假抽象；且它绕过 runtime 的「无活跃引擎」判据——真机每次播报前都抛一条
+  `Failed to initialize TTS engine (speech_error)`（§15.4 那条「噪音级失败」）的根因。
+- `TTSStore.stop()` 改走 `ttsRuntime.stop()`（无活跃引擎即 no-op，且与 `acquire` 串行）
+  → **该噪音从根上消失**，不再需要「故意不计入 speakIssue」的临时口径；
+  同时新增一条护栏用例钉住「无活跃引擎不打 stop」。
+- 测试契约同步：替身引擎的 `play` 现在包一层 `ttsRuntime.acquire`（与真引擎同契约），
+  停播类断言改看原生 `Speech.stop`；`beforeEach` 显式归零引擎安装态与 runtime 活跃槽。
+
+### 16.4 电话轮判定：`metadata.phoneMode` → `phoneCall/inCall` 单一状态源
+
+- **删透传链**，不再要求每条发送路径带标记（旧写法 8 条回复路径丢标记 → 靠 90s
+  看门狗当常规收口手段）。新规则：**通话页开着时产生的每一轮回复都属于这一通电话**——
+  与 ChatScreen 一直在用的「取最新一条回复」口径完全一致，且以后新增路径自动覆盖。
+- 接线：`ChatScreen` 在已有的 `phoneVisible` 保活 effect 里成对调 `setInCall(true/false)`
+  （**不留第二份开合状态**）；`useChatSession` 以 `isInCall()` 代替 `message.metadata?.phoneMode`。
+- 看门狗职责收缩为**卡死保险**（仅防引擎真挂住），不再是「回调丢了」的常规出口。
+- 不用 MobX：无 UI 需订阅它（通话页状态已由 `PhoneCallSession.notify` 驱动），不预先造状态。
+
+### 16.5 未做（诚实登记）
+
+- W2b：录音启停三路径归一（ChatInput / 电话 / 音频工坊各自直调 `NativeModules.AudioRecord`）、
+  原生侧统一日志。
+- 真机未触发项：`speakBlock='engine'`（需 OS 音色 + 未激活）与 `speakEntry='setup'` 的
+  文案可见性，本轮未逐项看到（引擎就绪位有单测钉住，UI 可见性待装机验一次）。
+
+### 16.6 真机复验（K90，覆盖安装 + 冷启动，未卸载）
+
+| 项 | 结果 | 证据 |
+|---|---|---|
+| 停播噪音消失（§16.3 核心目标） | ✅ **拿到铁证** | 走完整一轮后 logcat 里 `stop failed` / `speech_error` **零条**（上一版每轮必现）；紧接 `[Speech][Api] Initializing engine: kokoro` → `Model loaded in 874ms` |
+| 电话轮收口不再靠看门狗（§16.4） | ✅ | `[VAD-obs] duration=3920ms` → `transcribe ok: '我。'` → `chat done in 2693ms, 22 chars` → 播报 → 状态行回到「我在听…」（本轮总耗时远小于 90s，不是看门狗放行） |
+| 字幕顺序契约（§14.1） | ✅ 未回退 | 字幕末两行 = 「我。」+ 本轮新回复全文，且贴底 |
+| 合并后的播报行 | ✅ 仍判可播 | 当前音色 Kokoro 中文、引擎 ready → 显示 🔊「播报就绪」（与上一版文案一致，仅内部改读 `speakBlock`） |
+| 聊天页入口 | ✅ | 朗读钮（▷）与语音钮均在场（`speakEntry` / `asrState` 新判据未误伤） |
+| 崩溃面 | ✅ | 全程零 JavascriptException / FATAL / ANR；挂断回聊天页正常 |
+
+### 16.7 端到端 W3 的复现前置事实（只读评估，未动引擎禁区）
+
+大王要求「依次执行」，但端到端开工前有三条硬事实需先登记（均本轮实证）：
+
+1. §12.1 S1 的前提「只用现有 `.so`」**不可复现**：`_jni` 变体不在版本控制，
+   目前全仓唯一来源是 `.tmp/llamarn-jni-backup/`（18 颗，arm64-v8a 14 + x86_64 4），
+   与本机 `node_modules/llama.rn/.../jniLibs` 同步存在——**它在 `.tmp/` 里，不在 git 里**。
+2. `scripts/restore-llamarn-jnilibs.js` 失败提示里给出的恢复路径 `yarn build:android-libs`
+   **在 `package.json` 里不存在**（只有 `build:android` / `build:android:release` /
+   `android:build:e2e`）——悬空指针，真丢了并没有脚本可重建（需先补构建链）。
+3. 备份里 `librnllama.so` 仍无 `llama_supports_audio_in/out` 符号（上一窗已核），
+   `rnllamaBuildFromSource` 仍为关闭——**端到端需先重编 llama.cpp/llama.rn，那是引擎禁区**。
+
+结论：**奴家本轮不动 W3**。它不是「写不写代码」的问题，而是「先要一条能重建原生库的构建链
+＋大王点头进引擎禁区」。要开，奴家建议先立项做第 2 条（把备份入仓或补齐 `build:android-libs`），
+那是与端到端无关也必须补的隐患（否则一次 `yarn install` 就能把推理链抹掉）。
 
 
 

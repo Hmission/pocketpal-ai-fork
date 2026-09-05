@@ -12,6 +12,7 @@ import {
 } from '../../../jest/fixtures/models';
 
 import {useChatSession} from '../useChatSession';
+import {setInCall} from '../../services/phoneCall/inCall';
 import {isReadUrlAllowed} from '../../services/talents';
 
 import {
@@ -669,6 +670,8 @@ describe('useChatSession', () => {
 
     afterEach(() => {
       (ttsStore as any).autoSpeakEnabled = false;
+      // 电话轮靠模块级单一状态源判定（W2）——不归零会串到后续用例。
+      setInCall(false);
     });
 
     it('fires onAssistantMessageStart on first token and onAssistantMessageChunk per delta', async () => {
@@ -961,7 +964,12 @@ describe('useChatSession', () => {
     it('电话模式轮次：autoSpeak 关闭仍强制播报（forceSpeak 放行 store 门，PHONE_SPEC §11.3）', async () => {
       // v2.0 失音根因回归测试：store 内 autoSpeakEnabled 门若不被 forceSpeak
       // 放行，电话模式全程静默（大王 2026-09-05 复测报障）。
+      //
+      // W2 契约：电话轮由「此刻在通话中」单一状态源判定，**不再靠消息带
+      // metadata.phoneMode**——所以这里发的是一条普通消息，只要 inCall 为真
+      // 就必须强制播报（旧写法只有打了标记的那一条路径能播）。
       (ttsStore as any).autoSpeakEnabled = false;
+      setInCall(true);
 
       const finalText = '你好呀';
       if (modelStore.context) {
@@ -990,12 +998,9 @@ describe('useChatSession', () => {
         }),
       );
 
-      const phoneMessage = {
-        ...textMessage,
-        metadata: {phoneMode: true},
-      };
+      // 不带任何标记的普通发送：inCall 为真就算电话轮（旧写法需要 metadata 标记）。
       await act(async () => {
-        await result.current.handleSendPress(phoneMessage);
+        await result.current.handleSendPress(textMessage);
       });
 
       expect(ttsStore.onAssistantMessageStart).toHaveBeenCalledWith(

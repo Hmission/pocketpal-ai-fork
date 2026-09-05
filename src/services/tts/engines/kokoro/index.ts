@@ -40,6 +40,9 @@ export type KokoroProgressCallback = (progress: number) => void;
 export class KokoroEngine implements Engine {
   readonly id = 'kokoro' as const;
 
+  /** 需下载端侧模型；未就绪即不可播。 */
+  readonly requiresModelFile = true;
+
   private getParentDir(): string {
     const root =
       Platform.OS === 'ios'
@@ -262,9 +265,5 @@ export class KokoroEngine implements Engine {
 
   playStreaming(voice: Voice, waitFor?: Promise<void>): StreamingHandle {
     return createEngineStreamingHandle(this, voice.id, undefined, waitFor);
-  }
-
-  async stop(): Promise<void> {
-    await Speech.stop();
   }
 }

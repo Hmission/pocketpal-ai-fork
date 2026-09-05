@@ -43,6 +43,9 @@ export type KittenProgressCallback = (progress: number) => void;
 export class KittenEngine implements Engine {
   readonly id = 'kitten' as const;
 
+  /** 需下载端侧模型；未就绪即不可播。 */
+  readonly requiresModelFile = true;
+
   private getParentDir(): string {
     const root =
       Platform.OS === 'ios'
@@ -301,9 +304,5 @@ export class KittenEngine implements Engine {
 
   playStreaming(voice: Voice, waitFor?: Promise<void>): StreamingHandle {
     return createEngineStreamingHandle(this, voice.id, undefined, waitFor);
-  }
-
-  async stop(): Promise<void> {
-    await Speech.stop();
   }
 }

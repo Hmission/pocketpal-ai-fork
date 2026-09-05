@@ -23,8 +23,10 @@ export type PhoneCallErrorCode =
   | 'SEND_FAILED';
 
 /** 回复看门狗超时（ms）：send 后超过该时长仍无回复开始事件 → 回到聆听态。
- *  真实场景：引擎 busy 等待（awaitEngineReady 超时提前 return）或管家直答
- *  通道无回合生命周期回调时，onPhoneTurnFinished 不会触发——不悬挂（锋利原则）。 */
+ *  真实场景：引擎 busy 等待（awaitEngineReady 超时提前 return）或一条既不进
+ *  流式回合、也无落流回复的路径 → 不悬挂（锋利原则）。W2 后它**只是卡死保险**：
+ *  电话轮判定改读 `inCall` 单一状态源，全部回复路径都能正常收口，
+ *  正常轮次不应再依赖它（旧现实：8 条路径丢标记 → 靠看门狗当常规收口手段）。 */
 export const REPLY_TIMEOUT_MS = 90_000;
 
 export interface PhoneCallDeps {
@@ -33,7 +35,8 @@ export interface PhoneCallDeps {
     stop(): Promise<string | null>;
   };
   transcribe(audioPath: string): Promise<string | null>;
-  /** 提交文本走聊天调度链路（wrappedSendPress，带 phoneMode 标记） */
+  /** 提交文本走聊天调度链路（wrappedSendPress）；电话轮判定不再靠消息标记，
+   *  改读 `phoneCall/inCall` 单一状态源（见该文件注释，W2）。 */
   send(text: string): Promise<void>;
   /** 打断进行中的推理（handleStopPress）；未注入则 awaiting_reply 期间禁录 */
   stopInference?: () => Promise<void>;

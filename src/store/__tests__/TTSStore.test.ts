@@ -1,5 +1,7 @@
 import {AppState} from 'react-native';
 import DeviceInfo from 'react-native-device-info';
+import Speech from '@pocketpalai/react-native-speech';
+import {runInAction} from 'mobx';
 
 // Mock persistence BEFORE importing the store
 jest.mock('mobx-persist-store', () => ({
@@ -21,12 +23,14 @@ jest
 
 // Mock the TTS service — we want to observe engine calls without invoking the
 // real SystemEngine (which imports @pocketpalai/react-native-speech).
+//
+// 没有 per-engine `stop` 替身了（W1a 噪音根治）：停播一律经 `ttsRuntime.stop()`
+// 打到原生，所以这类断言看的是 `Speech.stop`（jest mock）。
+const nativeStop = Speech.stop as unknown as jest.Mock;
 const mockSystemPlay = jest.fn().mockResolvedValue(undefined);
-const mockSystemStop = jest.fn().mockResolvedValue(undefined);
 const mockSupertonicPlay = jest
   .fn()
   .mockRejectedValue(new Error('Supertonic model is not installed'));
-const mockSupertonicStop = jest.fn().mockResolvedValue(undefined);
 const mockSupertonicIsInstalled = jest.fn().mockResolvedValue(false);
 const mockSupertonicDownloadModel = jest.fn().mockResolvedValue(undefined);
 const mockSupertonicDeleteModel = jest.fn().mockResolvedValue(undefined);
@@ -36,14 +40,12 @@ const mockKokoroIsInstalled = jest.fn().mockResolvedValue(false);
 const mockKokoroDownloadModel = jest.fn().mockResolvedValue(undefined);
 const mockKokoroDeleteModel = jest.fn().mockResolvedValue(undefined);
 const mockKokoroPlay = jest.fn().mockResolvedValue(undefined);
-const mockKokoroStop = jest.fn().mockResolvedValue(undefined);
 const mockKokoroGetVoices = jest.fn().mockResolvedValue([]);
 const mockKokoroReclaimLegacySpace = jest.fn().mockResolvedValue(undefined);
 const mockKittenIsInstalled = jest.fn().mockResolvedValue(false);
 const mockKittenDownloadModel = jest.fn().mockResolvedValue(undefined);
 const mockKittenDeleteModel = jest.fn().mockResolvedValue(undefined);
 const mockKittenPlay = jest.fn().mockResolvedValue(undefined);
-const mockKittenStop = jest.fn().mockResolvedValue(undefined);
 // Per-streaming-session handle factories — we build a fresh spy-backed
 // handle for each `playStreaming()` call and expose the most recent one
 // on `lastSystemHandle` / `lastSupertonicHandle` so tests can assert.
@@ -81,64 +83,94 @@ const mockSupertonicPlayStreaming = jest.fn(() => {
 
 jest.mock('../../services/tts', () => {
   const actual = jest.requireActual('../../services/tts');
+  // 注：jest.mock 工厂内不能放 type 别名（babel hoist 检查会误判为越界引用），
+  // 故这里一律用 string。
+  const ALL = ['kitten', 'kokoro', 'supertonic', 'system'];
+  const fakes: Record<string, any> = {};
+
+  /**
+   * 替身引擎必须与真引擎同契约：真引擎 `play()` 内部会 `ttsRuntime.acquire()`
+   * 认领活跃槽，而 `store.stop()`（W1a 噪音根治后）经 `ttsRuntime.stop()` 派发
+   * ——无活跃引擎即 no-op。所以 play 要包一层 acquire，否则「停播到达原生」
+   * 这类断言永远拿不到调用。
+   */
+  const claiming =
+    (id: string, work: jest.Mock) =>
+    async (...args: any[]) =>
+      actual.ttsRuntime.acquire(fakes[id], () => work(...args));
+
+  const build = (id: string): any => {
+    const base = {
+      id,
+      // 能力位镜像（W1a 就绪同源）：只有 OS 引擎不带端侧模型文件。
+      requiresModelFile: id !== 'system',
+      // runtime.acquire 会调用它；替身只需 resolved。
+      loadInto: jest.fn().mockResolvedValue(undefined),
+    };
+    if (id === 'system') {
+      return {
+        ...base,
+        isInstalled: jest.fn().mockResolvedValue(true),
+        getVoices: jest.fn().mockResolvedValue([]),
+        play: claiming('system', mockSystemPlay),
+        playStreaming: mockSystemPlayStreaming,
+      };
+    }
+    if (id === 'kokoro') {
+      return {
+        ...base,
+        isInstalled: mockKokoroIsInstalled,
+        getVoices: mockKokoroGetVoices,
+        play: claiming('kokoro', mockKokoroPlay),
+        playStreaming: jest.fn(() => ({
+          appendText: jest.fn(),
+          finalize: jest.fn().mockResolvedValue(undefined),
+          cancel: jest.fn().mockResolvedValue(undefined),
+        })),
+        downloadModel: mockKokoroDownloadModel,
+        deleteModel: mockKokoroDeleteModel,
+        reclaimLegacySpace: mockKokoroReclaimLegacySpace,
+      };
+    }
+    if (id === 'kitten') {
+      return {
+        ...base,
+        isInstalled: mockKittenIsInstalled,
+        getVoices: jest.fn().mockResolvedValue([]),
+        play: claiming('kitten', mockKittenPlay),
+        playStreaming: jest.fn(() => ({
+          appendText: jest.fn(),
+          finalize: jest.fn().mockResolvedValue(undefined),
+          cancel: jest.fn().mockResolvedValue(undefined),
+        })),
+        downloadModel: mockKittenDownloadModel,
+        deleteModel: mockKittenDeleteModel,
+      };
+    }
+    return {
+      ...base,
+      isInstalled: mockSupertonicIsInstalled,
+      getVoices: mockSupertonicGetVoices,
+      play: claiming('supertonic', mockSupertonicPlay),
+      playStreaming: mockSupertonicPlayStreaming,
+      downloadModel: mockSupertonicDownloadModel,
+      deleteModel: mockSupertonicDeleteModel,
+      reclaimLegacySpace: mockSupertonicReclaimLegacySpace,
+    };
+  };
+
+  const getEngine = (id: string) => {
+    if (!fakes[id]) {
+      fakes[id] = build(id);
+    }
+    return fakes[id];
+  };
+
   return {
     ...actual,
-    getEngine: (id: 'system' | 'supertonic' | 'kokoro' | 'kitten') => {
-      if (id === 'system') {
-        return {
-          id: 'system',
-          isInstalled: jest.fn().mockResolvedValue(true),
-          getVoices: jest.fn().mockResolvedValue([]),
-          play: mockSystemPlay,
-          playStreaming: mockSystemPlayStreaming,
-          stop: mockSystemStop,
-        };
-      }
-      if (id === 'kokoro') {
-        return {
-          id: 'kokoro',
-          isInstalled: mockKokoroIsInstalled,
-          getVoices: mockKokoroGetVoices,
-          play: mockKokoroPlay,
-          playStreaming: jest.fn(() => ({
-            appendText: jest.fn(),
-            finalize: jest.fn().mockResolvedValue(undefined),
-            cancel: jest.fn().mockResolvedValue(undefined),
-          })),
-          stop: mockKokoroStop,
-          downloadModel: mockKokoroDownloadModel,
-          deleteModel: mockKokoroDeleteModel,
-          reclaimLegacySpace: mockKokoroReclaimLegacySpace,
-        };
-      }
-      if (id === 'kitten') {
-        return {
-          id: 'kitten',
-          isInstalled: mockKittenIsInstalled,
-          getVoices: jest.fn().mockResolvedValue([]),
-          play: mockKittenPlay,
-          playStreaming: jest.fn(() => ({
-            appendText: jest.fn(),
-            finalize: jest.fn().mockResolvedValue(undefined),
-            cancel: jest.fn().mockResolvedValue(undefined),
-          })),
-          stop: mockKittenStop,
-          downloadModel: mockKittenDownloadModel,
-          deleteModel: mockKittenDeleteModel,
-        };
-      }
-      return {
-        id: 'supertonic',
-        isInstalled: mockSupertonicIsInstalled,
-        getVoices: mockSupertonicGetVoices,
-        play: mockSupertonicPlay,
-        playStreaming: mockSupertonicPlayStreaming,
-        stop: mockSupertonicStop,
-        downloadModel: mockSupertonicDownloadModel,
-        deleteModel: mockSupertonicDeleteModel,
-        reclaimLegacySpace: mockSupertonicReclaimLegacySpace,
-      };
-    },
+    getEngine,
+    // store.init() 现在探测**全部**引擎（含 OS 那颗），故要给出替身清单。
+    getAllEngines: () => ALL.map(getEngine),
   };
 });
 
@@ -169,6 +201,15 @@ const flush = () => new Promise(r => setImmediate(r));
 describe('TTSStore', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // 替身引擎现在会经 ttsRuntime.acquire 认领活跃槽（与真引擎同契约），
+    // runtime 是全局单例 → 每例归零，避免活跃槽泄漏到下一个用例。
+    ttsRuntime._resetForTests();
+    // 引擎安装态默认「未装」（与文件头部的 mock 声明同调）：用例若需要
+    // 「模型已装」要么走 makeStoreWithSupertonicReady，要么自己 mockResolvedValueOnce。
+    // 新播报门（W1a 就绪同源）会看引擎就绪位，不显式归零很容易串例。
+    mockSupertonicIsInstalled.mockResolvedValue(false);
+    mockKokoroIsInstalled.mockResolvedValue(false);
+    mockKittenIsInstalled.mockResolvedValue(false);
     appStateHandlers.length = 0;
     lastSystemHandle = null;
     lastSupertonicHandle = null;
@@ -274,7 +315,7 @@ describe('TTSStore', () => {
       store.setCurrentVoice(SYSTEM_VOICE);
       // Start an in-flight playback so we can observe the stop+release path.
       await store.play('msg-1', 'hello');
-      mockSystemStop.mockClear();
+      nativeStop.mockClear();
       // Spy on the singleton ttsRuntime.release — the action is fire-and-forget
       // (`.then(() => ttsRuntime.release())`), so we need to await the promise
       // chain after firing the OFF transition.
@@ -292,7 +333,7 @@ describe('TTSStore', () => {
       expect(store.isTTSAvailable).toBe(false);
       // I6: stop+release runs fire-and-forget when the gate transitions
       // from open to closed, mirroring setAutoSpeak(false).
-      expect(mockSystemStop).toHaveBeenCalled();
+      expect(nativeStop).toHaveBeenCalled();
       // Strengthened per implementer note 1: also assert ttsRuntime.release()
       // is invoked, mirroring the setAutoSpeak(false) precedent.
       expect(releaseSpy).toHaveBeenCalled();
@@ -403,6 +444,15 @@ describe('TTSStore', () => {
     return store;
   };
 
+  /**
+   * 造一个「Supertonic 模型已装」的 store。W1a 就绪同源后，播报门会看引擎
+   * 就绪位（未装即不播），所以考参数转译/流式状态机的用例得先把引擎装好。
+   */
+  const makeStoreWithSupertonicReady = async () => {
+    mockSupertonicIsInstalled.mockResolvedValue(true);
+    return makeStore();
+  };
+
   describe('play() state machine', () => {
     it('resolves engine via currentVoice and invokes engine.play()', async () => {
       const store = await makeStore();
@@ -420,12 +470,12 @@ describe('TTSStore', () => {
       store.setCurrentVoice(SYSTEM_VOICE);
 
       await store.play('msg-A', 'first');
-      mockSystemStop.mockClear();
+      nativeStop.mockClear();
       mockSystemPlay.mockClear();
 
       await store.play('msg-B', 'second');
 
-      expect(mockSystemStop).toHaveBeenCalledTimes(1);
+      expect(nativeStop).toHaveBeenCalledTimes(1);
       expect(mockSystemPlay).toHaveBeenCalledWith('second', SYSTEM_VOICE);
       // After play resolves, state resets to idle.
       expect(store.playbackState).toEqual({mode: 'idle'});
@@ -453,7 +503,7 @@ describe('TTSStore', () => {
     });
 
     it('surfaces Supertonic play failure via playbackState reset (no hang)', async () => {
-      const store = await makeStore();
+      const store = await makeStoreWithSupertonicReady();
       store.setCurrentVoice(SUPERTONIC_VOICE);
 
       await expect(store.play('msg-1', 'hello')).resolves.toBeUndefined();
@@ -473,7 +523,7 @@ describe('TTSStore', () => {
   });
 
   describe('stop()', () => {
-    it('resets state to idle and stops engine when a voice is set', async () => {
+    it('resets state to idle and stops the active engine', async () => {
       const store = await makeStore();
       store.setCurrentVoice(SYSTEM_VOICE);
       await store.play('msg-1', 'hello');
@@ -481,7 +531,92 @@ describe('TTSStore', () => {
       await store.stop();
 
       expect(store.playbackState.mode).toBe('idle');
-      expect(mockSystemStop).toHaveBeenCalled();
+      // W1a：停播经 `ttsRuntime.stop()` 打到原生（上面 play 已认领活跃槽）。
+      expect(nativeStop).toHaveBeenCalled();
+    });
+
+    it('不打无活跃引擎的 stop（噪音失败根治：HyperOS 会抛 speech_error）', async () => {
+      const store = await makeStore();
+      store.setCurrentVoice(SYSTEM_VOICE);
+      nativeStop.mockClear();
+
+      // 从未播过 → runtime 无活跃引擎 → stop 只复位状态，不碰原生。
+      await store.stop();
+
+      expect(store.playbackState.mode).toBe('idle');
+      expect(nativeStop).not.toHaveBeenCalled();
+    });
+  });
+
+  /**
+   * 播报门合并（W1a）：设备/音色/引擎三判一处的单一事实源 `speakBlock`。
+   * 钉住四条契约：① 引擎未装 → 不播也不谎报失败；② OS 引擎的可用态来自
+   * 探测（`osTTSReady`），不再默认「永远可用」；③ 只差音色时入口指向 setup
+   * （引导不是兜底）；④ 全绿时真的会播。
+   */
+  describe('speak gate（W1a 门合并）', () => {
+    it('init() 探测包括 OS 引擎在内的全部引擎 → osTTSReady 来自探测', async () => {
+      const store = await makeStore();
+
+      expect(store.osTTSReady).toBe(true);
+    });
+
+    it('神经引擎未装 → block=engine，play() 不播也不误报失败', async () => {
+      const store = await makeStore();
+      store.setCurrentVoice(SUPERTONIC_VOICE);
+
+      expect(store.speakBlock).toBe('engine');
+      expect(store.canSpeak).toBe(false);
+
+      await store.play('msg-1', 'hello');
+
+      expect(mockSupertonicPlay).not.toHaveBeenCalled();
+      expect(store.speakIssue).toBeNull();
+    });
+
+    it('OS 语音引擎不可用（HyperOS 未激活场景）→ system 音色也判为 engine 拦路', async () => {
+      const store = await makeStore();
+      runInAction(() => {
+        store.osTTSReady = false;
+      });
+      store.setCurrentVoice(SYSTEM_VOICE);
+
+      expect(store.speakBlock).toBe('engine');
+      // 引擎不可用时不显示入口（不显示不可用项），原因由状态行说。
+      expect(store.speakEntry).toBeNull();
+
+      await store.play('msg-1', 'hello');
+
+      expect(mockSystemPlay).not.toHaveBeenCalled();
+    });
+
+    it('只差音色 → block=noVoice且入口指向 setup', async () => {
+      const store = await makeStore();
+      store.setCurrentVoice(null);
+
+      expect(store.speakBlock).toBe('noVoice');
+      expect(store.speakEntry).toBe('setup');
+    });
+
+    it('设备门优先于其他判据', async () => {
+      const store = await makeStore();
+      store.setCurrentVoice(SYSTEM_VOICE);
+      store.setUserTTSOverride(false);
+
+      expect(store.speakBlock).toBe('device');
+      expect(store.speakEntry).toBeNull();
+    });
+
+    it('全绿 → block=null、entry=speak，且真的会播', async () => {
+      const store = await makeStore();
+      store.setCurrentVoice(SYSTEM_VOICE);
+
+      expect(store.speakBlock).toBeNull();
+      expect(store.speakEntry).toBe('speak');
+
+      await store.play('msg-1', 'hello');
+
+      expect(mockSystemPlay).toHaveBeenCalledWith('hello', SYSTEM_VOICE);
     });
   });
 
@@ -645,7 +780,7 @@ describe('TTSStore', () => {
     });
 
     it('Supertonic streaming finalize rejection is caught and state resets to idle', async () => {
-      const store = await makeStore();
+      const store = await makeStoreWithSupertonicReady();
       store.setCurrentVoice(SUPERTONIC_VOICE);
       store.setAutoSpeak(true);
 
@@ -850,12 +985,12 @@ describe('TTSStore', () => {
       await store.play('msg-1', 'hello');
 
       const handler = appStateHandlers[appStateHandlers.length - 1];
-      mockSystemStop.mockClear();
+      nativeStop.mockClear();
 
       handler('active');
       await flush();
 
-      expect(mockSystemStop).not.toHaveBeenCalled();
+      expect(nativeStop).not.toHaveBeenCalled();
     });
   });
 
@@ -1276,7 +1411,7 @@ describe('TTSStore', () => {
     });
 
     it('play() forwards supertonicSteps as inferenceSteps to Supertonic engine', async () => {
-      const store = await makeStore();
+      const store = await makeStoreWithSupertonicReady();
       store.setCurrentVoice(SUPERTONIC_VOICE);
       store.setSupertonicSteps(3);
       // Override default reject with a resolve so we exercise the call path.
@@ -1303,7 +1438,7 @@ describe('TTSStore', () => {
     });
 
     it('streaming: opens Supertonic playStreaming with inferenceSteps from store', async () => {
-      const store = await makeStore();
+      const store = await makeStoreWithSupertonicReady();
       store.setCurrentVoice(SUPERTONIC_VOICE);
       store.setAutoSpeak(true);
       store.setSupertonicSteps(10);
@@ -1331,7 +1466,7 @@ describe('TTSStore', () => {
     });
 
     it('play() forwards the selected language to the Supertonic engine', async () => {
-      const store = await makeStore();
+      const store = await makeStoreWithSupertonicReady();
       store.setCurrentVoice(SUPERTONIC_VOICE);
       store.setSupertonicLanguage('ja');
       mockSupertonicPlay.mockResolvedValueOnce(undefined);
@@ -1346,7 +1481,7 @@ describe('TTSStore', () => {
     });
 
     it('play() threads the default language "na" when none is set', async () => {
-      const store = await makeStore();
+      const store = await makeStoreWithSupertonicReady();
       store.setCurrentVoice(SUPERTONIC_VOICE);
       mockSupertonicPlay.mockResolvedValueOnce(undefined);
 
@@ -1360,7 +1495,7 @@ describe('TTSStore', () => {
     });
 
     it('preview() forwards the selected language to the Supertonic engine', async () => {
-      const store = await makeStore();
+      const store = await makeStoreWithSupertonicReady();
       store.setSupertonicLanguage('fr');
       mockSupertonicPlay.mockResolvedValueOnce(undefined);
 
@@ -1374,7 +1509,7 @@ describe('TTSStore', () => {
     });
 
     it('preview() threads the default language "na" when none is set', async () => {
-      const store = await makeStore();
+      const store = await makeStoreWithSupertonicReady();
       mockSupertonicPlay.mockResolvedValueOnce(undefined);
 
       await store.preview(SUPERTONIC_VOICE);
@@ -1387,7 +1522,7 @@ describe('TTSStore', () => {
     });
 
     it('streaming forwards the selected language to playStreaming', async () => {
-      const store = await makeStore();
+      const store = await makeStoreWithSupertonicReady();
       store.setCurrentVoice(SUPERTONIC_VOICE);
       store.setAutoSpeak(true);
       store.setSupertonicLanguage('de');
@@ -1435,7 +1570,7 @@ describe('TTSStore', () => {
     });
 
     it('messageId is engine-qualified — same voice id on different engines does not collide', async () => {
-      const store = await makeStore();
+      const store = await makeStoreWithSupertonicReady();
       const supertonicVoice: Voice = {
         id: 'F1',
         name: 'Sarah',

@@ -122,9 +122,10 @@ export const AssistantTurnFooter: React.FC<AssistantTurnFooterProps> = observer(
       copyText.length > 0 &&
       (isFinalMessage(message) || !modelStore.isStreaming);
 
-    // 朗读按钮独立决定 footer 显示：仅可朗读消息（TTS 可用 + 内容判定）
-    // 无 chrome 字段时也渲染 footer，承载 PlayButton。
-    const speakable = ttsStore.isTTSAvailable && isSpeakableMessage(message);
+    // 朗读按钮独立决定 footer 显示：仅可朗读消息（播报入口 `speakEntry`
+    // 与 PlayButton 同源，W1a 门合并）；无 chrome 字段时也渲染 footer，承载 PlayButton。
+    const speakable =
+      ttsStore.speakEntry !== null && isSpeakableMessage(message);
     if (
       !timings &&
       !metrics &&

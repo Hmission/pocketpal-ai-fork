@@ -59,6 +59,7 @@ import {
 import {useElapsed} from '../../hooks/useElapsed';
 import {usePerfTrace} from '../../hooks/usePerfTrace';
 import {audioLevel} from '../../services/phoneCall/audioLevel';
+import {setInCall} from '../../services/phoneCall/inCall';
 import {nightTaskRegistry} from '../../store/nightTaskRegistry';
 import {activateKeepAwake, deactivateKeepAwake} from '../../utils/keepAwake';
 
@@ -266,14 +267,19 @@ export const ChatScreen: React.FC = observer(() => {
   // PHONE_SPEC §10.4：通话中双保活——亮屏（keep awake）+ 前台服务防杀。
   // nightTask 机制同构接线（imageGenStore §7.1 同款：registry 引用计数 +
   // VideoTaskService 前后台服务；计数归零才 stop，与生图/推理共用不互相误停）。
+  //
+  // 同一 effect 顺便登记「此刻在通话中」（W2 单一状态源）：useChatSession 读它
+  // 判定本轮要不要强制播报与通知收口——开合在此一处成对，不留第二份状态。
   React.useEffect(() => {
     if (!phoneVisible) {
       return;
     }
+    setInCall(true);
     activateKeepAwake();
     nightTaskRegistry.begin();
     NativeModules.VideoTaskService?.start?.().catch(() => {});
     return () => {
+      setInCall(false);
       nightTaskRegistry.end();
       if (!nightTaskRegistry.isBusy) {
         NativeModules.VideoTaskService?.stop?.().catch(() => {});
@@ -325,11 +331,10 @@ export const ChatScreen: React.FC = observer(() => {
       },
       transcribe: path => audioStore.transcribeTask(path),
       send: text => {
-        // PHONE_SPEC §5：phoneMode 标记随消息透传（wrappedSendPress 全透传）
-        const phoneMsg = {text} as MessageType.PartialText;
-        phoneMsg.metadata = {phoneMode: true};
+        // PHONE_SPEC §5（W2）：不再给消息打 phoneMode 标记——电话轮判定由
+        // `inCall` 单一状态源负责（覆盖全部回复路径，不靠逐路径透传）。
         phoneReplyHandledRef.current = false;
-        return wrappedSendPress(phoneMsg);
+        return wrappedSendPress({text} as MessageType.PartialText);
       },
       stopInference: handleStopPress,
       speakStop: () => ttsStore.stop(),

@@ -60,6 +60,9 @@ const DEFAULT_SUPERTONIC_LANGUAGE: SupertonicLanguage = 'na';
 export class SupertonicEngine implements Engine {
   readonly id = 'supertonic' as const;
 
+  /** 需下载端侧模型；未就绪即不可播。 */
+  readonly requiresModelFile = true;
+
   /** Root directory: parent of the Supertonic model directory. Used for the iOS backup-exclusion mkdir. */
   private getParentDir(): string {
     const root =
@@ -369,9 +372,5 @@ export class SupertonicEngine implements Engine {
       },
       waitFor,
     );
-  }
-
-  async stop(): Promise<void> {
-    await Speech.stop();
   }
 }

@@ -8,6 +8,7 @@ import type {SupertonicLanguage} from '@pocketpalai/react-native-speech';
 
 import {
   getEngine,
+  getAllEngines,
   KittenEngine,
   KokoroEngine,
   SupertonicEngine,
@@ -20,7 +21,12 @@ import {
   isVoiceMismatchedForText,
   pickDefaultVoice,
 } from '../services/tts';
-import type {StreamingHandle, SupertonicSteps, Voice} from '../services/tts';
+import type {
+  EngineId,
+  StreamingHandle,
+  SupertonicSteps,
+  Voice,
+} from '../services/tts';
 import {
   ThinkingStripper,
   pickThinkingPlaceholder,
@@ -111,6 +117,76 @@ export class TTSStore {
       return false;
     }
     return this.deviceMeetsMemory;
+  }
+
+  /**
+   * OS TTS 可用性探测结果（W1a「就绪同源」）：`null` = 尚未探测。
+   * `system` 引擎不带模型文件，能不能播只能问 OS——HyperOS 上那颗小爱引擎
+   * 需用户先在厂商协议页同意激活，未激活时给不出音色目录（真机 2026-09-05 实证）。
+   */
+  osTTSReady: boolean | null = null;
+
+  /**
+   * 引擎级就绪判定：能力位驱动，不散落 `!== 'system'` 特判——需要模型文件的
+   * 取下载状态，OS 引擎取 `osTTSReady`。
+   */
+  engineIsReady(id: EngineId): boolean {
+    if (!getEngine(id).requiresModelFile) {
+      return this.osTTSReady === true;
+    }
+    return this.getDownloadState(id as NeuralEngineId) === 'ready';
+  }
+
+  /**
+   * 播报门的**唯一**事实源（W1a 门合并）：「现在能不能播」一律读这里。
+   *
+   * 旧写法四处各拼一套（`isTTSAvailable` / `isTTSAvailable && currentVoice` /
+   * `currentVoice == null → 引导 setup` / 通话页自己拼），口径互不相同，
+   * 于是出现「UI 说就绪、实际播不出」。`null` = 可播；否则给出第一个拦路原因。
+   * 与 `speakIssue` 分工：这里答「门为何不放行」（静态可派生），
+   * `speakIssue` 答「尝试播了但出问题」（运行期事实）；两者合起来才是状态行。
+   */
+  voiceBlock(voice: Voice | null): 'device' | 'noVoice' | 'engine' | null {
+    if (!this.isTTSAvailable) {
+      return 'device';
+    }
+    if (voice == null) {
+      return 'noVoice';
+    }
+    return this.engineIsReady(voice.engine) ? null : 'engine';
+  }
+
+  /** 当前音色的播报门判定（调用方拿到 `null` 就可以播）。 */
+  get speakBlock(): 'device' | 'noVoice' | 'engine' | null {
+    return this.voiceBlock(this.currentVoice);
+  }
+
+  /**
+   * 类型谓词版播报门：`true` = 可播，且把 `voice` 收窄为非空。
+   * 流式/回落入口用它，避开「门过了但类型还要再判一次」的重复写法。
+   */
+  canSpeakVoice(voice: Voice | null): voice is Voice {
+    return this.voiceBlock(voice) === null;
+  }
+
+  get canSpeak(): boolean {
+    return this.speakBlock === null;
+  }
+
+  /**
+   * 播报**入口**该呈现什么（单一决策点：UI 只照着渲染，不再自己拼门）：
+   * - `'speak'`：可播
+   * - `'setup'`：只差选一颗音色 → 点击引导去 TTS 设置（这是看得见的行动召唤，
+   *   不是静默兜底：最终播的仍是用户自己选的音色）
+   * - `null`：其余拦路（设备内存不够 / 引擎不可用）→ 不显示入口，
+   *   原因由设置页 / 通话页状态行说清楚
+   */
+  get speakEntry(): 'speak' | 'setup' | null {
+    const block = this.speakBlock;
+    if (block === null) {
+      return 'speak';
+    }
+    return block === 'noVoice' ? 'setup' : null;
   }
 
   // Runtime playback state (discriminated union)
@@ -223,21 +299,33 @@ export class TTSStore {
     // `preview`, `onAssistantMessageStart`, `onAssistantMessageComplete`
     // (plus component-level guards) remain the gate on user-visible work.
 
-    // Derive each neural engine's install state from disk in parallel.
-    const neuralIds: NeuralEngineId[] = ['supertonic', 'kokoro', 'kitten'];
+    // Derive every engine's readiness in parallel — **including the OS engine**
+    // （W1a 就绪同源）：能力位决定结果落到哪——需模型文件的落下载状态，OS 引擎
+    // 落 `osTTSReady`。旧写法只探三颗神经引擎，OS 那颗被 `isInstalled()` 硬编码
+    // `true` 顶过，于是「播报就绪」与「实际能不能播」完全脱钩。
     const results = await Promise.all(
-      neuralIds.map(async id => {
+      getAllEngines().map(async engine => {
         try {
-          return {id, installed: await getEngine(id).isInstalled()};
+          return {engine, installed: await engine.isInstalled()};
         } catch (err) {
-          console.warn(`[TTSStore] ${id} isInstalled check failed:`, err);
-          return {id, installed: false};
+          console.warn(
+            `[TTSStore] ${engine.id} isInstalled check failed:`,
+            err,
+          );
+          return {engine, installed: false};
         }
       }),
     );
     runInAction(() => {
-      for (const {id, installed} of results) {
-        this.setDownloadState(id, installed ? 'ready' : 'not_installed');
+      for (const {engine, installed} of results) {
+        if (engine.requiresModelFile) {
+          this.setDownloadState(
+            engine.id as NeuralEngineId,
+            installed ? 'ready' : 'not_installed',
+          );
+        } else {
+          this.osTTSReady = installed;
+        }
       }
       // Reconcile persisted currentVoice: if the engine's model files
       // were deleted (app restore, manual cleanup) or the engine layout
@@ -247,9 +335,8 @@ export class TTSStore {
       // — otherwise users lose their selection across the forced upgrade.
       if (
         this.currentVoice != null &&
-        this.currentVoice.engine !== 'system' &&
-        this.getDownloadState(this.currentVoice.engine as NeuralEngineId) !==
-          'ready'
+        getEngine(this.currentVoice.engine).requiresModelFile &&
+        !this.engineIsReady(this.currentVoice.engine)
       ) {
         const engineId = this.currentVoice.engine as NeuralEngineId;
         this.pendingVoiceRestore[engineId] = this.currentVoice.id;
@@ -410,7 +497,6 @@ export class TTSStore {
    */
   async stop(): Promise<void> {
     const state = this.playbackState;
-    const voice = this.currentVoice;
     runInAction(() => {
       this.playbackState = {mode: 'idle'};
     });
@@ -424,13 +510,12 @@ export class TTSStore {
       }
       return;
     }
-    if (voice) {
-      try {
-        await getEngine(voice.engine).stop();
-      } catch (err) {
-        console.warn('[TTSStore] stop failed:', err);
-      }
-    }
+    // 停播一律走 runtime（W1a 噪音根治）：`Speech.stop()` 是**全局**调用，旧写法
+    // `getEngine(voice.engine).stop()` 在没有任何引擎活跃时也照样打一次，
+    // HyperOS 上就抛 `Failed to initialize TTS engine (speech_error)`（真机
+    // 2026-09-05 实证：播报明明成功，日志里每次都带一条 stop 失败）。
+    // `ttsRuntime.stop()` 无活跃引擎时 no-op，且与 acquire 串行。
+    await ttsRuntime.stop();
   }
 
   /**
@@ -441,11 +526,11 @@ export class TTSStore {
     text: string,
     opts?: {hadReasoning?: boolean; voiceOverride?: Voice},
   ): Promise<void> {
-    if (!this.isTTSAvailable) {
-      return;
-    }
     const voice = opts?.voiceOverride ?? this.currentVoice;
-    if (!voice) {
+    // 门合并（W1a）：设备/音色/引擎三判一处（`canSpeakVoice`）。被挡住就**不播也不谎报**，
+    // 原因由 UI 读同一个门说给用户（通话页状态行 / 消息页朗读入口），
+    // 不再各调用点各拼一套。
+    if (!this.canSpeakVoice(voice)) {
       return;
     }
 
@@ -504,7 +589,7 @@ export class TTSStore {
    * engines that share a voice id can't collide on the cleanup guard.
    */
   async preview(voice: Voice): Promise<void> {
-    if (!this.isTTSAvailable) {
+    if (!this.canSpeakVoice(voice)) {
       return;
     }
     const messageId = previewMessageId(voice);
@@ -553,17 +638,17 @@ export class TTSStore {
    *
    * `opts.forceSpeak`（PHONE_SPEC §11.3）：电话模式单轮强制播报——与用户
    * 「自动朗读」偏好正交（不修改开关）。门条件 = `autoSpeakEnabled ||
-   * forceSpeak`；可用性（isTTSAvailable）/已选语音/idempotency 三门不变。
-   * 根治：v2.0 电话模式 useChatSession 已强制 tts.enabled，但本方法另有一道
-   * autoSpeakEnabled 门 → 流式播报从未开流（听不到语音输出）。 */
+   * forceSpeak`；播报门（`canSpeakVoice`：设备/音色/引擎三判一处）与
+   * idempotency 门不变。根治：v2.0 电话模式 useChatSession 已强制 tts.enabled，
+   * 但本方法另有一道 autoSpeakEnabled 门 → 流式播报从未开流（听不到语音输出）。 */
   onAssistantMessageStart(
     messageId: string,
     opts?: {forceSpeak?: boolean},
   ): void {
+    const voice = this.currentVoice;
     if (
-      !this.isTTSAvailable ||
+      !this.canSpeakVoice(voice) ||
       !(opts?.forceSpeak || this.autoSpeakEnabled) ||
-      this.currentVoice == null ||
       messageId === this.lastSpokenMessageId
     ) {
       return;
@@ -576,7 +661,6 @@ export class TTSStore {
       console.warn('[TTSStore] stop before new stream failed:', err);
     });
 
-    const voice = this.currentVoice;
     this.lastSpokenMessageId = messageId;
     this.streamStripper = new ThinkingStripper();
     this.streamPlaceholderEmitted = false;
@@ -679,10 +763,10 @@ export class TTSStore {
       return;
     }
 
+    const completeVoice = this.currentVoice;
     if (
-      !this.isTTSAvailable ||
+      !this.canSpeakVoice(completeVoice) ||
       !(opts?.forceSpeak || this.autoSpeakEnabled) ||
-      this.currentVoice == null ||
       messageId === this.lastSpokenMessageId
     ) {
       return;

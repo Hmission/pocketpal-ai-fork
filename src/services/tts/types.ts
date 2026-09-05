@@ -53,6 +53,15 @@ export interface StreamingHandle {
 
 export interface Engine {
   readonly id: EngineId;
+  /**
+   * 能力位（W1a「就绪同源」）：该引擎是否依赖端侧模型文件。
+   * - `true`（kitten / kokoro / supertonic）：未下载即不可播，就绪态 = 下载状态 `ready`
+   * - `false`（system）：由 OS 提供，就绪态 = OS 真给出音色目录的探测结果
+   *
+   * 门判定只读这一位，不再散落 `engine !== 'system'` 特判——旧写法把
+   * 「哪个引擎不需要模型」写死在 store 里，新增引擎就会漏改。
+   */
+  readonly requiresModelFile: boolean;
   /** Returns whether the engine is ready to play (models installed, etc). */
   isInstalled(): Promise<boolean>;
   /** List available voices for this engine. */
@@ -80,6 +89,11 @@ export interface Engine {
    * preventing a prior `Speech.stop()` from killing the new stream.
    */
   playStreaming(voice: Voice, waitFor?: Promise<void>): StreamingHandle;
-  /** Stop any in-flight playback. Safe to call when idle. */
-  stop(): Promise<void>;
+  /**
+   * 没有 per-engine `stop()`：底层 `Speech.stop()` 是**全局**调用，包成引擎方法
+   * 是假抽象，且会绕过 runtime 的「无活跃引擎」判据——真机实证（2026-09-05 K90）：
+   * 播报前对一个从未初始化的引擎调 stop() 会抛 `Failed to initialize TTS engine
+   * (speech_error)`。停播一律走 `ttsRuntime.stop()`（它在无活跃引擎时 no-op，
+   * 且与 `acquire` 串行）。
+   */
 }

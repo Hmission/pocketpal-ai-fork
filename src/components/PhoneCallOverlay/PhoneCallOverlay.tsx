@@ -194,24 +194,26 @@ export const PhoneCallOverlay: React.FC<PhoneCallOverlayProps> = observer(
 
     // 播报通路显式化（§11.3）：observer 直读 ttsStore（MobX 字段访问即订阅），
     // 不经 props 接线——单一事实源，零 prop 膨胀。
-    const ttsAvailable = ttsStore.isTTSAvailable;
-    const hasVoice = ttsStore.currentVoice != null;
-    const ttsReady = ttsAvailable && hasVoice;
-    // 播报问题优先于「就绪」（W1a 不静默）：引擎实际抛错（如 HyperOS 语音引擎
-    // 未激活 → speech_error）或中文文本撞上英文音色，都要在状态行说清楚，
-    // 并给出换音色的入口。**不自动替用户改选音色**（不兜底）。
+    //
+    // 门合并（W1a）：状态行不再自己拼 `isTTSAvailable && currentVoice != null`——
+    // 那一套与 store 内部的播出门不同源，就是「UI 说就绪、实际播不出」的根因。
+    // 现在只读 store 的两个事实：`speakBlock`（门为何不放行）+
+    // `speakIssue`（尝试播了但出问题）。**不自动替用户改选音色**（不兜底）。
+    const speakBlock = ttsStore.speakBlock;
     const speakIssue = ttsStore.speakIssue;
-    const ttsProblem = !ttsReady || speakIssue != null;
+    const ttsProblem = speakBlock !== null || speakIssue !== null;
     const ttsStatusText =
       speakIssue === 'failed'
         ? t.ttsPlayFailed
         : speakIssue === 'lang'
           ? t.ttsLangMismatch
-          : !ttsAvailable
+          : speakBlock === 'device'
             ? t.ttsDisabled
-            : !hasVoice
+            : speakBlock === 'noVoice'
               ? t.ttsNoVoice
-              : t.ttsReady;
+              : speakBlock === 'engine'
+                ? t.ttsEngineUnavailable
+                : t.ttsReady;
 
     // 思考/播报中波形（bounce 三点，生图三点波浪同源——不新建动画体系）
     const wave = useWaveDots(

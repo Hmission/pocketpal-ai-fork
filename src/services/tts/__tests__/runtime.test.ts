@@ -6,12 +6,14 @@ import type {Engine, EngineId} from '../types';
 const makeEngine = (id: EngineId): Engine => {
   const engine: Engine = {
     id,
+    // 能力位镜像（W1a）：OS 引擎无端侧模型文件，其余三颗都要下载。
+    // 旧字段 `stop` 已从 Engine 接口移除——停播走 `ttsRuntime.stop()`。
+    requiresModelFile: id !== 'system',
     isInstalled: jest.fn().mockResolvedValue(true),
     getVoices: jest.fn().mockResolvedValue([]),
     loadInto: jest.fn().mockResolvedValue(undefined),
     play: jest.fn().mockResolvedValue(undefined),
     playStreaming: jest.fn(),
-    stop: jest.fn().mockResolvedValue(undefined),
   };
   return engine;
 };

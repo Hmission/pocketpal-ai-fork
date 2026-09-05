@@ -24,7 +24,10 @@ export const PlayButton: React.FC<PlayButtonProps> = observer(({message}) => {
   const theme = useTheme();
   const l10n = useContext(L10nContext);
 
-  if (!ttsStore.isTTSAvailable) {
+  // 播报入口单一事实源（W1a 门合并）：`speakEntry` 一个值说完三种情况——
+  // 可播 / 只差选音色（点了去 setup）/ 拦路（设施或引擎不可用 → 不显示）。
+  const entry = ttsStore.speakEntry;
+  if (entry === null) {
     return null;
   }
 
@@ -52,7 +55,8 @@ export const PlayButton: React.FC<PlayButtonProps> = observer(({message}) => {
       ttsStore.stop().catch(() => {});
       return;
     }
-    if (ttsStore.currentVoice == null) {
+    // 「只差选音色」→ 把入口交给设置页（引导不是兜底：播的仍是用户选的音色）。
+    if (entry === 'setup') {
       ttsStore.openSetupSheet();
       return;
     }

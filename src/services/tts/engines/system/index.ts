@@ -18,6 +18,9 @@ import {getSystemVoices} from './voices';
 export class SystemEngine implements Engine {
   readonly id = 'system' as const;
 
+  /** OS 提供，无端侧模型文件——就绪与否只看「系统真给出音色目录」的探测结果。 */
+  readonly requiresModelFile = false;
+
   /**
    * 就绪 = 系统真的给出音色目录。拿不到（未激活 / 无引擎 / 探测抛错）一律算不可用，
    * 由上层给出可见提示，不假装就绪。
@@ -58,9 +61,5 @@ export class SystemEngine implements Engine {
    */
   playStreaming(voice: Voice, waitFor?: Promise<void>): StreamingHandle {
     return createEngineStreamingHandle(this, voice.id, undefined, waitFor);
-  }
-
-  async stop(): Promise<void> {
-    await Speech.stop();
   }
 }

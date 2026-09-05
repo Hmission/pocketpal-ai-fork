@@ -16,6 +16,65 @@ class MockTTSStore {
     }
     return this.deviceMeetsMemory;
   }
+
+  // 播报门镜像（W1a 门合并）：与真 store 同一口径——设备/音色/引擎三判一处。
+  // 真 store 靠 `Engine.requiresModelFile` 能力位分流，测试替身拿不到引擎注册表
+  // （它会拉原生模块），此处用同语义的名单镜像；**新增引擎须同步这一行**。
+  private static readonly MODEL_FILE_ENGINES = [
+    'kitten',
+    'kokoro',
+    'supertonic',
+  ];
+  /** 镜像 `__mocks__/external/@pocketpalai` 的 getAvailableVoices 非空→可用。 */
+  osTTSReady: boolean | null = true;
+
+  engineIsReady(engine: string): boolean {
+    if (!MockTTSStore.MODEL_FILE_ENGINES.includes(engine)) {
+      return this.osTTSReady === true;
+    }
+    const state =
+      engine === 'supertonic'
+        ? this.supertonicDownloadState
+        : engine === 'kokoro'
+          ? this.kokoroDownloadState
+          : this.kittenDownloadState;
+    return state === 'ready';
+  }
+
+  voiceBlock(voice: any): 'device' | 'noVoice' | 'engine' | null {
+    if (!this.isTTSAvailable) {
+      return 'device';
+    }
+    if (voice == null) {
+      return 'noVoice';
+    }
+    return this.engineIsReady(voice.engine) ? null : 'engine';
+  }
+
+  get speakBlock(): 'device' | 'noVoice' | 'engine' | null {
+    return this.voiceBlock(this.currentVoice);
+  }
+
+  canSpeakVoice(voice: any): boolean {
+    return this.voiceBlock(voice) === null;
+  }
+
+  get canSpeak(): boolean {
+    return this.speakBlock === null;
+  }
+
+  /** 播报入口（镜像真 store 的单一决策点）：可播 / 去 setup / 不显示。 */
+  get speakEntry(): 'speak' | 'setup' | null {
+    const block = this.speakBlock;
+    if (block === null) {
+      return 'speak';
+    }
+    return block === 'noVoice' ? 'setup' : null;
+  }
+
+  /** 运行期播报问题（镜像真 store 字段；用例直接赋值）。 */
+  speakIssue: 'lang' | 'failed' | null = null;
+
   playbackState:
     | {mode: 'idle'}
     | {mode: 'streaming'; messageId: string}

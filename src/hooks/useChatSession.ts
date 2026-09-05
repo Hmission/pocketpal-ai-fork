@@ -68,6 +68,7 @@ import {
 } from '../services/talents';
 import {resolveGatedTalentNames} from '../services/talents/taskGating';
 import {PHONE_MODE_GUIDE} from '../services/phoneCall/prompt';
+import {isInCall} from '../services/phoneCall/inCall';
 import type {ToolDefinition} from '../services/talents/types';
 import {
   agentStateReducer,
@@ -870,9 +871,12 @@ export const useChatSession = (
 
     const imageUris = message.imageUris;
     const hasImages = !!(imageUris && imageUris.length > 0);
-    // PHONE_SPEC §5：电话模式标记随消息 metadata 透传（wrappedSendPress 全透传），
-    // 作用 = 单轮强制 TTS 播报 + systemPrompt 注入工具禁用引导。
-    const phoneMode = message.metadata?.phoneMode === true;
+    // PHONE_SPEC §5（W2 收口）：电话轮判定改读单一状态源 `isInCall()`，不再读
+    // `message.metadata.phoneMode`。旧写法靠发送链路逐路径透传标记，而一次回复
+    // 可以从 8 条不同路径产生（管家直答/任务路由/闭环生图/升级重答…），那些路径
+    // 不带标记 → 既不强制播报也不通知收口，只能等 90s 看门狗。
+    // 作用不变：单轮强制 TTS 播报 + systemPrompt 注入工具禁用引导。
+    const phoneMode = isInCall();
 
     const isMultimodalEnabled = modelStore.activeModelCaps.visionActive;
 
