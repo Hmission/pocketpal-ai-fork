@@ -213,14 +213,16 @@ export const createStyles = ({theme}: {theme: Theme}) =>
       paddingHorizontal: theme.spacing.xl,
       paddingBottom: 56,
     },
+    // 两钮**同尺寸**（v2.3，大王：「按住说话比挂断大好多」；参豆包：
+    // 通话页所有圆钮等大，靠颜色/图标区分语义，不靠尺寸做视觉等级）。
     controlItem: {
       alignItems: 'center',
-      width: 96,
+      width: 72,
     },
     holdButton: {
-      width: 96,
-      height: 96,
-      borderRadius: 48,
+      width: 72,
+      height: 72,
+      borderRadius: 36,
       backgroundColor: theme.colors.primary,
       alignItems: 'center',
       justifyContent: 'center',
@@ -235,9 +237,9 @@ export const createStyles = ({theme}: {theme: Theme}) =>
       opacity: 0.85,
     },
     hangupButton: {
-      width: 64,
-      height: 64,
-      borderRadius: 32,
+      width: 72,
+      height: 72,
+      borderRadius: 36,
       backgroundColor: theme.colors.error,
       alignItems: 'center',
       justifyContent: 'center',

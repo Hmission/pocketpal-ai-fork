@@ -86,6 +86,20 @@ describe('PhoneCallOverlay v2.1（PHONE_SPEC §11）', () => {
     expect(tree.indexOf('phone-hangup')).toBeLessThan(
       tree.indexOf('phone-hold-talk'),
     );
+    // v2.3 契约（大王：「按住说话比挂断大好多」）：两钮**等大**，
+    // 语义靠颜色/图标区分，不靠尺寸做视觉等级。
+    // hold 的 style 是 Pressable 回调（`({pressed}) => [...]`），需先求值再 flatten。
+    const resolve = (raw: unknown) =>
+      StyleSheet.flatten(
+        typeof raw === 'function'
+          ? (raw as (a: {pressed: boolean}) => unknown)({pressed: false})
+          : raw,
+      ) as {width?: number; height?: number};
+    const hold = resolve(getByTestId('phone-hold-talk').props.style);
+    const hang = resolve(getByTestId('phone-hangup').props.style);
+    expect(hang.width).toBe(hold.width);
+    expect(hang.height).toBe(hold.height);
+    expect(hold.width).toBe(72);
   });
 
   it('转写文本轮次级常驻：思考态仍显示「我说」（大王报障：不显示说过的话）', () => {

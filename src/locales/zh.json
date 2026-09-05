@@ -627,7 +627,7 @@
       "ttsReady": "播报就绪",
       "ttsNoVoice": "还没选播报语音，点这里选",
       "ttsDisabled": "语音播报已关闭，点这里开启",
-      "defaultPartnerName": "小黄鸡",
+      "defaultPartnerName": "小妖",
       "emptySpeech": "没有听到声音，请再试一次",
       "asrNotReady": "语音模型未下载，请先下载语音模型",
       "permissionDenied": "需要麦克风权限",

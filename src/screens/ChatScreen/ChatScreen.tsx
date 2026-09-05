@@ -382,12 +382,10 @@ export const ChatScreen: React.FC = observer(() => {
     return '';
   })();
 
+  // 联系人位名字（§11.2 v2.3 定案，大王：「默认显示小妖」）：pal 无名就用默认
+  // 伙伴名，**不再拿会话标题当名字**（曾显示「帮我画一张画。」读着像 bug）。
   const phonePartnerName =
-    activePal?.name?.trim() ||
-    chatSessionStore.sessions
-      .find(s => s.id === activeSessionId)
-      ?.title?.trim() ||
-    l10n.components.phoneCall.defaultPartnerName;
+    activePal?.name?.trim() || l10n.components.phoneCall.defaultPartnerName;
   // 模型胶囊回落（PHONE_SPEC §11.2）：未加载聊天模型但管家驻场 → 显示管家名
   // （与顶栏胶囊三档链同一语义，不另造口径）。
   const phoneModelLabel = modelStore.activeModel

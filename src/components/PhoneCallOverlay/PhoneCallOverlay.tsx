@@ -429,8 +429,8 @@ export const PhoneCallOverlay: React.FC<PhoneCallOverlayProps> = observer(
               <View style={styles.hangupGlyph}>
                 <PhoneIcon
                   fill={theme.colors.onError}
-                  width={theme.iconSize.l}
-                  height={theme.iconSize.l}
+                  width={theme.iconSize.xl}
+                  height={theme.iconSize.xl}
                 />
               </View>
             </Pressable>

@@ -627,7 +627,7 @@
       "ttsReady": "Voice output ready",
       "ttsNoVoice": "No voice chosen yet, tap to choose",
       "ttsDisabled": "Voice output is off, tap to enable",
-      "defaultPartnerName": "Pocket Chick",
+      "defaultPartnerName": "Xiaoyao",
       "emptySpeech": "No speech detected, please try again",
       "asrNotReady": "Voice model not downloaded yet",
       "permissionDenied": "Microphone permission required",
