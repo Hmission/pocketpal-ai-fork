@@ -153,9 +153,8 @@ Pocket Chick is intentionally not a productivity tool. It's a "digital pet" — 
 - **React Native + TypeScript** — 跨平台应用
 - **llama.cpp / llama.rn** — GGUF 大模型端侧推理
 - **ONNX Runtime** — DreamLite 端侧图像生成引擎（文生图 + 图像编辑）
-- **@react-native-voice** — 设备端离线语音输入（STT）
 - **@pocketpalai/react-native-speech** — 端侧 TTS 语音合成（Kitten / Kokoro / Supertonic / 系统音色）
-- **sherpa-onnx（SenseVoice）** — 端侧 ASR 音频转写
+- **sherpa-onnx（SenseVoice）** — 端侧 ASR 音频转写（全 App 唯一语音输入链：聊天语音 / 电话模式 / 音频工坊）
 - **OpenCL** — Adreno GPU 加速（SD3.5 生成提速至 10.7 分钟级）
 
 ## 📸 截图 / Screenshots
