@@ -390,6 +390,24 @@ sync 至 en 基准 + zh 同源（l10n 缺失回退英文，既有机制）。
   （v2.1 居中 gap 40dp 实测太近）。
 - 其余不变：同一基线、caption 在圆外下方、96/64 尺寸、挂断符号 = 电话图标横置。
 
+### 11.9 波形语义契约（v2.2，大王：「为什么一直是波浪线」）
+
+| 态 | 视觉 | 数据源 | 诚实口径 |
+|---|---|---|---|
+| recording | 三根呼吸柱（error 色，`WAVE_BAR_RANGE` 12-22 / 16-30 / 10-18 dp） | 900ms 往复循环（相位真实，振幅非真实） | 真实振幅需原生 AudioRecord 通道（未接）→ **不假装随音量跳动**，已入 P1 |
+| speaking | 同三根呼吸柱（primary 色） | 同上 | 同上 |
+| awaiting_reply | 三点跳动（`useWaveDots`，与生图三点同源） | 回合推进 | 大王原报「一直是波浪线」实为把它当成了声波 |
+| transcribing / idle | **三根不等高静态柱**（`phone-ambient`，outline 色） | 无 | 无数据源就不动——红线：不得做假波形跳动 |
+
+**本组件级红线（真机血证 2026-09-05）**：
+
+- **hooks 一律在 `if (!visible) return null` 之前声明**。声波 `useEffect` 曾被放到早退
+  之后，「隐藏→打开」那一帧抛 `Rendered more hooks than during the previous render`，
+  release 构建直接 `JavascriptException` 杀进程（现象：点顶栏电话图标后手机回到桌面）。
+  单测护栏：`visible=false` 挂载 → rerender `visible=true` 必须不抛。
+- 波形/动画一律 core `Animated` + JS driver（与本文件 `pulse` 同族），不为一个小波形
+  另引 reanimated 分支（仓库动画纪律收口）。
+
 ## 12. 后续波次与路线（Roadmap，2026-09-05 登记，回答「还剩多少没做」）
 
 ### 12.1 端到端语音模型（路线 B）：**未接入**（现状实证）

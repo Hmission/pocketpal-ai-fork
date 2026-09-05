@@ -216,4 +216,26 @@ describe('PhoneCallOverlay v2.2 波形语义（§11.5）', () => {
     const {getByTestId} = renderPhone({status: 'speaking'});
     expect(getByTestId('phone-wave').children).toHaveLength(3);
   });
+
+  /**
+   * 真机致命回归护栏（2026-09-05 K90）：本组件有 `if (!visible) return null` 早退，
+   * 任何 hook 放到早退之后就会在「隐藏→打开」那一帧抛
+   * `Rendered more hooks than during the previous render` → RN release 直接杀进程。
+   * 单测必须走真实路径：先 visible=false 挂载，再 rerender 为 visible=true。
+   */
+  it('隐藏态→打开不得抛 hooks 顺序错（真机杀进程回归护栏）', () => {
+    const {rerender, getByTestId} = render(
+      <L10nContext.Provider value={l10n.en}>
+        <PhoneCallOverlay {...baseProps} visible={false} />
+      </L10nContext.Provider>,
+    );
+    expect(() =>
+      rerender(
+        <L10nContext.Provider value={l10n.en}>
+          <PhoneCallOverlay {...baseProps} visible />
+        </L10nContext.Provider>,
+      ),
+    ).not.toThrow();
+    expect(getByTestId('phone-overlay')).toBeTruthy();
+  });
 });

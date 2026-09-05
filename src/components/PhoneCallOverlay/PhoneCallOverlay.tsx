@@ -171,6 +171,35 @@ export const PhoneCallOverlay: React.FC<PhoneCallOverlayProps> = observer(
       return undefined;
     }, [status, pulse]);
 
+    // 录音/播报声波（v2.2）：三根异频呼吸柱，与 pulse 同一套 core Animated 体系。
+    // **hooks 必须全部在 `if (!visible) return null` 之前声明**：2026-09-05 真机证，
+    // 将本 effect 放到早退之后会在「打开通话页」那一帧抛
+    // `Rendered more hooks than during the previous render` 致命 JS 异常直接杀进程。
+    const waveProgress = React.useRef(new Animated.Value(0)).current;
+    useEffect(() => {
+      if (status !== 'recording' && status !== 'speaking') {
+        waveProgress.setValue(0);
+        return undefined;
+      }
+      const loop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(waveProgress, {
+            toValue: 1,
+            duration: 900,
+            useNativeDriver: false,
+          }),
+          Animated.timing(waveProgress, {
+            toValue: 0,
+            duration: 900,
+            useNativeDriver: false,
+          }),
+        ]),
+      );
+      loop.start();
+      return () => loop.stop();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [status]);
+
     if (!visible) {
       return null;
     }
@@ -211,31 +240,6 @@ export const PhoneCallOverlay: React.FC<PhoneCallOverlayProps> = observer(
       inputRange: [0, 1],
       outputRange: [1, 1.04],
     });
-    // 录音声波（v2.2）：三根异频呼吸柱（与 pulse 同一套 core Animated 体系）
-    const waveProgress = React.useRef(new Animated.Value(0)).current;
-    useEffect(() => {
-      if (!recording && !speaking) {
-        waveProgress.setValue(0);
-        return undefined;
-      }
-      const loop = Animated.loop(
-        Animated.sequence([
-          Animated.timing(waveProgress, {
-            toValue: 1,
-            duration: 900,
-            useNativeDriver: false,
-          }),
-          Animated.timing(waveProgress, {
-            toValue: 0,
-            duration: 900,
-            useNativeDriver: false,
-          }),
-        ]),
-      );
-      loop.start();
-      return () => loop.stop();
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [recording, speaking]);
     const loadingPct =
       engineLoading && engineLoading.progress >= 0
         ? Math.round(engineLoading.progress * 100)
