@@ -9,13 +9,14 @@ import {
 } from '../PhoneCallOverlay';
 import {L10nContext} from '../../../utils';
 import {l10n} from '../../../locales';
-import {ttsStore} from '../../../store';
+import {assistantId, userId} from '../../../utils/chat';
+import {ttsStore, chatSessionStore} from '../../../store';
+import {themeFixtures} from '../../../../jest/fixtures/theme';
 
 const baseProps: PhoneCallOverlayProps = {
   visible: true,
   status: 'idle',
-  recentText: '你好呀',
-  partnerName: '小黄鸡',
+  partnerName: '小妖',
   modelLabel: 'MiniCPM 1B',
   engineReady: true,
   engineLoading: null,
@@ -48,10 +49,15 @@ describe('PhoneCallOverlay v2.1（PHONE_SPEC §11）', () => {
       (ttsStore as any).deviceMeetsMemory = true;
       (ttsStore as any).currentVoice = {id: 'v1', engine: 'system'};
     });
+    // 对话流数据源用后复位（mock 是共享单例，不得泄漏到其他用例）
+    (chatSessionStore as any).currentSessionMessages = [];
   });
 
   afterEach(() => {
     jest.clearAllMocks();
+    // 测试卫生：对话流用例向共享 mock 塞了消息，必须归零——
+    // 否则泄漏到同 worker 后续套件（全域 mock 是单例）。
+    (chatSessionStore as any).currentSessionMessages = [];
   });
 
   it('联系人区 / 状态区 / 对话区 / 控制区齐备，右上重复关闭钮已删', () => {
@@ -102,16 +108,75 @@ describe('PhoneCallOverlay v2.1（PHONE_SPEC §11）', () => {
     expect(hold.width).toBe(72);
   });
 
-  it('转写文本轮次级常驻：思考态仍显示「我说」（大王报障：不显示说过的话）', () => {
+  it('对话流（§14.1）：全文铺满，未落库转写补为末条，思考态不丢（§11.4 不回退）', () => {
+    (chatSessionStore as any).currentSessionMessages = [
+      {id: 'u1', type: 'text', text: '你好呀'},
+      {
+        id: 'a1',
+        type: 'assistant_turn',
+        steps: [{content: '你好呀，今天想聊点什么'}, {content: '我都在'}],
+      },
+    ];
     const {getByTestId, getByText} = renderPhone({
       status: 'awaiting_reply',
-      transcript: '你好呀',
-      recentText: '你好呀，今天想聊点什么',
+      transcript: '讲个笑话',
     });
-    expect(getByTestId('phone-transcript').props.children).toBe('「你好呀」');
+    // 容器存在 + 伙伴句全文（多 step 拼接；RNTL getByText 会折叠空白，故用正则定位后断言原文）
+    expect(getByTestId('phone-dialogue')).toBeTruthy();
+    expect(getByText(/今天想聊点什么/).props.children).toBe(
+      '你好呀，今天想聊点什么\n我都在',
+    );
+    expect(getByText('你好呀')).toBeTruthy();
+    // 本轮未落库的转写 = 末条浅色行（不再只截 2 行、不再加「」包装）
+    expect(getByTestId('phone-transcript').props.children).toBe('讲个笑话');
     expect(getByText('Thinking…')).toBeTruthy();
-    // 「它说」= 与「我说」不同文时才出现（回复未落流不重复显示）
-    expect(getByText('你好呀，今天想聊点什么')).toBeTruthy();
+  });
+
+  it('对话流去重：转写已落库为末条用户句时不重复追加', () => {
+    (chatSessionStore as any).currentSessionMessages = [
+      {id: 'u1', type: 'text', text: '你好呀'},
+    ];
+    const {getAllByText, queryByTestId} = renderPhone({
+      status: 'transcribing',
+      transcript: '你好呀',
+    });
+    expect(getAllByText('你好呀')).toHaveLength(1);
+    expect(queryByTestId('phone-transcript')).toBeNull();
+  });
+
+  it('无活动会话（messages 为 undefined）不得抛错杀通话页', () => {
+    (chatSessionStore as any).currentSessionMessages = undefined;
+    const {getByTestId} = renderPhone({transcript: '还在说'});
+    expect(getByTestId('phone-overlay')).toBeTruthy();
+    expect(getByTestId('phone-transcript').props.children).toBe('还在说');
+  });
+
+  it('对话流归属（v2.4 自查）：系统提示不入流，author 定说/听，不假设 text 都是我说', () => {
+    (chatSessionStore as any).currentSessionMessages = [
+      {id: 'u1', type: 'text', text: '说点啥', author: {id: userId}},
+      {
+        id: 'sys1',
+        type: 'text',
+        text: 'Completion failed: boom',
+        author: {id: assistantId},
+        metadata: {system: true},
+      },
+      // 遗留形态：助手回复以 text 落库（非 assistant_turn）——归伙伴句
+      {
+        id: 'a2',
+        type: 'text',
+        text: ' legacy 助手句',
+        author: {id: assistantId},
+      },
+    ];
+    const {getByText, queryByText} = renderPhone();
+    // 报错文本不得以「我说」字幕出现
+    expect(queryByText(/Completion failed/)).toBeNull();
+    // 颜色定说话人（伙伴深 / 我说浅，不用气泡）
+    const partner = StyleSheet.flatten(getByText('legacy 助手句').props.style);
+    const me = StyleSheet.flatten(getByText('说点啥').props.style);
+    expect(partner.color).toBe(themeFixtures.lightTheme.colors.onSurface);
+    expect(me.color).toBe(themeFixtures.lightTheme.colors.onSurfaceVariant);
   });
 
   it('引擎未就绪 → hold 禁用 + 加载进度条（§10.3 门控）', () => {
@@ -183,6 +248,10 @@ describe('PhoneCallOverlay v2.2 波形语义（§11.5）', () => {
       (ttsStore as any).deviceMeetsMemory = true;
       (ttsStore as any).currentVoice = {id: 'v1', engine: 'system'};
     });
+  });
+
+  afterEach(() => {
+    (chatSessionStore as any).currentSessionMessages = [];
   });
 
   it('常量契约：三根柱、中柱最高、下限不重叠（防后人改坏）', () => {

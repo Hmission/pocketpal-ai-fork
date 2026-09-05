@@ -58,6 +58,7 @@ import {
 } from '../../utils/modelDisplayNames';
 import {useElapsed} from '../../hooks/useElapsed';
 import {usePerfTrace} from '../../hooks/usePerfTrace';
+import {audioLevel} from '../../services/phoneCall/audioLevel';
 import {nightTaskRegistry} from '../../store/nightTaskRegistry';
 import {activateKeepAwake, deactivateKeepAwake} from '../../utils/keepAwake';
 
@@ -360,27 +361,6 @@ export const ChatScreen: React.FC = observer(() => {
     void phoneSessionRef.current?.hangUp();
     setPhoneVisible(false);
   }, []);
-
-  // 通话界面「最近消息」摘要（最后一条文本内容，2 行截断）。
-  // observer 组件内直接派生（MobX 字段访问即订阅，AudioWorkshopTab B38 同款模式）
-  const phoneRecentText = (() => {
-    const msgs = chatSessionStore.currentSessionMessages;
-    for (let i = msgs.length - 1; i >= 0; i -= 1) {
-      const m = msgs[i];
-      if (m.type === 'text' && !m.metadata?.system && m.text) {
-        return m.text;
-      }
-      if (m.type === 'assistant_turn') {
-        const steps = (m as MessageType.AssistantTurn).steps ?? [];
-        for (let j = steps.length - 1; j >= 0; j -= 1) {
-          if (steps[j].content) {
-            return steps[j].content as string;
-          }
-        }
-      }
-    }
-    return '';
-  })();
 
   // 联系人位名字（§11.2 v2.3 定案，大王：「默认显示小妖」）：pal 无名就用默认
   // 伙伴名，**不再拿会话标题当名字**（曾显示「帮我画一张画。」读着像 bug）。
@@ -726,7 +706,6 @@ export const ChatScreen: React.FC = observer(() => {
       <PhoneCallOverlay
         visible={phoneVisible}
         status={phoneStatus}
-        recentText={phoneRecentText}
         partnerName={phonePartnerName}
         modelLabel={phoneModelLabel}
         engineReady={phoneEngineReady}
@@ -737,9 +716,15 @@ export const ChatScreen: React.FC = observer(() => {
         onStartRecording={() => {
           // 新一轮开口 = 上一轮转写作废（§11.4：本轮常驻，下一轮重置）
           setPhoneTranscript('');
+          // 能量通道开测（§14.2/§14.3）：真实振幅驱动波形 + VAD 观测统计
+          audioLevel.begin();
           void phoneSessionRef.current?.startRecording();
         }}
-        onStopRecording={() => phoneSessionRef.current?.stopAndSend()}
+        onStopRecording={() => {
+          // 先收能量统计（落 logcat 供 spike 取证），再走转写主链
+          audioLevel.end();
+          phoneSessionRef.current?.stopAndSend();
+        }}
         onHangUp={handlePhoneHangUp}
       />
     </>

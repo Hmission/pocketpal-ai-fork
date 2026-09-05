@@ -1,5 +1,13 @@
 import React, {useEffect} from 'react';
-import {Animated, Image, Pressable, Text, View} from 'react-native';
+import {
+  Animated,
+  Image,
+  InteractionManager,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
 
 import {observer} from 'mobx-react';
 
@@ -9,7 +17,10 @@ import {useTheme} from '../../hooks/useTheme';
 import {useWaveDots} from '../ui/WaveDots/useWaveDots';
 import {PerfMiniRow} from '../PerfMiniRow';
 import {L10nContext} from '../../utils';
-import {ttsStore} from '../../store';
+import {chatSessionStore, ttsStore} from '../../store';
+import {audioLevel} from '../../services/phoneCall/audioLevel';
+import {assistantId, userId} from '../../utils/chat';
+import type {MessageType} from '../../utils/types';
 import type {PerfSnapshot} from '../../specs/NativeHardwareInfo';
 
 import {
@@ -23,24 +34,24 @@ import {formatElapsed} from '../../hooks/useElapsed';
 import type {PhoneCallStatus} from '../../services/phoneCall/session';
 
 /**
- * PhoneCallOverlay v2.1 — 电话模式通话界面（PHONE_SPEC §11.2 复测定案）。
+ * PhoneCallOverlay v2.4 — 电话模式通话界面（PHONE_SPEC §11.2 + §14.1 布局契约）。
  *
- * 布局（自上而下）：① 联系人区（品牌小鸡图头像 + 名字回落链 + 模型 · 通话时长）
- * ② 状态区（小图标 + 一句话状态 + 副提示，六态文案见 §11.5）③ 对话回显
- * （「我说」轮次级常驻 + 「它说」回复摘要）④ 播报通路行（不可用时可点拉起
- * 既有 TTSSetupSheet，不静默失败）⑤ 跑分迷你行（复用 PerfMiniRow，默认展开）
- * ⑥ 控制区（**同一横行**：按住说话 96 + 挂断 64，caption 在圆钮下方）。
+ * 布局（自上而下）：① 联系人区（品牌小鸡图头像 + 名字 + 模型 · 通话时长）
+ * ② 状态区（波形/三点/静态柱 + 主状态 + 一行副提示，六态文案见 §11.5）
+ * ③ **对话流**（flex:1 铺满主区：伙伴句深色 / 我说浅色，本轮未落库转写补为末条）
+ * ④ 播报通路行 ⑤ 跑分迷你行（对话流之下、控制区之上，把垂直空间让给字幕）
+ * ⑥ 控制区（挂断居左 / 按住说话居右，72dp 等大分居两侧）。
  *
- * v2.1 三条纠正：①图标着色一律走 `fill`（本仓 svgr 把 #333333 映射为
- * {props.fill}，传 color 无效 → v2.0 图标全部不渲染，见 DESIGN_SPEC §3）；
- * ②删除右上 ✕（与挂断同函数 = 重复入口）；③大空圆改为贴边状态行（不再
- * 88px 空底衬）。纯展示 + 手势转发，状态机在 PhoneCallSession。
+ * 三条纪律（真机血证，勿回退）：①图标着色一律走 `fill`（本仓 svgr 把 #333333
+ * 映射为 {props.fill}，传 color 无效 → v2.0 图标全部不渲染，见 DESIGN_SPEC §3）；
+ * ②不另造入口与容器（右上 ✕ 与挂断同函数已删；跑分复用 PerfMiniRow）；
+ * ③hooks 全部在 `if (!visible) return null` 之前声明。纯展示 + 手势转发，
+ * 状态机在 PhoneCallSession；对话流与播报通路同源规则＝observer 直读 store，
+ * 不新增 props 接线（§11.3）。
  */
 export interface PhoneCallOverlayProps {
   visible: boolean;
   status: PhoneCallStatus;
-  /** 最近一条消息摘要（2 行截断，由 ChatScreen 派生传入） */
-  recentText: string;
   partnerName: string;
   modelLabel: string;
   /** 引擎就绪门控（engineStatus.chat/prompter 任一 ready） */
@@ -49,7 +60,7 @@ export interface PhoneCallOverlayProps {
   engineLoading: {progress: number; stage: string} | null;
   /** 通话时长秒数（useElapsed 驱动） */
   elapsedSeconds: number;
-  /** 本轮转写文本（轮次级常驻回显，§11.4） */
+  /** 本轮转写文本：轮次级常驻（§11.4），未落库时补为对话流末条浅色行（§14.1） */
   transcript: string;
   /** 跑分迷你行数据（chatTurnPerf.livePoints 尾窗） */
   perfHistory: PerfSnapshot[];
@@ -69,11 +80,13 @@ export const WAVE_BAR_RANGE: ReadonlyArray<readonly [number, number]> = [
 ];
 
 /**
- * 录音/播报声波（v2.2 新增，§11.5 波形语义契约）：三根同相位异频呼吸柱。
+ * 三根声波柱（v2.4 起录音期由**真实振幅**驱动，§14.2）。
  * 动画体系与本文件 `pulse` 同族（core Animated + JS driver，**不另引 reanimated**）。
- * 数据源诚实：`progress` 来自组件内 900ms 往复呼吸循环，不是振幅——真实振幅
- * 需原生 AudioRecord 通道（未接），因此**不假装随音量跳动**，仅表达
- * 「正在录 / 正在播」的节律；振幅真实化已入 P1 待办（§12.2）。
+ * 数据源分两条，各自诚实：
+ * - `recording`：`progress` ← 原生 RMS 事件（`audioLevel` 单通道，20Hz 命令式推入，
+ *   不触发 React 重渲染）——无声即回落，**不造假波形**；
+ * - `speaking`：`progress` ← 组件内 900ms 往复呼吸（麦克风已停、播报无振幅回传，
+ *   只作「正在播」节律提示，不声称是音量）。
  */
 const WaveBars = ({
   progress,
@@ -106,6 +119,33 @@ const WaveBars = ({
   );
 };
 
+/**
+ * 对话流一行（§14.1）：`me`=我说（浅色），`partner`=它说（深色主读）。
+ * 数据源 = chatSessionStore 当前会话消息 + 未落库的实时转写。
+ */
+type DialogueLine = {id: string; role: 'me' | 'partner'; text: string};
+
+/**
+ * 消息归属判定（v2.4 自查修正）：**不得假设「type=text 就是我说」**——
+ * 系统提示（模型未加载 / Completion failed 等）也是 text 且 author=assistant，
+ * 旧写法会把报错当「我说的话」铺进字幕。口径与 contextCompaction.speakerOf 一致：
+ * 先按 author id 判，author 缺失（存量脏数据/测试桩）再按消息类型回退。
+ */
+const dialogueRoleOf = (m: MessageType.Any): 'me' | 'partner' => {
+  if (m.author?.id === userId) {
+    return 'me';
+  }
+  if (m.author?.id === assistantId) {
+    return 'partner';
+  }
+  return m.type === 'assistant_turn' ? 'partner' : 'me';
+};
+
+/** 未落库的实时转写行 id（也是 testID=phone-transcript 的唯一挂点） */
+const LIVE_LINE_ID = 'phone-live-transcript';
+/** 对话流尾窗口（防长通话无限渲染；上滚看更早历史不在本期范围） */
+const DIALOGUE_TAIL = 12;
+
 /** 联系人头像：品牌小鸡图（与聊天空态同一资产，零新增——§11.2） */
 const PARTNER_AVATAR = require('../../assets/pocketpal-dark-v2.png');
 
@@ -113,7 +153,6 @@ export const PhoneCallOverlay: React.FC<PhoneCallOverlayProps> = observer(
   ({
     visible,
     status,
-    recentText,
     partnerName,
     modelLabel,
     engineReady,
@@ -171,13 +210,53 @@ export const PhoneCallOverlay: React.FC<PhoneCallOverlayProps> = observer(
       return undefined;
     }, [status, pulse]);
 
-    // 录音/播报声波（v2.2）：三根异频呼吸柱，与 pulse 同一套 core Animated 体系。
+    // 对话流（§14.1 v2.4：铺满主区，取代「我说/它说」两行摘要）——observer 直读
+    // chatSessionStore（与播报通路同一源规则，不新增 props 接线）。
+    const dialogue: DialogueLine[] = [];
+    // 无活动会话时 getter 可能返 undefined（store 契约），不得在此抛错杀通话页
+    (chatSessionStore.currentSessionMessages ?? []).forEach(m => {
+      if (m.type === 'text') {
+        // 系统提示不是「谁说了什么」（§14.1）：通话字幕只放真实对话，
+        // 否则报错文本会以「我说」浅色行入流（v2.4 自查修正）
+        if (m.metadata?.system) {
+          return;
+        }
+        const text = (m as MessageType.Text).text?.trim();
+        if (text) {
+          dialogue.push({id: m.id, role: dialogueRoleOf(m), text});
+        }
+      } else if (m.type === 'assistant_turn') {
+        // 契约：可见文本只读 `steps`（metadata.steps 是落盘形态，消费方禁读）
+        const text = (m as MessageType.AssistantTurn).steps
+          .map(s => s.content?.trim() ?? '')
+          .filter(Boolean)
+          .join('\n');
+        if (text) {
+          dialogue.push({id: m.id, role: 'partner', text});
+        }
+      }
+    });
+    // 本轮转写尚未落库（或刚落库）：未落库时补为末条浅色行（§11.4 常驻语义不回退）
+    const lastLine = dialogue[dialogue.length - 1];
+    if (transcript.trim() && lastLine?.text !== transcript.trim()) {
+      dialogue.push({id: LIVE_LINE_ID, role: 'me', text: transcript.trim()});
+    }
+    const visibleDialogue = dialogue.slice(-DIALOGUE_TAIL);
+    // 流式增量跟随：句数 + 末句长度变即滚到底（仅句数会漏掉播报逐字增长）
+    const dialogueSig = `${visibleDialogue.length}:${
+      visibleDialogue[visibleDialogue.length - 1]?.text.length ?? 0
+    }`;
+
+    // 声波数据源（v2.4 换真实振幅，§14.2）：
+    // - 录音期 = 原生 RMS 事件驱动（无声即回落，不造假）
+    // - 播报期 = 900ms 呼吸循环（麦克风已停，无振幅源，诚实作节律提示）
     // **hooks 必须全部在 `if (!visible) return null` 之前声明**：2026-09-05 真机证，
-    // 将本 effect 放到早退之后会在「打开通话页」那一帧抛
-    // `Rendered more hooks than during the previous render` 致命 JS 异常直接杀进程。
+    // 放早退之后会在「打开通话页」那一帧抛 Rendered more hooks 致命 JS 异常杀进程。
     const waveProgress = React.useRef(new Animated.Value(0)).current;
+    const levelAnim = React.useRef(new Animated.Value(0)).current;
+    const scrollRef = React.useRef<ScrollView>(null);
     useEffect(() => {
-      if (status !== 'recording' && status !== 'speaking') {
+      if (status !== 'speaking') {
         waveProgress.setValue(0);
         return undefined;
       }
@@ -199,6 +278,27 @@ export const PhoneCallOverlay: React.FC<PhoneCallOverlayProps> = observer(
       return () => loop.stop();
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [status]);
+    useEffect(() => {
+      if (status !== 'recording') {
+        levelAnim.setValue(0);
+        return undefined;
+      }
+      // 真实振幅驱动（事件约 20Hz，命令式推入 Animated，不触发 React 重渲染）
+      return audioLevel.subscribe(l => {
+        Animated.timing(levelAnim, {
+          toValue: l,
+          duration: 90,
+          useNativeDriver: false,
+        }).start();
+      });
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [status]);
+    useEffect(() => {
+      const task = InteractionManager.runAfterInteractions(() =>
+        scrollRef.current?.scrollToEnd({animated: false}),
+      );
+      return () => task.cancel();
+    }, [dialogueSig]);
 
     if (!visible) {
       return null;
@@ -244,21 +344,13 @@ export const PhoneCallOverlay: React.FC<PhoneCallOverlayProps> = observer(
       engineLoading && engineLoading.progress >= 0
         ? Math.round(engineLoading.progress * 100)
         : null;
-    // 「它说」= 回复落流后的摘要；与「我说」同文（回复未落流时末条仍是自己）
-    // 时不重复显示。
-    const partnerText =
-      (thinking || speaking) &&
-      recentText.trim() &&
-      recentText.trim() !== transcript.trim()
-        ? recentText
-        : '';
 
     // 状态行视觉（§11.5 波形语义契约）：录音/播报 = 呼吸声波柱（有真实相位）；
     // 思考 = 三点跳动（等待回合的真实推进信号）；转写/空闲聆听 =
     // 三根不等高**静态**柱——无数据源不造假波形。
     const renderStatusGlyph = () => {
       if (recording) {
-        return <WaveBars progress={waveProgress} color={theme.colors.error} />;
+        return <WaveBars progress={levelAnim} color={theme.colors.error} />;
       }
       if (speaking) {
         return (
@@ -354,26 +446,30 @@ export const PhoneCallOverlay: React.FC<PhoneCallOverlayProps> = observer(
               </View>
               <Text style={styles.hintText}>{hintText}</Text>
 
-              {/* 对话回显（§11.4：转写轮次级常驻，不再只在 transcribing 一瞬） */}
-              {transcript ? (
-                <View style={styles.lineRow}>
-                  <Text style={styles.lineLabel}>{t.mineLabel}</Text>
+              {/* 对话流（§14.1）：全文铺满主区，伙伴句深色 / 我说浅色，自动到底；
+                  本轮转写未落库时也常驻（§11.4 不回退，testID 仍为 phone-transcript） */}
+              <ScrollView
+                ref={scrollRef}
+                style={styles.conversation}
+                contentContainerStyle={styles.conversationContent}
+                showsVerticalScrollIndicator={false}
+                testID="phone-dialogue">
+                {visibleDialogue.map(line => (
                   <Text
-                    testID="phone-transcript"
-                    style={styles.lineContent}
-                    numberOfLines={2}>
-                    {`「${transcript}」`}
+                    key={line.id}
+                    testID={
+                      line.id === LIVE_LINE_ID ? 'phone-transcript' : undefined
+                    }
+                    style={[
+                      styles.conversationLine,
+                      line.role === 'partner'
+                        ? styles.conversationPartner
+                        : styles.conversationMe,
+                    ]}>
+                    {line.text}
                   </Text>
-                </View>
-              ) : null}
-              {partnerText ? (
-                <View style={styles.lineRow}>
-                  <Text style={styles.lineLabel}>{t.partnerLabel}</Text>
-                  <Text style={styles.lineContentMuted} numberOfLines={2}>
-                    {partnerText}
-                  </Text>
-                </View>
-              ) : null}
+                ))}
+              </ScrollView>
 
               {/* 播报通路（§11.3：不可静默失败，不可用时可点去设置） */}
               <Pressable

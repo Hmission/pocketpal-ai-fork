@@ -69,6 +69,8 @@ export const createStyles = ({theme}: {theme: Theme}) =>
       paddingHorizontal: theme.spacing.xl,
     },
     dialogArea: {
+      // v2.4 对话流版（§14.1）：状态行 + 对话流（flex:1）+ 播报行 + 跑分行
+      flex: 1,
       width: '100%',
     },
     statusRow: {
@@ -129,26 +131,25 @@ export const createStyles = ({theme}: {theme: Theme}) =>
       textAlign: 'center',
       marginBottom: theme.spacing.l,
     },
-    lineRow: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      marginBottom: theme.spacing.s,
+    // 对话流（§14.1）：全文铺满，伙伴句深色主读 / 我说浅色（豆包同构，不用气泡）
+    conversation: {
+      flex: 1,
+      width: '100%',
+      marginTop: theme.spacing.l,
     },
-    lineLabel: {
-      ...theme.typography.captionM,
-      color: theme.colors.onSurfaceVariant,
-      width: 44,
-      paddingTop: 3,
+    conversationContent: {
+      paddingVertical: theme.spacing.s,
     },
-    lineContent: {
+    conversationLine: {
       ...theme.typography.bodyM,
+      marginBottom: theme.spacing.m,
+      lineHeight: 24,
+    },
+    conversationPartner: {
       color: theme.colors.onSurface,
-      flex: 1,
     },
-    lineContentMuted: {
-      ...theme.typography.bodyM,
-      color: theme.colors.primary,
-      flex: 1,
+    conversationMe: {
+      color: theme.colors.onSurfaceVariant,
     },
 
     // 播报通路行（§11.3：不可用即给出可点入口，不静默失败）

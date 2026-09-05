@@ -32,7 +32,6 @@ export const mockDefaultCompletionSettings = {
 
 export const mockChatSessionStore = {
   sessions: sessionFixtures,
-  //currentSessionMessages: [],
   activeSessionId: 'session-1',
   newChatCompletionSettings: mockDefaultCompletionSettings,
   newChatThinkingOverride: undefined as boolean | undefined,
@@ -156,8 +155,18 @@ Object.defineProperty(mockChatSessionStore, 'isGeneratingToolCall', {
   configurable: true,
 });
 
+/**
+ * `currentSessionMessages` 真实 store 是 getter；mock 早期为**只读 getter（恒返 []）**，
+ * 导致用例 `store.currentSessionMessages = [...]` 被静默丢弃（非严格模式赋值无效），
+ * PhoneCallOverlay 对话流（§14.1）永远看不到消息——2026-09-05 真测定位。
+ * 现改为 getter+setter 配对：默认仍为 []（不改变其他用例行为），但可被用例赋值。
+ */
+let mockCurrentSessionMessages: any[] = [];
 Object.defineProperty(mockChatSessionStore, 'currentSessionMessages', {
-  get: jest.fn(() => []),
+  get: () => mockCurrentSessionMessages,
+  set: (v: any[]) => {
+    mockCurrentSessionMessages = v ?? [];
+  },
   configurable: true,
 });
 

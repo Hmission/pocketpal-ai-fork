@@ -3,10 +3,12 @@ package com.pocketpal
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
+import com.facebook.react.modules.core.DeviceEventManagerModule
 import java.io.File
 import java.io.FileOutputStream
 import java.io.RandomAccessFile
@@ -20,9 +22,21 @@ import kotlin.concurrent.thread
  * AudioRecord 直采 PCM16 16kHz mono（sherpa-onnx 标准输入）→ 手写 WAV 头落盘
  * cacheDir/audio_record/（MediaRecorder 不支持 wav 容器，故走 PCM 直写）。
  * RECORD_AUDIO 权限 manifest 已声明，JS 侧 PermissionAndroid 先行申请。
+ *
+ * v2.4（PHONE_SPEC §14.2）：读块循环内顺带算 **RMS 能量**并以 `AudioLevel` 事件
+ * 回传 JS（≥50ms 节流）——供通话页真实振幅波形与 VAD 观测 spike 使用。
+ * 事件范式沿用本仓 DownloadModule（getJSModule(RCTDeviceEventEmitter).emit），
+ * 不引第三方。**能量计算不得阻塞写盘线程**：单次 O(n) 扫自 buffer，无额外 IO。
  */
 class AudioRecordModule(private val reactContext: ReactApplicationContext) :
     ReactContextBaseJavaModule() {
+
+  companion object {
+    /** JS 侧订阅的事件名（与 src/services/phoneCall/audioLevel.ts 同步） */
+    const val EVENT_AUDIO_LEVEL = "AudioLevel"
+    /** 事件节流间隔：20Hz 足够驱动波形，且不溢事件队列 */
+    private const val LEVEL_INTERVAL_MS = 50L
+  }
 
   private var audioRecord: AudioRecord? = null
   private var recorderThread: Thread? = null
@@ -80,6 +94,7 @@ class AudioRecordModule(private val reactContext: ReactApplicationContext) :
     outputPath = outFile.absolutePath
     rec.startRecording()
     val buffer = ShortArray(minBuf / 2)
+    var lastLevelAt = 0L
     recorderThread = thread {
       while (recording) {
         val n = rec.read(buffer, 0, buffer.size)
@@ -92,6 +107,27 @@ class AudioRecordModule(private val reactContext: ReactApplicationContext) :
             fos.write(bytes.array())
           } catch (e: Exception) {
             break
+          }
+          // 真实振幅回传（v2.4）：RMS 归一化 0..1，50ms 节流
+          val now = System.currentTimeMillis()
+          if (now - lastLevelAt >= LEVEL_INTERVAL_MS) {
+            lastLevelAt = now
+            var sumSq = 0.0
+            for (i in 0 until n) {
+              val v = buffer[i].toDouble() / 32768.0
+              sumSq += v * v
+            }
+            val rms = Math.sqrt(sumSq / n)
+            try {
+              val params = Arguments.createMap()
+              params.putDouble("level", rms)
+              params.putDouble("ts", now.toDouble())
+              reactContext
+                .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+                .emit(EVENT_AUDIO_LEVEL, params)
+            } catch (_: Exception) {
+              // 事件发送失败不影响录音主链（JS 侧退化为静态柱，不造假波形）
+            }
           }
         }
       }
