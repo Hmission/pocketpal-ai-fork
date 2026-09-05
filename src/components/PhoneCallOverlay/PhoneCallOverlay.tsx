@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useEffect} from 'react';
 import {Animated, Image, Pressable, Text, View} from 'react-native';
 
 import {observer} from 'mobx-react';
@@ -57,6 +57,54 @@ export interface PhoneCallOverlayProps {
   onStopRecording: () => void;
   onHangUp: () => void;
 }
+
+/**
+ * 三根声波柱高度区间 [min, max]（dp）——**契约常量**：单测断言区间与柱数，
+ * 防后人改坏（§11.5）。首柱最低、中柱最高，呈语音波形观感。
+ */
+export const WAVE_BAR_RANGE: ReadonlyArray<readonly [number, number]> = [
+  [12, 22],
+  [16, 30],
+  [10, 18],
+];
+
+/**
+ * 录音/播报声波（v2.2 新增，§11.5 波形语义契约）：三根同相位异频呼吸柱。
+ * 动画体系与本文件 `pulse` 同族（core Animated + JS driver，**不另引 reanimated**）。
+ * 数据源诚实：`progress` 来自组件内 900ms 往复呼吸循环，不是振幅——真实振幅
+ * 需原生 AudioRecord 通道（未接），因此**不假装随音量跳动**，仅表达
+ * 「正在录 / 正在播」的节律；振幅真实化已入 P1 待办（§12.2）。
+ */
+const WaveBars = ({
+  progress,
+  color,
+}: {
+  progress: Animated.Value;
+  color: string;
+}) => {
+  const theme = useTheme();
+  const styles = createStyles({theme});
+  return (
+    <View style={styles.waveWrap} testID="phone-wave">
+      {WAVE_BAR_RANGE.map((range, i) => (
+        <Animated.View
+          key={i}
+          style={[
+            styles.waveBar,
+            i === 1 ? styles.waveBarTall : null,
+            {
+              backgroundColor: color,
+              height: progress.interpolate({
+                inputRange: [0, 1],
+                outputRange: [range[0], range[1]],
+              }),
+            },
+          ]}
+        />
+      ))}
+    </View>
+  );
+};
 
 /** 联系人头像：品牌小鸡图（与聊天空态同一资产，零新增——§11.2） */
 const PARTNER_AVATAR = require('../../assets/pocketpal-dark-v2.png');
@@ -163,6 +211,31 @@ export const PhoneCallOverlay: React.FC<PhoneCallOverlayProps> = observer(
       inputRange: [0, 1],
       outputRange: [1, 1.04],
     });
+    // 录音声波（v2.2）：三根异频呼吸柱（与 pulse 同一套 core Animated 体系）
+    const waveProgress = React.useRef(new Animated.Value(0)).current;
+    useEffect(() => {
+      if (!recording && !speaking) {
+        waveProgress.setValue(0);
+        return undefined;
+      }
+      const loop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(waveProgress, {
+            toValue: 1,
+            duration: 900,
+            useNativeDriver: false,
+          }),
+          Animated.timing(waveProgress, {
+            toValue: 0,
+            duration: 900,
+            useNativeDriver: false,
+          }),
+        ]),
+      );
+      loop.start();
+      return () => loop.stop();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [recording, speaking]);
     const loadingPct =
       engineLoading && engineLoading.progress >= 0
         ? Math.round(engineLoading.progress * 100)
@@ -176,9 +249,19 @@ export const PhoneCallOverlay: React.FC<PhoneCallOverlayProps> = observer(
         ? recentText
         : '';
 
-    // 状态行小图标（§11.2：不再用 88px 大空圆）
+    // 状态行视觉（§11.5 波形语义契约）：录音/播报 = 呼吸声波柱（有真实相位）；
+    // 思考 = 三点跳动（等待回合的真实推进信号）；转写/空闲聆听 =
+    // 三根不等高**静态**柱——无数据源不造假波形。
     const renderStatusGlyph = () => {
-      if (thinking || speaking) {
+      if (recording) {
+        return <WaveBars progress={waveProgress} color={theme.colors.error} />;
+      }
+      if (speaking) {
+        return (
+          <WaveBars progress={waveProgress} color={theme.colors.primary} />
+        );
+      }
+      if (thinking) {
         return (
           <View style={styles.waveRow}>
             {wave.map((v, i) => (
@@ -202,18 +285,12 @@ export const PhoneCallOverlay: React.FC<PhoneCallOverlayProps> = observer(
           </View>
         );
       }
-      const glyphColor = recording
-        ? theme.colors.error
-        : speaking
-          ? theme.colors.primary
-          : theme.colors.onSurfaceVariant;
-      const Glyph = speaking ? VolumeOnIcon : MicIcon;
       return (
-        <Glyph
-          fill={glyphColor}
-          width={theme.iconSize.s}
-          height={theme.iconSize.s}
-        />
+        <View style={styles.waveWrap} testID="phone-ambient">
+          <View style={[styles.ambientBar, styles.ambientBar1]} />
+          <View style={[styles.ambientBar, styles.ambientBar2]} />
+          <View style={[styles.ambientBar, styles.ambientBar3]} />
+        </View>
       );
     };
 
@@ -335,8 +412,27 @@ export const PhoneCallOverlay: React.FC<PhoneCallOverlayProps> = observer(
           )}
         </View>
 
-        {/* ④ 控制区：按住说话 + 挂断（同一横行、同一基线，§11.2） */}
+        {/* ④ 控制区（§11.2 v2.2 定案）：**挂断居左、按住说话居右**，两钮分居两侧
+            （最大间距，根治大王报的「离得太近会误触」）；同一基线，caption 在圆外下方。 */}
         <View style={styles.controlArea} testID="phone-controls">
+          <View style={styles.controlItem}>
+            <Pressable
+              testID="phone-hangup"
+              onPress={onHangUp}
+              hitSlop={8}
+              style={styles.hangupButton}>
+              {/* 挂断符号 = 电话图标横置（业界通话结束语义，不另造图标资产） */}
+              <View style={styles.hangupGlyph}>
+                <PhoneIcon
+                  fill={theme.colors.onError}
+                  width={theme.iconSize.l}
+                  height={theme.iconSize.l}
+                />
+              </View>
+            </Pressable>
+            <Text style={styles.controlCaption}>{t.hangUp}</Text>
+          </View>
+
           <Animated.View
             style={[styles.controlItem, {transform: [{scale: holdScale}]}]}>
             <Pressable
@@ -375,24 +471,6 @@ export const PhoneCallOverlay: React.FC<PhoneCallOverlayProps> = observer(
                   : t.engineLoading}
             </Text>
           </Animated.View>
-
-          <View style={styles.controlItem}>
-            <Pressable
-              testID="phone-hangup"
-              onPress={onHangUp}
-              hitSlop={8}
-              style={styles.hangupButton}>
-              {/* 挂断符号 = 电话图标横置（业界通话结束语义，不另造图标资产） */}
-              <View style={styles.hangupGlyph}>
-                <PhoneIcon
-                  fill={theme.colors.onError}
-                  width={theme.iconSize.l}
-                  height={theme.iconSize.l}
-                />
-              </View>
-            </Pressable>
-            <Text style={styles.controlCaption}>{t.hangUp}</Text>
-          </View>
         </View>
       </View>
     );

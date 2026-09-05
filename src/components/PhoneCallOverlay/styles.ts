@@ -90,6 +90,35 @@ export const createStyles = ({theme}: {theme: Theme}) =>
       backgroundColor: theme.colors.primary,
       marginHorizontal: 3,
     },
+    // 声波柱（v2.2，§11.5）：录音/播报期三根呼吸柱（高度由 Animated 插值驱动）；
+    // 静态不等高三柱 = 无真实数据源的窗口（聆听/转写），不造假跳动。
+    waveWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      height: 30,
+      gap: theme.spacing.xs,
+    },
+    waveBar: {
+      width: 4,
+      borderRadius: 2,
+    },
+    waveBarTall: {
+      width: 5,
+    },
+    ambientBar: {
+      width: 4,
+      borderRadius: 2,
+      backgroundColor: theme.colors.outline,
+    },
+    ambientBar1: {
+      height: 10,
+    },
+    ambientBar2: {
+      height: 18,
+    },
+    ambientBar3: {
+      height: 13,
+    },
     statusLabel: {
       ...theme.typography.titleM,
       color: theme.colors.onSurface,
@@ -176,10 +205,12 @@ export const createStyles = ({theme}: {theme: Theme}) =>
 
     // ── ④ 控制区（横向同一行，同一基线）────────────────────────
     controlArea: {
+      // v2.2 定案（大王复测：两钮离得太近会误触）：挂断居左 / 按住说话居右，
+      // space-between + xl 边距分居两侧——400dp 屏上两钮圆心相距 ~240dp。
       flexDirection: 'row',
       alignItems: 'flex-start',
-      justifyContent: 'center',
-      gap: theme.spacing.xxl,
+      justifyContent: 'space-between',
+      paddingHorizontal: theme.spacing.xl,
       paddingBottom: 56,
     },
     controlItem: {

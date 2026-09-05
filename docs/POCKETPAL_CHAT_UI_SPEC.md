@@ -530,7 +530,8 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 | phone-avatar | 联系人区头像（品牌小鸡图，v5.1） |
 | phone-hint | 六态副提示行（v5.1） |
 | phone-tts-status | 播报通路行（不可用时可点拉起 TTSSetupSheet，v5.1） |
-| phone-controls | 控制区容器（横向同一行，布局契约可断言，v5.1） |
+| phone-controls | 控制区容器（横向同一行，布局契约可断言，v5.1；v5.2 改为 space-between 分居两侧防误触） |
+| phone-ambient | 空闲期音频波形（三根不等高静态柱，v5.2） |
 
 > `phone-close`（右上收起 ✕）随 v5.1 删除，不再登记。
 

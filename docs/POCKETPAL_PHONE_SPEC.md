@@ -3,7 +3,7 @@ doc_id: POCKETPAL_PHONE_SPEC
 module: chat
 type: spec
 status: active
-version: "2.1"
+version: "2.2"
 created: "2026-09-04"
 updated: "2026-09-05"
 relates: [POCKETPAL_CHAT_UI_SPEC, POCKETPAL_AUDIO_UI_SPEC, POCKETPAL_STARMAP_DOMAINS, POCKETPAL_DESIGN_SPEC]
@@ -23,6 +23,7 @@ relates: [POCKETPAL_CHAT_UI_SPEC, POCKETPAL_AUDIO_UI_SPEC, POCKETPAL_STARMAP_DOM
 > 先到者胜）；③真机证：录音/AudioRecord→SenseVoice 转写→落库→管家回复→播报 全链闭环（K90 aab688d9）。
 > 版本：v2.0（2026-09-05 大王四问题升级方案，真机排查取证驱动）：①顶栏电话图标可见性——overlay 残留遮罩根因（自动化关闭 tap 被 HyperOS 拦截）+ 图标视觉弱（20px 灰 stroke）→ icon 胶囊化（triggerPill 语言）；②通话页「打电话式」UI 重设计——联系人区/通话时长/三态波形/跑分迷你行（复用 PerfMiniRow + chatTurnPerf）；③输入反馈与引擎就绪门控——engineStatus 单源进度条，未就绪禁录；④防锁屏防清后台——keep awake + nightTaskRegistry 前台服务双保活。详见 §10。
 > 版本：v2.1（2026-09-05 大王上手复测，**根因纠正 + 深化设计**）：①图标「看不见」真因 = svgr `.svgrrc` 将 #333333 映射为 `{props.fill}`，v2.0 误传 `color=` → 图标从未渲染（**推翻 v2.0 遮罩结论**，胶囊化同步撤销，回归 controlHeight 同族触区）；②通话页 v2.1——控制区横向化（按住说话 / 挂断 同一行）+ 头像真实化（品牌小鸡图 + 名字回落链，消除问号）+ 删右上重复 ✕ + 跑分行默认展开；③**播报强制贯通**——ttsStore 流式/回落两道的 `autoSpeakEnabled` 门改 `autoSpeakEnabled || forceSpeak`（电话模式 forceSpeak，根除「听不到语音输出」）+ 播报不可用显式提示行（复用 TTSSetupSheet）；④**转写回显持久化**——轮次级常驻（修「不显示我说过的话」）；⑤六态提示文案体系 + 图标规范。详见 §11。
+> 版本：v2.2（2026-09-05 大王二次复测，播报已出声✓）：①控制区**挂断居左 / 按住说话居右**且两钮分居两侧（space-between + xl 边距）——v2.1 居中 gap 40dp 被报「离太近会误触」（§11.8）；②**跑分环境轨迹**——真因不是默认折叠（v2.1 已 true），而是 `chatTurnPerf` 回合制采样在通话页空闲期无数据→展开的是空图；新增 `usePerfTrace`（空闲自采 1Hz、生成期不双采样、挂断即停）（§11.7）；③新增 §12 Roadmap：端到端路线 B 现状实证（未接；JNI 已含 vocoder/audio 符号但核心层能力待 spike 验证）+ P0/P1/P2/测试债清单。
 
 ## 1. 产品定位
 
@@ -362,3 +363,65 @@ sync 至 en 基准 + zh 同源（l10n 缺失回退英文，既有机制）。
 5. 跑分迷你行默认展开可见。
 6. tsc 零错；jest 全绿（含新增 ttsStore forceSpeak 门用例 + overlay 布局/回显用例）；
    eslint / l10n:validate 零错。
+
+### 11.7 跑分环境轨迹（v2.2 新增，2026-09-05 二次复测：「跑分默认折叠不好，跑分是灵魂」）
+
+**真因不是折叠**——`defaultExpanded` 自 v2.1 起就为 true；展开的是一张**空图**：
+`chatTurnPerf` 是**回合制**采样（run_started → run_finished 之间 1Hz，回合外诚实返空），
+而通话页是跨回合常驻面，聆听/播报期无新回合 → `livePoints` 为空 → 跑分行只剩一排 `--`。
+
+**修法（新增 hook `usePerfTrace(active)`，不改任何采样服务语义）**：
+
+| 时刻 | 数据源 | 自采？ | 纪律 |
+|---|---|---|---|
+| 生成期（`chatTurnPerf.livePoints` 非空） | 回合轨迹 | **否** | B1 单采样源（2026-08-31 裁定：双 1Hz = 每点 ~10 个 sysfs 读 + getMemoryInfo 翻倍） |
+| 空闲期（聆听/播报/等待） | 本面环境轨迹（1Hz `getPerfSnapshot`） | 是 | 仅在 overlay 在岗时跑，挂断即停并清空 |
+| 回合结束 | `livePoints` 转空 → 接回环境轨迹 | 是 | 追加到同一时间线，不跳变 |
+
+诚实口径与 `chatTurnPerf` 一致：采样失败跳过该点，不插值不编造；窗口 60 点封顶。
+零新轮子：复用同一 `NativeHardwareInfo.getPerfSnapshot` 单通道 + 同一 `PerfMiniRow`，
+环境轨迹**不落盘**（不进跑分历史库，避免把 30 分钟通话记成一次「聊天回合」）。
+
+### 11.8 控制区位置定案（v2.2，大王二次复测）
+
+- **挂断居左、按住说话居右**（互换 v2.1 的左右顺序）。
+- **两钮分居两侧**：`justifyContent: space-between` + 左右 `xl`(32dp) 边距，
+  400dp 屏上两钮圆心相距 ~240dp——按住说话需长握，与一次性挂断必须拉开距离防误触
+  （v2.1 居中 gap 40dp 实测太近）。
+- 其余不变：同一基线、caption 在圆外下方、96/64 尺寸、挂断符号 = 电话图标横置。
+
+## 12. 后续波次与路线（Roadmap，2026-09-05 登记，回答「还剩多少没做」）
+
+### 12.1 端到端语音模型（路线 B）：**未接入**（现状实证）
+
+当前全链路仍是**级联**：AudioRecord → SenseVoice（ASR）→ AgentRunner（文本）→ TTS 引擎。
+
+本窗对装机 APK 的原生库做了符号探测（`.tmp` 探针，只读）：
+
+- `librnllama_jni*.so`（arm64 全档位）**含** `llamaInitVocoder` /
+  `llamaIsVocoderEnabled` / `llamaGetFormattedAudioCompletion` /
+  `llamaGetAudioCompletionGuideTokens` / `GetMultimodalSupport` 符号；
+  llama.rn 0.12.7 的 TS 面有 `initVocoder({path, n_batch})` 与 `input_audio` 消息类型。
+- 但核心 `librnllama*.so` 内**未见** `llama_supports_audio_in/out` 一类能力探测符号
+  → 不能断言可直接跑通，“API 在册”≠“能力可用”。
+
+**结论**：路线 B 不是“重编内核”型活（引擎禁区暂时不触发），而是
+“选型 + 接线 + 实测”型活，但**可行性尚未验证**，不得先拍工期。按依赖分四步：
+
+| 步 | 内容 | 产物 | 前置/红线 |
+|---|---|---|---|
+| S1 可行性 spike | 选一颗音频 GGUF（MiniCPM-o 2.6 / Qwen2.5-Omni 3B 系），`initVocoder` 跑通“语音进→语音出”，记 K90 首字延迟/峰值内存/温度 | spike 报告 + 数据 | 只用现有 `.so`；**禁止擅自重编 llama.cpp**（需先立项请示） |
+| S2 模型资产与下载 | 模型目录/体积/增量下载 + 与现有 12 模型阵容的内存互斥降级策略 | 模型页可下载可卸载 | 不挤碎现有聊天体验（G1-G5 性能门禁） |
+| S3 双引擎路由 | 电话模式可选“级联（现）/端到端”，单点决策不双跑 | 设置页一行开关 | 现有级联不删除（低端设备回退路径） |
+| S4 免手交互 | VAD 自动断句 + 说话即打断播报 | 免按住可用 | §2 红线：首版仍是按住说话，需大王裁定才扩 |
+
+### 12.2 电话模式待办清单（真完成项，不留无批次挂账）
+
+| 级别 | 项 | 当前状态 |
+|---|---|---|
+| P0 | 顶栏图标可见/同高、控制区横向换位、头像真实化、转写常驻、播报 forceSpeak、跑分环境轨迹 | 已落地（本窗），待大王耳测+手感终验 |
+| P1 | 录音实时振幅波形（现仅呼吸脉冲）、ASR 增量流式回显（现整句）、说话即打断（免按住）、选完语音自动回到通话页、通话中切模型/切语音 | 未做（每项独立可验） |
+| P2 | 路线 B（见 12.1）、电话内工具调用恢复（现 §2 红线禁用）、通话录音回放/摘要、多语言 ASR×TTS 组合矩阵 | 未做，需产品裁定优先级 |
+| 测试债 | 电话模式 e2e 用例（现仅单测）、HyperOS 自动化 tap 拦截绕行 SOP | 未做 |
+| 无关本域存量 | actionRegistry 2 例 / ModelTypeTag 4 例（§936 D1 色值断言） | 挂账待收 |
+

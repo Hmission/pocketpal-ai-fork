@@ -1,9 +1,10 @@
 import React from 'react';
-import {StyleSheet} from 'react-native';
+import {StyleSheet, type StyleProp, type ViewStyle} from 'react-native';
 import {runInAction} from 'mobx';
 import {render, fireEvent} from '../../../../jest/test-utils';
 import {
   PhoneCallOverlay,
+  WAVE_BAR_RANGE,
   type PhoneCallOverlayProps,
 } from '../PhoneCallOverlay';
 import {L10nContext} from '../../../utils';
@@ -71,12 +72,20 @@ describe('PhoneCallOverlay v2.1（PHONE_SPEC §11）', () => {
     ).toBeTruthy();
   });
 
-  it('控制区横向同一行（大王报障：为什么是上下放置）', () => {
-    const {getByTestId} = renderPhone();
+  it('控制区横向 + 两钮分居两侧（大王报障：上下放置、离太近会误触）', () => {
+    const {getByTestId, toJSON} = renderPhone();
     const flattened = StyleSheet.flatten(
       getByTestId('phone-controls').props.style,
     );
     expect(flattened.flexDirection).toBe('row');
+    // 防误触：space-between 分居两侧（不是紧靠居中）
+    expect(flattened.justifyContent).toBe('space-between');
+    expect(flattened.gap).toBeUndefined();
+    // 位置定案：挂断在左、按住说话在右（文档序 hangup 先于 hold-talk）
+    const tree = JSON.stringify(toJSON());
+    expect(tree.indexOf('phone-hangup')).toBeLessThan(
+      tree.indexOf('phone-hold-talk'),
+    );
   });
 
   it('转写文本轮次级常驻：思考态仍显示「我说」（大王报障：不显示说过的话）', () => {
@@ -137,5 +146,74 @@ describe('PhoneCallOverlay v2.1（PHONE_SPEC §11）', () => {
     const {getByTestId} = renderPhone({onHangUp});
     fireEvent.press(getByTestId('phone-hangup'));
     expect(onHangUp).toHaveBeenCalledTimes(1);
+  });
+});
+
+/** Animated 插值对象的 outputRange 提取（字段名跨 RN 版本兼容）。 */
+function outputRangeOf(height: unknown): number[] {
+  const h = height as {
+    _animationConfig?: {outputRange?: number[]};
+    _config?: {outputRange?: number[]};
+  };
+  return h?._animationConfig?.outputRange ?? h?._config?.outputRange ?? [];
+}
+
+/**
+ * v2.2 波形语义契约（PHONE_SPEC §11.5）——回答大王「为什么一直是波浪线」：
+ * 那不是声波，是思考中三点跳动；空闲/聆听原本没有任何波形。
+ * 红线：无真实数据源不得做假波形跳动（振幅未接原生通道，P1 待办）。
+ */
+describe('PhoneCallOverlay v2.2 波形语义（§11.5）', () => {
+  beforeEach(() => {
+    runInAction(() => {
+      (ttsStore as any).deviceMeetsMemory = true;
+      (ttsStore as any).currentVoice = {id: 'v1', engine: 'system'};
+    });
+  });
+
+  it('常量契约：三根柱、中柱最高、下限不重叠（防后人改坏）', () => {
+    expect(WAVE_BAR_RANGE).toHaveLength(3);
+    expect(WAVE_BAR_RANGE[1][1]).toBeGreaterThan(WAVE_BAR_RANGE[0][1]);
+    for (const [min, max] of WAVE_BAR_RANGE) {
+      expect(max).toBeGreaterThan(min);
+    }
+  });
+
+  it('录音态：状态行为三根呼吸声波柱，高度按区间插值', () => {
+    const {getByTestId, queryByTestId} = renderPhone({status: 'recording'});
+    const bars = getByTestId('phone-wave').children;
+    expect(bars).toHaveLength(3);
+    bars.forEach((bar, i) => {
+      const style = StyleSheet.flatten(
+        (
+          bar as unknown as React.ReactElement<{
+            style?: StyleProp<ViewStyle>;
+          }>
+        ).props.style ?? {},
+      ) as {height?: unknown};
+      expect(outputRangeOf(style.height)).toEqual([
+        WAVE_BAR_RANGE[i][0],
+        WAVE_BAR_RANGE[i][1],
+      ]);
+    });
+    // 录音期不应再画静态柱
+    expect(queryByTestId('phone-ambient')).toBeNull();
+  });
+
+  it('空闲聆听：静态三柱（phone-ambient），无呼吸柱', () => {
+    const {getByTestId, queryByTestId} = renderPhone({status: 'idle'});
+    expect(getByTestId('phone-ambient')).toBeTruthy();
+    expect(queryByTestId('phone-wave')).toBeNull();
+  });
+
+  it('思考中：保留三点跳动（真实推进信号），不是声波', () => {
+    const {queryByTestId} = renderPhone({status: 'awaiting_reply'});
+    expect(queryByTestId('phone-wave')).toBeNull();
+    expect(queryByTestId('phone-ambient')).toBeNull();
+  });
+
+  it('播报中：主色呼吸柱（与录音同一体系）', () => {
+    const {getByTestId} = renderPhone({status: 'speaking'});
+    expect(getByTestId('phone-wave').children).toHaveLength(3);
   });
 });

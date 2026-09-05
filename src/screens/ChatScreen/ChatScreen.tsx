@@ -57,7 +57,7 @@ import {
   BUTLER_DISPLAY_NAME,
 } from '../../utils/modelDisplayNames';
 import {useElapsed} from '../../hooks/useElapsed';
-import {chatTurnPerf} from '../../services/perf/chatTurnPerf';
+import {usePerfTrace} from '../../hooks/usePerfTrace';
 import {nightTaskRegistry} from '../../store/nightTaskRegistry';
 import {activateKeepAwake, deactivateKeepAwake} from '../../utils/keepAwake';
 
@@ -240,8 +240,9 @@ export const ChatScreen: React.FC = observer(() => {
   const [phoneTranscript, setPhoneTranscript] = useState('');
   // 通话时长（§10.2 打电话仪式）
   const phoneElapsed = useElapsed(phoneVisible);
-  // 跑分迷你行数据（§10.2：chatTurnPerf 同源，零接线——generating 期 1Hz 采样）
-  const phonePerfHistory = chatTurnPerf.livePoints.slice(-60);
+  // 跑分迷你行数据（§11.7：电话模式跨回合常驻——空闲期走环境轨迹，
+  // 生成期自动切回 chatTurnPerf 回合轨迹；任一时刻只一个 1Hz 采样源）。
+  const phonePerfHistory = usePerfTrace(phoneVisible);
 
   // 引擎就绪门控（§10.3）：chat 引擎/管家任一 ready 即可通话；未就绪时取
   // 加载中引擎的 progress/stage 作进度条（engineStatus 单一事实源）。
