@@ -1506,3 +1506,17 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
 - **提交**：v1.2 本窗提交（SPEC+登记+5 处接线+测试）；push 待大王指令（§129.10）。
 - **遗留**：真机口测三项（身份锚注入/义肢切换可见/卸载重装数据存活）；CORE-4 血统脚本待建（低优先）；工具事件实体待消费方。
 - **待口测**：真机验证三项（冷启动身份注入 / 卸载重装数据存活（严禁卸载，走覆盖安装+冷启动）/ 义肢在线离线切换 UI 可见）；Wave C 工具事件实体接入（等有消费方）；CORE-2 硬执行面按需收口。
+
+
+## §144 电话模式 v2.2：跑分环境轨迹 + 控制区换位 + 真机致命 hooks 修（2026-09-05，chat/phone 域）
+
+- 背景：大王二次复测「确实播放出声音了」（v2.1 forceSpeak 生效✓），三条新反馈 + 两问（端到端是否未接、后续还剩多少）。
+- 三项定案：①控制区**挂断居左 / 按住说话居右** + space-between 分居两侧（v2.1 居中 gap 40dp 被报「离太近会误触」，§11.8）；②**跑分真因改判**：不是「默认折叠」（v2.1 `defaultExpanded` 已 true），而是 `chatTurnPerf` 回合制采样在通话页空闲期无数据 → 展开的是一张空图（像素剖面 y>1270 全白为证）；新增 `usePerfTrace(active)`——空闲期 1Hz 自采环境轨迹、生成期切回回合轨迹（守 B1 任一时刻单采样源）、挂断即停且**不落盘**（不把 30 分钟通话记成一次「聊天回合」污染跑分库）（§11.7）；③**波形语义契约**（§11.9）：录音/播报=三根呼吸柱、思考=三点跳动、转写/空闲=静态三柱；大王「为什么一直是波浪线」= 把三点跳动当成了声波；红线=无数据源不造假波形（真实振幅需原生 AudioRecord 通道，未接，入 P1）。
+- **真机致命修（本窗最重要一条）**：v2.2 首版装机后点顶栏电话图标 → 手机直接回桌面。logcat 定性 `com.facebook.react.common.JavascriptException: Rendered more hooks than during the previous render`——我把声波 `useEffect` 放到 `if (!visible) return null` 早退**之后**，隐藏态/打开态 hook 数不一致，release 下 JS fatal 即杀进程（`Force finishing activity` + `Process ... has died: fg TOP` + `Zygote: exited due to signal 9`）。修复=hooks 全部上移到早退之前；并**补一条能抓住它的单测**（`visible=false` 挂载 → rerender `true` 不抛）——既有 15 例全部以 `visible: true` 起手，结构上测不到这类错。教训固化：**带早退的组件，任何新加 hook 必须配一次 false→true 真实路径用例**。
+- 提交卫生事故（当场拆回）：`git commit -F` 提交的是整个索引，把我 `git add` 之前**另一窗口已 staged 的 12 个文件**（kg.ts / searchEngine / App.tsx / errorRegistry / useChatScheduler / COMPASS_REGISTRY / AIOS_CORE_SPEC / MASTER_LOG §143）卷进了 `42529a2`。处置：`git reset --soft HEAD~1` + `git restore --staged <他窗12文件>`（内容零损失，仅退回未暂存）→ 改以 pathspec 形式 `git commit -F msg -- <我8文件>` 重提为 `dfe3d70`。固化纪律：**多窗并行一律 `git commit -F msg -- <pathspec>`，禁止裸 commit；提交前必看 `git diff --cached --name-only`**。
+- 工具行为取证：`SearchReplace` **非原子**——批量里锚点失败的那条不生效、其余照常落盘，且整体可报 "save failed"；`Write` 报 "save file failed" 也可能已落盘。本轮因此产生过「缺 import 的中间态文件」。纪律：**每批编辑后以 node fs / Select-String 直读磁盘核验，不信工具返回文案**。
+- 端到端路线 B 现状实证（§12.1）：**未接**，仍是级联（AudioRecord→SenseVoice→AgentRunner→TTS）。APK 原生库探测：`librnllama_jni*.so`（arm64 全档位）含 `llamaInitVocoder`/`llamaIsVocoderEnabled`/`llamaGetFormattedAudioCompletion`/`GetMultimodalSupport`，llama.rn 0.12.7 TS 面有 `initVocoder` + `input_audio`；但核心 `librnllama*.so` 未见 `llama_supports_audio_in/out` → **「API 在册」≠「能力可用」**。故路线 B 属「选型+接线+实测」型活（不触引擎禁区，暂不重编 llama.cpp），第一步是 S1 spike 而非排工期。P0/P1/P2/测试债清单入 §12.2。
+- 验证：tsc 0 错；PhoneCallOverlay 16 例 + usePerfTrace 5 例全绿；全量 jest 337 套件 4754 通过，7 失败 = actionRegistry 2 + ModelTypeTag 4（§936 D1 存量，actionRegistry 域另窗在途）+ OverlayCard 1（单跑通过，跨套件污染）；eslint 0 error；prettier 全仓绿；本轮无新增 l10n key。
+- 真机取证（K90 aab688d9，覆盖安装未卸载，scrcpy 投屏在录）：打开通话页不崩、挂断回聊天页、全程 logcat 零 JavascriptException；挂断圆 x[144,334]（64dp 居左），按住说话右缘 x=1102（96dp 居右），两钮分居两侧；跑分行展开并画出 **-11s→0s 真实环境轨迹曲线**（y=1240/1280/1300/1320 非白像素 1583/4393/3284/394，v2.1 同区间全 0）；播报行显示「播报就绪」（大王已选到语音）。
+- 遗留观感一项待大王裁定：pal 无名时联系人位显示**会话标题**（本机显示「帮我画一张画。」当名字，读起来怪）。建议改为「pal 无名 → 用 defaultPartnerName，会话标题退到副标题行」。属产品判断，未擅自改。
+- 提交：`dfe3d70`（v2.2 三项 + §11.7/11.8/§12 文档）、`baf4099`（真机致命修 + §11.9）；push 待大王指令（§129.10）。
