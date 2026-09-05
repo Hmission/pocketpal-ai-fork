@@ -15,6 +15,8 @@ import {
   AIOS_WORKSPACE_MEMORY_DIR,
 } from '../../utils/paths';
 import {generateKeywords, scoreMatch, listMemories} from './index';
+// AIOS_CORE_SPEC Wave C：先问谱后 grep（图谱命中优先层）
+import {recallKg} from '../aiosCore/kg';
 
 // ---- 召回免责前缀（2026-08-23 三闸·闸2）----
 // 历史片段注入统一语义：可能已过时，仅作背景参考，防模型把旧记忆当当前事实。
@@ -175,14 +177,30 @@ export async function initIndex(): Promise<void> {
 }
 
 /**
- * \u6df7\u5408\u68c0\u7d22\uff1a\u5148\u5c1d\u8bd5 FTS5\uff0c\u5931\u8d25\u56de\u9000\u7eaf JS\u3002
+ * \u6df7\u5408\u68c0\u7d22\uff1a\u5148\u95ee\u8c31\u540e grep\uff08AIOS_CORE_SPEC Wave C\uff09\u2014\u2014kg.recall\u547d\u4e2d\u5148\u8fd4\uff0c
+ * \u4e0d\u8db3\u989d\u5ea6\u518d\u8d70 FTS5/\u7eaf JS \u5168\u6587\u8865\u4f4d\uff08\u540c\u6e90\u7247\u6bb5\u6309\u5185\u5bb9\u524d\u7f00\u53bb\u91cd\uff09\u3002
  */
 export async function searchMemory(query: string, topN = 5): Promise<string[]> {
+  // \u95ee\u8c31\u4f18\u5148\u5c42\uff1a\u56fe\u8c31\u547d\u4e2d\u5373\u5148\u8fd4\uff08\u8bb0\u5fc6\u2194\u4f1a\u8bdd\u5173\u8054\u8bed\u5883\uff09\uff0c\u5931\u8d25/\u672a\u547d\u4e2d\u9759\u9ed8\u964d\u7ea7
+  let kgHits: string[] = [];
+  try {
+    const hits = await recallKg(query, 2);
+    kgHits = hits.map(
+      h => `[kg:${h.type}] ${h.label} · ${h.snippet.slice(0, 80)}`,
+    );
+  } catch {
+    kgHits = [];
+  }
+  const remaining = Math.max(topN - kgHits.length, 0);
+  if (remaining === 0) {
+    return kgHits;
+  }
+
   // Try FTS5 first
   if (fts5Available) {
-    const ftsResults = await fts5Search(query, topN);
+    const ftsResults = await fts5Search(query, remaining);
     if (ftsResults.length > 0) {
-      return ftsResults;
+      return dedupeByContent([...kgHits, ...ftsResults], topN);
     }
   }
 
@@ -225,5 +243,29 @@ export async function searchMemory(query: string, topN = 5): Promise<string[]> {
   }
 
   fragments.sort((a, b) => b.score - a.score);
-  return fragments.slice(0, topN).map(f => `[${f.source}] ${f.content}`);
+  return dedupeByContent(
+    [
+      ...kgHits,
+      ...fragments.slice(0, remaining).map(f => `[${f.source}] ${f.content}`),
+    ],
+    topN,
+  );
+}
+
+/** \u7247\u6bb5\u53bb\u91cd\uff08\u6309\u524d 24 \u5b57\u7b26\uff09\uff1akg \u4e0e\u5168\u6587\u53ef\u80fd\u547d\u4e2d\u540c\u4e00\u5185\u5bb9\uff0c\u907f\u514d\u91cd\u590d\u6ce8\u5165\u3002 */
+function dedupeByContent(items: string[], limit: number): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const it of items) {
+    const key = it.slice(0, 24);
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    out.push(it);
+    if (out.length >= limit) {
+      break;
+    }
+  }
+  return out;
 }

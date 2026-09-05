@@ -1,7 +1,14 @@
 import React from 'react';
 
 import {chatSessionStore, modelStore} from '../store';
-import {routeTask, TaskKind, isCaptionIntent} from '../store/taskRouter';
+import {
+  routeTask,
+  TaskKind,
+  isCaptionIntent,
+  resolveTaskEngine,
+} from '../store/taskRouter';
+import {serverStore} from '../store/ServerStore';
+import {testConnection} from '../api/openaiClient/connection';
 import {
   runImageTaskCard,
   runEditImageTaskCard,
@@ -304,6 +311,76 @@ async function resolveTaskModel(
   return 'abort'; // 无当前模型可选「继续当前」→ 取消
 }
 
+/**
+ * 义肢健康门 + 主权确认（AIOS_CORE_SPEC Wave E，2026-09-05）：
+ * 深度意图（limb）命中时的调度：
+ *   - 本机未配置义肢（remoteModels 空）→ pass：能力未配置，本地代答（不弹窗不打扰）
+ *   - 已在义肢引擎上 → proceed：直接走常规发送（义肢直答）
+ *   - 义肢配置存在 → testConnection 探活：
+ *       online → askModelSwitch('limb') 弹窗确认切换（可继续当前，主权可见）
+ *       offline → 显式助理消息「义肢离线，本轮由本地代答」（CP-APP-015，不静默硬扛）+ pass
+ * 返回 'proceed'（义肢已就绪）/ 'pass'（本地链路）/ 'abort'（用户取消不发送）。
+ */
+async function maybeRouteLimb(): Promise<'proceed' | 'pass' | 'abort'> {
+  const remotes = modelStore.remoteModels;
+  if (remotes.length === 0) {
+    return 'pass';
+  }
+  const recommended = remotes[0];
+  const current = modelStore.activeModel;
+  if (
+    current &&
+    current.origin === 'remote' &&
+    current.serverId === recommended.serverId
+  ) {
+    return 'proceed';
+  }
+  const server = serverStore.servers.find(s => s.id === recommended.serverId);
+  let online = false;
+  if (server) {
+    try {
+      const apiKey = await serverStore.getApiKey(server.id);
+      const probe = await testConnection(
+        server.url,
+        apiKey,
+        server.requestTimeoutMs,
+      );
+      online = probe.ok;
+    } catch {
+      online = false;
+    }
+  }
+  if (!online) {
+    // 显式降级告知（不静默本地硬扛）：分级函数 limb_offline 语义落 UI
+    await chatSessionStore.addMessageToCurrentSession({
+      id: `limb-${Date.now()}`,
+      author: assistant,
+      createdAt: Date.now(),
+      text: '义肢离线，本轮由本地代答（可稍后重试或检查电脑端服务）。',
+      type: 'text',
+      metadata: {limbOfflineNotice: true},
+    } as MessageType.Text);
+    return 'pass';
+  }
+  const result = await askModelSwitch({
+    task: 'limb',
+    candidates: remotes.map(m => ({
+      id: m.id,
+      name: getModelDisplayNameWithParams(m),
+      size: m.size,
+    })),
+    canKeepCurrent: true,
+    onLoad: async (modelId: string) => {
+      const chosen = remotes.find(r => r.id === modelId) ?? recommended;
+      await modelStore.setRemoteModel(chosen);
+    },
+  });
+  if (result.choice === 'load' || result.choice === 'current') {
+    return 'proceed';
+  }
+  return 'abort';
+}
+
 export const useChatScheduler = (
   handleSendPress: (message: MessageType.PartialText) => void | Promise<void>,
 ) => {
@@ -394,6 +471,16 @@ export const useChatScheduler = (
         return;
       }
 
+      // Wave E（AIOS_CORE_SPEC）：义肢双策略——深度意图先问义肢（调不动的才借脑）。
+      // 健康门：未配义肢/离线显式告知后均落回本地链路；已配且在线 → 弹窗主权确认。
+      const limbTier = resolveTaskEngine(signal.task, text, true);
+      if (limbTier === 'limb') {
+        const limbDecision = await maybeRouteLimb();
+        if (limbDecision === 'abort') {
+          return;
+        }
+      }
+
       // chitchat：chat 引擎未加载 → 管家直答（启动即就绪闭环，SPEC §9.3）。
       // 删除旧「从未有过聊天模型」补丁条件——闲聊永远优先管家（快、省内存）；
       // 用户已显式加载大模型（chat 引擎在）则尊重主权走常规发送（下方兜底）。
@@ -414,10 +501,12 @@ export const useChatScheduler = (
       // play（P8 玩具工坊）：同构——玩具匠=代码模型选型，弹窗文案区分「玩具」任务
       // adventure（P12 城主）：同构——城主=写作模型选型，弹窗文案沿用「写作」
       if (
-        signal.task === 'write' ||
-        signal.task === 'code' ||
-        signal.task === 'play' ||
-        signal.task === 'adventure'
+        (signal.task === 'write' ||
+          signal.task === 'code' ||
+          signal.task === 'play' ||
+          signal.task === 'adventure') &&
+        // 深度意图已由义肢决策接管（limb），不再弹任务模型选型（单决策点不双弹窗）
+        limbTier !== 'limb'
       ) {
         // WORKSPACE_SPEC（2026-08-21）：写作恢复链路——「继续写 X」命中项目 →
         // 读框架文档注入下次组装（setPendingWorkspaceContext 单次消费）；

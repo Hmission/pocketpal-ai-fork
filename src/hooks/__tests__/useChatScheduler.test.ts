@@ -17,6 +17,19 @@ import {extractAndSaveMemories} from '../../services/aiosMemory';
 import {appendConversation} from '../../services/aiosMemory/conversationLog';
 import {MessageType} from '../../utils/types';
 import {user} from '../../utils/chat';
+import {serverStore} from '../../store/ServerStore';
+import {testConnection} from '../../api/openaiClient/connection';
+
+jest.mock('../../store/ServerStore', () => ({
+  serverStore: {
+    servers: [],
+    userSelectedModels: [],
+    getApiKey: jest.fn().mockResolvedValue(''),
+  },
+}));
+jest.mock('../../api/openaiClient/connection', () => ({
+  testConnection: jest.fn(),
+}));
 
 jest.mock('../../services/chatImageTask', () => ({
   runImageTaskCard: jest.fn(),
@@ -62,6 +75,8 @@ const mockAwaitReady = awaitEngineReady as jest.Mock;
 const mockAskSwitch = askModelSwitch as jest.Mock;
 const mockExtract = extractAndSaveMemories as jest.Mock;
 const mockAppendConv = appendConversation as jest.Mock;
+const mockServerStore = serverStore as any;
+const mockTestConn = testConnection as jest.Mock;
 
 const msg = (text: string): MessageType.PartialText =>
   ({text}) as MessageType.PartialText;
@@ -101,6 +116,12 @@ describe('useChatScheduler', () => {
     (modelStore as any).engine = undefined;
     (modelStore as any).lastUsedModelId = undefined;
     (chatSessionStore as any).taskModelChoice = {write: null, code: null};
+    mockServerStore.servers = [];
+    mockServerStore.userSelectedModels = [];
+    mockTestConn.mockReset();
+    mockTestConn.mockResolvedValue({ok: true, modelCount: 1});
+    (modelStore as any).remoteModels = [];
+    (modelStore as any).setRemoteModel = jest.fn().mockResolvedValue(undefined);
   });
 
   it('前置画动词路由 image：插入用户消息后委托 runImageTaskCard 卡片闭环', async () => {
@@ -444,20 +465,95 @@ describe('useChatScheduler', () => {
     expect(handleSendPress).not.toHaveBeenCalled();
   });
 
-  it('L1 管家直答：butler 卡片携带 userText（升级入口数据源）', async () => {
-    (promptWriter as any).isLoaded = true;
-    mockPromptChat.mockResolvedValue('管家回复');
-    const {wrapped, handleSendPress} = setup();
+  describe('AIOS_CORE_SPEC Wave E：深度意图义肢双策略', () => {
+    it('深度意图 + 未配义肢（remoteModels 空）：不弹窗不探活，管家本地代答', async () => {
+      (modelStore as any).remoteModels = [];
+      (promptWriter as any).isLoaded = true;
+      mockPromptChat.mockResolvedValue('管家回复');
+      const {wrapped, handleSendPress} = setup();
 
-    await act(async () => {
-      await wrapped(msg('你好呀'));
+      await act(async () => {
+        await wrapped(msg('帮我做一次深度复盘'));
+      });
+
+      expect(mockAskSwitch).not.toHaveBeenCalled();
+      expect(mockTestConn).not.toHaveBeenCalled();
+      expect(mockPromptChat).toHaveBeenCalled(); // 本地代答（管家）
+      expect(handleSendPress).not.toHaveBeenCalled();
     });
 
-    expect(chatSessionStore.addMessageToCurrentSession).toHaveBeenCalledWith(
-      expect.objectContaining({
-        metadata: expect.objectContaining({butler: true, userText: '你好呀'}),
-      }),
-    );
-    expect(handleSendPress).not.toHaveBeenCalled();
+    it('深度意图 + 义肢在线：弹窗确认（task=limb）→ 加载义肢后 proceed 常规发送', async () => {
+      (modelStore as any).remoteModels = [
+        {id: 'r1', origin: 'remote', serverId: 's1', name: 'Server-Deep'},
+      ];
+      mockServerStore.servers = [{id: 's1', url: 'http://192.168.1.9:1234'}];
+      (modelStore as any).setRemoteModel = jest.fn().mockImplementation(() => {
+        (modelStore as any).engine = {completion: jest.fn()};
+      });
+      const {wrapped, handleSendPress} = setup();
+
+      await act(async () => {
+        await wrapped(msg('全面分析一下这周的进展'));
+      });
+
+      expect(mockTestConn).toHaveBeenCalledWith(
+        'http://192.168.1.9:1234',
+        '',
+        undefined,
+      );
+      expect(mockAskSwitch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          task: 'limb',
+          candidates: expect.arrayContaining([
+            expect.objectContaining({id: 'r1'}),
+          ]),
+        }),
+      );
+      expect(modelStore.setRemoteModel).toHaveBeenCalledWith(
+        expect.objectContaining({id: 'r1'}),
+      );
+      expect(mockPromptChat).not.toHaveBeenCalled(); // 义肢接管，不走管家
+      expect(handleSendPress).toHaveBeenCalled(); // 义肢引擎已加载 → 常规发送
+    });
+
+    it('深度意图 + 义肢离线：显式助理告知（limbOfflineNotice）不静默，本地链路继续', async () => {
+      (modelStore as any).remoteModels = [
+        {id: 'r1', origin: 'remote', serverId: 's1', name: 'Server-Deep'},
+      ];
+      mockServerStore.servers = [{id: 's1', url: 'http://192.168.1.9:1234'}];
+      mockTestConn.mockResolvedValue({ok: false, modelCount: 0});
+      (promptWriter as any).isLoaded = true;
+      mockPromptChat.mockResolvedValue('管家回复');
+      const {wrapped, handleSendPress} = setup();
+
+      await act(async () => {
+        await wrapped(msg('撰写一份技术方案'));
+      });
+
+      expect(mockAskSwitch).not.toHaveBeenCalled();
+      expect(chatSessionStore.addMessageToCurrentSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          metadata: expect.objectContaining({limbOfflineNotice: true}),
+        }),
+      );
+      expect(mockPromptChat).toHaveBeenCalled(); // 显式告知后仍本地代答（管家）
+      expect(handleSendPress).not.toHaveBeenCalled();
+    });
+
+    it('深度意图 + 义肢在线但用户取消弹窗：不发送（主权终止）', async () => {
+      (modelStore as any).remoteModels = [
+        {id: 'r1', origin: 'remote', serverId: 's1', name: 'Server-Deep'},
+      ];
+      mockServerStore.servers = [{id: 's1', url: 'http://192.168.1.9:1234'}];
+      mockAskSwitch.mockResolvedValue({choice: 'cancel'});
+      const {wrapped, handleSendPress} = setup();
+
+      await act(async () => {
+        await wrapped(msg('帮我做一次深度复盘'));
+      });
+
+      expect(mockAskSwitch).toHaveBeenCalled();
+      expect(handleSendPress).not.toHaveBeenCalled();
+    });
   });
 });

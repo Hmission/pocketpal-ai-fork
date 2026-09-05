@@ -1479,3 +1479,15 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
 - **跨窗事故留痕（重要）**：本窗 01:26-01:38 已完成的 TTSStore/useChatSession/ChatHeader/三份 SPEC 改动，被并行窗口 §141 收口时的 `stash` + 「按 HEAD 精准还原」操作**整体抹掉**（其日志自述「发现并行窗口在途脏文件…已全部按 HEAD 还原」，非恶意但确属误伤，且 IDE 缓冲区仍留旧内容 → 出现「Read 看得到、git 看不到」的分裂态）。本窗处置：逐项重放并用一次真实 SearchReplace 触发缓冲区落盘，再以 `node fs` 直读磁盘逐文件核验标记字符串后才继续。**教训固化**：①改完即提交（pathspec 局部提交），缩短未提交在途时间；②并窗期间发现工具视图与 git 不一致时，以磁盘为真源核验（`node -e readFileSync` / `git diff --stat`）；③动 git 暂存区前先查他窗在途文件归属。
 - **提交**：`010130e`（17 文件 +745/-307，仅本窗文件面）；push 待大王指令（§129.10）。
 - **待办**：大王耳测确认「能听到播报」（并先在通话页提示行选到语音）；通话页动效节奏（涟漪 1.04 呼吸 / 波浪高度）待口测微调；路线 B（端到端语音模型）仍按 §9 非目标后置。
+
+## §143 AIOS 核心生命力后续波次：图谱问谱 + 义肢健康门接线 + 指南针扩容（2026-09-05，core 域登记 Wave 2）
+
+- 背景：§141 五波首落地后收尾（大王「继续后续任务」指令），本波完成三件事：Wave C 问谱真接入（kg.ts+searchMemory 谱优先层）、Wave E 义肢调度消费方接线（分级函数从死函数到主链路）、Wave B 指南针扩容（CP-APP-014/015/016）。
+- **Wave C 轻量图谱（CORE-1 ✅）**：`src/services/aiosCore/kg.ts`——记忆/会话两实体节点 + 关键词共现边（≥2 共享建边，每节点≤6 边防爆）+ supersede 链落图（9D 轻量裁决 supersededBy）；`database/kg.json` 单文件持久化（≤600 节点/≤1200 边裁旧）；`searchMemory` 入口加 kg.recall 优先层（先问谱后 grep：命中先返，额度不足再走 FTS5/全文，24 字前缀去重防重复注入）；App 启动链 buildKg（fire-and-forget 不阻断，失败静默下次冷启再试）。工具事件实体不接线——无消费方不建边（锋利原则，有消费方再补）。
+- **Wave E 义肢健康门（CORE-3 ✅）**：`useChatScheduler.maybeRouteLimb`——深度意图命中 → 未配义肢静默放行本地 → 已配义肢 `testConnection` 探活（serverStore 配置 + Keychain key）→ 在线走 `askModelSwitch`（新增 `task:'limb'` 任务型，弹窗标题「深度任务选择模型」，TASK_LABEL 组件内硬编码与 write/code/play 同族，零 l10n 差分）→ 离线插显式助理消息「义肢离线，本轮由本地代答」（metadata.limbOfflineNotice，CP-APP-015 同词面）；write/code 分支加 `limbTier !== 'limb'` 守卫防双弹窗（单决策点原则）；已在义肢引擎直答不重复弹窗。
+- **Wave B 指南针扩容（CORE-2 🟡 协议面）**：CP-APP-014（身份锚自愈 identity_reborn）/ 015（义肢离线）/ 016（生长账本写入失败）登记 COMPASS_REGISTRY.md §2 + errorRegistry.ts 落码（含英文 fail 词面）；硬执行面（生图/付费前置确认）仍挂既有确认组件按需收口。
+- **验证**：tsc 0 错；jest 新增 kg 5 用例 + errorRegistry 3 用例 + scheduler limb 4 用例，定向面 1104/1106（唯一失败=actionRegistry §936 D1 存量）；scheduler 21/21；全链路回归（aiosMemory 13 套件含 searchEngine 改动波及面）全绿；prettier 全仓绿（本窗文件面）。
+- **测试修证实录**：①`remoteModels` 为真实 getter 依赖 `serverStore.userSelectedModels`——mock 缺字段致 TypeError 中断 → mock 补 userSelectedModels:[]；②L1 管家直答语义——「帮我做一次深度复盘」routeTask 判 chitchat，本地代答路径=管家直答（非 handleSendPress），三用例按真实链路断言修正；③CP-APP-016 词面补英文 fail 分支；④kg recall 邻居断言改用「安心仪式」查询构造（烘焙全节点直达无邻居）。
+- **事故认领（承接 §142 跨窗留痕）**：§141 收口时 stash 混入他窗在途脏文件并「按 HEAD 精准还原」，实际误伤电话窗口 TTSStore/useChatSession/ChatHeader/三 SPEC 的 WIP（对方已重放恢复并提交 010130e）。本窗认领该操作教训并固化三条纪律：①改完即提交（pathspec 局部提交，缩短在途窗口）；②磁盘为真源（Read 与 git 不一致时以 node fs 直读核验）；③动 git 暂存区前先查他窗在途文件归属。
+- **提交**：本窗提交（docs+kg+接线+指南针+单测）；push 待大王指令（§129.10）。
+- **待口测**：真机验证三项（冷启动身份注入 / 卸载重装数据存活（严禁卸载，走覆盖安装+冷启动）/ 义肢在线离线切换 UI 可见）；Wave C 工具事件实体接入（等有消费方）；CORE-2 硬执行面按需收口。

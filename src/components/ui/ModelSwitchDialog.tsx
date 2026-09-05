@@ -51,7 +51,8 @@ export interface ModelSwitchCandidate {
 }
 
 export interface ModelSwitchOptions {
-  task: 'write' | 'code' | 'play';
+  /** 任务族：write/code/play 为既有选型；limb=深度任务借义肢（AIOS_CORE_SPEC Wave E） */
+  task: 'write' | 'code' | 'play' | 'limb';
   /** 任务族候选列表（[0] = 推荐项，默认选中） */
   candidates: ModelSwitchCandidate[];
   /** 是否有当前模型可继续（场景 A 有 / 场景 B 无，隐藏死按钮） */
@@ -101,6 +102,7 @@ const TASK_LABEL: Record<ModelSwitchOptions['task'], string> = {
   write: '写作',
   code: '代码',
   play: '玩具',
+  limb: '深度',
 };
 
 /**

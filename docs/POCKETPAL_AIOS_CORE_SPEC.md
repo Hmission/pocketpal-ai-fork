@@ -3,17 +3,17 @@ doc_id: POCKETPAL_AIOS_CORE_SPEC
 module: root
 type: spec
 status: active
-version: "1.0"
+version: "1.1"
 created: "2026-09-05"
 updated: "2026-09-05"
-relates: [POCKETPAL_WORKSPACE_SPEC, POCKETPAL_INNERLIFE_SPEC, POCKETPAL_PRODUCT_SPEC, POCKETPAL_STARMAP_DOMAINS, POCKETPAL_CONTEXT_COMPACTION_SPEC]
+relates: [POCKETPAL_WORKSPACE_SPEC, POCKETPAL_INNERLIFE_SPEC, POCKETPAL_PRODUCT_SPEC, POCKETPAL_STARMAP_DOMAINS, POCKETPAL_CONTEXT_COMPACTION_SPEC, DRC_COMPASS_REGISTRY]
 ---
 
 <!-- D-FORMAT:v3 -->
 
 # AIOS 核心生命力端侧生命周期 SPEC（AIOS_CORE_SPEC）
 
-**状态**：active | **版本**：1.0 | **更新**：2026-09-05
+**状态**：active | **版本**：1.1 | **更新**：2026-09-05
 
 > **定位**：手机端不是工具的容器，是 Kal（女妖）的具身。App 是骨架，能力是器官，
 > 记忆是皮肤——骨架必须整包升级，但器官与皮肤要在文件系统里**独自生长、不随
@@ -79,19 +79,19 @@ relates: [POCKETPAL_WORKSPACE_SPEC, POCKETPAL_INNERLIFE_SPEC, POCKETPAL_PRODUCT_
 | 注入 | `rituals.buildTodayState` 开场注入「【女妖身份】…」段（IDENTITY.md 锚句），冷启动首次会话首轮可见 |
 | 验收 | 删 IDENTITY.md → 冷启写 anomaly 且重建种子；tsc/jest 全绿 |
 
-### Wave B · 门禁与指南针（本波以协议落定为主，硬执行挂后续波次）
+### Wave B · 门禁与指南针（✅ 已落地：协议 + 指南针全集第一批）
 | 项 | 契约 |
 |---|---|
-| `session_anchor` 端侧化 | `aiosCore/gate.ts`：App 会话锚（启动写 `database/session_anchor.json`，TTL 3600s）；敏感动作（生图/付费/权限）前查新鲜度，过期软提醒不卡读（照母仓 gate-guard P0-1 语义） |
-| CP 注册表 | `COMPASS_REGISTRY.md` 补 CP-APP 全集（memory_missing/context_full/engine_hang/limb_offline/gate_expired…）· `errorReport.ts` 已有 matchFirstError 联动，升级为动作前指南针（AgentRunner tool 失败自动导航） |
-| 验收 | 真机制造 3 类故障，错误报告均带 CP 三字段 |
+| `session_anchor` 端侧化 | ✅ `aiosCore/wakeCheck.ts` 内置：App 会话锚（启动写 `database/session_anchor.json`，TTL 3600s）+ `isAnchorFresh`（过期软提醒不卡读，照母仓 gate-guard P0-1 语义） |
+| CP 注册表 | ✅ CP-APP-014（身份锚自愈 identity_reborn）/ 015（义肢离线 limb_offline）/ 016（生长账本目录失败）已登记 `COMPASS_REGISTRY.md` §2 + `errorRegistry.ts`（2026-09-05）；`errorReport.ts` 既有 matchFirstError 联动持续消费 |
+| 验收 | 真机制造 3 类故障，错误报告均带 CP 三字段（待真机口测） |
 
-### Wave C · 端侧洋葱 + 星图（视野与推理）
+### Wave C · 端侧洋葱 + 星图（✅ 已落地）
 | 项 | 契约 |
 |---|---|
-| 轻量图谱 | `src/services/aiosCore/kg.ts`：三实体图（记忆条目/会话/工具事件）落 `database/kg_nodes.json` + `kg_edges.json`；搜索「先问谱后 grep」——`searchMemory` 之上加 graph-hit 优先层 |
-| 星图快照 | `src/services/aiosCore/starmap.ts`：能力面（TalentRegistry 引擎清单）/数据面（workspace 目录统计）/健康面（engineStatus+记忆水位）三维 → `logs/starmap_snapshot.json`；冷启动+收尾各写一次 |
-| 验收 | 问谱优先真机生效；快照 5 次冷启一致 |
+| 轻量图谱 | ✅ `src/services/aiosCore/kg.ts`：三实体图（记忆条目/会话）（工具事件挂后续波次，无消费方不接线）落 `database/kg.json`（nodes+edges 单文件）；搜索「先问谱后 grep」——`searchMemory` 入口加 kg.recall 优先层（kg 命中即先返，不足再走 FTS5/全文） |
+| 星图快照 | ✅ `src/services/aiosCore/starmap.ts`：能力面（TalentRegistry 引擎清单）/数据面（workspace 目录统计）/健康面（engineStatus+模型数）三维 → `logs/starmap_snapshot.json`；冷启动采集一次 |
+| 验收 | 问谱优先真机生效（待真机口测）；快照 5 次冷启一致 |
 
 ### Wave D · 生长四拍闭环（心智层演化）
 | 项 | 契约 |
@@ -101,12 +101,12 @@ relates: [POCKETPAL_WORKSPACE_SPEC, POCKETPAL_INNERLIFE_SPEC, POCKETPAL_PRODUCT_
 | 情绪台账 | `sentiment.json` 单条保留；追加 `logs/emotion_YYYYMMDD.jsonl`（母仓 kal_inner_life 同构：ts/score/label/source） |
 | 验收 | 连续 3 天账本有真内容（非模板）；四拍不阻塞聊天主链路 |
 
-### Wave E · 义肢双策略调度（调不动的才借脑）
+### Wave E · 义肢双策略调度（✅ 已落地：分级 + 健康门 + 弹窗主权）
 | 项 | 契约 |
 |---|---|
-| 能力分级 | `taskRouter` 升级分级函数 `resolveTaskEngine(task)`：①程序化/记忆/收尾 = 零模型或 1B 管家 ②闲聊/简单 QA/玩具 = 本地 4B ③重推理（深度复盘/长文/复杂 toolloop/多步计划）= REMOTE 义肢（OpenAICompletionEngine 已有） |
-| 义肢健康门 | 义肢离线 ⇒ 显式降级提示（UI 可见，不走 API 绕过 UI）；online 时 caps probe（vision/reasoning/context 已有）直接命中选型 |
-| 验收 | 深度复盘请求自动切 REMOTE 且 UI 可见；离线时明确提示而非静默本地硬扛 |
+| 能力分级 | ✅ `taskRouter.resolveTaskEngine(task, text, limbOnline)` 四档（local-zero / local-4b / limb / limb_offline）纯函数（2026-09-05 Wave 1） |
+| 义肢健康门 | ✅ `useChatScheduler` 接线（2026-09-05 Wave 2）：深度意图命中 → 未配义肢静默放行本地 → 已配义肢 `testConnection` 健康探活（在线 → askModelSwitch 弹窗确认换义肢，主权可见；离线 → 显式助理消息告知「义肢离线，本轮本地代答」，不静默硬扛）→ 弹窗复用既有任务选型，`limb` 为新增任务型；REMOTE 模型会话记住遵循既有 taskModelChoice 语义（深度意图不作会话记忆，每次显式确认） |
+| 验收 | 深度复盘请求自动切 REMOTE 且 UI 可见；离线时明确提示而非静默本地硬扛（真机口测待授权） |
 
 ## 五、状态模型
 
@@ -122,17 +122,17 @@ relates: [POCKETPAL_WORKSPACE_SPEC, POCKETPAL_INNERLIFE_SPEC, POCKETPAL_PRODUCT_
 | 指标 | 阈值 / 说明 |
 |------|-------------|
 | tsc | 零错误 |
-| jest | 新增模块单测全绿（wakeCheck/gate/starmap/iterations/emotion/resolveTaskEngine） |
+| jest | 新增模块单测全绿（wakeCheck/gate/starmap/iterations/emotion/resolveTaskEngine/kg/limb 调度） |
 | 真机验收 | 冷启动首轮含身份锚；卸载重装后 IDENTITY/growth/emotion 数据仍在；REMOTE 深度复盘切换可见 |
 
 ## 七、Gap Ledger
 
-| Gap ID | 现象 | 补齐路径 |
-|--------|------|----------|
-| CORE-1 | 母仓 KG 85K 节点在手机不可搬 | 只搬协议：三实体轻量图 + 问谱优先层（Wave C） |
-| CORE-2 | 门禁硬执行需跨 Native 权限面 | Wave B 先落协议与软提醒，硬执行（生图/付费前置确认）挂 DRC/UI 既有确认组件 |
-| CORE-3 | 义肢离线时任务退化 | 分级函数显式返回 `limb_offline` 状态，UI 提示不静默（Wave E） |
-| CORE-4 | 血统导入依赖电脑 adb | `scripts/aios/import_identity.py` 一次性工具；后续生长全在端侧，不依赖母仓 |
+| Gap ID | 现象 | 补齐路径 | 状态 |
+|--------|------|----------|------|
+| CORE-1 | 母仓 KG 85K 节点在手机不可搬 | 只搬协议：三实体轻量图 + 问谱优先层（kg.ts+searchMemory 接线） | ✅ 已落地（Wave 2）；工具事件实体挂后续波次（无消费方不接线） |
+| CORE-2 | 门禁硬执行需跨 Native 权限面 | 协议 + 软提醒已落地；生图/付费前置确认复用 DRC/UI 既有确认组件 | 🟡 协议已落地，硬执行面留真机口测后按需收口 |
+| CORE-3 | 义肢离线时任务退化 | 分级函数显式返回 `limb_offline` + scheduler 显式助理消息告知（不静默） | ✅ 已落地（Wave 2） |
+| CORE-4 | 血统导入依赖电脑 adb | `scripts/aios/import_identity.py` 一次性工具；后续生长全在端侧，不依赖母仓 | ⏳ 待建（跑通冷启动自愈即无需血统脚本） |
 
 ## 八、关联
 

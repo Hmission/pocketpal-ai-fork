@@ -58,6 +58,9 @@ relates: [DRC_SPEC, COMPASS_SYSTEM_SSOT, STATE_COMPASS_ENGINE_SELF_NAVIGATION_SS
 | CP-APP-011 | TTS 模型未安装完整 / sample_rate does not exist / 生成噪音 | 检查 TTS 模型下载源是否为 sherpa 兼容源（kokoro 需 metadata+tokens.txt、kitten 需 sherpa 官方 v0.1 生成链四件套）；**kitten 生成链下载已补齐（§81，Phase 2 动态枚举 espeak）**，新装机经下载链即可齐备；kokoro 换源=降版本（v1.0→v0.19）+ fork/sherpa 双链耦合，裁定不动，生成链靠 sherpaConvert 下载后转换兜底 | src/services/tts/constants.ts · src/services/tts/engines/kitten/index.ts · docs/internal/POCKETPAL_MODIFICATION_MASTER_LOG.md §74.5/§81 | ✅ 已登记（2026-08-23） |
 | CP-APP-012 | 基准编排中断 / 用例卡死 / 跑分卡渲染失败 / 分享不可用 | 查 benchmarkStore 编排状态机是否复位（用例结束/失败必须 reset，不留半态）；分享走 FileProvider 门禁，不可用降级存相册+诚实提示；数值 N/A 不编造 | docs/PERF_BENCHMARK_DESIGN.md §10 · src/store/BenchmarkStore.ts | ✅ 已登记（2026-08-24） |
 | CP-APP-013 | 上下文满 / Context is full / 上下文预算决策不可解 / 压缩未触发或未释放 | 查 DRC `chat.budget_decision` 事件（used/nCtx/action/saturated）+ `perModelNCtxSource` 覆盖源（preset 应随 CURATED_TABLE_VERSION 拉齐，user 为主权）+ 策展档 `defaultNCtxForModel` 是否低于工具基线 `TOOL_BASELINE_TOKENS`（4500）；压缩目标线=COMPACT_TARGET_WATERMARK 0.5（触发 0.8 压到半水位，连压多轮=水位曲线异常） | docs/POCKETPAL_CONTEXT_COMPACTION_SPEC.md v1.2 · src/utils/modelContextDefaults.ts · src/services/contextCompaction/{decision,budget}.ts | ✅ 已登记（2026-08-26） |
+| CP-APP-014 | 身份锚缺失 / identity_reborn / 身份文件损坏 | 冷启动三层自检自愈重建种子（锚句+时间戳，wake_anomaly.jsonl 留痕）；血统导入走 scripts/aios/import_identity.py（一次性工具） | docs/POCKETPAL_AIOS_CORE_SPEC.md Wave A · src/services/aiosCore/wakeCheck.ts | ✅ 已登记（2026-09-05） |
+| CP-APP-015 | 义肢离线 / limb_offline / 连接失败 / fetch failed | scheduler 显式助理消息告知「义肢离线，本轮本地代答」不静默；检查 serverStore 配置与网络通道（cleartext 放行已配） | docs/POCKETPAL_AIOS_CORE_SPEC.md Wave E · src/hooks/useChatScheduler.ts | ✅ 已登记（2026-09-05） |
+| CP-APP-016 | 生长账本目录失败 / growth.* 写入失败 | 检查 AIOS_ROOT 共享存储可写性（EACCES 授权 / 存储占用）；growth 为观测器官，失败不阻断主链路（静默降级） | docs/POCKETPAL_AIOS_CORE_SPEC.md Wave D · src/services/aiosCore/growth.ts | ✅ 已登记（2026-09-05） |
 
 ## 3. 状态指南针（ST-APP-NNN）
 

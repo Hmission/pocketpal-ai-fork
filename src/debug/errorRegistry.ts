@@ -81,6 +81,39 @@ export const ERROR_PATTERNS: ErrorPattern[] = [
       'src/utils/imageGenManifest.ts',
     ],
   },
+  {
+    cpId: 'CP-APP-014',
+    triggerRegex:
+      /identity_reborn|身份锚|IDENTITY.*(缺失|损坏|重建)|identity.*missing/i,
+    navigation:
+      'wakeCheck 三层自检会自愈重建种子（锚句+时间戳）并写 wake_anomaly.jsonl 留痕；血统导入走 scripts/aios/import_identity.py（一次性工具）',
+    deepDive: [
+      'docs/POCKETPAL_AIOS_CORE_SPEC.md Wave A',
+      'src/services/aiosCore/wakeCheck.ts',
+    ],
+  },
+  {
+    cpId: 'CP-APP-015',
+    triggerRegex:
+      /limb_offline|义肢.*(离线|不可用)|连接失败|fetch failed|Network request failed/i,
+    navigation:
+      'scheduler 会显式助理消息告知「义肢离线，本轮本地代答」不静默；检查 serverStore 配置（URL/API key）与网络通道（cleartext 放行已配置）',
+    deepDive: [
+      'docs/POCKETPAL_AIOS_CORE_SPEC.md Wave E',
+      'src/hooks/useChatScheduler.ts',
+      'src/api/openaiClient/connection.ts',
+    ],
+  },
+  {
+    cpId: 'CP-APP-016',
+    triggerRegex: /growth.*(fail|失败)|生长账本.*(fail|失败)|growth_dir/i,
+    navigation:
+      '检查 AIOS_ROOT 共享存储可写性（EACCES 授权/存储占用）；growth 为观测器官，失败不阻断主链路（静默降级）',
+    deepDive: [
+      'docs/POCKETPAL_AIOS_CORE_SPEC.md Wave D',
+      'src/services/aiosCore/growth.ts',
+    ],
+  },
 ];
 
 /** 匹配错误文本，返回所有命中模式（无命中返回空数组）。 */

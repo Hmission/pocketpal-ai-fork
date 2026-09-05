@@ -38,4 +38,23 @@ describe('errorRegistry', () => {
     const hit = matchFirstError('engine busy while txt2img running');
     expect(hit?.cpId).toBe('CP-APP-004');
   });
+
+  it('身份锚异常命中 CP-APP-014（Wave B 注册表扩展）', () => {
+    const hit = matchFirstError('identity_reborn: seed rebuilt on cold start');
+    expect(hit?.cpId).toBe('CP-APP-014');
+    expect(hit?.navigation).toContain('wakeCheck');
+  });
+
+  it('义肢离线命中 CP-APP-015（Wave E 与系统消息同词面）', () => {
+    const hit = matchFirstError(
+      'fetch failed: limb_offline server unreachable',
+    );
+    expect(hit?.cpId).toBe('CP-APP-015');
+  });
+
+  it('生长账本写入失败命中 CP-APP-016（Wave D 观测器官）', () => {
+    const hit = matchFirstError('growth append failed: EACCES on AIOS_ROOT');
+    expect(hit?.cpId).toBe('CP-APP-016');
+    expect(hit?.navigation).toContain('静默降级');
+  });
 });

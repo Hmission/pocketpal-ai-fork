@@ -33,6 +33,7 @@ import {
   writeSessionAnchor,
   ensureGrowthDir,
 } from './src/services/aiosCore/wakeCheck';
+import {buildKg} from './src/services/aiosCore/kg';
 import {
   captureStarmap,
   registerHealthProvider,
@@ -336,6 +337,8 @@ const App = observer(() => {
                 getModelCount: () => modelStore.models.length,
               });
               await captureStarmap(talentRegistry.getAll().map(e => e.name));
+              // Wave C：轻量图谱（记忆↔会话）——不阻断主链，失败静默
+              await buildKg();
             })(),
           ),
       )
