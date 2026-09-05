@@ -14,6 +14,7 @@ import type {
 } from './AgentRunner.types';
 import type {TalentResult} from '../talents/types';
 import {emit} from '../../debug/eventStream';
+import {matchFirstError} from '../../debug/errorRegistry';
 
 export const DEFAULT_MAX_TURNS = 5;
 
@@ -130,17 +131,21 @@ function normalizeToolCallIds(
  * Error-outcome 收口（WORKSPACE_TOOL_ERROR_FEEDBACK_SPEC §3.2/§3.7）：
  * 1) guide（导航 shot）拼进 responseContent 随 role:'tool' 消息回传模型，
  *    让模型下一轮能按正确调用示例自纠（定位/导航/深入三字段下沉）；
- * 2) tool.error 事件落盘供真机复盘取证（观测不为 SPOF，BT07）。
+ * 2) tool.error 事件落盘供真机复盘取证（观测不为 SPOF，BT07）；
+ * 3) CP 指南针编号附事件（AIOS_CORE_SPEC v1.2 G-5）：matchFirstError 命中
+ *    即有 CP-APP-NNN，DRC/复盘可直连导航（定位/导航/深入）。
  */
 function errorOutcome(
   callId: string,
   fnName: string,
   result: Extract<TalentResult, {type: 'error'}>,
 ): AgentToolOutcome {
+  const cp = matchFirstError(result.errorMessage ?? '');
   emit('chat', 'tool.error', {
     tool: fnName,
     errorMessage: result.errorMessage,
     hasGuide: !!result.guide,
+    cpId: cp?.cpId,
   });
   return {
     callId,

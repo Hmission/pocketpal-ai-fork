@@ -11,6 +11,7 @@
  * 工具事件实体暂不接线：无消费方不建边（锋利原则，有消费方再补）。
  */
 import * as RNFS from '@dr.pogodin/react-native-fs';
+import {emit} from '../../debug/eventStream';
 import {AIOS_CONVERSATIONS_DIR, AIOS_DB_DIR} from '../../utils/paths';
 import {listMemories} from '../aiosMemory';
 
@@ -267,8 +268,13 @@ export async function buildKg(): Promise<void> {
     }
     prune();
     await persist();
+    emit('app', 'kg.built', {
+      nodes: store.nodes.length,
+      edges: store.edges.length,
+    });
   } catch {
-    // 图谱构建失败静默：下次冷启动再试
+    // 图谱构建失败静默：下次冷启动再试（观测面留痕）
+    emit('app', 'kg.build_failed', {});
   }
 }
 

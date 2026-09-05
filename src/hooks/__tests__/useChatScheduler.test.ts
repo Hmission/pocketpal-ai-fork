@@ -65,6 +65,13 @@ jest.mock('../../services/aiosMemory/butlerContext', () => ({
 jest.mock('../../services/aiosMemory/conversationLog', () => ({
   appendConversation: jest.fn().mockResolvedValue(undefined),
 }));
+// v1.2 G-4/G-6：scheduler 新依赖（门禁软检查 + 打点）
+jest.mock('../../services/aiosCore/wakeCheck', () => ({
+  isAnchorFresh: jest.fn(),
+}));
+jest.mock('../../debug/eventStream', () => ({
+  emit: jest.fn(),
+}));
 
 const mockRunCard = runImageTaskCard as jest.Mock;
 const mockRunEditCard = runEditImageTaskCard as jest.Mock;
@@ -77,6 +84,9 @@ const mockExtract = extractAndSaveMemories as jest.Mock;
 const mockAppendConv = appendConversation as jest.Mock;
 const mockServerStore = serverStore as any;
 const mockTestConn = testConnection as jest.Mock;
+const mockIsAnchorFresh = require('../../services/aiosCore/wakeCheck')
+  .isAnchorFresh as jest.Mock;
+const mockEmit = require('../../debug/eventStream').emit as jest.Mock;
 
 const msg = (text: string): MessageType.PartialText =>
   ({text}) as MessageType.PartialText;
@@ -116,6 +126,8 @@ describe('useChatScheduler', () => {
     (modelStore as any).engine = undefined;
     (modelStore as any).lastUsedModelId = undefined;
     (chatSessionStore as any).taskModelChoice = {write: null, code: null};
+    mockIsAnchorFresh.mockResolvedValue(true);
+    mockEmit.mockClear();
     mockServerStore.servers = [];
     mockServerStore.userSelectedModels = [];
     mockTestConn.mockReset();
@@ -137,6 +149,20 @@ describe('useChatScheduler', () => {
       1,
     );
     expect(handleSendPress).not.toHaveBeenCalled();
+  });
+
+  it('v1.2 G-4 门禁软检查：会话锚过期时生图前置打点 gate.stale 不卡读', async () => {
+    mockIsAnchorFresh.mockResolvedValue(false);
+    const {wrapped} = setup();
+
+    await act(async () => {
+      await wrapped(msg('画一只猫'));
+    });
+
+    expect(mockEmit).toHaveBeenCalledWith('app', 'gate.stale', {
+      task: 'image',
+    });
+    expect(mockRunCard).toHaveBeenCalledWith('一只猫'); // 软提醒不阻断
   });
 
   it('P5 编辑源图+指令：插用户消息（带图）→ 委托 runEditImageTaskCard，不触发生图路由', async () => {

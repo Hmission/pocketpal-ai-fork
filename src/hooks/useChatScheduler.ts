@@ -6,9 +6,12 @@ import {
   TaskKind,
   isCaptionIntent,
   resolveTaskEngine,
+  type TaskEngineTier,
 } from '../store/taskRouter';
 import {serverStore} from '../store/ServerStore';
 import {testConnection} from '../api/openaiClient/connection';
+import {isAnchorFresh} from '../services/aiosCore/wakeCheck';
+import {emit} from '../debug/eventStream';
 import {
   runImageTaskCard,
   runEditImageTaskCard,
@@ -311,22 +314,59 @@ async function resolveTaskModel(
   return 'abort'; // 无当前模型可选「继续当前」→ 取消
 }
 
+/** 义肢健康探活（v1.2 G-6 抽取）：serverStore 配置 + Keychain key + testConnection。 */
+async function probeLimbHealth(model: Model): Promise<boolean> {
+  const server = serverStore.servers.find(s => s.id === model.serverId);
+  if (!server) {
+    return false;
+  }
+  try {
+    const apiKey = await serverStore.getApiKey(server.id);
+    const probe = await testConnection(
+      server.url,
+      apiKey,
+      server.requestTimeoutMs,
+    );
+    return probe.ok;
+  } catch {
+    return false;
+  }
+}
+
+/** 显式降级告知（limb_offline 语义落 UI，CP-APP-015 同词面）：不静默本地硬扛。 */
+async function insertLimbOfflineNotice(): Promise<void> {
+  await chatSessionStore.addMessageToCurrentSession({
+    id: `limb-${Date.now()}`,
+    author: assistant,
+    createdAt: Date.now(),
+    text: '义肢离线，本轮由本地代答（可稍后重试或检查电脑端服务）。',
+    type: 'text',
+    metadata: {limbOfflineNotice: true},
+  } as MessageType.Text);
+}
+
 /**
- * 义肢健康门 + 主权确认（AIOS_CORE_SPEC Wave E，2026-09-05）：
- * 深度意图（limb）命中时的调度：
- *   - 本机未配置义肢（remoteModels 空）→ pass：能力未配置，本地代答（不弹窗不打扰）
- *   - 已在义肢引擎上 → proceed：直接走常规发送（义肢直答）
- *   - 义肢配置存在 → testConnection 探活：
- *       online → askModelSwitch('limb') 弹窗确认切换（可继续当前，主权可见）
- *       offline → 显式助理消息「义肢离线，本轮由本地代答」（CP-APP-015，不静默硬扛）+ pass
- * 返回 'proceed'（义肢已就绪）/ 'pass'（本地链路）/ 'abort'（用户取消不发送）。
+ * 义肢终裁（v1.2 G-6）：分级函数唯一真源。
+ * 资格面短路：未配义肢=配置缺席（≠故障），静默降级本地，不告知不打扰。
+ */
+async function resolveLimbTier(
+  task: TaskKind,
+  text: string,
+): Promise<TaskEngineTier> {
+  if (modelStore.remoteModels.length === 0) {
+    return 'local-zero';
+  }
+  const online = await probeLimbHealth(modelStore.remoteModels[0]);
+  return resolveTaskEngine(task, text, online);
+}
+
+/**
+ * 义肢主权弹窗（v1.2 G-6 纯化）：仅处理「已判 limb」的确认切换。
+ *   - 已在义肢引擎 → proceed（义肢直答，不重复弹窗）
+ *   - askModelSwitch('limb')：load→义肢已加载 proceed；current→本地 proceed；cancel→abort
  */
 async function maybeRouteLimb(): Promise<'proceed' | 'pass' | 'abort'> {
-  const remotes = modelStore.remoteModels;
-  if (remotes.length === 0) {
-    return 'pass';
-  }
-  const recommended = remotes[0];
+  const recommended = modelStore.remoteModels[0];
   const current = modelStore.activeModel;
   if (
     current &&
@@ -335,43 +375,17 @@ async function maybeRouteLimb(): Promise<'proceed' | 'pass' | 'abort'> {
   ) {
     return 'proceed';
   }
-  const server = serverStore.servers.find(s => s.id === recommended.serverId);
-  let online = false;
-  if (server) {
-    try {
-      const apiKey = await serverStore.getApiKey(server.id);
-      const probe = await testConnection(
-        server.url,
-        apiKey,
-        server.requestTimeoutMs,
-      );
-      online = probe.ok;
-    } catch {
-      online = false;
-    }
-  }
-  if (!online) {
-    // 显式降级告知（不静默本地硬扛）：分级函数 limb_offline 语义落 UI
-    await chatSessionStore.addMessageToCurrentSession({
-      id: `limb-${Date.now()}`,
-      author: assistant,
-      createdAt: Date.now(),
-      text: '义肢离线，本轮由本地代答（可稍后重试或检查电脑端服务）。',
-      type: 'text',
-      metadata: {limbOfflineNotice: true},
-    } as MessageType.Text);
-    return 'pass';
-  }
   const result = await askModelSwitch({
     task: 'limb',
-    candidates: remotes.map(m => ({
+    candidates: modelStore.remoteModels.map(m => ({
       id: m.id,
       name: getModelDisplayNameWithParams(m),
       size: m.size,
     })),
     canKeepCurrent: true,
     onLoad: async (modelId: string) => {
-      const chosen = remotes.find(r => r.id === modelId) ?? recommended;
+      const chosen =
+        modelStore.remoteModels.find(r => r.id === modelId) ?? recommended;
       await modelStore.setRemoteModel(chosen);
     },
   });
@@ -455,6 +469,10 @@ export const useChatScheduler = (
       );
 
       if (signal.task === 'image') {
+        // 门禁软检查（v1.2 G-4）：会话锚过期仅打点不卡读（照 gate-guard 软提醒语义）
+        if (!(await isAnchorFresh())) {
+          emit('app', 'gate.stale', {task: 'image'});
+        }
         // 1. 记录用户消息（无会话时自动建会话）
         await chatSessionStore.addMessageToCurrentSession({
           id: `u-${Date.now()}`,
@@ -471,13 +489,19 @@ export const useChatScheduler = (
         return;
       }
 
-      // Wave E（AIOS_CORE_SPEC）：义肢双策略——深度意图先问义肢（调不动的才借脑）。
-      // 健康门：未配义肢/离线显式告知后均落回本地链路；已配且在线 → 弹窗主权确认。
-      const limbTier = resolveTaskEngine(signal.task, text, true);
-      if (limbTier === 'limb') {
-        const limbDecision = await maybeRouteLimb();
-        if (limbDecision === 'abort') {
-          return;
+      // Wave E（AIOS_CORE_SPEC v1.2 G-6）：义肢双策略——分级函数唯一真源。
+      // ① 意图短路：非深度意图零探活开销；② 资格面短路：未配义肢=配置缺席（≠故障），静默本地代答不打扰；
+      // ③ 已配义肢：探活后交分级函数终裁（limb=弹窗主权 / limb_offline=显式告知 / local=本地链路）。
+      let limbTier: TaskEngineTier = 'local-zero';
+      if (resolveTaskEngine(signal.task, text, true) === 'limb') {
+        limbTier = await resolveLimbTier(signal.task, text);
+        if (limbTier === 'limb') {
+          const limbDecision = await maybeRouteLimb();
+          if (limbDecision === 'abort') {
+            return;
+          }
+        } else if (limbTier === 'limb_offline') {
+          await insertLimbOfflineNotice();
         }
       }
 

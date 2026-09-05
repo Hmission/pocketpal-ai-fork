@@ -1490,4 +1490,19 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
 - **测试修证实录**：①`remoteModels` 为真实 getter 依赖 `serverStore.userSelectedModels`——mock 缺字段致 TypeError 中断 → mock 补 userSelectedModels:[]；②L1 管家直答语义——「帮我做一次深度复盘」routeTask 判 chitchat，本地代答路径=管家直答（非 handleSendPress），三用例按真实链路断言修正；③CP-APP-016 词面补英文 fail 分支；④kg recall 邻居断言改用「安心仪式」查询构造（烘焙全节点直达无邻居）。
 - **事故认领（承接 §142 跨窗留痕）**：§141 收口时 stash 混入他窗在途脏文件并「按 HEAD 精准还原」，实际误伤电话窗口 TTSStore/useChatSession/ChatHeader/三 SPEC 的 WIP（对方已重放恢复并提交 010130e）。本窗认领该操作教训并固化三条纪律：①改完即提交（pathspec 局部提交，缩短在途窗口）；②磁盘为真源（Read 与 git 不一致时以 node fs 直读核验）；③动 git 暂存区前先查他窗在途文件归属。
 - **提交**：本窗提交（docs+kg+接线+指南针+单测）；push 待大王指令（§129.10）。
+
+## §144 AIOS_CORE_SPEC v1.2 复查收口：消费链闭环（2026-09-05，core 域审计登记）
+
+- 背景：大王指令复查「文档规划 vs 代码落地」——啄木鸟 6D 全量排查发现 10 项缺口（G-1..G-10），按最佳实践全部处置（文档 6 处 + 代码 5 处接线 + 测试 2 用例）。
+- **P0 文档失真修复**：errorReport.ts 确认为幽灵文件（全 git 历史不存在），SPEC v1.1 Wave B「✅ errorReport 联动」状态失真——v1.2 删除该引用 + errorRegistry 头注释改为「出口=AgentRunner tool.error 附 CP 编号」；Wave A wakeCheck 行删除「返回 WakeReport 供开场注入」虚构口径（注入源=IDENTITY.md 直读，WakeCheckResult 降为诊断物）。
+- **G-3 writeGap 接线**：rituals 收尾四拍补 ⑤ inspect（写 growth/gap_YYYYMMDD.md，内容=今日摘要 200 字+情绪行，当日一次，空拒写）——writeGap 从孤儿函数变闭环。
+- **G-4 门禁消费链**：scheduler image 分支前置 isAnchorFresh 过期软检查（emit gate.stale 打点不卡读，照 gate-guard 软提醒语义）。
+- **G-5 CP 导航链**：AgentRunner errorOutcome 加 matchFirstError(errorMessage) → tool.error 事件附 cpId（DRC/复盘可直连 CP-APP-NNN 定位/导航/深入）。
+- **G-6 义肢唯一真源**：scheduler 重构——意图短路（非深度意图零探活）→ 资格面短路（未配义肢=配置缺席静默降级不打扰）→ 探活后 resolveTaskEngine(task,text,probeOk) 终裁 → limb（纯弹窗）/ limb_offline（显式告知）/ local 三分支；probeLimbHealth/insertLimbOfflineNotice/maybeRouteLimb 三函数单职化。
+- **G-8 观测全覆盖**：kg.buildKg 成功 emit kg.built（nodes/edges）+ 失败 kg.build_failed。
+- **G-9/G-10 文档对齐**：CORE-4 口径统一（Wave A 表格标注 ⏳ 待建，自愈闭环已覆盖）；local-zero 档语义文档化（chitchat→管家直答承担）；Wave B/Wave D 表格按实更新。
+- **验证**：tsc 零错；eslint 全仓 0 错；prettier 全仓绿；jest 新增 gate.stale 用例，定向面 84/84（scheduler 22 + aiosCore + AgentRunner 全量 + intentLoading）；全受影响面 1174/1176（唯一失败=actionRegistry §936 D1 存量）。
+- **顺手**：他窗在途 PhoneCallOverlay/test 两文件 prettier 纯格式终态（未暂存归其窗口）。
+- **提交**：v1.2 本窗提交（SPEC+登记+5 处接线+测试）；push 待大王指令（§129.10）。
+- **遗留**：真机口测三项（身份锚注入/义肢切换可见/卸载重装数据存活）；CORE-4 血统脚本待建（低优先）；工具事件实体待消费方。
 - **待口测**：真机验证三项（冷启动身份注入 / 卸载重装数据存活（严禁卸载，走覆盖安装+冷启动）/ 义肢在线离线切换 UI 可见）；Wave C 工具事件实体接入（等有消费方）；CORE-2 硬执行面按需收口。

@@ -18,7 +18,7 @@ import {
 import {readSummary} from './compaction';
 import {modelStore} from '../../store';
 // AIOS 核心生命力（AIOS_CORE_SPEC Wave D）：生长四拍账本 + 情绪台账
-import {appendIteration, appendEmotion} from '../aiosCore/growth';
+import {appendIteration, appendEmotion, writeGap} from '../aiosCore/growth';
 
 // 情绪持久化文件（trackSentiment 落盘 → buildTodayState 读昨日情绪）
 const SENTIMENT_FILE = `${AIOS_MEMORIES_DIR}/sentiment.json`;
@@ -461,16 +461,21 @@ export async function maybeClosingSummary(
       // ④ 生长四拍账本（AIOS_CORE_SPEC Wave D）：reflect 三问落文件（程序化，零模型）。
       // 今日已写过则跳过（day 一次）；失败静默不阻塞收尾主链。
       try {
+        const emotionLabel =
+          _lastSentiment > 0 ? '愉悦' : _lastSentiment < 0 ? '低落' : '平稳';
         await appendIteration({
           saw: summary.trim().slice(0, 200),
           source: 'closing',
         });
         await appendEmotion({
           score: _lastSentiment,
-          label:
-            _lastSentiment > 0 ? '愉悦' : _lastSentiment < 0 ? '低落' : '平稳',
+          label: emotionLabel,
           source: 'closing',
         });
+        // ⑤ inspect 落文件（v1.2 G-3）：当日审视清单 gap_YYYYMMDD.md（当日一次；空拒写宁缺勿滥）
+        await writeGap(
+          `今日摘要: ${summary.trim().slice(0, 200)}\n情绪: ${emotionLabel}`,
+        );
       } catch (e) {
         console.warn('[rituals] growth ledger failed:', e);
       }

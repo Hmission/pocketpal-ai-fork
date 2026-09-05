@@ -1,7 +1,7 @@
 /**
  * #711 errorRegistry | CP=DRC-007 | ST=running | 测试: test_errorRegistry.ts
  *   SSOT: docs/DebugRemoteControl/COMPASS_REGISTRY.md | 铁律: BT08 错误须带上下文
- *   入口: errorReport.buildErrorReport → 出口: 报告附 CP 编号 + 事件流 error 事件
+ *   出口: AgentRunner tool.error 事件附 CP 编号（G-5）= 事件流灰色面导航
  *   角色: 错误模式注册表——regex 匹配已知错误 → CP-APP-NNN 指南针（定位/导航/深入）。
  *
  * 与母仓 exception_handler.py / exception_patterns.json 同构（TS 移植）。
