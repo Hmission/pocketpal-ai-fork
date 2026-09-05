@@ -1522,7 +1522,7 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
 - 提交：`dfe3d70`（v2.2 三项 + §11.7/11.8/§12 文档）、`baf4099`（真机致命修 + §11.9）；push 待大王指令（§129.10）。
 
 
-## §145 电话模式 v2.3：默认伙伴名「小妖」+ 两钮等大 + ASR 链路定性（2026-09-05，chat/phone 域）
+## §146 电话模式 v2.3：默认伙伴名「小妖」+ 两钮等大 + ASR 链路定性（2026-09-05，chat/phone 域）
 
 - 背景：大王三次复测三问——①默认名字定「小妖」；②「是不是重复转了一次」（见输入法秒出文本）；③「按住说话按钮比挂断大好多」，并附豆包通话页四图问参考价值。
 - **ASR 链路定性（本窗取证结论：不存在重复转写）**：grep 证 `src/**` 与 `android/app/src/main/java/**` 全域**零命中** `SpeechRecognizer`/`RecognitionListener` → App 从未接入手机系统语音识别；全 App 只有一条 ASR 链：`NativeModules.AudioRecord`（PCM16 16k mono→WAV，`AudioRecordModule.kt` B33）→ `audioStore.transcribeTask` → `AsrModule.kt` sherpa-onnx SenseVoice 离线。聊天页语音条（`ChatInput.tsx` 转写后 `handleChangeText` 填输入框）与电话模式（`ChatScreen.tsx` 注入同一 `transcribeTask`）**共用该链**，且原生 AudioRecord 是单例（同一时刻仅一个录音源）→ 结构上不可能「系统转一次 + 我们再转一次」。大王所见「秒出文本」两种解释：①用的是输入法键盘麦克风（搜狗/小米语音，系统/云端识别，App 未参与）；②我们端侧对短句 0.3–1s 返回。产品红线记档：**不改用系统识别是主动选择**（HyperOS 系统识别多走云端 + 账号依赖，违反完全离线/隐私本地化，且无 GMS 机型不可用）。
@@ -1532,5 +1532,5 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
 - 验证：tsc 0 错；PhoneCallOverlay + ChatScreen + ChatInput 6 套件 91 例全绿（含新「两钮等大」断言）；`yarn l10n:validate` 通过；prettier/eslint 零错。
 - 真机复验（K90 aab688d9，覆盖安装未卸载）：联系人位显示「**小妖**」✓；两钮像素实测同一垂直跨度 y[2158,2372]=214px=**72dp 等径**✓，圆心相距 792px≈271dp；跑分行展开画出 -9s→0s 真实曲线（1.0G/CPU 0%/51℃）✓；挂断回聊天页，全程 logcat **零 JavascriptException** ✓。
 - 自查犯错两条（诚实留痕）：①**en.json 被我改坏**——SearchReplace 时丢了行尾逗号致 JSON 解析失败，node 直读发现并补回（教训：改 JSON 后必跑 `JSON.parse` + `l10n:validate`，不能只看 diff）；②**版本号行第二次合并事故**——替换 v2.2 前缀时把 v2.2 正文并进了 v2.3 行，同类错误重复犯，已拆回正确顺序（教训：改 SPEC 版本行必须整行替换，不换局部前缀）。
-- 提交：`89a4111`（feat：名字 + 两钮等大 + §13 文档，7 文件）；本轮全程使用 `git commit -F msg -- <pathspec>`（§144 纪律固化后首次执行，提交前已核 `git diff --cached` 为空）。push 待大王指令（§129.10）。
+- 提交：`89a4111`（feat：名字 + 两钮等大 + §13 文档，7 文件）；本轮全程使用 `git commit -F msg -- <pathspec>`（§145 纪律固化后首次执行，提交前已核 `git diff --cached` 为空）。**段号更正**：本段原追为 §145，与另一窗口 f47b06f（将电话 v2.2 从 §144 顶为 §145 以让位 AIOS 审计）撞号，故本段顺延 §146——多窗并行下追加日志前**必须先扫尾部现有段号**，不能只按自己记忆递增。push 待大王指令（§129.10）。
 - **待大王裁定两项**（不擅自推进）：①通话页是否走「对话全文铺满主区」（v2.4 重构，会挤掉当前两行摘要的紧凑性）；②是否解禁免手 VAD（改交互模型 + 需原生 VAD 投入）。
