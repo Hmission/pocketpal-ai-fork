@@ -109,13 +109,14 @@ describe('PhoneCallOverlay v2.1（PHONE_SPEC §11）', () => {
   });
 
   it('对话流（§14.1）：全文铺满，未落库转写补为末条，思考态不丢（§11.4 不回退）', () => {
+    // 契约：数组**新在旧前**（index 0 = 最新），故 a1（伙伴回复）在 u1 前面
     (chatSessionStore as any).currentSessionMessages = [
-      {id: 'u1', type: 'text', text: '你好呀'},
       {
         id: 'a1',
         type: 'assistant_turn',
         steps: [{content: '你好呀，今天想聊点什么'}, {content: '我都在'}],
       },
+      {id: 'u1', type: 'text', text: '你好呀'},
     ];
     const {getByTestId, getByText} = renderPhone({
       status: 'awaiting_reply',
@@ -132,6 +133,40 @@ describe('PhoneCallOverlay v2.1（PHONE_SPEC §11）', () => {
     expect(getByText('Thinking…')).toBeTruthy();
   });
 
+  /**
+   * 顺序契约护栏（2026-09-05 K90 真机定位）：`currentSessionMessages` 是**新在旧前**
+   * （store `unshift` + DB `Q.sortBy('position', Q.desc)` + ChatView `inverted` 列表）。
+   * 旧写法按「旧在新前」遍历并 `slice(-DIALOGUE_TAIL)`，取到的是**最旧 12 条**：
+   * 真机表现为字幕停在开场问候语、伙伴新回复永远看不到（单测当时抓不到，
+   * 因为我的 fixture 也按错序写）。此用例钉住真实方向。
+   */
+  it('顺序契约：尾窗取最近 N 条（数组头部），渲染为旧→新', () => {
+    // e00 = 次新，下标越大越早（21 条远超尾窗 12）
+    const older = Array.from({length: 20}, (_, i) => ({
+      id: `e${i}`,
+      type: 'text' as const,
+      text: `e${String(i).padStart(2, '0')}`,
+      author: {id: userId},
+    }));
+    (chatSessionStore as any).currentSessionMessages = [
+      {
+        id: 'newest',
+        type: 'assistant_turn',
+        steps: [{content: 'NEWEST'}],
+      },
+      ...older,
+    ];
+    const {getByText, queryByText, toJSON} = renderPhone();
+    // 最新一条必须在场（旧写法会把它丢掉）
+    expect(getByText('NEWEST')).toBeTruthy();
+    // 超出尾窗的最旧句必须被挤出
+    expect(queryByText('e19')).toBeNull();
+    // 屏上顺序 = 旧→新（末行是最新）
+    const tree = JSON.stringify(toJSON());
+    expect(tree.indexOf('e09')).toBeLessThan(tree.indexOf('e02'));
+    expect(tree.indexOf('e02')).toBeLessThan(tree.indexOf('NEWEST'));
+  });
+
   it('对话流去重：转写已落库为末条用户句时不重复追加', () => {
     (chatSessionStore as any).currentSessionMessages = [
       {id: 'u1', type: 'text', text: '你好呀'},
@@ -142,6 +177,78 @@ describe('PhoneCallOverlay v2.1（PHONE_SPEC §11）', () => {
     });
     expect(getAllByText('你好呀')).toHaveLength(1);
     expect(queryByTestId('phone-transcript')).toBeNull();
+  });
+
+  /**
+   * 自动贴底机制回归护栏（2026-09-05 K90 真机两轮发现）：
+   * ① `InteractionManager.runAfterInteractions(scrollToEnd)` 在新行尚未测量就执行
+   *   → 字幕完全不跟底；② 改挂 onContentSizeChange 后仍稳定少滚 6dp（=18px），
+   *   因为 `scrollToEnd` 读的是未含 contentContainerStyle padding 的旧高。
+   * 现由 onLayout + onContentSizeChange 喂入权威几何，算精确偏移。此用例钉住
+   * 双入口存在且两条路径（内容溢出 / 未溢出）都不抛。
+   */
+  it('对话流自动贴底：onLayout + onContentSizeChange 算精确偏移（真机差 6dp 回归护栏）', () => {
+    (chatSessionStore as any).currentSessionMessages = [
+      {id: 'u1', type: 'text', text: '第一句'},
+      {id: 'a1', type: 'assistant_turn', steps: [{content: '第二句'}]},
+    ];
+    const {getByTestId} = renderPhone({transcript: '第三句'});
+    const scroller = getByTestId('phone-dialogue');
+    const {onContentSizeChange, onLayout} = scroller.props as any;
+    expect(typeof onContentSizeChange).toBe('function');
+    expect(typeof onLayout).toBe('function');
+    onLayout({nativeEvent: {layout: {x: 0, y: 0, width: 360, height: 300}}});
+    // 内容高于视口 → 走精确 scrollTo（溢出部分贴底）
+    expect(() => onContentSizeChange(360, 900)).not.toThrow();
+    // 内容不足视口 → 不该滚（不抛即成立）
+    expect(() => onContentSizeChange(360, 120)).not.toThrow();
+    // 不拿「读源码文本断言不含某标识符」做护栏（注释里提到旧写法就会误伤），
+    // 是否真贴底以 K90 真机复验为准。
+  });
+
+  /**
+   * 真机补修护栏（2026-09-05 K90）：上一版只挡 metadata.system，导致
+   * 「🎨 已识别为生图任务，管家优化提示词中…」这类任务占位卡被当成
+   * 伙伴说的话铺进字幕。但 **butler 卡必须保留**：管家直答卡会被原地回写为
+   * 真正回复文本，那就是伙伴说的话。
+   */
+  it('任务卡不入字幕，管家直答卡保留（v2.4 真机补修）', () => {
+    // 本用例只验「入不入流」，与数组方向无关（方向契约见上面「顺序契约」用例）
+    (chatSessionStore as any).currentSessionMessages = [
+      {
+        id: 't1',
+        type: 'text',
+        text: '🎨 已识别为生图任务，管家优化提示词中…',
+        author: {id: assistantId},
+        metadata: {imageTask: true},
+      },
+      {
+        id: 't2',
+        type: 'text',
+        text: '⚠️ 编辑未完成：源图解码失败',
+        author: {id: assistantId},
+        metadata: {editTask: true, editTaskFailed: true},
+      },
+      {
+        id: 't3',
+        type: 'text',
+        text: '调度失败：没有可用模型',
+        author: {id: assistantId},
+        metadata: {taskError: {code: 'no_model'}},
+      },
+      {
+        id: 't4',
+        type: 'text',
+        text: '你好呀，我在。',
+        author: {id: assistantId},
+        metadata: {butler: true},
+      },
+    ];
+    const {getByText, queryByText} = renderPhone();
+    expect(queryByText(/已识别为生图任务/)).toBeNull();
+    expect(queryByText(/编辑未完成/)).toBeNull();
+    expect(queryByText(/调度失败/)).toBeNull();
+    expect(getByText('你好呀，我在。')).toBeTruthy();
   });
 
   it('无活动会话（messages 为 undefined）不得抛错杀通话页', () => {

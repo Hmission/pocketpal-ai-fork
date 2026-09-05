@@ -1548,3 +1548,18 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
 - **测试债新增登记**：全量 jest 两次跑出**不同**的失败集合（第一次 9 例：ModelTypeTag 4 + actionRegistry 2 + AuthSheet 3；第二次 14 例：Checkbox/Button/Surface/MenuItem/ThinkingBubble/AboutScreen/AssistantTurnFooter… 各冒一点），共同根因单一——`TypeError: NativeHardwareInfo.default.getPerfSnapshot is not a function`（`imageGenStore.pullSnapshot` L361 的 1Hz 跑分轮询直调该方法，而 `jest/setup.ts` 的 `jest.mock('../src/specs/NativeHardwareInfo')` 工厂里没有它 → 异步方法内抛同步 TypeError 成**未处理拒绝**，冒到当时同 worker 在跑的 suite 头上）。属**跨套件污染型 flake**（单跑/换组合跑均绿，失败成员随 worker 调度漂移），与电话域零交集；存量真失败仍只有 ModelTypeTag 4 + actionRegistry 2（§936 D1 色值断言，actionRegistry 域另窗在途）。修它两条路：给 `jest/setup.ts` 的 HardwareInfo mock 补 `getPerfSnapshot` 桩，或给 `pullSnapshot` 加能力门（`typeof … === 'function'`）——**挂账未做**（不顺手改他域基建）。
 - 遗留（不谎报）：①真机终验未做——本窗不构建 APK，真实振幅波形与 `[VAD-obs]` 数据**一条真机证据都没取到**，下一窗 K90 装机 + `adb logcat` 取证成表交大王判读（判据见 §14.3 决策门）；②Kotlin 层改动未经 Gradle 编译验证（链路静态复核：RMS 块在 `if (n > 0)` 内、`getJSModule.emit` 支持子线程、异常全包不伤主链）；③免手 VAD 仍锁在 §2「按住说话」红线后，等数据与裁定。
 - 提交：`git commit -F msg -- <pathspec>` 仅本域 9 文件（SPEC + overlay/styles/ChatScreen/audioLevel+测试 + AudioRecordModule.kt + mock + MASTER_LOG §147）；追日志前已扫尾部段号（末段 §146 → 本段 §147，§146 教训执行）。push 待大王指令（§129.10）。
+
+## §148 电话模式 v2.4 真机装机终验：抓出「字幕顺序整条反了」等三缺陷（2026-09-05，chat/phone 域）
+
+- 大王指令「不推送，开始真机装机测试」→ Gradle `assembleProdRelease -x lint` BUILD SUCCESSFUL（2m40s / 2m45s 两轮，**Kotlin 编译验证就此闭环**，§147 遗留②销账）；`adb install -r` 覆盖安装（严禁卸旧），scrcpy 投屏全程在岗。
+- **真机抓出三个缺陷（单测与链路复核全都看不到）**：
+  ① **字幕顺序整条反了（最严）**：`currentSessionMessages` 是**新在旧前**——`addMessageToCurrentSession` 用 `unshift`、DB 读取用 `Q.sortBy('position', Q.desc)`、ChatView 是 `inverted` 列表，且 `useChatScheduler` / `chatImageTask` / `benchmarkOrchestrator` 都按 `[0]` = 最新来取「刚落库那一条」。v2.4 首版按「旧在新前」`forEach` + `slice(-12)`，取到的其实是**最旧 12 条**：真机冷启动字幕停在「开场问候 / 帮我画一张画。」，而聊天页里最新的两条伙伴回复完全不在字幕内。修为 `slice(0, N)` + 倒序遍历成「旧→新」。
+  **同一根因第二处**：`ChatScreen.phoneLastReply` 从数组尾部往回扫「找最后一条回复」，实际取到**最旧**那条，新回复落库也不会改变 key → 电话模式播报陈年旧话。改为从 index 0 往后扫。
+  **教训入册**：单测当时全绿，因为我的 fixture 也按错序写——**测顺序必须按真实契约造「新在旧前」的数组**，否则测试只是把误解又背了一遍。已补「顺序契约」用例（21 条消息：断言最新在场、最旧被挤出、渲染序旧→新）。
+  ② 任务卡混入字幕：只挡 `metadata.system` 不够，「🎨 已识别为生图任务…」也是 text + assistant。按写入方枚举出非对话卡标记集（`system` / `imageTask` / `imageTaskFailed` / `editTask` / `editTaskFailed` / `captionTask` / `captionTaskFailed` / `taskError`），**`butler: true` 不在集内**（管家直答卡会被原地回写为真正回复文本）。装机复验该行消失。
+  ③ 贴底差 6dp：改挂 `onContentSizeChange` 之后仍用 `scrollToEnd`，真机量得稳定少滚 18px（= 6dp，恰为 `contentContainerStyle.paddingVertical`）——`scrollToEnd` 读的是未含 padding 的旧高。改为 `onLayout` 记视口高 + `onContentSizeChange` 记内容高，算精确 `scrollTo({y: 内容高 - 视口高})`。
+- **贴底判定法（可复用，本窗踩坑定型）**：滑动起止点必须**全部落在 ScrollView 容器内**——上一版起点 y=800 在容器外，Android 不把触摸交给 ScrollView，于是「向下甩画面不变」成了假阴性。定案为双向对照：容器内**向上甩**画面 0.00% 不变（= 已在真实底）+ 同法**向下甩** 19.13% 变化（= 内容确实溢出，排除「无内容可滚」的平凡 0%）。端到端再验一次：手动翻回旧内容 → 说一轮 → 新回复到达后向上甩 0.00% → **自动贴底拿到肯定证据**。
+- **真机铁证（已落 PHONE_SPEC §14.6 全表）**：`[VAD-obs] duration=3361ms samples=43 peak=0.2283 avg=0.1331 longestSilence=81ms`（累计四组）；`[AudioStore] transcribe ok` → `[PromptWriter] chat done in 8201ms, 212 chars`；逐列探针三柱 11/14/11px（= 4/5/4dp）安静与有声反推 level 一致抬升；两钮 216px = 72dp 等径分居两侧；全程零 JavascriptException / FATAL / ANR。
+- **新登记遗留（不擅修）**：① **播报通路本机取不到声**——状态行显示「播报就绪」，播放时却 `[TTSStore] stop failed: Failed to initialize TTS engine (code: speech_error)`，**就绪态与实际可播不一致**；属 TTS 域另案，电话模式「回复到达即播报」这条链本机无法验证。② 聊天页语音条 / 音频工坊（共用 `AudioRecord` 模块）本轮未在聊天页单独复验。③ VAD 四组数据均来自环境音与外放回声，`longestSilence` 恒为 81ms（= 一个采样间隔），**答不出 §14.3 决策门①**，需大王做受控轮次重取。
+- 门禁：tsc 0 错；eslint 0 问题；`src/**` prettier 绿；电话域 + ChatScreen 4 套件 **50 例全绿**（新增顺序契约 1 例，贴底用例改造为双入口断言）。
+- 提交：`git commit -F msg -- <pathspec>` 五文件（PhoneCallOverlay.tsx + 其测试 + ChatScreen.tsx + PHONE_SPEC §14 + MASTER_LOG §148）；**不推送**（大王明确指令）。

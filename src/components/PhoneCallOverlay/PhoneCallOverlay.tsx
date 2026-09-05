@@ -1,13 +1,5 @@
 import React, {useEffect} from 'react';
-import {
-  Animated,
-  Image,
-  InteractionManager,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from 'react-native';
+import {Animated, Image, Pressable, ScrollView, Text, View} from 'react-native';
 
 import {observer} from 'mobx-react';
 
@@ -126,6 +118,37 @@ const WaveBars = ({
 type DialogueLine = {id: string; role: 'me' | 'partner'; text: string};
 
 /**
+ * 非对话卡片判定（§14.1 v2.4 真机补修）：通话字幕只放**真实对话**。
+ * 2026-09-05 K90 铁证：上一版只挡 `metadata.system`，结果「🎨 已识别为生图任务，
+ * 管家优化提示词中…」这类**任务占位卡**（`type:'text'` + author=assistant，但无
+ * system 标记）被当成「伙伴说的话」铺进字幕，读着像 bug。
+ *
+ * 标记集来自写入方（单一事实）：`chatImageTask.ts`（imageTask/editTask/captionTask
+ * 及其 Failed 变体）、`useChatScheduler.insertTaskError`（taskError）、
+ * `useChatSession.addSystemMessage`（system）。**`butler` 不在此列**——管家直答卡
+ * 会被原地回写为真正回复文本，那是伙伴说的话，必须保留。
+ * TODO(P1)：与 ChatScreen 任务卡动作槽的同源枚举收敛为一个 util（现为两处并列声明）。
+ */
+const CARD_METADATA_KEYS = [
+  'system',
+  'imageTask',
+  'imageTaskFailed',
+  'editTask',
+  'editTaskFailed',
+  'captionTask',
+  'captionTaskFailed',
+  'taskError',
+] as const;
+
+const isNonDialogueCard = (m: MessageType.Any): boolean => {
+  const meta = m.metadata as Record<string, unknown> | undefined;
+  if (!meta) {
+    return false;
+  }
+  return CARD_METADATA_KEYS.some(k => meta[k] != null && meta[k] !== false);
+};
+
+/**
  * 消息归属判定（v2.4 自查修正）：**不得假设「type=text 就是我说」**——
  * 系统提示（模型未加载 / Completion failed 等）也是 text 且 author=assistant，
  * 旧写法会把报错当「我说的话」铺进字幕。口径与 contextCompaction.speakerOf 一致：
@@ -212,14 +235,26 @@ export const PhoneCallOverlay: React.FC<PhoneCallOverlayProps> = observer(
 
     // 对话流（§14.1 v2.4：铺满主区，取代「我说/它说」两行摘要）——observer 直读
     // chatSessionStore（与播报通路同一源规则，不新增 props 接线）。
+    //
+    // **顺序契约（2026-09-05 K90 真机定位，旧写法整条反了）**：
+    // `currentSessionMessages` 是**新在旧前**——`addMessageToCurrentSession` 用
+    // `unshift`、DB 读取用 `Q.sortBy('position', Q.desc)`、ChatView 是 `inverted` 列表。
+    // 所以「最近 DIALOGUE_TAIL 条」= 数组**头部** `slice(0, N)`，再**倒序遍历**成
+    // 屏上「旧→新」字幕；直接 `forEach` + `slice(-N)` 会把最旧 N 条当最新，
+    // 真机表现为「字幕停在开场问候语，伙伴的新回复永远看不到」。
     const dialogue: DialogueLine[] = [];
     // 无活动会话时 getter 可能返 undefined（store 契约），不得在此抛错杀通话页
-    (chatSessionStore.currentSessionMessages ?? []).forEach(m => {
+    const recent = (chatSessionStore.currentSessionMessages ?? []).slice(
+      0,
+      DIALOGUE_TAIL,
+    );
+    for (let i = recent.length - 1; i >= 0; i -= 1) {
+      const m = recent[i];
       if (m.type === 'text') {
-        // 系统提示不是「谁说了什么」（§14.1）：通话字幕只放真实对话，
-        // 否则报错文本会以「我说」浅色行入流（v2.4 自查修正）
-        if (m.metadata?.system) {
-          return;
+        // 系统提示与任务卡（生图/编辑/反推/调度错误）不是「谁说了什么」：
+        // 一律不入字幕（v2.4 真机补修，否则报错与进度文案会被当成对话）
+        if (isNonDialogueCard(m)) {
+          continue;
         }
         const text = (m as MessageType.Text).text?.trim();
         if (text) {
@@ -235,17 +270,12 @@ export const PhoneCallOverlay: React.FC<PhoneCallOverlayProps> = observer(
           dialogue.push({id: m.id, role: 'partner', text});
         }
       }
-    });
+    }
     // 本轮转写尚未落库（或刚落库）：未落库时补为末条浅色行（§11.4 常驻语义不回退）
     const lastLine = dialogue[dialogue.length - 1];
     if (transcript.trim() && lastLine?.text !== transcript.trim()) {
       dialogue.push({id: LIVE_LINE_ID, role: 'me', text: transcript.trim()});
     }
-    const visibleDialogue = dialogue.slice(-DIALOGUE_TAIL);
-    // 流式增量跟随：句数 + 末句长度变即滚到底（仅句数会漏掉播报逐字增长）
-    const dialogueSig = `${visibleDialogue.length}:${
-      visibleDialogue[visibleDialogue.length - 1]?.text.length ?? 0
-    }`;
 
     // 声波数据源（v2.4 换真实振幅，§14.2）：
     // - 录音期 = 原生 RMS 事件驱动（无声即回落，不造假）
@@ -255,6 +285,15 @@ export const PhoneCallOverlay: React.FC<PhoneCallOverlayProps> = observer(
     const waveProgress = React.useRef(new Animated.Value(0)).current;
     const levelAnim = React.useRef(new Animated.Value(0)).current;
     const scrollRef = React.useRef<ScrollView>(null);
+    // 贴底几何（§14.1）：视口高 / 内容高各记一份，任一变化都重算精确偏移
+    const viewportHRef = React.useRef(0);
+    const contentHRef = React.useRef(0);
+    const stickToBottom = React.useCallback(() => {
+      const y = contentHRef.current - viewportHRef.current;
+      if (y > 0) {
+        scrollRef.current?.scrollTo({y, animated: false});
+      }
+    }, []);
     useEffect(() => {
       if (status !== 'speaking') {
         waveProgress.setValue(0);
@@ -293,12 +332,10 @@ export const PhoneCallOverlay: React.FC<PhoneCallOverlayProps> = observer(
       });
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [status]);
-    useEffect(() => {
-      const task = InteractionManager.runAfterInteractions(() =>
-        scrollRef.current?.scrollToEnd({animated: false}),
-      );
-      return () => task.cancel();
-    }, [dialogueSig]);
+    // 自动贴底（§14.1）不用 useEffect + InteractionManager（那个时机新行尚未测量），
+    // 也不用 scrollToEnd：2026-09-05 K90 真机证它读的是**未含 contentContainerStyle
+    // padding 的旧高**，稳定少滚 6dp（=18px），最新一行永远差一截。现由
+    // onContentSizeChange / onLayout 双入口喂入权威几何，算精确偏移（见下方 JSX）。
 
     if (!visible) {
       return null;
@@ -453,8 +490,18 @@ export const PhoneCallOverlay: React.FC<PhoneCallOverlayProps> = observer(
                 style={styles.conversation}
                 contentContainerStyle={styles.conversationContent}
                 showsVerticalScrollIndicator={false}
+                onLayout={e => {
+                  viewportHRef.current = e.nativeEvent.layout.height;
+                  stickToBottom();
+                }}
+                onContentSizeChange={(_contentWidth, contentHeight) => {
+                  // 此回调在新内容**测量完成后**触发，h 已含 contentContainerStyle
+                  // padding，是算真实底的唯一可靠数据源（逐字播报期也跟随）。
+                  contentHRef.current = contentHeight;
+                  stickToBottom();
+                }}
                 testID="phone-dialogue">
-                {visibleDialogue.map(line => (
+                {dialogue.map(line => (
                   <Text
                     key={line.id}
                     testID={

@@ -523,14 +523,31 @@ sync 至 en 基准 + zh 同源（l10n 缺失回退英文，既有机制）。
 - 对话流数据源：`chatSessionStore.currentSessionMessages`（overlay 已是 observer，
   直读派生，**不新增 props 接线**——与 §11.3 播报通路同源规则一致）；
   本轮**未落库的用户语音** = `transcript` prop 追加为末条浅色行（轮次级常驻语义不变，§11.4）。
-- **归属口径（v2.4 自查修正）**：不得假设「`type==='text'` 就是我说」——系统提示
-  （模型未加载 / `Completion failed: …`）也是 text 且 author=assistant，旧写法会把报错
-  当「我说的话」铺进字幕。定法：`metadata.system` 一律**不入流**；其余按 author id 判
-  `me`/`partner`，author 缺失才按消息类型回退（与 `contextCompaction.speakerOf` 同口径）。
+- **归属口径（v2.4 自查 + K90 真机两轮修正）**：不得假设「`type==='text'` 就是我说」——系统提示
+  （模型未加载 / `Completion failed: …`）与任务占位卡（「🎨 已识别为生图任务…」）都是 text 且
+  author=assistant，旧写法会把报错与进度文案当「我说的话」铺进字幕。定法：`metadata` 命中
+  **非对话卡标记集**（`system` / `imageTask` / `imageTaskFailed` / `editTask` / `editTaskFailed` /
+  `captionTask` / `captionTaskFailed` / `taskError`，写入方 = `chatImageTask` + `useChatScheduler` +
+  `useChatSession`）一律**不入流**；其余按 author id 判 `me`/`partner`，author 缺失才按消息类型
+  回退（与 `contextCompaction.speakerOf` 同口径）。**`butler: true` 不在标记集内**——管家直答卡
+  会被原地回写为真正回复文本，那就是伙伴说的话。
+- **顺序契约（K90 真机定位，此前整条反了）**：`currentSessionMessages` 是**新在旧前**——
+  `addMessageToCurrentSession` 用 `unshift`、DB 读取用 `Q.sortBy('position', Q.desc)`、
+  ChatView 是 `inverted` 列表（`currentSessionMessages[0]` = 最新，`useChatScheduler` /
+  `chatImageTask` / `benchmarkOrchestrator` 均按此取「刚落库那一条」）。字幕必须
+  `slice(0, N)` 取最近 N 条再**倒序遍历**成「旧→新」铺；按「旧在新前」遍历 + `slice(-N)`
+  的真机症状 = **字幕停在开场问候语，伙伴新回复永远看不到**（单测当时抓不到，因为
+  fixture 也按错序写——教训：**测顺序必须按真实契约造新在旧前的数组**）。
+  同一根因另中一处：`ChatScreen.phoneLastReply` 从数组尾部往回扫，取到的是**最旧**
+  一条回复→电话模式播报陈年旧话；已改为从 index 0 往后扫。
 - 尾窗 12 条（`DIALOGUE_TAIL`）：防长通话无限渲染；上滚看更早历史不在本期范围。
 - 视觉：伙伴句 `onSurface`（深）、用户句 `onSurfaceVariant`（浅），左对齐纯文本
-  （豆包同构，不用气泡——通话页是“读字幕”不是“翻聊天记录”）；新内容自动滚到底
-  （签名 = 句数 + 末句长度，否则逐字增量不跟随）。
+  （豆包同构，不用气泡——通话页是“读字幕”不是“翻聊天记录”）。
+- **贴底机制（K90 真机两轮定案）**：`onLayout` 记视口高 + `onContentSizeChange` 记内容高，
+  任一变化即 `scrollTo({y: 内容高 - 视口高, animated: false})`。两次踩坑必须留字：
+  ① `useEffect` + `InteractionManager.runAfterInteractions(scrollToEnd)`——新行尚未测量就执行，
+  字幕完全不跟底；② 改挂 `onContentSizeChange` 但仍用 `scrollToEnd`——它读的是**未含
+  `contentContainerStyle` padding 的旧高**，稳定少滚 6dp（真机量得 18px），最新一行永远差一截。
 
 ### 14.2 真实振幅通道（P1「录音实时振幅波形」收口）
 
@@ -570,8 +587,33 @@ sync 至 en 基准 + zh 同源（l10n 缺失回退英文，既有机制）。
 
 ### 14.5 本波交付状态（诚实口径）
 
-- 已落代码 + 单测：§14.1（含归属修正与系统提示不入流）、§14.2、§14.3。
-- **待真机终验**（本窗不构建 APK，K90 装机验证下一窗）：验收项 1–4 全部靠单测与链路复核，
-  真实振幅波形与 logcat `[VAD-obs]` 数据**尚未取到一条真机证据**——取到前不得称 v2.4 定版。
+- 已落代码 + 单测：§14.1（含归属修正与卡集不入流、贴底机制）、§14.2、§14.3。
+- 真机终验：K90 / Android 已跑完（2026-09-05，结果与数据见 §14.6）。该轮**抓出三个
+  单测与链路复核看不到的真缺陷**：①字幕顺序整条反了（新回复不入字幕，最严）；
+  ②任务卡混入字幕；③贴底差 6dp。三者均已当场修并重装复验——其中①还暴露了
+  **测试自身的错**：fixture 也跟着按错序写，所以单测全绿而真机全反。
 - 未入本波（回到 §12.2 P1）：转写态防闪驻留（定案见 §13.1）、ASR 增量流式回显、打断提示上行。
+
+### 14.6 K90 真机终验结果（2026-09-05，覆盖安装不卸旧）
+
+| 验收项 | 结果 | 铁证 |
+|---|---|---|
+| 零崩溃链路 | ✅ | 进页/录音/转写/生成/播报/挂断全程 logcat 无 JavascriptException / FATAL / ANR |
+| 两钮几何 | ✅ | 左右各 216px = **72dp 等径**（密度 3.0），边到边 576px ≈ 192dp 分居两侧 |
+| 真实振幅通道 | ✅ | 逐列探针三柱宽 11/14/11px（=4/5/4dp）；安静 16.8/22.5/13.9dp（反推 level 0.48/0.46/0.49）→ 有声 20.3/27.5/16.8dp（0.83/0.82/0.85）：三柱 level 一致且随音量整体抬升 = 单一 Animated 值被真 RMS 驱动 |
+| VAD 观测数据 | ✅ | `[VAD-obs] duration=6801ms samples=86 peak=0.1415 avg=0.0652 longestSilence=81ms hypotheticalStop=none`（另两组：5760ms/73、3841ms/49） |
+| 字幕不混系统/任务文案 | ✅（修后） | 「🎨 已识别为生图任务…」装机复验已不再入字幕 |
+| 字幕顺序（新回复在场） | ✅（根因修） | 修前冷启动只见「。 / 开场问候 / . / 帮我画一张画。」，而聊天页里最新的两条伙伴回复完全不在字幕内；修后同页末行 = 最新一条（「我。」+ 其回复全文 212 字） |
+| 新回复自动贴底 | ✅（修后终验） | 精确偏移版：手动翻回旧内容 → 说一轮 → 新回复到达后「容器内向上甩」画面 **0.00% 不变**（= 已在真实底），同法「向下甩」**19.13% 变化**（= 内容确实溢出，排除「无内容可滚」的假阴性）；旧 `scrollToEnd` 版量得稳定差 18px（=6dp，恰为 `paddingVertical`） |
+| 整链跑通 | ✅ | `[AudioStore] transcribe ok` → `[PromptWriter] chat done in 8201ms, 212 chars`（另 4668ms / 27593ms / 13558ms）；挂断回聊天页正常，全程零 JavascriptException / FATAL / ANR |
+| 播报通路真机取不到声 | ⚠️ 遗留（另案） | 状态行显示「播报就绪」，但播放时 `[TTSStore] stop failed: Failed to initialize TTS engine`（`code: 'speech_error'`）→ **就绪态与实际可播不一致**；「回复到达即播报」在本机无法验证。属 TTS 域，不记在 v2.4 头上，不擅自修 |
+| 聊天页语音条 / 音频工坊回归 | ⏳ 本轮未复验 | 与电话共用 `AudioRecord` 模块、电话链路已证，但本轮未在聊天页单独走一遍（按实登记，不谎报） |
+
+**VAD 数据不得据此下结论**：本轮取证环境为**环境音 / 外放回声**（非受控语音），
+`longestSilence=81ms` 恰为一个采样间隔，说明麦克风采到的是连续环声——它**无法回答**
+§14.3 决策门①（正常语速的句中停顿分布）。第四组（接新回复那一轮）
+`duration=3361ms samples=43 peak=0.2283 avg=0.1331 longestSilence=81ms` 的 peak/avg 明显高于
+纯环境音组（0.11–0.14 / 0.058–0.065），但 `longestSilence` 仍是 81ms，同样答不出停顿分布。
+要定免手与否，需大王做受控轮次（说一句 → 停 1–2 秒 → 再说一句）重取一组 `[VAD-obs]`。
+
 

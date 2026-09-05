@@ -382,7 +382,11 @@ export const ChatScreen: React.FC = observer(() => {
       return null;
     }
     const msgs = chatSessionStore.currentSessionMessages;
-    for (let i = msgs.length - 1; i >= 0; i -= 1) {
+    // 顺序契约：`currentSessionMessages` 是**新在旧前**（`addMessageToCurrentSession`
+    // 用 unshift + DB 查 `position desc` + ChatView 是 inverted 列表），所以从 index 0
+    // 往后扫才是「最后一条回复」。旧写法从数组尾部往回扫，取到的是会话里**最旧**
+    // 那条回复——新回复落库也不会改变 key，真机表现为播报陈年旧话（2026-09-05 K90）。
+    for (let i = 0; i < msgs.length; i += 1) {
       const m = msgs[i];
       if (m.type === 'assistant_turn') {
         const steps = (m as MessageType.AssistantTurn).steps ?? [];
