@@ -625,6 +625,8 @@
       "mineLabel": "You",
       "partnerLabel": "Chick",
       "ttsReady": "Voice output ready",
+      "ttsPlayFailed": "Voice output failed, tap to fix",
+      "ttsLangMismatch": "This voice can't read Chinese, tap to change",
       "ttsNoVoice": "No voice chosen yet, tap to choose",
       "ttsDisabled": "Voice output is off, tap to enable",
       "defaultPartnerName": "Xiaoyao",

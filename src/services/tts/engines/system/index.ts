@@ -7,13 +7,27 @@ import {getSystemVoices} from './voices';
 
 /**
  * Thin wrapper around the OS native TTS path exposed by
- * `@pocketpalai/react-native-speech`. Always available on iOS 13+ / Android 8+.
+ * `@pocketpalai/react-native-speech`.
+ *
+ * **不假定“系统引擎永远可用”**（2026-09-05 K90 实证推翻）：HyperOS 的 OS 语音引擎
+ * 是 `com.xiaomi.mibrain.speech`（小爱），**需用户先在厂商协议页同意激活**；未激活时
+ * speak/stop 直接抛 `Failed to initialize TTS engine (code: speech_error)`。
+ * 旧写法 `isInstalled()` 硬编码 `return true` 就是「UI 显示播报就绪、实际播不出」的
+ * 直接根因——就绪态与实际可播不同源。
  */
 export class SystemEngine implements Engine {
   readonly id = 'system' as const;
 
+  /**
+   * 就绪 = 系统真的给出音色目录。拿不到（未激活 / 无引擎 / 探测抛错）一律算不可用，
+   * 由上层给出可见提示，不假装就绪。
+   */
   async isInstalled(): Promise<boolean> {
-    return true;
+    try {
+      return (await getSystemVoices()).length > 0;
+    } catch {
+      return false;
+    }
   }
 
   getVoices(): Promise<Voice[]> {

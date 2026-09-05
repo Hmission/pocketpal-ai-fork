@@ -13,7 +13,6 @@ import {
 } from 'react-native';
 import {launchCamera, launchImageLibrary} from 'react-native-image-picker';
 import {useCameraPermission} from 'react-native-vision-camera';
-import Voice from '@react-native-voice/voice';
 import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
@@ -208,8 +207,7 @@ export const ChatInput = observer(
     const [showImageUploadMenu, setShowImageUploadMenu] = React.useState(false);
     // State for showing "model not loaded" helper text
     const [showModelWarning, setShowModelWarning] = React.useState(false);
-    // 语音输入（设备级 STT）：服务可用时输入为空→麦克风按钮，录音中转文字填入输入框
-    const [isVoiceSupported, setIsVoiceSupported] = React.useState(false);
+    // 语音输入：输入为空→麦克风按钮（仅本地 ASR 就绪时显示，见 showVoiceButton）
     const [isListening, setIsListening] = React.useState(false);
     // 编辑源图状态（P5）：外部受控；发送/取消后由 ChatView 复位
     const [showEditPickerMenu, setShowEditPickerMenu] = React.useState(false);
@@ -268,108 +266,54 @@ export const ChatInput = observer(
       }
     };
 
-    // 语音识别事件回调需要最新 handleChangeText（识别结果/实时 partial 填入输入框），
-    // 用 ref 持有避免 useEffect 重复绑定（事件处理器只在挂载时绑定一次）。
-    const handleChangeTextRef = React.useRef(handleChangeText);
-    handleChangeTextRef.current = handleChangeText;
-
-    // 设备级语音识别（STT，与模型是否多模态无关）：检查系统识别服务可用性，
-    // 绑定事件；卸载时销毁识别器释放麦克风。
-    React.useEffect(() => {
-      let mounted = true;
-      Voice.isAvailable()
-        .then(available => {
-          if (mounted) {
-            setIsVoiceSupported(!!available);
-          }
-        })
-        .catch(() => {
-          if (mounted) {
-            setIsVoiceSupported(false);
-          }
-        });
-
-      Voice.onSpeechStart = () => {
-        if (mounted) {
-          setIsListening(true);
-        }
-      };
-      Voice.onSpeechEnd = () => {
-        if (mounted) {
-          setIsListening(false);
-        }
-      };
-      Voice.onSpeechResults = e => {
-        if (mounted && e?.value?.[0]) {
-          handleChangeTextRef.current(e.value[0]);
-        }
-      };
-      Voice.onSpeechPartialResults = e => {
-        if (mounted && e?.value?.[0]) {
-          handleChangeTextRef.current(e.value[0]);
-        }
-      };
-      Voice.onSpeechError = () => {
-        if (mounted) {
-          setIsListening(false);
-        }
-      };
-      return () => {
-        mounted = false;
-        Voice.destroy().catch(() => {});
-      };
-    }, []);
-
-    // 语音按钮：SenseVoice 已就绪 → 本地录音→本地转写（离线，B33）；否则回退系统识别。
-    // localAsrRef 标记本次会话走本地录音（stop 时区分停止路径，避免异步 state 竞态）。
-    const localAsrRef = React.useRef(false);
+    /**
+     * 语音输入 = **单一路径**：本地 SenseVoice（`AudioRecord` 落盘 → sherpa-onnx 离线转写）。
+     *
+     * 为什么删掉系统识别（`@react-native-voice` / Android SpeechRecognizer）那条回退
+     * （2026-09-05 K90 实证，大王裁定「只问可不可用」）：
+     * ① HyperOS 的系统语音引擎是 `com.xiaomi.mibrain.speech`（小爱），**需用户先在厂商
+     *   协议页同意激活**；本机实测停在协议页 → `Voice.start()` 点了没反应（静默失败）。
+     * ② 那个协议页原文自述「在使用本应用的过程中，我们将联网并向您申请以下权限」——
+     *   可用性完全不在我们手里；而本地 SenseVoice **零网络调用**，断网必可用。
+     * ③ 旧写法只在「本地启动抛异常」时 catch 回退，**没有任何可用性判据**，
+     *   所以它带来的不是备份，而是第二条静默失败路径。
+     * 结论：输入框语音一律本地；模型没下好就**不显示语音键**（这是可见的状态，
+     * 不是静默兜底），下载入口在音频工坊/设置里（`asrState` 由 audioStore 统一派生）。
+     */
     const handleVoiceToggle = async () => {
       if (isListening) {
         setIsListening(false);
-        if (localAsrRef.current) {
-          localAsrRef.current = false;
-          try {
-            const p = await NativeModules.AudioRecord.stopRecording();
-            if (p) {
-              const textValue = await audioStore.transcribeTask(p);
-              if (textValue) {
-                handleChangeText(textValue);
-              }
+        try {
+          const p = await NativeModules.AudioRecord.stopRecording();
+          if (p) {
+            const textValue = await audioStore.transcribeTask(p);
+            if (textValue) {
+              handleChangeText(textValue);
             }
-          } catch (e) {
-            console.warn('[ChatInput] local ASR stop failed:', e);
           }
-        } else {
-          Voice.stop().catch(() => {});
+        } catch (e) {
+          console.warn('[ChatInput] local ASR stop failed:', e);
         }
         return;
       }
-      // 本地优先：SenseVoice 模型就绪时走离线识别链路
-      if (audioStore.asrState === 'ready') {
-        try {
-          if (Platform.OS === 'android') {
-            const granted = await PermissionsAndroid.request(
-              PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-            );
-            if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-              return;
-            }
-          }
-          await NativeModules.AudioRecord.startRecording();
-          localAsrRef.current = true;
-          setIsListening(true);
-          return;
-        } catch (e) {
-          console.warn(
-            '[ChatInput] local ASR start failed, fallback to system:',
-            e,
-          );
-        }
+      if (audioStore.asrState !== 'ready') {
+        return;
       }
-      Voice.start(undefined, {
-        EXTRA_LANGUAGE_MODEL: 'LANGUAGE_MODEL_FREE_FORM',
-        EXTRA_PARTIAL_RESULTS: true,
-      }).catch(() => setIsListening(false));
+      try {
+        if (Platform.OS === 'android') {
+          const granted = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+          );
+          if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+            return;
+          }
+        }
+        await NativeModules.AudioRecord.startRecording();
+        setIsListening(true);
+      } catch (e) {
+        console.warn('[ChatInput] local ASR start failed:', e);
+        setIsListening(false);
+      }
     };
 
     const handleSend = () => {
@@ -584,9 +528,10 @@ export const ChatInput = observer(
       user &&
       !isVideoCapable && // Hide send button for video-capable pals
       (sendButtonVisibilityMode === 'always' || value.trim());
-    // 语音输入按钮：输入为空时顶替发送钮；系统识别服务可用或本地 ASR（SenseVoice）就绪均可显示；一打字即变回发送
+    // 语音输入按钮：输入为空时顶替发送钮；**只看本地 ASR 是否就绪**
+    // （系统识别已删除，理由见 handleVoiceToggle 上方）；一打字即变回发送
     const showVoiceButton =
-      (isVoiceSupported || audioStore.asrState === 'ready') &&
+      audioStore.asrState === 'ready' &&
       user &&
       !isVideoCapable &&
       !isCameraActive &&

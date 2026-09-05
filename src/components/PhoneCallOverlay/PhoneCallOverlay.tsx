@@ -197,11 +197,21 @@ export const PhoneCallOverlay: React.FC<PhoneCallOverlayProps> = observer(
     const ttsAvailable = ttsStore.isTTSAvailable;
     const hasVoice = ttsStore.currentVoice != null;
     const ttsReady = ttsAvailable && hasVoice;
-    const ttsStatusText = !ttsAvailable
-      ? t.ttsDisabled
-      : !hasVoice
-        ? t.ttsNoVoice
-        : t.ttsReady;
+    // 播报问题优先于「就绪」（W1a 不静默）：引擎实际抛错（如 HyperOS 语音引擎
+    // 未激活 → speech_error）或中文文本撞上英文音色，都要在状态行说清楚，
+    // 并给出换音色的入口。**不自动替用户改选音色**（不兜底）。
+    const speakIssue = ttsStore.speakIssue;
+    const ttsProblem = !ttsReady || speakIssue != null;
+    const ttsStatusText =
+      speakIssue === 'failed'
+        ? t.ttsPlayFailed
+        : speakIssue === 'lang'
+          ? t.ttsLangMismatch
+          : !ttsAvailable
+            ? t.ttsDisabled
+            : !hasVoice
+              ? t.ttsNoVoice
+              : t.ttsReady;
 
     // 思考/播报中波形（bounce 三点，生图三点波浪同源——不新建动画体系）
     const wave = useWaveDots(
@@ -518,27 +528,29 @@ export const PhoneCallOverlay: React.FC<PhoneCallOverlayProps> = observer(
                 ))}
               </ScrollView>
 
-              {/* 播报通路（§11.3：不可静默失败，不可用时可点去设置） */}
+              {/* 播报通路（§11.3：不可静默失败，不可用/有问题时可点去设置） */}
               <Pressable
                 testID="phone-tts-status"
-                onPress={ttsReady ? undefined : () => ttsStore.openSetupSheet()}
+                onPress={
+                  ttsProblem ? () => ttsStore.openSetupSheet() : undefined
+                }
                 hitSlop={8}
                 style={styles.ttsRow}>
-                {ttsReady ? (
-                  <VolumeOnIcon
-                    fill={theme.colors.primary}
-                    width={theme.iconSize.xs}
-                    height={theme.iconSize.xs}
-                  />
-                ) : (
+                {ttsProblem ? (
                   <VolumeOffIcon
                     fill={theme.colors.error}
                     width={theme.iconSize.xs}
                     height={theme.iconSize.xs}
                   />
+                ) : (
+                  <VolumeOnIcon
+                    fill={theme.colors.primary}
+                    width={theme.iconSize.xs}
+                    height={theme.iconSize.xs}
+                  />
                 )}
                 <Text
-                  style={[styles.ttsText, !ttsReady && styles.ttsTextAction]}>
+                  style={[styles.ttsText, ttsProblem && styles.ttsTextAction]}>
                   {ttsStatusText}
                 </Text>
               </Pressable>

@@ -455,8 +455,11 @@ sync 至 en 基准 + zh 同源（l10n 缺失回退英文，既有机制）。
 
 本窗 grep 实证（2026-09-05）：
 
-- `src/**` 全域零命中 `SpeechRecognizer` / `RecognitionListener`；
-  `android/app/src/main/java/**` 同样零命中 → **App 从未接入手机系统语音识别**。
+- ~~`src/**` 全域零命中 `SpeechRecognizer` / `RecognitionListener` → App 从未接入手机系统语音识别~~
+  **本句已推翻（同日 W1b 取证）**：当时只 grep 了类名，漏了封装库——`ChatInput.tsx` 一直用
+  `@react-native-voice/voice`（内部就是 Android `SpeechRecognizer`）做本地 ASR 的 catch 回退。
+  教训：**否定性结论必须换多个口径交叉**（类名/包名/依赖表），否则文档会把误判固化成事实。
+  现该回退已删除（见 §15.2），本句结论反而成立了。
 - 全 App 只有**一条** ASR 链路：`NativeModules.AudioRecord`（PCM16 16k mono →
   手写 WAV 头落盘，`AudioRecordModule.kt` B33）→ `audioStore.transcribeTask(path)` →
   `AsrModule.kt` sherpa-onnx **SenseVoice 离线**（非流式、自动语种、greedy_search）。
@@ -606,8 +609,9 @@ sync 至 en 基准 + zh 同源（l10n 缺失回退英文，既有机制）。
 | 字幕顺序（新回复在场） | ✅（根因修） | 修前冷启动只见「。 / 开场问候 / . / 帮我画一张画。」，而聊天页里最新的两条伙伴回复完全不在字幕内；修后同页末行 = 最新一条（「我。」+ 其回复全文 212 字） |
 | 新回复自动贴底 | ✅（修后终验） | 精确偏移版：手动翻回旧内容 → 说一轮 → 新回复到达后「容器内向上甩」画面 **0.00% 不变**（= 已在真实底），同法「向下甩」**19.13% 变化**（= 内容确实溢出，排除「无内容可滚」的假阴性）；旧 `scrollToEnd` 版量得稳定差 18px（=6dp，恰为 `paddingVertical`） |
 | 整链跑通 | ✅ | `[AudioStore] transcribe ok` → `[PromptWriter] chat done in 8201ms, 212 chars`（另 4668ms / 27593ms / 13558ms）；挂断回聊天页正常，全程零 JavascriptException / FATAL / ANR |
-| 播报通路真机取不到声 | ⚠️ 遗留（另案） | 状态行显示「播报就绪」，但播放时 `[TTSStore] stop failed: Failed to initialize TTS engine`（`code: 'speech_error'`）→ **就绪态与实际可播不一致**；「回复到达即播报」在本机无法验证。属 TTS 域，不记在 v2.4 头上，不擅自修 |
-| 聊天页语音条 / 音频工坊回归 | ⏳ 本轮未复验 | 与电话共用 `AudioRecord` 模块、电话链路已证，但本轮未在聊天页单独走一遍（按实登记，不谎报） |
+| 播报通路真机取不到声 | ✅ 已定性并修（见 §15） | 状态行显示「播报就绪」，但播放时 `[TTSStore] stop failed: Failed to initialize TTS engine`（`code: 'speech_error'`）→ **就绪态与实际可播不一致**。同日取证定性 + W1a 修（见 §15.1/§15.3） |
+| 聊天页语音条回归 | ✅ 已复验（同日 W1b 轮） | 删掉系统识别回退后，聊天页语音钮（本地 SenseVoice 单一路径）真机走通：按下录音 → 再按停止 → `[AudioStore] transcribe ok: 'Hello.'`（logcat 09-05 23:01:59） |
+| 音频工坊回归 | ⏳ 本轮未复验 | 同共用 `AudioRecord` 模块、聊天页与电话两路已证，但工坊「导入音频文件转写」这条本轮未单独走一遍（按实登记，不谎报） |
 
 **VAD 数据不得据此下结论**：本轮取证环境为**环境音 / 外放回声**（非受控语音），
 `longestSilence=81ms` 恰为一个采样间隔，说明麦克风采到的是连续环声——它**无法回答**
@@ -615,5 +619,65 @@ sync 至 en 基准 + zh 同源（l10n 缺失回退英文，既有机制）。
 `duration=3361ms samples=43 peak=0.2283 avg=0.1331 longestSilence=81ms` 的 peak/avg 明显高于
 纯环境音组（0.11–0.14 / 0.058–0.065），但 `longestSilence` 仍是 81ms，同样答不出停顿分布。
 要定免手与否，需大王做受控轮次（说一句 → 停 1–2 秒 → 再说一句）重取一组 `[VAD-obs]`。
+
+## 15. 语音链路收口 W1（2026-09-05 大王裁定：只问可不可用）
+
+大王对 6D 全量排查给出三条裁定：① 语种「**默认中文**」+ 按推荐方案执行（不匹配只提示、
+不偷改音色）；② 系统能力**只问可不可用**，上不上云不进决策权重；③ 端到端仍按 §12.1 走。
+
+### 15.1 本机实证：系统语音引擎在这台机器上不可用（不是「慢」，是压根起不来）
+
+| 事实 | 证据 |
+|---|---|
+| 本机唯一系统识别服务 = 小爱 | `cmd package query-services -a android.speech.RecognitionService` → `com.xiaomi.mibrain.speech/.asr.AsrService`；`settings secure voice_recognition_service` 同指 |
+| 它需用户先在厂商协议页同意激活 | 用 `RECOGNIZE_SPEECH` 探针拉起 → 停在「系统语音引擎」CTA 页（`.CTAActivity`，本机从未同意）→ 我们侧 `Voice.start()` 点了没反应 |
+| 协议页原文自述「我们将联网」 | 「在使用本应用的过程中，我们将联网并向您申请以下权限：录制音频」→ **可用性完全不在我们手里** |
+| 同一个包也提供 OS TTS | `android.intent.action.TTS_SERVICE` = `.tts.TtsService` → `SystemEngine` 背后就是它；未激活 → `Failed to initialize TTS engine (speech_error)`（`stop()` 也抛，真机 logcat 实证） |
+| 本地 SenseVoice 零网络调用 | `AudioRecord` 落盘 → `AsrModule` sherpa-onnx 本地推理 → **不依赖网络**（本轮改以代码链路判定，**未做断网实测**——系统那条卡在协议页已足以定案，断网实验不再必要） |
+
+口径：**「没网能不能用」这条承诺只能押在本地**；系统那条既未激活又不可控，留着它只会多一条静默失败路径。
+
+**设备授权边界（取证纪律）**：探针拉起小爱「系统语音引擎」协议页后，**只点「退出」**（实测
+按钮中心 333,2401），**未替大王点「同意」**——厂商服务激活属用户本人决定，AI 不代签授权。
+
+### 15.2 W1b：语音输入单一路径（删系统识别回退）
+
+- `ChatInput` 删除 `@react-native-voice` 全部使用（`isAvailable` / `onSpeech*` / `start` / `stop` / `destroy`）、
+  `isVoiceSupported` 状态、`localAsrRef` 竞态标记与 `handleChangeTextRef`（只服务于旧回调）。
+- 语音键显隐 = **`audioStore.asrState === 'ready'` 单一判据**；未就绪即不显示（这是可见状态，不是静默兜底）。
+- 录音启动失败 → **不进入 listening 态**（不假装在听），日志 `[ChatInput] local ASR start failed`。
+- 电话模式与音频工坊不受影响：二者必须要 PCM / 音频文件，本就是本地链路（系统识别也不给 PCM）。
+- **真机复验（装机后）**：冷启动 → 聊天页语音钮（bounds 中心 1074,2495）按下 3s → 再按停止 →
+  `[AudioStore] transcribe ok: 'Hello.'`，**删回退后主链正常**；logcat 全程无 `local ASR start failed`、
+  无 JavascriptException。语音钮显隐判据改动未在真机上出现「钮该有却没有」的误伤（ASR 已装态）。
+- **遗留（下一笔单独收）**：`@react-native-voice/voice` 依赖 + patch + jest mock 现为孤儿；
+  移除牵动构建配置，需一次装机验证后收口，不隐性留在仓里。
+
+### 15.3 W1a：播报不骗人（就绪同源 + 默认中文 + 失败可见）
+
+| 项 | 定法 |
+|---|---|
+| 就绪同源 | `SystemEngine.isInstalled()` 不再硬编码 `true`，改为「系统真给出音色目录」；拿不到即不可用（HyperOS 未激活场景直接落到可见提示） |
+| 默认中文 | 新增单一决策点 `services/tts/voiceSelection.ts`：`pickDefaultVoice`（`zh*` 优先，无中文才退回首颗）——旧写法取 `voices[0]` 正是「中文读不出」的根因（全仓中文音色仅 Kokoro 两颗） |
+| 不匹配只提示不改选 | `isVoiceMismatchedForText`：中文文本 × 非 zh 音色 → `TTSStore.speakIssue='lang'`，通话页播报行显示「当前语音读不了中文，点此换语音」并可点进 TTS 设置；**不自动跨引擎换音色** |
+| 失败必须可见 | `play()` 的 catch 不再只 `console.warn` → `speakIssue='failed'`，同一行显示「播报失败，点此处理」（复用现有 `ttsRow` 容器，不另造 UI） |
+| 判定唯一 | 流式与回落两路都在 `TTSStore` 收口判定（chunk 热路径不重复判），UI 只读不改写 |
+
+- l10n 新增 2 key（en + zh，其余语言回退英文）：`components.phoneCall.ttsPlayFailed` / `ttsLangMismatch`。
+- 单测：`voiceSelection.test.ts` 4 例钉住契约；ChatInput 语音用例改写为「本地单一路径」三例。
+
+### 15.4 未做（诚实登记，不谎报）
+
+- 输入框「边说边出字」的流式体验：需流式 ASR 资产（zipformer 类），属新增模型资产，**未立项不动**。
+- 引擎能力位（`supportsLanguage` 等声明式契约）与两套播报门合并：W1a 剩余项，下一波。
+- **新发现（本轮真机）**：播报前的 `stop()` 会抛 `Failed to initialize TTS engine (speech_error)`
+  但**不影响后续 Kokoro 正常加载与播放**（日志实锤：抛错后紧接
+  `[Speech][Api] Initializing engine: kokoro` → `Model loaded in 875ms`）——
+  即这是一条**噪音级失败**（OS 引擎从未初始化却被 stop 打了一次）。本轮故意**不把它计入
+  `speakIssue='failed'`**（否则会把能播的场景误报为失败）；根治归入上一条「能力位 + 门合并」。
+- 真机未触发项：`speakIssue='lang'` / `'failed'` 两条提示本轮**未实际看到**（当前音色是
+  Kokoro 中文、播报成功）——判定逻辑有单测钉住，提示文案的可见性待选英文音色时补验。
+- `phoneMode` 全链透传（8 条丢标记路径）、录音启停三路径归一、原生侧统一日志：W2。
+
 
 

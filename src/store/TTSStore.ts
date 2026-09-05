@@ -17,6 +17,8 @@ import {
   KOKORO_MODEL_ESTIMATED_BYTES,
   KITTEN_MODEL_ESTIMATED_BYTES,
   ttsRuntime,
+  isVoiceMismatchedForText,
+  pickDefaultVoice,
 } from '../services/tts';
 import type {StreamingHandle, SupertonicSteps, Voice} from '../services/tts';
 import {
@@ -113,6 +115,16 @@ export class TTSStore {
 
   // Runtime playback state (discriminated union)
   playbackState: TTSPlaybackState = {mode: 'idle'};
+
+  /**
+   * 播报问题（W1a「不静默」）：`null` = 无已知问题。
+   * - `'lang'`：中文文本 × 不读中文的音色（照播，但 UI 必须说出来并给换音色入口）
+   * - `'failed'`：引擎实际抛错（如 HyperOS 语音引擎未激活 → `speech_error`）
+   *
+   * 旧行为是只 `console.warn`（真机 2026-09-05 实证：状态行一直显示「播报就绪」
+   * 而实际无声）。判定只这一处，UI 只读不改写；**不自动替用户改选音色**。
+   */
+  speakIssue: 'lang' | 'failed' | null = null;
 
   // Persisted user preferences
   autoSpeakEnabled: boolean = false;
@@ -449,6 +461,7 @@ export class TTSStore {
 
     runInAction(() => {
       this.playbackState = {mode: 'playing', messageId};
+      this.speakIssue = isVoiceMismatchedForText(text, voice) ? 'lang' : null;
     });
 
     try {
@@ -463,6 +476,10 @@ export class TTSStore {
       }
     } catch (err) {
       console.warn('[TTSStore] play failed:', err);
+      // 失败必须可见（W1a）：上一版只留日志，UI 依旧报「播报就绪」。
+      runInAction(() => {
+        this.speakIssue = 'failed';
+      });
     } finally {
       runInAction(() => {
         if (
@@ -623,6 +640,12 @@ export class TTSStore {
   ) {
     const state = this.playbackState;
     if (state.mode === 'streaming' && state.messageId === messageId) {
+      // 流式主路也要判定语种（W1a）：文本到这里已完整，不在 chunk 热路径上重复判。
+      if (isVoiceMismatchedForText(text, this.currentVoice)) {
+        runInAction(() => {
+          this.speakIssue = 'lang';
+        });
+      }
       const stripper = this.streamStripper;
       if (stripper != null) {
         const leftover = stripper.flush();
@@ -748,7 +771,7 @@ export class TTSStore {
           const pendingId = this.pendingVoiceRestore[id];
           const restored =
             pendingId != null ? voices.find(v => v.id === pendingId) : null;
-          this.currentVoice = restored ?? voices[0]!;
+          this.currentVoice = restored ?? pickDefaultVoice(voices);
         }
         delete this.pendingVoiceRestore[id];
       });

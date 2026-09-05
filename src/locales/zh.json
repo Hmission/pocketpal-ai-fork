@@ -625,6 +625,8 @@
       "mineLabel": "我说",
       "partnerLabel": "小鸡",
       "ttsReady": "播报就绪",
+      "ttsPlayFailed": "播报失败，点此处理",
+      "ttsLangMismatch": "当前语音读不了中文，点此换语音",
       "ttsNoVoice": "还没选播报语音，点这里选",
       "ttsDisabled": "语音播报已关闭，点这里开启",
       "defaultPartnerName": "小妖",

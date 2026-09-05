@@ -1,6 +1,6 @@
-import {act, fireEvent, waitFor} from '@testing-library/react-native';
+import {fireEvent, waitFor} from '@testing-library/react-native';
 import * as React from 'react';
-import {ScrollView, Alert} from 'react-native';
+import {ScrollView, Alert, NativeModules} from 'react-native';
 import {launchCamera, launchImageLibrary} from 'react-native-image-picker';
 import {runInAction} from 'mobx';
 
@@ -11,20 +11,6 @@ import {ChatInput} from '../ChatInput';
 import {render} from '../../../../jest/test-utils';
 import {palStore, chatSessionStore, modelStore} from '../../../store';
 import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
-import Voice from '@react-native-voice/voice';
-// moduleNameMapper 在运行时将该包映射到 __mocks__/external/@react-native-voice/voice.js，
-// 其命名导出（__emit* / __setVoiceAvailable 测试辅助）不在真实包类型中 → require 断言访问。
-const {
-  __emitSpeechStart,
-  __emitSpeechResults,
-  __resetVoiceMock,
-  __setVoiceAvailable,
-} = require('@react-native-voice/voice') as {
-  __emitSpeechStart: () => void;
-  __emitSpeechResults: (value: string[]) => void;
-  __resetVoiceMock: () => void;
-  __setVoiceAvailable: (available: boolean) => void;
-};
 
 // Mock react-native-image-picker
 jest.mock('react-native-image-picker', () => ({
@@ -32,7 +18,8 @@ jest.mock('react-native-image-picker', () => ({
   launchImageLibrary: jest.fn(),
 }));
 
-// B33：本地 ASR 入口接入后，测试环境固定 asrState 为未安装（语音按钮显隐仍由系统 Voice 可用性决定）
+// B33 → W1b（2026-09-05）：语音输入只剩本地 SenseVoice 一条路径，语音键显隐完全
+// 由 `audioStore.asrState` 决定；测试默认未安装，需要语音键的用例自行改 'ready'。
 jest.mock('../../../store/audioStore', () => ({
   audioStore: {
     asrState: 'not_installed',
@@ -872,17 +859,36 @@ describe('input', () => {
     });
   });
 
-  describe('Voice Input (STT)', () => {
+  describe('语音输入（ASR 单一路径：本地 SenseVoice）', () => {
+    // 契约（W1b，2026-09-05）：系统识别回退已删——HyperOS 的系统语音引擎
+    // （com.xiaomi.mibrain.speech）需用户先在厂商协议页同意激活（本机实测停在协议页
+    // → 点了没反应），且协议页自述「将联网」；本地 SenseVoice 零网络调用、断网必可用。
+    // 所以语音键显隐只看 `audioStore.asrState === 'ready'`，不再看系统 Voice 可用性。
+    const audioStoreMock = require('../../../store/audioStore')
+      .audioStore as unknown as {
+      asrState: string;
+      transcribeTask: jest.Mock;
+    };
+    const record = () =>
+      NativeModules.AudioRecord as unknown as {
+        startRecording: jest.Mock;
+        stopRecording: jest.Mock;
+      };
+
     beforeEach(() => {
       jest.clearAllMocks();
-      __resetVoiceMock();
+      NativeModules.AudioRecord = {
+        startRecording: jest.fn().mockResolvedValue(undefined),
+        stopRecording: jest.fn().mockResolvedValue('/tmp/v.wav'),
+      };
+      audioStoreMock.asrState = 'not_installed';
+      audioStoreMock.transcribeTask.mockResolvedValue('你好世界');
       runInAction(() => {
         modelStore.activeModelId = 'test-model-id';
       });
     });
 
-    it('keeps send button (no mic) when recognition service is unavailable', async () => {
-      __setVoiceAvailable(false);
+    it('本地 ASR 未就绪 → 不显示语音键（也不静默改走系统识别）', async () => {
       const {queryByTestId, getByTestId} = render(
         <UserContext.Provider value={user}>
           <ChatInput
@@ -894,38 +900,15 @@ describe('input', () => {
         </UserContext.Provider>,
       );
       await waitFor(() => {
-        expect(queryByTestId('voice-input-button')).toBeNull();
+        expect(getByTestId('send-button')).toBeTruthy();
       });
-      expect(getByTestId('send-button')).toBeTruthy();
-    });
-
-    it('shows mic on empty input and switches to send once text is typed', async () => {
-      __setVoiceAvailable(true);
-      const {getByPlaceholderText, getByTestId, queryByTestId} = render(
-        <UserContext.Provider value={user}>
-          <ChatInput
-            {...{
-              onSendPress: jest.fn(),
-              sendButtonVisibilityMode: 'editing',
-            }}
-          />
-        </UserContext.Provider>,
-      );
-      await waitFor(() => {
-        expect(getByTestId('voice-input-button')).toBeTruthy();
-      });
-      // 一打字 → 麦克风消失、发送钮出现
-      fireEvent.changeText(
-        getByPlaceholderText(l10n.en.components.chatInput.inputPlaceholder),
-        'hello',
-      );
       expect(queryByTestId('voice-input-button')).toBeNull();
-      expect(getByTestId('send-button')).toBeTruthy();
+      expect(record().startRecording).not.toHaveBeenCalled();
     });
 
-    it('starts recognition on mic tap and shows stop button while listening', async () => {
-      __setVoiceAvailable(true);
-      const {getByTestId} = render(
+    it('就绪 → 语音键出现；按下走本地录音，再按走停止+转写并填入输入框', async () => {
+      audioStoreMock.asrState = 'ready';
+      const {getByTestId, getByPlaceholderText} = render(
         <UserContext.Provider value={user}>
           <ChatInput
             {...{
@@ -939,35 +922,20 @@ describe('input', () => {
         expect(getByTestId('voice-input-button')).toBeTruthy();
       });
       fireEvent.press(getByTestId('voice-input-button'));
-      expect(Voice.start).toHaveBeenCalled();
-      await act(async () => {
-        __emitSpeechStart();
+      await waitFor(() => {
+        expect(record().startRecording).toHaveBeenCalled();
       });
       await waitFor(() => {
         expect(getByTestId('voice-stop-button')).toBeTruthy();
       });
       fireEvent.press(getByTestId('voice-stop-button'));
-      expect(Voice.stop).toHaveBeenCalled();
-    });
-
-    it('fills recognized text into the input and switches to send', async () => {
-      __setVoiceAvailable(true);
-      const {getByPlaceholderText, getByTestId} = render(
-        <UserContext.Provider value={user}>
-          <ChatInput
-            {...{
-              onSendPress: jest.fn(),
-              sendButtonVisibilityMode: 'editing',
-            }}
-          />
-        </UserContext.Provider>,
-      );
       await waitFor(() => {
-        expect(getByTestId('voice-input-button')).toBeTruthy();
+        expect(record().stopRecording).toHaveBeenCalled();
       });
-      fireEvent.press(getByTestId('voice-input-button'));
-      await act(async () => {
-        __emitSpeechResults(['你好世界']);
+      await waitFor(() => {
+        expect(audioStoreMock.transcribeTask).toHaveBeenCalledWith(
+          '/tmp/v.wav',
+        );
       });
       const input = getByPlaceholderText(
         l10n.en.components.chatInput.inputPlaceholder,
@@ -975,10 +943,38 @@ describe('input', () => {
       await waitFor(() => {
         expect(input.props.value).toBe('你好世界');
       });
-      // 识别文字填入后 → 发送钮出现
+    });
+
+    it('本地录音启动失败 → 不进入 listening 态（不假装在听）', async () => {
+      audioStoreMock.asrState = 'ready';
+      (
+        NativeModules.AudioRecord as unknown as {startRecording: jest.Mock}
+      ).startRecording = jest
+        .fn()
+        .mockRejectedValue(new Error('AUDIO_RECORD_INIT_FAIL'));
+      const {getByTestId, queryByTestId} = render(
+        <UserContext.Provider value={user}>
+          <ChatInput
+            {...{
+              onSendPress: jest.fn(),
+              sendButtonVisibilityMode: 'editing',
+            }}
+          />
+        </UserContext.Provider>,
+      );
       await waitFor(() => {
-        expect(getByTestId('send-button')).toBeTruthy();
+        expect(getByTestId('voice-input-button')).toBeTruthy();
       });
+      fireEvent.press(getByTestId('voice-input-button'));
+      await waitFor(() => {
+        expect(
+          (NativeModules.AudioRecord as unknown as {startRecording: jest.Mock})
+            .startRecording,
+        ).toHaveBeenCalled();
+      });
+      // 失败后不得留下「正在录音」的假态（旧写法靠回退掩盖，现在直接不转态）
+      expect(queryByTestId('voice-stop-button')).toBeNull();
+      expect(getByTestId('voice-input-button')).toBeTruthy();
     });
   });
 
