@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "prepare": "husky",
-    "postinstall": "./scripts/postinstall.sh",
+    "postinstall": "node scripts/postinstall.js",
     "android": "react-native run-android --mode=prodDebug",
     "build:android": "cd android && ./gradlew assembleProdDebug && cd ..",
     "build:android:release": "cd android && ./gradlew bundleRelease && cd ..",

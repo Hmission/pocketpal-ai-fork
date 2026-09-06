@@ -10,8 +10,14 @@
  * 仅靠官方 postinstall 无法恢复 → RNLlama.loadNative() 全部 dlopen 失败 →
  * "JSI bindings not installed"。
  *
- * 本脚本在 yarn postinstall 时运行：检测缺失 → 按优先级从备份源恢复 →
- * 全部失败则显式报错（把"无声丢失"变成"自动修复或明确失败"）。
+ * 本脚本在 yarn postinstall 时运行（入口 scripts/postinstall.js）：检测缺失 →
+ * 按优先级从备份源恢复 → 全部失败则显式报错（把“无声丢失”变成“自动修复或明确失败”）。
+ *
+ * 两条实测事实（2026-09-06，免得后人再猜）：
+ *   - `llvm-readelf -d librnllama.so` 的 NEEDED 只有 liblog/libandroid/libm/libdl/libc：
+ *     ggml/llama 已**静态内联**，不存在也不需要 libggml.so / libllama.so 这类伴生库。
+ *   - 真正丢不得的是 7 颗 `librnllama_jni*.so`（每颗 15MB）：官方 prebuilt 不提供，
+ *     丢了只能靠备份（本仓无 build:android-libs 脚本，无法本地重建）。
  *
  * 恢复源优先级：
  *   1. .tmp/llamarn-jni-backup/（本脚本成功运行后同步的滚动备份）
@@ -28,7 +34,33 @@ const JNI_LIBS = path.join(
   ROOT,
   'node_modules/llama.rn/android/src/main/jniLibs',
 );
-const BACKUP_DIR = path.join(ROOT, '.tmp/llamarn-jni-backup');
+// 备份源按优先级探测（2026-09-06）：
+//   0. 环境变量 LLAMARN_JNI_BACKUP（显式指定，最高优先）
+//   1. 仓库外 216MB 副本——不在 git、不受工作区 .tmp 清理影响
+//   2. 工作区 .tmp 原地（历史位置，2026-08-17 建立）
+// 旧版只认 .tmp：那里堆着四千多个杂项文件，一次目录清理就能把唯一恢复源拔掉。
+const BACKUP_CANDIDATES = [
+  process.env.LLAMARN_JNI_BACKUP,
+  'F:/backups/pp-llamarn-jni-backup',
+  path.join(ROOT, '.tmp/llamarn-jni-backup'),
+].filter(Boolean);
+
+/** 目录下是否有任意有效 .so（不用 EXPECTED/ABI 列表，避开模块顶层的声明顺序耦合） */
+function dirHasSo(dir) {
+  try {
+    return (
+      fs.existsSync(dir) && fs.readdirSync(dir).some(n => n.endsWith('.so'))
+    );
+  } catch {
+    return false;
+  }
+}
+
+/** 命中的备份目录；三处候选全空时为 null（调用方必须判空，不得直接 path.join） */
+const BACKUP_DIR =
+  BACKUP_CANDIDATES.find(c =>
+    ['arm64-v8a', 'x86_64'].some(abi => dirHasSo(path.join(c, abi))),
+  ) ?? null;
 const RELEASE_APK = path.join(
   ROOT,
   'android/app/build/outputs/apk/prod/release/app-prod-release.apk',
@@ -86,8 +118,8 @@ function missingFiles(abi) {
 /** 枚举可用的恢复源目录（按优先级，只保留存在且含 .so 的） */
 function listSources(abi) {
   const sources = [];
-  // 1. 滚动备份（本脚本同步，物理稳定）
-  sources.push(path.join(BACKUP_DIR, abi));
+  // 1. 滚动备份（本脚本同步，物理稳定；候选全空时跳过，不阻断后面的 gradle 缓存源）
+  if (BACKUP_DIR) sources.push(path.join(BACKUP_DIR, abi));
   // 2. gradle 构建缓存（clean 后失效，仍是快速来源）
   const mergedRoot = path.join(
     ROOT,
@@ -211,8 +243,15 @@ function restoreFromApk() {
 /** 成功恢复后同步滚动备份，供下次快速恢复 */
 function syncBackup(abi) {
   const srcDir = path.join(JNI_LIBS, abi);
-  const dstDir = path.join(BACKUP_DIR, abi);
   if (!fs.existsSync(srcDir)) return;
+  if (!BACKUP_DIR) {
+    // 无备份目录时只提醒不失败：本机库已完整，不能因为没地方存副本就报错退出
+    log(
+      `WARN: 无可用备份目录（试过的：${BACKUP_CANDIDATES.join(' | ')}），跳过滚动备份`,
+    );
+    return;
+  }
+  const dstDir = path.join(BACKUP_DIR, abi);
   fs.mkdirSync(dstDir, {recursive: true});
   for (const f of fs.readdirSync(srcDir)) {
     if (!f.endsWith('.so')) continue;
@@ -241,9 +280,16 @@ function main() {
     if (missing.length > 0) {
       err(`${abi} 仍缺失: ${missing.join(', ')}`);
       err(
-        '恢复源均不可用。请从备份找回 librnllama_jni*.so 放入 ' +
-          'node_modules/llama.rn/android/src/main/jniLibs/<abi>/，' +
-          '或运行 yarn build:android-libs（本地编译 llama.rn，耗时数小时）。',
+        '恢复源均不可用（已试：' +
+          (BACKUP_CANDIDATES.join(' | ') || '无') +
+          '）。可执行路径按成本排序：\n' +
+          '  a) 从仓库外备份复制回工作区：robocopy F:\\backups\\pp-llamarn-jni-backup ' +
+          '.tmp\\llamarn-jni-backup /E 后重跑本脚本\n' +
+          '  b) 从已装机设备提取（需 root 或 run-as）：adb pull /data/app/com.pocketpalai~~~/lib/arm64/' +
+          ' 下全部 librnllama*.so，摆进 node_modules/llama.rn/android/src/main/jniLibs/<abi>/\n' +
+          '  c) 从最近 release APK 提取：本脚本会自动读 android/app/build/outputs/apk/**/*.apk\n' +
+          '  注：本仓**没有** build:android-libs 脚本（旧提示里的悬空指引），源码重编 llama.rn ' +
+          '属引擎禁区，需单独立项。',
       );
       allOk = false;
     } else {
