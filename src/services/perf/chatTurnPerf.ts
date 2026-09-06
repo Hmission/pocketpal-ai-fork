@@ -11,6 +11,7 @@
  */
 import NativeHardwareInfo from '../../specs/NativeHardwareInfo';
 import {perfRecorder, type PerfPoint} from './perfRecorder';
+import {safeInterval} from '../../utils/safeInterval';
 
 export interface ChatTurnPerfSummary {
   /** 本轮 1Hz 轨迹（≥2 点才出摘要，单点/无点诚实返 null 由调用方处理） */
@@ -28,7 +29,7 @@ export interface ChatTurnPerfSummary {
 export const CHAT_TURN_TASK_TYPE = 'chat-turn';
 
 class ChatTurnPerf {
-  private timer: ReturnType<typeof setInterval> | null = null;
+  private stopSample: (() => void) | null = null;
   private points: PerfPoint[] = [];
   private startedAt = 0;
   private taskId: string | null = null;
@@ -60,39 +61,38 @@ class ChatTurnPerf {
       })
       .catch(e => console.warn('[chatTurnPerf] persist begin failed:', e));
     const sample = async () => {
-      try {
-        const s = await NativeHardwareInfo.getPerfSnapshot();
-        const pt: PerfPoint = {
-          ts: Date.now(),
-          pssKb: s.pssKb,
-          rssKb: s.rssKb,
-          cpuPct: s.cpuPct,
-          tempC: s.tempC,
-          cpuFreqMhz: s.cpuFreqMhz ?? -1,
-          gpuLoadPct: s.gpuLoadPct ?? -1,
-          gpuFreqMhz: s.gpuFreqMhz ?? -1,
-          tempCpuC: s.tempCpuC ?? -1,
-          tempGpuC: s.tempGpuC ?? -1,
-          powerMw: s.powerMw ?? -1,
-          stepTime: 0,
-          stage: 'chat-turn',
-        };
-        this.points.push(pt);
-        // 增量落盘（fire-and-forget，断点前轨迹可回看）
-        void perfRecorder.append(pt).catch(() => undefined);
-      } catch {
-        // 本点采样失败：诚实跳过，不打断轨迹（稀疏好过造假）
-      }
+      // 采样失败不再就地静默吞掉：交给 safeInterval 统一上报（首失败 + 每 10 次一条）。
+      // 轨迹依旧「稀疏好过造假」——本轮拿不到就是无点，绝不编数值。
+      const s = await NativeHardwareInfo.getPerfSnapshot();
+      const pt: PerfPoint = {
+        ts: Date.now(),
+        pssKb: s.pssKb,
+        rssKb: s.rssKb,
+        cpuPct: s.cpuPct,
+        tempC: s.tempC,
+        cpuFreqMhz: s.cpuFreqMhz ?? -1,
+        gpuLoadPct: s.gpuLoadPct ?? -1,
+        gpuFreqMhz: s.gpuFreqMhz ?? -1,
+        tempCpuC: s.tempCpuC ?? -1,
+        tempGpuC: s.tempGpuC ?? -1,
+        powerMw: s.powerMw ?? -1,
+        stepTime: 0,
+        stage: 'chat-turn',
+      };
+      this.points.push(pt);
+      // 增量落盘（fire-and-forget，断点前轨迹可回看）
+      void perfRecorder.append(pt).catch(() => undefined);
     };
-    sample();
-    this.timer = setInterval(sample, 1000);
+    this.stopSample = safeInterval('chat_turn_perf', sample, 1000, {
+      immediate: true,
+    });
   }
 
   /** run_finished：停采 + 落盘 summary + 冻结摘要；<2 点返 null（不画无米之炊） */
   finish(): ChatTurnPerfSummary | null {
-    if (this.timer) {
-      clearInterval(this.timer);
-      this.timer = null;
+    if (this.stopSample) {
+      this.stopSample();
+      this.stopSample = null;
     }
     const points = this.points;
     this.points = [];
@@ -117,9 +117,9 @@ class ChatTurnPerf {
 
   /** run_failed/中止：停采 + 删落盘残迹（失败回合不留痕迹） */
   cancel(): void {
-    if (this.timer) {
-      clearInterval(this.timer);
-      this.timer = null;
+    if (this.stopSample) {
+      this.stopSample();
+      this.stopSample = null;
     }
     this.points = [];
     if (this.taskId) {

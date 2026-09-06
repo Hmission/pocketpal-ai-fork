@@ -19,6 +19,7 @@ import * as React from 'react';
 
 import NativeHardwareInfo from '../specs/NativeHardwareInfo';
 import {chatTurnPerf} from '../services/perf/chatTurnPerf';
+import {safeInterval} from '../utils/safeInterval';
 import type {PerfPoint} from '../services/perf/perfRecorder';
 
 /** 滚动窗口（与聊天卡/生图卡同口径：最近 60 点 = 60 秒） */
@@ -66,24 +67,20 @@ export function usePerfTrace(active: boolean): PerfPoint[] {
         setHistory(turnPoints.slice(-PERF_TRACE_WINDOW));
         return;
       }
-      try {
-        const s = await NativeHardwareInfo.getPerfSnapshot();
-        if (!alive) {
-          return;
-        }
-        setHistory(prev => [
-          ...prev.slice(-(PERF_TRACE_WINDOW - 1)),
-          toPoint(s, 'ambient'),
-        ]);
-      } catch {
-        // 本点失败：跳过，不打断轨迹（稀疏好过造假）
+      // 失败不再就地静默：交 safeInterval 统一上报；轨迹依旧「稀疏好过造假」
+      const s = await NativeHardwareInfo.getPerfSnapshot();
+      if (!alive) {
+        return;
       }
+      setHistory(prev => [
+        ...prev.slice(-(PERF_TRACE_WINDOW - 1)),
+        toPoint(s, 'ambient'),
+      ]);
     };
-    tick();
-    const iv = setInterval(tick, 1000);
+    const stop = safeInterval('perf_trace', tick, 1000, {immediate: true});
     return () => {
       alive = false;
-      clearInterval(iv);
+      stop();
     };
   }, [active]);
 

@@ -12,6 +12,7 @@ import {observer} from 'mobx-react';
 
 import {modelStore} from '../../store';
 import NativeHardwareInfo from '../../specs/NativeHardwareInfo';
+import {safeInterval} from '../../utils/safeInterval';
 import {getDeviceOptions} from '../../utils/deviceSelection';
 import {getRecommendedThreadCount} from '../../utils/deviceCapabilities';
 import type {Model} from '../../utils/types';
@@ -831,12 +832,19 @@ export async function runMatrix(
           used: number;
           percentage: number;
         } | null = null;
-        const memInterval = setInterval(async () => {
-          const cur = await trackPeakMemory();
-          if (cur && (!peakMemory || cur.percentage > peakMemory.percentage)) {
-            peakMemory = cur;
-          }
-        }, PEAK_POLL_MS);
+        const stopMemPoll = safeInterval(
+          'bench_peak_mem',
+          async () => {
+            const cur = await trackPeakMemory();
+            if (
+              cur &&
+              (!peakMemory || cur.percentage > peakMemory.percentage)
+            ) {
+              peakMemory = cur;
+            }
+          },
+          PEAK_POLL_MS,
+        );
 
         let speedPp: number | undefined;
         let speedTg: number | undefined;
@@ -850,7 +858,7 @@ export async function runMatrix(
           speedPp = benchResult.speedPp;
           speedTg = benchResult.speedTg;
         } finally {
-          clearInterval(memInterval);
+          stopMemPoll();
         }
 
         // Invariant: status:'ok' rows must always carry non-null pp_avg and

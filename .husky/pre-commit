@@ -3,3 +3,10 @@ yarn --silent guard:worktree
 # B51 完成（2026-08-25）：eslint 全仓 0 错误后挂入全量 lint。
 yarn --silent lint:prettier
 yarn --silent lint
+# §155 测试基建两个闸门（规范：docs/POCKETPAL_TEST_INFRA_SPEC.md）：
+# 1) 全局替身必须覆盖 spec 方法全集——缺一个就会造成同步 TypeError 逃逸，
+#    被 jest 归给随机在跑的套件，伪装成「超时型 flake」（MASTER_LOG §154 真凶）；
+# 2) 异步轮询必须走 safeInterval，不得把异常逃逸给运行时。
+# 注：不接 .github/workflows——该目录被 .gitignore 的 workflows/ 规则排除，不入库。
+yarn --silent audit:native-mocks
+yarn --silent audit:async-timers

@@ -23,6 +23,7 @@ import {
   upscaleImage,
   SRStyle,
 } from '../services/superResEngine';
+import {safeInterval} from '../utils/safeInterval';
 import {runCaption, CaptionStage} from '../services/captionEngine';
 import {
   pngWithMeta,
@@ -339,15 +340,19 @@ class ImageGenStore {
     });
   };
 
-  /** 进度快照轮询定时器（推拉反转：1Hz 单通道 pull，替代事件风暴） */
-  private pollTimer: ReturnType<typeof setInterval> | null = null;
+  /** 进度快照轮询（推拉反转：1Hz 单通道 pull，替代事件风暴）——走 safeInterval 收口 */
+  private stopPoll: (() => void) | null = null;
   private syncPoll() {
     const active = this.loading || this.generating;
-    if (active && !this.pollTimer) {
-      this.pollTimer = setInterval(() => this.pullSnapshot(), 1000);
-    } else if (!active && this.pollTimer) {
-      clearInterval(this.pollTimer);
-      this.pollTimer = null;
+    if (active && !this.stopPoll) {
+      this.stopPoll = safeInterval(
+        'imagegen_poll',
+        () => this.pullSnapshot(),
+        1000,
+      );
+    } else if (!active && this.stopPoll) {
+      this.stopPoll();
+      this.stopPoll = null;
       // ADR-0008：轮询停止即清空跑分历史（下次生成重新计）
       runInAction(() => {
         this.perf = null;

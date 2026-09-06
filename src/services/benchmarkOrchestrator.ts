@@ -20,6 +20,7 @@ import {
 import {imageGenStore} from '../store';
 import {getChatSender} from '../debug/actionRegistry';
 import NativeHardwareInfo from '../specs/NativeHardwareInfo';
+import {safeInterval} from '../utils/safeInterval';
 import {computePerfScore, type PerfScoreCard} from './perf/perfScore';
 import type {PerfPoint} from './perf/perfRecorder';
 import {ROUTES} from '../utils/navigationConstants';
@@ -62,7 +63,7 @@ async function waitUntil(
 
 class BenchmarkOrchestrator {
   private aborted = false;
-  private sampling: ReturnType<typeof setInterval> | null = null;
+  private sampleStop: (() => void) | null = null;
   private points: PerfPoint[] = [];
   /** LLM 用例实测（真实流式时序链） */
   private llmResult: {tokAvg?: number; ttftMs?: number} = {};
@@ -81,33 +82,37 @@ class BenchmarkOrchestrator {
   // ── 随采：1Hz 轨迹（真实采集；-1 = N/A 原样保留）──
   private startSampling(stage: string) {
     this.stopSampling();
-    this.sampling = setInterval(async () => {
-      const s = await NativeHardwareInfo.getPerfSnapshot().catch(() => null);
-      if (!s) {
-        return;
-      }
-      this.points.push({
-        ts: Date.now(),
-        pssKb: s.pssKb,
-        rssKb: s.rssKb,
-        cpuPct: s.cpuPct,
-        tempC: s.tempC,
-        cpuFreqMhz: s.cpuFreqMhz ?? -1,
-        gpuLoadPct: s.gpuLoadPct ?? -1,
-        gpuFreqMhz: s.gpuFreqMhz ?? -1,
-        tempCpuC: s.tempCpuC ?? -1,
-        tempGpuC: s.tempGpuC ?? -1,
-        powerMw: s.powerMw ?? -1,
-        stepTime: imageGenStore.stepTime || 0,
-        stage,
-      });
-    }, SAMPLE_MS);
+    this.sampleStop = safeInterval(
+      'benchmark_sampling',
+      async () => {
+        const s = await NativeHardwareInfo.getPerfSnapshot().catch(() => null);
+        if (!s) {
+          return;
+        }
+        this.points.push({
+          ts: Date.now(),
+          pssKb: s.pssKb,
+          rssKb: s.rssKb,
+          cpuPct: s.cpuPct,
+          tempC: s.tempC,
+          cpuFreqMhz: s.cpuFreqMhz ?? -1,
+          gpuLoadPct: s.gpuLoadPct ?? -1,
+          gpuFreqMhz: s.gpuFreqMhz ?? -1,
+          tempCpuC: s.tempCpuC ?? -1,
+          tempGpuC: s.tempGpuC ?? -1,
+          powerMw: s.powerMw ?? -1,
+          stepTime: imageGenStore.stepTime || 0,
+          stage,
+        });
+      },
+      SAMPLE_MS,
+    );
   }
 
   private stopSampling() {
-    if (this.sampling) {
-      clearInterval(this.sampling);
-      this.sampling = null;
+    if (this.sampleStop) {
+      this.sampleStop();
+      this.sampleStop = null;
     }
   }
 

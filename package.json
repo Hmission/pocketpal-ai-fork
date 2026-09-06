@@ -23,6 +23,8 @@
     "verify:fonts": "node scripts/verify-fonts.js",
     "guard:worktree": "node scripts/guard_tracked_files.js",
     "verify:worktree": "node scripts/guard_tracked_files.js --quiet",
+    "audit:native-mocks": "node scripts/audit-native-mocks.js",
+    "audit:async-timers": "node scripts/audit-async-timers.js",
     "lint:fix": "eslint \"**/*.{js,ts,tsx}\" --fix",
     "format": "prettier --write \"**/*.{js,ts,tsx,json,md}\"",
     "start": "react-native start",

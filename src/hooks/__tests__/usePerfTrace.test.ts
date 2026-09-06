@@ -45,14 +45,16 @@ describe('usePerfTrace — 长驻观测面环境轨迹', () => {
     getSnapshot.mockResolvedValue(snapshot(3 * GB));
 
     const {result} = renderHook(() => usePerfTrace(true));
+    // §155：必须用 **异步** 推进假时间。safeInterval 有防重入（一轮未完不得叠加），
+    // 而同步 advanceTimersByTime 不 flush 微任务，会让它误判「上一轮还在跑」而跳点。
     await act(async () => {
-      jest.advanceTimersByTime(0);
+      await jest.advanceTimersByTimeAsync(0);
     });
     expect(result.current).toHaveLength(1);
     expect(result.current[0].stage).toBe('ambient');
 
     await act(async () => {
-      jest.advanceTimersByTime(2000);
+      await jest.advanceTimersByTimeAsync(2000);
     });
     expect(result.current).toHaveLength(3);
     // 真实 PSS 落点（不插值不编造）
@@ -75,7 +77,7 @@ describe('usePerfTrace — 长驻观测面环境轨迹', () => {
 
     const {result} = renderHook(() => usePerfTrace(true));
     await act(async () => {
-      jest.advanceTimersByTime(3000);
+      await jest.advanceTimersByTimeAsync(3000);
     });
 
     expect(getSnapshot).not.toHaveBeenCalled();
@@ -90,18 +92,18 @@ describe('usePerfTrace — 长驻观测面环境轨迹', () => {
       {initialProps: {active: true}},
     );
     await act(async () => {
-      jest.advanceTimersByTime(2000);
+      await jest.advanceTimersByTimeAsync(2000);
     });
     expect(result.current.length).toBeGreaterThan(0);
 
     rerender({active: false});
     await act(async () => {
-      jest.advanceTimersByTime(3000);
+      await jest.advanceTimersByTimeAsync(3000);
     });
     expect(result.current).toEqual([]);
     const callsAfterStop = getSnapshot.mock.calls.length;
     await act(async () => {
-      jest.advanceTimersByTime(3000);
+      await jest.advanceTimersByTimeAsync(3000);
     });
     expect(getSnapshot).toHaveBeenCalledTimes(callsAfterStop);
   });
@@ -111,7 +113,7 @@ describe('usePerfTrace — 长驻观测面环境轨迹', () => {
 
     const {result} = renderHook(() => usePerfTrace(true));
     await act(async () => {
-      jest.advanceTimersByTime((PERF_TRACE_WINDOW + 20) * 1000);
+      await jest.advanceTimersByTimeAsync((PERF_TRACE_WINDOW + 20) * 1000);
     });
     expect(result.current).toHaveLength(PERF_TRACE_WINDOW);
   });
@@ -124,7 +126,7 @@ describe('usePerfTrace — 长驻观测面环境轨迹', () => {
 
     const {result} = renderHook(() => usePerfTrace(true));
     await act(async () => {
-      jest.advanceTimersByTime(3000);
+      await jest.advanceTimersByTimeAsync(3000);
     });
     // 首帧 + 3 次 tick = 4 次尝试，其中 1 次失败 → 轨迹只留 3 个真点
     expect(getSnapshot).toHaveBeenCalledTimes(4);

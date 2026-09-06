@@ -3,6 +3,7 @@ import {useEffect, useState, useContext} from 'react';
 import DeviceInfo from 'react-native-device-info';
 
 import {formatBytes, hasEnoughSpace} from '../utils';
+import {safeInterval} from '../utils/safeInterval';
 import {L10nContext} from '../utils';
 import {t} from '../locales';
 
@@ -85,15 +86,16 @@ export const useStorageCheck = (
     };
 
     checkStorage();
-    let intervalId: NodeJS.Timeout | undefined;
+    let stop: (() => void) | null = null;
     if (enablePeriodicCheck) {
-      intervalId = setInterval(checkStorage, checkInterval);
+      // 周期检查走收口原语；首调用的失败已在 checkStorage 内部转成 UI 状态（有业务语义，不交原语上报）
+      stop = safeInterval('storage_check', checkStorage, checkInterval);
     }
 
     return () => {
       abortController.abort();
-      if (intervalId) {
-        clearInterval(intervalId);
+      if (stop) {
+        stop();
       }
     };
   }, [model, enablePeriodicCheck, checkInterval, l10n]);

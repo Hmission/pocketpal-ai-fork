@@ -15,6 +15,7 @@ import Share from 'react-native-share';
 import {resolveAudioPath} from '../../../services/asrEngine';
 import {audioRecorder, RecorderError} from '../../../services/audio/recorder';
 import {getPlayPosition} from '../../../services/ttsEngine';
+import {safeInterval} from '../../../utils/safeInterval';
 import {
   SUPERTONIC_VOICES,
   KOKORO_VOICES,
@@ -84,8 +85,10 @@ export const AudioWorkshopTab: React.FC<{
     if (!isPlaying) {
       return;
     }
-    const t = setInterval(async () => {
-      try {
+    // 失败不就地静默：交 safeInterval 统一上报（首失败 + 每 10 拍一条），下一拍照常重试
+    const stop = safeInterval(
+      'audio_play_position',
+      async () => {
         const st = await getPlayPosition();
         runInAction(() => {
           audioStore.playPosition = st.position;
@@ -98,11 +101,10 @@ export const AudioWorkshopTab: React.FC<{
             }
           }
         });
-      } catch {
-        // 轮询失败静默，下一拍重试
-      }
-    }, 500);
-    return () => clearInterval(t);
+      },
+      500,
+    );
+    return stop;
   }, [isPlaying]);
 
   // 转写历史（kind='transcribe' success，历史条 + 结果区 success 页）

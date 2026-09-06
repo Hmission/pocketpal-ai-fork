@@ -35,9 +35,11 @@ npx tsc --noEmit          # 类型检查（改代码后必跑）
 npx jest <path>           # 单测（jest.config.js 配置覆盖率门槛）
 yarn l10n:validate        # 多语言 JSON 校验
 yarn verify:fonts         # 字体子集校验（新增语言必跑）
+yarn audit:native-mocks   # 原生契约替身覆盖闸门（改 src/specs 或 jest 替身后必跑）
+yarn audit:async-timers   # 异步轮询收口闸门（新增 setInterval 后必跑）
 ```
 
-## 验证门禁纪律（2026-09-06 立；四条都是本仓踩过的坑）
+## 验证门禁纪律（2026-09-06 立；五条都是本仓踩过的坑）
 
 1. **报告任何测试失败前，先抽完整错误文本再分类**（三轮实测后的定稿口径）。本仓曾把一个**确定性缺陷**（全局 mock 落后于 spec，见 MASTER_LOG §154）误登记为「超时型 flake」两轮，教训：
    - **禁止以「看着像 flake」收尾**：全量跑必须落盘完整输出再按错误类型归类（PowerShell 管道会破坏中文，用 node `spawnSync` 捕 stdout/stderr），并统计 `Exceeded timeout of` 命中数；
@@ -51,6 +53,7 @@ yarn verify:fonts         # 字体子集校验（新增语言必跑）
    - 正向（§153）：测试 mock barrel `'../../../hooks'`，组件却 `from '../../hooks/useTheme'` → **mock 从未生效，测试一直在真环境跑**；不断言具体值时更阴——不红，只是静默失效（本仓 4 处）。
    - **判定顺序**：先对齐两边路径（读被测组件的 import 原文），再谈「坏了/过期」；必要时一句 `console.log('SAME_OBJECT:', a === b)` 定音。另：**组件测试的断言应绑 token 语义（如 `mockTheme.colors.tertiary`）而非 hex 字面量**——色值 SSOT 属主题域，锁 hex 会让「改主题色」错误地惊动组件测试。
 4. **断言纪律：正面与否定结论同等对待**。任何结论写进文档/报告或据此动手前，必须有**第二条独立口径实证**（列真实清单 / 读二进制头 / 跑最小实验）；只有一条线索加先验知识时只能写成「待验证假设」。断言「缺失/坏了」最危险——它会立刻引发大动作（入仓/重编/重写）。**自己造成的现场破坏不得归因给仓库**（典型：`--ignore-scripts`、PowerShell `Set-Content` 把 LF 改 CRLF 使补丁永久拒施）。误判一旦发现，立即就地改账并写明「此前结论错误 + 推翻它的证据」，不做无声修正。
+5. **测试基建三条铁律见 `docs/POCKETPAL_TEST_INFRA_SPEC.md`**：① 替身与被测代码同一模块来源；② 异步轮询一律走 `src/utils/safeInterval.ts`（**禁止**裸 `setInterval(async …)`，也禁止靠「体内有 try」自证安全——行级 try 证明不了危险那行被包住）；③ 全局替身必须覆盖 spec 方法全集。两个闸门已挂 `.husky/pre-commit`（每次提交必跑）。⚠ **不要去改 `.github/workflows/`**：本仓 `.gitignore` 有一条 `workflows/`（本意是忽略开发流程产物），按 git 语义**连带排除了 `.github/workflows/`**，该目录不入库——改它等于没改（本轮实测踩到，已回滚）。**新增工具/闸门后要拿探针自证它能报错**（空转的闸门比没有更险，它给你虚假的安全感）。
 
 ## 提交规范
 

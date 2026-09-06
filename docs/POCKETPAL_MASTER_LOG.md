@@ -1762,3 +1762,69 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
 - **待推清单**（大王明令：未大版本封版不推送）：本节落地前实测 `git rev-list --count origin/main..HEAD` = **22 笔**（HEAD `6adaa36`），本笔落地后 **23 笔**。积压只留痕不靠推送消风险；待封版或明确指令再直连推（`git -c http.proxy= -c https.proxy= push origin main`，不改 git config）。
 - 遗留（更新）：① 音频工坊「导入音频转写」未复验；② `speakBlock='engine'` / `speakEntry='setup'` 两条新文案真机可见性未逐项看到；③ ~~飘移 flake 专项~~ → 已定位并修复（§154.2）；④ ~~ModelTypeTag 色值 SSOT 裁定~~ → 伪命题（§153）。
 
+---
+
+## §155 测试基建规范化：轮询原语 + 两个闸门（2026-09-06，大王令「长链打穿 / 文档先行 / SOP 闭环」）
+
+**门禁**：route `act-e89f3a07`，执行权跨轮仍 `agent_active`，收尾补 `return`。
+
+**交付**：新建规范 `docs/POCKETPAL_TEST_INFRA_SPEC.md`（三条铁律 + 闸门口径 + 存量清单）、原语
+`src/utils/safeInterval.ts`（异常永不逃逸 / 防重入 / `console.warn` + DRC 事件流双通道上报，附
+`immediate` 选项以收口「先裸调一次 async 再开定时器」这个同样逃逸的口子）、`safeInterval.test.ts` 9 例
+（含用原语复现 §154 那类同步 TypeError）、**存量 8 处轮询全部迁移**、两个闸门
+`scripts/audit-native-mocks.js` + `scripts/audit-async-timers.js`（均已挂 `.husky/pre-commit`）。
+
+### 155.1 两个真发现
+
+1. **第二个同类真凶**：`src/services/benchmarkOrchestrator.ts:85` —— `async () =>` 且体内无 `try`，
+   而它的**采样间隔可配到 100ms**（默认 1000），比 §154 真凶的 1s 轮询密 10 倍，风险只高不低。属跑分
+   引擎侧文件，本轮只改这一行轮询收口（逻辑一字未动），按禁区红线登记而非静默越线。
+2. **「接入 CI」是无效动作**：奴家往 `.github/workflows/ci.yml` 加了两个 step 还写进了文档，但
+   `git status` 不显示它——`git check-ignore -v` 实测 `.gitignore:109` 有条 `workflows/`（注释表明本意
+   是忽略开发团队流程产物），按 git 语义**连带排除了 `.github/workflows/`**，该目录不入库。改它永远不会
+   成为提交，磁盘那份是**幽灵差异**。已回滚，改挂真正已跟踪的门禁载体 `.husky/pre-commit`（每次提交必跑，
+   比 CI 更早）。接真 CI 需先调整该 ignore 规则，属仓库级决定，待裁。
+
+### 155.2 纪律第 4 条的自我应用：本轮 5 起误判，全部在出口前或当场纠正
+
+- 审查脚本 v1 把 **3 处健康代码**（体内有 `try`）报成高危，同时**漏掉真凶**；v2 只认「try 包住调用行」
+  仍误判（`imageGenStore` 的 try 不覆盖 L361）→ **放弃行级推断**，改用最保守口径「未走 `safeInterval`
+  即未收口」。奴家的审查器本身就是会被证伪的假设。
+- 「全仓 15 个 spec」是**未数的估词**，实为 **6 个**（Grep 列文件与闸门输出双口径核对）。
+- 「`Write` 工具在 Windows 产 CRLF」：本轮 5 个新建文件确为 CRLF，但上窗同样用 Write 建的 `recorder.ts`
+  等 3 个文件全为 LF → **不能归因为工具必然行为**，只按事实修掉（未证不归因）。
+- `usePerfTrace.test.ts` 3 例失败：先取错误文本再定性——同步 `jest.advanceTimersByTime()` 不 flush
+  微任务，使 `safeInterval` 防重入误判「上一轮还在跑」而跳点（期望 60 点实收 1 点，极像原语坏了）。
+  只把时间推进方式改为 `advanceTimersByTimeAsync`，**断言期望未动一字**。
+- **本日志自身的一次虚惊**：奴家先判「`docs/MASTER_LOG.md` 丢失且未入库」，再判「§154 被并发覆盖」，
+  两条**都错**。真相是另一窗 14:34 已 `git mv` 为 `POCKETPAL_MASTER_LOG.md`（tracked，§100→§154 全在，
+  mtime 未变）。错因是工具行号口径不一致：`Read` 报 total 1708、`Select-String` 报 §154 在 1719 行、
+  实际 1748 行——奴家用一套行号去核另一套的结论。**跨工具行号不可混用**，须以内容锚点或字节数定音。
+
+### 155.3 两个闸门均拿探针自证有效
+
+空转的闸门比没有更危险。① timers：注入未包 try 的 `setInterval(async …)` → `risky=1` 命中，删除后回 0；
+② mocks：往 `src/specs/NativeHardwareInfo.ts` 临时注入 `probeMissingMethod` → `exit 1` 且指名 MISS，
+还原后 `exit 0`，并用 `git status` 证实 spec 文件完全复原（顺带暴露该脚本初版漏识别可选方法
+`getChipset?()`，已用 `\??` 修正——**这个 bug 正是探针实验逼出来的**）。
+
+### 155.4 门禁（并发模式，因真因已除）
+
+两个 audit `exit 0`｜tsc 0 错｜eslint **0 error**（31 warnings 全为存量，新文件 0 warning）｜prettier
+本窗 13 个文件全绿（唯一 warn 是存量债 `src/__automation__/README.md`，非本窗引入，未越界动）｜
+**全量 `npx jest --ci` 连跑两次：344 套件 / 4803 passed + 2 skipped + 0 failed / exit 0**（同一结果）。
+
+### 155.5 待裁（登记不擅动）
+
+① `.gitignore` 的 `workflows/` 连带屏蔽 `.github/workflows/`——是否调整（直接影响 CI 可用性）；
+② `AGENTS.md` 与多个 SPEC 仍引用旧路径 `docs/MASTER_LOG.md`，实际已是 `docs/POCKETPAL_MASTER_LOG.md`
+（14:34 改名所致）——引用需统一修正，但改名由他窗发起，奴家不擅自全域改；
+③ `docs/INDEX.md` 只收治理类文档，业务 SPEC（含本篇新建的测试基建 SPEC）未入导航——补录需改
+`DOC_GOVERNANCE_SPEC §2`（治理规范属禁区红线，需明确授权）；
+④ 洋葱事实库 `code_facts.duckdb` 未在本仓建索引，`code_fact_query` 不可用，本轮定位按 gate 降级链
+Grep→Glob→Read 完成；构建器在母仓 `F:\AIOS\scripts\search\build_all_indexes.py`，跨仓动作需点头；
+⑤ 真机复验两项（音频工坊导入转写、`speakBlock='engine'` / `speakEntry='setup'` 新文案）本轮未做。
+
+**结论**：异步收口与替身覆盖从「靠个人自觉」变成「不写就闸门红、提交拦得住」。本轮也再次证明：
+**能自动闸住的绝不靠纪律，只能靠纪律的要能一键自证**；而奴家自己每轮的推断，绝大多数都需要第二条
+口径才能收口——这一轮 5 起误判里没有一起变成实际损害，全靠「动手前先证伪」。

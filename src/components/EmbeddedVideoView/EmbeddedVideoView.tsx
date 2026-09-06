@@ -14,6 +14,7 @@ import {
   CameraPosition,
 } from 'react-native-vision-camera';
 
+import {safeInterval} from '../../utils/safeInterval';
 import {useTheme} from '../../hooks/useTheme';
 
 import {createStyles} from './styles';
@@ -48,7 +49,7 @@ export const EmbeddedVideoView = observer(
     const [isCapturing, setIsCapturing] = useState(false);
     const camera = useRef<Camera>(null);
     const device = useCameraDevice(cameraPosition);
-    const captureTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const captureStopRef = useRef<(() => void) | null>(null);
 
     // Check if running in simulator - simplified check for iOS simulator
     const isSimulator = Platform.OS === 'ios' && !device;
@@ -84,51 +85,58 @@ export const EmbeddedVideoView = observer(
     }, [hasPermission, requestPermission, onClose, l10n]);
 
     const stopCapturing = useCallback(() => {
-      if (captureTimerRef.current) {
-        clearInterval(captureTimerRef.current);
-        captureTimerRef.current = null;
+      if (captureStopRef.current) {
+        captureStopRef.current();
+        captureStopRef.current = null;
       }
     }, []);
 
     const startCapturing = useCallback(() => {
       stopCapturing();
 
-      captureTimerRef.current = setInterval(async () => {
-        if (camera.current && !isCapturing) {
-          setIsCapturing(true);
-          try {
-            const photo = await camera.current.takePhoto({
-              flash: 'off',
-              enableShutterSound: false,
-            });
-
-            // Convert photo to base64
-            const filePath = Platform.OS === 'ios' ? photo.path : photo.path;
-            const base64Data = await RNFS.readFile(filePath, 'base64');
-
-            // Clean up the temporary file immediately after reading
+      captureStopRef.current = safeInterval(
+        'video_capture',
+        async () => {
+          if (camera.current && !isCapturing) {
+            setIsCapturing(true);
             try {
-              await RNFS.unlink(filePath);
-            } catch (deleteError) {
-              console.warn(
-                'Failed to delete temporary image file:',
-                deleteError,
+              const photo = await camera.current.takePhoto({
+                flash: 'off',
+                enableShutterSound: false,
+              });
+
+              // Convert photo to base64
+              const filePath = Platform.OS === 'ios' ? photo.path : photo.path;
+              const base64Data = await RNFS.readFile(filePath, 'base64');
+
+              // Clean up the temporary file immediately after reading
+              try {
+                await RNFS.unlink(filePath);
+              } catch (deleteError) {
+                console.warn(
+                  'Failed to delete temporary image file:',
+                  deleteError,
+                );
+                // Don't throw - continue with the base64 data even if cleanup fails
+              }
+
+              // Create data URL format expected by llama.rn
+              const imageBase64 = `data:image/jpeg;base64,${base64Data}`;
+
+              onCapture(imageBase64);
+            } catch (error) {
+              // Only log error if camera is still supposed to be active
+              console.error(
+                'Error taking photo or converting to base64:',
+                error,
               );
-              // Don't throw - continue with the base64 data even if cleanup fails
+            } finally {
+              setIsCapturing(false);
             }
-
-            // Create data URL format expected by llama.rn
-            const imageBase64 = `data:image/jpeg;base64,${base64Data}`;
-
-            onCapture(imageBase64);
-          } catch (error) {
-            // Only log error if camera is still supposed to be active
-            console.error('Error taking photo or converting to base64:', error);
-          } finally {
-            setIsCapturing(false);
           }
-        }
-      }, captureInterval);
+        },
+        captureInterval,
+      );
     }, [stopCapturing, captureInterval, isCapturing, onCapture]);
 
     // Start capturing frames at the specified interval
