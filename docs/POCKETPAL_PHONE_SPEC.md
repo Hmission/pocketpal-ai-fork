@@ -735,8 +735,8 @@ sync 至 en 基准 + zh 同源（l10n 缺失回退英文，既有机制）。
 
 ### 16.5 未做（诚实登记）
 
-- W2b：录音启停三路径归一（ChatInput / 电话 / 音频工坊各自直调 `NativeModules.AudioRecord`）、
-  原生侧统一日志。
+- ~~W2b：录音启停三路径归一（ChatInput / 电话 / 音频工坊各自直调 `NativeModules.AudioRecord`）、
+  原生侧统一日志。~~ **已做，见 §17**（2026-09-06）。
 - 真机未触发项：`speakBlock='engine'`（需 OS 音色 + 未激活）与 `speakEntry='setup'` 的
   文案可见性，本轮未逐项看到（引擎就绪位有单测钉住，UI 可见性待装机验一次）。
 
@@ -751,22 +751,105 @@ sync 至 en 基准 + zh 同源（l10n 缺失回退英文，既有机制）。
 | 聊天页入口 | ✅ | 朗读钮（▷）与语音钮均在场（`speakEntry` / `asrState` 新判据未误伤） |
 | 崩溃面 | ✅ | 全程零 JavascriptException / FATAL / ANR；挂断回聊天页正常 |
 
-### 16.7 端到端 W3 的复现前置事实（只读评估，未动引擎禁区）
+### 16.7 端到端 W3 的前置事实（**§17 本轮已推翻其中两条，就地改账**）
 
-大王要求「依次执行」，但端到端开工前有三条硬事实需先登记（均本轮实证）：
+1. ~~「只用现有 `.so`」不可复现：唯一来源是 `.tmp/llamarn-jni-backup/`，它在 `.tmp/`
+   里、不在 git 里。~~ → 事实修正：**真正丢不得的只有 7 颗 `librnllama_jni*.so`**
+   （官方 prebuilt 不提供），其余由 `yarn install --check-files` 让 llama.rn 自己重下。
+   备份也已从易失的 `.tmp/` 扩到**仓库外副本** `F:\backups\pp-llamarn-jni-backup\`
+   （restore 脚本现按 env → 仓库外 → `.tmp` 三源探测）。**不入 git 是故意的**：216.8MB
+   进仓对本仓（有 pack 丢失史、禁 `filter-repo` 清理）不可逆。
+2. ~~悬空指针 `yarn build:android-libs`。~~ **已删**：restore 脚本报错现给四条可执行
+   路径（仓库外 robocopy / 设备提取 / APK 自动读 / `--check-files`），并明写
+   「本仓**没有** build:android-libs，源码重编 llama.rn 属引擎禁区需单独立项」。
+3. **仍成立**：备份里 `librnllama.so` 无 `llama_supports_audio_in/out` 符号、
+   `rnllamaBuildFromSource` 仍关闭 → 端到端需先重编 llama.cpp/llama.rn，**那是引擎禁区**。
+   （本轮另核一条相关事实：`librnllama.so` 的 ELF NEEDED 只有系统库，ggml/llama
+   已**静态内联**——不存在也不需要 `libggml.so` 这类伴生库。）
 
-1. §12.1 S1 的前提「只用现有 `.so`」**不可复现**：`_jni` 变体不在版本控制，
-   目前全仓唯一来源是 `.tmp/llamarn-jni-backup/`（18 颗，arm64-v8a 14 + x86_64 4），
-   与本机 `node_modules/llama.rn/.../jniLibs` 同步存在——**它在 `.tmp/` 里，不在 git 里**。
-2. `scripts/restore-llamarn-jnilibs.js` 失败提示里给出的恢复路径 `yarn build:android-libs`
-   **在 `package.json` 里不存在**（只有 `build:android` / `build:android:release` /
-   `android:build:e2e`）——悬空指针，真丢了并没有脚本可重建（需先补构建链）。
-3. 备份里 `librnllama.so` 仍无 `llama_supports_audio_in/out` 符号（上一窗已核），
-   `rnllamaBuildFromSource` 仍为关闭——**端到端需先重编 llama.cpp/llama.rn，那是引擎禁区**。
+结论不变：**W3 不在本轮动**。阻塞点不是「有没有备份」，而是「要不要进引擎禁区重编」——
+需大王点头。原先担心的「一次 `yarn install` 就能把推理链抹掉」已在 §17.4 根治。
 
-结论：**奴家本轮不动 W3**。它不是「写不写代码」的问题，而是「先要一条能重建原生库的构建链
-＋大王点头进引擎禁区」。要开，奴家建议先立项做第 2 条（把备份入仓或补齐 `build:android-libs`），
-那是与端到端无关也必须补的隐患（否则一次 `yarn install` 就能把推理链抹掉）。
+---
+
+## 17. W2b 录音启停归一 + 构建链根治（2026-09-06，大王指令「按你建议依次执行」）
+
+### 17.1 单一入口 `src/services/audio/recorder.ts`
+
+| 消费方 | 旧写法 | 新写法 |
+|---|---|---|
+| 聊天输入（按住说话） | 自带 `PermissionsAndroid` + 直调原生，失败只 `console.warn` | `audioRecorder.start/stop('chat_input')`，失败不进 listening 态；**卸载时交锁** |
+| 电话页 | 在 ChatScreen 注入的 `record.start` 里再写一遍权限 | `audioRecorder.start/stop('phone_call')`（挂断已由 `session.hangUp` 停录） |
+| 音频工坊 | 第三遍权限 + 直调原生 | `audioRecorder.start/stop('audio_workshop')`，busy/permission 分开提示；**离页时交锁** |
+
+契约（故意只管一把锁，**不上 MobX**：没有 UI 需要订阅「谁在录音」，同 §16.4 `inCall` 的取舍）：
+
+- `RecorderError.code` 三分类：`permission`（被拒）/ `busy`（别处在录）/ `native`（原生失败、含 iOS 无此模块）；
+- **同一时刻只有一个持有者**：抢不到就 `busy`，绝不共享同一次录音；
+- 谁持有谁停：非持有者 stop → `busy` 且**不打原生**（旧写法会停掉别人的）；
+  未持有者 stop → no-op 返回 null；
+- stop 无论成败都放锁（`finally`）：锁不释放会把麦克风永久焊死。
+
+### 17.2 原生侧：忙即拒（废除假幂等）
+
+`AudioRecordModule.startRecording` 开头原本是：
+
+```kotlin
+if (recording) { promise.resolve(outputPath); return }   // 旧
+```
+
+这不是「幂等」而是**掩盖并发误用**：工坊正在录时用户按下说话，第二个人拿到同一个
+wav 路径，松手停掉的是别人的录音，两边 UI 与音频全串。现改为
+`promise.reject("AUDIO_BUSY", ...)`，由 JS 侧归一成 `busy` 错。
+
+同时统一日志（真机取证只需一个词）：tag `AudioRecord`，`start ok path=…` /
+`stop ok ms=… bytes=… path=…` / 各失败分支 `Log.e`；未录音时 stop 保留幂等但
+打 `stop ignored`（出现即说明 JS 侧启停没配对）。
+
+### 17.3 权限错误分流（纠正一处旧口径错）
+
+`PhoneCallSession.startRecording` 的 catch 原本把**任何**启动失败都报成
+`PERMISSION_DENIED`（含麦克风被占、原生初始化失败）→ 误导用户去翻设置找权限。
+现按 `e.code` 分流：`permission` → `PERMISSION_DENIED`，其余 → 新增
+`RECORD_FAILED`（UI 落现有 `phoneCallL10n.failed`，**不新增文案**）。
+`session.ts` 只结构化读 `code`，**不 import recorder**——保住它「纯 TS 可单测、零 RN
+依赖」的设计。
+
+### 17.4 构建链根治（W3 前置隐患，与端到端无关也必须补）
+
+**真因不是「`yarn install` 会抹掉推理链」，而是两件叠加**（本轮实验证）：
+
+1. `yarn install --ignore-scripts`（为跳过依赖包耗时脚本而用的旧惯例）会连 llama.rn
+   官方 postinstall 一起跳过 → jniLibs 不下载、patch-package 不应用；
+2. `"postinstall": "./scripts/postinstall.sh"` 在 Windows 上是**回声执行**：yarn 原样
+   打印该行并以 exit 0 报 Done，但脚本内每一步都没跑（PATH 里的 `bash` 是 WSL 存根）
+   ——所以 `_jni` 恢复与补丁应用在这台主力开发机上**从未自动跑过**。
+
+修法：新增 `scripts/postinstall.js`（纯 node，三平台一致）+ `git rm scripts/postinstall.sh`。
+三条纪律：**失败要响**（旧版 `|| echo WARNING` 把丢失变成静默）、可选步（OpenCL 头）
+不阻断 install、**结束时自检播报**三项落地状态。实测价值：故意破坏后
+`yarn install --check-files` 一键自愈（restored `librnllama_v8.so` + 重打补丁）；
+而「半打补丁」态（补丁上下文不匹配）patch-package 会**谎报 ✔**，只有自检能抓到。
+
+备份加固：`F:\backups\pp-llamarn-jni-backup\`（216.8MB，仓库外，与 AGENTS.md 既定
+备份目录同层），restore 脚本现按 `LLAMARN_JNI_BACKUP` → 仓库外 → `.tmp` 三源探测。
+
+### 17.5 真机复验（K90 aab688d9，覆盖安装 + 冷启动，未卸载；投屏已开）
+
+| 项 | 结果 | 证据 |
+|---|---|---|
+| 统一日志可用（§17.2 交付物） | ✅ | 原生：`D/AudioRecord: start ok path=… minBuf=1280` → `stop ok ms=18244 bytes=581804`；JS：`[AudioRecord] start owner=chat_input` → `stop owner=chat_input ms=18238`（两者差 6ms = bridge 往返） |
+| 录音数据真实 | ✅ | 581804 B ÷ 32000 B/s（16k/mono/16bit）= **18.18s**，与实测时长吻合——不是空文件 |
+| 电话路径走单一入口 | ✅ | `start owner=phone_call` → `[VAD-obs] duration=3760ms peak=0.2109` → `stop owner=phone_call ms=3908` → `transcribe ok` → `chat done in 3511ms, 18 chars` → `Model loaded in 879ms` |
+| 启停严格配对 | ✅ | 全程 `start owner=` 与 `stop owner=` 各 **2 次**，完全成对；`stop ignored` **零条**（这条日志的存在意义就是验证配对） |
+| 错误面 | ✅ **0 条** | `AUDIO_BUSY` / `RecorderError` / `start rejected` / `PERMISSION_DENIED` / `JavascriptException` / `FATAL` / `ANR` 全零 |
+| W2 电话轮收口未回退 | ✅ | 播报完状态行自行回到「我在听…」（本轮总耗时远小于 90s 看门狗） |
+| 消息顺序契约（§14.1）未回退 | ✅ | 挂断回聊天页，底部正是本轮回复「好的，那您想先做什么？您想先写什么？」，其上为用户「我想。」 |
+| 入口形态自洽 | ✅ | 输入框被上轮转写填入 `.` 后，语音钮按 `!value.trim().length` 让位给发送钮（同一位置）——与源码条件一致 |
+
+**未验项（不谎报）**：`busy` 路径真机**无法触发**——工坊与输入框不在同一屏，切页时卸载交锁已先释放（这正是交锁该有的行为），所以同屏双入口抢麦在现有 UI 下不可构造；该路径由单测 9 例钉住。转写只得到 `.` / 「我想。」（环境安静，非缺陷）。
+
+**两条真机操作教训**（记入本档 §151）：① **scrcpy 默认会转发设备音频**，它在 `uid=2000` 下持续持有麦克风（logcat 可见 `AudioRecordImpl … sr 48000 ch 2`）——测录音链必须带 `--no-audio` 启动，否则可能拿到静音；② 通话页有持续波形动画 → `uiautomator dump` 报 `could not get idle state`，改用 **uiautomator2 `dump_hierarchy()`** 可不等 idle；坐标不得目测猜，要从 dump 的**文字锚点 + 源码尺寸**算（本轮一次 swipe 因目测坐标偏左 266px 而空按，日志零痕迹正好区分了「没按到」与「按到但失败」）。
 
 
 

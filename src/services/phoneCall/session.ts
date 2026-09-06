@@ -18,6 +18,7 @@ export type PhoneCallStatus =
 /** 错误码 → UI 层映射 l10n 文案（PHONE_SPEC §6 失败路径表） */
 export type PhoneCallErrorCode =
   | 'PERMISSION_DENIED'
+  | 'RECORD_FAILED'
   | 'EMPTY_SPEECH'
   | 'TRANSCRIBE_FAILED'
   | 'SEND_FAILED';
@@ -31,6 +32,9 @@ export const REPLY_TIMEOUT_MS = 90_000;
 
 export interface PhoneCallDeps {
   record: {
+    /** 开始录音，返回 wav 路径；失败由 audioRecorder 抛带 `code` 的 RecorderError
+     *  （'permission' | 'busy' | 'native'）。本文件不 import 它，只结构化读 code，
+     *  以保持「纯 TS 可单测、零 RN 依赖」的设计。 */
     start(): Promise<string>;
     stop(): Promise<string | null>;
   };
@@ -121,10 +125,14 @@ export class PhoneCallSession {
     try {
       await this.deps.record.start();
     } catch (e) {
-      // 权限拒绝/录音初始化失败 → 回聆听态 + 显式提示（不悬挂、不假录音）
+      // W2b 纠正旧口径：以前这里把**任何**启动失败都报成「权限被拒」（含麦克风被
+      // 别处占用、原生初始化失败），误导用户去翻设置找权限。现按 code 分流。
       console.warn('[PhoneCall] startRecording failed:', e);
       this.setStatus('idle');
-      this.deps.onError('PERMISSION_DENIED');
+      const code = (e as {code?: unknown})?.code;
+      this.deps.onError(
+        code === 'permission' ? 'PERMISSION_DENIED' : 'RECORD_FAILED',
+      );
       return;
     }
     this.setStatus('recording');

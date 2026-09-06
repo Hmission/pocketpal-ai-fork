@@ -1,5 +1,5 @@
 import React, {useRef, ReactNode, useState} from 'react';
-import {View, PermissionsAndroid, Platform, NativeModules} from 'react-native';
+import {View, NativeModules} from 'react-native';
 
 import {observer} from 'mobx-react';
 import {runInAction} from 'mobx';
@@ -60,6 +60,7 @@ import {useElapsed} from '../../hooks/useElapsed';
 import {usePerfTrace} from '../../hooks/usePerfTrace';
 import {audioLevel} from '../../services/phoneCall/audioLevel';
 import {setInCall} from '../../services/phoneCall/inCall';
+import {audioRecorder} from '../../services/audio/recorder';
 import {nightTaskRegistry} from '../../store/nightTaskRegistry';
 import {activateKeepAwake, deactivateKeepAwake} from '../../utils/keepAwake';
 
@@ -309,25 +310,17 @@ export const ChatScreen: React.FC = observer(() => {
     [l10n],
   );
 
-  // 惰性构造会话编排（依赖四件套全注入，纯 TS 可单测；录音权限在此层申请）
+  // 惰性构造会话编排（依赖四件套全注入，纯 TS 可单测；录音启停已归一到 audioRecorder）
   const phoneSessionRef = useRef<PhoneCallSession | null>(null);
   // 回复接管标记：chat 引擎回合（onPhoneTurn 回调）与管家直答（落流同步）二选一，先到者胜
   const phoneReplyHandledRef = React.useRef(false);
   if (!phoneSessionRef.current) {
     phoneSessionRef.current = new PhoneCallSession({
       record: {
-        start: async () => {
-          if (Platform.OS === 'android') {
-            const granted = await PermissionsAndroid.request(
-              PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-            );
-            if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-              throw new Error('RECORD_AUDIO denied');
-            }
-          }
-          return (await NativeModules.AudioRecord.startRecording()) as string;
-        },
-        stop: () => NativeModules.AudioRecord.stopRecording(),
+        // W2b：权限/互斥/原生失败全在 audioRecorder 里分好类，这里只注入 owner。
+        // 通话中麦克风归电话：其他入口（输入框/工坊）抢不到会明确失败，不会互相抢走录音。
+        start: () => audioRecorder.start('phone_call'),
+        stop: () => audioRecorder.stop('phone_call'),
       },
       transcribe: path => audioStore.transcribeTask(path),
       send: text => {

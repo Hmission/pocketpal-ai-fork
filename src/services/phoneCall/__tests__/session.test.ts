@@ -134,11 +134,15 @@ describe('PhoneCallSession', () => {
     expect(onError).toHaveBeenCalledWith('TRANSCRIBE_FAILED');
   });
 
-  it('#5 录音权限拒绝（start 抛错）→ 回聆听态 + PERMISSION_DENIED，不假录音', async () => {
+  it('#5 录音权限拒绝（start 抛 code=permission）→ 回聆听态 + PERMISSION_DENIED，不假录音', async () => {
     const {session, recordStart, notify, onError} = makeDeps({
+      // W2b 新契约：audioRecorder 失败时抛带 code 的 RecorderError；session 只读 code，
+      // 不再靠 message 文本猜测（旧写法把任何启动失败都报成「权限被拒」）。
       recordStart: jest
         .fn()
-        .mockRejectedValue(new Error('RECORD_AUDIO denied')),
+        .mockRejectedValue(
+          Object.assign(new Error('RECORD_AUDIO denied'), {code: 'permission'}),
+        ),
     });
 
     await session.startRecording();
@@ -149,6 +153,23 @@ describe('PhoneCallSession', () => {
     expect(onError).toHaveBeenCalledWith('PERMISSION_DENIED');
     // 未进入 recording 态（无假录音）
     expect(notify).not.toHaveBeenCalledWith('recording');
+  });
+
+  it('#5b 非权限类启动失败（麦克风忙 / 原生报错）→ RECORD_FAILED，不误报权限', async () => {
+    for (const err of [
+      Object.assign(new Error('recording busy, held by audio_workshop'), {
+        code: 'busy',
+      }),
+      Object.assign(new Error('AUDIO_RECORD_INIT_FAIL'), {code: 'native'}),
+      // 无 code 的野错（旧桩形态）也归 RECORD_FAILED，不得回落权限文案
+      new Error('RECORD_AUDIO denied'),
+    ]) {
+      const {session, onError} = makeDeps({
+        recordStart: jest.fn().mockRejectedValue(err),
+      });
+      await session.startRecording();
+      expect(onError).toHaveBeenLastCalledWith('RECORD_FAILED');
+    }
   });
 
   it('#6 播报中按住说话 → 先停播再进录音（说话优先）', async () => {

@@ -1,8 +1,5 @@
 import * as React from 'react';
 import {
-  NativeModules,
-  PermissionsAndroid,
-  Platform,
   ScrollView,
   Text,
   TextInput,
@@ -16,6 +13,7 @@ import {pick, types} from '@react-native-documents/picker';
 import Clipboard from '@react-native-clipboard/clipboard';
 import Share from 'react-native-share';
 import {resolveAudioPath} from '../../../services/asrEngine';
+import {audioRecorder, RecorderError} from '../../../services/audio/recorder';
 import {getPlayPosition} from '../../../services/ttsEngine';
 import {
   SUPERTONIC_VOICES,
@@ -290,11 +288,17 @@ export const AudioWorkshopTab: React.FC<{
     onSnackbar(text ? '转写完成' : '转写失败，详见结果区');
   };
 
-  /** B33：录音转写（AudioRecord PCM→WAV → SenseVoice） */
+  /** B33：录音转写（audioRecorder 独占启停 → PCM→WAV → SenseVoice，W2b） */
   const handleRecordToggle = async () => {
     if (recording) {
-      const p = await NativeModules.AudioRecord.stopRecording();
       setRecording(false);
+      let p: string | null = null;
+      try {
+        p = await audioRecorder.stop('audio_workshop');
+      } catch {
+        onSnackbar('录音停止失败', 'error');
+        return;
+      }
       if (!p) {
         onSnackbar('录音文件为空', 'error');
         return;
@@ -312,24 +316,37 @@ export const AudioWorkshopTab: React.FC<{
       onSnackbar('语音模型未下载，请先下载 SenseVoice');
       return;
     }
-    if (Platform.OS === 'android') {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-      );
-      if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+    try {
+      await audioRecorder.start('audio_workshop');
+    } catch (e) {
+      // 失败原因逐项显式告知（不静默换路径、不假装在录）
+      if (e instanceof RecorderError && e.code === 'permission') {
         onSnackbar('录音权限被拒绝', 'error');
-        return;
+      } else if (e instanceof RecorderError && e.code === 'busy') {
+        onSnackbar('麦克风被占用：先停掉其他录音', 'error');
+      } else {
+        onSnackbar((e as Error)?.message ?? '录音启动失败', 'error');
       }
+      return;
     }
     setOpStartedAt(Date.now());
-    try {
-      await NativeModules.AudioRecord.startRecording();
-      setRecording(true);
-      onSnackbar('正在录音，再次点击停止并转写');
-    } catch (e) {
-      onSnackbar((e as Error)?.message ?? '录音启动失败', 'error');
-    }
+    setRecording(true);
+    onSnackbar('正在录音，再次点击停止并转写');
   };
+
+  // 离开页面时仍在录 → 停掉并交还麦克风（不丢产物：原生已把数据写成 wav）
+  const recordingRef = React.useRef(recording);
+  recordingRef.current = recording;
+  React.useEffect(
+    () => () => {
+      if (recordingRef.current) {
+        void audioRecorder.stop('audio_workshop').catch(() => {
+          // 卸载路径无人接收，recorder 内已打过日志
+        });
+      }
+    },
+    [],
+  );
 
   /** B36：生成 failed 重试（复用产物 prompt 同文本重发，对齐生图「重试」语义） */
   const handleTtsRetry = (item: GeneratedImage) => {

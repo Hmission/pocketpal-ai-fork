@@ -1594,3 +1594,45 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
 - **真机复验（K90 覆盖安装 + 冷启动，未卸载；全表落 PHONE_SPEC §16.6）**：走完整一轮 `[VAD-obs] duration=3920ms` → `transcribe ok: '我。'` → `chat done in 2693ms, 22 chars` → `Initializing engine: kokoro` → `Model loaded in 874ms`。**两条关键铁证**：① logcat 里 `stop failed` / `speech_error` **零条**（上一版每轮必现）——§149 那条「噪音级失败」真的从根上没了；② 播报完状态行自己回到「我在听…」（总耗时远小于 90s）——W2 电话轮收口不再靠看门狗。字幕末两行仍为「我说 + 本轮新回复」且贴底（§14.1 顺序契约未回退）；聊天页朗读钮与语音钮均在场；全程零 JavascriptException / FATAL / ANR，挂断回聊天页正常。
 - 遗留（不谎报）：① `speakBlock='engine'`（需选 OS 音色且厂商引擎未激活）与 `speakEntry='setup'`（需未选音色）两条新文案的真机可见性本轮**未逐项看到**（当前音色 Kokoro 中文且引擎 ready，逻辑有单测钉住）；② W2b：录音启停三路径归一（ChatInput / 电话 / 音频工坊各自直调 `NativeModules.AudioRecord`）+ 原生侧统一日志；③ `postinstall.sh` 在 Windows 是否执行待复核；④ 音频工坊「导入音频转写」仍未复验；⑤ 输入框流式 ASR 体验需新模型资产（未立项）。
 - 提交拆两笔（各自可回退）：① `chore(voice)` 孤儿依赖收口 + onnxruntime 补丁修复；② `fix(tts)` 播报门合并 + 能力位 + 停播归一 + 电话轮单一状态源。**不推送**（大王指令仍是「不推送」）。
+
+---
+
+## §151 W2b 录音链归一 + 构建链根治；**奴家在本窗两次误判均自纠**（2026-09-06，tts/audio/build 域）
+
+大王指令「按你建议依次执行」——即按奴家 §150 报告里的推荐顺序自主开工：① 补构建链 → ② W2b → ③ W3 不进引擎禁区（①就是它的前置，做完即止）。文档先行：PHONE_SPEC 新增 §17（录音链）+ §16.5/§16.7 就地改账。
+
+### 151.1 ⚠️ 先记两次误判（本轮最贵的东西不是代码，是这两条）
+
+- **误判一：「四颗自定义库 MISSING，工作机处于 APK 跑不了 LLM 的状态」——错。** 那四个名字（`libggml.so`/`libllama.so`/`libkbht.so`/`libdownload.so`）是奴家把 sd.cpp/ggml 项目的库名常识**套到本仓**臆想出来的。两条铁证推翻：备份 18 颗全叫 `librnllama*`；`llvm-readelf -d librnllama.so` 的 NEEDED 只有 `liblog/libandroid/libm/libdl/libc`——**ggml/llama 已静态内联**，不依赖任何伴生库。restore 报「14+4 完整」是真话。
+- **误判二：「onnxruntime 补丁打在不存在的路径上」——也错。** 补丁里的路径（`android/CMakeLists.txt`、`android/build.gradle`）与当前结构完全匹配、三处标记全在；奴家上一窗看到的 `android/onnxruntime/` 是一层历史残留目录，被重装清掉后就把「目录没了」误读成「补丁坏了」。
+- **登记在案的旧教训是「否定性结论要三口径交叉」，本轮补它的对偶：正面断言同样要交叉验证**——尤其当断言材料只是「领域常识」。奴家两次都是先看到局部、立刻升格成全局结论，而且都说得很斩钉截铁。已把两条实证写进 PHONE_SPEC §16.7 / 本档，避免后人重踩。
+- **归因纪律**：本轮「补丁不生效」的两次现场都是**奴家亲手制造**（一次 `--ignore-scripts`、一次 `Set-Content` 把 LF 改成 CRLF）。**自己造成的破坏不能归给仓库**；查明经过与修复动作均已逐条写因。
+
+### 151.2 §150 遗留③ 有答案了：`postinstall.sh` 在本机是「回声执行」
+
+决定性实验：删掉 `max-page-size` 行与一颗 `.so` → 跑完整 `yarn install` → yarn **原样打印 `$ ./scripts/postinstall.sh` 并以 exit 0 报 Done**，两处破坏**一项都没恢复**。查因：`bash` 在本机 PATH 里是 **WSL 存根**（报「未安装 Linux 子系统」），shebang 脚本根本跑不起来——即 §149/§150 里「patch-package 与 jniLibs 恢复从未自动跑过」的猜测成立，而且是硬事实。另纠一条：`--ignore-scripts` 才是抹掉 jniLibs 的真凶（它连 llama.rn 官方 postinstall 一起跳过），不是仓构固有缺陷。
+
+根治（PHONE_SPEC §17.4）：新增 `scripts/postinstall.js`（纯 node、三平台一致、**pod 不在这一步所以 Windows 不会被卡**）+ `git rm scripts/postinstall.sh`（留痕：被 js 取代，Windows 下从未生效）。三条纪律：**失败要响**（旧版 `|| echo WARNING` 把丢失变静默）、可选步（OpenCL 头 clone）不阻断、**结束时自检播报**。实测：故意破坏后 `yarn install --check-files` 一键自愈（`restored librnllama_v8.so <- ..\backups\pp-llamarn-jni-backup` + 重打补丁，三项 OK / exit 0）。**另拆一颗雷**：「半打补丁」态下 patch-package **谎报 ✔**（不报错但没落地），只有自检抓得住——这是把「grep node_modules」固化成脚本的理由。
+
+备份加固：18 颗 / **216.8MB** 另存一份到仓库外 `F:\backups\pp-llamarn-jni-backup\`（与 AGENTS.md 既定备份目录同层），restore 脚本现按 `LLAMARN_JNI_BACKUP` → 仓库外 → `.tmp` 三源探测。**不入 git 是故意决策**：216MB 进仓对本仓（有 pack 丢失史、禁 `filter-repo`）不可逆，而且真正丢不得的只有 7 颗 `_jni`。
+
+### 151.3 W2b 录音启停归一（PHONE_SPEC §17.1–17.3）
+
+- **挖出一个比「三处重复」更本质的洞**：原生 `startRecording` 开头是 `if (recording) { promise.resolve(outputPath) }`——这不是幂等而是**掩盖并发误用**：工坊正在录时用户按下说话，第二个人拿到同一个 wav 路径，松手停掉的是**别人的录音**，两边 UI 与音频全串。现改为 `promise.reject("AUDIO_BUSY")`（忙即拒不兜底），JS 侧新增 `services/audio/recorder.ts` 单一入口：**同一时刻只有一个持有者**（chat_input / phone_call / audio_workshop），`RecorderError.code` 三分类（permission/busy/native），**谁持有谁停**（非持有者 stop 不打原生），stop 无条件 `finally` 放锁（不然麦克风会被焊死）。故意不上 MobX：无 UI 需订阅「谁在录」（同 §150 `inCall` 取舍）。三处消费面各自的 `PermissionsAndroid` 全删，卸载/离页补上**交锁**。
+- **顺手纠正一处旧口径错**：`PhoneCallSession.startRecording` 的 catch 原本把**任何**启动失败都报成 `PERMISSION_DENIED`（含麦克风被占、原生初始化失败）→ 误导用户去翻设置找权限。现按 `code` 分流，其余归新增 `RECORD_FAILED`（UI 落现有 `phoneCallL10n.failed`，**不新增文案**）；`session.ts` 只结构化读 `code` 不 import recorder，保住它「纯 TS 可单测、零 RN 依赖」的设计。
+- **原生统一日志**：tag `AudioRecord`，`start ok path=…` / `stop ok ms=… bytes=… path=…` / 失败分支 `Log.e` → 真机取证只需 `adb logcat -s AudioRecord` 一个词拿全链。
+- 测试同步：新增 `src/services/audio/__tests__/recorder.test.ts` **9 例**（其中「第二人不抢锁不打原生」与「非持有者 stop 不停别人录音」两例**在旧代码上必红**——它们就是本次改造的动机）；`session.test.ts` 的 #5 桩改为新契约（带 `code: 'permission'`）+ 新增 #5b 验证 busy/native/无 code 三类全归 `RECORD_FAILED`。
+- 另记一条 Windows 陷阱：用 `Set-Content` 改 node_modules 里的文件会把 **LF 变 CRLF**，patch-package 从此永久拒施（文本 grep 完全看不出来）——本次现场即此因；解法是用 `node -e` 读写或直接重下包。
+
+### 151.4 门禁与真机
+
+- 门禁：tsc 0 错；eslint **0 error**（30 条 `no-bitwise` warning 全在 `src/**` 存量位运算文件，本窗未新增；曾试探性给 restore 脚本加文件级豁免，结果它单独 lint 时根本不报 bitwise → 反而多出 `unused-disable` warning，已撤回——**不要为了消除噪音而加不必要的豁免**）；prettier 绿；jest **全量 343 套件：4788 通过 / 2 skipped / 6 失败**。
+- **6 例失败的定性**（不拿它当木已成舟）：① `ModelTypeTag` 4 例——§936 D1 在册存量色值断言；② `actionRegistry` 2 例——`Expected "DreamLite: engine boom"` / `Received "DreamLite 生成失败"`，即**底层错误原文被包装层吞掉**（可诊断性缺陷，属生图域）。两条均**非本窗引入**：本窗 12 项改动不含任何 `src/debug/` 或 dreamLite 文件，且这两个文件最后一次改动在历史窗（ae26403/3f7d02a）；§150 当时只跑了 **232 套件子集**所以从未暴露——**本轮首次跑全量才抓出来**，已登记待裁。
+- **并发 flake 登记**（重要，免得后人误判）：与后台 Gradle 同时跑 jest 时，首跑报 **7 套件失败**（ToolErrorBlock/Switch/Pressable/BannerBar/Onboarding4 等），复跑只余 2 套件、单跑全绿——**抢 CPU/IO 导致的超时型 flake**，不是回归。宽域 jest 与 Gradle 构建不要并行跑，或并行时必须复跑定性。
+- 构建与装机：Gradle `assembleProdRelease -x lint` **BUILD SUCCESSFUL in 20m9s**（含 Kotlin 改动）；`adb install -r` Success；未卸载、冷启动、投屏全程开启。
+- **真机铁证（全表落 PHONE_SPEC §17.5）**：① 统一日志兑现——原生 `start ok path=… minBuf=1280` / `stop ok ms=18244 bytes=581804`，JS `[AudioRecord] start owner=chat_input` / `stop owner=chat_input ms=18238`，两者差 6ms 即 bridge 往返；**581804 B ÷ 32000 B/s = 18.18s** 与实测时长吻合，证明不是空文件；② 电话链全通——`owner=phone_call` → `[VAD-obs] 3760ms peak=0.2109` → `stop ms=3908` → `transcribe ok` → `chat done in 3511ms, 18 chars` → `Model loaded in 879ms` → 状态行自回「我在听…」；③ **启停 2:2 严格配对**，`stop ignored` 零条；④ 错误面 **0 条**（busy/rejected/RecorderError/JavascriptException/FATAL/ANR 全零）；⑤ 挂断回聊天页，底部正是本轮回复（§14.1 顺序契约未回退）。
+- **两条真机操作教训**（详见 §17.5 尾）：**scrcpy 默认转发设备音频会在 `uid=2000` 下持续持有麦克风**（logcat 可见 `AudioRecordImpl … sr 48000 ch 2`）——测录音链必带 `--no-audio`，否则可能拿静音；通话页持续波形动画使 `uiautomator dump` 报 `could not get idle state`，改用 **uiautomator2 `dump_hierarchy()`**；坐标要从 dump 文字锚点 + 源码尺寸算，本轮一次 swipe 因目测偏左 266px 而空按（**日志零痕迹正好区分「没按到」与「按到但失败」**——这正是统一日志的第二次实战价值）。
+- 未验项（不谎报）：`busy` 路径真机**不可构造**（工坊与输入框不同屏，切页时卸载交锁已先释放，这正是交锁该有的行为），该路径由单测 9 例钉住；两条新文案（`speakBlock='engine'` / `speakEntry='setup'`）真机可见性仍未逐项看到（本轮音色 Kokoro 且引擎 ready）。
+- 遗留：① `actionRegistry` 吞底层错误原文（生图域，待裁）；② 音频工坊「导入音频转写」仍未复验；③ 输入框流式 ASR 需新模型资产（未立项）；④ **W3 端到端仍待大王点头**（要不要进引擎禁区重编 llama.cpp/llama.rn；奴家建议：不进则维持 SenseVoice 单链，现有链已足够锋利）。
+- 提交拆两笔（各自可回退）：① `chore(build)` postinstall 跨平台化 + jniLibs 备份三源 + 脚本注释纠偏；② `fix(audio)` W2b 录音启停归一（JS 单一入口 + 原生忙即拒 + 权限分流 + 统一日志）。**不推送**（大王指令仍是「不推送」）。
+

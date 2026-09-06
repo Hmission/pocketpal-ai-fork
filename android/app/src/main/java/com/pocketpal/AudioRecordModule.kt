@@ -3,6 +3,7 @@ package com.pocketpal
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import android.util.Log
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
@@ -27,6 +28,11 @@ import kotlin.concurrent.thread
  * 回传 JS（≥50ms 节流）——供通话页真实振幅波形与 VAD 观测 spike 使用。
  * 事件范式沿用本仓 DownloadModule（getJSModule(RCTDeviceEventEmitter).emit），
  * 不引第三方。**能量计算不得阻塞写盘线程**：单次 O(n) 扫自 buffer，无额外 IO。
+ *
+ * W2b（§151）：① 日志统一前缀 `AudioRecord`（tag）+ start/stop 各带时长与字节数，
+ * 真机取证 `adb logcat -s AudioRecord` 一个词拿全链；② **废除「遇忙返回旧路径」的
+ * 幂等写法**：它让第二个调用者静默拿到别人那次录音，松手即停掉对方——并发误用被
+ * 掩盖成「看起来正常」。现在忙即拒（AUDIO_BUSY），由 JS 侧 audioRecorder 统一成 busy 错。
  */
 class AudioRecordModule(private val reactContext: ReactApplicationContext) :
     ReactContextBaseJavaModule() {
@@ -36,11 +42,14 @@ class AudioRecordModule(private val reactContext: ReactApplicationContext) :
     const val EVENT_AUDIO_LEVEL = "AudioLevel"
     /** 事件节流间隔：20Hz 足够驱动波形，且不溢事件队列 */
     private const val LEVEL_INTERVAL_MS = 50L
+    /** logcat tag：全 App 录音链唯一日志出口（`adb logcat -s AudioRecord`） */
+    private const val TAG = "AudioRecord"
   }
 
   private var audioRecord: AudioRecord? = null
   private var recorderThread: Thread? = null
   private var outputPath: String? = null
+  private var startedAt = 0L
   @Volatile
   private var recording = false
 
@@ -49,13 +58,17 @@ class AudioRecordModule(private val reactContext: ReactApplicationContext) :
   @ReactMethod
   fun startRecording(promise: Promise) {
     if (recording) {
-      promise.resolve(outputPath)
+      // W2b：旧写法在这里 `promise.resolve(outputPath)` —— 第二个调用者拿到的是**别人
+      // 那次录音**的路径，停录时停掉的也是别人，两边 UI 与音频全串。忙即拒不兜底。
+      Log.w(TAG, "start rejected: already recording -> $outputPath")
+      promise.reject("AUDIO_BUSY", "recording already in progress")
       return
     }
     val sampleRate = 16000
     val minBuf = AudioRecord.getMinBufferSize(
         sampleRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
     if (minBuf <= 0) {
+      Log.e(TAG, "start failed: getMinBufferSize=$minBuf (no usable input device?)")
       promise.reject("AUDIO_RECORD_INIT_FAIL", "getMinBufferSize 失败")
       return
     }
@@ -72,6 +85,7 @@ class AudioRecordModule(private val reactContext: ReactApplicationContext) :
     }
     if (rec.state != AudioRecord.STATE_INITIALIZED) {
       rec.release()
+      Log.e(TAG, "start failed: AudioRecord not initialized (RECORD_AUDIO denied?)")
       promise.reject("AUDIO_RECORD_INIT_FAIL", "AudioRecord 未就绪（录音权限被拒？）")
       return
     }
@@ -84,6 +98,7 @@ class AudioRecordModule(private val reactContext: ReactApplicationContext) :
       FileOutputStream(outFile)
     } catch (e: Exception) {
       rec.release()
+      Log.e(TAG, "start failed: cannot open $outFile", e)
       promise.reject("AUDIO_RECORD_IO_FAIL", e.message ?: "无法创建输出文件")
       return
     }
@@ -92,6 +107,7 @@ class AudioRecordModule(private val reactContext: ReactApplicationContext) :
     recording = true
     audioRecord = rec
     outputPath = outFile.absolutePath
+    startedAt = System.currentTimeMillis()
     rec.startRecording()
     val buffer = ShortArray(minBuf / 2)
     var lastLevelAt = 0L
@@ -159,11 +175,15 @@ class AudioRecordModule(private val reactContext: ReactApplicationContext) :
       }
     }
     promise.resolve(outFile.absolutePath)
+    Log.d(TAG, "start ok path=${outFile.absolutePath} minBuf=$minBuf")
   }
 
   @ReactMethod
   fun stopRecording(promise: Promise) {
     if (!recording) {
+      // 未录音时停 = 幂等 no-op（返回上次的 path 供上层容错），但留痕：
+      // 真机若频繁看到这条，说明 JS 侧启停没配对（audioRecorder 已保证，此处取证用）
+      Log.w(TAG, "stop ignored: not recording (last path=$outputPath)")
       promise.resolve(outputPath)
       return
     }
@@ -182,6 +202,10 @@ class AudioRecordModule(private val reactContext: ReactApplicationContext) :
     } catch (_: Exception) {
     }
     audioRecord = null
+    val bytes = outputPath?.let { File(it).length() } ?: 0L
+    Log.d(
+        TAG,
+        "stop ok ms=${System.currentTimeMillis() - startedAt} bytes=$bytes path=$outputPath")
     promise.resolve(outputPath)
   }
 

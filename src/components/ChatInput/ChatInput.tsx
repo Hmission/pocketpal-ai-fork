@@ -5,9 +5,6 @@ import {
   View,
   Animated,
   TouchableOpacity,
-  NativeModules,
-  PermissionsAndroid,
-  Platform,
   ScrollView,
   Image,
 } from 'react-native';
@@ -20,6 +17,7 @@ import {observer} from 'mobx-react';
 import {IconButton, Text} from 'react-native-paper';
 
 import {hasVideoCapability} from '../../utils/pal-capabilities';
+import {audioRecorder} from '../../services/audio/recorder';
 
 import {
   VideoRecorderIcon,
@@ -284,7 +282,7 @@ export const ChatInput = observer(
       if (isListening) {
         setIsListening(false);
         try {
-          const p = await NativeModules.AudioRecord.stopRecording();
+          const p = await audioRecorder.stop('chat_input');
           if (p) {
             const textValue = await audioStore.transcribeTask(p);
             if (textValue) {
@@ -300,21 +298,25 @@ export const ChatInput = observer(
         return;
       }
       try {
-        if (Platform.OS === 'android') {
-          const granted = await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-          );
-          if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-            return;
-          }
-        }
-        await NativeModules.AudioRecord.startRecording();
+        // 权限 / 忙互斥 / 原生失败全在 audioRecorder 里分好类（W2b）：
+        // 任一失败都**不进 listening 态**，不会出现「显示在录但其实没录」的假象。
+        await audioRecorder.start('chat_input');
         setIsListening(true);
       } catch (e) {
-        console.warn('[ChatInput] local ASR start failed:', e);
+        console.warn('[ChatInput] voice start failed:', e);
         setIsListening(false);
       }
     };
+
+    // 卸载/切页时在录 → 交还麦克风（W2b 互斥锁的必要配套，否则锁会焊死其他入口）
+    React.useEffect(
+      () => () => {
+        void audioRecorder.stop('chat_input').catch(() => {
+          // 释放失败不再往上抛：卸载路径无人接收，且日志已在 recorder 内打过
+        });
+      },
+      [],
+    );
 
     const handleSend = () => {
       const trimmedValue = value.trim();
