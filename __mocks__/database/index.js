@@ -221,6 +221,18 @@ const mockLocalPalsCollection = {
   query: () => ({
     fetch: async () => [new LocalPal()], // Return array of mock LocalPal instances
   }),
+  // PalRepository.deletePal 走的是 WatermelonDB 真 API `collection.find(id)`；
+  // 旧 mock 只有 query/create，导致删除链在测试里永远抛
+  // 「find is not a function」 → 被 deletePal 的 catch 吞成 false，**删除路径零覆盖**。
+  // 只补 local_pals 这一张表（其他表暂无需求，不臆想加接口）。
+  find: async id => {
+    const record = new LocalPal();
+    if (id) {
+      record.id = id;
+    }
+    record.destroyPermanently = async () => {};
+    return record;
+  },
   create: async callback => {
     const record = new LocalPal();
     if (callback) {

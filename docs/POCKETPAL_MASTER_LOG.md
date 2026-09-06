@@ -1714,3 +1714,51 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
 - **因此纪律第 1 条再改一次**（本窗第三次改同一条）：不再宣称「终验必须 `--runInBand`」，改为「**全量跑只保覆盖，结论靠单跑复核**；`--runInBand` 降低但不消除假失败；两次全量红的集合不同即为 flake 强特征」。纪律被实测反复纠正是好事，**错的必须是奴家而不是工具**。
 - 登记技术债（不属本窗范围，不擅动）：飘移根因待专项（疑为长跑超时/内存累积，或串行同进程下的模块泄漏）；复现方式=连跑两次全量比对失败集合。本窗已付出 2×15 分钟代价才看清它，**不记下来下一个窗还会再踩**。
 
+---
+
+## §154 「超时型 flake」是个假结论：真根因是**全局 mock 落后于 spec**（2026-09-06，test infra 域）
+
+大王指令「走门禁，执行。只考虑最佳实践。不要推送！！我们没有大版本封版」——route act-08598dc7。**推送红线已入长期记忆**（见 154.4）。
+
+### 154.1 第五起误判，也是流传最广的一起：把确定性缺陷当成「超时型 flake」登记了两轮
+
+§151 首次登记「并发 flake：抢 CPU/IO 导致的超时型」，§152/§153 又两次在其上修补纪律——**全部建立在未取证的假设上**。本轮按最佳实践先取证：用**高复现率的并发全量跑**（不串行，多 worker 更容易飘）把完整输出落盘再分析：
+
+- `Exceeded timeout of` 命中数 **0** → **根本不是超时**；
+- 13 条失败块**全部是同一个错误**：`TypeError: _NativeHardwareInfo.default.getPerfSnapshot is not a function`，栈顶 `at ImageGenStore.<anonymous> (src/store/imageGenStore.ts)`。
+
+### 154.2 因果链（每一环都有出处，无推测）
+
+1. `jest/setup.ts:83` 全局 mock 了 `NativeHardwareInfo`，但只实现了 6 个方法；**spec 后加的 `getPerfSnapshot` 没跟进 mock**（它真实存在于 `src/specs/NativeHardwareInfo.ts:96`，原生也已实现：`HardwareInfoModule.kt:535`）；
+2. `src/store/imageGenStore.ts:361` 写的是 `await NativeHardwareInfo.getPerfSnapshot().catch(() => null)`——`.catch()` 只能接 **promise rejection**；方法不存在时抛的是**同步 TypeError**，在 `.catch` 被取到之前就已抛出，**这个 catch 救不了它**；
+3. 调用方 `pullSnapshot()` 是 fire-and-forget 轮询（无 await、无上层 catch）→ 异常逃逸为 **unhandled rejection**；
+4. jest 把 worker 里的未捕获异步异常**归给当时正在运行的那个套件** → 谁倒霉取决于轮询 tick 的时刻 → 表现为「两次全量红的集合互不重叠、单跑全绿、`--runInBand` 也飘」的**伪 flake**。
+
+→ 前面所有关于「并发/资源/超时」的描述全部作废。一个 mock 补全就消除了整类假失败。
+
+### 154.3 修法：只修测试基建，生产代码一行未动
+
+- 不猜缺口：把 **spec 方法全集**与**src 实际消费面**逐一对出（7 个方法），**缺口只有 `getPerfSnapshot` 一个** → 给 `jest/setup.ts` 的 mock 补上；字段对齐 `PerfSnapshot`，P1 可选项一律 `-1 = N/A`（与真机同口径，不编造「看起来像真」的数据）。
+- **为何不改 `imageGenStore.ts:361`**：真机上 TurboModule spec 声明了该方法且原生已实现，**生产契约成立**；为它加 `typeof` 探测或 try 就是给健康代码打补丁（§152/§153 反复批评的那个行为）。真正的缺陷在「测试环境不符合契约」，修那一边就够。
+- 验证：取证时红的 6 套单跑 **39 例全绿**；再用同一高复现配置重跑全量比对失败集合（见 154.5 实测数）。
+
+### 154.4 大王待裁项的处置
+
+- **推送**：按明令**不推送**（未大版本封版）。已入长期记忆（user_behavior）：封版或明确指令前不得 push，积压只**留痕登记待推清单**、不靠推送消风险。本窗收尾时在 154.5 记录实测 ahead 笔数与 HEAD。
+- **SquarePalCard database mock 缺 `find`**：已补——但先核实了 `PalRepository.deletePal`（`PalRepository.ts:311-313`）用的是 WatermelonDB 真 API `collection.find(id)`，**生产代码正确**；旧 mock（`__mocks__/database/index.js` 的 `mockLocalPalsCollection`）只有 query/create → 删除链在测试里永远报错→被 `deletePal` 的 catch 吞成 false，**删除路径零覆盖**（不是假绿：该套件只断言确认框弹出）。只补 local_pals 这一张表，不给其他表臆想加接口。
+- **飘移 flake 是否立项**：不必——本窗已定位并修复（即 §154.2），结论代替专项。
+
+### 154.5 门禁与提交（附待推清单）
+
+- 改动面全在**测试基建**：`jest/setup.ts`（补 `getPerfSnapshot`）、`__mocks__/database/index.js`（补 `local_pals.find`）、`AGENTS.md`（纪律第 1 条定稿）+ 本档。生产代码与原生零改动 → 不重编、不装机。
+- 门禁（用取证时那套**高复现配置**跑两次全量并发做反向证明）：
+
+| 配置 | 修前（取证跑） | 修后第一次 | 修后第二次 |
+|---|---|---|---|
+| `npx jest --ci`（默认多 worker） | **6 套件红** | **343 全绿 / exit 0** | **343 全绿 / exit 0** |
+
+  统一为 4794 通过 / 2 skipped / **0 失败**；tsc 0 错；eslint 0 error；prettier 绿。
+- 附带效果：§153（清掉 ModelTypeTag 4 例）+ §154（消除整类假失败）**合力把全仓测试失败归零**；且这个绿是在**最容易飘的并发模式**下拿到的，比 `--runInBand` 的结论更硬。
+- **待推清单**（大王明令：未大版本封版不推送）：本节落地前实测 `git rev-list --count origin/main..HEAD` = **22 笔**（HEAD `6adaa36`），本笔落地后 **23 笔**。积压只留痕不靠推送消风险；待封版或明确指令再直连推（`git -c http.proxy= -c https.proxy= push origin main`，不改 git config）。
+- 遗留（更新）：① 音频工坊「导入音频转写」未复验；② `speakBlock='engine'` / `speakEntry='setup'` 两条新文案真机可见性未逐项看到；③ ~~飘移 flake 专项~~ → 已定位并修复（§154.2）；④ ~~ModelTypeTag 色值 SSOT 裁定~~ → 伪命题（§153）。
+

@@ -39,11 +39,12 @@ yarn verify:fonts         # 字体子集校验（新增语言必跑）
 
 ## 验证门禁纪律（2026-09-06 立；四条都是本仓踩过的坑）
 
-1. **全量 jest 只能用于保覆盖，最终结论必须靠单跑复核**（2026-09-06 两次实测修正）。本仓全量跑存在**飘移型 flake**：同一份代码连跑两次 `npx jest --ci --runInBand`（各约 15 分钟），第一次红 `SquarePalCard`，第二次红 `DynamicOptionField` + `Panels`——**互不重叠且单跑全绿**（6 套 73 例）。由此定口径：
-   - `--runInBand` **降低但不消除**假失败（多 worker 并发更容易飘；串行仍有长跑超时/资源问题）；
-   - **任何全量跑出的失败，一律单跑该套件复核后**才能写进报告；两次全量红的集合不同，即为 flake 的强特征；
-   - 不得把 flake 当回归上报，也不得凭「看着像 flake」跳过单跑；宽域 jest 与 Gradle 构建不并行（叠加会放大飘移）。
-   - 技术债：飘移根因（超时 vs 串行跑时的模块/内存泄漏）待专项；复现方式是连跑两次全量并比对失败集合。
+1. **报告任何测试失败前，先抽完整错误文本再分类**（三轮实测后的定稿口径）。本仓曾把一个**确定性缺陷**（全局 mock 落后于 spec，见 MASTER_LOG §154）误登记为「超时型 flake」两轮，教训：
+   - **禁止以「看着像 flake」收尾**：全量跑必须落盘完整输出再按错误类型归类（PowerShell 管道会破坏中文，用 node `spawnSync` 捕 stdout/stderr），并统计 `Exceeded timeout of` 命中数；
+   - **同一次全量里多个无关套件报同一句错误** → 不是资源竞争，而是**未捕获的异步异常被 jest 归给当时正在跑的随机套件**；真凶通常某个 fire-and-forget 轮询调了不存在的方法；
+   - `.catch()` 只接 **promise rejection**，**接不住同步 TypeError**（`foo.bar().catch(...)` 中 `foo.bar` 不存在时直接抛）——「看起来有 catch」不等于「有保护」；
+   - **缺口要对出来不要猜**：把 spec/接口的方法全集与实际消费面逐一对比（`git grep -oh -E "NativeX\.[a-zA-Z]+" -- src | Sort-Object -Unique`），只补真实缺口；
+   - **称它为 flake 的最小证据**：同一代码连跑两次全量红集合互不重叠 **且** 单套复跑全绿 **且** 错误文本已归类——三条缺一即不得称 flake；`--runInBand` 只降低概率，不是定性手段。
 2. **`yarn install` 不要加 `--ignore-scripts`**。它会连 llama.rn 官方 postinstall 一起跳过 → jniLibs 原生库不下载、patch-package 补丁不应用（生图 ONNX 丢 16KB page 对齐与 ORT 锁版本）。后置逻辑由 `scripts/postinstall.js`（跨平台 node）负责，结束时打印**构建链自检**三项；自检 FAIL 则 install 非零退出，**先修再构建，不得用 --ignore-scripts 绕过**。
 3. **测试替身必须与被测代码同一模块来源（两个方向都会错）**。仓内同时存在 barrel（`src/store/index.ts`、`src/hooks/index.ts`）与具体文件时，`import` 与 `jest.mock` 的**路径必须逐字一致**，否则两边拿到的是两个不同模块：
    - 反向（§152.2）：全局 `jest.mock('../src/store')` 只换 barrel，测试却 `require('../../store/imageGenStore')` 取到**未被 mock 的真实实例** → spy/赋值打在另一个对象上，被测代码看不见（曾被误判为「错误原文被吞」）；

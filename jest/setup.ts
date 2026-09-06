@@ -104,6 +104,27 @@ jest.mock('../src/specs/NativeHardwareInfo', () => ({
     purgeNativeAllocator: jest.fn(() =>
       Promise.resolve({purged: true, rss_kb_before: 0, rss_kb_after: 0}),
     ),
+    // spec 后加了 getPerfSnapshot（NativeHardwareInfo.ts:96）而本 mock 未跟上：
+    // imageGenStore.pullSnapshot() 是 fire-and-forget 轮询，写法为
+    // `getPerfSnapshot().catch(() => null)`——.catch 只能接 **promise rejection**，
+    // 方法不存在时抛的是同步 TypeError（在 .catch 被取到之前）→ 异常逃逸成
+    // unhandled rejection，被 jest 归给当时正在跑的**随机套件**——这就是「每次红的
+    // 集合互不重叠、单跑却全绿」的真相，**不是超时也不是资源竞争**。
+    // 字段口径对齐 PerfSnapshot，-1 = N/A（与真机同口径，不编造看起来真的数据）。
+    getPerfSnapshot: jest.fn(() =>
+      Promise.resolve({
+        pssKb: 512000,
+        rssKb: 640000,
+        cpuPct: 12.5,
+        tempC: 32,
+        cpuFreqMhz: -1,
+        gpuLoadPct: -1,
+        gpuFreqMhz: -1,
+        tempCpuC: -1,
+        tempGpuC: -1,
+        powerMw: -1,
+      }),
+    ),
   },
 }));
 
