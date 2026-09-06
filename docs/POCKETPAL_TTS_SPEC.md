@@ -84,6 +84,12 @@ relates:
 上游依赖适配，用它绕过语义缺陷会退化成红线禁止的补丁形态）；正确出口是上游 PR。
 本仓侧只承担第二、三节的义务：按事实定性 + 唯一串行出口。
 
+> PR 素材（可直接贴给上游的复现步骤 / 行号级根因 / 两个补丁方案 / 影响面）：
+> `docs/internal/RN_SPEECH_STOP_UPSTREAM_PR.md`（internal 区不入库，仅本机留档）。
+> 关键定位：`RNSpeechModule.kt:563`（stop 套在 `ensureInitialized`）/ `:388` /
+> `:219`（reject）/ `:47-48`（重试参数）；`src/Speech.ts:503` 那句
+> `OS TTS stop is always safe to call` 断言不成立。同类问题还包括 `pause()`（`:580`）。
+
 ## 五、真机取证（Redmi 25102RKBEC / Android 16 / 设备 aab688d9）
 
 ```
@@ -105,8 +111,10 @@ neural 引擎（Supertonic/Kokoro/Kitten）。**每一次 stop 打向 OS 都是�
    全仓电话/音频链上无 10000 字面量。
 3. **W1a 三项状态核实**：「引擎能力门」与「两套播报门合并」**均已完工并有单测**
    （`engineIsReady` 能力位驱动 / `speakBlock` 单一事实源 + 四条契约测试）；
-   唯「stop 噪音根治」只完成一半——`TTSStore.stop()` 挡住了"无活跃引擎"，
+   唯「stop 噪音根治」当时只完成一半——`TTSStore.stop()` 挡住了"无活跃引擎"，
    未挡住"neural 活跃 + OS 从未就绪"，即本文件第二节的场景三。
+   ✅ **该场景已于 2026-09-06 按 §2 三情形定性根治**（`stopOutcome.ts` + 7 例单测）；
+   引擎白建与最长 24s 悬挂仍存（属上游缺陷，本仓无法在不动 patch 的前提下消除）。
 4. **W2 两项核实**：「phoneMode 全链透传」已被**更优方案取代**（删除透传链，
    改单一状态源 `isInCall()`，见 `src/services/phoneCall/inCall.ts`）；
    「录音启停归一」已完工（三处直调原生收敛为 `recorder.ts` 一把 owner 锁）。
@@ -115,3 +123,6 @@ neural 引擎（Supertonic/Kokoro/Kitten）。**每一次 stop 打向 OS 都是�
 5. **残留双状态源**（下一波候选）：电话轮收口除回调链外，还有
    `ChatScreen` 的 `phoneLastReply` observer 派生 + `phoneReplyHandledRef`
    先到先得，构成第二判定源，违「单状态机链路」。
+   ✅ **已于 2026-09-07 根治**：observer 旁路与仲裁 ref 整条删除（64 行），
+   改由管家直答在回写后自行声明回合（`useChatScheduler.butlerReply` 的 `onReplied`）——
+   口径与契约见 `docs/POCKETPAL_PHONE_SPEC.md` §18，顺序契约已入单测。

@@ -21,6 +21,8 @@ relates: [POCKETPAL_CHAT_UI_SPEC, POCKETPAL_AUDIO_UI_SPEC, POCKETPAL_STARMAP_DOM
 > session 不悬挂（REPLY_TIMEOUT_MS 90s 自动回聆听，#14/#15 单测）；②**落流同步**——管家直答路径
 > 无 token 回调，ChatScreen observer 派生最后一条回复，落流即 ttsStore.play 播报 + 回聆听（防双播 handledRef
 > 先到者胜）；③真机证：录音/AudioRecord→SenseVoice 转写→落库→管家回复→播报 全链闭环（K90 aab688d9）。
+> ⚠ 本条的②「落流同步」已于 2026-09-07 被 **§18 取代**（改由管家直答自行声明回合，
+> 删除 observer 旁路与 handledRef 仲裁）；①看门狗与③真机结论仍有效。
 > 版本：v2.0（2026-09-05 大王四问题升级方案，真机排查取证驱动）：①顶栏电话图标可见性——overlay 残留遮罩根因（自动化关闭 tap 被 HyperOS 拦截）+ 图标视觉弱（20px 灰 stroke）→ icon 胶囊化（triggerPill 语言）；②通话页「打电话式」UI 重设计——联系人区/通话时长/三态波形/跑分迷你行（复用 PerfMiniRow + chatTurnPerf）；③输入反馈与引擎就绪门控——engineStatus 单源进度条，未就绪禁录；④防锁屏防清后台——keep awake + nightTaskRegistry 前台服务双保活。详见 §10。
 > 版本：v2.1（2026-09-05 大王上手复测，**根因纠正 + 深化设计**）：①图标「看不见」真因 = svgr `.svgrrc` 将 #333333 映射为 `{props.fill}`，v2.0 误传 `color=` → 图标从未渲染（**推翻 v2.0 遮罩结论**，胶囊化同步撤销，回归 controlHeight 同族触区）；②通话页 v2.1——控制区横向化（按住说话 / 挂断 同一行）+ 头像真实化（品牌小鸡图 + 名字回落链，消除问号）+ 删右上重复 ✕ + 跑分行默认展开；③**播报强制贯通**——ttsStore 流式/回落两道的 `autoSpeakEnabled` 门改 `autoSpeakEnabled || forceSpeak`（电话模式 forceSpeak，根除「听不到语音输出」）+ 播报不可用显式提示行（复用 TTSSetupSheet）；④**转写回显持久化**——轮次级常驻（修「不显示我说过的话」）；⑤六态提示文案体系 + 图标规范。详见 §11。
 > 版本：v2.2（2026-09-05 大王二次复测，播报已出声✓）：①控制区**挂断居左 / 按住说话居右**且两钮分居两侧（space-between + xl 边距）——v2.1 居中 gap 40dp 被报「离太近会误触」（§11.8）；②**跑分环境轨迹**——真因不是默认折叠（v2.1 已 true），而是 `chatTurnPerf` 回合制采样在通话页空闲期无数据→展开的是空图；新增 `usePerfTrace`（空闲自采 1Hz、生成期不双采样、挂断即停）（§11.7）；③新增 §12 Roadmap：端到端路线 B 现状实证（未接；JNI 已含 vocoder/audio 符号但核心层能力待 spike 验证）+ P0/P1/P2/测试债清单。
@@ -219,6 +221,39 @@ sync 至 en 基准 + zh 同源（l10n 缺失回退英文，既有机制）。
 Whisper 仅 e2e 开发工具）；Kimi / Step-Audio / Paraformer 零痕迹；已接线的音频 mmproj
 伴生文件零项；电话一轮的**首 token 延迟 / ASR 纯耗时 / 播报启动延迟**分解实测值仓内
 不存在（只有整链与分段负载数据）——若将来要拿数据驱动语音体验决策，这三项插桩是前置作业。
+
+### 9.1 W3 只读复现评估结论（2026-09-06，不落任何改动）
+
+**结论：路线 B 在当前引擎栈与内存档位下不可行，维持 SenseVoice 级联单链；不立项。
+重新评估只在下方三个触发条件任一成立时启动。**
+
+三条硬门槛（均取仓内已有数字，不引外部估测）：
+
+1. **引擎能力（决定性）**：端到端必需 `llama_supports_audio_in/out` 符号，
+   而备份 `librnllama.so` **无该符号**且 `rnllamaBuildFromSource` 关闭
+   （MASTER_LOG §证据 :1592、:1648）。llama.rn TS 面虽有 `initVocoder()` /
+   `input_audio` 消息类型，JNI `.so` 也含 `llamaInitVocoder` 等符号，但
+   **核心库缺能力 → 「API 在册 ≠ 能力可用」**。要补就必重编 llama.cpp/llama.rn
+   = 引擎禁区（本节最后一条红线）→ **不进禁区则端到端不可开工**。
+2. **内存**：`管家常驻 0.69GB + omni 3B 级 Q4 本体 ≈2.0GB + 输出音频解码峰值 ≈1.0GB
+   + KV/激活余量` 已贴近 **HyperOS 6GB 硬杀线**（MASTER_LOG :74）；
+   而 TTS 单颗 Kokoro FP32 峰值已标 ~1GB（`tts/constants.ts:92-98`）、
+   聊天主力 4B Q4_K_M = 2.71GB（MODEL_MATRIX :25）。“边听边想”常驻多一轮直接越线；
+   12GB 机型仓内已定「维持不可用」（MASTER_LOG :316）。
+3. **收益未被证明**：现级联一轮 = ASR 0.3–1s（PHONE_SPEC :475）+ 回复 2.7–8.2s
+   （:611、:748、:843）+ TTS 加载 0.87s（:676）；端到端的增量收益（边听边想 /
+   流式 ASR）**尚无需求证明**，且流式 ASR 本身需新 zipformer 资产、未立项（:671）。
+
+**重评触发条件**（任一成立即重启，否则本条保持关闭）：
+- 引擎层解禁且 `llama_supports_audio_in/out` 已在预编产物中可用；
+- 出现 ≤2GB 且含音频编解码、经实测可在 4GB 预算内跑通的端侧 omni 资产；
+- 产品明确要「边听边想」语义（而非现在的按住说话）且接受中低端机型不可用。
+
+**未找到项（诚实登记）**：除 SenseVoice 外无运行时 ASR 路径（系统识别已于 W1b 删除、
+Whisper 仅 e2e 开发工具）；Kimi / Step-Audio / Paraformer 零痕迹；
+已接线的音频 mmproj 伴生文件零项；电话一轮的**首 token 延迟 / ASR 纯耗时 /
+播报启动延迟**分解实测值仓内不存在（只有整链与分段负载数据）——
+若将来要拿数据驱动语音体验决策，这三项插桩是前置作业。
 
 ## 10. 升级设计 v2.0（2026-09-05 大王四问题，真机排查取证）
 
@@ -886,3 +921,84 @@ wav 路径，松手停掉的是别人的录音，两边 UI 与音频全串。现
 
 
 
+
+## 19. 电话一轮分段遥测（2026-09-07，补齐决策所需的数字）
+
+### 19.1 为什么现在要做
+
+§9.1 把路线 B 判为「不立项」时，三条硬门槛里有一条是**「端到端的增量收益尚未被证明」**——
+而它之所以无法被证明，根因是仓内**只有整链耗时**（真机注记那种「回复 8201ms/212 字」）
+与分段**负载**数据（PSS/CPU/温度），**没有分段延迟**：问不出「2.9s 里 ASR 占多少、
+出第一个字占多少、播报起步占多少」。没有这三段数字，后续所有链路决策（要不要上流式
+ASR、该不该换更快的对话模型、端到端是否值得重编引擎）都只能靠感觉。本节把数字补齐。
+
+### 19.2 三段口径（`services/phoneCall/turnTelemetry.ts`）
+
+| 字段 | 起点 → 终点 | 语义 | 采集点 |
+|---|---|---|---|
+| `asr` | 松手停录 → 转写返回 | 用户感知的「说完到出字」（含 `record.stop()`） | `stopAndSend` 入口 / `transcribe` 返回后 |
+| `firstToken` | 转写返回 → 回合声明（`notifyReplyStarted`） | ⚠ **两路径语义不同，见下方警示** | `markAsrDone` / `notifyReplyStarted` |
+| `turnTotal` | 松手停录 → 本轮收口 | 整轮墙钟 | `begin` / `notifyReplyFinished` |
+
+- 日志单行：`[phoneTurnPerf] asr=812ms firstToken=2340ms turnTotal=9120ms`；
+  取数 `adb logcat | grep phoneTurnPerf`。
+- **采不到就输出 `n/a`，绝不猜、不补默认值**：空文本轮次只有 `asr`（没有回复可等），
+  失败轮次同理——这本身就是要观测的事实。
+- 挂断（`hangUp`）走 `reset()` **作废本轮**，不上报半截数字：挂断后的时间不属于本轮。
+- 时序点全部落在 `PhoneCallSession` 内部，不新增跨域回调；遥测是纯观测，
+  不参与任何状态判定（它读不到也不该读到业务分支）。
+
+### 19.3 明确不做的一条（边界登记）
+
+**播报启动延迟**（回复就绪 → 真正出声）本项**未做**。要拿到它必须在 `ttsStore` /
+`streamingHandle` 内加「首帧音频已启动」回调并向上穿透，那是把 TTS 域内部时序
+暴露给电话域——为凑一个指标污染单条链路，不值。
+
+已核实的替代信息：`TTSStore.lastSpeakElapsedMs`（播报总时长）与单测常量
+`TTS_TURN_MS = 870`（MiniCPM 默认音色量级）足以支撑当前决策。
+若将来要优化「等第一声」的体感，正确做法是在 TTS 域内自行打点
+（`[ttsPerf]` 前缀），由 TTS_SPEC 定义口径，而不是电话域伸手进去。
+
+### 19.4 取数与用途
+
+真机至少各 3 轮（管家直答 / chat 引擎两条路径都要覆盖，它们的 `firstToken` 语义不同：
+管家是一次性回写后声明，chat 引擎是真 token 流首字），填回 §9.1 的重评触发条件①。
+
+### 19.5 真机首采（2026-09-07，Redmi aab688d9，管家直答路径）
+
+输入：PC 外放 `test_speech_16k.wav`（内容「我想。」）→ 按住说话 4.5s → 松手。
+
+```
+[AudioRecord] start owner=phone_call → stop ms=4535
+[VAD-obs] duration=4320ms samples=55 peak=0.2644 avg=0.1473 longestSilence=80ms
+[AudioStore] transcribe ok: '我想。'
+[Scheduler] task=chitchat engine=none butler=ready
+[PromptWriter] chat done in 25488ms, 716 chars
+[Kokoro][Engine] engine_init_ms=874
+[phoneTurnPerf] asr=1787ms firstToken=25902ms turnTotal=47166ms
+```
+
+⚠ **`firstToken` 的口径随回复路径而变，不可混读**（§18 收口归一后仍是两种产生方式）：
+
+- **chat 引擎路径**：token 流回调声明 → 是真正的**首 token 延迟**；
+- **管家直答路径**：`butlerReply` 在**整段回写完成后**才声明回合（它不经 token 流）
+  → 实测的是**回复就绪延迟**（≈整段生成时长），**不是首字延迟**。
+
+本例 `firstToken=25902ms` 若误读为「25 秒才出第一个字」就会得出错误结论；
+对照 `[PromptWriter] chat done in 25488ms, 716 chars` 可知它是「25 秒把 716 字
+全生成完才播报」。要拿管家路径的真・首字延迟，需在 `promptWriter.chat` 的 token
+回调里另打点（属引擎域，本轮未做）。
+
+**本次首采顺带挖出一个产品级破口**：那 716 字几乎全是复读——
+「您想先写什么？您想先写什么？…」连复 20+ 遍（见聊天页真机图），
+电话里等于让用户听同一句话几十遍。根因：管家闲聊路径 `temperature: 0.7 /
+n_predict: 512` **没有任何复读防线**，而同文件的生图扩写路径既有
+`temperature: 0.4`（注释就写着“低温抑制复读”）又有 `isParrotingExample` 闸。
+已补 `utils/repetitionGuard`（流式早停 + 只保留一份），参数调整未动（属产品调参，待裁）。
+
+**可确定的两个事实**（可直接填回 §9.1 重评条件①）：
+
+- SenseVoice **ASR 纯耗时 ≈ 1.8s**（不含录音与停录），端到端方案在 ASR 段的
+  理论收益上限就这么多；
+- 一轮 47s 里 **LLM 生成占 25.9s**（且本轮是复读无效生成）——瓶颈在生成段，
+  不在 ASR 段。

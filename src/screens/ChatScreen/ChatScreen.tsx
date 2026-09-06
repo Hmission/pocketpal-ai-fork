@@ -32,6 +32,11 @@ import {resolveReasoningCapability} from '../../utils/reasoningCapability';
 import {MessageType, Theme} from '../../utils/types';
 import {ErrorState} from '../../utils/errors';
 import {user, assistant} from '../../utils/chat';
+import {
+  isTaskActionCard,
+  isTaskErrorCard,
+  isGeneratingTaskCard,
+} from '../../utils/messageCards';
 import {useChatScheduler} from '../../hooks/useChatScheduler';
 import {BenchmarkHudBar} from '../../components/BenchmarkHudBar';
 import {registerChatSender} from '../../debug';
@@ -59,7 +64,7 @@ import {
 import {useElapsed} from '../../hooks/useElapsed';
 import {usePerfTrace} from '../../hooks/usePerfTrace';
 import {audioLevel} from '../../services/phoneCall/audioLevel';
-import {setInCall} from '../../services/phoneCall/inCall';
+import {setInCall, isInCall} from '../../services/phoneCall/inCall';
 import {audioRecorder} from '../../services/audio/recorder';
 import {nightTaskRegistry} from '../../store/nightTaskRegistry';
 import {activateKeepAwake, deactivateKeepAwake} from '../../utils/keepAwake';
@@ -118,25 +123,17 @@ const renderTextMessage = (
     onButlerUpgrade: (text: string) => void;
   },
 ) => {
+  // 卡片标记名与判定统一走 utils/messageCards（单一清单，与通话字幕过滤同源）。
+  // butler / userText 不是卡片标记而是卡片载荷（升级入口要取原文重发），仍本地读。
   const meta = (message.metadata ?? {}) as {
-    imageTask?: boolean;
-    imageTaskFailed?: boolean;
-    editTask?: boolean;
-    editTaskFailed?: boolean;
-    taskError?: unknown;
     butler?: boolean;
     userText?: string;
   };
-  const imageUris = (message as {imageUris?: string[]}).imageUris;
-  // 生图任务卡（imageTask）/ 编辑任务卡（editTask，P5）/ 调度错误卡（taskError）共用动作槽
-  const hasTask = !!meta.imageTask || !!meta.editTask;
-  const hasError = !!meta.taskError;
+  const hasTask = isTaskActionCard(message);
+  const hasError = isTaskErrorCard(message);
   // 生成中占位卡（未回写图片/失败标记）→ 内嵌生成动效（三点波浪+进度+耗时）；
   // 回写成功/失败后 → 动作条（再来一张/编辑图片/继续编辑/重试）
-  const generating =
-    hasTask &&
-    !(meta.imageTaskFailed || meta.editTaskFailed) &&
-    !(imageUris && imageUris.length > 0);
+  const generating = isGeneratingTaskCard(message);
   return (
     <TextMessage
       // ChatView 插槽传 Text；TextMessage 只消费 text/metadata/author，
@@ -213,17 +210,45 @@ export const ChatScreen: React.FC = observer(() => {
     setEditSourceUri(null);
   }, [activeSessionId]);
 
+  // 电话会话编排的 ref 本身必须上移到 useChatScheduler 之前（handleButlerReplied 要用它）；
+  // 构造体仍留在下方，因为它依赖 wrappedSendPress。
+  const phoneSessionRef = useRef<PhoneCallSession | null>(null);
+
+  /**
+   * 管家直答的回合声明（PHONE_SPEC §18.3）：谁产生回复，谁报告。
+   *
+   * 判「是否在通话里」读单一状态源 `isInCall()`，**不捕获 React state**：
+   * 本回调要以稳定引用进 useChatScheduler 的 useCallback deps，一旦捕获
+   * `phoneVisible` 就会陈旧。旧写法让 ChatScreen 扫消息数组反推，正是为了
+   * 绕开这类陈旧闭包，代价是多出一个判定源——本轮把声明补到产生者那里，
+   * 旁路整条删除。
+   */
+  const handleButlerReplied = React.useCallback(
+    async (cardId: string, finalText: string) => {
+      if (!isInCall()) {
+        return;
+      }
+      phoneSessionRef.current?.notifyReplyStarted();
+      try {
+        await ttsStore.play(cardId, finalText, {hadReasoning: false});
+      } catch (e) {
+        console.warn('[ChatScreen] phone butler reply play failed:', e);
+      }
+      phoneSessionRef.current?.notifyReplyFinished();
+    },
+    [],
+  );
+
   const {handleSendPress, handleStopPress} = useChatSession(
     currentMessageInfo,
     user,
     assistant,
     {
-      // PHONE_SPEC §4.3：电话回合生命周期 → 驱动 PhoneCallSession 状态机。
-      // handledRef 置位：token 流播报由 ttsStore 流式接管，落流同步不再介入（防双播）
-      onPhoneTurnStarted: () => {
-        phoneReplyHandledRef.current = true;
-        phoneSessionRef.current?.notifyReplyStarted();
-      },
+      // PHONE_SPEC §4.3 + §18：电话回合生命周期 → 驱动 PhoneCallSession 状态机。
+      // chat 引擎路径由 token 回调声明；管家直答路径由 handleButlerReplied 声明。
+      // 两条路径在一次发送里互斥（scheduler 路由决定），无需仲裁标记——旧 handledRef
+      // 防的那个并发并不存在。
+      onPhoneTurnStarted: () => phoneSessionRef.current?.notifyReplyStarted(),
       onPhoneTurnFinished: () => phoneSessionRef.current?.notifyReplyFinished(),
     },
   );
@@ -233,8 +258,10 @@ export const ChatScreen: React.FC = observer(() => {
   // - write/code → chat 引擎未加载时按能力注册表自动选模型加载，再走常规聊天
   // - chitchat → chat 引擎未加载且管家就绪时，由常驻管家直接回答（启动即就绪）
   // - upgradeButlerReply → 用户主权升级（L2 2026-08-21）：管家卡片「换个更聪明的模型」
-  const {wrappedSendPress, upgradeButlerReply} =
-    useChatScheduler(handleSendPress);
+  const {wrappedSendPress, upgradeButlerReply} = useChatScheduler(
+    handleSendPress,
+    handleButlerReplied,
+  );
 
   // ==================== 电话模式（PHONE_SPEC §4） ====================
   const [phoneVisible, setPhoneVisible] = useState(false);
@@ -311,9 +338,6 @@ export const ChatScreen: React.FC = observer(() => {
   );
 
   // 惰性构造会话编排（依赖四件套全注入，纯 TS 可单测；录音启停已归一到 audioRecorder）
-  const phoneSessionRef = useRef<PhoneCallSession | null>(null);
-  // 回复接管标记：chat 引擎回合（onPhoneTurn 回调）与管家直答（落流同步）二选一，先到者胜
-  const phoneReplyHandledRef = React.useRef(false);
   if (!phoneSessionRef.current) {
     phoneSessionRef.current = new PhoneCallSession({
       record: {
@@ -326,7 +350,6 @@ export const ChatScreen: React.FC = observer(() => {
       send: text => {
         // PHONE_SPEC §5（W2）：不再给消息打 phoneMode 标记——电话轮判定由
         // `inCall` 单一状态源负责（覆盖全部回复路径，不靠逐路径透传）。
-        phoneReplyHandledRef.current = false;
         return wrappedSendPress({text} as MessageType.PartialText);
       },
       stopInference: handleStopPress,
@@ -371,71 +394,6 @@ export const ChatScreen: React.FC = observer(() => {
     : promptWriter.isLoaded
       ? BUTLER_DISPLAY_NAME
       : '';
-
-  // 电话模式回复同步（PHONE_SPEC §4.3 补强）：管家直答链路无回合 token 回调，
-  // observer 派生「最后一条回复」——落流即播报（ttsStore.play）+ 播完回聆听。
-  // chat 引擎路径由 onPhoneTurn 回调接管（phoneReplyHandledRef 先到者胜）。
-  const phoneLastReply = (() => {
-    if (!phoneVisible) {
-      return null;
-    }
-    const msgs = chatSessionStore.currentSessionMessages;
-    // 顺序契约：`currentSessionMessages` 是**新在旧前**（`addMessageToCurrentSession`
-    // 用 unshift + DB 查 `position desc` + ChatView 是 inverted 列表），所以从 index 0
-    // 往后扫才是「最后一条回复」。旧写法从数组尾部往回扫，取到的是会话里**最旧**
-    // 那条回复——新回复落库也不会改变 key，真机表现为播报陈年旧话（2026-09-05 K90）。
-    for (let i = 0; i < msgs.length; i += 1) {
-      const m = msgs[i];
-      if (m.type === 'assistant_turn') {
-        const steps = (m as MessageType.AssistantTurn).steps ?? [];
-        const last = steps[steps.length - 1];
-        if (last?.content) {
-          return {id: m.id, text: String(last.content)};
-        }
-        continue;
-      }
-      if (m.type === 'text' && m.metadata?.butler) {
-        // butler 卡片占位（「管家思考中…」）不算回复
-        if (!m.text || m.text === l10n.chat.butlerThinking) {
-          continue;
-        }
-        return {id: m.id, text: m.text};
-      }
-    }
-    return null;
-  })();
-  const phoneLastReplyKey = phoneLastReply
-    ? `${phoneLastReply.id}:${phoneLastReply.text.length}`
-    : '';
-
-  React.useEffect(() => {
-    if (!phoneVisible) {
-      return;
-    }
-    if (phoneStatus !== 'awaiting_reply' && phoneStatus !== 'speaking') {
-      return;
-    }
-    if (!phoneLastReply || !phoneLastReplyKey) {
-      return;
-    }
-    if (phoneReplyHandledRef.current) {
-      return;
-    }
-    // 回调未接管（管家直答/非回合链路）→ 落流同步：进播报 → play → 回聆听
-    phoneReplyHandledRef.current = true;
-    phoneSessionRef.current?.notifyReplyStarted();
-    void (async () => {
-      try {
-        await ttsStore.play(phoneLastReply.id, phoneLastReply.text, {
-          hadReasoning: false,
-        });
-      } catch (e) {
-        console.warn('[ChatScreen] phone butler reply play failed:', e);
-      }
-      phoneSessionRef.current?.notifyReplyFinished();
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phoneVisible, phoneStatus, phoneLastReplyKey]);
 
   // DRC 聊天发送槽（debug/E2E 构建）：ChatScreen 在岗时注册 wrappedSendPress，
   // 卸载注销——command chat.send 复用完整调度链路（意图路由/管家直答），单一事实源。

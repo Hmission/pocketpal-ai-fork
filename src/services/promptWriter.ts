@@ -13,6 +13,11 @@ import {initLlama, LlamaContext} from 'llama.rn';
 import * as RNFS from '@dr.pogodin/react-native-fs';
 import {engineStatus} from '../store/engineStatus';
 import {prompterGuard} from '../utils/engineGuard';
+import {
+  detectRepetitionLoop,
+  shouldCheckRepetition,
+  type RepetitionVerdict,
+} from '../utils/repetitionGuard';
 
 const SD_MODELS_DIR = '/sdcard/Documents/AIOS/models';
 
@@ -259,6 +264,13 @@ class PromptWriter {
     const t0 = Date.now();
     try {
       let out = '';
+      // 退化复读早停（repetitionGuard）：1B 管家会跑进「同一句重复几十遍」，
+      // 真机 2026-09-07 实录：一句「我想。」换来 716 字/25.9s 的复读。
+      // 命中即**中断生成**（不是事后删字）：既止住复读，也砍掉剩余十几秒。
+      // 用 holder 对象而非裸 let：回调内写入、回调外读取时，TS 的控制流分析
+      // 不会把 `if (x)` 的 true 分支窄成 never（裸 let 会）。
+      const loopRef: {verdict: RepetitionVerdict | null} = {verdict: null};
+      let lastChecked = 0;
       await prompterGuard.run(() =>
         this.ctx!.completion(
           {
@@ -280,12 +292,40 @@ class PromptWriter {
             const piece = data?.token ?? data?.content ?? '';
             if (typeof piece === 'string') {
               out += piece;
+              if (
+                !loopRef.verdict &&
+                shouldCheckRepetition(lastChecked, out.length)
+              ) {
+                lastChecked = out.length;
+                const v = detectRepetitionLoop(out);
+                if (v.hit) {
+                  loopRef.verdict = v;
+                  void this.ctx?.stopCompletion().catch(e => {
+                    console.warn('[PromptWriter] stop after loop failed:', e);
+                  });
+                }
+              }
             }
           },
         ),
       );
       engineStatus.setPhase('prompter', 'ready');
-      const cleaned = out.replace(/[\s\S]*?<\/think>/g, '').trim();
+      let cleaned = out.replace(/[\s\S]*?<\/think>/g, '').trim();
+      const loop = loopRef.verdict;
+      if (loop) {
+        // 只保留第一份重复，余下整段丢弃；宁可少说，不可复读。
+        const kept = out
+          .slice(0, loop.cutAt)
+          .replace(/[\s\S]*?<\/think>/g, '')
+          .trim();
+        console.warn(
+          `[PromptWriter] repetition loop: ${loop.times}x "${loop.unit.slice(
+            0,
+            16,
+          )}" → early stop, kept ${kept.length}/${cleaned.length} chars`,
+        );
+        cleaned = kept;
+      }
       console.info(
         `[PromptWriter] chat done in ${Date.now() - t0}ms, ${cleaned.length} chars`,
       );

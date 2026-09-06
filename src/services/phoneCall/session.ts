@@ -8,6 +8,9 @@
  * 语音优先：speaking 中按住说话 → 先停播报再进录音；awaiting_reply 中按住
  * → 注入的 stopInference（handleStopPress）打断推理再进录音。
  */
+
+import {phoneTurnTelemetry} from './turnTelemetry';
+
 export type PhoneCallStatus =
   | 'idle'
   | 'recording'
@@ -147,6 +150,8 @@ export class PhoneCallSession {
     if (this.status !== 'recording') {
       return;
     }
+    // 一轮遥测起点 = 松手（含停录与转写，对应用户感知的「说完到出字」）
+    phoneTurnTelemetry.begin();
     this.setStatus('transcribing');
     try {
       const path = await this.deps.record.stop();
@@ -156,14 +161,17 @@ export class PhoneCallSession {
         return;
       }
       const text = await this.deps.transcribe(path);
+      phoneTurnTelemetry.markAsrDone();
       // 转写期间挂断（hangUp 已置 closing）：丢弃结果，不发送（#11 行为契约）
       if (this.closing) {
         return;
       }
       if (!text || !text.trim()) {
         // 空文本：没有听到有效语音，回到聆听态（不发送，不落库）
+        // 仍收口上报——ASR 耗时是事实数据，firstToken 自然为 n/a（不猜不补）
         this.setStatus('idle');
         this.deps.onError('EMPTY_SPEECH');
+        phoneTurnTelemetry.endAndReport();
         return;
       }
       this.deps.onTranscript?.(text.trim());
@@ -175,11 +183,14 @@ export class PhoneCallSession {
       console.warn('[PhoneCall] stopAndSend failed:', e);
       this.setStatus('idle');
       this.deps.onError('TRANSCRIBE_FAILED');
+      phoneTurnTelemetry.endAndReport();
     }
   }
 
   /** 回复首个内容 token 到达（useChatSession 生命周期回调驱动） */
   notifyReplyStarted(): void {
+    // 遥测不参与活动判定：无条件打点（内部幂等，第二次忽略）
+    phoneTurnTelemetry.markReplyStarted();
     if (this.status === 'awaiting_reply') {
       this.clearReplyWatchdog();
       this.setStatus('speaking');
@@ -192,12 +203,16 @@ export class PhoneCallSession {
     if (this.status === 'speaking' || this.status === 'awaiting_reply') {
       this.setStatus('idle');
     }
+    // 本轮收口 → 上报分段耗时。重复调用安全：open 已归 false 时返回 null。
+    phoneTurnTelemetry.endAndReport();
   }
 
   /** 挂断：停播 + 打断推理 + 归 idle（已落库消息保留；在途转写结果作废） */
   async hangUp(): Promise<void> {
     this.clearReplyWatchdog();
     this.closing = true;
+    // 挂断作废本轮：不报半截数字（挂断后的时间不属于本轮）
+    phoneTurnTelemetry.reset();
     if (this.status === 'recording') {
       // 录音中挂断：先停录（麦克风归还），丢弃本次录音
       await this.deps.record.stop();

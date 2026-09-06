@@ -2129,3 +2129,142 @@ llama.rn TS 面有 `initVocoder`/`input_audio`、JNI `.so` 有符号，核心库
   + OS 未就绪」，人手 tap 掐不准时间窗（短句 0.77s 播完）；音频工坊那条路又因当前转写结果
   只有一个句号「。」而无内容可播，换记录卡的 tap 未生效。**该分支的正确性由 158.4 的三条单测承担，
   不由真机日志冒充。**
+
+## §159 电话链闭环冲刺：拆第二判定源 + 卡片枚举同源 + 分段遥测 + 真机挖出复读破口（2026-09-07，大王指令「依次执行吧，把app开发到一个基本闭环的状态」）
+
+### 159.1 本轮目标与判定标准
+
+大王不设任务清单，给的是**目标态**：「基本闭环」。奴家把"闭环"落到可判定的三件事上：
+① 同一件事不得有两个判定源；② 主链路每个环节都要有可观测数字（否则决策只能靠感觉）；
+③ 用户可感知的破口必须堵住。据此排出 c1–c5 依次执行，全部完成。
+
+### 159.2 c1：拆掉电话轮收口的第二判定源（PHONE_SPEC §18）
+
+上轮 §158 登记的"残留双状态源"本轮根治。关键判断是：**那个竞态不是真并发**——
+一次 `wrappedSendPress` 只走一条路径（scheduler 路由：闲聊且管家就绪 → `butlerReply` 后
+return；否则 → `handleSendPress`），所以 v1.1 的 `phoneReplyHandledRef`「先到先得」仲裁
+所防的并发并不存在，真正缺的是**产生回复的一方没有声明**。
+
+- `butlerReply(text, l10n, onReplied?)` 在 `updateMessage` **之后**声明回合；
+  `useChatScheduler(handleSendPress, onButlerReplied?)` 只透传，不掺播报。
+- `ChatScreen.handleButlerReplied` 判"是否在通话里"读单一状态源 `isInCall()`，
+  **不捕获 React state**——该回调要以稳定引用进 `wrappedSendPress` 的 useCallback deps
+  （deps 已从 `[handleSendPress, l10n]` 补成含 `onButlerReplied`，否则闭包陈旧）。
+- 删除 `phoneLastReply` / `phoneLastReplyKey` / 其 effect / `phoneReplyHandledRef`
+  （含 `send` 里每轮重置那行）共 **64 行**，`phoneLastReply` 与 `handledRef` 残留均为 0。
+- 顺序契约入单测：用 `invocationCallOrder` 断言 `updateMessage` 先于 `onReplied`
+  （先声明后回写 → 播报会读到「管家思考中…」占位文案），只断"被调用过"抓不到这个回归。
+
+### 159.3 c2：卡片标记同源，但**没有照搬专工建议**
+
+`PhoneCallOverlay` 的 `CARD_METADATA_KEYS`（TODO(P1) 要求与 ChatScreen 任务卡动作槽同源）
+收敛进新 `src/utils/messageCards.ts`。**但两处语义并不相同**，直接合并成一个集合会出错：
+
+- 字幕过滤要**所有**非对话卡（含 `system` / `captionTask`）；
+- 动作槽只要**可操作**任务卡（`imageTask` / `editTask` / `taskError`）——
+  把 `system` 算进去，系统提示就会长出一个「再来一张」按钮。
+
+所以同源的是**标记名清单**，判定各自显式组合：`isNonDialogueCard` /
+`isTaskActionCard` / `isTaskErrorCard` / `isGeneratingTaskCard`。
+新增 5 例单测钉住这条边界（`system 卡不得长出按钮` 是关键回归防线）。
+
+### 159.4 c3：分段遥测（PHONE_SPEC §19）
+
+W3 判"不立项"时有一条是「端到端收益尚未被证明」，根因正是**没有分段延迟数字**。
+新增 `services/phoneCall/turnTelemetry.ts`（纯 TS、时钟可注入）：`asr` / `firstToken` /
+`turnTotal` 三段，5 个时序点接进 `PhoneCallSession`（`stopAndSend` 入口、`transcribe`
+返回、`notifyReplyStarted`、`notifyReplyFinished`、`hangUp` 作废）。
+8 例假时钟单测钉死算式与「采不到就 n/a，绝不编数」。
+
+**明确不做的一条**：播报启动延迟需在 `ttsStore`/`streamingHandle` 内加"首帧已启动"回调
+并向上穿透，等于把 TTS 域内部时序暴露给电话域——为凑一个指标污染单条链路，不值；
+已在 §19.3 登记为边界（将来要做得在 TTS 域内打 `[ttsPerf]`，由 TTS_SPEC 定义口径）。
+
+### 159.5 c5：真机端到端跑通 + 首采数字 + 口径陷阱
+
+覆盖安装（**未卸载**）后走人类模拟操作（先拉 scrcpy）。第一次尝试失败且原因明确：
+`am start VIEW wav` 弹出"打开方式"选择器盖住底部按钮，那次 `swipe` 打在遮罩上、
+录音从未开始（logcat 零 `phoneTurnPerf`）——**不拿"日志干净"冒充"路径已覆盖"**。
+改用 PC 扬声器外放、手机拾音后跑通：
+
+```
+[phoneTurnPerf] asr=1787ms firstToken=25902ms turnTotal=47166ms
+```
+
+**首采即暴露口径陷阱**：管家路径是整段回写后才声明回合，所以 `firstToken` 实测是
+「回复就绪延迟」而非「首字延迟」；若读成"25 秒才出第一个字"就会得错结论。
+已把警示写进 §19.5，并明确两路径语义不同。两个可确定事实：SenseVoice ASR 纯耗时
+≈1.8s（端到端在 ASR 段的收益上限就这么点）、一轮 47s 里 LLM 生成占 25.9s（瓶颈在生成段）。
+
+### 159.6 真机挖出的产品级破口：管家病态复读（本轮最有价值发现）
+
+聊天页真机图显示：一句「我想。」换来「您想先写什么？您想先写什么？…」
+**连复 20+ 遍、716 字、25.9s**——电话里等于让用户听同一句话几十遍，是"闭环"最刺眼的破口。
+
+根因是**同文件内的双重标准**：生图扩写路径有 `temperature: 0.4`（注释就写着"低温抑制
+复读"）+ `isParrotingExample` 闸；而管家闲聊路径 `temperature: 0.7 / n_predict: 512`
+**裸奔无防线**。修法按"根治不打补丁"取**流式早停**（不是事后删字）：
+新增 `utils/repetitionGuard.ts`——末尾同一子串连续完整重复 ≥4 次即判退化，
+命中立刻 `ctx.stopCompletion()` 中断生成，并按 `cutAt` **只保留第一份**（宁可少说不可复读）。
+`MIN_TIMES=4` 刻意取高：真复读动辄几十次，4 次足够早停又给正常排比留余量。
+9 例单测含真机样本与边界取舍（连说 8 遍"好的"按退化处理，钉死不迁就）。
+
+**未动 temperature**：0.7→更低属产品调参（影响闲聊多样性），留待大王裁定。
+
+### 159.7 事故与工具行为（如实登记）
+
+1. **跨窗口丢更新**：本轮 §18 追加成功（`has18=1` 实测）后**整节消失**，同时 §9.1
+   多出第二份。核实 HEAD 只有 1 份 §9.1、`h18=0`、`git diff` 0 deletions →
+   判定为另一窗口持旧快照整体覆盖本文件（抹掉 §18、带回它的 §9.1 副本）。
+   处置：§18 按原稿插回、§9.1 逐行 diff 确认第二份**无独有事实**（差异全是折行与
+   弯引号，反而违反本仓直角引号惯例）后删除，保留与 HEAD 完全一致的那份。
+2. **奴家自己的 off-by-one 造成真实损伤**：删重复块时断言用 `L[bEnd]` 验证"下一行是 §10"，
+   删除却用 `slice(bEnd + 1)` → **把 §10 标题行一起删了**（`h2` 由 19→18 暴露）。
+   已按 HEAD 原文补回。教训固化：删除类脚本必须再验 `git diff --numstat` 的
+   deletions 数是否符合预期，光断言边界行身份不够。
+3. **Write 报"保存失败"实际已写入**（两次）：`sec19.md` / `sec91_diff.js` 均报 unknown
+   失败，核实后内容完整。与上轮 SearchReplace「报失败却部分应用」同源——
+   **工具报错不等于没发生，必须复核再决定重试**，否则会造成重复写入。
+4. **上轮自查口径过窄**：奴家上轮用 `/### 9\.1 W3/` 判"无重复"，本轮改用
+   `startsWith('### 9.1 ')` 才发现两份。**自查正则不能比自己预期的更窄**。
+5. 其他：`git show >` 经 PowerShell 重定向写成 UTF-16 致统计全废（改 node execSync）；
+   `exec-out screencap >` 同样污染（PNG 魔数校验后改设备落盘 + pull）；
+   uiautomator 因通话页动画 `could not get idle state` → 改像素定位；
+   `llama.rn` 包名一度记成 `@pocketpalai/react-native-llama`（查 d.ts 确认
+   `stopCompletion()` 在 `llama.rn/lib/typescript/index.d.ts:205`）。
+
+### 159.8 早停的真机验证（含未达成部分，不谎报）
+
+重新构建（2m48s）+ 覆盖装机后，先试电话链路：`tap` 时 App 仍在冷启动、页面未就绪，
+那一轮**根本没录音也没发消息**（`logcat -s ReactNativeJS` 零输出），期间一度拿到
+一张聊天页截图，上面是**上一轮遗留的复读旧消息**——**绝不能拿它当"复读仍存在"或
+"已修复"的证据**，奴家当场判定该轮无效。
+
+改走文本输入（同样经过 `butlerReply`，且避开旧消息干扰）。两个 adb 坑：
+`input text` 的空格转义是 `%s` 不是 `%20`（`%20` 会被当字面字符输入），
+且 RN 输入框 `KEYCODE_ENTER` 不触发发送，需点纸飞机（与语音按钮同位 1074,2494）。
+最终拿到干净证据：
+
+```
+[Scheduler] task=chitchat engine=none butler=ready
+[PromptWriter] chat done in 3213ms, 15 chars
+```
+
+用户「tellmeastory」→ 管家「当然可以哦！你想听什么故事呢？」（真机图存 `.tmp/p159h.png`）。
+
+- ✅ **新回合声明链路真机工作正常**（§18 的 `onReplied` 路径，3.2s 完成回复）；
+- ✅ **早停未误伤正常回复**（15 字短回复完整保留）——这是关键负向验证；
+- ⚠ **正向拦截未在真机复现**：本轮模型没复读，所以 `repetition loop` 日志未出现。
+  该分支正确性由 9 例单测承担（含真机复读样本），**不以"日志里没报错"冒充已覆盖**。
+
+### 159.9 门禁
+
+- `tsc --noEmit`：**0 错**
+- `eslint .`：**0 errors**（30 warnings 全存量，本轮未新增）
+- `prettier --check "src/**/*.{ts,tsx,js,jsx,json}"`：All matched files use Prettier code style
+- 全量 `jest --w 4`：**349 套件全绿 / 4838 passed + 2 skipped / 318 snapshots / exit 0**
+  （上轮 346 套件 4814 passed → 本轮 +3 套件 +24 例，与新增用例数精确对上：
+  messageCards 5 + turnTelemetry 8 + repetitionGuard 9 + scheduler 2 = 24）
+- 第二次并发重跑：**同结果**（349 套件 / 4838 passed + 2 skipped / 318 snapshots / exit 0）
+  ——两次一致，无 flake、无顺序依赖
+- 真机：release 包覆盖安装两轮（**未卸载**），人类模拟操作 + scrcpy 投屏全程可见

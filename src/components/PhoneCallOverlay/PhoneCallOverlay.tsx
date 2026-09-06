@@ -12,6 +12,7 @@ import {L10nContext} from '../../utils';
 import {chatSessionStore, ttsStore} from '../../store';
 import {audioLevel} from '../../services/phoneCall/audioLevel';
 import {assistantId, userId} from '../../utils/chat';
+import {isNonDialogueCard} from '../../utils/messageCards';
 import type {MessageType} from '../../utils/types';
 import type {PerfSnapshot} from '../../specs/NativeHardwareInfo';
 
@@ -118,37 +119,6 @@ const WaveBars = ({
  * 数据源 = chatSessionStore 当前会话消息 + 未落库的实时转写。
  */
 type DialogueLine = {id: string; role: 'me' | 'partner'; text: string};
-
-/**
- * 非对话卡片判定（§14.1 v2.4 真机补修）：通话字幕只放**真实对话**。
- * 2026-09-05 K90 铁证：上一版只挡 `metadata.system`，结果「🎨 已识别为生图任务，
- * 管家优化提示词中…」这类**任务占位卡**（`type:'text'` + author=assistant，但无
- * system 标记）被当成「伙伴说的话」铺进字幕，读着像 bug。
- *
- * 标记集来自写入方（单一事实）：`chatImageTask.ts`（imageTask/editTask/captionTask
- * 及其 Failed 变体）、`useChatScheduler.insertTaskError`（taskError）、
- * `useChatSession.addSystemMessage`（system）。**`butler` 不在此列**——管家直答卡
- * 会被原地回写为真正回复文本，那是伙伴说的话，必须保留。
- * TODO(P1)：与 ChatScreen 任务卡动作槽的同源枚举收敛为一个 util（现为两处并列声明）。
- */
-const CARD_METADATA_KEYS = [
-  'system',
-  'imageTask',
-  'imageTaskFailed',
-  'editTask',
-  'editTaskFailed',
-  'captionTask',
-  'captionTaskFailed',
-  'taskError',
-] as const;
-
-const isNonDialogueCard = (m: MessageType.Any): boolean => {
-  const meta = m.metadata as Record<string, unknown> | undefined;
-  if (!meta) {
-    return false;
-  }
-  return CARD_METADATA_KEYS.some(k => meta[k] != null && meta[k] !== false);
-};
 
 /**
  * 消息归属判定（v2.4 自查修正）：**不得假设「type=text 就是我说」**——

@@ -142,10 +142,14 @@ async function loadCandidateForDialog(
 
 /** 管家直答（启动即就绪闭环）：插用户消息 + 思考卡 → 管家回复回写。
  * L1 记忆读侧闭环（2026-08-21）：回复前组装 buildButlerContext 注入
- * （今日状态/记忆/召回/意图语气），并对齐会话意图状态机（D1 修复）。 */
+ * （今日状态/记忆/召回/意图语气），并对齐会话意图状态机（D1 修复）。
+ * onReplied（PHONE_SPEC §18）：管家直答不经 token 流，没有回合回调可发，
+ * 因此改由**产生回复的一方**显式声明——旧写法让 ChatScreen 扫消息数组反推，
+ * 构成第二判定源。必须在回写之后调，否则会拿到占位文案。 */
 async function butlerReply(
   text: string,
   l10n: (typeof import('../locales'))['l10n'][keyof (typeof import('../locales'))['l10n']],
+  onReplied?: (cardId: string, finalText: string) => Promise<void>,
 ): Promise<boolean> {
   // 意图状态机对齐：已有会话意图沿用，无则 classify + 落库（与 useChatSession 同源）
   let sessionIntent = chatSessionStore.activeSessionIntent;
@@ -194,6 +198,10 @@ async function butlerReply(
   await chatSessionStore.updateMessage(cardId, sessionId, {
     text: finalText,
   });
+  // 回合声明（PHONE_SPEC §18.3）：位置不能提前——回写未完成就声明，播报会读到占位文案。
+  if (onReplied) {
+    await onReplied(cardId, finalText);
+  }
   // B41：管家答完，复位状态机熄灭遥测卡（与 agent run_finished 同源收尾）。
   chatSessionStore.setAgentUiState({
     status: 'done',
@@ -397,6 +405,7 @@ async function maybeRouteLimb(): Promise<'proceed' | 'pass' | 'abort'> {
 
 export const useChatScheduler = (
   handleSendPress: (message: MessageType.PartialText) => void | Promise<void>,
+  onButlerReplied?: (cardId: string, finalText: string) => Promise<void>,
 ) => {
   const l10n = React.useContext(L10nContext);
 
@@ -517,7 +526,7 @@ export const useChatScheduler = (
             return;
           }
         }
-        await butlerReply(text, l10n);
+        await butlerReply(text, l10n, onButlerReplied);
         return;
       }
 
@@ -559,7 +568,7 @@ export const useChatScheduler = (
       // 兜底（chitchat 且 chat 引擎已加载——用户显式加载了大模型）：尊重主权直接发送
       handleSendPress(message);
     },
-    [handleSendPress, l10n],
+    [handleSendPress, l10n, onButlerReplied],
   );
 
   return {wrappedSendPress, upgradeButlerReply};

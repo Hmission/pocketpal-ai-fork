@@ -91,9 +91,13 @@ const mockEmit = require('../../debug/eventStream').emit as jest.Mock;
 const msg = (text: string): MessageType.PartialText =>
   ({text}) as MessageType.PartialText;
 
-const setup = () => {
+const setup = (
+  onButlerReplied?: (cardId: string, finalText: string) => Promise<void>,
+) => {
   const handleSendPress = jest.fn();
-  const {result} = renderHook(() => useChatScheduler(handleSendPress));
+  const {result} = renderHook(() =>
+    useChatScheduler(handleSendPress, onButlerReplied),
+  );
   // L2 2026-08-21：hook 返回 {wrappedSendPress, upgradeButlerReply}
   return {
     wrapped: result.current.wrappedSendPress,
@@ -203,6 +207,45 @@ describe('useChatScheduler', () => {
   });
 
   it('chitchat 且管家就绪且无历史聊天模型：管家直接回答，不触发常规发送', async () => {
+    (promptWriter as any).isLoaded = true;
+    mockPromptChat.mockResolvedValue('管家回复');
+    const {wrapped, handleSendPress} = setup();
+
+    await act(async () => {
+      await wrapped(msg('你好呀'));
+    });
+
+    expect(mockPromptChat).toHaveBeenCalledWith('你好呀', '');
+    expect(handleSendPress).not.toHaveBeenCalled();
+  });
+
+  it('chitchat 管家直答：回写**之后**声明回合（PHONE_SPEC §18.3 单一来源契约）', async () => {
+    (promptWriter as any).isLoaded = true;
+    mockPromptChat.mockResolvedValue('管家回复');
+    // 带真实签名写：否则 jest 把 mock 推成无参元组，calls[0] 解构不过类型。
+    const onReplied = jest.fn(
+      async (_cardId: string, _finalText: string) => {},
+    );
+    const {wrapped} = setup(onReplied);
+
+    await act(async () => {
+      await wrapped(msg('你好呀'));
+    });
+
+    // 顺序是契约的一部分：先声明后回写 → 播报会读到「管家思考中…」占位文案。
+    // 只断言「被调用过」抓不到这个回归。
+    const updateOrder = (chatSessionStore.updateMessage as unknown as jest.Mock)
+      .mock.invocationCallOrder[0];
+    const repliedOrder = onReplied.mock.invocationCallOrder[0];
+    expect(updateOrder).toBeGreaterThan(0);
+    expect(repliedOrder).toBeGreaterThan(updateOrder);
+
+    const [cardId, finalText] = onReplied.mock.calls[0];
+    expect(finalText).toBe('管家回复');
+    expect(typeof cardId).toBe('string');
+  });
+
+  it('chitchat 未传回合声明回调（非电话模式）：管家直答行为不变', async () => {
     (promptWriter as any).isLoaded = true;
     mockPromptChat.mockResolvedValue('管家回复');
     const {wrapped, handleSendPress} = setup();
