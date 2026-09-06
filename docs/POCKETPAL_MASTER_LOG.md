@@ -1210,7 +1210,7 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
 ### 127. 音频工坊链路大修复+对照播放+波形（2026-08-30，小米13 用户实测驱动）
 
 - 127.1 播放无声根因实锤:scrcpy 4.x 默认开启音频转发(PlaybackCapture)→ 系统把 STREAM_MUSIC 输出路由到 remote_submix(8000),扬声器零输出。证据链:logcat AudioTrack 23078 frames delivered 但 music group Devices=remote_submix;杀 scrcpy 后立即恢复 speaker(2)。修复=scrcpy 全部加 --no-audio 重拉;AudioTrack 播完 75600 帧(整段 1.5s)验证闭环。
-- 127.2 转写链路验证通过:录音转写 4 次全成功(“你好呀你好呀…/你好，这里是中华。”),SenseVoice 模型直推就绪;用户“传两次录音无输出”疑因 m4a/mp3 手机录音默认格式(wav 16k 红线拦截提示),待定夺是否扩支持。
+- 127.2 转写链路验证通过:录音转写 4 次全成功(「你好呀你好呀…/你好，这里是中华。」),SenseVoice 模型直推就绪;用户「传两次录音无输出」疑因 m4a/mp3 手机录音默认格式(wav 16k 红线拦截提示),待定夺是否扩支持。
 - 127.3 历史条渲染 bug(真 bug):transcribeHistory/ttsHistory/transcribeTasks/ttsTasks 用 useMemo 依赖 history.length,finishTask 只 patch status 不改数组长度→新任务成功后历史条永不出现(logcat transcribe ok 但 UI 空)。修复=observer 内直接派生(MobX 字段访问即订阅),新增 running→success 回归测试(数组长度不变场景)。
 - 127.4 转写对照播放(SPEC v1.10②):源音频转写成功后复制持久化 AIOS/audio/transcribe/{taskId}.wav(cache 可清),结果卡操作行加「播放原文」(info 蓝,复用 togglePlay 状态机,播放中变「暂停原文」)。
 - 127.5 波形显示(SPEC v1.10③):新建 WaveformBars 组件(整读 base64→解析 RIFF→前 20s 采样→40 桶 RMS 归一化→柱状渲染,播放进度高亮 primary/未播 outlineVariant,内存缓存)。坑:fmt bits 偏移 +22 错读(+14 正确);RNFS.read 分段 API 在 Hermes 异常改 readFile 整读(50MB 级产物仅截前 20s 可控)。真机验证 40 柱全部渲染(柱高 47-81px 随 RMS 起伏)。
@@ -1627,12 +1627,54 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
 ### 151.4 门禁与真机
 
 - 门禁：tsc 0 错；eslint **0 error**（30 条 `no-bitwise` warning 全在 `src/**` 存量位运算文件，本窗未新增；曾试探性给 restore 脚本加文件级豁免，结果它单独 lint 时根本不报 bitwise → 反而多出 `unused-disable` warning，已撤回——**不要为了消除噪音而加不必要的豁免**）；prettier 绿；jest **全量 343 套件：4788 通过 / 2 skipped / 6 失败**。
-- **6 例失败的定性**（不拿它当木已成舟）：① `ModelTypeTag` 4 例——§936 D1 在册存量色值断言；② `actionRegistry` 2 例——`Expected "DreamLite: engine boom"` / `Received "DreamLite 生成失败"`，即**底层错误原文被包装层吞掉**（可诊断性缺陷，属生图域）。两条均**非本窗引入**：本窗 12 项改动不含任何 `src/debug/` 或 dreamLite 文件，且这两个文件最后一次改动在历史窗（ae26403/3f7d02a）；§150 当时只跑了 **232 套件子集**所以从未暴露——**本轮首次跑全量才抓出来**，已登记待裁。
+- **6 例失败的定性**（不拿它当木已成舟）：① `ModelTypeTag` 4 例——§936 D1 在册存量色值断言；② `actionRegistry` 2 例——当时定性为「底层错误原文被包装层吞掉（可诊断性缺陷，属生图域）」，**该定性已于 §152.2 推翻**：生产代码本来就是透传的，真因是**测试从具体文件取到了未被 mock 的真实 store**，spyOn 与赋值全打在另一个对象上。两条均**非本窗引入**：本窗 12 项改动不含任何 `src/debug/` 或 dreamLite 文件，且这两个文件最后一次改动在历史窗（ae26403/3f7d02a）；§150 当时只跑了 **232 套件子集**所以从未暴露——**本轮首次跑全量才抓出来**，已登记待裁。
 - **并发 flake 登记**（重要，免得后人误判）：与后台 Gradle 同时跑 jest 时，首跑报 **7 套件失败**（ToolErrorBlock/Switch/Pressable/BannerBar/Onboarding4 等），复跑只余 2 套件、单跑全绿——**抢 CPU/IO 导致的超时型 flake**，不是回归。宽域 jest 与 Gradle 构建不要并行跑，或并行时必须复跑定性。
 - 构建与装机：Gradle `assembleProdRelease -x lint` **BUILD SUCCESSFUL in 20m9s**（含 Kotlin 改动）；`adb install -r` Success；未卸载、冷启动、投屏全程开启。
 - **真机铁证（全表落 PHONE_SPEC §17.5）**：① 统一日志兑现——原生 `start ok path=… minBuf=1280` / `stop ok ms=18244 bytes=581804`，JS `[AudioRecord] start owner=chat_input` / `stop owner=chat_input ms=18238`，两者差 6ms 即 bridge 往返；**581804 B ÷ 32000 B/s = 18.18s** 与实测时长吻合，证明不是空文件；② 电话链全通——`owner=phone_call` → `[VAD-obs] 3760ms peak=0.2109` → `stop ms=3908` → `transcribe ok` → `chat done in 3511ms, 18 chars` → `Model loaded in 879ms` → 状态行自回「我在听…」；③ **启停 2:2 严格配对**，`stop ignored` 零条；④ 错误面 **0 条**（busy/rejected/RecorderError/JavascriptException/FATAL/ANR 全零）；⑤ 挂断回聊天页，底部正是本轮回复（§14.1 顺序契约未回退）。
 - **两条真机操作教训**（详见 §17.5 尾）：**scrcpy 默认转发设备音频会在 `uid=2000` 下持续持有麦克风**（logcat 可见 `AudioRecordImpl … sr 48000 ch 2`）——测录音链必带 `--no-audio`，否则可能拿静音；通话页持续波形动画使 `uiautomator dump` 报 `could not get idle state`，改用 **uiautomator2 `dump_hierarchy()`**；坐标要从 dump 文字锚点 + 源码尺寸算，本轮一次 swipe 因目测偏左 266px 而空按（**日志零痕迹正好区分「没按到」与「按到但失败」**——这正是统一日志的第二次实战价值）。
 - 未验项（不谎报）：`busy` 路径真机**不可构造**（工坊与输入框不同屏，切页时卸载交锁已先释放，这正是交锁该有的行为），该路径由单测 9 例钉住；两条新文案（`speakBlock='engine'` / `speakEntry='setup'`）真机可见性仍未逐项看到（本轮音色 Kokoro 且引擎 ready）。
-- 遗留：① `actionRegistry` 吞底层错误原文（生图域，待裁）；② 音频工坊「导入音频转写」仍未复验；③ 输入框流式 ASR 需新模型资产（未立项）；④ **W3 端到端仍待大王点头**（要不要进引擎禁区重编 llama.cpp/llama.rn；奴家建议：不进则维持 SenseVoice 单链，现有链已足够锋利）。
+- 遗留：① ~~`actionRegistry` 吞底层错误原文（生图域，待裁）~~ → **已定案：不是生产缺陷，是测试取错对象，已修（见 §152.2）**；② 音频工坊「导入音频转写」仍未复验；③ 输入框流式 ASR 需新模型资产（未立项）；④ **W3 端到端仍待大王点头**（要不要进引擎禁区重编 llama.cpp/llama.rn；奴家建议：不进则维持 SenseVoice 单链，现有链已足够锋利）。
 - 提交拆两笔（各自可回退）：① `chore(build)` postinstall 跨平台化 + jniLibs 备份三源 + 脚本注释纠偏；② `fix(audio)` W2b 录音启停归一（JS 单一入口 + 原生忙即拒 + 权限分流 + 统一日志）。**不推送**（大王指令仍是「不推送」）。
+
+---
+
+## §152 W3 定案（不进引擎禁区）+ actionRegistry 两例真根因（**误判三改账**）+ 验证门禁纪律入 AGENTS.md（2026-09-06，test/build/gov 域）
+
+大王指令「依次执行」——按奴家 §151 报告的三项待裁顺序开工：① W3 定案 → ② actionRegistry 根治 → ③ 纪律入册。本窗守住了上窗漏的门禁：gate → **route（act-7c2b2956）取得执行权后才动手**。
+
+### 152.1 W3 端到端定案：不进引擎禁区（结论/理由/被否方案/适用边界）
+
+- **结论**：本轮及以后续窗口**不自作主张重编 llama.cpp/llama.rn**；语音输入维持现有单链（`audioRecorder` 录 wav → SenseVoice/sherpa-onnx 离线转写 → 文本入 LLM）。
+- **理由**：① 现有链已闭环且真机实测可用（§17.5：录 18.18s → 转写 → 回复 → 播报全通），端到端的增量收益（边听边想/流式 ASR）**尚未被任何需求证明**；② 端到端必需 `llama_supports_audio_in/out` 符号，备份里的 `librnllama.so` 无该符号且 `rnllamaBuildFromSource` 关闭 → 必进引擎禁区；③ 重编会连带多设备兼容回归（本仓有 Mali/OpenCL/Vulkan 多起驱动级坑的先例）；④ 产品哲学：锋利不臃肿——不为「可能更好」拆已验证的链路。
+- **被否方案**：(a) 把 216.8MB 备份入仓（pack 丢失史 + 禁 filter-repo，不可逆）；(b) 立即立项重编（无需求支撑且风险面最大）。两者均已在 §151 以更小代价解决或规避。
+- **适用边界（何时重新打开）**：只有当大王明确要求「流式语音（不等说完就开想）」或「音频 token 直接进模型」这类产品目标时才立项；届时前置条件（可重建原生库的构建链）已不再是障碍——但**仍须点头才进禁区**。
+
+### 152.2 ⚠️ 误判三改账：actionRegistry 那 2 例不是生产缺陷，是**测试取错了对象**
+
+§151.4 登记的「底层错误原文被包装层吞掉（生图域可诊断性缺陷）」**不成立**。查证过程（每一步都是实证，不再靠推断）：
+
+1. 先猜「`failTask` 清了 `store.error`」→ 读 `failTask` 实现：只 `patchTask` 写 errorSummary/errorDetail，**不清 error** → 假设被推翻；
+2. 再猜「`beginTask` 清 error」→ 用脚本列出 `imageGenStore.ts` 里**全部 21 处 `this.error =` 按方法归属**：`generateDreamLiteEntry` 开头 `error = null`（L1084）、失败时写 `DreamLite: ${e.message}`（L1140）→ **生产路径本来自洽**；
+3. 最后写临时诊断用例直接实测（跑完已删），一句 `console.log` 定音：`SAME_OBJECT: false`。
+
+**真根因**：`jest/setup.ts` L130 只 mock 了 **barrel**（`jest.mock('../src/store')`），而 `actionRegistry` 也是 `from '../store'`；测试却 `require('../../store/imageGenStore')` 拿到**未被 mock 的真实实例** → `spyOn` 与 `error=` 全打在另一个对象上，被测代码完全看不到。表现为「错误被吞」，实为测试自身错对象。
+
+**修复**（只改测试，不动生产代码）：两用例改为 `import {imageGenStore} from '../../store'`（与被测代码同源）；`afterEach` 补 `jest.restoreAllMocks()` + 归零 `error`（防实现泄到后续用例）；文件头写下「为何必须走 barrel」的警告注释。另全仓同类隐患已扫（`src/**/__tests__` 里从具体文件 import store 的共 4 处，其余三处均正当：`HFStore.test` 测的就是本体，`engineStatus`/`modelCapabilityRegistry` 未被 mock）。结果：**src/debug 5 套件 42 例全绿**。
+
+**可复用教训**：测试失败时，「生产代码坏了」与「测试没接上生产代码」是两个完全不同的结论，**一条 `console.log('SAME_OBJECT:', a === b)` 就能分开它们**——先花 30 秒区分，再决定改哪边（否则会给健康代码打补丁，把真 bug 埋得更深）。
+
+### 152.3 验证门禁纪律入 AGENTS.md（四条，均本仓踩过）
+
+`## 验证门禁纪律` 新增于「常用命令」之后：① **门禁终验必须 `--runInBand`**（见 152.4 的二次修正）；② **`yarn install` 不加 `--ignore-scripts`**（会连官方 postinstall 一起跳过；自检 FAIL 先修再构建，不得绕过）；③ **测试替身与被测代码必须同一模块来源**（barrel vs 具体文件，即 §152.2 根因）；④ **断言纪律：正面与否定结论同等对待**（第二口径实证；断言「缺失/坏了」最危险；自己造成的破坏不归因仓库；误判就地改账）。
+
+另抓出并纠正 AGENTS.md 一处**文档与门禁配置对不上**：「提交规范」段旧文写着「`refactor:` `test:` `perf:` 等按常规」，但 `commitlint.config.js` 的 `type-enum` 只放行 feat/fix/docs/chore 四种——本窗首行先用 `test(debug):` 提交，被 commit-msg 钩**当场拒收**才发现（钩子比文档可靠）。已改为明写「只能用上述四种：测试修正归 `fix(scope)`，脚本/工具/依赖归 `chore(scope)`」。
+
+### 152.4 门禁与提交
+
+- 改动面：`src/debug/__tests__/actionRegistry.test.ts`（测试修正）+ `AGENTS.md`（纪律）+ 本档改账。**零运行时行为改动** → 不重编、不装机（避开无意义的 20 分钟构建与设备打扰，特此说明）。
+- 门禁（严格串行，不并行 Gradle）：tsc 0 错；eslint 0 error；prettier 绿；jest **串行终验 `npx jest --ci --runInBand`：343 套件中 342 通过，4796 例中 4790 通过 + 2 skipped + 4 失败**——那 4 例全在 `ModelTypeTag`（期望 `#FF6B35` 实收 `#7880FF`，主题色 SSOT 变更后测试未同步，§936 D1 在册存量，属主题域不擅动）；actionRegistry 2 例已修。
+- **纪律第 1 条在本窗就被自己的实测修正了一次**（登记以免后人又写错）：初稿按 §151 的说法写成「宽域 jest 与 Gradle 禁止并行」，随后在**无 Gradle 并发**的情况下全量跑仍报 4 套件红（Checkbox / SystemSettingsScreen / ChatHeader），单跑全绿、`--runInBand` 全绿 → 根因是 **jest 多 worker 自身就会飘**，不只是外部并发。已升级为「**门禁终验必须 `--runInBand`**」。
+- **同时认一条**：奴家在 152.4 初稿里先写下了「343 套件全绿」这个**尚未跑出来的数字**，发现后立即以实测替换——**预写结论与臆想同罪**，这正是上面第 4 条纪律要防的东西，本轮轮到奴家自己犯。
+- 提交一笔：`test(debug): 修正 actionRegistry 两用例取错 store 实例…`（含 AGENTS.md 纪律与本档改账，同一因果链不拆笔）。**不推送**。
+- 遗留：① `ModelTypeTag` 4 例存量色值断言仍未修（他域待裁）；② 音频工坊「导入音频转写」未复验；③ `speakBlock='engine'` / `speakEntry='setup'` 两条新文案真机可见性未逐项看到；④ 输入框流式 ASR 需新模型资产（已随 W3 定案为不立项）。
 

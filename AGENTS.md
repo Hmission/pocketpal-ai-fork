@@ -37,6 +37,13 @@ yarn l10n:validate        # 多语言 JSON 校验
 yarn verify:fonts         # 字体子集校验（新增语言必跑）
 ```
 
+## 验证门禁纪律（2026-09-06 立；四条都是本仓踩过的坑）
+
+1. **门禁终验必须串行跑：`npx jest --ci --runInBand`**。jest 多 worker 并发本身就会产出超时型假失败（实测：同一代码并发跑报 4 套件红，`--runInBand` 复跑仅余 1 套件 4 例真失败；再叠加 Gradle 并发时首跑红到 7 套件）。**并发跑出的任何失败都必须单跑复核定性后才能写进报告**；不得把 flake 当回归上报，也不得凭「看着像 flake」跳过复核。宽域 jest 与 Gradle 构建不并行。
+2. **`yarn install` 不要加 `--ignore-scripts`**。它会连 llama.rn 官方 postinstall 一起跳过 → jniLibs 原生库不下载、patch-package 补丁不应用（生图 ONNX 丢 16KB page 对齐与 ORT 锁版本）。后置逻辑由 `scripts/postinstall.js`（跨平台 node）负责，结束时打印**构建链自检**三项；自检 FAIL 则 install 非零退出，**先修再构建，不得用 --ignore-scripts 绕过**。
+3. **测试替身必须与被测代码同一模块来源**。`jest/setup.ts` 只 mock 了 store barrel（`jest.mock('../src/store')`）；测试若从具体文件（`'../../store/xxxStore'`）import **真实实例**再 spyOn/赋值，被测代码（走 barrel）**完全看不到**这些改动——表现为「某功能坏了」的假故障（2026-09-06 actionRegistry 2 例即此因）。写/改 store 相关测试一律 `from '../../store'`。
+4. **断言纪律：正面与否定结论同等对待**。任何结论写进文档/报告或据此动手前，必须有**第二条独立口径实证**（列真实清单 / 读二进制头 / 跑最小实验）；只有一条线索加先验知识时只能写成「待验证假设」。断言「缺失/坏了」最危险——它会立刻引发大动作（入仓/重编/重写）。**自己造成的现场破坏不得归因给仓库**（典型：`--ignore-scripts`、PowerShell `Set-Content` 把 LF 改 CRLF 使补丁永久拒施）。误判一旦发现，立即就地改账并写明「此前结论错误 + 推翻它的证据」，不做无声修正。
+
 ## 提交规范
 
 Conventional Commits（Husky commitlint 强制）：
@@ -45,7 +52,8 @@ Conventional Commits（Husky commitlint 强制）：
 - `fix:` 修复 bug
 - `docs:` 文档变更
 - `chore:` 重构 / 工具 / 配置变更
-- `refactor:` `test:` `perf:` 等按常规
+
+❗ **类型只能用上述四种**（2026-09-06 实测纠正：旧版本这里写着「`refactor:` `test:` `perf:` 等按常规」，但 `commitlint.config.js` 的 `type-enum` 只放行上列四项，用 `test:` 提交会被 commit-msg 钩直接拒收）。测试修正归 `fix(scope):`，脚本/工具/依赖类改动归 `chore(scope):`。
 
 ## UI 复用纪律（2026-08-27 大王报障根治：禁止先造后对齐）
 

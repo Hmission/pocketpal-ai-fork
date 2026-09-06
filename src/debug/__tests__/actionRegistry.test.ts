@@ -1,6 +1,12 @@
 /**
  * actionRegistry 契约测试：白名单 / 未知拒绝 / zod 校验 / 单槽依赖。
  * 覆盖铁律：BT05（向前兼容，actionId 语义稳定）。
+ *
+ * ⚠ **store 必须从 barrel `'../../store'` 取，不得从具体文件取**：
+ * `jest/setup.ts` 只 mock 了 barrel（`jest.mock('../src/store')`），而 actionRegistry 也是
+ * `import {imageGenStore} from '../store'`——若测试改成 `require('../../store/imageGenStore')`
+ * 会拿到**未被 mock 的真实 store 实例**：spyOn 与赋值全部打在另一个对象上，被测代码
+ * 完全看不到（表现为「错误信息被吞」的假故障，实为测试自身错对象）。
  */
 import {
   executeAction,
@@ -8,11 +14,15 @@ import {
   registerNavSlot,
   __drcSlotsForTest,
 } from '../actionRegistry';
+import {imageGenStore} from '../../store';
 
 describe('actionRegistry', () => {
   afterEach(() => {
     registerNavSlot(null);
     registerChatSender(null);
+    // 本文件用 spyOn 改造 mock store 的方法，不还原会把实现泄到后续用例
+    jest.restoreAllMocks();
+    (imageGenStore as {error: string | null}).error = null;
   });
 
   it('未知 actionId 显式拒绝', async () => {
@@ -113,7 +123,6 @@ describe('actionRegistry', () => {
   // G1（§77）：DRC generateDreamLite 与 UI「出图」同链路——走 beginTask/finishTask 编排，
   // 而非 raw generateDreamLiteEntry 直调（§75.5 缺陷根治）。
   it('imagegen.generateDreamLite 走编排：先建 running 任务页 + 成功回填', async () => {
-    const {imageGenStore} = require('../../store/imageGenStore');
     const beginTask = jest
       .spyOn(imageGenStore, 'beginTask')
       .mockResolvedValue('task-drc-1');
@@ -151,9 +160,10 @@ describe('actionRegistry', () => {
     );
   });
 
-  it('imagegen.generateDreamLite 生成失败：failTask 保留报错页', async () => {
-    const {imageGenStore} = require('../../store/imageGenStore');
-    (imageGenStore as any).error = 'DreamLite: engine boom';
+  it('imagegen.generateDreamLite 生成失败：报错原文透传（不吞底层原因）', async () => {
+    // 失败时 store.error 带的是引擎原始报错（`generateDreamLiteEntry` 自写 `DreamLite: …`），
+    // DRC 调用方拿到的 throw 与报错页都必须含它，否则只剩一句「生成失败」无法定位。
+    (imageGenStore as {error: string | null}).error = 'DreamLite: engine boom';
     jest.spyOn(imageGenStore, 'beginTask').mockResolvedValue('task-drc-2');
     jest.spyOn(imageGenStore, 'generateDreamLiteEntry').mockResolvedValue(null);
     const failTask = jest
