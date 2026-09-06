@@ -72,6 +72,15 @@ export const createStyles = ({
       height: theme.size.controlHeight,
       alignItems: 'center',
       justifyContent: 'center',
+      // 真机像素复量（截图 1200px / 密度 2.75）：未补偿时 电话↔加号 墨迹间距 66px=24.0dp，
+      // 而 胶囊↔电话 34px=12.4dp、加号↔三点 40px=14.5dp——大王报的「间距过大」成立。
+      // 根因：电话按钮插在已按 §20.3 校准好的 HeaderRight 之前，两侧 36dp 触区的
+      // 居中留白与 rightSection gap 叠加。补偿沿用 §20.3 同族手法（compactBtnLeft
+      // 的 marginLeft:-6），不另造间距体系。
+      // 两轮实测迭代：-6 时降到 54px（图标同时由 m→s 又加回 ~5.5px 居中留白），
+      // 目标 40px 与加号↔三点 对齐 → 取 -11。预期重叠部分落在电话图标自身
+      // 右留白(10dp) 内不遮墨迹，但**该预期尚待装机后复量 + 点击复验确认**。
+      marginRight: -11,
     },
     phoneButtonDisabled: {
       opacity: 0.4,

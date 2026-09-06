@@ -1,6 +1,7 @@
 import {StyleSheet} from 'react-native';
 
 import type {Theme} from '../../utils/types';
+import {withOpacity} from '../../utils/colorUtils';
 
 /**
  * PhoneCallOverlay v2.1 样式（PHONE_SPEC §11.2）。
@@ -224,15 +225,23 @@ export const createStyles = ({theme}: {theme: Theme}) =>
       width: 72,
       height: 72,
       borderRadius: 36,
-      backgroundColor: theme.colors.primary,
+      // 大王报障：实心大圆 + 反白图标与全局「线条为主」的图标语言不符。
+      // 底衬改为本仓已有的「域彩 12% 底 + 1px 同色描边」（与 ChatHeader.modelPickerChip、
+      // 抽屉搜索框聚焦态同一设计语言，不另造一套）；72dp 等大与左右分居
+      // 保持 v2.2/v2.3 裁定不动（靠颜色/图标区分语义，不靠尺寸做视觉等级）。
+      backgroundColor: withOpacity(theme.colors.primary, 0.12),
+      borderWidth: 1,
+      borderColor: theme.colors.primary,
       alignItems: 'center',
       justifyContent: 'center',
     },
     holdButtonRecording: {
-      backgroundColor: theme.colors.error,
+      backgroundColor: withOpacity(theme.colors.error, 0.12),
+      borderColor: theme.colors.error,
     },
     holdButtonDisabled: {
-      backgroundColor: theme.colors.surfaceVariant,
+      backgroundColor: withOpacity(theme.colors.outline, 0.12),
+      borderColor: theme.colors.outline,
     },
     holdButtonPressed: {
       opacity: 0.85,
@@ -241,7 +250,10 @@ export const createStyles = ({theme}: {theme: Theme}) =>
       width: 72,
       height: 72,
       borderRadius: 36,
-      backgroundColor: theme.colors.error,
+      // 同 holdButton：域彩 12% 底 + 1px 描边，图标走 error 线条（不再反白）。
+      backgroundColor: withOpacity(theme.colors.error, 0.12),
+      borderWidth: 1,
+      borderColor: theme.colors.error,
       alignItems: 'center',
       justifyContent: 'center',
     },

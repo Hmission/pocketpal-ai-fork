@@ -108,12 +108,20 @@ describe('ChatHeader', () => {
     expect(flattened.height).toBe(themeFixtures.lightTheme.size.controlHeight);
     expect(flattened.borderWidth).toBeUndefined();
     expect(flattened.backgroundColor).toBeUndefined();
+    // 间距补偿入测试（防回归）：真机像素量得未补偿时 电话↔加号=24.0dp，
+    // 而 胶囊↔电话=12.4dp、加号↔三点=14.5dp（大王报「间距过大」）；
+    // -11 沿用 §20.3 compactBtnLeft 同族手法校准至等距（两轮实测迭代得出）。
+    expect(flattened.marginRight).toBe(-11);
     // DESIGN_SPEC §3 传参红线：本仓 svgr 把 #333333 映射为 {props.fill}，
     // 传 color 无效（图标不渲染）——着色必须落在 fill 上。
     // jest 下 svg 经 __mocks__/external/react-native-svg.js 渲染为宿主元素 'SvgMock'
     const [icon] = btn.findAllByType('SvgMock' as unknown as React.ElementType);
     expect(icon.props.fill).toBe(themeFixtures.lightTheme.colors.primary);
-    expect(icon.props.width).toBe(themeFixtures.lightTheme.iconSize.m);
+    // 尺寸 s(16) 而非同栏 m(20)：真机量得 phone 墨迹满框 55px=20dp，而加号墨迹
+    // 只 42px=15.3dp——封闭轮廓 vs 两笔线条，视觉重量不匹配（大王裁定降重量）。
+    // 期望随设计变更更新；资产本身合规（ICON_SPEC：24×24 / sw2 / 纯 stroke），
+    // 所以只降渲染尺寸，不重绘图标。
+    expect(icon.props.width).toBe(themeFixtures.lightTheme.iconSize.s);
     fireEvent.press(btn);
     expect(onPhoneCallPress).toHaveBeenCalledTimes(1);
   });

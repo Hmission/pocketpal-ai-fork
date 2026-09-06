@@ -107,10 +107,14 @@ export const ChatHeader: React.FC<{
                 styles.phoneButton,
                 !phoneReady && styles.phoneButtonDisabled,
               ]}>
+              {/* 尺寸用 s(16) 而非同栏 m(20)：真机像素量得 phone 墨迹满框 55px=20dp，
+                  而加号墨迹只 42px=15.3dp——封闭轮廓 vs 两笔线条，视觉重量不匹配
+                  （大王报「面积较大」）。资产本身合规（24×24 / sw2 / 纯 stroke，
+                  见 ICON_SPEC），不合规的是重量，所以只降渲染尺寸不重绘图标。 */}
               <PhoneIcon
                 fill={phoneReady ? theme.colors.primary : theme.colors.outline}
-                width={theme.iconSize.m}
-                height={theme.iconSize.m}
+                width={theme.iconSize.s}
+                height={theme.iconSize.s}
               />
             </TouchableOpacity>
           )}

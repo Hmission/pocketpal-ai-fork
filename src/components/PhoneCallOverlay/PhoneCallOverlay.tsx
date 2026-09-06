@@ -575,12 +575,14 @@ export const PhoneCallOverlay: React.FC<PhoneCallOverlayProps> = observer(
               onPress={onHangUp}
               hitSlop={8}
               style={styles.hangupButton}>
-              {/* 挂断符号 = 电话图标横置（业界通话结束语义，不另造图标资产） */}
+              {/* 挂断符号 = 电话图标横置（业界通话结束语义，不另造图标资产）。
+                  着色走 error 线条（不再 onError 反白）+ 尺寸 l(24)：底衬已改轻底细边，
+                  反白图标在 12% 底上会看不清——与全局线条图标语言对齐。 */}
               <View style={styles.hangupGlyph}>
                 <PhoneIcon
-                  fill={theme.colors.onError}
-                  width={theme.iconSize.xl}
-                  height={theme.iconSize.xl}
+                  fill={theme.colors.error}
+                  width={theme.iconSize.l}
+                  height={theme.iconSize.l}
                 />
               </View>
             </Pressable>
@@ -603,13 +605,13 @@ export const PhoneCallOverlay: React.FC<PhoneCallOverlayProps> = observer(
               <MicIcon
                 fill={
                   recording
-                    ? theme.colors.onError
+                    ? theme.colors.error
                     : unlocked
-                      ? theme.colors.onPrimary
-                      : theme.colors.onSurfaceVariant
+                      ? theme.colors.primary
+                      : theme.colors.outline
                 }
-                width={theme.iconSize.xl}
-                height={theme.iconSize.xl}
+                width={theme.iconSize.l}
+                height={theme.iconSize.l}
               />
             </Pressable>
             <Text
