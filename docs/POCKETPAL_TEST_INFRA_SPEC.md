@@ -120,15 +120,36 @@ const stop = safeInterval(name: string, tick: () => unknown, ms: number): () => 
 
 ## 六、复发防护与已知债
 
-**新代码三条自查**：① 替身路径与被测代码逐字一致？② 新轮询走 `safeInterval` 了吗？
+**新代码四条自查**：① 替身路径与被测代码逐字一致？② 新轮询走 `safeInterval` 了吗？
 ③ 动了 spec 是否同步了替身并通过 `yarn audit:native-mocks`？
+④ **真机不可构造的分支有没有单测锁住？**典型：`ttsStatusTextFor` 五条文案分支里
+`device`/`noVoice`/`engine` 三条要弄坏内存档位/音色/引擎才能看到——真机跑一百次也碰不到。
+这类分支必须抽成纯函数 + 单测，否则「改错也不会有人知道」；判断标准很简单：
+**这个分支能不能用正常操作路径让它出现。不能，就只能靠测试。**
 
 **已知债（登记不掩盖）**：
 
-1. 两个闸门已挂 `.husky/pre-commit`（每次提交必跑）。**曾经误写「已接入 CI」**：本仓 `.gitignore` 有一条 `workflows/`（注释表明本意是忽略开发团队流程产物），按 git 语义**连带排除了 `.github/workflows/`**——该目录不入库（`git check-ignore -v` 实测），改 ci.yml 不会产生任何提交，因此那一步「接入 CI」完全无效且留了幽灵差异，已回滚。接入真 CI 需先调整该ignore规则（属仓库级决定，待大王裁）。
+1. ~~两个闸门只接本地门禁~~ → ~~已接入 CI（`ci.yml` Step 5b/5c）~~ → 两个结论都错过，现登记最终事实：
+   本仓 `.gitignore` 原有一条无斜杠的 `workflows/`，按 git 语义**连带排除了 `.github/workflows/`**，
+   所以第一次「接入 CI」完全无效（改 ci.yml 不产生任何提交）。§156 已修为 `/workflows/`，
+   两个闸门现同时挂在 **`.husky/pre-commit`（提交拦）+ `ci.yml` Step 5b/5c（入库）**。
+   连带发现：本仓 4 个 workflow 长期未入库（等于 fork 一直没有 CI），其中 `e2e-tests.yml` /
+   `l10n-upload.yml` / `release.yml` 仍显式挂在 `.gitignore` 里待裁（`release.yml` 会触发发布动作，
+   风险最高）——**删对应行即启用**。
 2. 全仓 6 个 spec 中只有 `NativeHardwareInfo` 做了全局替身，其余 5 个（如 `NativeDownloadModule` 含 10 个方法）闸门报 SKIP。**不是漏洞**——没有替身就不存在「替身落后于契约」这个问题；但将来给它们加替身时，闸门会立刻要求全覆盖。
 3. 自查留痕：本节初稿把 spec 数写成「15 个」（未数的估词），实为 **6 个**（Grep 列文件与闸门输出双口径核对）。数字必须来自已完成的核验。
-4. `docs/INDEX.md` 只收录治理类文档，业务 SPEC（含本文）未进导航表——属文档治理债。
-5. 洋葱图谱事实库 `code_facts.duckdb` 未在本仓建索引，`code_fact_query` 不可用，
-   本轮定位按 gate 的降级链（Grep → Glob → Read）完成；构建器在母仓
-   `F:\AIOS\scripts\search\build_all_indexes.py`，属跨仓动作，需大王点头。
+4. ~~`docs/INDEX.md` 只收录治理类文档，业务 SPEC（含本文）未进导航表——属文档治理债~~ →
+   **经实证不成立（§156.3）**：第二节标题即「全局规范（A 层 / B 层）」，早已收录大批业务 SPEC，
+   且 L18 明写「新增文档必须在本文件登记」。真相是**新建本文时漏做登记**，却把它写成了需要
+   大王授权的「治理债 + 禁区红线」——把自己的失职包装成障碍。已按 INDEX.md 自身规则补录（v1.4）。
+   **报「某规范不支持」前，先读那条规范本身。**另经取证：INDEX.md 本身在 `.gitignore:196` 的
+   「内部治理文档不公开发布」清单里（与 `DOC_GOVERNANCE_SPEC` / `DOC_MANAGEMENT` / `adr/` /
+   `internal/` 同组），所以它**不入库属既有策略、不是缺陷**，补录在本地生效即可——与 ci.yml
+   那次不同（那个必须入库才生效）。
+5. 洋葱图谱事实库 `code_facts.duckdb` 不存在，`code_fact_query` 不可用，本仓定位按 gate 降级链
+   （Grep → Glob → Read）完成。**真因经 §156.4 取证更正**：不是「跨仓需点头」——构建器
+   `F:\AIOS\scripts\search\builders\code_facts.py` 本就支持 `--repo-root /path/to/fork`，且
+   DuckDB 是可选副作用（缺包时仍产 JSON 投影，只登记 `duckdb_not_installed`）；真正卡点是
+   ① 环境未装 `duckdb` 包；② **该构建器当前自身不可运行**：`builders/` 下独缺
+   `_code_facts_tables.py`，被 `_code_facts_type_inference.py:194/196` import 即
+   `ModuleNotFoundError`。属**母仓缺陷**，需母仓侧修，本仓无权亦不该代修。

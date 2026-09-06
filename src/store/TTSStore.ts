@@ -77,6 +77,15 @@ const previewMessageId = (voice: Voice): string =>
   `preview:${voice.engine}:${voice.id}`;
 
 /**
+ * 播报门拦路原因（单一口径）：`null` = 可播。UI 只读不改写；
+ * 由它到可见文案的映射见 `components/PhoneCallOverlay/ttsStatusText.ts`。
+ */
+export type SpeakBlock = 'device' | 'noVoice' | 'engine' | null;
+
+/** 运行期播报问题（尝试播了但出问题）：语种不匹配 / 播放失败。 */
+export type SpeakIssue = 'lang' | 'failed' | null;
+
+/**
  * Store that coordinates text-to-speech playback.
  *
  * Availability gate: `isTTSAvailable` is the single boolean every TTS-aware
@@ -146,7 +155,7 @@ export class TTSStore {
    * 与 `speakIssue` 分工：这里答「门为何不放行」（静态可派生），
    * `speakIssue` 答「尝试播了但出问题」（运行期事实）；两者合起来才是状态行。
    */
-  voiceBlock(voice: Voice | null): 'device' | 'noVoice' | 'engine' | null {
+  voiceBlock(voice: Voice | null): SpeakBlock {
     if (!this.isTTSAvailable) {
       return 'device';
     }
@@ -157,7 +166,7 @@ export class TTSStore {
   }
 
   /** 当前音色的播报门判定（调用方拿到 `null` 就可以播）。 */
-  get speakBlock(): 'device' | 'noVoice' | 'engine' | null {
+  get speakBlock(): SpeakBlock {
     return this.voiceBlock(this.currentVoice);
   }
 
@@ -200,7 +209,7 @@ export class TTSStore {
    * 旧行为是只 `console.warn`（真机 2026-09-05 实证：状态行一直显示「播报就绪」
    * 而实际无声）。判定只这一处，UI 只读不改写；**不自动替用户改选音色**。
    */
-  speakIssue: 'lang' | 'failed' | null = null;
+  speakIssue: SpeakIssue = null;
 
   // Persisted user preferences
   autoSpeakEnabled: boolean = false;

@@ -23,6 +23,8 @@ import {
 } from '../../assets/icons';
 import {formatElapsed} from '../../hooks/useElapsed';
 
+import {ttsStatusTextFor} from './ttsStatusText';
+
 import type {PhoneCallStatus} from '../../services/phoneCall/session';
 
 /**
@@ -202,18 +204,9 @@ export const PhoneCallOverlay: React.FC<PhoneCallOverlayProps> = observer(
     const speakBlock = ttsStore.speakBlock;
     const speakIssue = ttsStore.speakIssue;
     const ttsProblem = speakBlock !== null || speakIssue !== null;
-    const ttsStatusText =
-      speakIssue === 'failed'
-        ? t.ttsPlayFailed
-        : speakIssue === 'lang'
-          ? t.ttsLangMismatch
-          : speakBlock === 'device'
-            ? t.ttsDisabled
-            : speakBlock === 'noVoice'
-              ? t.ttsNoVoice
-              : speakBlock === 'engine'
-                ? t.ttsEngineUnavailable
-                : t.ttsReady;
+    // 文案映射抽为纯函数 ttsStatusTextFor：其中三条拦路分支真机不可构造
+    // （要弄坏内存档位/音色/引擎才能看到），单测是唯一防线。
+    const ttsStatusText = ttsStatusTextFor(t, speakBlock, speakIssue);
 
     // 思考/播报中波形（bounce 三点，生图三点波浪同源——不新建动画体系）
     const wave = useWaveDots(

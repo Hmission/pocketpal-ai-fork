@@ -106,7 +106,19 @@ e2e/specs/visual-capture/TASK-*.spec.ts
 # Dev-team workflow control-plane artefacts (story docs, designer asks,
 # screenshot inventories). Live in the dev-team repo and are sometimes
 # synced into the worktree for local reference; never committed here.
-workflows/
+# ⚠ 必须带前导斜杠：写成 `workflows/` 按 git 语义会匹配**任意层级**的同名目录，
+#   连带把 GitHub Actions 的 `.github/workflows/` 也排除出库——改 ci.yml 不产生
+#   任何提交，等于本仓 CI 永远无法生效（实测与取证见 MASTER_LOG §155.1）。
+/workflows/
+# vendored 上游仓（stable-diffusion.cpp / ggml）自带的 CI：不纳入本仓，
+# 否则 GitHub 会去跑上游的 build/stale-prs 等 workflow。
+android/app/src/main/cpp/**/.github/
+# 本仓这三个 workflow 因上面那条无斜杠规则长期未入库（见 MASTER_LOG §155.1）。
+# 是否启用属仓库级决定——尤其 release.yml 会触发发布动作——待大王裁；
+# 裁可前先显式挂起，避免污染 git status 或被其他窗误 add（删对应行即启用）。
+.github/workflows/e2e-tests.yml
+.github/workflows/l10n-upload.yml
+.github/workflows/release.yml
 # Internal docs (AIOS junction/specialist info, not published in the public repo)
 docs/internal/
 # Qoder/IDE agent configs (internal MCP/specialist info, not published)
