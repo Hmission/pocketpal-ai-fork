@@ -46,8 +46,15 @@ export function createEngineStreamingHandle(
   const pending: string[] = [];
 
   const ready = (waitFor ?? Promise.resolve())
-    .catch(() => {
-      // Swallow stop errors — we still want to start the new stream.
+    .catch(err => {
+      // `waitFor` 的语义是**排序**（让前一次 stop 先完成），不是前置条件，
+      // 所以仍继续起新流——旧流没停下来不该让本轮彻底失声。
+      // 但能走到这里的已是 runtime 定性过的**真失败**（假失败在 runtime 就被
+      // 吸掉了，TTS_SPEC §2），所以显式留痕而不是静默吞掉。
+      console.warn(
+        `[${engine.id}] prior stop failed (real), starting stream anyway:`,
+        err,
+      );
     })
     .then(() => {
       // Short-circuit: if cancel() was called while waiting, skip the
@@ -99,8 +106,15 @@ export function createEngineStreamingHandle(
       }
       dead = true;
       pending.length = 0;
-      if (stream) {
-        await stream.cancel();
+      const started = stream;
+      if (started) {
+        // 纳入 runtime 串行链：`stream.cancel()` 内部会打 `Speech.stop()`
+        // （lib 建流时就把 stop 绑进了 stream），不排进来就是绕过串行链的
+        // 第二出口。只包「执行」，不拿 ttsRuntime.stop() 替换它——cancel 内部的
+        // 清缓冲 / 释放 stopSignal / 等 loopPromise / 清理进度订阅，一个都不能少。
+        await ttsRuntime.serializeNative(async () => {
+          await started.cancel();
+        });
       }
     },
   };

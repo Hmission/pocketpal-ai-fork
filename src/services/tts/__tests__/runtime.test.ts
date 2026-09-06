@@ -164,6 +164,47 @@ describe('ttsRuntime', () => {
 
       expect(order).toEqual(['native:stop', 'native:speak']);
     });
+
+    // 以下三例钉「按事实定性」确实接在 runtime 上（纯函数测试只锁口径，
+    // 锁不了它有没有被用起来）。规范：TTS_SPEC §2/§3。
+    it('neural 活跃 + OS 未就绪 + 原生报错 → 不抛出（假失败不得冒充错误）', async () => {
+      const supertonic = makeEngine('supertonic');
+      await ttsRuntime.acquire(supertonic, async () => undefined);
+      ttsRuntime.setOsChannelReady(false);
+      stopMock.mockRejectedValueOnce(
+        new Error("Failed to initialize TTS engine code: 'speech_error'"),
+      );
+
+      await expect(ttsRuntime.stop()).resolves.toBeUndefined();
+      expect(stopMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('system 活跃 + 原生报错 → 抛出真失败（唯一发声通道停不下来必须上报）', async () => {
+      const system = makeEngine('system');
+      await ttsRuntime.acquire(system, async () => undefined);
+      stopMock.mockRejectedValueOnce(new Error('native stop blew up'));
+
+      await expect(ttsRuntime.stop()).rejects.toThrow('native stop blew up');
+    });
+
+    it('serializeNative 排在 stop 之后——封住流式 cancel 这条第二出口', async () => {
+      const kokoro = makeEngine('kokoro');
+      await ttsRuntime.acquire(kokoro, async () => undefined);
+
+      const order: string[] = [];
+      stopMock.mockImplementationOnce(async () => {
+        order.push('native:stop');
+      });
+
+      const stopPromise = ttsRuntime.stop();
+      const cancelPromise = ttsRuntime.serializeNative(async () => {
+        order.push('stream:cancel');
+      });
+
+      await Promise.all([stopPromise, cancelPromise]);
+
+      expect(order).toEqual(['native:stop', 'stream:cancel']);
+    });
   });
 
   describe('rejection chain health', () => {

@@ -88,6 +88,12 @@ export type SpeakIssue = 'lang' | 'failed' | null;
 /**
  * Store that coordinates text-to-speech playback.
  *
+ * ⚠ 注释指针勘误（2026-09-06 取证）：本文件历史上多处引用
+ * `architecture/tts.md`（§1a / §4a / §4a.1 / §4a.5 / §4e），**该文件在本仓从未存在**
+ * （悬空指针——按它找不到任何口径，只能读代码反推）。播报架构的单一事实源现为
+ * `docs/POCKETPAL_TTS_SPEC.md`（事实位见 §1，stop 失败定性见 §2，串行链见 §3）；
+ * 下方各处的 §号仅作历史出处标记，不再声称可达。
+ *
  * Availability gate: `isTTSAvailable` is the single boolean every TTS-aware
  * surface reads. It is derived from `deviceMeetsMemory` (set once in `init()`
  * from `DeviceInfo.getTotalMemory()`) and `userTTSOverride` (a persisted user
@@ -334,6 +340,9 @@ export class TTSStore {
           );
         } else {
           this.osTTSReady = installed;
+          // 推给 runtime（唯一写入点）：它需要这个事实才能给 stop 的失败定性。
+          // 事实源头仍在 store，runtime 只拿镜像——见 TTS_SPEC §1/§2。
+          ttsRuntime.setOsChannelReady(installed);
         }
       }
       // Reconcile persisted currentVoice: if the engine's model files
@@ -524,7 +533,15 @@ export class TTSStore {
     // HyperOS 上就抛 `Failed to initialize TTS engine (speech_error)`（真机
     // 2026-09-05 实证：播报明明成功，日志里每次都带一条 stop 失败）。
     // `ttsRuntime.stop()` 无活跃引擎时 no-op，且与 acquire 串行。
-    await ttsRuntime.stop();
+    // 走到这里的异常已被 runtime 按 TTS_SPEC §2 定性为**真失败**
+    // （系统合成器该停而没停下来）：不吞、保留显式报错可追溯；
+    // 也不冒充 `speakIssue='failed'`——那个字段的语义是「尝试播但播不出」，
+    // 与「停不下」不是一回事，串用会误导状态行文案。
+    try {
+      await ttsRuntime.stop();
+    } catch (err) {
+      console.warn('[TTSStore] native stop failed (classified real):', err);
+    }
   }
 
   /**

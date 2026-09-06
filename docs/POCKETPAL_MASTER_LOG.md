@@ -2018,3 +2018,114 @@ tsc 0 错｜eslint 0 problem（新文件）｜prettier 新文件已规范化（W
 奴家在 styles 注释里写过「真机已复验点击仍命中电话入口」——**那时还没装机复验**。
 属把预期写成事实，与 §156 第九起误判同源。已当场改为「该预期尚待装机后复量 + 点击复验确认」，
 随后真机才把这条证据补上。纪律：**没做过的事，注释里也不能写成做过。**
+
+## §158 主线长链：W1a stop 噪音根治 + W2/W3 核实定案，新立 POCKETPAL_TTS_SPEC
+
+> 2026-09-06。大王令「继续主线、路由专工、长链打穿、先写文档再落码」。本轮把 W1 / W1a / W2 / W3
+> 一次走完，结论里最意外的不是修了什么，而是**主线登记的任务有一大半早就完工了**。
+
+### 158.1 门禁与协议执行（逐条留痕）
+
+- gate → `route_required`（`allow_execute:false`，须 `agent_active`）→ route `--agent zhuo-mu-niao`
+  取得 `act-5aab52c6`。
+- **KG 优先协议实测**：`kg_preflight.py "<中文长句>" --strategy` 返回 `fallback_grep / confidence 0.0`；
+  `kg_query.py --node TTSRuntime` 返回 `matches: []`。→ 本仓 TS 代码事实**不在 KG 里**，
+  与 §156 报的 `code_facts` 构建器崩（缺 `_code_facts_tables.py`）完全自洽。
+  据此走 gate 声明的 fallback_chain（KG → Grep → Glob → Read），**不是擅自绕过**。
+  教训：KG 认文件名/符号名，不认自然语言长句。
+- **tier3 与业务契约冲突一处**：母仓 `aios_funnel_tier3_guards.md` 禁 `git commit -- <path>`，
+  而本仓 AGENTS.md 多窗纪律要求 pathspec 隔离。按 AGENTS.md 优先级条款以本仓为准；
+  实际用 `safe_commit.py <paths...>` 落地——它要求精确路径，**两条纪律同时满足**，无需豁免。
+- 专工纪律：两个 GeneralPurpose 专工均带完整规则包（红线/边界+禁区/文档指针/交付契约），
+  并显式约束「禁止再派生子代理（深度≤1）、每轮并行≤5、连续≤8轮、只读不改文件」。
+
+### 158.2 核实结论：主线登记严重滞后（四项里三项已完成）
+
+派专工只读取证 + 奴家逐条读原文复核（否定性结论必须自己看代码，§156 立的纪律）：
+
+| 主线登记项 | 实际状态 | 证据 |
+|---|---|---|
+| W1 孤儿依赖 `@react-native-voice` 收口 | ✅ **已完工** | package.json / yarn.lock / build.gradle / Podfile / babel / metro / react-native.config 全 clean，`node_modules/@react-native-voice` 未安装，patches 无它；全仓唯一命中是 `ChatInput.tsx:270` 一条**解释为何删除**的注释 |
+| W1a 引擎能力门 | ✅ **已完工** | `TTSStore.engineIsReady()`：能力位驱动（`requiresModelFile`），OS 引擎取 `osTTSReady`，注释自证「不散落 `!== 'system'` 特判」 |
+| W1a 两套播报门合并 | ✅ **已完工** | `SpeakBlock` / `voiceBlock` / `speakBlock` / `canSpeakVoice` 单一事实源 + 四条契约测试（`TTSStore.test.ts:552` 起专章） |
+| W1a stop 噪音根治 | ⚠️ **只完成一半** → 本轮补完 | `TTSStore.stop()` L522-527 挡住了「无活跃引擎」，未挡住「neural 活跃 + OS 从未就绪」 |
+| W2 phoneMode 全链透传 | ✅ **已被更优方案取代** | 透传链被删除，改单一状态源 `isInCall()`（`inCall.ts` 注释自证 W2 与「根治，不是打补丁」） |
+| W2 录音启停归一 | ✅ **已完工** | 三处直调原生收敛为 `recorder.ts` 一把 owner 锁（`chat_input` / `phone_call` / `audio_workshop`），9 例单测 |
+| W3 只读资产复现评估 | ✅ 本轮出结论 | 见 158.5 |
+
+**另纠正一处数值错误**：主线原文「phoneMode 不再靠 **10s** 看门狗兜底」——代码实际是
+`REPLY_TIMEOUT_MS = 90_000`（`session.ts:31`），全仓电话/音频链上无 10000 字面量。
+且**看门狗不可删除**：引擎忙超时 / 模型未加载两条早退路径发生在电话管线之前，
+它是那些出口的唯一收口手段（专工给的三条判定依据奴家已核对代码结构）。
+
+### 158.3 stop 噪音的完整因果链（本轮最大认知增量）
+
+1. 真机取证：`settings get secure tts_current_engine` → **null**；`pm list packages` 只有
+   `com.xiaomi.mibrain.speech`（包在、未设默认）；`dumpsys texttospeech` 空输出。
+   → **OS 合成器在这台机器上从未就绪**。
+2. 本仓播报走 neural（真机右上角音色 = Kokoro）。
+3. lib `@pocketpalai/react-native-speech@2.5.0` 的 `Speech.stop()` 是**合体 API**：
+   先同步置 neural 停止标志，再 `await TurboSpeech.stop()`——注释还写着
+   `OS TTS stop is always safe to call`，**这句在它的原生实现下不成立**：
+   原生 `stop()` 套在 `ensureInitialized` 里，未初始化时**现场 new 一颗 TextToSpeech**
+   并把 stop 挂 pending，3 次重试（退避 1s/2s/4s + 每轮 5s 超时）耗尽后
+   `rejectPendingOperations()` 回 `"Failed to initialize TTS engine"` / `speech_error`。
+4. 于是每一次 stop 都：白建引擎 + 悬挂最长约 24s + 冒一条**假失败**。
+
+**关键取舍**：奴家查过「JS 侧只停 neural、不打 OS」这条路——lib 的 per-engine 对象是模块私有变量，
+本仓 engines 层零 stop 调用（grep 证实），**拿不到拆分出口**；该库上游是
+`a-ghorbani/react-native-speech`（非本组织 fork）、本机无源码。
+所以**不打 patch-package 魔改**（那会退化成红线禁止的补丁形态），正确出口是上游 PR。
+
+### 158.4 落码：把「按 API 返回值一刀切」改成「按事实定性」
+
+- 新增 `src/services/tts/stopOutcome.ts` → `ttsStopFailureIsReal(activeEngineId, osTTSReady)`：
+  system 活跃 → 真失败；neural 活跃且 OS 本可用 → 真失败；neural 活跃且 OS 未就绪/未探测 → 假失败。
+- `runtime.ts`：新增 `osChannelReady` **镜像事实位**（唯一写入点 `setOsChannelReady()`，
+  由 TTSStore 探测后推入，源头仍在 store）；`stop()` 不再无差别 `console.warn`，
+  改为假失败静默、真失败抛出；`_resetForTests()` 一并归零该位防串例。
+- 新增 `serializeNative()` 并把 `streamingHandle.cancel()` 纳入串行链——
+  **只包执行、不替换 cancel**：lib 的 `stream.cancel()` 还要清 chunker、释放 stopSignal、
+  等 loopPromise、清理进度订阅（读 `EngineStreamSession.js:50-66` / `SpeechStream.js:186-204` 证实），
+  替换会漏掉这四件事。顺带把那句无注释的 `// Swallow stop errors` 改成显式留痕。
+- `TTSStore`：stop 真失败时 warn 但**不冒充 `speakIssue='failed'`**——该字段语义是
+  「尝试播但播不出」，与「停不下」不是一回事，串用会误导状态行文案。
+- 测试：`stopOutcome.test.ts` 4 例锁全分支 + `runtime.test.ts` 追加 3 例
+  （假失败不抛 / 真失败抛 / cancel 排 stop 之后）。理由写在文件头：三条分支真机不可构造。
+
+### 158.5 W3 定案（只出结论、零改动）
+
+派专工盘家底 + 奴家核对，结论写进 `PHONE_SPEC §9.1`（把原「数据说话再定」升级为定案）：
+**路线 B（端到端 omni/S2S）当前不可行，维持 SenseVoice 级联单链，不立项。**
+三条硬门槛全用仓内数字：① `librnllama.so` 无 `llama_supports_audio_in/out` 且
+`rnllamaBuildFromSource` 关闭 → 必重编引擎 = 禁区（**「API 在册 ≠ 能力可用」**：
+llama.rn TS 面有 `initVocoder`/`input_audio`、JNI `.so` 有符号，核心库却没有能力）；
+② `管家 0.69 + omni 3B ≈2.0 + 音频解码峰值 ≈1.0 + KV 余量` 贴近 HyperOS 6GB 硬杀线，
+12GB 机型已定「维持不可用」；③ 级联一轮 ASR 0.3–1s + 回复 2.7–8.2s + TTS 加载 0.87s，
+端到端增量收益**尚无需求证明**。附三条重评触发条件与四项「未找到项」（含首 token 延迟
+/ ASR 纯耗时 / 播报启动延迟三项插桩缺失——将来要数据驱动语音体验决策，这是前置作业）。
+
+### 158.6 新立 POCKETPAL_TTS_SPEC 与一处悬空指针勘误
+
+`TTSStore.ts` 有 **6 处**注释引用 `architecture/tts.md`（§1a/§4a/§4a.1/§4a.5/§4e），
+**该文件在本仓从未存在**——按它找不到任何口径，只能读代码反推。本轮新建
+`docs/POCKETPAL_TTS_SPEC.md`（四颗事实位 / stop 语义 / 串行链纪律 / 上游缺陷与禁 patch 纪律 /
+真机取证 / 已知债）作为播报架构事实源，并**已登记进 INDEX.md**（v1.4→v1.5，不再犯 §156 第九起误判）。
+对那 6 处引用只加一段勘误说明，**不臆改各处 §号**——奴家没读过那份不存在的文档，
+把它"重写"一遍就是造假。
+
+### 158.7 一处自伤，当场改回
+
+编辑 PHONE_SPEC §9 时，奴家在替换块里重抄了相邻一行，把「聊天页顶**栏**图标」打成
+「顶**标**」——diff 里暴露出来，立刻单独改回。教训：**替换块里重抄未改动的行，就是在制造错字**，
+能不重抄就不重抄。
+
+### 158.8 真机验证与它的边界（不夸大）
+
+覆盖安装（未卸载）+ 投屏 `--no-audio`。
+- ✅ 确证：neural 播报真实出声（`AudioTrack: start(992) ... packageName: com.pocketpalai`
+  → `abandonAudioFocus`），全程零 `speech_error`、零 `stop failed`。
+- ⚠️ **未确证**：`stop()` 在真机上被调用的那一刻。要同时凑出「播报中途停止 + neural 活跃
+  + OS 未就绪」，人手 tap 掐不准时间窗（短句 0.77s 播完）；音频工坊那条路又因当前转写结果
+  只有一个句号「。」而无内容可播，换记录卡的 tap 未生效。**该分支的正确性由 158.4 的三条单测承担，
+  不由真机日志冒充。**
