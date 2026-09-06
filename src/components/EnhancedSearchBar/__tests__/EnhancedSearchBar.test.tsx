@@ -5,7 +5,7 @@ import {fireEvent, render} from '../../../../jest/test-utils';
 import {l10n} from '../../../locales';
 
 // Mock the theme hook
-jest.mock('../../../hooks', () => ({
+jest.mock('../../../hooks/useTheme', () => ({
   useTheme: () => ({
     typography: {
       displayL: {fontSize: 28, lineHeight: 34, fontWeight: '600'},

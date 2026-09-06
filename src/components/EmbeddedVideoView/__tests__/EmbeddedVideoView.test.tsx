@@ -31,7 +31,7 @@ jest.mock('react-native-vision-camera', () => {
 jest.mock('react-native-vector-icons/MaterialCommunityIcons', () => 'Icon');
 
 // Mock useTheme hook
-jest.mock('../../../hooks', () => ({
+jest.mock('../../../hooks/useTheme', () => ({
   useTheme: () => ({
     typography: {
       displayL: {fontSize: 28, lineHeight: 34, fontWeight: '600'},

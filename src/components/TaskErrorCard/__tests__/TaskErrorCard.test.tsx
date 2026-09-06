@@ -17,7 +17,7 @@ const wrapWithL10n = (ui: React.ReactElement) => (
   <L10nContext.Provider value={l10n.en}>{ui}</L10nContext.Provider>
 );
 
-jest.mock('../../../hooks', () => ({
+jest.mock('../../../hooks/useTheme', () => ({
   useTheme: () => ({
     colors: {
       danger: '#C62828',

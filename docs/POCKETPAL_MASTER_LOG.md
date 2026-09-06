@@ -1676,5 +1676,41 @@ CHAIN_AUDIT_20260827 差值（并行窗口已闭 B52-B60/R1-R6，本窗口只补
 - **纪律第 1 条在本窗就被自己的实测修正了一次**（登记以免后人又写错）：初稿按 §151 的说法写成「宽域 jest 与 Gradle 禁止并行」，随后在**无 Gradle 并发**的情况下全量跑仍报 4 套件红（Checkbox / SystemSettingsScreen / ChatHeader），单跑全绿、`--runInBand` 全绿 → 根因是 **jest 多 worker 自身就会飘**，不只是外部并发。已升级为「**门禁终验必须 `--runInBand`**」。
 - **同时认一条**：奴家在 152.4 初稿里先写下了「343 套件全绿」这个**尚未跑出来的数字**，发现后立即以实测替换——**预写结论与臆想同罪**，这正是上面第 4 条纪律要防的东西，本轮轮到奴家自己犯。
 - 提交一笔：`test(debug): 修正 actionRegistry 两用例取错 store 实例…`（含 AGENTS.md 纪律与本档改账，同一因果链不拆笔）。**不推送**。
-- 遗留：① `ModelTypeTag` 4 例存量色值断言仍未修（他域待裁）；② 音频工坊「导入音频转写」未复验；③ `speakBlock='engine'` / `speakEntry='setup'` 两条新文案真机可见性未逐项看到；④ 输入框流式 ASR 需新模型资产（已随 W3 定案为不立项）。
+- 遗留：① ~~`ModelTypeTag` 4 例存量色值断言仍未修（他域待裁）~~ → **该定性于 §153 被推翻：不是色值 SSOT 问题，是 mock 路径没接上组件，已修**；② 音频工坊「导入音频转写」未复验；③ `speakBlock='engine'` / `speakEntry='setup'` 两条新文案真机可见性未逐项看到；④ 输入框流式 ASR 需新模型资产（已随 W3 定案为不立项）。
+
+---
+
+## §153 误判四改账：ModelTypeTag 那 4 例不是色值 SSOT 冲突，是**mock 路径没接上组件**（2026-09-06，test 域）
+
+大王问「两个 SSOT 哪个对」——分析结论：**这个问题本身前提不成立，两边都不是 SSOT 候选**。route act-1f38a8cd。
+
+### 153.1 证据链（每步实测，不靠推断）
+
+1. 色值 SSOT 唯一在 `src/theme/tokens/colors.ts`（`LIGHT_TERTIARY='#7880FF'`、`LIGHT_SECONDARY='#1E4DF6'`），且与 DESIGN_SPEC §85 记录一致（`domain.chat #1E4DF6`）；
+2. `#FF6B35/#4ECDC4/#666666` **只出现在这一个测试文件里**（git grep 全仓 src+docs 核实）——它们是测试自造的**哨兵值**（mock theme），不是任何设计口径；
+3. 组件 `import {useTheme} from '../../hooks/useTheme'`（具体文件），测试 `jest.mock('../../../hooks')`（barrel）→ **mock 从未生效，组件一直用真主题渲染**，断言哨兵值必然失配；
+4. 定音实验：只把 mock 路径改成 `'../../../hooks/useTheme'`（其余一字未动）→ **17 例全绿**。不改组件、不改主题、不改断言逻辑。
+
+→ §152.4 登记的「主题色 SSOT 变更后测试未同步，属主题域」**不成立，是第四起误判**（本两日累计）。四次同根：看到「值不匹配」就去猜哪边过期，没先问「测试到底有没有接上被测代码」。
+
+### 153.2 同类隐患面（顺手摸清）
+
+全仓 mock 指向 barrel 的测试点 71 处；其中 mock barrel `hooks` 的 6 处里，**4 处错配**（组件走具体文件 `hooks/useTheme`，mock 失效）：`ModelTypeTag`（红，因为断言色值）、`EmbeddedVideoView`、`EnhancedSearchBar`、`TaskErrorCard`（**不红——沉默的无效 mock**，一直跑在真主题上）。另 2 处（`InfoDialog`、`ModelSwitchDialog`）组件确实走 barrel，mock 有效，不动。（错配土壤：全仓 202 个文件从具体 `hooks/xxx` import。）
+
+**自纠一条工具教训**：第一版扫描脚本因路径拼接 bug（目录尾斜杠导致组件名算成空串）报「确认错配 0 处」——与奴家刚实测的事实直接矛盾，才回头修脚本得到 4 处。**跑出来的数字也要验伪**：工具坏了产出的「硬数据」比推断更危险。
+
+### 153.3 修法（B+C，零生产代码改动）
+
+- **B（`ModelTypeTag.test.tsx`）**：mock 路径纠正 + 抽出 `const mockTheme`（jest 允许 `mock` 前缀变量被工厂引用）+ 4 处断言从 hex 字面量改为绑 token（`mockTheme.colors.tertiary` 等）。**理由**：本测试的真实契约是 `type → token 映射`（vision/mmproj→tertiary、llm→secondary、unknown→onSurfaceVariant），色值属主题域 SSOT；锁 hex 等于把主题决策权错误交给组件测试——将来任何人改主题色都会让组件测试变红。
+- **C（另 3 处）**：只改 mock 路径一行。改前先核实这 3 个组件**只 import useTheme**（否则改窄 mock 会让其他 hooks 落到真实实现）；改后 3 套 22 例全绿，证明替身字段够用、无隐性依赖真主题。
+- 顺带：AGENTS.md 验证门禁纪律第 3 条原文只写了半个方向，已补全为双向判定（§152.2 反向 / §153 正向）并加上「断言绑 token 不绑 hex」。
+
+### 153.4 门禁与一个**新的实测发现**：`--runInBand` 也不保证干净
+
+- 改动面：4 个测试文件（`ModelTypeTag` + 另 3 处）+ `AGENTS.md`（纪律第 1/3 条）+ 本档。零生产代码、零运行时行为改动 → 不重编不装机。
+- 门禁：tsc 0 错；eslint 0 error（4 目录）；prettier 绿；4 个受影响套件单跑全绿（ModelTypeTag 17 + 另 3 套 22 = 39 例）。
+- **全量终验连跑两次（均 `--runInBand`，同代码）**：第一次 343/342 通过、**失败从 4 例降到 1 例**（`ModelTypeTag` 四例已消失，即本窗修复生效）；但剩下的 1 例不是 ModelTypeTag 而是 `SquarePalCard`。**第二次重跑**：`SquarePalCard` 绿了，改为 `DynamicOptionField` + `Panels` 红——**两次红的集合互不重叠，单跑全绿**（SquarePalCard 28 例、另 6 套 73 例）。
+- 定性：典型的**飘移型 flake**，与本窗改动无关（结构上：jest 每套件独立模块注册表，且已核实 `src/screens/PalsScreen` 完全不引用本窗改的 4 个组件；它自己的 mock 也不碰 hooks barrel）。顺带发现它的待强项：`Error deleting pal: TypeError: collections.get(...).find is not a function`——database mock 不全，异常被 catch 成日志，不影响断言但是个在册脆弱点。
+- **因此纪律第 1 条再改一次**（本窗第三次改同一条）：不再宣称「终验必须 `--runInBand`」，改为「**全量跑只保覆盖，结论靠单跑复核**；`--runInBand` 降低但不消除假失败；两次全量红的集合不同即为 flake 强特征」。纪律被实测反复纠正是好事，**错的必须是奴家而不是工具**。
+- 登记技术债（不属本窗范围，不擅动）：飘移根因待专项（疑为长跑超时/内存累积，或串行同进程下的模块泄漏）；复现方式=连跑两次全量比对失败集合。本窗已付出 2×15 分钟代价才看清它，**不记下来下一个窗还会再踩**。
 

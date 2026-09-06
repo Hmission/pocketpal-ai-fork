@@ -39,9 +39,16 @@ yarn verify:fonts         # 字体子集校验（新增语言必跑）
 
 ## 验证门禁纪律（2026-09-06 立；四条都是本仓踩过的坑）
 
-1. **门禁终验必须串行跑：`npx jest --ci --runInBand`**。jest 多 worker 并发本身就会产出超时型假失败（实测：同一代码并发跑报 4 套件红，`--runInBand` 复跑仅余 1 套件 4 例真失败；再叠加 Gradle 并发时首跑红到 7 套件）。**并发跑出的任何失败都必须单跑复核定性后才能写进报告**；不得把 flake 当回归上报，也不得凭「看着像 flake」跳过复核。宽域 jest 与 Gradle 构建不并行。
+1. **全量 jest 只能用于保覆盖，最终结论必须靠单跑复核**（2026-09-06 两次实测修正）。本仓全量跑存在**飘移型 flake**：同一份代码连跑两次 `npx jest --ci --runInBand`（各约 15 分钟），第一次红 `SquarePalCard`，第二次红 `DynamicOptionField` + `Panels`——**互不重叠且单跑全绿**（6 套 73 例）。由此定口径：
+   - `--runInBand` **降低但不消除**假失败（多 worker 并发更容易飘；串行仍有长跑超时/资源问题）；
+   - **任何全量跑出的失败，一律单跑该套件复核后**才能写进报告；两次全量红的集合不同，即为 flake 的强特征；
+   - 不得把 flake 当回归上报，也不得凭「看着像 flake」跳过单跑；宽域 jest 与 Gradle 构建不并行（叠加会放大飘移）。
+   - 技术债：飘移根因（超时 vs 串行跑时的模块/内存泄漏）待专项；复现方式是连跑两次全量并比对失败集合。
 2. **`yarn install` 不要加 `--ignore-scripts`**。它会连 llama.rn 官方 postinstall 一起跳过 → jniLibs 原生库不下载、patch-package 补丁不应用（生图 ONNX 丢 16KB page 对齐与 ORT 锁版本）。后置逻辑由 `scripts/postinstall.js`（跨平台 node）负责，结束时打印**构建链自检**三项；自检 FAIL 则 install 非零退出，**先修再构建，不得用 --ignore-scripts 绕过**。
-3. **测试替身必须与被测代码同一模块来源**。`jest/setup.ts` 只 mock 了 store barrel（`jest.mock('../src/store')`）；测试若从具体文件（`'../../store/xxxStore'`）import **真实实例**再 spyOn/赋值，被测代码（走 barrel）**完全看不到**这些改动——表现为「某功能坏了」的假故障（2026-09-06 actionRegistry 2 例即此因）。写/改 store 相关测试一律 `from '../../store'`。
+3. **测试替身必须与被测代码同一模块来源（两个方向都会错）**。仓内同时存在 barrel（`src/store/index.ts`、`src/hooks/index.ts`）与具体文件时，`import` 与 `jest.mock` 的**路径必须逐字一致**，否则两边拿到的是两个不同模块：
+   - 反向（§152.2）：全局 `jest.mock('../src/store')` 只换 barrel，测试却 `require('../../store/imageGenStore')` 取到**未被 mock 的真实实例** → spy/赋值打在另一个对象上，被测代码看不见（曾被误判为「错误原文被吞」）；
+   - 正向（§153）：测试 mock barrel `'../../../hooks'`，组件却 `from '../../hooks/useTheme'` → **mock 从未生效，测试一直在真环境跑**；不断言具体值时更阴——不红，只是静默失效（本仓 4 处）。
+   - **判定顺序**：先对齐两边路径（读被测组件的 import 原文），再谈「坏了/过期」；必要时一句 `console.log('SAME_OBJECT:', a === b)` 定音。另：**组件测试的断言应绑 token 语义（如 `mockTheme.colors.tertiary`）而非 hex 字面量**——色值 SSOT 属主题域，锁 hex 会让「改主题色」错误地惊动组件测试。
 4. **断言纪律：正面与否定结论同等对待**。任何结论写进文档/报告或据此动手前，必须有**第二条独立口径实证**（列真实清单 / 读二进制头 / 跑最小实验）；只有一条线索加先验知识时只能写成「待验证假设」。断言「缺失/坏了」最危险——它会立刻引发大动作（入仓/重编/重写）。**自己造成的现场破坏不得归因给仓库**（典型：`--ignore-scripts`、PowerShell `Set-Content` 把 LF 改 CRLF 使补丁永久拒施）。误判一旦发现，立即就地改账并写明「此前结论错误 + 推翻它的证据」，不做无声修正。
 
 ## 提交规范
