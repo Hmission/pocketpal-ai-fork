@@ -79,7 +79,7 @@ describe('errorRegistry', () => {
     'CP-APP-008': 'AUDIO_BUSY 录音被占用，转写失败',
     'CP-APP-009': 'tool.error: invalid tool arguments for read_screen',
     'CP-APP-010':
-      'VIDEO_TASK_START_FAILED: Not allowed to start foreground service',
+      'NIGHT_TASK_START_FAILED: Not allowed to start foreground service',
     'CP-APP-011': 'sherpa: sample_rate does not exist in metadata → 生成噪音',
     'CP-APP-012': '基准用例卡死：benchmark abort at stage 2',
     'CP-APP-013': 'Context is full: budget_decision saturated',

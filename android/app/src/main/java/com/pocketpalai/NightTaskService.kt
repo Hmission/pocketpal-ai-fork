@@ -12,7 +12,7 @@ import android.os.IBinder
 import android.os.PowerManager
 
 /**
- * VideoTaskService — 夜间长任务前台服务（ONDEVICE_VIDEO_GEN_ANALYSIS §7.1）
+ * NightTaskService — 夜间长任务前台服务（ONDEVICE_VIDEO_GEN_ANALYSIS §7.1）
  *
  * 职责：
  * 1. 前台服务 + 常驻通知 → 防 Doze/App Standby 杀进程
@@ -25,12 +25,14 @@ import android.os.PowerManager
  * 权限：FOREGROUND_SERVICE + FOREGROUND_SERVICE_DATA_SYNC（Android 14+）
  * WakeLock：PARTIAL_WAKE_LOCK（不需 WAKE_LOCK 权限，进程存活即可用）
  */
-class VideoTaskService : Service() {
+class NightTaskService : Service() {
 
   companion object {
-    const val CHANNEL_ID = "video_task_channel"
+    const val CHANNEL_ID = "night_task_channel"
+    /** 旧渠道 id（W8b 前的历史名，仅用于迁移删除） */
+    private const val LEGACY_CHANNEL_ID = "video_task_channel"
     const val NOTIFICATION_ID = 7001
-    private const val TAG = "VideoTaskService"
+    private const val TAG = "NightTaskService"
 
     @Volatile
     var isRunning = false
@@ -41,7 +43,7 @@ class VideoTaskService : Service() {
   private val binder = LocalBinder()
 
   inner class LocalBinder : Binder() {
-    val service: VideoTaskService get() = this@VideoTaskService
+    val service: NightTaskService get() = this@NightTaskService
   }
 
   override fun onBind(intent: Intent?): IBinder = binder
@@ -86,6 +88,9 @@ class VideoTaskService : Service() {
     }
     val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     nm.createNotificationChannel(channel)
+    // 渠道改名迁移（W8b，2026-09-08）：旧 id 若仍存在于系统设置，删掉它——
+    // 否则用户会在通知设置里看到一个永不更新的孤儿渠道。
+    nm.deleteNotificationChannel(LEGACY_CHANNEL_ID)
   }
 
   private fun buildNotification(): Notification {
@@ -108,7 +113,7 @@ class VideoTaskService : Service() {
 
   private fun acquireWakeLock() {
     val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
-    wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "PocketChick:VideoTask").apply {
+    wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "PocketChick:NightTask").apply {
       setReferenceCounted(false)
       acquire(24 * 60 * 60 * 1000L) // 最长 24h 安全上限
     }

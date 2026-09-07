@@ -46,11 +46,12 @@ import {
   QueueState,
 } from './imageGenQueueCore';
 
-// 名实不符（已登记）：本模块属 **nightTask 域**（前台服务 + PARTIAL_WAKE_LOCK 保活），
-// 与文生视频无关；`video` 四义归属见 STARMAP_DOMAINS「词面消歧登记」。**不得新增以
-// `VideoTask*` 为名的符号**；改名排 W8b（必须与真机同窗：manifest / ReactModule 名 /
-// NativeModules 取值键任一漏改都会让服务静默失效，而 tsc/jest 全绿也会漏过去）。
-const VideoTaskService = NativeModules.VideoTaskService;
+// nightTask 域（前台服务 + PARTIAL_WAKE_LOCK 保活）。旧名 `VideoTaskService*` 已于 W8b 改名
+// 为 `NightTask*`：其职责与“生视频”无关，而 `video` 四义归属见 STARMAP_DOMAINS「词面消歧
+// 登记」。**不得再新增以 `VideoTask*` 为名的符号**（该前缀曾代指本服务）。改名必须与真机
+// 同窗验收：manifest / ReactModule 名 / NativeModules 取值键任一漏改都会让服务静默失效，
+// 而 tsc/jest 全绿也照样漏过去（本次取证见 MASTER_LOG §164）。
+const NightTask = NativeModules.NightTask;
 // 电池优化豁免引导进程内只发起一次（§7.1 策略 3）：首次长任务未豁免时弹系统弹窗，
 // 用户拒绝后不再重复打扰（前台服务 + WakeLock 仍生效，豁免仅为增强）。
 let batteryOptOutRequested = false;
@@ -59,11 +60,11 @@ function requestBatteryOptOutIfNeeded(): void {
   if (batteryOptOutRequested) {
     return;
   }
-  VideoTaskService?.isIgnoringBatteryOptimizations?.()
+  NightTask?.isIgnoringBatteryOptimizations?.()
     ?.then((ignoring: boolean) => {
       if (!ignoring) {
         batteryOptOutRequested = true;
-        VideoTaskService?.requestBatteryOptOut?.().catch(() => {});
+        NightTask?.requestBatteryOptOut?.().catch(() => {});
       }
     })
     .catch(() => {});
@@ -256,7 +257,7 @@ class ImageGenStore {
           // wakelock 被释放，息屏即被杀——ONDEVICE_VIDEO §7.1 要根治的反例）。
           if (this.nightTicket === null) {
             this.nightTicket = nightTaskRegistry.begin('imageGen');
-            VideoTaskService?.start?.().catch(() => {});
+            NightTask?.start?.().catch(() => {});
             // 电池/Doze 豁免引导（§7.1 策略 3）：未豁免时发起系统弹窗（进程内一次，不阻断生图）
             requestBatteryOptOutIfNeeded();
           }
@@ -264,7 +265,7 @@ class ImageGenStore {
           nightTaskRegistry.end(this.nightTicket);
           this.nightTicket = null;
           if (!nightTaskRegistry.isBusy) {
-            VideoTaskService?.stop?.().catch(() => {});
+            NightTask?.stop?.().catch(() => {});
           }
         }
       },

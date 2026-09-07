@@ -294,7 +294,7 @@ export const ChatScreen: React.FC = observer(() => {
 
   // PHONE_SPEC §10.4：通话中双保活——亮屏（keep awake）+ 前台服务防杀。
   // nightTask 机制同构接线（imageGenStore §7.1 同款：registry 引用计数 +
-  // VideoTaskService 前后台服务；计数归零才 stop，与生图/推理共用不互相误停）。
+  // NightTask 前后台服务；计数归零才 stop，与生图/推理共用不互相误停）。
   //
   // 同一 effect 顺便登记「此刻在通话中」（W2 单一状态源）：useChatSession 读它
   // 判定本轮要不要强制播报与通知收口——开合在此一处成对，不留第二份状态。
@@ -307,12 +307,12 @@ export const ChatScreen: React.FC = observer(() => {
     // 通话也持一张自己的夜间保活票据（W2）：结束时凭票释放——旧写法裸 end()
     // 会把生图队列的保活额度一起扣掉（夜间长跑中挂断一次即失保）。
     const nightTicket = nightTaskRegistry.begin('phoneCall');
-    NativeModules.VideoTaskService?.start?.().catch(() => {});
+    NativeModules.NightTask?.start?.().catch(() => {});
     return () => {
       setInCall(false);
       nightTaskRegistry.end(nightTicket);
       if (!nightTaskRegistry.isBusy) {
-        NativeModules.VideoTaskService?.stop?.().catch(() => {});
+        NativeModules.NightTask?.stop?.().catch(() => {});
       }
       deactivateKeepAwake();
     };

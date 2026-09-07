@@ -11,24 +11,24 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 
 /**
- * VideoTaskServiceModule — RN 桥接（夜间长任务前台服务控制）
+ * NightTaskModule — RN 桥接（夜间长任务前台服务控制）
  *
  * JS 侧调用：
- *   NativeModules.VideoTaskService.start()  → 启动前台服务 + WakeLock
- *   NativeModules.VideoTaskService.stop()   → 停止
- *   NativeModules.VideoTaskService.isRunning() → 查询状态
+ *   NativeModules.NightTask.start()  → 启动前台服务 + WakeLock
+ *   NativeModules.NightTask.stop()   → 停止
+ *   NativeModules.NightTask.isRunning() → 查询状态
  *
  * 设计：与 AsrModule 同模式（ReactContextBaseJavaModule，免 codegen）。
  */
-class VideoTaskServiceModule(reactContext: ReactApplicationContext) :
+class NightTaskModule(reactContext: ReactApplicationContext) :
   ReactContextBaseJavaModule(reactContext) {
 
-  override fun getName(): String = "VideoTaskService"
+  override fun getName(): String = "NightTask"
 
   @ReactMethod
   fun start(promise: Promise) {
     try {
-      val intent = Intent(reactApplicationContext, VideoTaskService::class.java)
+      val intent = Intent(reactApplicationContext, NightTaskService::class.java)
       if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
         reactApplicationContext.startForegroundService(intent)
       } else {
@@ -36,25 +36,25 @@ class VideoTaskServiceModule(reactContext: ReactApplicationContext) :
       }
       promise.resolve(true)
     } catch (e: Throwable) {
-      promise.reject("VIDEO_TASK_START_FAILED", e.message ?: "前台服务启动失败")
+      promise.reject("NIGHT_TASK_START_FAILED", e.message ?: "前台服务启动失败")
     }
   }
 
   @ReactMethod
   fun stop(promise: Promise) {
     try {
-      val intent = Intent(reactApplicationContext, VideoTaskService::class.java)
+      val intent = Intent(reactApplicationContext, NightTaskService::class.java)
       reactApplicationContext.stopService(intent)
       promise.resolve(true)
     } catch (e: Throwable) {
-      promise.reject("VIDEO_TASK_STOP_FAILED", e.message ?: "前台服务停止失败")
+      promise.reject("NIGHT_TASK_STOP_FAILED", e.message ?: "前台服务停止失败")
     }
   }
 
   /** 查询前台服务是否运行中（调试用；JS 侧以 nightTaskRegistry.isBusy 为准） */
   @ReactMethod
   fun isRunning(promise: Promise) {
-    promise.resolve(VideoTaskService.isRunning)
+    promise.resolve(NightTaskService.isRunning)
   }
 
   /**

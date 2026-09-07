@@ -88,7 +88,7 @@ android:requestLegacyExternalStorage="true"
         <!-- 夜间长任务前台服务（ONDEVICE_VIDEO_GEN_ANALYSIS §7.1）：
              常驻通知 + PARTIAL_WAKE_LOCK，任务进行中防 Doze/内存配额杀进程 -->
         <service
-            android:name=".VideoTaskService"
+            android:name=".NightTaskService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 

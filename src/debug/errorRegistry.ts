@@ -118,11 +118,11 @@ export const ERROR_PATTERNS: ErrorPattern[] = [
   {
     cpId: 'CP-APP-010',
     triggerRegex:
-      /VIDEO_TASK_START_FAILED|前台服务.*(失败|启动失败)|Foreground service.*(fail|not allowed)|WakeLock|夜间任务被杀/i,
+      /NIGHT_TASK_START_FAILED|前台服务.*(失败|启动失败)|Foreground service.*(fail|not allowed)|WakeLock|夜间任务被杀/i,
     navigation:
       '查 FOREGROUND_SERVICE + FOREGROUND_SERVICE_DATA_SYNC 权限与 service 声明（targetSdk 36 需 foregroundServiceType）；查 logcat 是否被 PSS 看护/内存配额杀（压内存优先于白名单）',
     deepDive: [
-      'android/app/src/main/java/com/pocketpalai/VideoTaskServiceModule.kt',
+      'android/app/src/main/java/com/pocketpalai/NightTaskModule.kt',
       'docs/ONDEVICE_VIDEO_GEN_ANALYSIS.md §7.1',
       'src/store/nightTaskRegistry.ts',
     ],

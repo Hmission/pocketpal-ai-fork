@@ -37,7 +37,7 @@ class MainApplication : Application(), ReactApplication {
               add(AsrPackage())
               add(TtsPackage())
               add(AudioRecordPackage())
-              add(VideoTaskServicePackage())
+              add(NightTaskPackage())
               add(BuildInfoPackage())
               add(ScreenReaderPackage())
             }
