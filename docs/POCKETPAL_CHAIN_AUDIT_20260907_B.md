@@ -193,6 +193,8 @@ step 级 checkpoint 必须改引擎采样循环钩子（禁区，需专项批准
 | N26 | **W10 前置取证发现两处现行线上 native 缺陷**（同文件 `ImageGenJNI.cpp`，本窗实读）：R-1 use-after-release（`:638` 已 Release 而 `:642` 仍用 `outStr` 构回传串）；R-2 异常与 `ERR_GENERATE` 路径均不 `free_sd_images`（`:604-619`/`:624-628`）——视频场景下会放大成 N 帧×1.14MiB 永久泄漏 | 随 W10 一并修（同文件且新桥会逐字镜像此写法，不修就是继承）；另登记 `unloadModel` 抢锁、cl-cache 路径与 applicationId 不符、stderr 无轮转、`batch_count` 硬编 1 四项为**不当波扩大战场**的挂账项 |
 | N27 | **工具用错→假阴性→险造“孤儿资产”**：本窗用 `Select-String -Path src\**\*.tsx -Pattern WorkshopIcon` 查引用，返回空，当场差点断定 `workshop.svg` 为孤儿资产——**PowerShell 的 `**` 不递归**，该写法只扫一层。改用 Grep 工具一秒定位到真引用 `SessionSearchBar.tsx:80`（另发现其 `PlusIcon` 硬写 22，属 W9b-V 真待裁项） | 新纪律：**引用存在性判定一律用 Grep 工具（或 `git grep`），不用 shell glob 手拼**；本仓有 2026-08-25 误删 219 文件前科（`20260825_PP_219_FILES_DELETION_POSTMORTEM.md`），假阴性直接导致误删 |
 | N28 | **改名器把注释“叠”了两层**：`imageGenStore.ts:49-54` 同时存在新写的四义注释与旧写的历史注释（共 6 行说同一件事）——因脚本只插新段、未删旧段。本窗装机目视时发现并合并为一段 | 新纪律：**脚本改写注释/文档必须整段替换并回读实物**（只验“新内容存在”不验“旧内容消失”，是双份事实源的又一种形态） |
+| N29 | **把「跑了两轮生图」当成「native 桥零回归」的假验证**：提交 5183fa1 信息写「连续两次出图零回归」，但两次走的都是 **DreamLite / ONNX 引擎**（日志 `selected=dreamlite`），而 R-1/R-2 改的是 `nativeTxt2img`（GGUF 路径）——**根本没经过我改的代码**。当时若真回归，这两轮也照不出 | 当场补做真验证：切 Z-Image-Turbo 重跑一次，日志 `generate_image completed in 1405.18s`、UI 卡片 `z-image-turbo-q4 · 1405.9s · 512×768` 正常出图（这才是 R-1/R-2 的正路径证据）。新纪律：**验证必须针对被改的代码路径**——同一入口下多引擎并存时，“功能跑通了”不等于“改的那条路跑通了”；取证要看引擎标识而非页面现象 |
+| N30 | **真机抓到一项现有缺陷（不是本窗引入）**：运行时重建把在飞任务误判为「生成中断」——pid 全程不变（`pidof` 前后同为 19767），但 MIUI 回收 Activity 后 bridgeless RN 重建运行时、store 重新水合，ghost 治理只看「水合时 status=running」就判死 | 登记台账项 38（含锋利做法：加存活凭据只标真孤儿，禁止用「延长超时」兜底）；本窗不动手 |
 
 ## 八、执行回执（本窗已落码）
 
@@ -259,7 +261,7 @@ step 级 checkpoint 必须改引擎采样循环钩子（禁区，需专项批准
 | 3 | W9a / 项 33 | 148 处在档值收 `theme.iconSize.*` + 新增 `micro`/`inline` 两档（零视觉变化） | ICON_SPEC v1.2 §4.5 | 目视不劣化（像素应无变化）+ tsc/jest 绿 | **已交 168 处**，318 快照全过 |
 | 4 | W9b / 项 33 | 22/26/32/34/36/48 共 27 处定档（**有像素变化，逐屏目视后才定**） | 同上 | 逐屏对比截图 | **拆两半**：W9b-lite 已交 16 处（`micro`/`hero`/`display` 转正，零像素）；W9b-V 25 处 + W9c 12 处余，file:line 已入 ICON_SPEC §4.5 |
 | 5 | 项 34 | **不成立，已撤销**（白色 rect 在 clipPath 内，暗色债不存在） | ICON_SPEC v1.2 自纠条 + N25 | 无需（假账） | 已撤销 |
-| 6 | R-1 / R-2 | `ImageGenJNI.cpp` use-after-release 与异常路径漏放（两处现行缺陷） | VIDEO_GEN_SPEC §五 | 装机后跑一次原出图零回归 + 路径正常 | **已交并装机**：连续两次出图成功、无崩溃 |
+| 6 | R-1 / R-2 | `ImageGenJNI.cpp` use-after-release 与异常路径漏放（两处现行缺陷） | VIDEO_GEN_SPEC §五 | 装机后跑一次原出图零回归 + 路径正常 | **已交并装机**；**本行原写「连续两次出图零回归」为假验证（N29）——那两次是 DreamLite/ONNX，不经 nativeTxt2img**。已补做真验证：Z-Image-Turbo 出图 `1405.9s · 512×768`、`generate_image completed`、无崩溃无泄漏 |
 | 7 | W10 | `nativeGenVideo` 帧桥（先 6 帧 480p，不落容器） | **VIDEO_GEN_SPEC v0.2 §八**（本窗新建并补取证） | V-1~V-7 全项（含心跳阶段迁移与 PSS 峰值） | **移出本窗**：`generate_video` 已编入 arm64 产物（符号直证），但无视频模型资产——主分支未测即伪稳定（台账项 37） |
 | 8 | 项 5 | 把 `te=disk` 提为可配开关并在 K90 实测（**非**“已生效”） | 本卷 §3.3 更正 | PSS 实测对比（开/关两态） | 待排 |
 | 9 | 项 2 / 项 3 | 记忆三闸 G5 + 电池豁免弹窗真机验证 | — | 污染条目消失 + 弹窗出现且拒后不阻断 | 待目视 |
