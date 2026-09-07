@@ -82,8 +82,8 @@ export const ExpandableSearch: React.FC<ExpandableSearchProps> = observer(
           <View style={styles.searchInputContainer}>
             <SearchIcon
               stroke={theme.colors.onSurfaceVariant}
-              width={20}
-              height={20}
+              width={theme.iconSize.m}
+              height={theme.iconSize.m}
               style={styles.searchIcon}
             />
             <TextInput
@@ -103,8 +103,8 @@ export const ExpandableSearch: React.FC<ExpandableSearchProps> = observer(
                 testID="clear-search-button">
                 <XIcon
                   stroke={theme.colors.onSurfaceVariant}
-                  width={16}
-                  height={16}
+                  width={theme.iconSize.s}
+                  height={theme.iconSize.s}
                 />
               </TouchableOpacity>
             )}
@@ -117,8 +117,8 @@ export const ExpandableSearch: React.FC<ExpandableSearchProps> = observer(
               testID="close-search-button">
               <XIcon
                 stroke={theme.colors.onSurfaceVariant}
-                width={18}
-                height={18}
+                width={theme.iconSize.inline}
+                height={theme.iconSize.inline}
               />
             </TouchableOpacity>
           </View>

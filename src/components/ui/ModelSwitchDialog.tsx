@@ -237,8 +237,8 @@ export const ModelSwitchDialogHost: React.FC = () => {
                     </View>
                     {selected && (
                       <CheckMdIcon
-                        width={20}
-                        height={20}
+                        width={theme.iconSize.m}
+                        height={theme.iconSize.m}
                         stroke={theme.colors.primary}
                       />
                     )}

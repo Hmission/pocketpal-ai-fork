@@ -225,8 +225,8 @@ export const AssistantTurnFooter: React.FC<AssistantTurnFooterProps> = observer(
               hitSlop={{top: 14, bottom: 14, left: 14, right: 14}}>
               <CopyIcon
                 stroke={theme.colors.textSecondary}
-                width={16}
-                height={16}
+                width={theme.iconSize.s}
+                height={theme.iconSize.s}
               />
             </TouchableOpacity>
           )}
@@ -241,8 +241,8 @@ export const AssistantTurnFooter: React.FC<AssistantTurnFooterProps> = observer(
               hitSlop={{top: 14, bottom: 14, left: 14, right: 14}}>
               <RefreshIcon
                 stroke={theme.colors.textSecondary}
-                width={16}
-                height={16}
+                width={theme.iconSize.s}
+                height={theme.iconSize.s}
               />
             </TouchableOpacity>
           ) : null}

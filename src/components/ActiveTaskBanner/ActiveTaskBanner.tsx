@@ -71,8 +71,8 @@ export const ActiveTaskBanner: React.FC = observer(() => {
       icon={
         isError ? (
           <AlertTriangleMdIcon
-            width={14}
-            height={14}
+            width={theme.iconSize.xs}
+            height={theme.iconSize.xs}
             stroke={theme.colors.danger}
           />
         ) : indeterminate ? (
@@ -82,8 +82,8 @@ export const ActiveTaskBanner: React.FC = observer(() => {
           />
         ) : (
           <SettingsMdIcon
-            width={14}
-            height={14}
+            width={theme.iconSize.xs}
+            height={theme.iconSize.xs}
             stroke={theme.colors.domain.tools}
           />
         )

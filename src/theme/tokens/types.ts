@@ -254,15 +254,27 @@ export interface TokenStroke {
 }
 
 /**
- * Icon size tokens (B10). Canonical `Icon/*` mapping:
- * xs(14) / s(16) / m(20 顶栏) / l(24 大触控) / xl(28 强调)。
+ * Icon size tokens (B10). Canonical `Icon/*` mapping（按角色，不按像素凑数）：
+ * micro(12 徽章/内嵌小件) / xs(14 行内辅助) / s(16 内容区小图标) / inline(18 行尾指示件)
+ * / m(20 顶栏与同行栏位) / l(24 大触控) / xl(28 强调) / hero(34 空态装饰) / display(48 头像与空态主图)。
+ * 档位是**角色集合**不是像素集合（ICON_SPEC §4.5）：`inline`/`micro`/`hero`/`display` 都是把仓内
+ * 已成事实的尺寸**转正**（值不变、只给名字），零像素变化。
+ * 尚余离档值 10/13/15/22/26/32/36 需逐屏目视定归向（W9b-V）——**禁止拿「归档」当由头静默改观感**。
  */
 export interface TokenIconSize {
+  /** 徽章内嵌、引导条箭头这类「不属于 chrome 图标语言」的小件 */
+  micro: number;
   xs: number;
   s: number;
+  /** 行尾指示件与工具条图标（ListItem/设置行箭头、搜索清除、预览工具条等） */
+  inline: number;
   m: number;
   l: number;
   xl: number;
+  /** 空态/装饰级图标 */
+  hero: number;
+  /** 头像与空态主图 */
+  display: number;
 }
 
 /**

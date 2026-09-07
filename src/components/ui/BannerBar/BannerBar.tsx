@@ -95,8 +95,8 @@ export const BannerBar: React.FC<BannerBarProps> = ({
             accessibilityRole="button"
             accessibilityLabel="dismiss">
             <XIcon
-              width={14}
-              height={14}
+              width={theme.iconSize.xs}
+              height={theme.iconSize.xs}
               stroke={theme.colors.onSurfaceVariant}
             />
           </TouchableOpacity>

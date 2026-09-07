@@ -39,8 +39,8 @@ export const CodeBlockHeader: React.FC<CodeBlockHeaderProps> = ({
       </Text>
       <TouchableOpacity onPress={handleCopy} style={styles.iconTouchable}>
         <CopyIcon
-          width={16}
-          height={16}
+          width={theme.iconSize.s}
+          height={theme.iconSize.s}
           stroke={theme.colors.onSurfaceVariant}
         />
       </TouchableOpacity>

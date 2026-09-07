@@ -34,8 +34,8 @@ export const CompactAuthBar: React.FC<CompactAuthBarProps> = observer(
           <View style={styles.infoSection}>
             <LockIcon
               stroke={theme.colors.onSurfaceVariant}
-              width={16}
-              height={16}
+              width={theme.iconSize.s}
+              height={theme.iconSize.s}
             />
             <Text style={styles.infoText}>
               {l10n.palsScreen.signInToAccessLibrary}
@@ -55,8 +55,8 @@ export const CompactAuthBar: React.FC<CompactAuthBarProps> = observer(
               icon={() => (
                 <XIcon
                   stroke={theme.colors.onSurfaceVariant}
-                  width={16}
-                  height={16}
+                  width={theme.iconSize.s}
+                  height={theme.iconSize.s}
                 />
               )}
               size={theme.iconSize.m}

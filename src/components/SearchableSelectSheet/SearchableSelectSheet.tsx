@@ -87,7 +87,11 @@ export const SearchableSelectSheet: React.FC<SearchableSelectSheetProps> = ({
           {item.label}
         </Text>
         {selected ? (
-          <CheckMdIcon width={20} height={20} stroke={theme.colors.primary} />
+          <CheckMdIcon
+            width={theme.iconSize.m}
+            height={theme.iconSize.m}
+            stroke={theme.colors.primary}
+          />
         ) : null}
       </Pressable>
     );
@@ -108,8 +112,8 @@ export const SearchableSelectSheet: React.FC<SearchableSelectSheetProps> = ({
         <View testID={testID} style={styles.content}>
           <View style={styles.searchWrap}>
             <SearchIcon
-              width={18}
-              height={18}
+              width={theme.iconSize.inline}
+              height={theme.iconSize.inline}
               stroke={theme.colors.onSurfaceVariant}
             />
             <Sheet.TextInput

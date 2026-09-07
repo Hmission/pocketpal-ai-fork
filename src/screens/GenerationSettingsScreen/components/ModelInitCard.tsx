@@ -217,8 +217,8 @@ export const ModelInitCard: React.FC<ModelInitCardProps> = ({
                     {l10n.settings.openCLDocsLink}
                   </Text>
                   <LinkExternalIcon
-                    width={12}
-                    height={12}
+                    width={theme.iconSize.micro}
+                    height={theme.iconSize.micro}
                     stroke={theme.colors.primary}
                     style={styles.linkIcon}
                   />

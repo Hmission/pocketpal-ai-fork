@@ -56,8 +56,8 @@ export const SendButton = ({
           }
           // §18.4 复查：图标 22→20 与 controlBar 快捷图标钮同尺寸（视觉高度一致），
           // 不再靠实心圆衬底撑大视觉权重
-          width={20}
-          height={20}
+          width={theme.iconSize.m}
+          height={theme.iconSize.m}
         />
       )}
     </TouchableOpacity>

@@ -84,8 +84,8 @@ export const SystemSettingsScreen: React.FC<{navigation?: any}> = observer(
               <View style={styles.settingItem}>
                 <View style={styles.labelWithIcon}>
                   <VolumeOnIcon
-                    width={20}
-                    height={20}
+                    width={theme.iconSize.m}
+                    height={theme.iconSize.m}
                     stroke={theme.colors.onSurface}
                   />
                   <View style={styles.textBlock}>
@@ -163,8 +163,8 @@ export const SystemSettingsScreen: React.FC<{navigation?: any}> = observer(
                   <View style={styles.settingItem}>
                     <View style={styles.labelWithIcon}>
                       <CpuChipIcon
-                        width={20}
-                        height={20}
+                        width={theme.iconSize.m}
+                        height={theme.iconSize.m}
                         stroke={theme.colors.onSurface}
                       />
                       <View style={styles.textBlock}>

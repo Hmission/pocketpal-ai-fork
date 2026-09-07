@@ -208,8 +208,8 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
             style={[s.taskPage, {width: pageW}]}
             testID="imagegen-failed-page">
             <AlertTriangleMdIcon
-              width={34}
-              height={34}
+              width={theme.iconSize.hero}
+              height={theme.iconSize.hero}
               stroke={theme.colors.danger}
             />
             <Text style={s.failedTitle}>生成失败</Text>

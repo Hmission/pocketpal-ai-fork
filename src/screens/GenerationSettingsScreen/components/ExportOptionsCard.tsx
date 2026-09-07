@@ -39,8 +39,8 @@ export const ExportOptionsCard: React.FC<ExportOptionsCardProps> = ({
           <View style={styles.textContainer}>
             <View style={styles.labelWithIconContainer}>
               <ShareIcon
-                width={20}
-                height={20}
+                width={theme.iconSize.m}
+                height={theme.iconSize.m}
                 style={styles.settingIcon}
                 stroke={theme.colors.onSurface}
               />

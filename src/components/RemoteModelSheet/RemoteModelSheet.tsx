@@ -530,9 +530,17 @@ export const RemoteModelSheet: React.FC<RemoteModelSheetProps> = observer(
                       testID="remote-apikey-toggle"
                       icon={({color}) =>
                         secureTextEntry ? (
-                          <EyeIcon width={24} height={24} stroke={color} />
+                          <EyeIcon
+                            width={theme.iconSize.l}
+                            height={theme.iconSize.l}
+                            stroke={color}
+                          />
                         ) : (
-                          <EyeOffIcon width={24} height={24} stroke={color} />
+                          <EyeOffIcon
+                            width={theme.iconSize.l}
+                            height={theme.iconSize.l}
+                            stroke={color}
+                          />
                         )
                       }
                       onPress={toggleSecureEntry}
@@ -634,14 +642,14 @@ export const RemoteModelSheet: React.FC<RemoteModelSheetProps> = observer(
                         }`}>
                         {listCaps.supportsVision === true ? (
                           <EyeIcon
-                            width={16}
-                            height={16}
+                            width={theme.iconSize.s}
+                            height={theme.iconSize.s}
                             stroke={theme.colors.iconModelTypeVision}
                           />
                         ) : listCaps.supportsVision === false ? (
                           <ChatIcon
-                            width={16}
-                            height={16}
+                            width={theme.iconSize.s}
+                            height={theme.iconSize.s}
                             stroke={theme.colors.iconModelTypeText}
                           />
                         ) : (

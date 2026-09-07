@@ -172,8 +172,8 @@ export const HeroRow: React.FC = observer(() => {
                 {languageTriggerLabel}
               </Text>
               <ChevronDownIcon
-                width={18}
-                height={18}
+                width={theme.iconSize.inline}
+                height={theme.iconSize.inline}
                 stroke={theme.colors.onSurface}
               />
             </Pressable>

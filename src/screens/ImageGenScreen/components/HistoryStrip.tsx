@@ -75,7 +75,11 @@ export const HistoryStrip: React.FC<HistoryStripProps> = ({
               )}
               {manageMode && toDelete.includes(item.uri) && (
                 <View style={s.historySel}>
-                  <CheckMdIcon width={20} height={20} stroke="#fff" />
+                  <CheckMdIcon
+                    width={theme.iconSize.m}
+                    height={theme.iconSize.m}
+                    stroke="#fff"
+                  />
                 </View>
               )}
             </TouchableOpacity>

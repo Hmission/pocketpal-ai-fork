@@ -317,9 +317,17 @@ export const ServerDetailsSheet: React.FC<ServerDetailsSheetProps> = observer(
                   testID="server-details-apikey-toggle"
                   icon={({color}) =>
                     secureTextEntry ? (
-                      <EyeIcon width={24} height={24} stroke={color} />
+                      <EyeIcon
+                        width={theme.iconSize.l}
+                        height={theme.iconSize.l}
+                        stroke={color}
+                      />
                     ) : (
-                      <EyeOffIcon width={24} height={24} stroke={color} />
+                      <EyeOffIcon
+                        width={theme.iconSize.l}
+                        height={theme.iconSize.l}
+                        stroke={color}
+                      />
                     )
                   }
                   onPress={toggleSecureEntry}

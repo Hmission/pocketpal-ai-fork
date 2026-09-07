@@ -44,8 +44,8 @@ export const LanguageSelector: React.FC = observer(() => {
           {languageDisplayNames[uiStore.language]}
         </Text>
         <ChevronDownIcon
-          width={18}
-          height={18}
+          width={theme.iconSize.inline}
+          height={theme.iconSize.inline}
           stroke={theme.colors.onSurface}
         />
       </Pressable>

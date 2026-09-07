@@ -108,16 +108,19 @@ export const ChatHeader: React.FC<{
                 styles.phoneButton,
                 !phoneReady && styles.phoneButtonDisabled,
               ]}>
-              {/* 尺寸暂取 s(16)：旧数据（§157 真机像素量）是在**被填实**的状态下量的，
-                  填实修好后重量需重新量——本值为「待复量」，不是通则（ICON_SPEC §4.1 v1.1）；
-                  装机窗目视定档前不得据它新增图标尺寸，也不得本波贸然改回 m(20)（两个
-                  变量同时改会互相遮蔽）。 */}
+              {/* 尺寸取 m(20)（2026-09-08 装机窗像素定档，销 §157 遗留的 s(16)）：
+                  本机的实测——填实修复后，s(16) 下电话描边仅 4px，而同行加号是 6px，
+                  电话反而比邻居细 33%（大王报的“粗细一致”未满足）。真因不在尺寸，
+                  而在资产级 scale 使有效描边不一致（已按 ICON_SPEC §一第 2 条 v1.2 归一）；
+                  归一后同用 m(20) 时两者理论值均为 2.0×(20/24)×3 = 5.0px，与 DESIGN_SPEC
+                  触区红线（同行一律 iconSize.m）一致。上一波没一次改完是为了避免
+                  “上色 + 尺寸”两个变量互相遮蔽，现在填实已真机确认修好，单变量可改。 */}
               <PhoneIcon
                 stroke={
                   phoneReady ? theme.colors.primary : theme.colors.outline
                 }
-                width={theme.iconSize.s}
-                height={theme.iconSize.s}
+                width={theme.iconSize.m}
+                height={theme.iconSize.m}
               />
             </TouchableOpacity>
           )}

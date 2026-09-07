@@ -44,7 +44,11 @@ export const OnboardingBottomBar: React.FC<OnboardingBottomBarProps> = ({
     : theme.colors.background;
   const glyph =
     primaryGlyph === 'download' ? (
-      <DownloadIcon width={20} height={20} stroke={glyphColor} />
+      <DownloadIcon
+        width={theme.iconSize.m}
+        height={theme.iconSize.m}
+        stroke={glyphColor}
+      />
     ) : (
       <View style={styles.glyphBox}>
         <ArrowRightGlyph width={13} height={13} fill={glyphColor} />

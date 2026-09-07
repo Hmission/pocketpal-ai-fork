@@ -334,8 +334,8 @@ export const ModelCard: React.FC<ModelCardProps> = observer(
       if (modelCaps.vision === 'yes') {
         return (
           <EyeIcon
-            width={16}
-            height={16}
+            width={theme.iconSize.s}
+            height={theme.iconSize.s}
             stroke={theme.colors.iconModelTypeVision}
           />
         );
@@ -343,8 +343,8 @@ export const ModelCard: React.FC<ModelCardProps> = observer(
       // Default to chat icon for text models
       return (
         <ChatIcon
-          width={16}
-          height={16}
+          width={theme.iconSize.s}
+          height={theme.iconSize.s}
           stroke={theme.colors.iconModelTypeText}
         />
       );
@@ -425,8 +425,8 @@ export const ModelCard: React.FC<ModelCardProps> = observer(
               accessibilityRole="button"
               accessibilityLabel={l10n.models.modelCard.buttons.settings}>
               <SettingsIcon
-                width={16}
-                height={16}
+                width={theme.iconSize.s}
+                height={theme.iconSize.s}
                 stroke={theme.colors.onSurfaceVariant}
               />
             </TouchableOpacity>
@@ -436,7 +436,11 @@ export const ModelCard: React.FC<ModelCardProps> = observer(
               style={styles.iconButton}
               accessibilityRole="button"
               accessibilityLabel={l10n.common.delete}>
-              <TrashIcon width={16} height={16} stroke={theme.colors.error} />
+              <TrashIcon
+                width={theme.iconSize.s}
+                height={theme.iconSize.s}
+                stroke={theme.colors.error}
+              />
             </TouchableOpacity>
             <TouchableOpacity
               testID="expand-details-button"
@@ -450,14 +454,14 @@ export const ModelCard: React.FC<ModelCardProps> = observer(
               }>
               {isExpanded ? (
                 <ChevronSelectorExpandedVerticalIcon
-                  width={16}
-                  height={16}
+                  width={theme.iconSize.s}
+                  height={theme.iconSize.s}
                   stroke={theme.colors.onSurfaceVariant}
                 />
               ) : (
                 <ChevronSelectorVerticalIcon
-                  width={16}
-                  height={16}
+                  width={theme.iconSize.s}
+                  height={theme.iconSize.s}
                   stroke={theme.colors.onSurfaceVariant}
                 />
               )}
@@ -525,8 +529,8 @@ export const ModelCard: React.FC<ModelCardProps> = observer(
               accessibilityRole="button"
               accessibilityLabel={l10n.models.modelCard.buttons.settings}>
               <SettingsIcon
-                width={16}
-                height={16}
+                width={theme.iconSize.s}
+                height={theme.iconSize.s}
                 stroke={theme.colors.onSurfaceVariant}
               />
             </TouchableOpacity>
@@ -538,7 +542,11 @@ export const ModelCard: React.FC<ModelCardProps> = observer(
                 style={styles.iconButton}
                 accessibilityRole="button"
                 accessibilityLabel={l10n.models.modelCard.buttons.remove}>
-                <XIcon width={20} height={20} stroke={theme.colors.error} />
+                <XIcon
+                  width={theme.iconSize.m}
+                  height={theme.iconSize.m}
+                  stroke={theme.colors.error}
+                />
               </TouchableOpacity>
             )}
 
@@ -554,14 +562,14 @@ export const ModelCard: React.FC<ModelCardProps> = observer(
               }>
               {isExpanded ? (
                 <ChevronSelectorExpandedVerticalIcon
-                  width={16}
-                  height={16}
+                  width={theme.iconSize.s}
+                  height={theme.iconSize.s}
                   stroke={theme.colors.onSurfaceVariant}
                 />
               ) : (
                 <ChevronSelectorVerticalIcon
-                  width={16}
-                  height={16}
+                  width={theme.iconSize.s}
+                  height={theme.iconSize.s}
                   stroke={theme.colors.onSurfaceVariant}
                 />
               )}
@@ -582,8 +590,8 @@ export const ModelCard: React.FC<ModelCardProps> = observer(
             accessibilityRole="button"
             accessibilityLabel={l10n.models.modelCard.buttons.settings}>
             <SettingsIcon
-              width={16}
-              height={16}
+              width={theme.iconSize.s}
+              height={theme.iconSize.s}
               stroke={theme.colors.onSurfaceVariant}
             />
           </TouchableOpacity>
@@ -594,7 +602,11 @@ export const ModelCard: React.FC<ModelCardProps> = observer(
             style={styles.iconButton}
             accessibilityRole="button"
             accessibilityLabel={l10n.common.delete}>
-            <TrashIcon width={16} height={16} stroke={theme.colors.error} />
+            <TrashIcon
+              width={theme.iconSize.s}
+              height={theme.iconSize.s}
+              stroke={theme.colors.error}
+            />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -609,14 +621,14 @@ export const ModelCard: React.FC<ModelCardProps> = observer(
             }>
             {isExpanded ? (
               <ChevronSelectorExpandedVerticalIcon
-                width={16}
-                height={16}
+                width={theme.iconSize.s}
+                height={theme.iconSize.s}
                 stroke={theme.colors.onSurfaceVariant}
               />
             ) : (
               <ChevronSelectorVerticalIcon
-                width={16}
-                height={16}
+                width={theme.iconSize.s}
+                height={theme.iconSize.s}
                 stroke={theme.colors.onSurfaceVariant}
               />
             )}
@@ -883,8 +895,8 @@ export const ModelCard: React.FC<ModelCardProps> = observer(
                       style={styles.visionToggleHeader}>
                       <View style={styles.visionToggleLeft}>
                         <EyeIcon
-                          width={16}
-                          height={16}
+                          width={theme.iconSize.s}
+                          height={theme.iconSize.s}
                           stroke={
                             modelStore.getModelVisionPreference(model)
                               ? theme.colors.tertiary
@@ -1022,8 +1034,8 @@ export const ModelCard: React.FC<ModelCardProps> = observer(
                     activeOpacity={0.7}>
                     <View style={styles.hfLinkContent}>
                       <LinkExternalIcon
-                        width={16}
-                        height={16}
+                        width={theme.iconSize.s}
+                        height={theme.iconSize.s}
                         stroke={theme.colors.primary}
                       />
                       <Text style={styles.hfLinkText}>

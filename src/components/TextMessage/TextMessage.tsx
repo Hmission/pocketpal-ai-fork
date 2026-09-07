@@ -264,7 +264,11 @@ export const TextMessage = ({
             hitSlop={8}
             accessibilityRole="button"
             accessibilityLabel={l10n.common.close}>
-            <XIcon width={24} height={24} stroke="#fff" />
+            <XIcon
+              width={theme.iconSize.l}
+              height={theme.iconSize.l}
+              stroke="#fff"
+            />
           </TouchableOpacity>
           <Image
             source={{uri: previewUri}}

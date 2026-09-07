@@ -827,7 +827,11 @@ export const ChatInput = observer(
                       }
                       accessibilityLabel="Add image"
                       accessibilityRole="button">
-                      <PlusIcon width={20} height={20} stroke={plusColor} />
+                      <PlusIcon
+                        width={theme.iconSize.m}
+                        height={theme.iconSize.m}
+                        stroke={plusColor}
+                      />
                     </TouchableOpacity>
                   }>
                   <Menu.Item
@@ -883,8 +887,8 @@ export const ChatInput = observer(
                   }
                   accessibilityRole="button">
                   <AtomIcon
-                    width={14}
-                    height={14}
+                    width={theme.iconSize.xs}
+                    height={theme.iconSize.xs}
                     stroke={
                       isThinkingEnabled
                         ? theme.colors.onPrimary
@@ -939,8 +943,8 @@ export const ChatInput = observer(
                   accessibilityLabel="Start video analysis"
                   accessibilityRole="button">
                   <VideoRecorderIcon
-                    width={16}
-                    height={16}
+                    width={theme.iconSize.s}
+                    height={theme.iconSize.s}
                     stroke="white"
                     strokeWidth={2}
                   />
@@ -961,8 +965,8 @@ export const ChatInput = observer(
                   }
                   accessibilityRole="button">
                   <StopIcon
-                    width={18}
-                    height={18}
+                    width={theme.iconSize.inline}
+                    height={theme.iconSize.inline}
                     // B56②登记：error 底白 icon（onError dark 为深棕字不适配白图标，保持）
                     stroke="#FFFFFF"
                     strokeWidth={2}
@@ -981,8 +985,8 @@ export const ChatInput = observer(
                   }
                   accessibilityRole="button">
                   <MicIcon
-                    width={18}
-                    height={18}
+                    width={theme.iconSize.inline}
+                    height={theme.iconSize.inline}
                     stroke={theme.colors.onPrimary}
                     strokeWidth={2}
                   />

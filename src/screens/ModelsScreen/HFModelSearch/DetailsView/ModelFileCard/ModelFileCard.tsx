@@ -352,8 +352,8 @@ export const ModelFileCard: FC<ModelFileCardProps> = observer(
                           .includesVisionCapability}
                   </Chip>
                   <ChevronRightIcon
-                    width={16}
-                    height={16}
+                    width={theme.iconSize.s}
+                    height={theme.iconSize.s}
                     stroke={theme.colors.onSurfaceVariant}
                   />
                 </View>

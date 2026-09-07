@@ -200,14 +200,14 @@ export const HtmlPreviewBubble: React.FC<HtmlPreviewBubbleProps> = ({
             {showCode ? (
               <BrowserIcon
                 stroke={theme.colors.onSurfaceVariant}
-                width={18}
-                height={18}
+                width={theme.iconSize.inline}
+                height={theme.iconSize.inline}
               />
             ) : (
               <CodeIcon
                 stroke={theme.colors.onSurfaceVariant}
-                width={18}
-                height={18}
+                width={theme.iconSize.inline}
+                height={theme.iconSize.inline}
               />
             )}
           </TouchableOpacity>
@@ -220,8 +220,8 @@ export const HtmlPreviewBubble: React.FC<HtmlPreviewBubbleProps> = ({
             style={styles.headerButton}>
             <CopyIcon
               stroke={theme.colors.onSurfaceVariant}
-              width={18}
-              height={18}
+              width={theme.iconSize.inline}
+              height={theme.iconSize.inline}
             />
           </TouchableOpacity>
           <TouchableOpacity
@@ -236,8 +236,8 @@ export const HtmlPreviewBubble: React.FC<HtmlPreviewBubbleProps> = ({
             style={styles.headerButton}>
             <ExpandIcon
               stroke={theme.colors.onSurfaceVariant}
-              width={18}
-              height={18}
+              width={theme.iconSize.inline}
+              height={theme.iconSize.inline}
             />
           </TouchableOpacity>
         </View>

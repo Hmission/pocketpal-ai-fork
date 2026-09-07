@@ -174,12 +174,22 @@ const PalThumbnail: React.FC<{
     // Use capability-based detection for video pals (local pals only)
     if (isLocalPal(pal) && hasVideoCapability(pal)) {
       return (
-        <CameraIcon stroke={theme.colors.primary} width={18} height={18} />
+        <CameraIcon
+          stroke={theme.colors.primary}
+          width={theme.iconSize.inline}
+          height={theme.iconSize.inline}
+        />
       );
     }
 
     // Default to chat icon for all other pals
-    return <ChatIcon stroke={theme.colors.primary} width={18} height={18} />;
+    return (
+      <ChatIcon
+        stroke={theme.colors.primary}
+        width={theme.iconSize.inline}
+        height={theme.iconSize.inline}
+      />
+    );
   };
 
   // TODO: Create gradient style, or remove gradients
@@ -417,8 +427,8 @@ export const SquarePalCard: React.FC<SquarePalCardProps> = observer(
                     {isProtected && (
                       <LockIcon
                         stroke={theme.colors.onSurfaceVariant}
-                        width={14}
-                        height={14}
+                        width={theme.iconSize.xs}
+                        height={theme.iconSize.xs}
                       />
                     )}
                   </View>
@@ -431,8 +441,8 @@ export const SquarePalCard: React.FC<SquarePalCardProps> = observer(
                         icon={() => (
                           <ShareIcon
                             stroke={theme.colors.onSurface}
-                            width={16}
-                            height={16}
+                            width={theme.iconSize.s}
+                            height={theme.iconSize.s}
                           />
                         )}
                         size={theme.iconSize.m}
@@ -447,8 +457,8 @@ export const SquarePalCard: React.FC<SquarePalCardProps> = observer(
                         icon={() => (
                           <TrashIcon
                             stroke={theme.colors.error}
-                            width={16}
-                            height={16}
+                            width={theme.iconSize.s}
+                            height={theme.iconSize.s}
                           />
                         )}
                         size={theme.iconSize.m}
@@ -508,8 +518,8 @@ export const SquarePalCard: React.FC<SquarePalCardProps> = observer(
                         <StarIcon
                           stroke={theme.colors.tertiary}
                           fill={theme.colors.tertiary}
-                          width={12}
-                          height={12}
+                          width={theme.iconSize.micro}
+                          height={theme.iconSize.micro}
                         />
                         <Text style={styles.rating}>
                           {palRating.toFixed(1)}

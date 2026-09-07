@@ -72,7 +72,11 @@ export const Dropdown: React.FC<DropdownProps> = ({
           onPress={() => setOpen(true)}
           style={[styles.trigger, style]}>
           <Text style={styles.label}>{triggerLabel}</Text>
-          <ChevronDownIcon width={16} height={16} stroke={iconColor} />
+          <ChevronDownIcon
+            width={theme.iconSize.s}
+            height={theme.iconSize.s}
+            stroke={iconColor}
+          />
         </Pressable>
       }>
       {options.map(option => (

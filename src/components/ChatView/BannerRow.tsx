@@ -103,7 +103,13 @@ export const BannerRow: React.FC<BannerRowProps> = observer(
         <BannerBar
           testID="context-warning-banner"
           variant="warning"
-          icon={<AlertIcon width={14} height={14} stroke={error} />}
+          icon={
+            <AlertIcon
+              width={theme.iconSize.xs}
+              height={theme.iconSize.xs}
+              stroke={error}
+            />
+          }
           text={l10n.chat.contextWarning}
           progress={progress}
           percent={progress}
@@ -179,7 +185,13 @@ export const BannerRow: React.FC<BannerRowProps> = observer(
       <BannerBar
         testID="context-full-banner"
         variant="error"
-        icon={<AlertIcon width={14} height={14} stroke={error} />}
+        icon={
+          <AlertIcon
+            width={theme.iconSize.xs}
+            height={theme.iconSize.xs}
+            stroke={error}
+          />
+        }
         text={fullText}
         progress={progress}
         actions={[

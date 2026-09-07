@@ -287,8 +287,8 @@ export const ThinkingBubble: React.FC<ThinkingBubbleProps> = ({
             }}>
             <ChevronRightIcon
               testID="chevron-icon"
-              width={12}
-              height={12}
+              width={theme.iconSize.micro}
+              height={theme.iconSize.micro}
               stroke={theme.colors.thinkingBubbleText}
             />
           </Animated.View>
@@ -324,8 +324,8 @@ export const ThinkingBubble: React.FC<ThinkingBubbleProps> = ({
             ]}>
             <ChevronDownIcon
               testID="chevron-icon"
-              width={18}
-              height={18}
+              width={theme.iconSize.inline}
+              height={theme.iconSize.inline}
               stroke={theme.colors.thinkingBubbleText}
             />
           </Animated.View>

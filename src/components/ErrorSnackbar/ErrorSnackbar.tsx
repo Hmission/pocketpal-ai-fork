@@ -43,8 +43,8 @@ export const ErrorSnackbar: React.FC<ErrorSnackbarProps> = ({
       return (
         <ShieldMdIcon
           testID="icon-shield"
-          width={20}
-          height={20}
+          width={theme.iconSize.m}
+          height={theme.iconSize.m}
           stroke={iconColor}
         />
       );
@@ -56,8 +56,8 @@ export const ErrorSnackbar: React.FC<ErrorSnackbarProps> = ({
         return (
           <WifiOffIcon
             testID="icon-wifi-off"
-            width={20}
-            height={20}
+            width={theme.iconSize.m}
+            height={theme.iconSize.m}
             stroke={iconColor}
           />
         );
@@ -65,8 +65,8 @@ export const ErrorSnackbar: React.FC<ErrorSnackbarProps> = ({
         return (
           <EyeOffIcon
             testID="icon-eye-off"
-            width={20}
-            height={20}
+            width={theme.iconSize.m}
+            height={theme.iconSize.m}
             stroke={iconColor}
           />
         );
@@ -77,8 +77,8 @@ export const ErrorSnackbar: React.FC<ErrorSnackbarProps> = ({
         return (
           <AlertIcon
             testID="icon-alert"
-            width={20}
-            height={20}
+            width={theme.iconSize.m}
+            height={theme.iconSize.m}
             stroke={iconColor}
           />
         );

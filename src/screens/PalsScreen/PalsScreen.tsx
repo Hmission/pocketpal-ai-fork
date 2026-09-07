@@ -346,7 +346,11 @@ export const PalsScreen: React.FC = observer(() => {
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <PlusIcon stroke={theme.colors.onSurfaceVariant} width={48} height={48} />
+      <PlusIcon
+        stroke={theme.colors.onSurfaceVariant}
+        width={theme.iconSize.display}
+        height={theme.iconSize.display}
+      />
       <Text style={styles.emptyStateText}>
         {activeFilter === 'local' || activeFilter === 'my-pals'
           ? 'No Pals yet.\nCreate your first Pal using the + button!'

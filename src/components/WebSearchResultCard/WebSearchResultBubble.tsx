@@ -32,8 +32,8 @@ export const WebSearchResultBubble: React.FC<WebSearchResultBubbleProps> = ({
     return (
       <View style={componentStyles.row} testID="web-search-result-card">
         <SearchIcon
-          width={14}
-          height={14}
+          width={theme.iconSize.xs}
+          height={theme.iconSize.xs}
           stroke={theme.colors.textSecondary}
         />
         <Text style={componentStyles.label} numberOfLines={1}>
@@ -56,8 +56,8 @@ export const WebSearchResultBubble: React.FC<WebSearchResultBubbleProps> = ({
         )}
         testID="web-search-result-trigger">
         <SearchIcon
-          width={14}
-          height={14}
+          width={theme.iconSize.xs}
+          height={theme.iconSize.xs}
           stroke={theme.colors.textSecondary}
         />
         {/* Split so a long query truncates but the count never does. */}
@@ -71,8 +71,8 @@ export const WebSearchResultBubble: React.FC<WebSearchResultBubbleProps> = ({
             : t(l10n.chat.webSearch.resultsCount, {count: results.length})}
         </Text>
         <ChevronRightIcon
-          width={14}
-          height={14}
+          width={theme.iconSize.xs}
+          height={theme.iconSize.xs}
           stroke={theme.colors.textSecondary}
         />
       </TouchableOpacity>

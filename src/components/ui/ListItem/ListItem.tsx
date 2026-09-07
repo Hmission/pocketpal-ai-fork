@@ -62,8 +62,8 @@ export const ListItem: React.FC<ListItemProps> = ({
       {right ??
         (onPress ? (
           <ChevronRightIcon
-            width={18}
-            height={18}
+            width={theme.iconSize.inline}
+            height={theme.iconSize.inline}
             stroke={theme.colors.onSurfaceVariant}
           />
         ) : null)}

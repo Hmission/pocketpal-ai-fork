@@ -106,8 +106,8 @@ export const AboutScreen: React.FC = () => {
                       v{appInfo.version} ({appInfo.build})
                     </Text>
                     <CopyIcon
-                      width={16}
-                      height={16}
+                      width={theme.iconSize.s}
+                      height={theme.iconSize.s}
                       stroke={theme.colors.textSecondary}
                     />
                   </TouchableOpacity>

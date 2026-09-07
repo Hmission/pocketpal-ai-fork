@@ -241,8 +241,8 @@ export const EnhancedSearchBar = ({
                 hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
                 onPress={() => onFiltersChange({author: ''})}>
                 <XIcon
-                  width={20}
-                  height={20}
+                  width={theme.iconSize.m}
+                  height={theme.iconSize.m}
                   stroke={theme.colors.onSurfaceVariant}
                 />
               </TouchableOpacity>

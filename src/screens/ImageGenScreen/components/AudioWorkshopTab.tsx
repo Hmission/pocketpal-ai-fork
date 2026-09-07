@@ -453,8 +453,8 @@ export const AudioWorkshopTab: React.FC<{
             ) : transcribeFocus?.status === 'failed' ? (
               <View style={s.audioResultStage}>
                 <AlertTriangleMdIcon
-                  width={34}
-                  height={34}
+                  width={theme.iconSize.hero}
+                  height={theme.iconSize.hero}
                   stroke={theme.colors.danger}
                 />
                 <Text style={s.failedTitle}>转写失败</Text>
@@ -587,8 +587,8 @@ export const AudioWorkshopTab: React.FC<{
                     onPress={() => setTranscribeFocusId(h.taskId)}
                     testID={`audio-history-transcribe-${h.taskId}`}>
                     <MicIcon
-                      width={20}
-                      height={20}
+                      width={theme.iconSize.m}
+                      height={theme.iconSize.m}
                       stroke={theme.colors.onSurfaceVariant}
                     />
                     <Text style={s.audioHistoryText} numberOfLines={2}>
@@ -679,8 +679,8 @@ export const AudioWorkshopTab: React.FC<{
             ) : ttsFocus?.status === 'failed' ? (
               <View style={s.audioResultStage}>
                 <AlertTriangleMdIcon
-                  width={34}
-                  height={34}
+                  width={theme.iconSize.hero}
+                  height={theme.iconSize.hero}
                   stroke={theme.colors.danger}
                 />
                 <Text style={s.failedTitle}>生成失败</Text>
@@ -869,14 +869,14 @@ export const AudioWorkshopTab: React.FC<{
                     testID={`audio-history-tts-${h.taskId}`}>
                     {audioStore.playingUri === h.uri && audioStore.isPlaying ? (
                       <PauseIcon
-                        width={20}
-                        height={20}
+                        width={theme.iconSize.m}
+                        height={theme.iconSize.m}
                         stroke={theme.colors.onSurfaceVariant}
                       />
                     ) : (
                       <HeadphonesMdIcon
-                        width={20}
-                        height={20}
+                        width={theme.iconSize.m}
+                        height={theme.iconSize.m}
                         stroke={theme.colors.onSurfaceVariant}
                       />
                     )}

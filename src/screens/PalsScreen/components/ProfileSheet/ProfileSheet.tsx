@@ -83,8 +83,8 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = observer(
               icon={() => (
                 <LockIcon
                   stroke={theme.colors.onSurfaceVariant}
-                  width={18}
-                  height={18}
+                  width={theme.iconSize.inline}
+                  height={theme.iconSize.inline}
                 />
               )}>
               {l10n.palsScreen.signOut}
@@ -99,8 +99,8 @@ export const ProfileSheet: React.FC<ProfileSheetProps> = observer(
         <View style={styles.signInPrompt}>
           <UserIcon
             stroke={theme.colors.onSurfaceVariant}
-            width={48}
-            height={48}
+            width={theme.iconSize.display}
+            height={theme.iconSize.display}
           />
           <Text style={styles.signInTitle}>
             {l10n.palsScreen.signInToPalsHub}

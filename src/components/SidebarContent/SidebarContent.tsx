@@ -357,8 +357,8 @@ export const SidebarContent: React.FC<DrawerContentComponentProps> = observer(
                 onPress={handleOpenSettings}
                 testID="drawer-item-settings">
                 <SettingsIcon
-                  width={24}
-                  height={24}
+                  width={theme.iconSize.l}
+                  height={theme.iconSize.l}
                   stroke={theme.colors.primary}
                 />
                 <Text style={styles.footerText}>
