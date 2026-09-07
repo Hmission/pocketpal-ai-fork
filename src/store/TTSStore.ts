@@ -88,19 +88,18 @@ export type SpeakIssue = 'lang' | 'failed' | null;
 /**
  * Store that coordinates text-to-speech playback.
  *
- * ⚠ 注释指针勘误（2026-09-06 取证）：本文件历史上多处引用
- * `architecture/tts.md`（§1a / §4a / §4a.1 / §4a.5 / §4e），**该文件在本仓从未存在**
- * （悬空指针——按它找不到任何口径，只能读代码反推）。播报架构的单一事实源现为
- * `docs/POCKETPAL_TTS_SPEC.md`（事实位见 §1，stop 失败定性见 §2，串行链见 §3）；
- * 下方各处的 §号仅作历史出处标记，不再声称可达。
+ * 播报架构单一事实源：`docs/POCKETPAL_TTS_SPEC.md`（能不能播 §1、stop 失败定性 §2、
+ * 串行链 §3、可用性门与内存档位口径 §7）。2026-09-07 收口：历史上的悬空指针
+ * `architecture/tts.md` 已不存在于本仓，其五条口径写实为该 SPEC §7，本文件
+ * 全部指针改指真实章节——不再用「§号仅作历史标记」这类免责声明替代收口。
  *
  * Availability gate: `isTTSAvailable` is the single boolean every TTS-aware
  * surface reads. It is derived from `deviceMeetsMemory` (set once in `init()`
  * from `DeviceInfo.getTotalMemory()`) and `userTTSOverride` (a persisted user
- * choice). See architecture/tts.md §4a for the formula. The lifecycle hooks
+ * choice). See POCKETPAL_TTS_SPEC §7.2 for the formula. The lifecycle hooks
  * registered in `init()` (AppState listener, session reaction, isInstalled
  * checks) run unconditionally so a low-memory user opting in mid-session has
- * a safe runtime — see architecture/tts.md §4e.
+ * a safe runtime — see POCKETPAL_TTS_SPEC §7.4.
  *
  * Streaming: `useChatSession` calls three hooks as an assistant message is
  * produced — `onAssistantMessageStart`, `onAssistantMessageChunk`, and
@@ -111,17 +110,17 @@ export type SpeakIssue = 'lang' | 'failed' | null;
  */
 export class TTSStore {
   // Set once in init() from getTotalMemory() >= TTS_MIN_RAM_BYTES; never
-  // re-checked. RAM doesn't change at runtime. See architecture/tts.md §1a.
+  // re-checked. RAM doesn't change at runtime. See POCKETPAL_TTS_SPEC §7.1.
   deviceMeetsMemory: boolean = false;
   // Tristate persisted user choice. null = not set (mirrors deviceMeetsMemory).
-  // See architecture/tts.md §4a, D1.
+  // See POCKETPAL_TTS_SPEC §7.2（三态表）.
   userTTSOverride: boolean | null = null;
   private initialized: boolean = false;
 
   /**
    * The TTS availability gate. Single boolean every TTS-aware surface reads.
    * Derived from `userTTSOverride` and `deviceMeetsMemory` per the formula
-   * in architecture/tts.md §4a.1: an explicit user override wins; otherwise
+   * in POCKETPAL_TTS_SPEC §7.2: an explicit user override wins; otherwise
    * the device-memory default applies.
    */
   get isTTSAvailable(): boolean {
@@ -229,7 +228,7 @@ export class TTSStore {
    * Supertonic synthesis language. Persisted so the user's choice survives
    * restart. Defaults to `na` ("Auto", language-agnostic). Read at every
    * Supertonic synthesis entry point and passed explicitly so the engine
-   * default never governs. See architecture/tts.md §4a.
+   * default never governs. 默认值事实位：src/services/tts/constants.ts。
    */
   supertonicLanguage: SupertonicLanguage = DEFAULT_SUPERTONIC_LANGUAGE;
 
@@ -307,7 +306,7 @@ export class TTSStore {
       this.deviceMeetsMemory = totalMemory >= TTS_MIN_RAM_BYTES;
     });
 
-    // Lifecycle hooks below run UNCONDITIONALLY — see architecture/tts.md §4e
+    // Lifecycle hooks below run UNCONDITIONALLY — see POCKETPAL_TTS_SPEC §7.4
     // and I8. A user on a low-memory device may flip `userTTSOverride = true`
     // mid-session, at which point the AppState listener and session reaction
     // must already be in place. The four call-site guards in `play`,
@@ -416,7 +415,7 @@ export class TTSStore {
    * `true` forces the gate open even on low-memory devices; `false` forces
    * it closed even on high-memory devices. Mirrors `setAutoSpeak(false)`'s
    * stop+release pattern when the gate transitions from open to closed,
-   * to free engine RAM immediately. See architecture/tts.md §4a.5, I3, I6.
+   * to free engine RAM immediately. See POCKETPAL_TTS_SPEC §7.3, I3, I6.
    */
   setUserTTSOverride(value: boolean): void {
     const wasAvailable = this.isTTSAvailable;

@@ -226,7 +226,7 @@ describe('TTSStore', () => {
       expect(store.isTTSAvailable).toBe(false);
       // Lifecycle hooks run unconditionally so a low-memory user opting in
       // mid-session has the AppState listener already in place — see
-      // architecture/tts.md §4e and I8.
+      // POCKETPAL_TTS_SPEC §7.4 and I8.
       expect(mockAddEventListener).toHaveBeenCalledWith(
         'change',
         expect.any(Function),

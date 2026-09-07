@@ -29,7 +29,7 @@ export const TTS_PARENT_SUBDIR = 'tts';
  * trained language-agnostic `<na>` tag.
  * Because the filenames are identical to v2, a local version sentinel
  * (`SUPERTONIC_VERSION_SENTINEL_FILENAME`) distinguishes a stale v2 install
- * from v3; see the supertonic engine and architecture/tts.md.
+ * from v3; see src/services/tts/engines/supertonic/index.ts.
  */
 export const SUPERTONIC_MODEL_BASE_URL =
   'https://hf-mirror.com/Supertone/supertonic-3/resolve/main';

@@ -10,3 +10,7 @@ yarn --silent lint
 # 注：不接 .github/workflows——该目录被 .gitignore 的 workflows/ 规则排除，不入库。
 yarn --silent audit:native-mocks
 yarn --silent audit:async-timers
+# 指南针对账闸（2026-09-07 全量排查立项，CHAIN_AUDIT_20260907 §4.1）：
+# COMPASS_REGISTRY §2 登记的每条 CP 必须在 errorRegistry 有真 regex，状态列写「已落地」
+# 者尤其不准空标；登记面/执行面的 deepDive 路径不得悬空。这类病靠人记得对账必然复发。
+yarn --silent audit:compass

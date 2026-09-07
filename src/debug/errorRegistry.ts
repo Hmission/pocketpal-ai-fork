@@ -29,8 +29,8 @@ export const ERROR_PATTERNS: ErrorPattern[] = [
     navigation:
       '执行 node scripts/restore-llamarn-jnilibs.js（postinstall 三级恢复：.tmp 滚动备份 → 构建缓存 → APK 提取）',
     deepDive: [
-      'docs/sop/LLAMARN_JNI_RESTORE_SOP.md',
       'scripts/restore-llamarn-jnilibs.js',
+      'docs/POCKETPAL_MASTER_LOG.md（llama.rn jniLibs 丢失与恢复记录）',
     ],
   },
   {
@@ -79,6 +79,86 @@ export const ERROR_PATTERNS: ErrorPattern[] = [
     deepDive: [
       'docs/POCKETPAL_IMAGE_GEN_UPGRADE_PLAN.md',
       'src/utils/imageGenManifest.ts',
+    ],
+  },
+  {
+    cpId: 'CP-APP-007',
+    triggerRegex:
+      /反推失败|caption.*(fail|失败)|视觉模型.*(未加载|不可用|缺失)|mmproj.*(not found|missing)/i,
+    navigation:
+      '确认 Qwen3.5 + mmproj 两件均在机（MODEL_MATRIX #3/#4）；反推走 chat 槽，等 engineMutex 释放后重试；模板不匹配时先查 captionEngine 的 one-shot 指令',
+    deepDive: [
+      'docs/POCKETPAL_IMAGEGEN_UI_SPEC.md §7',
+      'src/services/captionEngine.ts',
+    ],
+  },
+  {
+    cpId: 'CP-APP-008',
+    triggerRegex:
+      /转写失败|ASR.*(fail|失败)|AUDIO_BUSY|RECORD_AUDIO|录音权限|录音被占用/i,
+    navigation:
+      '确认 SenseVoice 模型在机（MODEL_MATRIX §2.2 A1）；引导 RECORD_AUDIO 权限；录音报 AUDIO_BUSY 说明另有 owner（通话/工坊互斥），先释放再重试',
+    deepDive: [
+      'docs/POCKETPAL_AUDIO_UI_SPEC.md',
+      'src/services/asrEngine.ts',
+      'src/services/audio/recorder.ts',
+    ],
+  },
+  {
+    cpId: 'CP-APP-009',
+    triggerRegex:
+      /tool\.error|工具调用(失败|错误)|invalid tool (arguments|name)|未知工具|unknown tool/i,
+    navigation:
+      '按错误回传里的 guide（正确调用示例）修正参数后重试；同一工具连续失败 2 次才可放弃，并在最终回答中如实说明，不静默吐掉失败',
+    deepDive: [
+      'docs/workspace/WORKSPACE_TOOL_ERROR_FEEDBACK_SPEC.md',
+      'src/services/agent/AgentRunner.ts',
+    ],
+  },
+  {
+    cpId: 'CP-APP-010',
+    triggerRegex:
+      /VIDEO_TASK_START_FAILED|前台服务.*(失败|启动失败)|Foreground service.*(fail|not allowed)|WakeLock|夜间任务被杀/i,
+    navigation:
+      '查 FOREGROUND_SERVICE + FOREGROUND_SERVICE_DATA_SYNC 权限与 service 声明（targetSdk 36 需 foregroundServiceType）；查 logcat 是否被 PSS 看护/内存配额杀（压内存优先于白名单）',
+    deepDive: [
+      'android/app/src/main/java/com/pocketpalai/VideoTaskServiceModule.kt',
+      'docs/ONDEVICE_VIDEO_GEN_ANALYSIS.md §7.1',
+      'src/store/nightTaskRegistry.ts',
+    ],
+  },
+  {
+    cpId: 'CP-APP-011',
+    triggerRegex:
+      /sample_rate.*(does not exist|missing)|生成噪音|TTS 模型.*不完整|tokens\.txt.*(缺失|missing)|espeak.*(missing|not found)/i,
+    navigation:
+      '核实下载源是否 sherpa 兼容：kokoro 需 metadata+tokens.txt、kitten 需官方 v0.1 生成链四件套；kitten 生成链已可由 downloadModel Phase 2 动态枚举补齐',
+    deepDive: [
+      'src/services/tts/constants.ts',
+      'src/services/tts/engines/kitten/index.ts',
+    ],
+  },
+  {
+    cpId: 'CP-APP-012',
+    triggerRegex:
+      /基准(编排|用例).*(中断|卡死|失败)|benchmark.*(stuck|abort|fail)|跑分卡.*(失败|渲染)|分享.*(不可用|失败)/i,
+    navigation:
+      '查 BenchmarkStore 编排状态机是否复位（用例结束/失败必须 reset，不留半态）；分享走 FileProvider 门禁，不可用时降级存相册+诚实提示；数值 N/A 不编造',
+    deepDive: [
+      'docs/PERF_BENCHMARK_DESIGN.md §10',
+      'src/store/BenchmarkStore.ts',
+    ],
+  },
+  {
+    cpId: 'CP-APP-013',
+    triggerRegex:
+      /Context is full|上下文(已满|不足|满)|context.*(full|overflow|exceed)|压缩(未触发|失败)|budget_decision.*saturated/i,
+    navigation:
+      '查 DRC chat.budget_decision 事件（used/nCtx/action/saturated）与 perModelNCtxSource 覆盖源（user 为主权）；策展档 defaultNCtxForModel 不得低于工具基线 TOOL_BASELINE_TOKENS；连压多轮 = 水位曲线异常',
+    deepDive: [
+      'docs/POCKETPAL_CONTEXT_COMPACTION_SPEC.md',
+      'src/utils/modelContextDefaults.ts',
+      'src/services/contextCompaction/decision.ts',
     ],
   },
   {

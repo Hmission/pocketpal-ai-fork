@@ -25,6 +25,7 @@
     "verify:worktree": "node scripts/guard_tracked_files.js --quiet",
     "audit:native-mocks": "node scripts/audit-native-mocks.js",
     "audit:async-timers": "node scripts/audit-async-timers.js",
+    "audit:compass": "node scripts/audit_compass_registry.js",
     "lint:fix": "eslint \"**/*.{js,ts,tsx}\" --fix",
     "format": "prettier --write \"**/*.{js,ts,tsx,json,md}\"",
     "start": "react-native start",
