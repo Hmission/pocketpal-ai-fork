@@ -13,6 +13,7 @@ import type {
   TokenTypography,
   TokenIconSize,
   TokenSize,
+  TokenColors,
 } from '../theme/tokens';
 import type {ShapeRole} from '../theme/tokens/radius';
 import {SkillKey} from '.';
@@ -290,126 +291,16 @@ export interface ThemeIcons {
   sendingIcon?: () => React.ReactNode;
 }
 
-export interface SemanticColors {
-  // Surface variants
-  surfaceContainerHighest: string;
-  surfaceContainerHigh: string;
-  surfaceContainer: string;
-  surfaceContainerLow: string;
-  surfaceContainerLowest: string;
-  surfaceDim: string;
-  surfaceBright: string;
-
-  text: string;
-  textSecondary: string;
-  inverseText: string;
-  inverseTextSecondary: string;
-
-  border: string;
-  placeholder: string;
-  // Subtle border / divider — Figma `Color/muted/light` (#e5e3e1).
-  mutedLight: string;
-  // Figma `Color/Secondary/Default` — small DS button surface.
-  secondaryDefault: string;
-
-  // Interactive states
-  stateLayerOpacity: number;
-  hoverStateOpacity: number;
-  pressedStateOpacity: number;
-  draggedStateOpacity: number;
-  focusStateOpacity: number;
-
-  // Menu specific
-  menuBackground: string;
-  menuBackgroundDimmed: string;
-  menuBackgroundActive: string;
-  menuSeparator: string;
-  menuGroupSeparator: string;
-  menuText: string;
-  menuDangerText: string;
-
-  // Message specific
-  authorBubbleBackground: string;
-  /** 助手气泡语义点缀色（低饱和暖蓝，深浅双模式） */
-  assistantBubbleBackground: string;
-  /** 助手气泡上的文本色 */
-  onAssistantBubble: string;
-  /** 品牌点缀色（小黄鸡暖黄）：性能数字/模型徽章等强调信息用 */
-  brandAccent: string;
-  /** 品牌点缀色上的文本色 */
-  onBrandAccent: string;
-  receivedMessageDocumentIcon: string;
-  sentMessageDocumentIcon: string;
-  userAvatarImageBackground: string;
-  userAvatarNameColors: string[];
-  searchBarBackground: string;
-
-  // Thinking bubble specific
-  thinkingBubbleBackground: string;
-  thinkingBubbleText: string;
-  thinkingBubbleBorder: string;
-  thinkingBubbleShadow: string;
-  thinkingBubbleChevronBackground: string;
-  thinkingBubbleChevronBorder: string;
-
-  // Status bar specific
-  bgStatusActive: string;
-  bgStatusIdle: string;
-
-  // Button specific
-  btnPrimaryBg: string;
-  btnPrimaryBorder: string;
-  btnPrimaryText: string;
-
-  btnReadyBg: string;
-  btnReadyBorder: string;
-  btnReadyText: string;
-
-  btnDownloadBg: string;
-  btnDownloadBorder: string;
-  btnDownloadText: string;
-
-  // Icon specific
-  iconModelTypeText: string;
-  iconModelTypeVision: string;
-  iconModelTypeAudio: string;
-
-  // 语义状态色（DESIGN_SPEC §1.3）
-  success: string;
-  onSuccess: string;
-  warning: string;
-  onWarning: string;
-  danger: string;
-  onDanger: string;
-  info: string;
-  onInfo: string;
-
-  // 模型族徽章色（DESIGN_SPEC §1.4）
-  badgeSd35: string;
-  badgeZImage: string;
-  badgeDreamlite: string;
-  badgeKrea2: string;
-
-  // 悬浮层表面（半透明+阴影分层，禁 blur；DESIGN_SPEC §1.5）
-  surfaceElevated: string;
-
-  // 功能域彩色（一域一色；DESIGN_SPEC §1.2）
-  domain: {
-    chat: string;
-    imageGen: string;
-    memory: string;
-    knowledge: string;
-    workspace: string;
-    tools: string;
-  };
-
-  // Accent — peach pill / Recommended-tier card highlight; greenStrong
-  // powers the download progress-bar fill.
-  accent: {
-    peach: string;
-    greenStrong: string;
-  };
-}
+/**
+ * SemanticColors —— 本仓扩展语义色键面（不含 MD3 基础色）。
+ *
+ * **键名一律不在此重列**：2026-09-07 W4 对账发现本接口原是 `TokenColors` 的
+ * 手工副本，且两侧已实际漂移（缺 `badgeFlux` / `imageInsight`，而
+ * `ImageGenScreen/styles.ts` 靠 `theme: any` 把这个洞吞了）。运行时
+ * `utils/theme.ts` 本就 `...tokens.colors` 展开，真值源只有 tokens 一处，
+ * 故改为派生：新增/更名 token 只动 `theme/tokens/types.ts`，本行不动。
+ */
+export type SemanticColors = Omit<TokenColors, keyof MD3BaseColors>;
 
 export interface ThemeBorders {
   inputBorderRadius: number;

@@ -16,7 +16,11 @@
 export interface PhoneTurnSample {
   /** 录音停止 → 转写返回：ASR 纯耗时 */
   asrMs: number | null;
-  /** 进入 awaiting_reply → 首个内容 token 到达：首 token 延迟 */
+  /** 转写返回 → 回合声明（`notifyReplyStarted`）。
+   *  ⚠ **两路径语义不同，不可混读**（PHONE_SPEC §19.2/§19.5）：chat 引擎走 token
+   *  流回调 → 真·首 token 延迟；管家直答在整段回写完成后才声明回合 →
+   *  实为回复就绪延迟（≈整段生成时长）。旧注释写「进入 awaiting_reply → 首个
+   *  内容 token」与实现不符（起点实际是 `markAsrDone`，见本文件算式）。 */
   firstTokenMs: number | null;
   /** 录音停止 → 本轮收口：整轮耗时 */
   turnTotalMs: number | null;

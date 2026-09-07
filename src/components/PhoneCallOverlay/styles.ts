@@ -9,7 +9,8 @@ import {withOpacity} from '../../utils/colorUtils';
  * 三条纪律：①图标全部走 `fill` 着色（DESIGN_SPEC §3 svgr 传参红线）；
  * ②不造「大空圆」——状态改贴边小图标 + 文案行（v2.0 的 88px 空底衬圆被裁）；
  * ③控制区横向一行两钮，caption 在圆钮**下方**（v2.0 把文案塞进固定圆内被裁）。
- * 通话页圆钮（96/64）是英雄级控件尺寸，不入 iconSize/controlHeight token 体系。
+ * 通话页圆钮（72dp 等大，v2.2/v2.3 裁定）是英雄级控件尺寸，不入
+ * iconSize/controlHeight token 体系（旧注记 96/64 两档尺寸已废，见 PHONE_SPEC §11.8）。
  */
 export const createStyles = ({theme}: {theme: Theme}) =>
   StyleSheet.create({

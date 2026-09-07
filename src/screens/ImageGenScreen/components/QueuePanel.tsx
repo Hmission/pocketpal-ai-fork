@@ -7,8 +7,10 @@ import * as React from 'react';
 import {ScrollView, Text, TouchableOpacity, View} from 'react-native';
 
 import {useTheme} from '../../../hooks';
+import {withOpacity} from '../../../utils/colorUtils';
 import {OverlayCard} from '../../../components/ui/OverlayCard';
 import {QueueItem, QueueState} from '../../../store/imageGenQueueCore';
+import {ModelFamily} from '../../../utils/imageGenManifest';
 
 export interface QueuePanelProps {
   visible: boolean;
@@ -28,12 +30,37 @@ export interface QueuePanelProps {
   onEdit: (item: QueueItem) => void;
 }
 
-/** 模型族徽章语义色（与生图页下拉同源约定） */
-const FAMILY_COLORS: Record<string, string> = {
-  dreamlite: '#4CAF50',
-  sd3: '#9C27B0',
-  zimage: '#00BCD4',
-  classic: '#FF9800',
+/** 本仓登记的模型族徽章 token（DESIGN_SPEC §1.4） */
+type BadgeToken =
+  | 'badgeSd35'
+  | 'badgeZImage'
+  | 'badgeDreamlite'
+  | 'badgeFlux'
+  | 'badgeKrea2';
+
+/**
+ * 族 → 徽章 token 映射。**本文件不得出现色字面量**（UI_SPEC §6 红线：色值一律
+ * 走 theme token）。用全量 `Record<ModelFamily, …>` 而非 Partial：ModelFamily 新增
+ * 成员时 tsc 会在此报错，逼着先去 DESIGN_SPEC §1.4 登记色再上屏。
+ * `classic` 为历史族、DESIGN_SPEC 未登记族色 → 显式 null，调用侧回落 info。
+ */
+const FAMILY_BADGE_TOKEN: Record<ModelFamily, BadgeToken | null> = {
+  dreamlite: 'badgeDreamlite',
+  sd3: 'badgeSd35',
+  zimage: 'badgeZImage',
+  flux: 'badgeFlux',
+  krea2: 'badgeKrea2',
+  classic: null,
+};
+
+/** snapshot.family 在队列快照上是 string（持久化边界），此处做真判定而非强转 */
+const familyBadgeColor = (
+  theme: ReturnType<typeof useTheme>,
+  family: string,
+): string => {
+  if (!(family in FAMILY_BADGE_TOKEN)) return theme.colors.info;
+  const token = FAMILY_BADGE_TOKEN[family as ModelFamily];
+  return token ? theme.colors[token] : theme.colors.info;
 };
 
 const STATE_LABEL: Record<QueueState, string> = {
@@ -124,6 +151,7 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({
             {items.map((item, i) => {
               const doneAll = item.done + item.failed >= item.total;
               const remaining = item.total - item.done - item.failed;
+              const familyColor = familyBadgeColor(theme, item.snapshot.family);
               return (
                 <TouchableOpacity
                   key={item.id}
@@ -150,12 +178,13 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({
                     style={[
                       s.badge,
                       {
-                        backgroundColor:
-                          FAMILY_COLORS[item.snapshot.family] ??
-                          theme.colors.info,
+                        backgroundColor: withOpacity(familyColor, 0.12),
+                        borderColor: familyColor,
                       },
                     ]}>
-                    <Text style={s.badgeText}>{item.snapshot.family}</Text>
+                    <Text style={[s.badgeText, {color: familyColor}]}>
+                      {item.snapshot.family}
+                    </Text>
                   </View>
                   <Text style={s.draws}>{doneAll ? '✓' : `${remaining}×`}</Text>
                   {!locked && (
@@ -220,10 +249,13 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       paddingHorizontal: 6,
       paddingVertical: 2,
       borderRadius: 4,
+      // 与 ChatHeader.modelPickerChip / PhoneCallOverlay.holdButton 同一 chip 语言：
+      // 同色 1px 描边 + 12% 底，文字取同色（实心底配暗色模式淡彩 token 会失读）
+      borderWidth: 1,
     },
     badgeText: {
       fontSize: 10,
-      color: '#FFFFFF',
+      fontWeight: '700' as const,
     },
     draws: {
       minWidth: 28,

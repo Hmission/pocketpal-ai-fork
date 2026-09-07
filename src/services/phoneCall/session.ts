@@ -62,7 +62,9 @@ export class PhoneCallSession {
   private deps: PhoneCallDeps;
   /** 挂断标记：转写在途时作废结果（stopAndSend 转写完成后检查，不发送） */
   private closing = false;
-  /** 回复看门狗：awaiting_reply/speaking 超时自动回聆听（回调丢失兜底） */
+  /** 回复看门狗：awaiting_reply/speaking 超时自动回聆听——**只是卡死保险**，
+   *  不是「回调丢失兜底」（W2 后全部回复路径都能正常收口，见上方
+   *  `REPLY_TIMEOUT_MS` 注释与 PHONE_SPEC §16.4）。 */
   private replyWatchdog: ReturnType<typeof setTimeout> | null = null;
 
   constructor(deps: PhoneCallDeps) {
