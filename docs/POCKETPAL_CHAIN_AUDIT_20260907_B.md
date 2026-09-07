@@ -97,7 +97,7 @@ relates:
 | ③ 消息内嵌视频播放 | `src/components/EmbeddedVideoView` | 否（本义就是用） |
 | ④ 文生视频（未来） | 尚无符号，只在规划文档里 | 待预留词面 |
 
-**收名不等于一次改完**。①的改名是跳端标识（Kotlin 类名 + manifest 注册 + `NativeModules` 取值键 +
+**收名不等于一次改完**。①的改名是跨端标识（Kotlin 类名 + manifest 注册 + `NativeModules` 取值键 +
 错误码 regex + 通知渠道 id），它的正确性**只有真机能验**（漏一处则服务静默失效、夜间长跑被杀，
 而 `tsc`/`jest` 全绿也会漏过去）。本窗 `adb devices` 为空 → 拆为两步：
 
@@ -108,9 +108,20 @@ relates:
   `NativeModules` 键 / 错误码 regex / 通知渠道迁移不造孤儿渠道），**与真机验证同窗做**：
   覆盖安装后夜间长跑仍存活、系统设置无孤儿渠道。
 
-### 3.3 内存可行性：`te=disk` 可能直接免掉「双 ctx 分段加载」专项
+### 3.3 内存可行性：~~`te=disk` 可能直接免掉「双 ctx」专项~~ → **前提不成立（§164 自纠）**
 
-不分段峰值估 4–5GB（DiT Q4≈1.0 + UMT5 Q3≈3.06 + WanVAE≈0.7 + 解码缓冲），K90 PSS 安全预算 4GB、5.16GB MoE 已被 HyperOS 杀过（有血证）→ 高风险。但 JNI 已在用引擎原生 `params_backend="te=disk"`（`ImageGenJNI.cpp:483-485`，klein/z_image 线上生效）：若 UMT5 走此路成立，峰值可降到 `max(DiT+VAE)` ≈ 1.7GB，**DEV_BACKLOG 项 5（双 ctx 分段加载）就不必做**。这是典型的「先验证更干净的现成路径，再造新机制」。
+不分段峰值估 4–5GB（DiT Q4≈1.0 + UMT5 Q3≈3.06 + WanVAE≈0.7 + 解码缓冲），K90 PSS 安全预算 4GB、5.16GB MoE 已被 HyperOS 杀过（有血证）→ 高风险。
+
+> **本节初稿的论证作废**（2026-09-08 装机窗实读 + 设备直证）：初稿称「JNI 已在用 `params_backend="te=disk"`
+> （`ImageGenJNI.cpp:483-485`，线上生效），故项 5 不必做」——**错**。该赋值整块包在
+> `if (isMaliGpu())`（`:466`）里，而本机实查 `adb shell` 得 **Adreno 840 / SM8850（Qualcomm）**，
+> `isMaliGpu()` 永为 false → **这台机上的视频任务根本走不到 `te=disk`**。拿一条 Mali-only 的优化
+> 去论证 Adreno 机型的内存余量，前提不成立。
+>
+> **修正后的最佳实践顺序**（仍先验现成路径，只是真要验一次而不是当成已生效）：把 `te=disk` 从
+> `isMaliGpu()` 分支里提到**可配开关**（改动落在 `ImageGenJNI.cpp`，**禁区外**），在 K90 上实测
+> UMT5 走 disk 的 PSS 峰值与速度代价，再决定项 5 是销账还是真做双 ctx。**项 5 仍为条件触发，
+> 但触发条件不是「te=disk 已生效」而是「在目标机实测 te=disk 是否可用」。**
 
 ### 3.4 断点续跑：片段粒度重跑，而不是 step 级 checkpoint
 
@@ -118,7 +129,16 @@ step 级 checkpoint 必须改引擎采样循环钩子（禁区，需专项批准
 
 ### 3.5 队列 / 保活 / 心跳复用面：三处零冲突，禁止新建第二套
 
-视频与生图同为 sd.cpp ctx，天然该共 `engineMutex` 的 `image` 单槽（正是要的互斥）；`nightTaskRegistry` 票据制 owner `'video'` 已预留，直接复用；心跳 600s（CPU/OpenCL）覆盖 Wan 单步 2–4min。**唯一需真机取证**：`generate_video` 是否每步触发 `sd_progress_cb`——若整段无事件会被 W1 的心跳误判为 hang。
+视频与生图同为 sd.cpp ctx，天然该共 `engineMutex` 的 `image` 单槽（正是要的互斥）；`nightTaskRegistry` 票据制 owner `'video'` 已预留，直接复用。
+
+> **本段末句已于 §164 更正**：初稿写「唯一需真机取证：`generate_video` 是否每步触发
+> `sd_progress_cb`」——这个问题**静态即可回答，不需真机**：video 与 image 走同一个 `sample()`
+> （`src/stable-diffusion.cpp:7105` vs `:5786`）→ 同一个 denoise lambda → `report_sample_progress`，
+> 所以**采样期一定有心跳**。**真正的缺口在解码期**：`decode_video_outputs`（`:6681-6734`）内
+> 无任何 progress 回调（只有 `LOG_DEBUG/LOG_INFO`），而 81 帧解码可远超现有 600s 固定超时阈值，
+> 且 `imageGenStore.ts:442` 判 hang 后会**真的 cancel native** → 表现为「进度 99% 报采样超时并把
+> 已成功的任务杀掉」。契约已写入 **VIDEO_GEN_SPEC §四 C-1~C-4**（超时按帧数表达 + 阶段可见 +
+> 快照复位 + 版本守卫）。
 
 ## 四、6D 归置
 
@@ -169,6 +189,10 @@ step 级 checkpoint 必须改引擎采样循环钩子（禁区，需专项批准
 | N22 | 既有单测**把违规当规格钉住**：`ChatHeader.test.tsx` 断言「电话钮着色走 fill」并引用 DESIGN_SPEC 错误红线 | 当场改正断言（stroke 为正 + 反向钉 `fill` 必为 undefined），并记原因于注释 |
 | N23 | **专工转述未经回读即入库**：初稿把只读专工引用的「星图写生图/视频 tab」当作事实写进审计卷，实读后证实星图本来就是对的——假勘误如果没被回读拦住，会诱导下一个窗口去“修”一个不存在的问题 | 当场自纠（§3.0 保留撤回记录，不静默删错）；纪律：**引用型主张必须自己回读原文，未回读的降格为“待验”** |
 | N24 | **治理文档不入 git 的恢复风险**（本窗提交时实撞）：`docs/POCKETPAL_STARMAP_DOMAINS.md` 被 `.gitignore:194` 显式屏蔽，与 `INDEX.md`/`DOC_GOVERNANCE_SPEC.md`/`docs/internal/` 同策略。后果：它是「全量排查的域切分依据」，却**无历史、无 object 备份**，一旦磁盘事故不可恢复（本仓 2026-08-24 曾一次丢 3 个 pack）；且提交信息很容易误写“已入库”（本窗就误写过一次，已 amend 更正） | **不擅改 .gitignore 策略**（属项目/母仓约定）→ 登记 DEV_BACKLOG 项 35 待裁：纳入跟踪 vs 入仓外备份；提交信息已改为如实标注「仅磁盘留档」 |
+| N25 | **项 34 是我造的假账（比 N23 更重一级）**：v1.1 的 ICON_SPEC 例外节与项 34 写明四件资产的 `fill="white"` 「**并不在** clipPath 内，而是直接可见的前后景分隔层，暗色会露白块」——本窗全文实读 `copy.svg:5-9` 等四件，白色 `rect` 全部位于 `<defs><clipPath>` 内（clipPath 子元素永不绘制），**暗色债根本不存在**。与 N23 的区别：这次我不仅未回读，还写了一个**否定式断言** | 当场撤销：ICON_SPEC v1.2 改写为自纠条、项 34 标不成立；新纪律：**凡写「不在 X 内 / 不存在 Y」这类否定式断言前，必须打开实物看一眼**（否定式比肯定式更容易错且更难被发现） |
+| N26 | **W10 前置取证发现两处现行线上 native 缺陷**（同文件 `ImageGenJNI.cpp`，本窗实读）：R-1 use-after-release（`:638` 已 Release 而 `:642` 仍用 `outStr` 构回传串）；R-2 异常与 `ERR_GENERATE` 路径均不 `free_sd_images`（`:604-619`/`:624-628`）——视频场景下会放大成 N 帧×1.14MiB 永久泄漏 | 随 W10 一并修（同文件且新桥会逐字镜像此写法，不修就是继承）；另登记 `unloadModel` 抢锁、cl-cache 路径与 applicationId 不符、stderr 无轮转、`batch_count` 硬编 1 四项为**不当波扩大战场**的挂账项 |
+| N27 | **工具用错→假阴性→险造“孤儿资产”**：本窗用 `Select-String -Path src\**\*.tsx -Pattern WorkshopIcon` 查引用，返回空，当场差点断定 `workshop.svg` 为孤儿资产——**PowerShell 的 `**` 不递归**，该写法只扫一层。改用 Grep 工具一秒定位到真引用 `SessionSearchBar.tsx:80`（另发现其 `PlusIcon` 硬写 22，属 W9b-V 真待裁项） | 新纪律：**引用存在性判定一律用 Grep 工具（或 `git grep`），不用 shell glob 手拼**；本仓有 2026-08-25 误删 219 文件前科（`20260825_PP_219_FILES_DELETION_POSTMORTEM.md`），假阴性直接导致误删 |
+| N28 | **改名器把注释“叠”了两层**：`imageGenStore.ts:49-54` 同时存在新写的四义注释与旧写的历史注释（共 6 行说同一件事）——因脚本只插新段、未删旧段。本窗装机目视时发现并合并为一段 | 新纪律：**脚本改写注释/文档必须整段替换并回读实物**（只验“新内容存在”不验“旧内容消失”，是双份事实源的又一种形态） |
 
 ## 八、执行回执（本窗已落码）
 
@@ -217,3 +241,29 @@ step 级 checkpoint 必须改引擎采样循环钩子（禁区，需专项批准
 4. **不 push**：大王本轮未说推送，按 2026-08-30 纪律收口至提交；积压笔数见 MASTER_LOG §163。
 
 > 上一轮的四条提问已全部销账；新增待验项统一入 DEV_BACKLOG（项 31/32/33/34），不在本文重复记账。
+
+## 十、装机窗长链执行清单（2026-09-08，大王令「一次性长链打穿，先文档→落码→真机验→提交」）
+
+设备：**K90（serial `aab688d9` / myron / Android 16 / Adreno 840 SM8850）**，入窗装机 `2.0.1(145)`
+（含 W7 之前的代码——所以 W7-V 目视必须先有一台含 W7 的构建，不能拿旧装机看过）。
+
+**构建策略（时间上的最佳实践）**：native 构建是本链的长瓶颈，因此**按行为面分两轮构建**，
+而不是一波一改一构建：① 第一轮 = 基线（含 W7）；② 第二轮 = W8b 改名 + W9 尺寸收 token +
+资产描边归一 + R-1/R-2 native 修（均为行为/UI 面）。**原计划的第三轮 = W10 新能力（帧桥），
+本窗经符号取证后移出**（见下表行 7）。故障隔离靠「不同屏不同信号」而不是靠多次构建。
+
+| # | 项 | 动作 | 文档先行件 | 真机验收 | 状态 |
+|---|---|---|---|---|---|
+| 1 | W7-V / 项 31 | 目视六项（电话钮空心描边/徽章/胶囊摘要/跑分横幅/音频 chip/尺寸定档） | 本清单 | 含 W7 的新构建上逐张截图（至少一张暗色） | **部分**：电话钮空心描边 + 暗色无白块 + 描边复量已验（三件同剖面 5.0px）；徽章/跑分横幅/音频 chip 需另屏另跑分，未做 |
+| 2 | W8b / 项 32 | `VideoTaskService*`→`NightTask*`（Kotlin 三类 + manifest + ReactModule 名 + `NativeModules` 键 + 错误码 regex + 通知渠道迁移） | 本卷 §3.2 + 星图词面表 | 覆盖安装后夜间长跑仍存活 + 无孤儿渠道 + `adb shell dumpsys` 实据 | **已过**（服务名/渠道迁移/WakeLock ACQ-REL 三项硬据） |
+| 3 | W9a / 项 33 | 148 处在档值收 `theme.iconSize.*` + 新增 `micro`/`inline` 两档（零视觉变化） | ICON_SPEC v1.2 §4.5 | 目视不劣化（像素应无变化）+ tsc/jest 绿 | **已交 168 处**，318 快照全过 |
+| 4 | W9b / 项 33 | 22/26/32/34/36/48 共 27 处定档（**有像素变化，逐屏目视后才定**） | 同上 | 逐屏对比截图 | **拆两半**：W9b-lite 已交 16 处（`micro`/`hero`/`display` 转正，零像素）；W9b-V 25 处 + W9c 12 处余，file:line 已入 ICON_SPEC §4.5 |
+| 5 | 项 34 | **不成立，已撤销**（白色 rect 在 clipPath 内，暗色债不存在） | ICON_SPEC v1.2 自纠条 + N25 | 无需（假账） | 已撤销 |
+| 6 | R-1 / R-2 | `ImageGenJNI.cpp` use-after-release 与异常路径漏放（两处现行缺陷） | VIDEO_GEN_SPEC §五 | 装机后跑一次原出图零回归 + 路径正常 | **已交并装机**：连续两次出图成功、无崩溃 |
+| 7 | W10 | `nativeGenVideo` 帧桥（先 6 帧 480p，不落容器） | **VIDEO_GEN_SPEC v0.2 §八**（本窗新建并补取证） | V-1~V-7 全项（含心跳阶段迁移与 PSS 峰值） | **移出本窗**：`generate_video` 已编入 arm64 产物（符号直证），但无视频模型资产——主分支未测即伪稳定（台账项 37） |
+| 8 | 项 5 | 把 `te=disk` 提为可配开关并在 K90 实测（**非**“已生效”） | 本卷 §3.3 更正 | PSS 实测对比（开/关两态） | 待排 |
+| 9 | 项 2 / 项 3 | 记忆三闸 G5 + 电池豁免弹窗真机验证 | — | 污染条目消失 + 弹窗出现且拒后不阻断 | 待目视 |
+| 10 | 项 35 | 星图仓外备份（不改 .gitignore） | — | `F:\backups\` 产物存在可校验 | 待做 |
+
+**本窗不当波扩大战场（只登记不动手，见 VIDEO_GEN_SPEC §五末表）**：`unloadModel` 同步抢锁、
+`GGML_OPENCL_KERNEL_CACHE_DIR` 路径与 `applicationId` 不符、stderr 无轮转、`batch_count` 硬编 1。

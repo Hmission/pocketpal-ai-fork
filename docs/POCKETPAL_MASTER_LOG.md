@@ -2487,3 +2487,85 @@ W1 失败可见性（6 处，P0）→ W2 队列与保活单状态机（**删 `qu
 - W10 未盲开的原因：需 native 构建与真机 `sd_progress_cb` 心跳取证；按 §163.2 同一逻辑，
   不在无设备窗交付只能真机验的改动。
 - 遗留账：项 31（真机目视六项）、项 32/W8b（改名）、项 33（尺寸裸数字）、项 34（白底遮罩层暗色债）。
+  （→ 后续去向见 §164：项 32/33 已交，项 34 经取证为**假账已撤销**）
+
+## §164 装机窗长链：W8b 真机闭环 + 图标有效描边归一（大王报障真根因）+ 184 处零像素收 token + W10 取证后主动移出（2026-09-08）
+
+大王令：「手机已接入，闭环开发…先写文档→落代码→验证提交，SOP 闭环掉。」本窗按此序跑完一轮，
+并在收官前把**不能真机验的 W10 主动移出**（不是没做完，是取证后判定不该现在做）。
+
+### 164.1 报障的真根因不在尺寸，在资产级隐式 scale
+
+上窗把「电话比别的图标细」归给尺寸（判了 s(16)），本窗真机像素复量直接推翻：**同尺寸下电话描边 4px
+而加号 6px**——差在资产。`normalize_icons.py` 做 viewBox 归一时自己引入了 `<g transform="scale(1.2)">`，
+而 `stroke-width="2"` 写在内层坐标系里会被同倍数放大 → **同屏有效描边 2.00 与 2.40 并存（差 20%）**。
+这是「双份事实源」的资产形态：规格写在两处（声明值 + 隐式乘数），任何只看一处的人都会错。
+
+- 正解不是撤 scale（那是合法的几何校准），而是**反向补偿**：`stroke-width = 2/k`，使有效粗细恒 2.00。
+  实跑改 20 件，复量 68 件全为 2.00。
+- 闸同步换掉：`check_icons.py` 旧规则查 `stroke-width == 2`（**它助长了错误**，因为它只看了声明值），
+  换成有效描边判定，并做两轮负向测试（故意写坏→必红）。
+- 真机半峰剖面定档（density 480，取峰值亮度 50% 为阈，消除颜色/AA 干扰）：电话 / 加号 / 汉堡
+  三件剖面逐字节同形 `101|202 202 202 202|101` = **5.0px**，与 m(20) 理论值完全一致。
+  同时把上窗的 s(16) 提案改回 **m(20)**（同行栏位统一，DESIGN_SPEC 默认）。
+
+### 164.2 W8b：跨端改名的正确性只能真机证，三项硬据齐了
+
+改名面 10 文件 + 3 个 Kotlin `git mv`，牵动 manifest 相对名（解析基准是 `namespace com.pocketpal`
+而**非** `applicationId`）、`@ReactModule getName()`、`NativeModules` 取值键、错误码、通知渠道 id。
+关键：调用点是 `NightTask?.start?.()` —— **可选链会让漏改静默失效而不报错**，tsc/jest 全绿也拦不住。
+
+装机后实据（全部来自 `dumpsys`，非推定）：
+
+1. `ServiceRecord{… com.pocketpalai/com.pocketpal.NightTaskService}` `isForeground=true foregroundId=7001`；
+2. 通知 `channel=night_task_channel`，旧 `video_task_channel` 显示 `mDeleted=true` 且删除时间戳落在本次启动
+   → `deleteNotificationChannel(LEGACY_CHANNEL_ID)` 生效，**不造孤儿渠道**；
+3. WakeLock `PocketChick:NightTask` 在电源日志里 ACQ/REL 成对（任务结束即放，不泄漏）。
+
+另：APK 内 `assets/index.android.bundle` 含 `NightTask`/`NIGHT_TASK_START_FAILED`、`VideoTask` 0 命中，
+合并清单解析为 `com.pocketpal.NightTaskService`——静态与运行时双向对账。
+
+### 164.3 W9a/W9b-lite：184 处零像素，且账能平
+
+- 基线 221 处硬写尺寸 → W9a 收 168 + W9b-lite 收 16（新立 `micro12`/`hero34`/`display48` 是把既成事实
+  **转正**，不是拿现有档去推平）；余 W9b-V 25 处（离档值，**必须逐屏目视**）+ W9c 12 处（需先穿参）。
+  **账平校验：168+16+25+12 = 221** ✓
+- 零像素的硬证不是眼睛，是 **jest 318 快照全过**（快照存渲染后 props，全过即逐字节相同）。
+- 安全网真的生效了：codemod 文件级启发式误判 12 处（`theme` 在文件里但不在该组件作用域），
+  全部由 `tsc` 报 `Cannot find name 'theme'` 拦下并精确回退——**不引入 `useTheme` 顺手改结构**。
+
+### 164.4 三条自纠（全部当场回读实物，不静默掩盖）
+
+- **N25 假账（最重）**：项 34「四件资产可见白底遮罩层」——实读 `copy.svg:5-9`：白色 `rect` 全在
+  `<defs><clipPath>` 内，**永不绘制**。我上一轮还写了**否定式断言**「并不在 clipPath 内」。
+  新纪律：凡写「不在 X 内 / 不存在 Y」前必须打开实物（否定式比肯定式更容易错且更难被发现）。
+- **N27 工具假阴性**：`Select-String -Path src\**\*.tsx` 查 `WorkshopIcon` 返回空，差点断定资产为孤儿。
+  PowerShell 的 `**` 不递归。改用 Grep 工具一秒找到真引用。本仓有 219 文件误删前科，假阴性直接导致误删。
+- **N28 注释叠两层**：改名器只插新段未删旧段，`imageGenStore.ts` 出现 6 行说同一件事。
+  新纪律：脚本改写注释/文档必须**整段替换并回读实物**（只验新内容存在、不验旧内容消失，是双份事实源又一种形态）。
+
+### 164.5 W10：取证后主动移出，不当「写了没人验的 native 代码」
+
+从已装 APK 抽 `libappmodules.so`（arm64，103.5MiB，stable-diffusion 静态内联）跑 NDK `llvm-nm`：
+**`generate_video` 与 `free_sd_images` 均已导出**，含 `video` 的符号 1820 个（含 `convert_diffusers_to_original_wan_vae`）
+——引擎就绪，W10 不是「能不能编过」的问题。但设备与构建机均无 Wan/LTX GGUF（全盘检索只找到 ComfyUI
+体系的 safetensors，格式不通）。按 VIDEO_GEN_SPEC §六，帧落盘/内存峰值/心跳/取消全需真机**正路径**取证；
+无模型只能验「干净报错」负路径 → 留下主分支未测的 native 代码 = **伪稳定**。故登记台账项 37（选型/预算/验收
+三项前置）待裁，本窗不落桥。随波只修已取证的两处现行缺陷（R-1 use-after-release、R-2 异常路径漏放），
+装机后连续两次出图零回归作为反证。
+
+### 164.6 门禁与装机纪律
+
+`tsc` 0 错 / `eslint` 0 error / `check_icons.py` 0（有效描边新闸）/ `compass` 0 / `native-mocks` 0 /
+`worktree` 0 / **jest 350 套 4854 过（2 skip）/ 318 快照全过**；native 两轮构建均 BUILD SUCCESSFUL。
+装机全程：`adb install -r -d` 覆盖安装（**未卸载、未 pm clear**，数据保留），scrcpy 全程投屏供监督，
+功能验证走人类模拟操作（点面板→输入→发送→等出图），未用 adb 绕过 UI 跑业务。
+守卫提示：本窗 `#SG-001/#SG-002`（空间消费已达警戒线，medium）已确认，执行上表现为
+**不再新增文档卷、只在现有卷就地更正与回写状态列**。
+
+### 164.7 遗留账（本窗不装「全完」）
+
+项 31 余三项（队列徽章/跑分横幅/音频 chip，需另屏另跑分）、W9b-V 25 处 + W9c 12 处、
+项 5（`te=disk` 提开关后 K90 实测定 PSS）、项 35（星图备份待裁）、项 36（native 四项挂账）、
+项 37（W10 模型资产待裁）。多窗并行，本窗只提交不推送。
+
