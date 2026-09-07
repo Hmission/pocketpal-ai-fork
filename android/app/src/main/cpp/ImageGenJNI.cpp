@@ -605,6 +605,9 @@ Java_com_pocketpal_ImageGenModule_nativeTxt2img(
     // 异常取证（08-14 三连崩实锤：CLIP/LLM 文本编码器 Vulkan graph 抛异常穿越 JNI → abort）。
     // vk::SystemError 的 what() 带具体 Vulkan 错误码——落盘显式报错替代闪崩（锋利）。
     dbg_log("generate_image EXCEPTION: %s", e.what());
+    // R-2 修复（2026-09-08）：异常前引擎可能已在 images 里留下部分产出，原路径不释放
+    // 就是整批泄漏（视频场景下是 N 帧 × 1.14MiB）。free_sd_images 对 nullptr+0 安全。
+    free_sd_images(images, numImages);
     env->ReleaseStringUTFChars(prompt, promptStr);
     env->ReleaseStringUTFChars(negativePrompt, negStr);
     env->ReleaseStringUTFChars(outPath, outStr);
@@ -612,6 +615,7 @@ Java_com_pocketpal_ImageGenModule_nativeTxt2img(
         (std::string("ERR_EXCEPTION:") + e.what()).c_str());
   } catch (...) {
     dbg_log("generate_image EXCEPTION: unknown");
+    free_sd_images(images, numImages);  // R-2，同上
     env->ReleaseStringUTFChars(prompt, promptStr);
     env->ReleaseStringUTFChars(negativePrompt, negStr);
     env->ReleaseStringUTFChars(outPath, outStr);
@@ -623,6 +627,8 @@ Java_com_pocketpal_ImageGenModule_nativeTxt2img(
   env->ReleaseStringUTFChars(negativePrompt, negStr);
   if (!ok || numImages <= 0 || !images) {
     dbg_log("txt2img ERR_GENERATE");
+    // R-2：`numImages <= 0 且 images != nullptr` 时数组基址也会漏放
+    free_sd_images(images, numImages);
     env->ReleaseStringUTFChars(outPath, outStr);
     return env->NewStringUTF("ERR_GENERATE");
   }
@@ -635,11 +641,16 @@ Java_com_pocketpal_ImageGenModule_nativeTxt2img(
                      img.data, (int)img.width * (int)img.channel);
   dbg_log("write_png ret=%d", writeOk);
   free_sd_images(images, numImages);
+  // R-1 修复（2026-09-08）：原实现在 :638 已 ReleaseStringUTFChars(outPath, outStr)，
+  // 却仍用已释放的 outStr 构造返回串——use-after-release。当前所“看起来能跑”仅因
+  // 释放后内存未被立即踩；一旦路径含非 ASCII（中文提示词/模型名）或分配器复用就会花。
+  // 正确顺序：先取回 jstring，再 Release。
+  jstring result = env->NewStringUTF(writeOk ? outStr : "ERR_WRITE");
   env->ReleaseStringUTFChars(outPath, outStr);
   dbg_mem("after write_png");
   dbg_log("==== txt2img done ret=%s ====", writeOk ? "OK" : "ERR_WRITE");
 
-  return env->NewStringUTF(writeOk ? outStr : "ERR_WRITE");
+  return result;
 }
 
 }  // extern "C"
