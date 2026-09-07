@@ -3,7 +3,7 @@ doc_id: POCKETPAL_CHAT_UI_SPEC
 module: root
 type: spec
 status: active
-version: "5.2"
+version: "5.3"
 created: "2026-08-14"
 updated: "2026-09-07"
 relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-footer-unification]
@@ -122,6 +122,12 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
   显示条件 `ttsStore.isTTSAvailable && isSpeakableMessage(message)`（单一事实源 `utils/speakable.ts`）；
   生图任务卡片（metadata.imageTask）与词数不足的消息不显示。
 - 中文按字符数判定（≥4），空格语言按词数（>1）。
+  「算不算中文」的码位范围**不写在本卷也不写在 speakable**：唯一定义点是
+  `utils/cjk.ts`（v5.3 W5 双份正则收口）——本处用 `HANZI_PRESENT_RE`（BMP + 扩展 A +
+  兼容表意），知识图谱切词用 `HANZI_BMP_CHAR_RE`（仅 BMP，口径差异的理由于彼处注释写明）。
+  **v5.3 行为收紧一处**：旧 speakable 自建正则漏了兼容表意区（U+F900–U+FAFF），整句全由
+  该区字构成时被当成空白语言→按词数算 1 词→朗读按钮不出现；这些字符本身就是汉字的
+  兼容编码，属误判，收口后顺带纠正（逐码位比对确认：只这 512 个码位变化，其余零差异）。
 
 ## 10. testID 登记（新增）
 
@@ -573,3 +579,4 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 | 2026-08-26 | 4.9 | §18.9 进度链路语义化与去重（B57，大王洞察「跑分卡思考流与气泡重复」）：①思考流预览 `streamingReasoningTail` 清退（思考内容单一事实源=气泡 ReasoningBlock，store 字段/触摸方法/touchAgentRun 形参/l10n reasoningLabel 全链删除）；②`AgentUiState` 加 `reasoningPhase`（reducer 在 token 事件按 reasoning/content delta 翻转，引用守卫保流式性能）——streaming_text 标签区分「正在思考…/正在回复…」，200s 思考期用户不再迷茫；③`tool_call_started` 保留 `pendingTalentNames`（执行期工具名不再丢失）+ TALENT_LABEL_KEYS 补 web_search→「正在联网搜索…」——联网搜索全程业务语义可见；阶段色收敛二态（流式期蓝/工具期紫）
 | 2026-09-04 | 5.0 | §21 电话模式（PHONE_SPEC v1.0）：顶栏电话图标（phone-call-button）+ 全屏通话 overlay（三态 + 按住说话 + 挂断）+ 复用 audio 域编排新服务 phoneCall（纯 TS 可单测）——不新增模型/引擎/气泡类型 |
 | 2026-09-07 | 5.2 | W4 文档-代码对账（只改口径不改视觉）：① §21 ④ 控制区尺寸「96px + 64px」改正为**两钮等大 72dp**（代码 72×72 + 单测钉住，PHONE_SPEC §11.8 为现行口径）；② §21 ① 伙伴名回落链改正：**不取会话标题**、默认名是「小妖」不是「小黄鸡」（旧句两头错）；③ testID 表删幽灵行 `phone-hint`（代码零挂点）、补登 `phone-dialogue`/`phone-elapsed`/`phone-wave` 三条现有锚点，并写明登记口径（e2e 真值源 = `e2e/helpers/selectors.ts`，不全量抄表）；④ frontmatter `version` 5.1 → 5.2 与版本面同步（表内已存在 v5.2 条目而头版本停在 5.1 = 头部落后的实证）；⑤ 登记新发现两项文档债：本卷**变更日志行时序乱序**（4.3/4.7/4.8 不按日期序，影响按版本追待办）、生图域/音频域共 47 个 testID 逐条不登（改走口径条 + 代码为准） |
+| 2026-09-07 | 5.3 | W5 死码/死键/双份常量纯删（本卷只涉两处）：① §9 朗读门新增**码位口径单点**条——「算不算中文」不再由 speakable 自带正则，改共读新建 `utils/cjk.ts`（全仓四份同名/异名正则收一），顺带**行为收紧一处**：兼容表意区（U+F900–U+FAFF）不再被误判为空白语言而遮住朗读钮；② `components.phoneCall.{title,mineLabel,partnerLabel,guideToText}` 四个零消费键删除（登记面在 PHONE_SPEC §7 v2.6，本卷 §21 不反引不拆）；另 `jest/fixtures/benchmark.ts` 与 `__mocks__/stores/benchmarkStore.ts` 的幻影能力（`submitted`/`markAsSubmitted`）同步清除，不影响本卷 UI。 |

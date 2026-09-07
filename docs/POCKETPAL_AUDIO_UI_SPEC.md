@@ -3,7 +3,7 @@ doc_id: POCKETPAL_AUDIO_UI_SPEC
 module: root
 type: spec
 status: active
-version: "1.13"
+version: "1.14"
 created: "2026-08-21"
 updated: "2026-09-07"
 relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_IMAGEGEN_UI_SPEC, POCKETPAL_MODEL_MATRIX]
@@ -28,6 +28,13 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_IMAGEGEN_UI_SPEC, POCKETPAL_MODEL_MAT
 > 版本：v1.11（2026-08-30 跑分卡+吸底条，对齐生图页裁定）：① **生成按钮吸底**——生图「出图」吸底常驻裁定（2026-08-26）平移：新建 AudioActionBar（ImageGenScreen 层 KeyboardStickyView + insets 安全区避让，与 GenActionBar 同构封装），「生成音频」按钮常驻页面底部；仅 generate 段渲染（转写段主操作在 composer 不吸底不占位）；composer 底部原生成按钮删除（无重复按钮）；状态（audioSeg/genText/voiceId/speed/supertonicSteps）从组件 state 入 audioStore（吸底条与 tab 共享，AudioSeg 类型入 store）；ttsGenerating 转圈 onPrimary（8-29 真机根因沿用：primary 底转圈须高对比色）；disabled = 任务中/空文本/无音色/引擎未装（buttonDisabled 半透明主色语义同生图）② **跑分卡片**——TTS 生成 running 页复用生图 PerfPanel（完整面板，perfRecorder 由 beginTask 统一触发，TTS 任务同样采样，无需额外接线）；转写段 running 不挂（转写秒级、面板无意义且闪烁）；③ 转写段吸底维持现状（用户裁定向：仅生成按钮吸底）
 > 版本：v1.12（2026-08-30 吸底按钮底部裁切修复，对齐生图按钮体量）：用户实测「生成按钮被底边切掉一半」——根因：insets.bottom=42 只避让手势条指示器，按钮 63px 整段落入手势暗区（生图出图按钮 116px 高、上半 47px 逃出暗区故观感正常）；修复=AudioActionBar 渲染树/样式与 GenActionBar 出图按钮逐层同构（bottomBar 内 buttonRow 行容器 + 内衬 buttonGenMain），按钮恢复 116px 完整体量（真机 [2221,2337] h=116 与生图逐像素一致）；转写段无吸底条不占位语义不变。
 > 版本：v1.13（2026-09-07 W4 文档-代码对账，零视觉改动）：① §3.1 「显式校验扩展名（16kHz）」措辞改正为**只校后缀、不校采样率**（旧句会让人误判传错采样率也会被拦，实际不会）；② 版本日志**按版本号升序重排**（旧序 v1.2…v1.5,v1.7,v1.6,v1.12,v1.11,v1.10,v1.9,v1.8 —— 按提交时间乱插，按版本追待办时会误判「最新改动是哪一版」）；③ 补登 **testID 域**（此前 22 个 audio-* 逐条零登记）：本域一律以 `audio-*` 为前缀，逐条值以代码 grep 为准，**e2e 契约的唯一真值源是 `e2e/helpers/selectors.ts`**（本域 0 条被 e2e 引用，故不把 22 行抄进表格抄成第二份必漂清单）；④ frontmatter `version` 1.8 → 1.13 与版本日志面对账（旧头部落后四个小版本）。
+> 版本：v1.14（2026-09-07 W5 双份常量收口，零视觉改动）：§4.2 速度/步数两条改指**唯一定义点**
+> `services/tts/types.ts`：`SUPERTONIC_STEPS_OPTIONS`（`SupertonicSteps` 类型由它派生）/
+> `DEFAULT_SUPERTONIC_STEPS` / `DEFAULT_TTS_SPEED` / `DEFAULT_SUPERTONIC_LANGUAGE`。旧状态：步数默认值
+> 在 TTSStore / audioStore / ttsEngine / actionRegistry 各写一份字面量 5（实测四份），档位列表在两个 UI
+> 各写一份，`na` 靠注释约定两边一致；另 DRC `tts_generate` 链不再自己注入默认（与同文件另一条透传行
+> 不自洽）。`audioStore.setSupertonicSteps` 参数由 `number` 收为 `SupertonicSteps`（与 TTSStore 对齐，
+> 非法档位进不了 store）。本卷不重列具体数字表，避免第二份必漂清单。
 > 上位规范：POCKETPAL_DESIGN_SPEC.md（UI 域 SSOT）+ POCKETPAL_IMAGEGEN_UI_SPEC.md（工坊 tab 载体）
 
 ## 1. 产品定位
@@ -110,8 +117,12 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_IMAGEGEN_UI_SPEC, POCKETPAL_MODEL_MAT
 - 文本输入区（**v1.6 默认两行 minHeight 66**，怕用户找不到输入处）+ 主按钮「生成音频」（合成中 → 进度态）
 - 高级参数卡（默认折叠，默认值即可用——「需要动的才暴露」）：
   - 音色：Kokoro 多音色清单 chip / Supertonic 语种音色
-  - 速度：0.5–2.0 滑杆（默认 1.0）
-  - 步数：Supertonic 1|2|3|5|10|20（默认 5）（语种由 sherpa-onnx 自动检测，不设选择器）
+  - 速度：0.5–2.0 滑杆（默认值唯一定义点 `services/tts/types.ts` 的 `DEFAULT_TTS_SPEED`，
+    store 初值与 native 边界兜底共读；旧写法 `audioStore` 与 `ttsEngine` 各写一份 `1.0`，v1.14 收口）
+  - 步数：Supertonic 档位（语种由 sherpa-onnx 自动检测，不设选择器）——**档位表与默认值不在本卷/
+    不在 UI 里重列**：唯一定义点 `services/tts/types.ts` 的 `SUPERTONIC_STEPS_OPTIONS`（1|2|3|5|10|20）
+    与 `DEFAULT_SUPERTONIC_STEPS`（=5），`SupertonicSteps` 类型由该表派生（表与类型不可能漂移）；
+    两个控件（TTS 设置 sheet HeroRow / 工坊步数 chip）共读本表——旧写法是三处各写一份字面量（v1.14 收口）
   - **不含引擎选择**（v1.4：引擎选择在顶栏胶囊）
 - 引擎选择（v1.5）：顶栏胶囊（当前引擎名 + ⌄ + 就绪点）→ **屏级 overlay 下拉**（复用生图 ModelPickerDropdown 交互模式，弃 Menu）；行内 = 引擎名+大小+状态点 + 「下载 / 删除」按钮（未就绪显下载、就绪显删除，二次确认免）；选中即写 audioStore.genEngine，生成段音色/步数联动
 - composer 不再有模型管理行（v1.5：三行冗余状态文本删除，状态/动作全部并入顶栏下拉）

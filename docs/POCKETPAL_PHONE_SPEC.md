@@ -3,7 +3,7 @@ doc_id: POCKETPAL_PHONE_SPEC
 module: chat
 type: spec
 status: active
-version: "2.5"
+version: "2.6"
 created: "2026-09-04"
 updated: "2026-09-07"
 relates: [POCKETPAL_CHAT_UI_SPEC, POCKETPAL_AUDIO_UI_SPEC, POCKETPAL_STARMAP_DOMAINS, POCKETPAL_DESIGN_SPEC]
@@ -29,6 +29,10 @@ relates: [POCKETPAL_CHAT_UI_SPEC, POCKETPAL_AUDIO_UI_SPEC, POCKETPAL_STARMAP_DOM
 > 版本：v2.3（2026-09-05 大王三次复测 + 豆包四图对标）：①默认伙伴名定「**小妖**」（en `Xiaoyao`），pal 无名不再拿会话标题当名字；②**两钮等大** 72dp（大王：「按住说话比挂断大好多」，§11.8）；③新增 §13：ASR 链路定性（grep 证 App **未接系统语音识别**，聊天页与电话模式共用同一条 SenseVoice 链，不存在重复转写）+ 豆包对标表（可取/不取/待裁定）。
 > 版本：v2.4（2026-09-05 大王裁定落地，详见 §14）：①**对话流铺满主区**（§14.1）——取代「我说/它说」两行摘要，observer 直读 chatSessionStore（零 props 接线），伙伴句深色 / 我说浅色，未落库转写补为末条（§11.4 不回退）；系统提示（报错/未加载）**不入字幕**（不是「谁说了什么」）；②**真实振幅通道**（§14.2）——原生 `AudioRecordModule` 读块内算 RMS 以 `AudioLevel` 事件回传（沿用 DownloadModule 事件范式），录音期波形不再造假；③**VAD 只观测不断句**（§14.3）——峰值/均值/最长静音段/假想断点落 logcat 供判读，数据不支持就不上免手；④**归属口径自查修正**（§14.1）——系统提示（`Completion failed` / 模型未加载）不再以「我说」行入字幕，说话人改按 author 判定。
 > 版本：v2.5（2026-09-07，§18/§19 落地 + W4 文档-代码对账）：① **§18 回复路径收口归一**——删 observer 旁路与 `handledRef` 仲裁，管家直答自行声明回合（取代 v1.1②「落流同步」）；② **§19 电话一轮分段遥测**落地并真机首采（首采即暴露 `firstToken` 两路径口径陷阱：管家路径是「回复就绪延迟」不是首字延迟）；③ §16.4 `phoneVisible` ↔ `inCall` **职责边界重写**（复核判定为文档措辞歧义而非代码违例：前者是 React 渲染开关、后者是任意位置可同步读的业务事实，故改文档不动正确代码）；④ 卷体修复：§18 标题在提交 `22e52db` 里就已丢失、§9.1 重复两份，已插回并去重（H2 序列 1..19 连续）；⑤ **W4 三处失真按代码改正**：§11.2 布局图两钮 96/64 → **72dp 等大**、伙伴名回落链**删「会话标题」**且默认名是「小妖」不是「小黄鸡」、§15.2 voice 孤儿**已销账**（实测 package.json/yarn.lock/patches 均零命中）；另修正 §19.3 一处**不实陈述**（曾引用不存在的 `TTSStore.lastSpeakElapsedMs` / `TTS_TURN_MS=870` 为依据，已作废只留真证据）。
+> 版本：v2.6（2026-09-07 W5 死键纯删）：§7 l10n 登记**改为只列代码真读到的键**——删
+> `phoneCall.title` / `mineLabel` / `partnerLabel` / `guideToText` 四个零消费者键（跨 16 个 locale）；
+> `guideToText` 与 `PHONE_MODE_GUIDE` 的同义两份取一（只留 prompt）；旧 §7 把未接线键当「新增 key」
+> 登记，属文档领先代码，本轮补齐。行为面零变化（无消费点）。
 
 ## 1. 产品定位
 
@@ -167,11 +171,22 @@ hangUp()           → 停止播报 + 回 idle（不删除已落库消息）
 
 ## 7. l10n 文案登记
 
-新增 key 前缀 `phoneCall.`：`title`（电话通话）、`listening`（我在听…）、`thinking`（思考中…）、
-`speaking`（播报中…）、`holdToTalk`（按住说话）、`releaseToSend`（松开发送）、`hangUp`（挂断）、
-`emptySpeech`（没有听到声音，请再试一次）、`asrNotReady`（语音模型未下载，请先下载语音模型）、
-`permissionDenied`（需要麦克风权限）、`guideToText`（这个操作需要回到文字模式）、`failed`（转写或发送失败，请稍后重试）——
+key 前缀 `components.phoneCall.`，**只登记代码真读到的键**（口径：`l10n.components.phoneCall` 局部变量
+加字段访问，或全路径字面量；新增文案前先确认消费点，不先造空键）：
+
+- 状态行：`listening` / `recognizing` / `engineLoading` / `readyToTalk` / `thinking` / `speaking` /
+  `holdToTalk` / `releaseToSend` / `hangUp`
+- 引导行：`hintIdle` / `hintRecording` / `hintTranscribing` / `hintThinking` / `hintSpeaking` / `hintEngineLoading`
+- 播报状态：`ttsReady` / `ttsPlayFailed` / `ttsLangMismatch` / `ttsNoVoice` / `ttsDisabled` / `ttsEngineUnavailable`
+- 失败与回落：`emptySpeech` / `asrNotReady` / `permissionDenied` / `failed` / `defaultPartnerName`
+
 sync 至 en 基准 + zh 同源（l10n 缺失回退英文，既有机制）。
+
+**已删键（v2.6，2026-09-07 W5 死键纯删）**：`title` / `mineLabel` / `partnerLabel` / `guideToText`
+——全仓零消费者（旧版本本节还把 `title` / `guideToText` 列为「新增 key」，属文档领先代码的残留登记）。
+其中 `guideToText`（「这个操作需要回到文字模式」）与 `services/phoneCall/prompt.ts` 的
+`PHONE_MODE_GUIDE` 同义两份：前者是给用户看的文案，后者是给模型的指令，**只留 prompt 一份**
+（电话模式下的引导由模型口述产出，不经 UI 取词）。若将来真要做 UI 硬引导，先补消费点再重新登记。
 
 ## 8. 验收标准
 

@@ -1,11 +1,15 @@
 # 专业跑分面板设计（PERF_BENCHMARK_DESIGN）
 
-> 状态：**v1.4 文档-代码对账（§10.2 生图演出与 §10.5 收敛口径拉平；syncPoll 判据纳队列两态）** | 版本：1.4 | 2026-09-07
+> 状态：**v1.5 W5 死码纯删（云提交链残留收完 + §10.7 挂账登记）** | 版本：1.5 | 2026-09-07
 > 定位：生图/视频「跑分软件」玩法升级——从 4 指标实时面板 → 专业多维跑分 + 数据落盘回放
 > 方法论：写轮眼（同行调研）+ 自学习（内部基线实证）
 > v0.2：面板形态修正——嵌于预览卡片下半截的**横版紧凑布局**（md 图表，弃竖状全屏/图片原型）
 > v0.4（2026-08-24 三修）：①实时数据恒 `--` 根治——`syncPoll()` 挂入 `nightTaskReaction`（`loading||generating` 翻转处），一处覆盖 DreamLite generate/edit/upscale/caption 驻留态入口（原手动调用模式在驻留态从不触发轮询）；②卡片加宽（`taskPage` padding 16→10）；③底行显示不全根治——指标行横向 ScrollView → `flexWrap` 换行网格（4 项/行×2 行）
 > v1.4（2026-09-07 W4 对账）：①§10.2 表内「生图速度 = 折线面积图 + **进度环**」与 §10.5「进度环已砍除」卷内矛盾，按 §10.5/代码改正（代码零命中）；② v0.4① 的 `syncPoll` 判据已从 `loading||generating` 扩展为**四条件**（+ `queueCore.state==='running'|'stopping'`）——队列长跑时也要采样，否则跑分面板恒 `--`（旧判据在队列连抽下真实失效，2026-09-07 W2 修）。
+> v1.5（2026-09-07 W5 死码/死键/双份常量纯删）：§10.7 砍除清单**到本轮才真正清完**（markAsSubmitted /
+> submitted / 21 死样式 / 6 死 l10n 键 / fixture 与 mock 幻影能力），并就地登记两项挂账（28 个闲置
+> `benchmark.*` 键属「该接线未接线」不盲删；`BenchmarkResult.uuid` 写而不读属独立小宗）；用例标签映射
+> 收为单点 `BenchmarkStore.SUITE_CASE_LABEL_KEY`（跑分页与 HUD 条各一份的 `CASE_LABEL_KEY` 已删）。
 
 ---
 
@@ -247,6 +251,15 @@ interface PerfSnapshotV2 {
 
 **砍除清单（整体）**：`src/api/benchmark.ts`、`uiStore.benchmarkShareDialog`（字段+setter）、`submitted/markAsSubmitted`、分享提交 Dialog 链、`bench()` 调用 + 高级参数 Dialog/滑杆（pp/tg/pl/nr）、`RNDeviceInfo` 内存轮询；l10n 与测试同步清理。
 
+> ⚠ **本清单 v1.5（2026-09-07 W5）才真正清完**：当时只删了 UI 渲染链，后端残留一直到
+> `BenchmarkStore.markAsSubmitted` + `BenchmarkResult.submitted` + `BenchResultCard/styles.ts` 的
+> 21 个零引用死样式键（`share*` / `submitButton` / `leaderboardLink` / `error{Network,AppCheck,Server,Generic}` /
+> `retryButton` / `tooltipContainer` / `infoIcon` / `resultStd` 等）+ 6 个死 l10n 键
+> （`benchmark.benchmarkResultCard.actions.{submittedText,leaderboardLink,cannotShare,cannotShareTooltip,submitButton,viewLeaderboard}`）
+> + `jest/fixtures/benchmark.ts` 的 `mockSubmittedResult` 与 `__mocks__/stores/benchmarkStore.ts` 的
+> 幻影能力 `markAsSubmitted` 全部仍在（仅单测引用它们自己）。本轮全部纯删（跨 16 locale，共 98 处键位），
+> 随之删除该单测用例——文档说「已砍」而代码在，是比不砍更坏的状态（读文档的人不信文档）。
+
 **三用例（编排状态机在 BenchmarkStore 瞬态字段）**：
 
 | 用例 | 场景 | 引擎 | 主指标 | 演出 |
@@ -257,11 +270,31 @@ interface PerfSnapshotV2 {
 
 - 随采指标：PSS 峰值/安全率/峰均比由 `perfRecorder` 伴随采集（**不单设内存用例**——锋利裁剪）。
 - 自动导航横幅：「测试 N/3 · 切换 XX 赛道…」；被征用页顶部挂「基准测试进行中」HUD 条。
+  用例 key → l10n 标签名的映射唯一定义点 = `BenchmarkStore.SUITE_CASE_LABEL_KEY`（v1.5 W5 收口：
+  旧写法是跑分页与 HUD 条各手写一份同名 `CASE_LABEL_KEY`，后者注释只说「与前者同源」——靠人记）；
+  两处回落口径**有意不同**且已写明：HUD 把非用例文案原样透传，跑分页回落 `runningDefault`。
 - 结果页：**四轴雷达**（= perfScore 四分：内存安全/速度/温控/稳定性，SSOT 不造新公式）→ 揭幕 → 综合分 → 段位（走地鸡/战斗鸡/神鸡）→ 跑分卡。
 - 边界：与 e2e `BenchmarkRunnerScreen`（__E2E__ 独占，`benchmarkActive`）互不干涉；`start-test-button` / `settings-item-benchmark` testID 契约保留（e2e selectors 依赖）。
 - `BenchmarkResult` 扩展：新增 `suiteCase/tokAvg/stepAvg/pssPeakKb/tempRise/scoreParts`；旧 pp/tg 字段可选保留，旧结果标「旧协议」（诚实，不洗数据）。
 - **模型加载时长不入分**：用例直跑当前已加载模型；无模型时引导加载，加载时长单列显示。
 - **温控耐久**：热量事前告知 + 随时可终止。
+
+**挂账（v1.5 W5 登记，不盲删不扩面）**：
+
+- **28 个 `benchmark.*` 闲置 l10n 键**（取证脚本：`.tmp/probe_phonecall_keys_161.js benchmark`，
+  口径 = `.<key>` 与 `'key'` 两种写法在非 locale 源码全仓零命中）：属旧版跑分 UI 与云提交链残留。
+  **不随本轮删除的理由**：跑分页现在是中文硬编码（段位名「神鸡/战斗鸡/走地鸡」、
+  「跑分回放历史」等直接写在 JSX），这 28 键里相当一部分是**该接线未接线**（国际化缺口）
+  而不是可删死键——盲删等于把未来的 i18n 素材一并销掉。裁定：单独专项做「接线 vs 删键」
+  逐条判（需产品先定跑分页要不要进 16 语），不在纯删波次里搭车。
+  取证方法已补一道防护：`benchmark.suite.labels.endurance` 这类**动态下标**消费（
+  `labels[SUITE_CASE_LABEL_KEY[banner]]`）只看 `.key` 会被误判为死键，必须同时查字面量。
+- **`BenchmarkResult.uuid` 写而不读**：`benchmarkOrchestrator` 每例 `uuidv4()` 写入并随结果持久化，
+  全仓唯一读者就是被删掉的 `markAsSubmitted`（它本是云提交的记录身份）。删它需同波动
+  orchestrator + 5 个测试夹具，且改的是**已落盘记录的形状**（AsyncStorage JSON）——属独立小宗，
+  不在本波做。现状态：新写入仍带 uuid，旧记录多一个无意义字段（无害，但不诚实）。
+- **本轮已删的零风险死物**：上表 ⚠ 注里的 6 个 actions 键与 21 个死样式——它们的共同点是
+  **同名符号在 src 其他文件从不出现**（名字具区分度），所以不存在「别处叫同名」的误判空间。
 
 ### 10.8 标准负载契约（全链只读；v0.7 真机血证三次修订）
 

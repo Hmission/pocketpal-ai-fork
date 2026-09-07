@@ -3,7 +3,7 @@ doc_id: POCKETPAL_IMAGEGEN_QUEUE_SPEC
 module: imagegen
 type: spec
 status: active
-version: "0.4"
+version: "0.5"
 created: "2026-08-27"
 updated: "2026-09-07"
 relates: [POCKETPAL_IMAGEGEN_UI_SPEC, POCKETPAL_STARMAP_DOMAINS, ONDEVICE_VIDEO_GEN_ANALYSIS]
@@ -11,11 +11,16 @@ relates: [POCKETPAL_IMAGEGEN_UI_SPEC, POCKETPAL_STARMAP_DOMAINS, ONDEVICE_VIDEO_
 
 <!-- D-FORMAT:v3 -->
 
-# 生图队列（任务购物车）设计规格 — IMAGEGEN_QUEUE_SPEC v0.4
+# 生图队列（任务购物车）设计规格 — IMAGEGEN_QUEUE_SPEC v0.5
 
-**状态**：active（P0/P1 已实现并平板实机验收通过，P2 待夜间耐久；DECISION D1-A/D2-A/D3-A/D4-A 定稿） | **版本**：0.4 | **更新**：2026-09-07
+**状态**：active（P0/P1 已实现并平板实机验收通过，P2 待夜间耐久；DECISION D1-A/D2-A/D3-A/D4-A 定稿） | **版本**：0.5 | **更新**：2026-09-07
 
 > v0.4（2026-09-07 W4 文档-代码对账）：按代码现状回写四处失真——§六.2 判据由「三条件」改为实际**四条件 + 票据制**、§六.4/6.5 补 W1 失败可见性收口（超时真 cancel / 停止有界确认）、§九 队列表迁移版本 3→**10**、§十 互斥行为由「冲突显式报错」改正为**自动抢占**；另删除 frontmatter 不存在的 `IMAGEGEN_UI_SPEC` 悬空 relates。
+>
+> v0.5（2026-09-07 W5 接口面收口）：§七 新增两条——「N 项 · M 抽」拼法单点 `formatQueueSummary`
+> （`GenActionBar` 不再接已格式化字符串 prop，组件内兜底删）与 QueuePanel 零消费的 `totalDraws`
+> prop 删除；队列面板条目徽章改与模型下拉同源显示族名（旧行直接打 `sd3` 等内部键）。均为接口/文案
+> 面收口，状态机与执行器零改动。
 
 > **定位**：为「任务购物车（连抽队列）」能力提供决策完备的设计规格——数据、状态机、执行器、UI、持久化、错误登记、迭代路线。生图页 UI 细则仍以 `POCKETPAL_IMAGEGEN_UI_SPEC` 为准，本卷只增补队列专属设计。
 
@@ -117,6 +122,13 @@ loop:
 - **进度**：队列面板顶部「第 i/N 项 · 第 j/M 抽」+ 预览区照常显示当前任务页（peviewIndex=1，动效与单张一致）。
 - **完成**：汇总卡（成功 X / 失败 Y）+「清空队列」；失败项可点击看报错（复用失败任务页一键复制）。
 - **入口**（选做，非 MVP）：画廊「同参数/复刻生图」可扩展「加入队列」。
+- **摘要文案的口径（v0.5 W5 收口）**：胶囊条与「开始队列」按钮的「N 项 · M 抽」拼法单点 =
+  `ImageGenScreen/constants.ts` 的 `formatQueueSummary(items, draws)`；组件只接**数值**
+  （`queueItemCount` / `queueTotalDraws`），编排层不得再把拼好的字符串当 prop 传进来
+  （旧写法另在组件内留了一份 `${n} 项` 兜底，两种格式并存）。两处传的 `draws` 语义**有意不同**：
+  胶囊 = 总抽数（看存量），开始按钮 = 剩余抽数（看要做的事），只统一措辞不统一口径。
+- **面板 props 不留空位**：`totalDraws` 曾传给 QueuePanel 但从不读（面板自己按 items 算剩余）
+  ——v0.5 删字段：能删不加，零消费接口不进契约面。
 - **testID 域**：面板 `imagegen-queue-panel` / 动作 `queue-start`·`queue-stop`·`queue-clear`·`queue-close` / 行内 `queue-item-{i}`·`queue-remove-{i}` / 入口 `imagegen-queue-badge`·`imagegen-queue-capsule`。逐条值以代码为准（本文档不复制清单，防漂移）；e2e 契约的唯一真值源是 `e2e/helpers/selectors.ts`。
 
 ## 八、技术验证记录（P1 停止能力，已取证）

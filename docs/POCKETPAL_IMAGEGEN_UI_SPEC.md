@@ -3,7 +3,7 @@ doc_id: POCKETPAL_IMAGEGEN_UI_SPEC
 module: root
 type: spec
 status: active
-version: "5.12"
+version: "5.13"
 created: "2026-08-14"
 updated: "2026-09-07"
 relates: [POCKETPAL_DESIGN_SPEC, ADR-0002-imagegen-header-right]
@@ -36,6 +36,13 @@ relates: [POCKETPAL_DESIGN_SPEC, ADR-0002-imagegen-header-right]
 > 版本：v5.10（2026-08-27 大王真机复审三条，替代 v5.9①）：① **反推=生图流程**——反推/编辑/放大与生成同一路径：任务开始即滚入 running 空白任务页（taskPage 自适应）+ **完整 PerfPanel 默认展开**（叠图 overlay 全删，`genOverlay/genOverlayEdit/genOverlayBottom` 样式移除；旧 absolute 叠图与任务页双渲染导致的内容叠加根治）；② **折叠层级平级**——高级参数折叠钮与提示词折叠平级（高级参数展开/折叠独立于提示词折叠；折叠提示词后高级参数按钮与内容区仍可用）；③ 出图按钮吸底确认通过（大王实测），保持不变
 > 版本：v5.11（2026-08-29，大王报障修复）：③ 吸底条 safe-area 补全——`KeyboardStickyView offset={{closed: 0}}` 使操作条吸附窗口物理底边，手势导航设备（K90/HyperOS 手势条，insets~15-24px）上按钮下缘被底边裁切（bottomBar paddingBottom 8px < 安全区）；修复 = KeyboardStickyView 内包 **surface 背景垫层**（paddingBottom=insets.bottom：内容上移避让 + 背景延伸到底无断带，同聊天输入条 insets 避让设计语言；不开 closed offset 挪位——底部会露 background 色带，深色模式 #000 vs #0E0E0E 可见差异）
 > 版本：v5.12（2026-09-07 W4 文档-代码对账，不改视觉只改口径）：① §4 「三点波浪 + useNativeDriver」改正为 **JS driver 红线**（`useNativeDriver:false`，与 AUDIO_UI_SPEC §6 同步——本卷此前漏同步，且真机 tombstone 实锤不支持 native driver）；② 族徽章色**取消本卷内复制 hex**，改指 DESIGN_SPEC §1.4 token 表（本卷旧行只列了 3/5 族， flux/krea2 长期缺席）；同时 `QueuePanel.FAMILY_COLORS` 的 4 个硬编码野值已收编进 token（该野值与任何登记表都不一致，注释却自称「与生图页下拉同源」——不实陈述已删）；③ 补写 **§3.1 LoRA 运行时挂载**条目（代码链 2026-08-18 就完整，本文档一直零条目，违「文档先行」）；④ §9 重号勘误：顶部横幅提示原误标 §9（与 §9 性能面板重号，PERF_BENCHMARK_DESIGN 三处引用均指性能面板），改标 §10 并就地保留位置——本卷章节物理顺序历史遗留乱序，本轮不重排（免制造大面积 diff 噪声），已登记为文档债；⑤ frontmatter `version` 从落后的 5.6 补齐到 5.12（版本面与版本日志面对账）
+> 版本：v5.13（2026-09-07 W5 双份副本收口 + 死码纯删）：① **族→色映射收一**——`styles.ts` 五个
+> `badge*` 样式键 + `ModelPickerPanel` 五层三元链 + `QueuePanel` 自带映射，三处并行表达同一事实，
+> 现共读 `constants.ts` 的 `FAMILY_BADGE_TOKEN`（全量 Record，新增族 tsc 报错）+ `familyBadgeColor` /
+> `familyBadgeLabel`；新增族旧写法会静默落到 Z-Image 色，现不可能；视觉零变化；② **队列面板徽章显示名**
+> 改正：不再打内部族键（`sd3`），与下拉同源显示 `SD3.5`；③ 吸底胶囊不再接已格式化字符串：
+> `queueSummary?: string` prop → `queueTotalDraws?: number`，组件内的 `` `${n} 项` `` 兜底删除（拼法
+> 单点 = `formatQueueSummary`，与面板「开始队列」按钮同源）；`QueuePanel` 零消费的 `totalDraws` prop 同步删
 
 > 上位规范：POCKETPAL_DESIGN_SPEC.md（UI 域 SSOT）
 
@@ -133,6 +140,13 @@ relates: [POCKETPAL_DESIGN_SPEC, ADR-0002-imagegen-header-right]
 - 实验性模型（SD3.5 / Z-Image-Turbo）排在 DreamLite 之后，带琥珀色「[实验性]」徽章
 - 行内按钮：加载（主色实底）/ 卸载（红描边，二次确认）
 - 族徽章彩色：**一律取 `POCKETPAL_DESIGN_SPEC` §1.4 登记的 badge token**（badgeSd35 / badgeZImage / badgeDreamlite / badgeFlux / badgeKrea2，含 light/dark 双绑），本卷不复制 hex（旧行列了 3 个裸色值且长期缺 flux/krea2，v5.12 收口）；队列面板徽章同用该套 token（12% 底 + 1px 同色描边 + 同色文字的既有 chip 语言）
+- **族 → 色 token 的映射只写一处**（v5.13 W5 双份副本收口）：`screens/ImageGenScreen/constants.ts` 的
+  `FAMILY_BADGE_TOKEN`（全量 `Record<ModelFamily, token | null>`，新增族时 tsc 在此报错，逼着先去
+  DESIGN_SPEC §1.4 登色）+ 两个取用入口 `familyBadgeColor(theme, family)` / `familyBadgeLabel(family)`。
+  收口前三处并行表达同一事实：`styles.ts` 五个 `badge*` 样式键（已删，收为一个 `badgeFamily`）、
+  `ModelPickerPanel` 五层三元链（已删，新增族会静默落到 Z-Image 色）、`QueuePanel` 自带一份映射（已删）。
+- **族徽章显示名同源**：队列面板条目徽章过去直接打内部族键（`sd3` / `zimage`），与下拉里的
+  `SD3.5` / `Z-Image` 不同名（v5.13 改正：统一走 `FAMILY_BADGE`，未知族回落原始键名）
 - 选中行仅高亮回填参数，不自动加载（点「加载」按钮才加载）
 - 选中行圆角 = 浮层面板同值（shapeRoles.surface 32px，v5.8 B59）：选中描边与整卡圆角一致；音频引擎下拉复用同样式一并统一
 
@@ -171,6 +185,8 @@ relates: [POCKETPAL_DESIGN_SPEC, ADR-0002-imagegen-header-right]
 - Screen 层零直连 dreamLiteEngine，全部经 imageGenStore 单通道
 - 提示词限长 ≤120 字（端侧约束，超限红色警告但可提交）；反推输出 ≤200 token（与生图 prompt 上限一致，2026-08-27 大王裁定）
 - 所有色值走 theme token 或已登记的语义色，新增色必须先登记再上屏；**模型族徽章色的唯一登记处 = `POCKETPAL_DESIGN_SPEC` §1.4**（本卷与队列面板均不维抄色值表，2026-09-07 v5.12 明确：`QueuePanel` 曾挂 4 个不属于任何登记表的硬编码野值）
+- 族 → token 的**映射关系**也不得在各 UI 里重列（v5.13）：组件只调 `constants.ts` 的
+  `familyBadgeColor` / `familyBadgeLabel`；在自己文件里写族判定链 = 开第二份事实源
 - testID 稳定：imagegen-quick-load（快速加载）等，e2e 依赖不变
 - 反推链路同样收编 store 单通道（captionEngine 经 imageGenStore 收口），Screen 层零直连
 

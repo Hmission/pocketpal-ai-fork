@@ -330,7 +330,7 @@ SPEC §四/§十一 D3 自称「队列状态进 MobX **单缝**」，实为五�
 | **W2** | ✅ 完成 | 8 个镜像字段 → **同名 computed 代理**（core 自身 `makeObservable` 只注解对外契约），`syncQueueMirror` + `QueueHooks` + 11 处调用全删，**UI 代码零改动**；nightTask 票据制（含「跨域不互扣」用例）；`syncPoll` 纳队列两态 |
 | **W3** | ✅ 完成 | CP-APP-007..013 七条真 regex（deepDive 路径 16 个 `Test-Path` 先验）；修 001 悬空；11 处 `architecture/tts.md` 指针**真收编**为 TTS_SPEC §7 四小节（旧轮只加了免责声明块——那是用含糊替代收口）；新建 `scripts/audit_compass_registry.js` 登记↔执行**双向对账闸门**挂 `pre-commit` 第 6 闸 + `yarn audit:compass`；表驱动样本测试补上「regex 写得对」这一层 |
 | **W4** | ✅ 完成 | 17 项逐条裁定回写（QUEUE/UI/CHAT_UI/PHONE/PERF/TTS/STARMAP/AUDIO/UI_INTERACTION 共 9 卷）；族色收 token；LoRA 补条目；testID 改口径；**额外收一处双份事实源**：`utils/types.ts` 的 `SemanticColors` 是 `TokenColors` 的手工副本且已漂移（缺 `badgeFlux`/`imageInsight`，靠 `styles.ts` 的 `theme: any` 吞洞）→ 120 行副本删为 1 行派生 |
-| **W5** | ⏳ 待做 | — |
+| **W5** | ✅ 完成 | 双份常量全部收口（`HF_DOMAIN`/`AIOS_LOGS_DIR`/`DEFAULT_SUPERTONIC_LANGUAGE`/**`DEFAULT_SUPERTONIC_STEPS` 实测四份**/档位表三处/`DEFAULT_TTS_SPEED` 三处/**族→色映射三处**/`CASE_LABEL_KEY` 两处）；`CJK_RE` 裁定后收 `utils/cjk`（详 N7）；死码纯删：`markAsSubmitted`+`submitted`+21 个死样式+6 个死 bench 键+4 个死 phoneCall 键（跨 16 locale 共 98 处）+fixture/mock 幻影能力；`queueSummary` prop → 数值 + `formatQueueSummary` 单点；**额外发现并修**：队列徽章打内部族键（N9）、`QueuePanel.totalDraws` 零消费 prop、bench 套件文档称「已砍」而代码在（N8） |
 | **W6** | ⏳ 待做 | — |
 
 ### 10.3 W4 新发现（不在原 17 项内，当场修或登记）
@@ -343,3 +343,14 @@ SPEC §四/§十一 D3 自称「队列状态进 MobX **单缝**」，实为五�
 | N4 | CHAT_UI_SPEC **变更日志行时序乱序**（4.3/4.7/4.8 不按日期） | 登记为文档债（重排行是噪声，不本轮动） |
 | N5 | `e2e/helpers/selectors.ts` 有静态 `byTestId` 字面量在 `src` 找不到挂点；已定性一条：`settings-item-pals`（伙伴入口 2026-08-15 已裁剪）；另十余条不能凭 grep 定罪 | **登记为 e2e 专项**（UI_INTERACTION_SPEC §5.2 + §7 挂账）：补挂或删选择器，不拿旧断言护航、也不误删真契约 |
 | N6 | `QueuePanel` 旧注释自称「与生图页下拉同源约定」，实为**全仓唯一一处**且与两套登记表都不一致；IMAGEGEN_UI_SPEC §3 L134 又列了 3 个裸 hex（第三份副本，长期缺 flux/krea2） | **当场修**：QueuePanel 收 token（12% 底 + 同色描边/文字，沿用本仓 chip 语言，避开暗色模式实心底配淡彩 token 的失读）；§3 删裸 hex 改指 DESIGN_SPEC §1.4；新增族靠 `Record<ModelFamily,…>` 全量映射在 **tsc 层面强制先登记色** |
+
+### 10.4 W5 新发现（不在原计划清单内）
+
+| # | 发现 | 处置 |
+|---|---|---|
+| N7 | **`CJK_RE` 不是两份而是四份、三种范围**（原报告只查到两份）：`kg.ts` 仅 BMP；`speakable.ts` BMP+Ext-A；`ttsEngine.ts` 另有 `CHINESE_RE`（BMP+Ext-A+兼容表意）与 `NON_LATIN_RE`（再内联一遍汉字区）。旧 `speakable` 漏兼容表意→整句均由该区字构成时被判为空白语言、遮住朗读钮 | **当场修**：新建 `utils/cjk.ts`，区间只列一次（`HANZI_RANGES`），按用途导出 `HANZI_PRESENT_RE` / `HANZI_BMP_CHAR_RE`；kg 的 BMP-only 作为**有意的不同口径**写明理由。逐码位比对（`.tmp/verify_cjk_equiv_161.js`）：三处零差异，仅 speakable 按裁定新增 512 码位（行为收紧，已入 CHAT_UI_SPEC §9） |
+| N8 | **文档说「已砍」而代码在**：PERF §10.7 写明 `submitted/markAsSubmitted`「整体砍除」，但 store 方法、类型字段、21 个死样式、6 个死键、fixture、**`__mocks__` 里的幻影 `markAsSubmitted`** 全在（唯一引用者是测自己的用例） | **当场修**：全部纯删 + 用例同步删；PERF §10.7 就地加 ⚠ 勘误注。教训：mock 与 fixture 也是契约面，真实能力删了必须同步收 |
+| N9 | 队列面板条目徽章直接打**内部族键**（`sd3` / `zimage`），与模型下拉的 `SD3.5` / `Z-Image` 不同名——同一事实在两处的呈现不一致（用户看到的是未翻译的枚举值） | **当场修**：`familyBadgeLabel` 共读 `FAMILY_BADGE`，未知族回落原始键名；已入 IMAGEGEN_UI_SPEC §3（真机可见项，归本波验收） |
+| N10 | **`l10n` 死键与「该接线未接线」不可靠 grep 区分**：跑分页大量中文硬编码，28 个闲置 `benchmark.*` 键里很多是国际化缺口；且 `labels[SUITE_CASE_LABEL_KEY[banner]]` 这种**动态下标**只看 `.key` 会误杀（实测 `endurance` 就差点被删） | **不盲删**：只删名字具区分度且全仓零命中的 10 键；其余登记为专项（PERF §10.7 挂账），取证脚本已加字面量双判据 |
+| N11 | `BenchmarkResult.uuid` 写而不读：每例 `uuidv4()` 入库并持久化，全仓唯一读者就是被删的 `markAsSubmitted` | **登记不拆**（独立小宗：动它需改已落盘记录形状 + orchestrator + 5 个夹具），见 PERF §10.7 挂账 |
+| N12 | `ttsStore.supertonicSteps` 与 `audioStore.supertonicSteps` 是**两处并存的用户设置**（播报链 vs 工坊生成链），无任何文档裁定是否刻意 | **不擅自合并**（合并会改变用户已有设置行为），登记 W6 祖传债；本轮只做到「两处共读同一默认值常量」 |
