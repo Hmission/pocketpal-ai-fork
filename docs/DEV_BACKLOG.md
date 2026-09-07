@@ -29,10 +29,10 @@
 
 | # | 项 | 目标 | 前置 | 验收标准 | 归属 |
 |---|---|---|---|---|---|
-| 4 | **断点续跑（引擎 checkpoint）** | sd.cpp 采样循环每 5 步 latent+sigma 落盘；被杀后从最近 checkpoint 续跑（最多重跑 5 步） | 引擎无 save/resume API（已审计）；需 JNI 导出接口 + 采样循环钩子（估 1-2 天） | 真机模拟杀进程后重启续跑，输出完整视频 | 新窗口 |
-| 5 | **分段加载（双 ctx 交替）** | TE-only ctx 编码后释放 → DiT+VAE ctx 采样；峰值 4.8GB→~3GB（PSS 硬线内） | sd.cpp 公开 API 模块级构建（内部已按 TE/DIFFUSION/VAE 分模块，需小改） | 加载/采样两阶段 PSS 峰值均 <4GB | 新窗口 |
+| 4 | ~~**断点续跑（引擎 checkpoint）**~~ **已作废（2026-09-08 改判，CHAIN_AUDIT_B §3.3/§六）** | 原计：sd.cpp 采样循环每 5 步 latent+sigma 落盘续跑。**作废理由**：引擎无 save/resume 公开 API（已审计），实现必须改引擎源码（禁区）且将在引擎外养第二份采样状态。**改判为**：片段（clip）粒度重跑——单段失败只重跑该段，不进禁区、不建第 2 状态源 | — | — | **不再做**（能力并入项 7 的片段策略） |
+| 5 | **分段加载（双 ctx 交替）** → **降为条件触发**（2026-09-08） | 原计：TE-only ctx 编码后释放 → DiT+VAE ctx 采样，峰值 4.8GB→~3GB。**触发条件**：仅当现有 `params_backend="te=disk"`（`ImageGenJNI.cpp:483-485` 线上已在用）对 UMT5 无效才立项——先验现成路径再造新机制 | W10 真机 PSS 实测 | 若 `te=disk` 已使峰值 <4GB：本项直接销账；否则才需双 ctx 且两阶段 PSS <4GB | 观望（优先免做） |
 | 6 | **HyperOS 白名单人工引导 UI** | App 内引导页：「电池省电→不限制」+「最近任务锁定」操作指引 | 系统弹窗已落地（§78）；此为人工步骤引导 | 引导页可达 + 步骤截图可对照 | 新窗口 |
-| 7 | **Wan 2.1 1.3B 端到端** | 模型推机（DiT Q4 ~1GB + UMT5 Q3 ~3GB + VAE ~0.7GB）→ 夜间跑通一条 5s 480p 视频 = 跑分成功 | 项 4/5/6 完成 + SD_WEBM 开启 | 真机输出完整 WebM + 全程零被杀 + 断点续跑验证 | 新窗口 |
+| 7 | **Wan 2.1 1.3B 端到端** | 模型推机（DiT Q4 ~1GB + UMT5 Q3 ~3GB + VAE ~0.7GB）→ 夜间跑通一条 5s 480p 视频 = 跑分成功 | ~~项 4/5/6~~ → **CHAIN_AUDIT_B 新序：W10（nativeGenVideo JNI 桥）→ W11（帧→容器裁定）→ W12（任务形态入既有队列 + Wan manifest）**；项 6 仍为并行体验项 | 真机输出完整可播文件 + 全程零被杀 + 片段失败可重跑 | 主线终点 |
 
 ### P3（观望/备选）
 
@@ -63,7 +63,7 @@
 | 16 | **InfoDialog 统一** | 约 20 文件多套弹窗收编一套（UI_INTERACTION §7） | 无 | InfoDialog 全域唯一 + 旧组件删除 | **2026-08-25 落码** |
 | 17 | **P1 单槽 v2 + P3 肥文件拆分** | engineMutex 生图槽⇒管家联动；ModelStore 3736 行等三肥件拆分 | 架构评审 | PRODUCT_SPEC §6.2 销账 | 择期 |
 | 18 | **孤儿文件清理（2026-08-25 审计新增）** | `src/components/SearchProviderKeySheet/styles.ts` 全仓库零引用、组件主体已删（搜索精简的残留孤儿） | 无 | 文件删除 + git 干净 | **2026-08-25 落码** |
-| 32 | **`video` 一名三义收名**（CHAIN_AUDIT_B N17，W8） | `VideoTaskService`（实为夜间长任务保活）/ `VideoPalScreen`+`hasVideoCapability`（摄像头围观问答）/ 未来文生视频——三者共用一个词，新代码会接在歧义符号上且日志串台 | 无（但应在 P2 项 7 开工前）| grep `video` 每处归属唯一域；保活服务名与语义对齐或明登兼容别名 | 下一窗 |
+| 32 | **`video` 一名四义收名**（CHAIN_AUDIT_B N17，W8a 已做 / W8b 待装机） | 实为**四义**（初稿漏计 `EmbeddedVideoView` 内嵌播放）：① `VideoTaskService*`（夜间长任务保活，**真歧义**）② 摄像头围观 pal ③ 消息内嵌视频播放 ④ 文生视频。**W8a 已做**：星图新增「词面消歧登记」节定四义归属 + 为④预留 `genVideo`/`kind:'video'`/`videoGen*` 并禁用 `VideoTask*` 前缀；误读位点加名实指针注释；不动 native。**W8b 待做**：`VideoTaskService*`→`NightTask*` 全量改名（Kotlin 三类 + manifest + ReactModule 名 + `NativeModules` 键 + 错误码 regex + 通知渠道迁移） | **装机（正确性只能真机验：漏一处服务静默失效）** | 覆盖安装后夜间长跑仍存活 + 系统设置无孤儿渠道 + grep `VideoTask` 零残留 | **装机窗** |
 | 33 | **B10 图标尺寸裸数字残余**（CHAIN_AUDIT_B N19，W9） | `theme.iconSize` 只有 `xs14/s16/m20/l24/xl28`，但 `SettingsScreen:55`(18)、`ChatInput:830`(20)、`ModelCard:439`(16)、`SquarePalCard:510`(12)、`AudioWorkshopTab:724`(26)、`OnboardingBottomBar:50`(13)、`SystemSettingsScreen:87`(20) 等仍硬编码，含 **18/26/13/10/12 五个离档值** | 需先裁定「补 token 还是归到邻档」（不能推算）| grep 零裸数字 + 真机不劣化 | 择期（与项 31 同窗） |
 | 34 | **图标白底遮罩层的暗色债**（CHAIN_AUDIT_B N21） | `copy`/`duplicate`/`settings`/`edit-box` 四件用**可见的** `fill="white"` 做前后景分隔（不是 `clipPath` 内 mask），旧 SPEC 例外条文写得比实际窄；写死白色在暗色主题下会露白块 | 需产品裁定（改主题 token 背景色 vs 重绘为真 mask）——两者都改观感 | 四件在暗色模式下无白块；`check_icons.py` 新增对应校验 | 择期（不得顺手改） |
 

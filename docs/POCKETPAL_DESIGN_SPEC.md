@@ -3,9 +3,9 @@ doc_id: POCKETPAL_DESIGN_SPEC
 module: root
 type: ssot
 status: active
-version: '3.27'
+version: '3.28'
 created: '2026-08-14'
-updated: '2026-09-07'
+updated: '2026-09-08'
 relates:
   [
     DRC_SPEC,
@@ -239,6 +239,20 @@ supersedes: []
 - 触区几何红线：同一行内的图标按钮一律取 `theme.size.controlHeight`（36）透明触区 +
   `theme.iconSize.m`（20）图标（范式 `HeaderRight.styles.compactBtn`）；**禁止**为单个入口
   自加底衬/描边/改尺寸造成同行高低不齐（电话入口 v2.0 胶囊化即因此被 v2.1 撤销）。
+- **图标按钮容器三档（2026-09-08 裁定，回答「淡底 vs 实心+反白 是否全局二选一」）**：
+  **不二选一，按角色分层**——三档均已存在于代码且各自合规，缺的只是本条通则（实读回写，
+  非新造）：
+
+  | 档 | 用途 | 容器 | 图标 | 实物范例 |
+  |---|---|---|---|---|
+  | **CTA 主操作** | 一屏唯一焦点动作（发送/生成/开始队列） | `primary` 实心 + 同色 1px 描边 | 反白 `onPrimary`，**走 `stroke=`**（线条型资产无“反白即 fill”一说） | `SendButton`（禁用态：透明底 + `outlineVariant` 描边 + 灰图标，圆廓恒在） |
+  | **次要强调操作** | 全屏 overlay 内的成组控制钮 | 域彩/语义色 **12% 淡底 + 1px 同色描边**（与 IconTile 同语言） | 同色线条（`stroke=`） | `PhoneCallOverlay` `holdButton`/`hangupButton` |
+  | **顶栏入口** | AppBar 内功能入口 | **透明裸触区**（36） | 主题色线条（`stroke=`） | `HeaderRight.compactBtn`、`ChatHeader` 电话钮 |
+
+  约束：① **一屏至多一个 CTA**（两个实心 primary 必抢焦点）；② 新入口默认第三档，需强调
+  才升第二档，**升档须写理由**（否则适用上一条“禁自加底衬”红线）；③ 三档只区分**容器**，
+  图标语言全仓唯一：线条为主、`strokeWidth=2`、上色口径见 ICON_SPEC §四；④ 12% 不是新值，
+  沿用 §1.4 已定的 `domain.*` IconTile 底 12%。
 
 ## 4. 形状语言与材质（v2 规范化，解决「圆角矩形/矩形/圆形无逻辑」）
 

@@ -1,6 +1,9 @@
 # 端侧视频生成可行性分析：H3 / LTX / Wan 全谱系（2026-08-23）
 
-> 状态：分析定稿 · 决策待裁决（当前建议：观望不立项）
+> 状态：分析定稿 · **已转主线（2026-09-08 大王令推 P2）**——本文的「观望不立项」结论已被
+> [CHAIN_AUDIT_20260907_B](./POCKETPAL_CHAIN_AUDIT_20260907_B.md) 修正：当时的缺口是「算力/内存」，
+> 但把「引擎已就绪」误估为「只差容器」——实际真缺口是 **nativeGenVideo JNI 桥 / 帧→容器封装 /
+> RN 任务形态 / Wan 分发条目** 四项，已拆为 W10→W12 可验收波次。
 > 引擎：stable-diffusion.cpp（2026-08 上游版，已编译进 APK）
 > 设备基线：红米 K90（12-16GB RAM，HyperOS PSS 实测 6GB 硬杀 / 安全预算 4GB）
 > 方法论：写轮眼（外部调研情报）+ 自学习（内部代码实证基线）
@@ -139,7 +142,12 @@ Wan 2.1 T2V-1.3B = UMT5-XXL 文本编码器 + Wan DiT 1.3B + WanVAE
 | 存储 | ~4.8-5.4GB | 与现有模型总盘同级，可接受 | ✅ |
 | 内存峰值 | 4-5GB | PSS 预算 4GB / 硬杀 6GB | ⚠️ 超预算贴线 |
 | 算力 | 80-200 分钟/条 | 产品不可用 | ❌ |
-| 输出 | WebM 编码 | SD_WEBM OFF，需开 | ⚠️ 一行开关 |
+| 输出 | WebM 编码 | SD_WEBM OFF，需开 | ⚠️ **不止一个开关**（2026-09-08 勘误） |
+
+> **本行初稿写「⚠️ 一行开关」不实，已勘误**：除 `SD_WEBM` 选项外，muxer 实体在
+> `examples/common/media_io.cpp`，而 `jni/CMakeLists.txt:29-31` 把 `SD_BUILD_EXAMPLES` 设为 OFF——
+> 即需链 libwebm **并把 muxer 纳入 app 编译面**，属半触编译范围的改动（不触 sd.cpp 源码）。
+> 因此 W11 专门裁定「改编译面 vs RN 侧封装（MediaCodec/ImageWriter）」，不预设前者必胜。
 
 **判定：❌ 暂不可行**——决定性缺口是算力（一个量级差），内存贴线为次；引擎与存储均已就绪。
 
@@ -235,11 +243,12 @@ Wan 2.1 T2V-1.3B = UMT5-XXL 文本编码器 + Wan DiT 1.3B + WanVAE
 |------|------|------|
 | 2026-08-23 | 1.0 | 首发：H3/LTX/Wan 全谱系端侧可行性分析 + Wan 2.1 1.3B 深入评估（写轮眼/自学习双引擎） |
 | 2026-08-23 | 1.1 | 追加 §七：玩具定位专项（大王定调「跑分软件」）——后台存活/断点续跑/分段加载三核心 + ADR-0008 跑分 UI 立项 |
+| 2026-09-08 | 1.2 | **勘误与转主线**（CHAIN_AUDIT_B W8a）：① §五「输出=一行开关」不实（muxer 在未编译的 examples，需链 libwebm + 纳入编译面）已改写；② 状态从「观望不立项」改为已转 P2 主线（W10→W12）；③ §七 的「断点续跑（引擎 checkpoint）」与「双 ctx 分段加载」两策略**被改判**：前者作废（要进禁区且会养第二份采样状态，改片段粒度重跑），后者降为条件触发（先验现有 `te=disk`）。本文保留原文作为历史评估快照，裁定以 CHAIN_AUDIT_B 与 DEV_BACKLOG 为准。 |
 
 ## 关联文档
 
 - [MODEL_MATRIX](./POCKETPAL_MODEL_MATRIX.md)（模型选型唯一事实源，本分析不新增选型条目）
-- [PRODUCT_SPEC](./POCKETPAL_PRODUCT_SPEC.md)（产品边界：视频不在当前玩法清单）
+- [PRODUCT_SPEC](./POCKETPAL_PRODUCT_SPEC.md)（产品边界：视频已从「不在当前玩法清单」转 P2 主线，2026-09-08）
 - [SD35_OPENCL_WHITE_IMAGE_ANALYSIS](./SD35_OPENCL_WHITE_IMAGE_ANALYSIS.md)（同方法论分析范例）
 - [jni/CMakeLists.txt](../android/app/src/main/jni/CMakeLists.txt)（编译链实证）
 - [DEV_BACKLOG](./DEV_BACKLOG.md)（待开发清单：视频玩具三前置/端到端/备选跟踪）

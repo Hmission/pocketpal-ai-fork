@@ -2415,9 +2415,71 @@ W1 失败可见性（6 处，P0）→ W2 队列与保活单状态机（**删 `qu
 
 两路只读专工回报经我逐条回读实物后采纳：引擎侧 `generate_video` 已是公开 API（禁区零改动），**今天卡的全是纯工程链**——JNI 视频桥 / 帧→容器封装（muxer 在未编译的 examples 里，“开 SD_WEBM 一行”陈述不实）/ RN 视频任务形态 / Wan 分发。两个**减面**判定：① 断点续跑改**片段粒度重跑**（step 级 checkpoint 需进禁区且在引擎外养第二份状态源，**作废项 4**）；② 先验既有的 `params_backend="te=disk"`（已在 klein/z_image 线上生效），能压住峰值就**不做双 ctx 分段加载**（项 5 降为条件触发）。另发现 `video` 一名三义（保活服务/摄像头围观/文生视频），**收名先于开工**。
 
+> **§163 自纠**：上述首句「经我逐条回读实物后采纳」**言过其实**——实为大部分回读，但至少一条
+> （「星图 imageGen 域写生图/视频 tab 不实」）是拿专工转述直接入库的假勘误，于 §163.7 被自己推翻。
+> 同时「三义」计数不全，实物为**四义**（漏 `EmbeddedVideoView` 内嵌播放），详见 CHAIN_AUDIT_B §3.2。
+
 ### 162.6 门禁与账
 
 - tsc 0 错；eslint 0 error（30 既有 warning）；prettier 绿；**jest 350 套 / 4854 passed + 2 skipped / 318 快照**；`check_icons` exit 0（含两次负向测试）。工作区 dirty=0；**未 push**。
 - 本窗提交：W6（`9338a23` 代码 / `e57d7c2` 文档 / `4d5d085` 账目更正）+ W7（代码与文档各一笔，精确 pathspec）。
 - 真机目视全部挂账（DEV_BACKLOG 项 31，已含图标六项与暗色模式），装机窗集中做——**本窗 `adb devices` 为空，未假装看过**。
 - 附带勘误：`POCKETPAL_IMAGE_GEN_UPGRADE_PLAN.md` 四处「兑底」→「兜底」（历窗遗留错字，非本波引入，如实标注）。
+
+## §163 W8a：`video` 词面收名 + 四条裁定落地 + 自纠一处假勘误（2026-09-08）
+
+大王令「依次执行，按照最佳实践」——上轮四条待裁定不再反问，按最佳实践自行裁定并逐条留痕（CHAIN_AUDIT_B §九）。
+
+### 163.1 取证先行：不拿推测定命名范围
+
+探针 `.tmp/probe_video_names_163.js` 扫描 1762 文件，`video` 命中 **628 处**，按实物归为**四义**：
+① `VideoTaskService*`（夜间长任务保活）② 摄像头围观 pal（`VideoPalScreen`/`hasVideoCapability`/`capabilities.video`）
+③ 消息内嵌视频播放（`EmbeddedVideoView`）④ 文生视频（尚无符号）。**初稿只数到三义**，漏了③——
+因为上一轮我只按专工给的清单看，没自己把全仓扫一遍。真歧义只有①（占了最像“生视频”的词面）。
+
+### 163.2 关键判断：改名排在能验它的窗口，而不是本窗盲改
+
+①的改名是**跨端标识**：Kotlin 三类 + `AndroidManifest` 注册 + `@ReactModule` 名 + `NativeModules` 取值键
++ 错误码 regex + 通知渠道 id。它的**正确性只有真机能验**——漏一处服务就静默失效、夜间长跑被杀，
+而 `tsc`/`jest` 全绿也会照样漏过去。本窗 `adb devices` 为空，于是拆为：**W8a**（本窗，词面治理，
+零行为风险）+ **W8b**（装机窗，符号改名，与真机验证同窗）。不为“本轮有产出”而交付未验改动。
+
+### 163.3 W8a 落地的四处
+
+- **星图 v2.5→2.6**（**仅磁盘留档**：`docs/POCKETPAL_STARMAP_DOMAINS.md` 被 `.gitignore:194` 显式屏蔽，
+  与 INDEX.md 同策略，不用 `-f` 强推；找它的变更历史去 git 里查是查不到的）：
+  新增「词面消歧登记」节（四义 × 归属域 × 现用符号 × 词面约束），本仓首个此类条目。
+  规则：**一个词只能被一个域拥有**，新增多义词先登记再落码。为④预留 `genVideo` / `videoGen*` /
+  `kind:'video'`，明禁 `VideoTask*` 前缀；`capabilities.video` 标为上游数据契约永不改名。
+- **代码**：只在唯一会被误读的位点加名实指针注释（`imageGenStore.ts` 的 `NativeModules` 取值处），
+  native 一行未动。
+- **ONDEVICE_VIDEO v1.2**：勘误「输出 = 一行开关」（muxer 实体在未编译的 `examples/common/media_io.cpp`，
+  需链 libwebm 并纳入 app 编译面）；状态从「观望不立项」改「已转 P2 主线」；同时明写「本文保留作
+  历史评估快照，裁定以 CHAIN_AUDIT_B 与 DEV_BACKLOG 为准」——**改结论不抹历史**。
+- **台账**：项 4 作废（改片段粒度重跑）、项 5 降条件触发（先验 `te=disk`）、项 7 前置改 W10→W12、
+  项 32 拆 W8a/W8b 并写明真机依赖。
+
+### 163.4 容器语言的裁定：实读后发现“二选一”是个伪命题
+
+上轮我提问「淡底 vs 实心+反白 全局二选一」。实读三处实物（`SendButton` = primary 实心 + `onPrimary`
+图标；`PhoneCallOverlay.holdButton/hangupButton` = 域彩/语义色 12% 淡底 + 1px 同色描边；
+`HeaderRight.compactBtn` + `ChatHeader` 电话钮 = 透明裸触区）——**现状本就按角色分了三层且均合规**，
+缺的只是一条通则。所以正确处置是写进 DESIGN_SPEC v3.28（零代码改动），而不是“选一个”——
+真去二选一反而会把合规的 CTA 反白改掉。**先验证问题是否存在，再回答它。**
+
+### 163.5 自纠：本卷 §162.5 有一句不实陈述
+
+§162.5 写「两路只读专工回报经我逐条回读实物后采纳」——**言过其实**。本轮要执行其中一条勘误时
+实读 `STARMAP_DOMAINS:25`，发现星图本就写「生图/音频工坊」，与实物一致：所谓「星图写生图/视频
+ tab 不实」是我拿专工转述**未回读就写进了审计卷**的假勘误（如果没被拦住，下一个窗口会去“修”
+一个不存在的问题）。处置：不静默删错——CHAIN_AUDIT_B §3.0 保留撤回记录、新增 N23、星图勘误记录
+入册、§162.5 就地标自纠。纪律：**引用型主张（包括专工给的 file:line）未回读一律降格为“待验”**。
+
+### 163.6 门禁与账
+
+- 全量：tsc 0 错；eslint 0 error；prettier 绿；`check_icons` exit 0；audit:native-mocks / async-timers /
+  compass / guard:worktree / l10n:validate 均 exit 0；**jest 350 套 / 4854 passed + 2 skipped / 318 快照**。
+- 本窗提交：W8a 代码与文档各一笔（精确 pathspec）；**未 push**（大王本轮未说推送）。
+- W10 未盲开的原因：需 native 构建与真机 `sd_progress_cb` 心跳取证；按 §163.2 同一逻辑，
+  不在无设备窗交付只能真机验的改动。
+- 遗留账：项 31（真机目视六项）、项 32/W8b（改名）、项 33（尺寸裸数字）、项 34（白底遮罩层暗色债）。
