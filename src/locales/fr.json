@@ -90,7 +90,9 @@
     "contextAutoCompactionDescription": "Compresser automatiquement les anciens messages avant l'envoi quand le budget dépasse la limite (désactivé = manuel uniquement)."
   },
   "memory": {
-    "shortWarning": "Alerte mémoire"
+    "shortWarning": "Alerte mémoire",
+    "checkFailedShort": "Mémoire inconnue",
+    "checkFailed": "Impossible de vérifier la mémoire disponible sur cet appareil. Ce modèle peut tout de même manquer de mémoire."
   },
   "storage": {
     "checkFailed": "Échec de vérification du stockage",

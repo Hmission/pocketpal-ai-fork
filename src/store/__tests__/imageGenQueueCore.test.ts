@@ -258,4 +258,51 @@ describe('ImageGenQueueCore', () => {
     expect(core.state).toBe('idle');
     expect(await mem.loadAll()).toHaveLength(0);
   });
+
+  /**
+   * 2026-09-07 全量排查收口（W1）：stop() 旧写法是 `while (running) await
+   * setTimeout(50)` 忙等——既费 CPU，又把「native 不返回」变成永久挂起的
+   * 静默故障。现改由执行器 finally 唤醒。这两例钉的是「何时才允许说已停止」。
+   */
+  it('stop() 由执行器出口唤醒：在途抽未返回前不得假称已停止', async () => {
+    let release!: () => void;
+    const core = new ImageGenQueueCore(new MemoryPersistence(), async () => {
+      await new Promise<void>(r => {
+        release = r;
+      });
+      return true;
+    });
+    core.enqueue(makeSnapshot());
+    const startP = core.start();
+    await sleep(5);
+    expect(core.state).toBe('running');
+
+    const stopP = core.stop();
+    let stopSettled = false;
+    void stopP.then(() => {
+      stopSettled = true;
+    });
+    await sleep(10);
+    expect(core.state).toBe('stopping');
+    expect(stopSettled).toBe(false); // 引擎还没交出控制权，不能说「已停止」
+
+    release();
+    await stopP;
+    expect(stopSettled).toBe(true);
+    expect(core.state).toBe('planning');
+    await startP;
+  });
+
+  it('执行器已结束后调 stop()：立即返回，不留永不唤醒的 waiter', async () => {
+    const core = new ImageGenQueueCore(
+      new MemoryPersistence(),
+      async () => true,
+    );
+    core.enqueue(makeSnapshot());
+    await core.start();
+    expect(core.state).toBe('done');
+    // 走到 stop() 的 `!running` 前置分支；若此处去登记 waiter 就永远没人唤醒。
+    await core.stop();
+    expect(core.state).toBe('done');
+  });
 });

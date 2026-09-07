@@ -196,6 +196,8 @@
     "lowMemory": "内存不足",
     "memoryDetailMessage": "此模型需要约 {{needed}}，但估计可用内存仅为约 {{available}}。随着您使用应用，估算将更加准确。",
     "estimatedMemory": "预估内存: 约 {{size}}",
+    "checkFailedShort": "内存未确认",
+    "checkFailed": "无法确认本机可用内存，该模型仍有可能出现内存不足。",
     "alerts": {
       "memoryWarningTitle": "内存警告",
       "memoryWarningMessage": "此模型可能超过可用内存，这可能导致不稳定；继续加载吗？",

@@ -4,8 +4,9 @@
  * 双能力收编（Screen 层零直连原生）：
  *  - 转写（ASR）：transcribeTask 任务化入 imageGenStore.history（kind='transcribe'，
  *    与生图/反推任务同画廊同管理：running/success/failed + 持久化）
- *  - 朗读（TTS）：复用既有 TTSStore（isTTSAvailable 门 + 三引擎 + 流式），
- *    此 store 只做视图编排（语音选择/试听/朗读/状态镜像）
+ *  - 朗读（TTS）：产物生成走 ttsStore 生成链；本 store 只记 voiceId 与任务镜像。
+ *    「能不能播」的判定**不在本层**（旧写法自拼一套可用性门，与 store 不同源；
+ *    且那几个方法全仓零调用——已随死代码删除，详见 AUDIO_UI_SPEC §8）。
  *
  * 调度：音频模型 <400MB 不入 engineMutex 互斥矩阵（可共存）；ASR 按需加载。
  */
@@ -63,8 +64,6 @@ class AudioStore {
   /** 最近一次转写/生成失败原因（DRC 取证与诊断） */
   asrError: string | null = null;
   ttsError: string | null = null;
-  /** 朗读中文本（结果区展示） */
-  speakingText = '';
   /** 次级分段（v1.11：吸底条与 tab 共享，状态入 store——对齐生图 GenActionBar 编排模式） */
   audioSeg: AudioSeg = 'transcribe';
   /** 生成输入文本（吸底条禁用判定 + composer 共享） */
@@ -278,10 +277,6 @@ class AudioStore {
     return getAllEngines();
   }
 
-  get isTTSAvailable() {
-    return ttsStore.isTTSAvailable;
-  }
-
   get playbackState() {
     return ttsStore.playbackState;
   }
@@ -294,43 +289,13 @@ class AudioStore {
     return ttsStore.autoSpeakEnabled;
   }
 
-  /** 语音清单（按引擎分组，供语音选择行；引擎就绪才拉取） */
-  async loadVoices(): Promise<Voice[]> {
-    const all: Voice[] = [];
-    for (const e of this.engines) {
-      try {
-        if (await e.isInstalled()) {
-          all.push(...(await e.getVoices()));
-        }
-      } catch {
-        // 单个引擎读取失败跳过（不阻断整体语音清单）
-      }
-    }
-    return all;
-  }
-
-  async speak(text: string, voice: Voice | null): Promise<void> {
-    if (!text.trim() || !this.isTTSAvailable) {
-      return;
-    }
-    runInAction(() => {
-      this.speakingText = text.trim();
-    });
-    await ttsStore.play(`audio:${Date.now()}`, text.trim(), {
-      voiceOverride: voice ?? undefined,
-    });
-  }
-
-  async previewVoice(voice: Voice): Promise<void> {
-    await ttsStore.preview(voice);
-  }
-
-  async stopSpeak(): Promise<void> {
-    await ttsStore.stop();
-    runInAction(() => {
-      this.speakingText = '';
-    });
-  }
+  /**
+   * 语音清单拉取（loadVoices）/ 朗读（speak）/ 试听（previewVoice）/ 停朗读（stopSpeak）
+   * 已于 2026-09-07 全量排查中删除：四者全仓**零调用者**（精确 grep 取证），
+   * UI 侧语音清单与试听均直接走 ttsStore。其中 speak() 还自带一套
+   * `isTTSAvailable` 可用性判定（只覆盖 voiceBlock 三因子之一），是播报门
+   * 合并（W1a）后残存的**另一套口径**——删而非改，不留第二判定源。
+   */
 
   /**
    * 生成音频文件任务（kind='tts' 入画廊，与转写同构：running/success/failed）。

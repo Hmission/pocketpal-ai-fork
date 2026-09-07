@@ -193,6 +193,8 @@
     "lowMemory": "Pouca memória",
     "memoryDetailMessage": "Este modelo precisa de ~{{needed}}, mas apenas ~{{available}} está estimado como utilizável. As estimativas melhoram conforme usa a app.",
     "estimatedMemory": "Memória estimada: ~{{size}}",
+    "checkFailedShort": "Memória desconhecida",
+    "checkFailed": "Não foi possível verificar a memória disponível neste dispositivo. Este modelo ainda pode ficar sem memória.",
     "alerts": {
       "memoryWarningTitle": "Aviso de Memória",
       "memoryWarningMessage": "Este modelo pode exceder a memória disponível, o que pode causar instabilidade. Continuar a carregar?",

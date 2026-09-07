@@ -18,5 +18,9 @@
     "copiedSaved": "Kopeeritud ja salvestatud {path}",
     "copiedFallback": "Kopeeritud lõikelauale (salvestamine ebaõnnestus)",
     "chatTitle": "Vestluse viga"
+  },
+  "memory": {
+    "checkFailedShort": "Mälu teadmata",
+    "checkFailed": "Selles seadmes saadaolevat mälu ei õnnestunud kontrollida. Mudel võib ikka mälu täis saada."
   }
 }

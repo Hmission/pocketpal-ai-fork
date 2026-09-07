@@ -193,6 +193,8 @@
     "lowMemory": "メモリ不足",
     "memoryDetailMessage": "このモデルは~{{needed}}必要ですが、使用可能なメモリは~{{available}}と推定されています。アプリを使用するにつれて推定精度が向上します。",
     "estimatedMemory": "推定メモリ: ~{{size}}",
+    "checkFailedShort": "メモリ未確認",
+    "checkFailed": "この端末で利用可能なメモリを確認できませんでした。このモデルはそれでもメモリ不足になる可能性があります。",
     "alerts": {
       "memoryWarningTitle": "メモリ警告",
       "memoryWarningMessage": "このモデルは利用可能なメモリを超える可能性があり、不安定になる可能性があります、読み込みを続行しますか？",

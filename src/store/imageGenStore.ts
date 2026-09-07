@@ -70,6 +70,13 @@ import NativeHardwareInfo, {PerfSnapshot} from '../specs/NativeHardwareInfo';
 
 const ImageGen = NativeModules.ImageGen;
 const HISTORY_KEY = '@imagegen_history_v1';
+/**
+ * 队列停止确认上限：native cancel 是原子置位（不阻塞），正常秒级退出；
+ * 越过此限即引擎真无响应——**不伪造已停止**，而是显式报错（IMAGEGEN_QUEUE_SPEC §八）。
+ */
+const STOP_CONFIRM_TIMEOUT_MS = 15_000;
+/** 采样超时（心跳停）统一文案：多处引用，不各自拼一份同义字符串。 */
+const GEN_HANG_ERROR = '采样超时（引擎无响应），请重启应用后重试';
 /** B28：B27 时代 mobx-persist-store 存储 key（存量迁移源） */
 const B28_STORAGE_KEY = 'ImageGenStore';
 
@@ -151,41 +158,46 @@ class ImageGenStore {
   perf: PerfSnapshot | null = null;
   /** ADR-0008 跑分面板：PSS 曲线历史（最近 60 点，1 分钟窗口） */
   perfHistory: PerfSnapshot[] = [];
-  /** 夜间长任务模式：reaction disposer（loading/generating 翻转 → 注册表 + 前台服务） */
+  /** 夜间长任务模式：reaction disposer（生成/队列翻转 → 注册表 + 前台服务） */
   private nightTaskReaction: (() => void) | null = null;
+  /** 本域在 nightTaskRegistry 持有的票据（null=未持有）：end 必须凭票释放 */
+  private nightTicket: number | null = null;
 
-  // ===== 任务购物车（IMAGEGEN_QUEUE_SPEC §三-§六）：队列核心 + MobX 镜像 =====
+  // ===== 任务购物车（IMAGEGEN_QUEUE_SPEC §三-§六）：队列核心 + computed 代理 =====
   /** 队列核心（纯逻辑；repository + runDraw 依赖注入，core 保持可测） */
   readonly queueCore = new ImageGenQueueCore(
     imageGenQueueRepository,
-    async snapshot => {
-      try {
-        return (await this.runGenTask(snapshot)) != null;
-      } finally {
-        // 每抽完成后同步镜像（执行中途 UI 可见进度/计数）
-        runInAction(() => this.syncQueueMirror());
-      }
-    },
-    {
-      // 实机修正（2026-08-27 平板）：core 计数在 runDraw 返回后发生——
-      // 仅 finally 镜像会停滞在起点；onTick（条目切换/每抽计数后）补上同步点
-      onTick: () => runInAction(() => this.syncQueueMirror()),
-    },
+    async snapshot => (await this.runGenTask(snapshot)) != null,
   );
-  /** 队列状态镜像（MobX 可观察；UI 全部读镜像，core 内部状态不经 observer） */
-  queueState: QueueState = 'idle';
-  queuePosition = -1;
-  /** 队列条目镜像（浅拷贝数组；每次 mirror 重建引用与对象，observable 可跟踪） */
-  queueItems: QueueItem[] = [];
-  queueItemsCount = 0;
-  queueTotalDraws = 0;
-  queueDrawsDone = 0;
-  queueDrawsFailed = 0;
-  queueSummary: {success: number; failed: number; total: number} = {
-    success: 0,
-    failed: 0,
-    total: 0,
-  };
+  /**
+   * 队列对外只读接口：全部是 computed 代理，**不存副本**（W2 单状态机收口）。
+   *
+   * 旧写法是一组镜像字段 + syncQueueMirror() 在多个动作出口手工拷贝：
+   * 镜像只在同步点刷新——存在同步窗，且消费方选源不一（同一次 stopQueue 内
+   * 一处读镜像、一处读 core）即真值竞态。core 已 observable，改 computed 后
+   * UI 代码属性名不变、无同步窗、无双源。queueSummary 因零消费者直接删除。
+   */
+  get queueState(): QueueState {
+    return this.queueCore.state;
+  }
+  get queuePosition(): number {
+    return this.queueCore.position;
+  }
+  get queueItems(): QueueItem[] {
+    return this.queueCore.items;
+  }
+  get queueItemsCount(): number {
+    return this.queueCore.items.length;
+  }
+  get queueTotalDraws(): number {
+    return this.queueCore.totalDraws;
+  }
+  get queueDrawsDone(): number {
+    return this.queueCore.drawsDone;
+  }
+  get queueDrawsFailed(): number {
+    return this.queueCore.drawsFailed;
+  }
 
   constructor() {
     makeAutoObservable(this);
@@ -223,8 +235,8 @@ class ImageGenStore {
       () =>
         this.loading ||
         this.generating ||
-        this.queueState === 'running' ||
-        this.queueState === 'stopping',
+        this.queueCore.state === 'running' ||
+        this.queueCore.state === 'stopping',
       busy => {
         // ADR-0008 跑分面板：1Hz 轮询随 loading/generating 翻转自动启停。
         // reaction 一处覆盖全部生图入口——含 DreamLite generateDreamLiteEntry/
@@ -234,12 +246,19 @@ class ImageGenStore {
         // 驻留态生成从不触发轮询 → perf 恒 null）。
         this.syncPoll();
         if (busy) {
-          nightTaskRegistry.begin();
-          VideoTaskService?.start?.().catch(() => {});
-          // 电池/Doze 豁免引导（§7.1 策略 3）：未豁免时发起系统弹窗（进程内一次，不阻断生图）
-          requestBatteryOptOutIfNeeded();
-        } else if (nightTaskRegistry.isBusy) {
-          nightTaskRegistry.end();
+          // begin 只在「未持有票据」时发起：reaction 会因多个字段翻转重复进入。
+          // 旧 API 是裸 begin()/end()，计数不记归属——**任何域的 end() 都能扣掉
+          // 别域的保活额度**（夜间队列长跑时结束一次通话，前台服务就被停掉、
+          // wakelock 被释放，息屏即被杀——ONDEVICE_VIDEO §7.1 要根治的反例）。
+          if (this.nightTicket === null) {
+            this.nightTicket = nightTaskRegistry.begin('imageGen');
+            VideoTaskService?.start?.().catch(() => {});
+            // 电池/Doze 豁免引导（§7.1 策略 3）：未豁免时发起系统弹窗（进程内一次，不阻断生图）
+            requestBatteryOptOutIfNeeded();
+          }
+        } else if (this.nightTicket !== null) {
+          nightTaskRegistry.end(this.nightTicket);
+          this.nightTicket = null;
           if (!nightTaskRegistry.isBusy) {
             VideoTaskService?.stop?.().catch(() => {});
           }
@@ -343,7 +362,13 @@ class ImageGenStore {
   /** 进度快照轮询（推拉反转：1Hz 单通道 pull，替代事件风暴）——走 safeInterval 收口 */
   private stopPoll: (() => void) | null = null;
   private syncPoll() {
-    const active = this.loading || this.generating;
+    // 队列跑批也算活跃：旧判据只看 loading/generating，队列执行期 reaction
+    // 触发本函数时会把轮询关掉——表现为队列长跑中跑分面板恒 --。
+    const active =
+      this.loading ||
+      this.generating ||
+      this.queueCore.state === 'running' ||
+      this.queueCore.state === 'stopping';
     if (active && !this.stopPoll) {
       this.stopPoll = safeInterval(
         'imagegen_poll',
@@ -403,12 +428,23 @@ class ImageGenStore {
       ) {
         runInAction(() => {
           this.generating = false;
-          this.error = '采样超时（引擎无响应），请重启应用后重试';
+          this.error = GEN_HANG_ERROR;
         });
-        engineStatus.setError(
-          'image',
-          '采样超时（引擎无响应），请重启应用后重试',
-        );
+        engineStatus.setError('image', GEN_HANG_ERROR);
+        // 超时不能只改 UI：必须真的中断 native。否则在途 await 永挂 → 队列
+        // stop() 永不返回、任务卡永停 running、nightTask 恒 busy——旧写法正是
+        // 在这里直接 return，把「检测到 hang」变成了「假装处理过」。
+        // cancel 置位后 generate 干净返回 null，runGenTask 自然走 failTask 收口。
+        void ImageGen.cancelTxt2img?.().catch((e: unknown) => {
+          console.error('[ImageGen] cancel after hang failed:', e);
+          const msg = `${GEN_HANG_ERROR}（中断亦失败：${
+            e instanceof Error ? e.message : String(e)
+          }）`;
+          runInAction(() => {
+            this.error = msg;
+          });
+          engineStatus.setError('image', msg);
+        });
         this.syncPoll();
         return;
       }
@@ -1341,22 +1377,9 @@ class ImageGenStore {
 
   // ===== 任务购物车：执行器接线（IMAGEGEN_QUEUE_SPEC §六）=====
 
-  /** core 内部状态 → MobX 镜像（UI 全部读镜像） */
-  private syncQueueMirror(): void {
-    this.queueState = this.queueCore.state;
-    this.queuePosition = this.queueCore.position;
-    this.queueItems = this.queueCore.items.map(it => ({...it}));
-    this.queueItemsCount = this.queueCore.items.length;
-    this.queueTotalDraws = this.queueCore.totalDraws;
-    this.queueDrawsDone = this.queueCore.drawsDone;
-    this.queueDrawsFailed = this.queueCore.drawsFailed;
-    this.queueSummary = this.queueCore.summary;
-  }
-
-  /** app 启动（生图页 mount）：水合队列 → 镜像（state 不持久化，回 planning） */
+  /** app 启动（生图页 mount）：水合队列（state 不持久化，core 统一回 planning） */
   async initQueue(): Promise<void> {
     await this.queueCore.hydrate();
-    runInAction(() => this.syncQueueMirror());
   }
 
   /** 入队（++ 按钮）：规划期可入；执行期拒绝（锁定即锁定） */
@@ -1366,7 +1389,6 @@ class ImageGenStore {
     }
     runInAction(() => {
       this.queueCore.enqueue(snapshot);
-      this.syncQueueMirror();
     });
   }
 
@@ -1375,23 +1397,17 @@ class ImageGenStore {
     if (this.queueState === 'running' || this.queueState === 'stopping') {
       return false;
     }
-    const ok = this.queueCore.updateItem(id, snapshot);
-    if (ok) {
-      runInAction(() => this.syncQueueMirror());
-    }
-    return ok;
+    return this.queueCore.updateItem(id, snapshot);
   }
 
   /** 删除队列条目 */
   async removeQueueItem(id: string): Promise<void> {
     await this.queueCore.removeItem(id);
-    runInAction(() => this.syncQueueMirror());
   }
 
   /** 清空队列（全部条目） */
   async clearQueue(): Promise<void> {
     await this.queueCore.clear();
-    runInAction(() => this.syncQueueMirror());
   }
 
   /** 开始执行：串行消费全部 pending 条目（防重入；单通道：loading/generating 中拒绝） */
@@ -1399,29 +1415,53 @@ class ImageGenStore {
     if (this.loading || this.generating) {
       return;
     }
-    const runP = this.queueCore.start();
-    runInAction(() => this.syncQueueMirror()); // state 同步段已置 running
-    await runP;
-    runInAction(() => this.syncQueueMirror()); // done / 回 planning
+    // core 自身 observable：state 变更即时可被 observer 跟踪，无需手动镜像。
+    await this.queueCore.start();
   }
 
-  /** 停止：置位停止请求 → 在途抽被 native cancel 返回 → 回 planning（幂等） */
+  /** 停止：置位停止请求 → native cancel（**等结果**）→ 执行器退出 → 回 planning。
+   *
+   * 旧写法三重吞：`void ImageGen.cancelTxt2img?.().catch?.(() => {})` + 外层 try
+   * 仅 warn——cancel 静默失败时用户按了停止什么都没发生，且永远不被告知。
+   * 现在：cancel 结果要拿、失败要说、执行器退出不确认到位就如实说「未确认」。 */
   async stopQueue(): Promise<void> {
     if (this.queueCore.state !== 'running') {
       return;
     }
-    // 停止=显式中断当前抽（IMAGEGEN_QUEUE_SPEC §八）：native cancel 是原子置位
-    // （不阻塞），采样/VAE 解码循环消费标志后干净退出 → generate 返回 null →
-    // core 见 stopRequested 不计抽数。fire-and-forget，失败不阻断停止流程。
+    let cancelError: string | null = null;
     try {
-      void ImageGen.cancelTxt2img?.().catch?.(() => {});
+      await ImageGen.cancelTxt2img?.();
     } catch (e) {
-      console.warn('[ImageGenQueue] cancelTxt2img failed:', e);
+      cancelError = e instanceof Error ? e.message : String(e);
+      console.error('[ImageGenQueue] cancelTxt2img failed:', e);
     }
     const stopP = this.queueCore.stop();
-    runInAction(() => this.syncQueueMirror()); // stopping
-    await stopP;
-    runInAction(() => this.syncQueueMirror()); // planning
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const settled = await Promise.race([
+      stopP.then(() => true),
+      new Promise<boolean>(resolve => {
+        timer = setTimeout(() => resolve(false), STOP_CONFIRM_TIMEOUT_MS);
+      }),
+    ]);
+    clearTimeout(timer);
+    if (settled) {
+      if (cancelError) {
+        runInAction(() => {
+          this.error = `停止已生效，但中断请求曾失败（${cancelError}）`;
+        });
+      }
+      return;
+    }
+    // 未确认：状态留在 stopping 是诚实的（它真的还卡着）——不伪造已回 planning，
+    // 而是把原因摊开：唯一出口是重启应用，而不是静默把面板禁住。
+    const msg = cancelError
+      ? `停止未确认：中断请求失败（${cancelError}），需重启应用`
+      : '停止未确认：引擎未在限定时间内响应中断，需重启应用';
+    runInAction(() => {
+      this.error = msg;
+    });
+    engineStatus.setError('image', msg);
+    console.error('[ImageGenQueue] stop not confirmed:', msg);
   }
 
   /**

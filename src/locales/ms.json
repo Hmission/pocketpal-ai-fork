@@ -193,6 +193,8 @@
     "lowMemory": "Memori rendah",
     "memoryDetailMessage": "Model ini memerlukan ~{{needed}}, tetapi hanya ~{{available}} dianggarkan boleh digunakan. Anggaran akan menjadi lebih tepat dengan penggunaan aplikasi.",
     "estimatedMemory": "Anggaran memori: ~{{size}}",
+    "checkFailedShort": "Memori tidak diketahui",
+    "checkFailed": "Gagal mengesahkan memori yang tersedia pada peranti ini. Model ini mungkin masih kehabisan memori.",
     "alerts": {
       "memoryWarningTitle": "Amaran Memori",
       "memoryWarningMessage": "Model ini mungkin melebihi memori yang tersedia, yang boleh menyebabkan ketidakstabilan. Teruskan memuat?",

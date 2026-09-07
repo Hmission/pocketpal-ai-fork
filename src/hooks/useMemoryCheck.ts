@@ -126,7 +126,8 @@ export const useMemoryCheck = (
   const [memoryWarning, setMemoryWarning] = useState('');
   const [shortMemoryWarning, setShortMemoryWarning] = useState('');
   const [multimodalWarning, setMultimodalWarning] = useState('');
-  const [fitStatus, setFitStatus] = useState<MemoryFitStatus>('fits');
+  // 初值必须是 unknown：在异步检查完成前写 'fits' 等于「还没查就先保证装得下」。
+  const [fitStatus, setFitStatus] = useState<MemoryFitStatus>('unknown');
 
   // Read MobX observables during render so changes trigger re-render in observer components
   // This also creates a stable dependency for useEffect
@@ -193,12 +194,15 @@ export const useMemoryCheck = (
           }
         }
       } catch (error) {
-        // Clear all warnings when there's an error
-        setMemoryWarning('');
-        setShortMemoryWarning('');
-        setMultimodalWarning('');
-        setFitStatus('fits');
+        // 检查失败 不能 被当成「内存充足」：旧写法在这里把所有警告清空并写
+        // `fitStatus='fits'`——这是 fail-open 编造假状态：用户据此继续加载，
+        // 真正 OOM/闪退时没有任何先前提示。也不能反向冒充「内存不足」（
+        // 会无端拦住跑得动的模型）——唯一诚实的出口是说清楚「没查成」。
         console.error('Memory check failed:', error);
+        setMemoryWarning(l10n.memory.checkFailed);
+        setShortMemoryWarning(l10n.memory.checkFailedShort);
+        setMultimodalWarning('');
+        setFitStatus('unknown');
       }
     };
 

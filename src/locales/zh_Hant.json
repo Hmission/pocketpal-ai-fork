@@ -905,6 +905,8 @@
     "lowMemory": "低記憶體",
     "memoryDetailMessage": "這個模型需要大約 {{needed}}，但目前估計可用的只有大約 {{available}}。 隨著您使用應用程式，估算值會更精確。",
     "estimatedMemory": "預估記憶體：大約 {{size}}",
+    "checkFailedShort": "記憶體未確認",
+    "checkFailed": "無法確認本機可用記憶體，該模型仍有可能出現記憶體不足。",
     "alerts": {
       "memoryWarningTitle": "記憶體警告",
       "memoryWarningMessage": "這個模型可能會超過可用記憶體，可能導致不穩定。是否繼續載入？",

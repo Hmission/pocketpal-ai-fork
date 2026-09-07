@@ -173,6 +173,8 @@
     "lowMemory": "Speicher niedrig",
     "memoryDetailMessage": "Dieses Modell benötigt ~{{needed}}, aber nur ~{{available}} sind ungefähr nutzbar. Schätzungen verbessern sich beim nutzen der App.",
     "estimatedMemory": "Geschätzter Speicher: ~{{size}}",
+    "checkFailedShort": "Speicher unbekannt",
+    "checkFailed": "Der verfügbare Speicher konnte nicht ermittelt werden. Dieses Modell könnte dennoch den Speicher überlasten.",
     "alerts": {
       "memoryWarningTitle": "Speicherwarnung",
       "memoryWarningMessage": "Dieses Modell könnte den verfügbaren Speicher überschreiten, was zu Instabilität führen kann. Trotzdem laden?",

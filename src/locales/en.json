@@ -196,6 +196,8 @@
     "lowMemory": "Low memory",
     "memoryDetailMessage": "This model needs ~{{needed}} but only ~{{available}} is estimated as usable. Estimates improve as you use the app.",
     "estimatedMemory": "Estimated memory: ~{{size}}",
+    "checkFailedShort": "Memory unknown",
+    "checkFailed": "Could not verify the memory available on this device. This model may still run out of memory.",
     "alerts": {
       "memoryWarningTitle": "Memory Warning",
       "memoryWarningMessage": "This model may exceed available memory, which could cause instability. Continue loading?",

@@ -76,5 +76,9 @@
     "copiedSaved": "Copiato e salvato in {path}",
     "copiedFallback": "Copiato negli appunti (salvataggio non riuscito)",
     "chatTitle": "Errore conversazione"
+  },
+  "memory": {
+    "checkFailedShort": "Memoria sconosciuta",
+    "checkFailed": "Impossibile verificare la memoria disponibile su questo dispositivo. Il modello potrebbe comunque esaurire la memoria."
   }
 }

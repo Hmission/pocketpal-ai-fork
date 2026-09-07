@@ -177,7 +177,7 @@ describe('useMemoryCheck', () => {
     expect(result2.current.memoryWarning).toContain('needs');
   });
 
-  it('handles errors gracefully when DeviceInfo.getTotalMemory fails on cold start', async () => {
+  it('内存检查失败：必须显式报「未确认」，不得清空警告谎报装得下', async () => {
     // Clear calibration data to force cold start path
     runInAction(() => {
       modelStore.availableMemoryCeiling = undefined;
@@ -203,13 +203,19 @@ describe('useMemoryCheck', () => {
       // Ignoring timeout
     }
 
-    // Ensure no warnings are shown when there's an error
+    // 检查失败必须**可见**。旧断言把 fail-open 当成了规格（警告全清空 + fitStatus
+    // ='fits' = 把「没查成」说成「装得下」），用户据此继续加载就可能 OOM/闪退且
+    // 没有任何先前提示。现钉住三件事：报未确认、不得为 fits、也不得反向冒充不足。
+    // 注：组件内 l10n 来自 useContext(L10nContext)（默认 en），而本文件 import 的
+    // l10n 是语言映射表 {en, zh, …}——所以取文案必须走 l10n.en.memory.*。
     expect(result.current).toEqual({
-      memoryWarning: '',
-      shortMemoryWarning: '',
+      memoryWarning: l10n.en.memory.checkFailed,
+      shortMemoryWarning: l10n.en.memory.checkFailedShort,
       multimodalWarning: '',
-      fitStatus: 'fits',
+      fitStatus: 'unknown',
     });
+    expect(result.current.fitStatus).not.toBe('fits');
+    expect(result.current.memoryWarning).not.toBe('');
 
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       'Memory check failed:',

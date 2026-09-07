@@ -304,11 +304,13 @@ export const ChatScreen: React.FC = observer(() => {
     }
     setInCall(true);
     activateKeepAwake();
-    nightTaskRegistry.begin();
+    // 通话也持一张自己的夜间保活票据（W2）：结束时凭票释放——旧写法裸 end()
+    // 会把生图队列的保活额度一起扣掉（夜间长跑中挂断一次即失保）。
+    const nightTicket = nightTaskRegistry.begin('phoneCall');
     NativeModules.VideoTaskService?.start?.().catch(() => {});
     return () => {
       setInCall(false);
-      nightTaskRegistry.end();
+      nightTaskRegistry.end(nightTicket);
       if (!nightTaskRegistry.isBusy) {
         NativeModules.VideoTaskService?.stop?.().catch(() => {});
       }

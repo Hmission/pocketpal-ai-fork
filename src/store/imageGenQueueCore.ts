@@ -1,13 +1,20 @@
 /**
  * imageGenQueueCore — 生图队列核心（任务购物车，IMAGEGEN_QUEUE_SPEC §四-§六）
  *
- * 纯逻辑、零 RN 依赖：状态机 / 入队幂等累加 / 编辑 / 删除 / 清空 /
- * 串行执行器（依赖注入 runDraw）。持久化经 QueuePersistence 接口注入，
- * 测试用内存实现即可全覆盖；真实实现 = imageGenQueueRepository +
- * imageGenStore.runGenTask（P0 下单模型执行，P1 上跨模型/cancel）。
+ * 状态机 / 入队幂等累加 / 编辑 / 删除 / 清空 / 串行执行器（依赖注入 runDraw）。
+ * 持久化经 QueuePersistence 接口注入，测试用内存实现即可全覆盖；真实实现 =
+ * imageGenQueueRepository + imageGenStore.runGenTask。
+ *
+ * 2026-09-07 单状态机收口（W2）：本类自身 observable，**队列状态的唯一真值源就是这里**。
+ * 旧做法是在 imageGenStore 里放一组 queueState/queueItems 等镜像字段，靠
+ * syncQueueMirror 在多个出口手工拷贝——镜像只在动作出口刷新，存在同步窗，
+ * 且消费方选源不一（同一次 stopQueue 里一处读镜像、一处读 core），即真值竞态。
+ * 现在 store 侧只能有 computed getter 直读本对象，不得再存副本。
  *
  * 状态机：idle(空) → planning(可编辑) → running(锁定) → stopping → planning | done
  */
+
+import {computed, makeObservable, observable} from 'mobx';
 
 export interface GenParamsSnapshot {
   prompt: string;
@@ -68,13 +75,6 @@ export type RunDrawFn = (
   queueItemId: string,
 ) => Promise<boolean>;
 
-/** 执行钩子（UI 镜像同步点——2026-08-27 平板实机修正：
- *  镜像曾在每抽计数后停滞，面板进度不刷新） */
-export interface QueueHooks {
-  /** 条目切换 / 每抽计数后回调（store 注入 → syncQueueMirror） */
-  onTick?: () => void;
-}
-
 const snapshotKey = (s: GenParamsSnapshot): string =>
   // 去重 key 归一 seed=0（“每次随机”语义）：多抽必须累加而非拆条。
   // 实机验收（2026-08-27 平板）修正：seed 随机曾导致同参数重复点击建独立条目。
@@ -92,12 +92,28 @@ export class ImageGenQueueCore {
   /** 执行中停止请求（stop 置位，执行器每抽检查） */
   private stopRequested = false;
   private running = false;
+  /** 执行器出口通知点（stop 等它，不轮询）：由 start() 的 finally 唤醒 */
+  private stopWaiter: (() => void) | null = null;
 
   constructor(
     private persistence: QueuePersistence,
     private runDraw: RunDrawFn,
-    private hooks: QueueHooks = {},
-  ) {}
+  ) {
+    // 只对外契约可观察：state/position/items/两个计数器 + 两个派生量。
+    // `running` / `stopRequested` / `stopWaiter` 是内部实现位（UI 从不读），
+    // 不列入注解——尤其 stopWaiter 存的是函数，MobX 默认会把「值为函数的属性」
+    // 当 action 重定义，那样赋值就失效了（makeAutoObservable 还会因此碰到
+    // private 成员的类型面，ts 直接不答应）。
+    makeObservable(this, {
+      items: observable,
+      state: observable,
+      position: observable,
+      drawsDone: observable,
+      drawsFailed: observable,
+      totalDraws: computed,
+      summary: computed,
+    });
+  }
 
   /** 入队：相同快照（排除 seed 的全字段相等）→ 抽数累加；否则新条目（购物车语义） */
   enqueue(snapshot: GenParamsSnapshot): QueueItem {
@@ -221,7 +237,6 @@ export class ImageGenQueueCore {
           continue;
         }
         this.position = i;
-        this.hooks.onTick?.();
         // 条目内逐抽执行（支持中途 stop → 在途抽不计数，剩余抽数保留）
         while (
           item.done + item.failed < item.total &&
@@ -241,7 +256,6 @@ export class ImageGenQueueCore {
           }
           item.updatedAt = Date.now();
           void this.persist(item);
-          this.hooks.onTick?.();
         }
         // 条目整体终结判定（停止中断的条目保持 pending 续跑）
         if (!this.stopRequested && item.done + item.failed >= item.total) {
@@ -261,21 +275,34 @@ export class ImageGenQueueCore {
       } else {
         this.state = 'done';
       }
+      // 唤醒 stop()：执行器已确定退出，不等任何 native 回音。
+      const wake = this.stopWaiter;
+      this.stopWaiter = null;
+      wake?.();
     }
   }
 
-  /** 停止：置位停止请求 → 在途 runDraw 应被 native cancel 快速返回 false；
-   *  循环退出 → 回 planning（条目保持 pending，剩余抽数保留）。幂等。 */
+  /** 停止：置位停止请求 → 调用方发 native cancel → 在途 runDraw 干净返回 →
+   *  循环退出 → 回 planning（条目保持 pending，剩余抽数保留）。幂等。
+   *
+   * 旧写法是 `while (this.running) await setTimeout(50)` 忙等：既费 CPU，
+   * 又把「native 不返回」变成永久挂起的静默故障（面板长禁、nightTask 恒 busy）。
+   * 现在改由执行器 finally 通知；调用方对此给**有界**确认超时并显式报错。 */
   async stop(): Promise<void> {
     if (!this.running || this.state !== 'running') {
       return;
     }
     this.stopRequested = true;
     this.state = 'stopping';
-    // 等待执行器循环退出（runDraw 在途被取消后本函数 resolve）
-    while (this.running) {
-      await new Promise(r => setTimeout(r, 50));
-    }
+    await new Promise<void>(resolve => {
+      // 前置检查与 waiter 登记在同一同步段（JS 单线程）；这里的再查是防
+      // 调用方跨越 async 边界后执行器已跑完 finally 的情况。
+      if (!this.running) {
+        resolve();
+        return;
+      }
+      this.stopWaiter = resolve;
+    });
   }
 
   private async persist(item: QueueItem): Promise<void> {

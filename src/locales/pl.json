@@ -1495,6 +1495,8 @@
     "lowMemory": "Niewystarczająca ilość pamięci",
     "memoryDetailMessage": "Ten model wymaga ~{{needed}}, ale tylko ~{{available}} jest oceniany jako nadający się do użytku. Dokładność szacunków poprawia się wraz z korzystaniem z aplikacji.",
     "estimatedMemory": "Szacowana ilość pamięci: ~{{size}}",
+    "checkFailedShort": "Pamięć nieznana",
+    "checkFailed": "Nie udało się sprawdzić dostępnej pamięci na tym urządzeniu. Ten model nadal może jej nie zmieścić.",
     "alerts": {
       "memoryWarningTitle": "Ostrzeżenie Pamięci",
       "memoryWarningMessage": "Ten model może przekroczyć dostępną pamięć, co może spowodować niestabilność działania. Czy chcesz kontynuować ładowanie?",
