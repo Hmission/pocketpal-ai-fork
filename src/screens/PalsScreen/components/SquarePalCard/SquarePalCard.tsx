@@ -504,6 +504,7 @@ export const SquarePalCard: React.FC<SquarePalCardProps> = observer(
                   <View style={styles.leftFooter}>
                     {palRating && (
                       <View style={styles.ratingContainer}>
+                        {/* star 是 dual-use 资产（ICON_SPEC §4.3）：stroke+fill 同传 = 实心评分星 */}
                         <StarIcon
                           stroke={theme.colors.tertiary}
                           fill={theme.colors.tertiary}

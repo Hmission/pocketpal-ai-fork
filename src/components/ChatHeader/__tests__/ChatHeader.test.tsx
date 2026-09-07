@@ -92,7 +92,7 @@ describe('ChatHeader', () => {
     expect(queryByTestId('phone-call-button')).toBeNull();
   });
 
-  it('SenseVoice 就绪 + 传入回调 → 图标可点且着色走 fill，点击触发回调', () => {
+  it('SenseVoice 就绪 + 传入回调 → 图标可点且上色走 stroke，点击触发回调', () => {
     mockAsrState.value = 'ready';
     const onPhoneCallPress = jest.fn();
     const {getByTestId} = render(
@@ -112,15 +112,16 @@ describe('ChatHeader', () => {
     // 而 胶囊↔电话=12.4dp、加号↔三点=14.5dp（大王报「间距过大」）；
     // -11 沿用 §20.3 compactBtnLeft 同族手法校准至等距（两轮实测迭代得出）。
     expect(flattened.marginRight).toBe(-11);
-    // DESIGN_SPEC §3 传参红线：本仓 svgr 把 #333333 映射为 {props.fill}，
-    // 传 color 无效（图标不渲染）——着色必须落在 fill 上。
+    // 上色口径（2026-09-07 W7 根治，ICON_SPEC §四）：`phone` 是描边型资产，只能传
+    // `stroke=`。旧断言把「着色落在 fill」当规格，而 fill 会经 root 继承把封闭
+    // 轮廓填成实心块（大王报障真因）；本条断言随之改正，不是改设计。
     // jest 下 svg 经 __mocks__/external/react-native-svg.js 渲染为宿主元素 'SvgMock'
     const [icon] = btn.findAllByType('SvgMock' as unknown as React.ElementType);
-    expect(icon.props.fill).toBe(themeFixtures.lightTheme.colors.primary);
-    // 尺寸 s(16) 而非同栏 m(20)：真机量得 phone 墨迹满框 55px=20dp，而加号墨迹
-    // 只 42px=15.3dp——封闭轮廓 vs 两笔线条，视觉重量不匹配（大王裁定降重量）。
-    // 期望随设计变更更新；资产本身合规（ICON_SPEC：24×24 / sw2 / 纯 stroke），
-    // 所以只降渲染尺寸，不重绘图标。
+    expect(icon.props.stroke).toBe(themeFixtures.lightTheme.colors.primary);
+    // 反向钉住：不得再用 fill 上色（填实回归即测试红）
+    expect(icon.props.fill).toBeUndefined();
+    // 尺寸 s(16) 是「待复量值」不是通则（ICON_SPEC §4.1 v1.1）：旧像素数据是在图标
+    // 被填实的状态下量的，填实修好后重量需装机窗复量再定档（W7-V）。
     expect(icon.props.width).toBe(themeFixtures.lightTheme.iconSize.s);
     fireEvent.press(btn);
     expect(onPhoneCallPress).toHaveBeenCalledTimes(1);

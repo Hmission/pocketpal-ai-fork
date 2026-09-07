@@ -503,13 +503,13 @@ export const PhoneCallOverlay: React.FC<PhoneCallOverlayProps> = observer(
                 style={styles.ttsRow}>
                 {ttsProblem ? (
                   <VolumeOffIcon
-                    fill={theme.colors.error}
+                    stroke={theme.colors.error}
                     width={theme.iconSize.xs}
                     height={theme.iconSize.xs}
                   />
                 ) : (
                   <VolumeOnIcon
-                    fill={theme.colors.primary}
+                    stroke={theme.colors.primary}
                     width={theme.iconSize.xs}
                     height={theme.iconSize.xs}
                   />
@@ -546,11 +546,12 @@ export const PhoneCallOverlay: React.FC<PhoneCallOverlayProps> = observer(
               hitSlop={8}
               style={styles.hangupButton}>
               {/* 挂断符号 = 电话图标横置（业界通话结束语义，不另造图标资产）。
-                  着色走 error 线条（不再 onError 反白）+ 尺寸 l(24)：底衬已改轻底细边，
-                  反白图标在 12% 底上会看不清——与全局线条图标语言对齐。 */}
+                  上色走 `stroke=`（描边型资产，ICON_SPEC §四）：旧写法传 fill 会把话筒
+                  轮廓填成实心块。尺寸 l(24)：底衬是 12% 淡底 + 1px 描边，反白图标在淡底上
+                  会看不清——与全局线条图标语言对齐。 */}
               <View style={styles.hangupGlyph}>
                 <PhoneIcon
-                  fill={theme.colors.error}
+                  stroke={theme.colors.error}
                   width={theme.iconSize.l}
                   height={theme.iconSize.l}
                 />
@@ -573,7 +574,7 @@ export const PhoneCallOverlay: React.FC<PhoneCallOverlayProps> = observer(
                 pressed && unlocked && styles.holdButtonPressed,
               ]}>
               <MicIcon
-                fill={
+                stroke={
                   recording
                     ? theme.colors.error
                     : unlocked

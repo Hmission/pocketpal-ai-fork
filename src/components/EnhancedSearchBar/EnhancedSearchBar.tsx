@@ -243,7 +243,7 @@ export const EnhancedSearchBar = ({
                 <XIcon
                   width={20}
                   height={20}
-                  fill={theme.colors.onSurfaceVariant}
+                  stroke={theme.colors.onSurfaceVariant}
                 />
               </TouchableOpacity>
             )}

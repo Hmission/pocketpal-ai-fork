@@ -22,6 +22,53 @@ DRY_RUN = '--dry-run' in sys.argv
 # 纯填充图标（无 stroke-width 定义）→ 仅 viewBox 归一
 FILL_ONLY = re.compile(r'fill="(#[0-9A-Fa-f]{6}|[a-zA-Z]+)"')
 
+# dual-use 资产（ICON_SPEC §4.3）：同一图标既有描边态又有实心态，实心态靠调用侧 fill
+# 实现，不准自动补 fill="none"（否则选中/评分类视觉态会丢）。
+DUAL_USE = {'star'}
+
+# 可绘制元素开标签（兼容自闭与非自闭）
+ELEM_RE = re.compile(
+    r'<(path|circle|rect|line|polyline|polygon|ellipse)\b([^>]*?)(/)?>'
+)
+
+
+def unify_tint_channel(svg, reasons):
+    """描边色口径归一（2026-09-07 上色口径根治）。
+
+    `.svgrrc` 的 replaceAttrValues 只认颜色字面量（#333333 等），不认 currentColor；
+    写 currentColor 的资产拿不到调用侧描边色（传 stroke= 会被元素自身属性覆盖），
+    等于开了第二套上色机制。归一为 #333333 后全仓只剩一条路径。
+    """
+    n = svg.count('stroke="currentColor"')
+    if n:
+        svg = svg.replace('stroke="currentColor"', 'stroke="#333333"')
+        reasons.append(f'currentColor-stroke:{n}->#333333')
+    return svg
+
+
+def self_evidence_fill(svg, stem, reasons):
+    """给「有 stroke 且无 fill」的元素显式补 fill="none"。
+
+    机理（ICON_SPEC §4.2，实测）：svgr 把调用侧 props 展在 root，会覆盖资产自带的
+    fill="none"；元素不自己声明 fill 就会继承被泄漏进来的颜色 → 封闭轮廓被填实。
+    写在元素上能存活 svgo（实测）。面性层（带 fill="#hex"/"white"）一律不动。
+    """
+    if stem in DUAL_USE:
+        return svg
+    hit = []
+
+    def rep(m):
+        tag, attrs, close = m.group(1), m.group(2), m.group(3) or ''
+        if 'stroke=' not in attrs or re.search(r'\bfill=', attrs):
+            return m.group(0)
+        hit.append(tag)
+        return f'<{tag}{attrs} fill="none"{close}>'
+
+    out = ELEM_RE.sub(rep, svg)
+    if hit:
+        reasons.append(f'self-evidence-fill-none x{len(hit)}')
+    return out
+
 
 def parse_root(svg: str):
     m = re.search(
@@ -90,6 +137,11 @@ def normalize(svg: str, stem: str):
     if has_stroke and stroke_widths and stroke_widths != {'2'}:
         svg = re.sub(r'stroke-width="[\d.]+"', 'stroke-width="2"', svg)
         reasons.append(f'stroke-width:{sorted(stroke_widths)}->2')
+
+    # --- 上色口径归一（2026-09-07，ICON_SPEC §一第 5 条 / §4.2）---
+    if has_stroke:
+        svg = unify_tint_channel(svg, reasons)
+        svg = self_evidence_fill(svg, stem, reasons)
 
     return svg, reasons or ['ok']
 

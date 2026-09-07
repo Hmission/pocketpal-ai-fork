@@ -75,7 +75,7 @@ export const PalHeaderRight = observer(() => {
         anchorPosition="bottom"
         anchor={
           <IconButton
-            icon={() => <DotsVerticalIcon fill={theme.colors.primary} />}
+            icon={() => <DotsVerticalIcon stroke={theme.colors.primary} />}
             style={styles.menuBtn}
             onPress={openMenu}
             testID="pal-menu-button"

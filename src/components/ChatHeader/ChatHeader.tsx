@@ -93,9 +93,10 @@ export const ChatHeader: React.FC<{
             </TouchableOpacity>
           )}
           {/* PHONE_SPEC §3.1 + §11.1 / CHAT_UI_SPEC §21 v5.1：电话模式入口（模型胶囊后、菜单前）
-              着色走 fill：本仓 svgr 把 #333333 映射为 {props.fill}，传 color 无效
-              （图标不渲染，见 DESIGN_SPEC §3 传参红线）；触区与 HeaderRight.compactBtn
-              同族（controlHeight 透明方形）。
+              上色口径（2026-09-07 根治，ICON_SPEC §四）：`phone` 是描边型资产，**只传 stroke**。
+              旧写法传 fill 会被 svgr 展到 root 上并被无显式 fill 的路径继承 →
+              话筒轮廓被填成实心块（大王报障真因；旧注释与 DESIGN_SPEC 旧版「只能传 fill」均为误）。
+              触区与 HeaderRight.compactBtn 同族（controlHeight 透明方形）。
               禁用态 = SenseVoice 未就绪（半透明 + 不触发，点击引导在 ChatScreen） */}
           {onPhoneCallPress && (
             <TouchableOpacity
@@ -107,12 +108,14 @@ export const ChatHeader: React.FC<{
                 styles.phoneButton,
                 !phoneReady && styles.phoneButtonDisabled,
               ]}>
-              {/* 尺寸用 s(16) 而非同栏 m(20)：真机像素量得 phone 墨迹满框 55px=20dp，
-                  而加号墨迹只 42px=15.3dp——封闭轮廓 vs 两笔线条，视觉重量不匹配
-                  （大王报「面积较大」）。资产本身合规（24×24 / sw2 / 纯 stroke，
-                  见 ICON_SPEC），不合规的是重量，所以只降渲染尺寸不重绘图标。 */}
+              {/* 尺寸暂取 s(16)：旧数据（§157 真机像素量）是在**被填实**的状态下量的，
+                  填实修好后重量需重新量——本值为「待复量」，不是通则（ICON_SPEC §4.1 v1.1）；
+                  装机窗目视定档前不得据它新增图标尺寸，也不得本波贸然改回 m(20)（两个
+                  变量同时改会互相遮蔽）。 */}
               <PhoneIcon
-                fill={phoneReady ? theme.colors.primary : theme.colors.outline}
+                stroke={
+                  phoneReady ? theme.colors.primary : theme.colors.outline
+                }
                 width={theme.iconSize.s}
                 height={theme.iconSize.s}
               />

@@ -3,8 +3,8 @@
      构图：魔法棒沿主对角线（左下 4.5,19.5 → 右上 13.5,10.5，棒尖指向星芒），
      主星芒四芒菱形居右上（中心 17.5,6），次星芒十字火花补左上（6.5,5.5），
      圆点火花补右下（19,15.5），三点围合魔法棒，画面重心平衡 -->
-<path d="M4.5 19.5L13.5 10.5" stroke="#333333" stroke-width="2" stroke-linecap="round"/>
-<path d="M17.5 3.2L18.4 5.1L20.3 6L18.4 6.9L17.5 8.8L16.6 6.9L14.7 6L16.6 5.1Z" stroke="#333333" stroke-width="2" stroke-linejoin="round"/>
-<path d="M6.5 3.75V7.25M4.75 5.5H8.25" stroke="#333333" stroke-width="2" stroke-linecap="round"/>
-<circle cx="19" cy="15.5" r="0.75" stroke="#333333" stroke-width="2"/>
+<path d="M4.5 19.5L13.5 10.5" stroke="#333333" stroke-width="2" stroke-linecap="round" fill="none"/>
+<path d="M17.5 3.2L18.4 5.1L20.3 6L18.4 6.9L17.5 8.8L16.6 6.9L14.7 6L16.6 5.1Z" stroke="#333333" stroke-width="2" stroke-linejoin="round" fill="none"/>
+<path d="M6.5 3.75V7.25M4.75 5.5H8.25" stroke="#333333" stroke-width="2" stroke-linecap="round" fill="none"/>
+<circle cx="19" cy="15.5" r="0.75" stroke="#333333" stroke-width="2" fill="none"/>
 </svg>

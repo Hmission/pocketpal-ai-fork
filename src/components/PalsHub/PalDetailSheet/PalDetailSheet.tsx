@@ -254,6 +254,7 @@ export const PalDetailSheet: React.FC<PalDetailSheetProps> = observer(
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
             <View style={styles.ratingContainer}>
+              {/* star 是 dual-use 资产（ICON_SPEC §4.3）：stroke+fill 同传 = 实心评分星 */}
               <StarIcon
                 stroke={theme.colors.primary}
                 fill={theme.colors.primary}

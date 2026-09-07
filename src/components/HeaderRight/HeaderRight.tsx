@@ -182,7 +182,7 @@ export const HeaderRight: React.FC = observer(() => {
             testID="menu-button"
             accessibilityRole="button">
             <DotsVerticalIcon
-              fill={theme.colors.primary}
+              stroke={theme.colors.primary}
               width={theme.iconSize.m}
               height={theme.iconSize.m}
             />
