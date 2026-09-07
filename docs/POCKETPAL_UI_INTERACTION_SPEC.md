@@ -3,9 +3,9 @@ doc_id: POCKETPAL_UI_INTERACTION_SPEC
 module: root
 type: spec
 status: active
-version: "1.3"
+version: "1.4"
 created: "2026-08-14"
-updated: "2026-08-21"
+updated: "2026-09-07"
 relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_CHAT_UI_SPEC]
 ---
 
@@ -14,7 +14,7 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_CHAT_UI_SPEC]
 # PocketPal 全局交互定稿规范（UI_INTERACTION_SPEC）
 
 > 单一事实源：抽屉/导航层级/弹窗体系/消息长按菜单的交互定稿。
-> 任何交互迭代必须先更新本文档再改代码。版本：v1.3（2026-08-21，模型加载动效；v1.2：弹窗内加载阻塞；v1.1：聊天页八项升级交互；v1：2026-08-14，11 项 UI 优化定稿）
+> 任何交互迭代必须先更新本文档再改代码。版本：v1.4（2026-09-07 W4：§5 testID 登记表改为「契约源指认 + 命名域约定」，删两条幽灵登记）；v1.3（2026-08-21，模型加载动效）；v1.2：弹窗内加载阻塞；v1.1：聊天页八项升级交互；v1：2026-08-14，11 项 UI 优化定稿）
 > 并列文档：POCKETPAL_IMAGEGEN_UI_SPEC.md（生图页）
 > 上位规范：POCKETPAL_DESIGN_SPEC.md（UI 域 SSOT）
 
@@ -84,22 +84,46 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_CHAT_UI_SPEC]
   轮询等待（200ms，超时 8s）；等待中显示「模型准备中，请稍候…」横幅；
   超时系统消息「模型繁忙，请稍后重试」。无静默重试
 
-## 5. 全局 testID 登记表（e2e 依赖）
+## 5. 全局 testID 登记（e2e 契约）
+
+> **真值源裁定（2026-09-07 W4）**：e2e 依赖的 testID **唯一真值源是 [`e2e/helpers/selectors.ts`](../e2e/helpers/selectors.ts)**——`byTestId('…')` 出现即为契约，Page Object 只用它。本节**不再充当全量清单**（全仓 505 个静态 testID + 64 个动态前缀，抄进表必漂——本轮对账就抓到下面两条幽灵行），只留**跨域命名约定**与本表独有的抽屉/导航锚点。
 
 | testID | 位置 |
 |---|---|
 | session-search-input / new-chat-button | 抽屉顶部 |
 | drawer-imagegen-button | 抽屉新对话行右侧 |
 | session-more-{id} | 会话行 ... 按钮 |
-| drawer-item-settings | 抽屉底部设置 |
+| drawer-item-settings | 抽屉底部设置（兼抽屉开合判据，e2e `Selectors.drawer.settingsTab` 依赖） |
 | header-back-button / menu-button | HeaderLeft |
 | imagegen-quick-load | 生图页模型胶囊快速加载 |
-| confirm-dialog-confirm / confirm-dialog-cancel | 全局确认弹窗 |
-| imagegen-button | 聊天头部生图入口（既有） |
+| ~~confirm-dialog-confirm / confirm-dialog-cancel~~ | ❌ **幽灵登记已删（v1.4）**：`src/components/ui/ConfirmDialog.tsx` **零 testID**（OverlayCard 未传 id，Actions 也未传）——旧行凭空而写；确认弹窗当前只能按**文本**定位，要进 e2e 须先补挂 id 再登记，不先写空契约 |
+| ~~imagegen-button~~ | ❌ **幽灵登记已删（v1.4，入口已裁剪但登记未同步清除）**：聊天头部生图入口已于 **2026-08 裁剪**（`ChatHeader.tsx:121-123` 注释：大王裁定收敛至抽屉 `drawer-imagegen-button` 唯一入口），代码里只剩一条解释为何删除的注释；旧行标「（既有）」与事实相反 |
 | assistant-intent-capsule | 助手卡意图胶囊（点按出四态选择器，v1.1） |
 | intent-picker-{chat\|vent\|qa\|task} | 意图四态选择器选项（v1.1） |
 | model-switch-candidate-{id} | 任务模型切换弹窗候选行（v1.1） |
 | metrics-ctx / metrics-recall | 助手卡统一指标行：余量直达生成设置 / 召回展开（v1.1） |
+
+### 5.1 命名域约定（新增控件按此走，**不必回本表逐条登记**）
+
+| 域 | 前缀 | 逐条值看哪里 |
+|---|---|---|
+| 生图 / 队列 | `imagegen-*`、`queue-*` | 代码 grep；队列细则见 IMAGEGEN_QUEUE_SPEC §七 |
+| 音频工坊 | `audio-*` | 代码 grep（AUDIO_UI_SPEC v1.13③ 同口径） |
+| 跑分族 | `perf-*` | 代码 grep（PERF_BENCHMARK_DESIGN） |
+| 通话域 | `phone-*` | **例外：逐条登记在 CHAT_UI_SPEC §21**（overlay 契约面，已登 14 条） |
+| 设置中心 | `settings-item-*` | 代码 grep（`SettingsScreen.tsx` 逐行手写 Row 的 testID 字面量，**非声明式表生成**） |
+| DS 底座 | `ui-overlay-card` / `ui-overlay-card-scrim` | OverlayCard 默认值，传 `testID` 即覆盖 |
+
+- **testID 是定位锚，不是产品契约**：只有被 `e2e/helpers/selectors.ts` 引用的才算 e2e 契约；**改名/删名前必须先改 selectors.ts**，否则 e2e 静默失效（比红测试更糟：选择器拿不到元素→超时→被当成「用例不稳定」重跑）。
+- **不要求「所有 testID 都有文档条目」**：那是造噪声。约定只到前缀粒度，逐条以代码为准。
+
+### 5.2 本轮新发现：e2e 契约面自身有悬空选择器（登记，不在本轮修）
+
+对账时发现 `e2e/helpers/selectors.ts` 里有静态 `byTestId` 字面量在 `src/**` 找不到对应挂点，其中**已定性一条**：
+
+- `Selectors.settingsHub.palsEntry` → `settings-item-pals`，而伙伴入口 **2026-08-15 已裁剪**（`SettingsScreen.tsx:85` 注释），该选择器必然拿不到元素。
+
+另有十余条属同一类型但未逐条定罪（本仓 `src` 里有同名片段，可能是动态拼接，不能凭 grep 判定）——**登记为 e2e 专项**：要嘛补挂 testID，要嘛删选择器；不先改码也不先删文档（防误删真契约）。
 
 ## 6. 聊天页升级交互（v1.1，2026-08-20，CHAT_UI_SPEC §18）
 
@@ -129,3 +153,5 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_CHAT_UI_SPEC]
 | TTS 全文朗读 API + 长按菜单朗读项 | DEV_BACKLOG P4#15 | **部分完成**（全文朗读 API 已有：TTSStore.play + PlayButton 消息级入口；长按菜单项未落码——宿主 ChatView.tsx 丢失于 2026-08-25 文件消失事件，挂 B39 待恢复） |
 | ChatScreen.test/useChatSession.test 既有失败与新架构对齐专项 | 下迭代 | 开放 |
 | GenerationSettingsScreen 1321 行等肥文件瘦身 | DEV_BACKLOG P4#17 | 择期（P1 单槽 v2 + P3 肥文件拆分，需架构评审） |
+| **e2e `selectors.ts` 悬空选择器专项**（静态 `byTestId` 字面量在 `src` 无对应挂点，已定性 `settings-item-pals`，另十余条待逐条裁定） | 2026-09-07 W4 新发现 | **开放**（见 §5.2；要嘛补挂 testID 要嘛删选择器，不凭 grep 误删真契约） |
+| 全局确认/信息弹窗无 testID（`ConfirmDialog` / `InfoDialog` 均未挂 id），e2e 只能按文本定位（换语言即失效） | 2026-09-07 W4 新发现 | 开放（挂 id 成本很轻，但**无消费者不接线**：等真有跨语言 e2e 需求时一并补，不先造空契约） |

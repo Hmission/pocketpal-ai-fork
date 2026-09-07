@@ -3,9 +3,9 @@ doc_id: DRC_COMPASS_REGISTRY
 module: root
 type: registry
 status: active
-version: "1.3"
+version: "1.4"
 created: "2026-08-19"
-updated: "2026-08-26"
+updated: "2026-09-07"
 relates: [DRC_SPEC, COMPASS_SYSTEM_SSOT, STATE_COMPASS_ENGINE_SELF_NAVIGATION_SSOT, WORKSPACE_TOOL_ERROR_FEEDBACK_SPEC, ONDEVICE_VIDEO_GEN_ANALYSIS]
 ---
 
@@ -45,26 +45,26 @@ relates: [DRC_SPEC, COMPASS_SYSTEM_SSOT, STATE_COMPASS_ENGINE_SELF_NAVIGATION_SS
 | 编号 | 定位（triggerRegex） | 导航 | 深入 | 状态 |
 |---|---|---|---|---|
 | CP-APP-000 | 未知错误（未收录） | 登记到本文档 §2 | docs/DebugRemoteControl/DRC_SPEC.md | ✅ 已落地 |
-| CP-APP-001 | JSI bindings not installed | 执行 node scripts/restore-llamarn-jnilibs.js | docs/sop/LLAMARN_JNI_RESTORE_SOP.md · scripts/restore-llamarn-jnilibs.js | ✅ 已落地 |
+| CP-APP-001 | JSI bindings not installed | 执行 node scripts/restore-llamarn-jnilibs.js | scripts/restore-llamarn-jnilibs.js · docs/POCKETPAL_MASTER_LOG.md（jniLibs 恢复记录） | ✅ 已落地 |
 | CP-APP-002 | OutOfMemory / OOM / PSS | 降 n_ctx 或换小模型；检查 session 释放是否 await | docs/POCKETPAL_MODEL_MATRIX.md | ✅ 已落地 |
 | CP-APP-003 | model not found / modelLoadError | models.scan 重扫；校验 manifest 与文件一致性 | src/utils/imageGenManifest.ts | ✅ 已落地 |
 | CP-APP-004 | engine busy / 互斥超时 | 等引擎释放重试；检查未 await 的释放 | src/store/engineMutex.ts | ✅ 已落地 |
 | CP-APP-005 | OpenCL / Vulkan / hang | imagegen 命令显式 backend:"CPU" 回退 | docs/SD35_OPENCL_WHITE_IMAGE_ANALYSIS.md | ✅ 已落地 |
 | CP-APP-006 | ERR_ / 生图失败 / txt2img | 检查 manifest 模型族、LoRA 路径、seed 复现 | docs/POCKETPAL_IMAGE_GEN_UPGRADE_PLAN.md | ✅ 已落地 |
-| CP-APP-007 | 反推失败 / caption 失败 / 视觉模型未加载 | 检查 Qwen3.5+mmproj 在机（MODEL_MATRIX #3/#4）；engineMutex chat 槽释放后重试 | docs/IMAGEGEN_UI_SPEC.md §7（v4） | ✅ 已登记（2026-08-21） |
-| CP-APP-008 | 转写失败 / ASR 失败 / 录音权限 | 检查 SenseVoice 模型在机（MODEL_MATRIX §2.2 A1）；RECORD_AUDIO 权限引导；重试转写 | docs/POCKETPAL_AUDIO_UI_SPEC.md | ✅ 已登记（2026-08-21） |
-| CP-APP-009 | 工具调用错误 / tool.error / 工具返回 error | 按错误回传中的 guide（正确调用示例）修正参数后重试；同一工具连续失败 2 次才可放弃，并在最终回答中如实说明 | docs/workspace/WORKSPACE_TOOL_ERROR_FEEDBACK_SPEC.md · src/services/agent/AgentRunner.ts | ✅ 已登记（2026-08-22） |
-| CP-APP-010 | VIDEO_TASK_START_FAILED / 前台服务启动失败 / WakeLock / 夜间任务被杀 | 检查 FOREGROUND_SERVICE + FOREGROUND_SERVICE_DATA_SYNC 权限与 service 声明（targetSdk 36 需 foregroundServiceType）；查 logcat 是否被 PSS 看护/内存配额杀（压内存优先于白名单，见 ONDEVICE_VIDEO §7.1） | android/app/.../VideoTaskServiceModule.kt · AndroidManifest.xml · docs/ONDEVICE_VIDEO_GEN_ANALYSIS.md §7.1 | ✅ 已登记（2026-08-23） |
-| CP-APP-011 | TTS 模型未安装完整 / sample_rate does not exist / 生成噪音 | 检查 TTS 模型下载源是否为 sherpa 兼容源（kokoro 需 metadata+tokens.txt、kitten 需 sherpa 官方 v0.1 生成链四件套）；**kitten 生成链下载已补齐（§81，Phase 2 动态枚举 espeak）**，新装机经下载链即可齐备；kokoro 换源=降版本（v1.0→v0.19）+ fork/sherpa 双链耦合，裁定不动，生成链靠 sherpaConvert 下载后转换兜底 | src/services/tts/constants.ts · src/services/tts/engines/kitten/index.ts · docs/internal/POCKETPAL_MODIFICATION_MASTER_LOG.md §74.5/§81 | ✅ 已登记（2026-08-23） |
-| CP-APP-012 | 基准编排中断 / 用例卡死 / 跑分卡渲染失败 / 分享不可用 | 查 benchmarkStore 编排状态机是否复位（用例结束/失败必须 reset，不留半态）；分享走 FileProvider 门禁，不可用降级存相册+诚实提示；数值 N/A 不编造 | docs/PERF_BENCHMARK_DESIGN.md §10 · src/store/BenchmarkStore.ts | ✅ 已登记（2026-08-24） |
-| CP-APP-013 | 上下文满 / Context is full / 上下文预算决策不可解 / 压缩未触发或未释放 | 查 DRC `chat.budget_decision` 事件（used/nCtx/action/saturated）+ `perModelNCtxSource` 覆盖源（preset 应随 CURATED_TABLE_VERSION 拉齐，user 为主权）+ 策展档 `defaultNCtxForModel` 是否低于工具基线 `TOOL_BASELINE_TOKENS`（4500）；压缩目标线=COMPACT_TARGET_WATERMARK 0.5（触发 0.8 压到半水位，连压多轮=水位曲线异常） | docs/POCKETPAL_CONTEXT_COMPACTION_SPEC.md v1.2 · src/utils/modelContextDefaults.ts · src/services/contextCompaction/{decision,budget}.ts | ✅ 已登记（2026-08-26） |
+| CP-APP-007 | 反推失败 / caption 失败 / 视觉模型未加载 | 检查 Qwen3.5+mmproj 在机（MODEL_MATRIX #3/#4）；engineMutex chat 槽释放后重试 | docs/POCKETPAL_IMAGEGEN_UI_SPEC.md §7 | ✅ 已落地（regex 已入 errorRegistry，2026-09-07） |
+| CP-APP-008 | 转写失败 / ASR 失败 / 录音权限 | 检查 SenseVoice 模型在机（MODEL_MATRIX §2.2 A1）；RECORD_AUDIO 权限引导；重试转写 | docs/POCKETPAL_AUDIO_UI_SPEC.md | ✅ 已落地（regex 已入 errorRegistry，2026-09-07） |
+| CP-APP-009 | 工具调用错误 / tool.error / 工具返回 error | 按错误回传中的 guide（正确调用示例）修正参数后重试；同一工具连续失败 2 次才可放弃，并在最终回答中如实说明 | docs/workspace/WORKSPACE_TOOL_ERROR_FEEDBACK_SPEC.md · src/services/agent/AgentRunner.ts | ✅ 已落地（regex 已入 errorRegistry，2026-09-07） |
+| CP-APP-010 | VIDEO_TASK_START_FAILED / 前台服务启动失败 / WakeLock / 夜间任务被杀 | 检查 FOREGROUND_SERVICE + FOREGROUND_SERVICE_DATA_SYNC 权限与 service 声明（targetSdk 36 需 foregroundServiceType）；查 logcat 是否被 PSS 看护/内存配额杀（压内存优先于白名单，见 ONDEVICE_VIDEO §7.1） | android/app/.../VideoTaskServiceModule.kt · AndroidManifest.xml · docs/ONDEVICE_VIDEO_GEN_ANALYSIS.md §7.1 | ✅ 已落地（regex 已入 errorRegistry，2026-09-07） |
+| CP-APP-011 | TTS 模型未安装完整 / sample_rate does not exist / 生成噪音 | 检查 TTS 模型下载源是否为 sherpa 兼容源（kokoro 需 metadata+tokens.txt、kitten 需 sherpa 官方 v0.1 生成链四件套）；**kitten 生成链下载已补齐（§81，Phase 2 动态枚举 espeak）**，新装机经下载链即可齐备；kokoro 换源=降版本（v1.0→v0.19）+ fork/sherpa 双链耦合，裁定不动，生成链靠 sherpaConvert 下载后转换兜底 | src/services/tts/constants.ts · src/services/tts/engines/kitten/index.ts · docs/internal/POCKETPAL_MODIFICATION_MASTER_LOG.md §74.5/§81 | ✅ 已落地（regex 已入 errorRegistry，2026-09-07） |
+| CP-APP-012 | 基准编排中断 / 用例卡死 / 跑分卡渲染失败 / 分享不可用 | 查 benchmarkStore 编排状态机是否复位（用例结束/失败必须 reset，不留半态）；分享走 FileProvider 门禁，不可用降级存相册+诚实提示；数值 N/A 不编造 | docs/PERF_BENCHMARK_DESIGN.md §10 · src/store/BenchmarkStore.ts | ✅ 已落地（regex 已入 errorRegistry，2026-09-07） |
+| CP-APP-013 | 上下文满 / Context is full / 上下文预算决策不可解 / 压缩未触发或未释放 | 查 DRC `chat.budget_decision` 事件（used/nCtx/action/saturated）+ `perModelNCtxSource` 覆盖源（preset 应随 CURATED_TABLE_VERSION 拉齐，user 为主权）+ 策展档 `defaultNCtxForModel` 是否低于工具基线 `TOOL_BASELINE_TOKENS`（4500）；压缩目标线=COMPACT_TARGET_WATERMARK 0.5（触发 0.8 压到半水位，连压多轮=水位曲线异常） | docs/POCKETPAL_CONTEXT_COMPACTION_SPEC.md v1.2 · src/utils/modelContextDefaults.ts · src/services/contextCompaction/{decision,budget}.ts | ✅ 已落地（regex 已入 errorRegistry，2026-09-07） |
 | CP-APP-014 | 身份锚缺失 / identity_reborn / 身份文件损坏 | 冷启动三层自检自愈重建种子（锚句+时间戳，wake_anomaly.jsonl 留痕）；血统导入走 scripts/aios/import_identity.py（一次性工具） | docs/POCKETPAL_AIOS_CORE_SPEC.md Wave A · src/services/aiosCore/wakeCheck.ts | ✅ 已登记（2026-09-05） |
 | CP-APP-015 | 义肢离线 / limb_offline / 连接失败 / fetch failed | scheduler 显式助理消息告知「义肢离线，本轮本地代答」不静默；检查 serverStore 配置与网络通道（cleartext 放行已配） | docs/POCKETPAL_AIOS_CORE_SPEC.md Wave E · src/hooks/useChatScheduler.ts | ✅ 已登记（2026-09-05） |
 | CP-APP-016 | 生长账本目录失败 / growth.* 写入失败 | 检查 AIOS_ROOT 共享存储可写性（EACCES 授权 / 存储占用）；growth 为观测器官，失败不阻断主链路（静默降级） | docs/POCKETPAL_AIOS_CORE_SPEC.md Wave D · src/services/aiosCore/growth.ts | ✅ 已登记（2026-09-05） |
 
 ## 3. 状态指南针（ST-APP-NNN）
 
-格式：state（定位）→ nextAction（导航）→ label → terminal。实现：src/debug/stateCompass.ts 域级 `STATE_MAP`（engine/chat/imagegen/model 四域 + 未知降级 unknown）。
+格式：state（定位）→ nextAction（导航）→ label → terminal。实现：src/debug/stateCompass.ts 域级 `STATE_MAP`（未知状态一律降级 unknown）。**接线现状（2026-09-07 复查如实登记）**：`engine` 域是唯一有生产快照来源的域（`stateSnapshot.buildStateSnapshot` 对 `engineStatus.engines` 逐项 `toCompass('engine', …)`）；下表 chat / imagegen / model / audio 四域的映射**目前只有契约测试消费，无生产快照来源**（属预留映射，不是"已上报"）。新增域必须先有生产者，无消费方不接线。
 
 ### 3.1 engine 域（ST-APP-001~006）
 
@@ -119,7 +119,7 @@ relates: [DRC_SPEC, COMPASS_SYSTEM_SSOT, STATE_COMPASS_ENGINE_SELF_NAVIGATION_SS
 | stopping | await_release | 任务结束释放中 | false |
 | error | investigate_and_retry | 夜间任务异常（前台服务/WakeLock） | true |
 
-> 实现：`nightTaskRegistry.isBusy`（JS 侧单一事实源）+ 原生 `VideoTaskService.isRunning`（调试旁证）。事件流 domain 复用 `imagegen`/`system`，不新增 domain 枚举（BT05 稳定）。
+> 实现：`nightTaskRegistry.isBusy`（JS 侧单一事实源，2026-09-07 起为**票据制**：`begin(owner)` 返回票据、`end(ticket)` 只认票据，跨域不可互扣）+ 原生 `VideoTaskService.isRunning`（调试旁证）；诊断可读 `nightTaskRegistry.owners`。**本域刻意不进 `STATE_MAP`**——事件流 domain 复用 `imagegen`/`system`，不新增 domain 枚举（BT05 稳定）；上表四态是**登记面口径**，不是已注册的映射键，故 STATE_MAP 无 nighttask 属设计如此、非缺口（2026-09-07 复查结论）。
 
 ### 3.4 model 域
 

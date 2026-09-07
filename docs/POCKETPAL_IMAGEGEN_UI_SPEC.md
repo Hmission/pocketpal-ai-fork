@@ -3,9 +3,9 @@ doc_id: POCKETPAL_IMAGEGEN_UI_SPEC
 module: root
 type: spec
 status: active
-version: "5.6"
+version: "5.12"
 created: "2026-08-14"
-updated: "2026-08-24"
+updated: "2026-09-07"
 relates: [POCKETPAL_DESIGN_SPEC, ADR-0002-imagegen-header-right]
 ---
 
@@ -29,12 +29,13 @@ relates: [POCKETPAL_DESIGN_SPEC, ADR-0002-imagegen-header-right]
 > 版本：v5.3（2026-08-22 B35 大王裁定）：① workshop.svg 再次重绘——**画笔 × 扳手 X 交叉**（大王：两工具交叉成 X，替代音符；画笔沿主对角线、扳手沿副对角线，交叉点居中，互不侵入对方主体）；② 音频历史条改**横向滚动**（对齐本页相册 HistoryStrip 模式，转写/生成两段隔离）；③ 音频引擎选择**移入顶栏胶囊**（对齐本页模型胶囊语义，高级参数不含模型红线扩展至音频 tab）；④ 转写结果卡对齐反推卡（3 行折叠 + 展开全文 + 三按钮操作条）
 > 版本：v5.4（2026-08-22 B36 大王复查）：① **音频引擎选择弃 Menu → 复用本页 ModelPicker 屏级 overlay 交互**（同页双交互模式消灭，dropOverlay/dropBackdrop/dropPanelAbs + 行内下载/删除）；② 音频结果区升级**整卡三态**（running 波浪 / success 全文卡 / failed 三按钮，对齐本页 taskPage 语义）；③ 音频历史条点击**联动结果区切换**（对齐相册翻页联动）；④ 音频 composer 模型管理行删除（三行冗余状态文本 → 并入顶栏下拉行内）——详见 AUDIO_UI_SPEC v1.5
 > 版本：v5.5（2026-08-23 B38 大王复查·多模态统一）：① **音频顶栏胶囊弃独立风格 → 与本页 triggerPill 同一设计语言**（primary 12% 底 + full 圆角 + primary 1px 描边 + onSurface 文字 + ▾，就绪点内嵌）——同页不再并存两套胶囊风格；② 音频产物区升级**播放器预览窗口**（方形大卡 + 播放/暂停 + 时间轴跳播 + 时长，对齐本页预览窗口规格）；③ 音频历史卡改**方形卡**（对齐本页相册缩略图 72px 方形），点击加载预览窗口——详见 AUDIO_UI_SPEC v1.7
-> 版本：v5.6（2026-08-24 B39 跑分演出升级规划，PERF_BENCHMARK_DESIGN §10 v0.5）：§9 跑分面板演出层升级定稿——① 40pt 条形迷你图 → **折线+渐变面积图**（自绘满宽贴卡片缘，峰值打标，卡片内不溢出红线不变）；② 全数字接 PerfMotion AnimatedNumber（PSS 大字/胶囊/指标行）+ 胶囊负载分档变色 + 步耗时进度环；③ §9 语义色注册表扩编：速率强调色 + 跑分金均**复用既有 brandAccent token**（不造新色，避免双金分裂），阈值语义不变（>5GB 橙/>6GB 红）；数据链路（syncPoll/perfRecorder/perfScore）零改动——详见 PERF_BENCHMARK_DESIGN §10.5/10.6
+> 版本：v5.6（2026-08-24 B39 跑分演出升级规划，PERF_BENCHMARK_DESIGN §10 v0.5）：§9 跑分面板演出层升级定稿——① 40pt 条形迷你图 → **折线+渐变面积图**（自绘满宽贴卡片缘，峰值打标，卡片内不溢出红线不变）；② 全数字接 PerfMotion AnimatedNumber（PSS 大字/胶囊/指标行）+ 胶囊负载分档变色 + 步耗时进度环【⚠ 本项已于同日 PERF §10.5 落地收敛**砍除**（单步进度无分母数据，画环必造假；代码零命中），仅本行旧文案残留，v5.12 标注】；③ §9 语义色注册表扩编：速率强调色 + 跑分金均**复用既有 brandAccent token**（不造新色，避免双金分裂），阈值语义不变（>5GB 橙/>6GB 红）；数据链路（syncPoll/perfRecorder/perfScore）零改动——详见 PERF_BENCHMARK_DESIGN §10.5/10.6
 > 版本：v5.7（2026-08-25 B43 大王反馈收窄）：§9 跑分卡坐标轴升级——① 折线图加坐标轴（左 Y 刻度按维度单位 / 底部 X 时间刻度 / 水平垂直网格 / 5GB·6GB 阈值线端点标注）+ **叠全改复合图**（PSS/功耗折线 + CPU/GPU 负载柱状 + 温度热力带），温度不再与 PSS 主色同橙撞色；② 演出层 vivid 动画（最新点呼吸光圈 + 彗星尾 + 示波器扫掠光）；③ 指标分级色全接入（温度/功耗/频率/步耗时两档阈值，正常继承中性 / 警告橙 / 危险红，不再全黑）；④ 「叠全」chip 移至**最左**（默认项排最前）；⑤ 叠全图例行（色点+通道名，虚线语义由图内端点标注承载）——详见 PERF_BENCHMARK_DESIGN §10.5
 > 版本：v5.8（2026-08-26，B59 大王反馈）：① 出图/编辑按钮**任务进行期灰置 + 转圈 + 禁点**——loading（引擎加载）与 generating 同属任务期，disabled 全链路防连点；灰底（surface）+ 文字降级（onSurfaceVariant），转圈色白 → primary（灰底上可见）；此前仅 generating 转圈且无灰底，引擎加载期按钮零反馈（首次出图加载模型最耗时时最需要）；未加载（非 Dream 未选模型）不灰置引导红线不变（v4.1）；② 模型下拉**选中行圆角对齐浮层面板**——modelRow borderRadius inputSmall(8) → surface(32)，选中描边与整卡一致（音频引擎下拉复用同样式一并统一）
 > 版本：v5.9（2026-08-27，UI 一致性升级）：① **叠图迷你遥测条**——反推/编辑/放大（叠图模式）挂共享 `PerfMiniRow`（折叠头「性能 ▾ + PSS 大字阈值色 + 内存/CPU/温度胶囊」+ 展开 B43 迷你折线，默认折叠一行少遮挡原图；生成 blank 页维持完整 PerfPanel 不动），跑分完整性三态齐平；② **出图按钮吸底**——出图/编辑按钮移出 ComposerPanel → 新组件 `GenActionBar` 底部吸底条（KeyboardStickyView 键盘跟随 + safe-area），提示词卡折叠后一屏可见；③ **提示词卡折叠**——折叠头单行胶囊（提示词 ▾ + 摘要 + token 计数），编辑预备态强制展开；④ **容器自适应**——running/failed 任务页 taskPage 去 overflow:hidden + 顶对齐 + minHeight 240，根治 PerfPanel 默认展开时内容超高双向裁切（顶部 WaveDots 被切）
 > 版本：v5.10（2026-08-27 大王真机复审三条，替代 v5.9①）：① **反推=生图流程**——反推/编辑/放大与生成同一路径：任务开始即滚入 running 空白任务页（taskPage 自适应）+ **完整 PerfPanel 默认展开**（叠图 overlay 全删，`genOverlay/genOverlayEdit/genOverlayBottom` 样式移除；旧 absolute 叠图与任务页双渲染导致的内容叠加根治）；② **折叠层级平级**——高级参数折叠钮与提示词折叠平级（高级参数展开/折叠独立于提示词折叠；折叠提示词后高级参数按钮与内容区仍可用）；③ 出图按钮吸底确认通过（大王实测），保持不变
 > 版本：v5.11（2026-08-29，大王报障修复）：③ 吸底条 safe-area 补全——`KeyboardStickyView offset={{closed: 0}}` 使操作条吸附窗口物理底边，手势导航设备（K90/HyperOS 手势条，insets~15-24px）上按钮下缘被底边裁切（bottomBar paddingBottom 8px < 安全区）；修复 = KeyboardStickyView 内包 **surface 背景垫层**（paddingBottom=insets.bottom：内容上移避让 + 背景延伸到底无断带，同聊天输入条 insets 避让设计语言；不开 closed offset 挪位——底部会露 background 色带，深色模式 #000 vs #0E0E0E 可见差异）
+> 版本：v5.12（2026-09-07 W4 文档-代码对账，不改视觉只改口径）：① §4 「三点波浪 + useNativeDriver」改正为 **JS driver 红线**（`useNativeDriver:false`，与 AUDIO_UI_SPEC §6 同步——本卷此前漏同步，且真机 tombstone 实锤不支持 native driver）；② 族徽章色**取消本卷内复制 hex**，改指 DESIGN_SPEC §1.4 token 表（本卷旧行只列了 3/5 族， flux/krea2 长期缺席）；同时 `QueuePanel.FAMILY_COLORS` 的 4 个硬编码野值已收编进 token（该野值与任何登记表都不一致，注释却自称「与生图页下拉同源」——不实陈述已删）；③ 补写 **§3.1 LoRA 运行时挂载**条目（代码链 2026-08-18 就完整，本文档一直零条目，违「文档先行」）；④ §9 重号勘误：顶部横幅提示原误标 §9（与 §9 性能面板重号，PERF_BENCHMARK_DESIGN 三处引用均指性能面板），改标 §10 并就地保留位置——本卷章节物理顺序历史遗留乱序，本轮不重排（免制造大面积 diff 噪声），已登记为文档债；⑤ frontmatter `version` 从落后的 5.6 补齐到 5.12（版本面与版本日志面对账）
 
 > 上位规范：POCKETPAL_DESIGN_SPEC.md（UI 域 SSOT）
 
@@ -111,7 +112,7 @@ relates: [POCKETPAL_DESIGN_SPEC, ADR-0002-imagegen-header-right]
 - **「再次生成」= 当前图同参数重跑**：用任务自带 prompt（与失败页「重试」同源 `handleGenerate(item.prompt)`），不读当前输入框——输入框被清空/编辑预备态清 prompt 后再次生成仍有效
 - **任务进行期灰置转圈（v5.8，B59）**：出图/编辑按钮在 loading（引擎加载）与 generating 期 **disabled + 灰底（surface）+ 文字降级（onSurfaceVariant）+ primary 转圈**（原 onPrimary 白圈灰底上不可见，改 primary）；编辑进行中（taskKind=edit）出图按钮灰置显示文字不转圈；未加载引导（v4.1）与空提示词横幅（v4.2）红线不变
 
-## 9. 顶部横幅提示（v4.3，大王裁定：弃用底部 Snackbar）
+## 10. 顶部横幅提示（v4.3，大王裁定：弃用底部 Snackbar；v5.12 编号勘误：原误标 §9，与 §9 性能面板重号）
 
 生图页全部轻提示**不再使用底部 Paper Snackbar**（灰色底 + 遮挡底部按钮），统一为**预览卡片顶部横幅**：
 
@@ -131,9 +132,19 @@ relates: [POCKETPAL_DESIGN_SPEC, ADR-0002-imagegen-header-right]
 - **DreamLite 固定置顶且默认选中**（当前唯一完整可用：4 步 1024px 约 25s）
 - 实验性模型（SD3.5 / Z-Image-Turbo）排在 DreamLite 之后，带琥珀色「[实验性]」徽章
 - 行内按钮：加载（主色实底）/ 卸载（红描边，二次确认）
-- 族徽章彩色：SD3.5 紫 #8e24aa / Z-Image 青 #00838f / DreamLite 粉 #d81b60
+- 族徽章彩色：**一律取 `POCKETPAL_DESIGN_SPEC` §1.4 登记的 badge token**（badgeSd35 / badgeZImage / badgeDreamlite / badgeFlux / badgeKrea2，含 light/dark 双绑），本卷不复制 hex（旧行列了 3 个裸色值且长期缺 flux/krea2，v5.12 收口）；队列面板徽章同用该套 token（12% 底 + 1px 同色描边 + 同色文字的既有 chip 语言）
 - 选中行仅高亮回填参数，不自动加载（点「加载」按钮才加载）
 - 选中行圆角 = 浮层面板同值（shapeRoles.surface 32px，v5.8 B59）：选中描边与整卡圆角一致；音频引擎下拉复用同样式一并统一
+
+### 3.1 LoRA 运行时挂载（2026-08-18 路线 B；本条为 2026-09-07 W4 补登，代码链早已完整而本文档此前零条目）
+
+- **适用面**：仅 **SD 族**（非 DreamLite）且 **manifest 声明了 `lora` 才出现控件**——`ComposerPanel` 渲染条件 `!isDream && hasLora`；DreamLite（ONNX 引擎）无 LoRA 通路，不出开关也不占位（不造空壳控件）。
+- **UI 位置与形态**：高级参数区内独立一列 paramRow（与其他参数行同一 `paramRow/paramLabel/paramInput` 样式，不另造控件）：「LoRA」`Switch` + 「强度」`TextInput`；**任务进行期锁定**：`Switch disabled={generating}`、强度输入 `editable={loraEnabled && !generating}`（执行期不可改参数是队列/单张共同的锋利边界）。
+- **默认值**：**关**（纯 base 模型）——LoRA 是显式用户主权，不默默改变出图结果。
+- **数据链（单通道不旁路）**：`manifest.lora`（文件名）+ `manifest.loraMultiplier`（训练 scaling alpha/rank，sd35 = 2.0）→ 组件层拼 `AIOS_MODELS_DIR/<file>` 绝对路径 → `GenParamsSnapshot{loraEnabled,loraMultiplier,loraPath}`（入队即冻结，队列跳模型不串用别人的 LoRA）→ `runGenTask` 仅在 `loraEnabled` 时下发 `loraPath/loraMultiplier` 给 `generate()`（否则传 undefined = 纯 base）。
+- **两个容易误读的点**（均刻意为之，不是漏改）：① 入队时 `loraEnabled: loraEnabled && !!m.manifest.lora`——**以当时模型的 manifest 为准**——防止在 A 模型上开的开关带到 B 模型，把不存在的 LoRA 路径挂上去；② 强度框只校 `parseFloat || 1`（非法值回落 1），不弹错不拦提交——与本页其他数值框同处理（不新增错误出口）。
+- **资产**：当前唯一挂载例 = `lora_humanpose.safetensors`（自制，2026-08-20 双平台分发，登记于 MODEL_MATRIX §6.1；baked/merged GGUF 不装机）。
+- **testID**：本控件组**未挂 testID**（只有 `accessibilityLabel="启用 LoRA"` 供无障碍/人测）——要进 e2e 需先补上 id 再登记，不先写空契约。
 
 ## 4. 生成/编辑/反推状态机视觉（v3 任务化 + v4 caption）
 
@@ -145,7 +156,7 @@ relates: [POCKETPAL_DESIGN_SPEC, ADR-0002-imagegen-header-right]
 - **报错唯一出口**：预览区 failed 任务页；composer 底部不再展示错误文本；加载失败/缺伴侣文件/解码失败同样落 failed 任务条目。
 - **历史横条**：只列 success 条目缩略图（保留原始索引供翻页定位）；caption 条目显示缩略图 + 「反推」角标（复用 upload 角标模式）。
 - **overlay 设计语言**：浅色圆角（助手气泡点缀色 + 高不透明度，borderRadius 8 与卡片统一；深浅色模式自适应），禁用黑色直角矩形
-- **进度指示**：三点波浪呼吸动效（错峰 150ms，纯 Animated + useNativeDriver），禁用圆形 orb 缩放
+- **进度指示**：三点波浪呼吸动效（错峰 150ms，纯 Animated，**JS driver——`useNativeDriver:false` 是红线**：波浪挂载窗口 = 分钟级生成全程，native driver 会持续触发 TurboModule invokeJavaMethod 致 weak ref 累积溢出 tombstone，理由见 `src/components/ui/WaveDots/useWaveDots.ts` 头注释；AUDIO_UI_SPEC §6 同口径，本行旧述「+ useNativeDriver」为漏同步已改），禁用圆形 orb 缩放
 - 进度信息：采样 x/y + 步耗时 + 累计秒数 + 当前阶段文本
 
 ## 5. 编辑模式（DreamLite 专属）
@@ -159,7 +170,7 @@ relates: [POCKETPAL_DESIGN_SPEC, ADR-0002-imagegen-header-right]
 
 - Screen 层零直连 dreamLiteEngine，全部经 imageGenStore 单通道
 - 提示词限长 ≤120 字（端侧约束，超限红色警告但可提交）；反推输出 ≤200 token（与生图 prompt 上限一致，2026-08-27 大王裁定）
-- 所有色值走 theme token 或本规范登记的语义色，新增色必须登记本文档
+- 所有色值走 theme token 或已登记的语义色，新增色必须先登记再上屏；**模型族徽章色的唯一登记处 = `POCKETPAL_DESIGN_SPEC` §1.4**（本卷与队列面板均不维抄色值表，2026-09-07 v5.12 明确：`QueuePanel` 曾挂 4 个不属于任何登记表的硬编码野值）
 - testID 稳定：imagegen-quick-load（快速加载）等，e2e 依赖不变
 - 反推链路同样收编 store 单通道（captionEngine 经 imageGenStore 收口），Screen 层零直连
 

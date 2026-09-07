@@ -3,19 +3,21 @@ doc_id: POCKETPAL_IMAGEGEN_QUEUE_SPEC
 module: imagegen
 type: spec
 status: active
-version: "0.3"
+version: "0.4"
 created: "2026-08-27"
-updated: "2026-08-27"
-relates: [POCKETPAL_IMAGEGEN_UI_SPEC, POCKETPAL_STARMAP_DOMAINS, ONDEVICE_VIDEO_GEN_ANALYSIS, IMAGEGEN_UI_SPEC]
+updated: "2026-09-07"
+relates: [POCKETPAL_IMAGEGEN_UI_SPEC, POCKETPAL_STARMAP_DOMAINS, ONDEVICE_VIDEO_GEN_ANALYSIS]
 ---
 
 <!-- D-FORMAT:v3 -->
 
-# 生图队列（任务购物车）设计规格 — IMAGEGEN_QUEUE_SPEC v0.3
+# 生图队列（任务购物车）设计规格 — IMAGEGEN_QUEUE_SPEC v0.4
 
-**状态**：active（P0/P1 已实现并平板实机验收通过，P2 待夜间耐久；DECISION D1-A/D2-A/D3-A/D4-A 定稿） | **版本**：0.3 | **更新**：2026-08-27
+**状态**：active（P0/P1 已实现并平板实机验收通过，P2 待夜间耐久；DECISION D1-A/D2-A/D3-A/D4-A 定稿） | **版本**：0.4 | **更新**：2026-09-07
 
-> **定位**：为「任务购物车（连抽队列）」能力提供决策完备的设计规格——数据、状态机、执行器、UI、持久化、错误登记、迭代路线。生图页 UI 细则仍以 IMAGEGEN_UI_SPEC 为准，本卷只增补队列专属设计。
+> v0.4（2026-09-07 W4 文档-代码对账）：按代码现状回写四处失真——§六.2 判据由「三条件」改为实际**四条件 + 票据制**、§六.4/6.5 补 W1 失败可见性收口（超时真 cancel / 停止有界确认）、§九 队列表迁移版本 3→**10**、§十 互斥行为由「冲突显式报错」改正为**自动抢占**；另删除 frontmatter 不存在的 `IMAGEGEN_UI_SPEC` 悬空 relates。
+
+> **定位**：为「任务购物车（连抽队列）」能力提供决策完备的设计规格——数据、状态机、执行器、UI、持久化、错误登记、迭代路线。生图页 UI 细则仍以 `POCKETPAL_IMAGEGEN_UI_SPEC` 为准，本卷只增补队列专属设计。
 
 ## 一、背景与目标
 
@@ -101,10 +103,10 @@ loop:
 
 关键约束：
 1. **key 重构（P0 前提）**：把 handleGenerate 的「参数→生成」核心抽为 `runGenTask(snapshot)` 下沉 imageGenStore；组件层 handleGenerate（校验/引导/动效）与队列执行器共用同一下游；`loadEntry` 的模型加载链同步下沉（resolveCompanions/loadModel/loadDreamLiteEntry）。**消除组件层闭包复制**。
-2. **nightTask 恒 busy**：队列运行期 `queueActive=true` 期间 nightTask 引用计数恒 begin（现有 reaction 改为 `loading || generating || queueActive` 三条件；或执行器自行 begin/end）——防模型切换时 loading/generating 翻转导致前台服务反复启停。
+2. **nightTask 恒 busy**：判定式为**四条件** `loading || generating || queueCore.state==='running' || queueCore.state==='stopping'`（imageGenStore 单点 reaction，S5 已落地）——防模型切换时 loading/generating 翻转导致前台服务反复启停。2026-09-07 W2 起 begin **返回票据**（`nightTaskRegistry.begin('imageGen')`），只有持票者能 `end` 自己的额度：旧裸计数下「队列长跑时结束一次通话就把前台服务停掉、息屏即被杀」是真实反例。
 3. **引擎切换**：跨模型条目之间 unload+load（复用现有行内按钮卸载/加载链路）；切换耗时计入队列进度展示。
-4. **心跳超时**：复用现有 120s(Vulkan)/600s(CPU/OpenCL) 判活；超时=当前抽 failTask('采样超时') + **continue 下一项**（注意：判活置 generating=false 后引擎仍驻留，下一项 ensureModelLoaded 复用驻留引擎）。
-5. **停止**：`stopQueue()` → JNI `cancelTxt2img()`（设置取消标志）→ 引擎采样/VAE 解码循环检查标志干净退出（见 §八技术验证）→ 当前抽 failTask('用户停止') → 队列回 planning。
+4. **心跳超时**：复用现有 120s(Vulkan)/600s(CPU/OpenCL) 判活；超时=当前抽 failTask('采样超时') + **continue 下一项**（注意：判活置 generating=false 后引擎仍驻留，下一项 ensureModelLoaded 复用驻留引擎）。2026-09-07 W1 收口：超时分支**必须真发 native cancel**，让在途 `generate()` 以 null 干净返回、由 runGenTask 自然落 failTask——旧实现只改 UI 再 return，任务卡会永停 running。
+5. **停止**：`stopQueue()` → JNI `cancelTxt2img()`（设置取消标志）→ 引擎采样/VAE 解码循环检查标志干净退出（见 §八技术验证）→ 当前抽 failTask('用户停止') → 队列回 planning。2026-09-07 W1 收口：cancel 与执行器退出都**等结果**——`await cancelTxt2img()` 失败即置错留痕；`queueCore.stop()` 由执行器 `finally` 唤醒（不再 `while(running) await sleep(50)` 忙等），**15s 有界确认**；确认超时则如实报错「停止未确认……需重启应用」，状态留在 `stopping`，**不伪造已停止**（唯一出口是重启）。
 
 ## 七、UI 设计（细则入 IMAGEGEN_UI_SPEC 增补）
 
@@ -115,6 +117,7 @@ loop:
 - **进度**：队列面板顶部「第 i/N 项 · 第 j/M 抽」+ 预览区照常显示当前任务页（peviewIndex=1，动效与单张一致）。
 - **完成**：汇总卡（成功 X / 失败 Y）+「清空队列」；失败项可点击看报错（复用失败任务页一键复制）。
 - **入口**（选做，非 MVP）：画廊「同参数/复刻生图」可扩展「加入队列」。
+- **testID 域**：面板 `imagegen-queue-panel` / 动作 `queue-start`·`queue-stop`·`queue-clear`·`queue-close` / 行内 `queue-item-{i}`·`queue-remove-{i}` / 入口 `imagegen-queue-badge`·`imagegen-queue-capsule`。逐条值以代码为准（本文档不复制清单，防漂移）；e2e 契约的唯一真值源是 `e2e/helpers/selectors.ts`。
 
 ## 八、技术验证记录（P1 停止能力，已取证）
 
@@ -132,7 +135,7 @@ loop:
 ## 九、持久化与恢复（D4 裁定后细化）
 
 - 队列表 `image_gen_queue`（WatermelonDB）：QueueItem 全字段 + 队列元（state 不持久化，仅 planning 态可水合并由用户手动开始）。
-- **迁移机制已验证（2026-08-27）**：`src/database/schema.ts`（tableSchema 追加）+ `src/database/migrations.ts`（`schemaMigrations` + `createTable`，现有 toVersion:2 为先例——新队列表 = `toVersion: 3` 一个 createTable 步骤）+ model 类 + collection getter。与 image_gen_tasks 同构，自动获得 B14 整库快照保护（prepareSharedStorage + scheduleDbSnapshot 复用，零新增）。
+- **迁移机制已验证（2026-08-27）/ 版本已按代码改正（2026-09-07 W4）**：`src/database/schema.ts`（tableSchema 追加）+ `src/database/migrations.ts`（`schemaMigrations` + `createTable`）。本卷早期把队列表写作 `toVersion: 3`（规划值，当时仅到 v2），**实际落地是 `toVersion: 10`**（`schema.ts` 当前 version 10；同卷 §十三 S3 记的也是 v10——卷内自相矛盾已按代码改正）+ model 类 + collection getter。与 image_gen_tasks 同构，自动获得 B14 整库快照保护（prepareSharedStorage + scheduleDbSnapshot 复用，零新增）。
 - 恢复语义：水合时 `running/stopping` 一律回 `planning`（幽灵队列治理，与画廊 running→failed 同款显式标记）；当前抽已在画廊落 failed('生成中断')（复用幽灵任务治理）。
 - 条目 `pending` 保留（抽数不丢失），用户重新点开始续跑。
 
@@ -140,7 +143,8 @@ loop:
 
 | 场景 | 登记 | 行为 |
 |---|---|---|
-| 引擎忙/互斥冲突 | CP-APP-004 | 队列开始前校验 engineMutex；冲突→显式报错 |
+| 引擎互斥（chat 占槽） | CP-APP-004 | **开始前不校验、不报错**：`startQueue` 只挡 `loading/generating`；每抽经 `engineMutex.acquire('image')` **自动抢占释放 chat**（`EXCLUSIVE_PAIRS` chat↔image），与引擎域 §9.2 互斥语义一致（旧文档「冲突→显式报错」与实现相反，W4 按代码改正） |
+| 抢占释放超时（30s） | CP-APP-004 | 互斥链**唯一显式失败出口**：releaser 挂起 → `withTimeout` 抛「xxx 引擎释放超时（30s），请重启应用重试」+ 置空闲自愈，不永久挂起 |
 | OpenCL/Vulkan hang | CP-APP-005 | 心跳超时 → 当前抽 failed + 继续下一项 |
 | txt2img 失败/ERR_ | CP-APP-006 | 单项 failTaskWithReport（一键复制） |
 | 前台服务启动失败 | CP-APP-010 | 队列开始前复用 requestBatteryOptOutIfNeeded |
@@ -151,7 +155,7 @@ loop:
 
 - **D1 数据**：快照冻结；持久化新表；画廊任务复用；HistoryStrip 解码风暴已由 FlatList 窗口化根治（50 张验证），队列长跑安全；内存 history 上限 50 条（DB 全量保留，可接受）。
 - **D2 控制流**：状态机 §四；停止=interrupt；超时=continue；失败=标记继续。
-- **D3 状态**：queueItems/queueState/queuePosition 进 imageGenStore（MobX 单缝）；预览区单状态机不动；队列运行期 taskKind='gen' 动效一致。
+- **D3 状态**：队列状态**唯一真值源在 `ImageGenQueueCore`**（类自身 observable）；imageGenStore 侧 `queueState/queueItems/queuePosition/queueTotalDraws/…` 全是**同名 computed 代理**，不存副本、无同步窗（2026-09-07 W2：旧镜像字段 + `syncQueueMirror` + 11 处调用全删，UI 代码零改动）；预览区单状态机不动；队列运行期 taskKind='gen' 动效一致。
 - **D4 竞态**：stopping 过渡态防双写；执行器全串行 await；入队幂等累加；nightTask 恒 busy；连点防抖（现有 generating 灰置）。
 - **D5 错误**：§十 全登记，显式失败不静默。
 - **D6 演进**：执行器=store 层一等公民批量执行器，nightTask 域（生图/未来视频）共用；队列与 benchmark 域正交；画廊入口扩展为选做。
@@ -170,8 +174,8 @@ loop:
 |---|---|---|---|
 | S1 | runGenTask 下沉 | handleGenerate（ImageGenScreen.tsx:866-985）的调用面已确认：beginTask 字段组 / generateDreamLiteEntry(w,h,steps,p) / generate(p,{steps,cfg,width,height,seed,negativePrompt,loraPath,loraMultiplier,modelLabel}) / finishTask-failTaskWithReport。下沉=快照→同参数调用，组件层仅保留校验/引导/动效 | ✅ 全量闭环：store 侧任务化一体（含 hooks.onTaskStarted 保持动效时序）；组件层 handleGenerate 已复用 runGenTask（~100 行 → ~40 行，校验/引导/动效保留） |
 | S2 | 模型加载下沉 | loadEntry（ImageGenScreen.tsx:322-360）含 resolveCompanions+loadModel/loadDreamLiteEntry+推错链路——整段搬入 store，组件层仅按 manifest 行内按钮触发 | ✅ 快照自包含方案落地（mainPath/伴侣/backend/loraPath 入队时组件层解析），runGenTask 内 ensureModelLoaded；行内按钮 loadEntry 维持现状（推错链路与 UI 反馈耦合，收口收益低风险高，留测试治理窗后专项） |
-| S3 | 队列表 | schema.ts + migrations.ts toVersion:3（createTable）见 §九；model 类 + collection getter 对齐 ImageGenTask 模式 | ✅ schema v10 + migrations toVersion 10 + ImageGenQueue model + ImageGenQueueRepository（upsert/remove/clearAll）
-| S4 | native cancel | ImageGenModule.kt 新增 ReactMethod cancelTxt2img()（模式同 getGpuRenderer:200-230）+ ImageGenJNI.cpp 调 sd_cancel_generation(g_ctx, SD_CANCEL_ALL)——JNI 层 g_ctx 已在 nativeLoadModel 持有，零新增状态 | ✅ P1 已完成：JNI nativeCancelTxt2img（不持 g_mutex——nativeTxt2img 全程持锁跑长任务，持锁会阻塞停止）+ Kotlin cancelTxt2img ReactMethod + store.stopQueue 接入（fire-and-forget，core 见 stopRequested 不计抽数） |
+| S3 | 队列表 | schema.ts + migrations.ts toVersion:10（createTable）见 §九；model 类 + collection getter 对齐 ImageGenTask 模式 | ✅ schema v10 + migrations toVersion 10 + ImageGenQueue model + ImageGenQueueRepository（upsert/remove/clearAll）
+| S4 | native cancel | ImageGenModule.kt 新增 ReactMethod cancelTxt2img()（模式同 getGpuRenderer:200-230）+ ImageGenJNI.cpp 调 sd_cancel_generation(g_ctx, SD_CANCEL_ALL)——JNI 层 g_ctx 已在 nativeLoadModel 持有，零新增状态 | ✅ P1 已完成：JNI nativeCancelTxt2img（不持 g_mutex——nativeTxt2img 全程持锁跑长任务，持锁会阻塞停止）+ Kotlin cancelTxt2img ReactMethod + store.stopQueue 接入（**await 结果 + 15s 有界确认**，见 §六.5；core 见 stopRequested 不计抽数。旧口径「fire-and-forget」已于 2026-09-07 W1 作废——它正是「按了停止没反应」的根因） |
 | S5 | nightTask 恒 busy | imageGenStore.ts:180-202 reaction 条件 `loading||generating` → 加 `queueActive`；执行器 begin==end 对保持引用计数平衡 | ✅ reaction 四条件（loading/generating/queue running/stopping）
 | S6 | l10n | src/locales/en.json 追加队列 keys（validate:l10n 门禁） | ✅ 跟随生图页现有惯例硬编码中文（GenActionBar「出图」同链路），不引入新 l10n 面
 | S7 | jest | queueStore 状态机/执行器/恢复三组用例，挂 src/store/__tests__/（对齐 ModelStore.test.ts 模式） | ✅ imageGenQueueCore.test.ts 11 用例全绿（入队幂等/编辑/删除/清空/失败继续/停止不消耗抽数/水合/防重入）；ghost 测试 mock 边界补全 2 处 |

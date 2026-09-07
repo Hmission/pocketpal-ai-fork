@@ -3,9 +3,9 @@ doc_id: POCKETPAL_TTS_SPEC
 module: root
 type: spec
 status: active
-version: '1.0'
+version: '1.1'
 created: '2026-09-06'
-updated: '2026-09-06'
+updated: '2026-09-07'
 relates:
   [POCKETPAL_PHONE_SPEC, POCKETPAL_AUDIO_UI_SPEC, POCKETPAL_TEST_INFRA_SPEC]
 ---
@@ -106,8 +106,11 @@ neural 引擎（Supertonic/Kokoro/Kitten）。**每一次 stop 打向 OS 都是�
 
 1. **注释悬空指针**：`TTSStore.ts` 多处引用 `architecture/tts.md §4a / §4a.1 / §4a.5 / §4e`，
    该文件在本仓**从不存在**。本轮起以本文件为播报架构事实源，注释指针同步改指此处。
+   ✅ **已于 2026-09-07 真收编**：上一轮只是加了一块「§号仅作历史出处标记」的免责声明——
+   那是**用含糊替代收口**（每个读旧指针的人还得先跳回文件头确认声明存在）。本轮把五条
+   口径写实为 §7，11 处指针全部改指本节，免责声明块删除。
 2. **母仓任务记录数值错误**：主线登记称「phoneMode 不再靠 **10s** 看门狗兜底」，
-   实际代码是 `REPLY_TIMEOUT_MS = 90_000`（`src/services/phoneCall/session.ts:31`），
+   实际代码是 `REPLY_TIMEOUT_MS = 90_000`（`src/services/phoneCall/session.ts:34`，L29-33 是它的注释块——本行旧写 `:31` 指到了注释上，2026-09-07 W4 改行号），
    全仓电话/音频链上无 10000 字面量。
 3. **W1a 三项状态核实**：「引擎能力门」与「两套播报门合并」**均已完工并有单测**
    （`engineIsReady` 能力位驱动 / `speakBlock` 单一事实源 + 四条契约测试）；
@@ -126,3 +129,43 @@ neural 引擎（Supertonic/Kokoro/Kitten）。**每一次 stop 打向 OS 都是�
    ✅ **已于 2026-09-07 根治**：observer 旁路与仲裁 ref 整条删除（64 行），
    改由管家直答在回写后自行声明回合（`useChatScheduler.butlerReply` 的 `onReplied`）——
    口径与契约见 `docs/POCKETPAL_PHONE_SPEC.md` §18，顺序契约已入单测。
+
+## 七、可用性门与内存档位口径（接管原 architecture/tts.md 职责）
+
+> 2026-09-07 补。代码注释里引用的 `§1a / §4a / §4a.1 / §4a.5 / §4e` 五处口径以本节为准。
+
+### 7.1 内存档位（原 §1a）
+
+`deviceMeetsMemory` 在 `init()` 里由 `DeviceInfo.getTotalMemory() >= TTS_MIN_RAM_BYTES`
+**一次性求值、运行期不再复查**——物理内存总量不随运行改变，中途变的是「可用」不是「总量」。
+求值失败（native 抛错）按 `false` 处理：这里是**保守关闭**，不是 fail-open。
+
+### 7.2 可用性门公式（原 §4a / §4a.1）
+
+`isTTSAvailable` 由三态 `userTTSOverride` 与 `deviceMeetsMemory` 派生，规则是
+**显式用户主权优先**：
+
+| `userTTSOverride`   | `deviceMeetsMemory` | `isTTSAvailable` | 语义                         |
+| ------------------- | ------------------- | ---------------- | ---------------------------- |
+| `true`              | 任意                | `true`           | 低内存档用户主动开启，主权优先 |
+| `false`             | 任意                | `false`          | 用户主动关闭，**不得被高内存翻转回 true** |
+| `null`（未设置）    | `true`              | `true`           | 跟随设备默认                 |
+| `null`（未设置）    | `false`             | `false`          | 跟随设备默认（低内存关闭）     |
+
+⚠ 常见错法是 `deviceMeetsMemory || userTTSOverride`：它在「设备高内存 + 用户显式关闭」
+时返回 `true`，把用户主权吃掉——本仓有契约测试钉死这一条（§6.D 用例）。
+
+**本门不等于「能不能播」**：它只是设备档位这一颗因子，播报出口一律读 `speakBlock`（§1）；
+历史上多处拿 `isTTSAvailable` 当总门使用，就是「UI 说就绪、实际播不出」的根因。
+
+### 7.3 门关闭时的资源释放（原 §4a.5）
+
+`isTTSAvailable` 由开转关（用户关掉播报）时执行 **stop + release**：否则低内存设备上
+「关了但没释放」会持续占着模型 RAM。该动作 fire-and-forget，与 `setAutoSpeak(false)`
+同构（不变量 I3 / I6）。
+
+### 7.4 生命周期钩子无条件注册（原 §4e）
+
+`init()` 里的 AppState 监听、session reaction、`isInstalled` 检查**不受可用性门约束、
+无条件注册**。理由：低内存用户可能**中途**才把 `userTTSOverride` 翻成 `true`，此时若
+钩子当初没注册，播报就没有后台释放与状态跟随能力，表现为「开了但行为缺半」（不变量 I8）。

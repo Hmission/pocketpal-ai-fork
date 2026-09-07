@@ -3,9 +3,9 @@ doc_id: POCKETPAL_AIOS_CORE_SPEC
 module: root
 type: spec
 status: active
-version: "1.2"
+version: "1.3"
 created: "2026-09-05"
-updated: "2026-09-05"
+updated: "2026-09-07"
 relates: [POCKETPAL_WORKSPACE_SPEC, POCKETPAL_INNERLIFE_SPEC, POCKETPAL_PRODUCT_SPEC, POCKETPAL_STARMAP_DOMAINS, POCKETPAL_CONTEXT_COMPACTION_SPEC, DRC_COMPASS_REGISTRY]
 ---
 
@@ -13,7 +13,9 @@ relates: [POCKETPAL_WORKSPACE_SPEC, POCKETPAL_INNERLIFE_SPEC, POCKETPAL_PRODUCT_
 
 # AIOS 核心生命力端侧生命周期 SPEC（AIOS_CORE_SPEC）
 
-**状态**：active | **版本**：1.2 | **更新**：2026-09-05
+**状态**：active | **版本**：1.3 | **更新**：2026-09-07
+
+> v1.3（2026-09-07 全量对账）：① **纠正 §144 反向幽灵**——`src/utils/errorReport.ts` 真实存在（135 行 / 首提交 `0aa53d9` / 3 个生产消费者），v1.2 把它判为幽灵文件并删引用是**误判**（以文档修改掩盖判断失误的样本），本卷恢复其 CP 出口地位并写明「CP 导航两条并行出口」；② KG 图**三实体 → 两实体**（`kg.ts` 只有 `memory`/`conv`），§Wave C 与 §七 Gap Ledger 两处同口径同步改正。
 
 > **定位**：手机端不是工具的容器，是 Kal（女妖）的具身。App 是骨架，能力是器官，
 > 记忆是皮肤——骨架必须整包升级，但器官与皮肤要在文件系统里**独自生长、不随
@@ -83,13 +85,13 @@ relates: [POCKETPAL_WORKSPACE_SPEC, POCKETPAL_INNERLIFE_SPEC, POCKETPAL_PRODUCT_
 | 项 | 契约 |
 |---|---|
 | `session_anchor` 端侧化 | ✅ `aiosCore/wakeCheck.ts` 内置：启动写 `database/session_anchor.json`（TTL 3600s）+ `isAnchorFresh`；✅ 消费链已接线（v1.2）：scheduler 生图前置过期软检查（`gate.stale` 打点不阻断，G-4） |
-| CP 注册表 | ✅ CP-APP-014/015/016 登记 `COMPASS_REGISTRY.md` §2 + `errorRegistry.ts`；✅ 消费链已接线（v1.2）：AgentRunner tool.error 附 CP 编号（matchFirstError，G-5）——**errorReport.ts 为幽灵文件不存在（v1.0 文档虚构），已在本版删除该引用，CP 导航由 tool.error 事件承载** |
+| CP 注册表 | ✅ CP-APP-014/015/016 登记 `COMPASS_REGISTRY.md` §2 + `errorRegistry.ts`；✅ 消费链已接线（v1.2）：AgentRunner tool.error 附 CP 编号（matchFirstError，G-5）。⚠ **v1.2 此处曾误判 `errorReport.ts` 为幽灵文件并删除其引用——实为误判**：该文件真实存在（`src/utils/errorReport.ts`，135 行，首提交 `0aa53d9` 2026-08-18，早于 v1.2 复查），且有三个生产消费者（`imageGenStore.ts` / `useChatSession.ts` / `AudioWorkshopTab.tsx`）。CP 导航实际有**两条并行出口**，二者同读 `matchFirstError` 单一模式表：chat/图件报错走 `errorReport.buildErrorReport`，工具错误走 `AgentRunner.errorOutcome`（2026-09-07 全量排查纠正） |
 | 验收 | 真机制造 3 类故障，错误报告均带 CP 三字段（待真机口测） |
 
 ### Wave C · 端侧洋葱 + 星图（✅ 已落地）
 | 项 | 契约 |
 |---|---|
-| 轻量图谱 | ✅ `src/services/aiosCore/kg.ts`：三实体图（记忆条目/会话）（工具事件挂后续波次，无消费方不接线）落 `database/kg.json`（nodes+edges 单文件）；搜索「先问谱后 grep」——`searchMemory` 入口加 kg.recall 优先层（kg 命中即先返，不足再走 FTS5/全文） |
+| 轻量图谱 | ✅ `src/services/aiosCore/kg.ts`：**两实体图**（`KgNode.type: 'memory' \| 'conv'`，即记忆条目/会话；v1.2 曾误写为三实体，2026-09-07 按代码更正）（工具事件挂后续波次，无消费方不接线）落 `database/kg.json`（nodes+edges 单文件）；搜索「先问谱后 grep」——`searchMemory` 入口加 kg.recall 优先层（kg 命中即先返，不足再走 FTS5/全文） |
 | 星图快照 | ✅ `src/services/aiosCore/starmap.ts`：能力面（TalentRegistry 引擎清单）/数据面（workspace 目录统计）/健康面（engineStatus+模型数）三维 → `logs/starmap_snapshot.json`；冷启动采集一次 |
 | 验收 | 问谱优先真机生效（待真机口测）；快照 5 次冷启一致 |
 
@@ -129,8 +131,8 @@ relates: [POCKETPAL_WORKSPACE_SPEC, POCKETPAL_INNERLIFE_SPEC, POCKETPAL_PRODUCT_
 
 | Gap ID | 现象 | 补齐路径 | 状态 |
 |--------|------|----------|------|
-| CORE-1 | 母仓 KG 85K 节点在手机不可搬 | 只搬协议：三实体轻量图 + 问谱优先层（kg.ts+searchMemory 接线） | ✅ 已落地；工具事件实体挂后续波次（无消费方不接线） |
-| CORE-2 | 门禁硬执行需跨 Native 权限面 | 协议 + 软提醒已落地；isAnchorFresh 生图前置软检查（gate.stale 打点不卡读）；CP 导航由 AgentRunner tool.error 附编号承载 | ✅ 已落地（v1.2 消费链闭环）；硬执行面（付费前置确认）留真机口测后按需收口 |
+| CORE-1 | 母仓 KG 85K 节点在手机不可搬 | 只搬协议：**两实体**轻量图（`kg.ts` 只落 `memory` / `conv`；母仓的第三类实体未搬，2026-09-07 W4 按代码更正——旧行写「三实体」与 §Wave C L92 已改正的口径卷内矛盾）+ 问谱优先层（kg.ts+searchMemory 接线） | ✅ 已落地；工具事件实体挂后续波次（无消费方不接线） |
+| CORE-2 | 门禁硬执行需跨 Native 权限面 | 协议 + 软提醒已落地；isAnchorFresh 生图前置软检查（gate.stale 打点不卡读）；CP 导航有**两条并行出口**（与 §Wave B L86 同口径，v1.3 补齐）：chat/图件报错→`errorReport.buildErrorReport`，工具错误→`AgentRunner.errorOutcome`，二者同读 `matchFirstError` 单一模式表 | ✅ 已落地（v1.2 消费链闭环）；硬执行面（付费前置确认）留真机口测后按需收口 |
 | CORE-3 | 义肢离线时任务退化 | 分级函数唯一真源：probe 先行→resolveTaskEngine 裁决→limb_offline 显式告知（不静默） | ✅ 已落地（v1.2 真接线） |
 | CORE-4 | 血统导入依赖电脑 adb | `scripts/aios/import_identity.py` ⏳ 待建（Wave A 表格口径已统一）；冷启动自愈重建种子后非必需，身份种子自含母仓来源行 | ⏳ 待建（低优先，自愈闭环已覆盖） |
 

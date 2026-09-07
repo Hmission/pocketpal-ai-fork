@@ -302,3 +302,44 @@ SPEC §四/§十一 D3 自称「队列状态进 MobX **单缝**」，实为五�
 - W3 是**治理假象级**（指南针七条形同未登记），不修则"犯错现场有修复指引"这条核心承诺在 7/17 的锚点上是空的。
 - W4 体量大但风险低（多为文档回写），可并行；W5/W6 属清理，放最后。
 - 每波收口必须：先改 SPEC → 落码 → 门禁（tsc/eslint/prettier/定向 jest）→ 真机可感知验证 → **提交后复验 HEAD**（§0.2 新纪律）。
+
+---
+
+## 十、执行裁定回写（2026-09-07，同窗落地）
+
+> 本节目的：把「报告说要做」与「实际做了啥」对账到同一张纸上。**包括对本报告自身的推翻**——
+> 报告是基于取证写的，动手后取证更深、结论不同就要如实改，不允许拿旧报告护航新行为。
+
+### 10.1 报告判定的修正（专工结论与本报告被复核推翻项）
+
+| 报告原结论 | 复核后事实 | 因此改为 |
+|---|---|---|
+| §3.1「`audioStore.speak()` 失败不可见 → 加错误提示 + 铺 16 语文案」 | `speak/loadVoices/previewVoice/stopSpeak/speakingText/isTTSAvailable` 六个成员**全仓零调用者**（`Speech.speak` 是 react-native-speech 的 API，同名不同物） | 按「能删不加」：**删死码 45 行**，不为无人调用的方法铺文案；顺带消灭 §2.3 所列「第 5 套播报判定」 |
+| §4.2「ST-APP 缺 nighttask 整域 → 补」 | `COMPASS_REGISTRY §3.3.2` L122 明写 nighttask「**不新增 domain 枚举（BT05 稳定）**」 | 不补：STATE_MAP 无该域是**设计如此**，不是缺口；已把该说明写进 COMPASS |
+| §4.2「补 imagegen.captioning + audio 词面对齐」 | `stateSnapshot.ts` 生产代码**只有** `toCompass('engine', …)`，chat/imagegen/model/audio **四域整体零生产者** | 不补：往死表加死行是双份臃肿；W3 改为把文档「已登记」改成**如实标注接线状态** |
+| §W1-6「源音频持久化失败可见」 | 该失败已 `console.warn` 且任务仍可用（仅对照播放不可用），不阻断用户主流程 | 不改（不为了「可见」而新造 banner 面） |
+| §五-4「`phoneVisible` ↔ `inCall` 不同源 → 改码归一」 | 前者是 React 渲染开关，后者是**任意位置可同步读**的业务事实（`useChatSession`/管家声明回合都在 hook 之外，拿不到 React state） | 定性为**文档措辞歧义而非代码违例** → 改文档（PHONE_SPEC §16.4），不动正确的代码 |
+| §五-12 行号「TTS_SPEC §16.3 L784」 | TTS_SPEC 全文仅 172 行；「特判全删」一句实在 **PHONE_SPEC §16.3 L757** | 本报告的锚点写错了文档；已按真实位置修（并发现特判不是 2 处而是 **5 处**，含 3 处 UI 层） |
+| §W4「补 testID 登记（队列 11 + 音频 21 + perf-metrics + 电话 4）」 | 实测 e2e 对这四个域的 testID **引用 0 条**；全仓 505 个静态 testID + 64 个动态前缀；登记表自我声明为「e2e 依赖」 | **不逐条抄表**（那是造噪声且必漂）：改为「契约源指认（`e2e/helpers/selectors.ts` 唯一真值源）+ 命名域约定」，并删实际抓到的 **3 条幽灵行**（`confirm-dialog-confirm/cancel`、`imagegen-button`——后者是入口已裁剪但登记未清，本报告计为「2 处」偏少） |
+
+### 10.2 六波执行状态
+
+| 波 | 状态 | 交付要点（与上表裁定一致） |
+|---|---|---|
+| **W1** | ✅ 完成 | 停止链三重吞已解（cancel `await` + 15s 有界确认 + 超时不伪造已停止）；`stop()` 忙等 → `finally` 唤醒；内存检查 fail-open → **fail-visible + `unknown` 档**（含初值谎报 `fits` 一并修）；心跳超时从「只改 UI」→ 真发 cancel；audioStore 死码删除；16 语新增 `memory.checkFailed{,Short}`；**失败用例反向改写**（旧测试把 fail-open 当规格） |
+| **W2** | ✅ 完成 | 8 个镜像字段 → **同名 computed 代理**（core 自身 `makeObservable` 只注解对外契约），`syncQueueMirror` + `QueueHooks` + 11 处调用全删，**UI 代码零改动**；nightTask 票据制（含「跨域不互扣」用例）；`syncPoll` 纳队列两态 |
+| **W3** | ✅ 完成 | CP-APP-007..013 七条真 regex（deepDive 路径 16 个 `Test-Path` 先验）；修 001 悬空；11 处 `architecture/tts.md` 指针**真收编**为 TTS_SPEC §7 四小节（旧轮只加了免责声明块——那是用含糊替代收口）；新建 `scripts/audit_compass_registry.js` 登记↔执行**双向对账闸门**挂 `pre-commit` 第 6 闸 + `yarn audit:compass`；表驱动样本测试补上「regex 写得对」这一层 |
+| **W4** | ✅ 完成 | 17 项逐条裁定回写（QUEUE/UI/CHAT_UI/PHONE/PERF/TTS/STARMAP/AUDIO/UI_INTERACTION 共 9 卷）；族色收 token；LoRA 补条目；testID 改口径；**额外收一处双份事实源**：`utils/types.ts` 的 `SemanticColors` 是 `TokenColors` 的手工副本且已漂移（缺 `badgeFlux`/`imageInsight`，靠 `styles.ts` 的 `theme: any` 吞洞）→ 120 行副本删为 1 行派生 |
+| **W5** | ⏳ 待做 | — |
+| **W6** | ⏳ 待做 | — |
+
+### 10.3 W4 新发现（不在原 17 项内，当场修或登记）
+
+| # | 发现 | 处置 |
+|---|---|---|
+| N1 | `SemanticColors`（`utils/types.ts`）与 `TokenColors`（`theme/tokens/types.ts`）双份声明已漂移，且 `ImageGenScreen/styles.ts` 签名是 `theme: any` → token 名写错不会报错只会静默传 `undefined` | **当场修**：副本 → 派生（tsc 零错证实为真子集）；`theme: any` 登记为历史面债（改动面大，不本轮扫） |
+| N2 | IMAGEGEN_UI_SPEC **§9 重号**（顶部横幅与性能面板都是 §9），且 `PERF_BENCHMARK_DESIGN` 三处引用 §9 均指性能面板 | **当场修**：横幅改标 §10 并就地保留位置（章节物理序乱不重排，免造大面积 diff 噪声） |
+| N3 | 多卷 **frontmatter `version` 落后于卷内版本日志**（IMAGEGEN_UI 5.6 vs 日志 v5.11；AUDIO_UI 1.8 vs v1.12；CHAT_UI 5.1 vs 表内已有 v5.2） | **当场修**：版本面与日志面对账 |
+| N4 | CHAT_UI_SPEC **变更日志行时序乱序**（4.3/4.7/4.8 不按日期） | 登记为文档债（重排行是噪声，不本轮动） |
+| N5 | `e2e/helpers/selectors.ts` 有静态 `byTestId` 字面量在 `src` 找不到挂点；已定性一条：`settings-item-pals`（伙伴入口 2026-08-15 已裁剪）；另十余条不能凭 grep 定罪 | **登记为 e2e 专项**（UI_INTERACTION_SPEC §5.2 + §7 挂账）：补挂或删选择器，不拿旧断言护航、也不误删真契约 |
+| N6 | `QueuePanel` 旧注释自称「与生图页下拉同源约定」，实为**全仓唯一一处**且与两套登记表都不一致；IMAGEGEN_UI_SPEC §3 L134 又列了 3 个裸 hex（第三份副本，长期缺 flux/krea2） | **当场修**：QueuePanel 收 token（12% 底 + 同色描边/文字，沿用本仓 chip 语言，避开暗色模式实心底配淡彩 token 的失读）；§3 删裸 hex 改指 DESIGN_SPEC §1.4；新增族靠 `Record<ModelFamily,…>` 全量映射在 **tsc 层面强制先登记色** |

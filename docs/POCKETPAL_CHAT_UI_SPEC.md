@@ -3,9 +3,9 @@ doc_id: POCKETPAL_CHAT_UI_SPEC
 module: root
 type: spec
 status: active
-version: "5.1"
+version: "5.2"
 created: "2026-08-14"
-updated: "2026-09-05"
+updated: "2026-09-07"
 relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-footer-unification]
 ---
 
@@ -508,9 +508,11 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
   与 `HeaderRight.compactBtn` 同族同基线；**v2.0 的 triggerPill 胶囊化已撤销**（与左右控件不同族，
   造成「圆圈过大、高度不一致」——见 DESIGN_SPEC §3 触区几何红线）；着色必传 `fill`（见 DESIGN_SPEC §3 传参红线）。
 - **通话界面**（v5.1）：ChatScreen 根节点内全屏 overlay（surface 全底，弹窗范式 OverlayCard 语义对齐，不另造容器）：
-  ① 联系人区（品牌小鸡图头像圆裁 + 伙伴名回落链 pal.name→会话标题→「小黄鸡」 + 模型名 · 通话时长）；
+  ① 联系人区（品牌小鸡图头像圆裁 + 伙伴名回落链 **pal.name?.trim() → `l10n.components.phoneCall.defaultPartnerName`（中文「小妖」）** + 模型名 · 通话时长）；
+     ❌ **不取会话标题**（v5.2 按代码改正：旧文档写「pal.name→会话标题→小黄鸡」两头都错——既没取标题，默认名也不是小黄鸡；大王 v2.3 钦定无名就用默认伙伴名，曾拿标题当名字显「帮我画一张画。」读着像 bug，代码 `ChatScreen.tsx:388-391` 注释即裁定，与 PHONE_SPEC §13.3 同源）；
   ② 状态区（六态主文案 + 副提示 + 转写轮次级常驻回显 + 播报通路行）；③ 跑分迷你行（PerfMiniRow 默认展开）；
-  ④ 控制区 **横向同一行**：〔按住说话 96px·麦〕+〔挂断 64px·红〕，caption 在各自圆钮下方。
+  ④ 控制区 **横向同一行、左右分居**：〔挂断·红·电话横置〕+〔按住说话·麦〕，两钮 **等大 72dp**（图标统一 `iconSize.xl`），caption 在各自圆钮下方。
+     **旧口径「按住说话 96px + 挂断 64px」已废**（v5.2 按代码改正：`PhoneCallOverlay/styles.ts` holdButton/hangupButton 均 72×72，单测已钉住两钮尺寸相等防回退；视觉等级靠**颜色与图标**不靠尺寸——PHONE_SPEC §11.8/§14.6 为现行口径）。
   **右上「收起 ✕」已删除**（与挂断同函数 = 重复入口）。
 - **动效**：三态波复用 useWaveDots（生图三点波浪同源，不新建动画体系）。
 - **编排**：src/services/phoneCall（纯 TS 服务类，依赖注入{record,transcribe,send,speak}，单测覆盖全流水线）；
@@ -528,12 +530,17 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 | phone-engine-progress | 引擎加载进度条 |
 | phone-perf-row | 跑分迷你行（PerfMiniRow 复用，testIDPrefix=phone-perf） |
 | phone-avatar | 联系人区头像（品牌小鸡图，v5.1） |
-| phone-hint | 六态副提示行（v5.1） |
+| phone-hint | ❌ **幽灵登记已删（v5.2）**：代码无此 testID——六态副提示行实际由 `phone-tts-status` 上方的文本渲染，要进 e2e 需先补挂 id 再登记 |
 | phone-tts-status | 播报通路行（不可用时可点拉起 TTSSetupSheet，v5.1） |
+| phone-dialogue | 对话流 ScrollView（v2.4 铺满主区，`DIALOGUE_TAIL=12` 尾窗口） |
+| phone-elapsed | 通话时长文本 |
+| phone-wave | 录音振幅波形（能量通道，§14.2） |
 | phone-controls | 控制区容器（横向同一行，布局契约可断言，v5.1；v5.2 改为 space-between 分居两侧防误触） |
 | phone-ambient | 空闲期音频波形（三根不等高静态柱，v5.2） |
 
 > `phone-close`（右上收起 ✕）随 v5.1 删除，不再登记。
+
+> **登记口径（2026-09-07 W4 明确）**：本表只登 **通话域锚点**，逐条值以代码为准；**e2e 契约的唯一真值源是 `e2e/helpers/selectors.ts`**（`byTestId(...)` 出现即为契约），文档不反向复制全量清单（全仓 505 个静态 testID，抄进表格必漂——本次就抓到 `phone-hint` 一条幽灵行）。
 
 ## 变更日志
 
@@ -565,3 +572,4 @@ relates: [POCKETPAL_DESIGN_SPEC, POCKETPAL_UI_INTERACTION_SPEC, ADR-0003-bubble-
 | 2026-08-20 | 4.5 | §20 复查闭环（task-6ad 全量审计，K90 真机像素验证）：**P0** `ChatScreen.renderBubble` 加 `assistant_turn` 门控（turn 级仅一次，根除徽章行 N+1 重复，新增 `renderBubble.test.tsx` 三用例防回归）；`AssistantAuthorRow` 修正（author.id 硬编码 → 真实 `user.id`、意图选择器初始值改会话实时 `activeSessionIntent`、动态 import 改静态）；§20.3 顶栏等距度量重定义（图标视觉空隙为准，`compactBtnLeft` + `marginLeft -6dp`，真机 35/36px delta=1px） |
 | 2026-08-26 | 4.9 | §18.9 进度链路语义化与去重（B57，大王洞察「跑分卡思考流与气泡重复」）：①思考流预览 `streamingReasoningTail` 清退（思考内容单一事实源=气泡 ReasoningBlock，store 字段/触摸方法/touchAgentRun 形参/l10n reasoningLabel 全链删除）；②`AgentUiState` 加 `reasoningPhase`（reducer 在 token 事件按 reasoning/content delta 翻转，引用守卫保流式性能）——streaming_text 标签区分「正在思考…/正在回复…」，200s 思考期用户不再迷茫；③`tool_call_started` 保留 `pendingTalentNames`（执行期工具名不再丢失）+ TALENT_LABEL_KEYS 补 web_search→「正在联网搜索…」——联网搜索全程业务语义可见；阶段色收敛二态（流式期蓝/工具期紫）
 | 2026-09-04 | 5.0 | §21 电话模式（PHONE_SPEC v1.0）：顶栏电话图标（phone-call-button）+ 全屏通话 overlay（三态 + 按住说话 + 挂断）+ 复用 audio 域编排新服务 phoneCall（纯 TS 可单测）——不新增模型/引擎/气泡类型 |
+| 2026-09-07 | 5.2 | W4 文档-代码对账（只改口径不改视觉）：① §21 ④ 控制区尺寸「96px + 64px」改正为**两钮等大 72dp**（代码 72×72 + 单测钉住，PHONE_SPEC §11.8 为现行口径）；② §21 ① 伙伴名回落链改正：**不取会话标题**、默认名是「小妖」不是「小黄鸡」（旧句两头错）；③ testID 表删幽灵行 `phone-hint`（代码零挂点）、补登 `phone-dialogue`/`phone-elapsed`/`phone-wave` 三条现有锚点，并写明登记口径（e2e 真值源 = `e2e/helpers/selectors.ts`，不全量抄表）；④ frontmatter `version` 5.1 → 5.2 与版本面同步（表内已存在 v5.2 条目而头版本停在 5.1 = 头部落后的实证）；⑤ 登记新发现两项文档债：本卷**变更日志行时序乱序**（4.3/4.7/4.8 不按日期序，影响按版本追待办）、生图域/音频域共 47 个 testID 逐条不登（改走口径条 + 代码为准） |

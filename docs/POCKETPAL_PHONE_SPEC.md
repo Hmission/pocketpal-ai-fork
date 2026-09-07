@@ -3,9 +3,9 @@ doc_id: POCKETPAL_PHONE_SPEC
 module: chat
 type: spec
 status: active
-version: "2.4"
+version: "2.5"
 created: "2026-09-04"
-updated: "2026-09-05"
+updated: "2026-09-07"
 relates: [POCKETPAL_CHAT_UI_SPEC, POCKETPAL_AUDIO_UI_SPEC, POCKETPAL_STARMAP_DOMAINS, POCKETPAL_DESIGN_SPEC]
 ---
 
@@ -28,6 +28,7 @@ relates: [POCKETPAL_CHAT_UI_SPEC, POCKETPAL_AUDIO_UI_SPEC, POCKETPAL_STARMAP_DOM
 > 版本：v2.2（2026-09-05 大王二次复测，播报已出声✓）：①控制区**挂断居左 / 按住说话居右**且两钮分居两侧（space-between + xl 边距）——v2.1 居中 gap 40dp 被报「离太近会误触」（§11.8）；②**跑分环境轨迹**——真因不是默认折叠（v2.1 已 true），而是 `chatTurnPerf` 回合制采样在通话页空闲期无数据→展开的是空图；新增 `usePerfTrace`（空闲自采 1Hz、生成期不双采样、挂断即停）（§11.7）；③新增 §12 Roadmap：端到端路线 B 现状实证（未接；JNI 已含 vocoder/audio 符号但核心层能力待 spike 验证）+ P0/P1/P2/测试债清单。
 > 版本：v2.3（2026-09-05 大王三次复测 + 豆包四图对标）：①默认伙伴名定「**小妖**」（en `Xiaoyao`），pal 无名不再拿会话标题当名字；②**两钮等大** 72dp（大王：「按住说话比挂断大好多」，§11.8）；③新增 §13：ASR 链路定性（grep 证 App **未接系统语音识别**，聊天页与电话模式共用同一条 SenseVoice 链，不存在重复转写）+ 豆包对标表（可取/不取/待裁定）。
 > 版本：v2.4（2026-09-05 大王裁定落地，详见 §14）：①**对话流铺满主区**（§14.1）——取代「我说/它说」两行摘要，observer 直读 chatSessionStore（零 props 接线），伙伴句深色 / 我说浅色，未落库转写补为末条（§11.4 不回退）；系统提示（报错/未加载）**不入字幕**（不是「谁说了什么」）；②**真实振幅通道**（§14.2）——原生 `AudioRecordModule` 读块内算 RMS 以 `AudioLevel` 事件回传（沿用 DownloadModule 事件范式），录音期波形不再造假；③**VAD 只观测不断句**（§14.3）——峰值/均值/最长静音段/假想断点落 logcat 供判读，数据不支持就不上免手；④**归属口径自查修正**（§14.1）——系统提示（`Completion failed` / 模型未加载）不再以「我说」行入字幕，说话人改按 author 判定。
+> 版本：v2.5（2026-09-07，§18/§19 落地 + W4 文档-代码对账）：① **§18 回复路径收口归一**——删 observer 旁路与 `handledRef` 仲裁，管家直答自行声明回合（取代 v1.1②「落流同步」）；② **§19 电话一轮分段遥测**落地并真机首采（首采即暴露 `firstToken` 两路径口径陷阱：管家路径是「回复就绪延迟」不是首字延迟）；③ §16.4 `phoneVisible` ↔ `inCall` **职责边界重写**（复核判定为文档措辞歧义而非代码违例：前者是 React 渲染开关、后者是任意位置可同步读的业务事实，故改文档不动正确代码）；④ 卷体修复：§18 标题在提交 `22e52db` 里就已丢失、§9.1 重复两份，已插回并去重（H2 序列 1..19 连续）；⑤ **W4 三处失真按代码改正**：§11.2 布局图两钮 96/64 → **72dp 等大**、伙伴名回落链**删「会话标题」**且默认名是「小妖」不是「小黄鸡」、§15.2 voice 孤儿**已销账**（实测 package.json/yarn.lock/patches 均零命中）；另修正 §19.3 一处**不实陈述**（曾引用不存在的 `TTSStore.lastSpeakElapsedMs` / `TTS_TURN_MS=870` 为依据，已作废只留真证据）。
 
 ## 1. 产品定位
 
@@ -333,7 +334,8 @@ Whisper 仅 e2e 开发工具）；Kimi / Step-Audio / Paraformer 零痕迹；已
 ┌────────────────────────────────────┐
 │ ① 联系人区                       │
 │   头像：品牌小鸡图（聊天空态同资产）  │
-│   伙伴名回落链：pal.name → 会话标题 → 「小黄鸡」
+│   伙伴名回落链：pal.name?.trim() → 默认伙伴名「小妖」
+│     （**不取会话标题**，v2.3 定案；曾拿标题当名字显「帮我画一张画。」）
 │   模型名 · 通话时长 mm:ss         │
 ├────────────────────────────────────┤
 │ ② 状态区（图标 + 一句话状态 + 副提示）  │
@@ -343,7 +345,8 @@ Whisper 仅 e2e 开发工具）；Kimi / Step-Audio / Paraformer 零痕迹；已
 │ ③ 跑分迷你行（PerfMiniRow，**默认展开**） │
 ├────────────────────────────────────┤
 │ ④ 控制区（**同一横行、同一基线**）：    │
-│   〔96px 按住说话·麦〕   〔64px 挂断·红·电话横置〕 │
+│   〔挂断·红·电话横置〕  〔按住说话·麦〕〔两钮等大 72dp〕 │
+│   （v2.3 定：不靠尺寸做视觉等级，靠颜色/图标区分语义）      │
 │   caption 均在各自圆钮下方（不再挤进圆内） │
 └────────────────────────────────────┘
 ```
@@ -685,8 +688,11 @@ Whisper 仅 e2e 开发工具）；Kimi / Step-Audio / Paraformer 零痕迹；已
 - **真机复验（装机后）**：冷启动 → 聊天页语音钮（bounds 中心 1074,2495）按下 3s → 再按停止 →
   `[AudioStore] transcribe ok: 'Hello.'`，**删回退后主链正常**；logcat 全程无 `local ASR start failed`、
   无 JavascriptException。语音钮显隐判据改动未在真机上出现「钮该有却没有」的误伤（ASR 已装态）。
-- **遗留（下一笔单独收）**：`@react-native-voice/voice` 依赖 + patch + jest mock 现为孤儿；
-  移除牵动构建配置，需一次装机验证后收口，不隐性留在仓里。
+- ~~**遗留（下一笔单独收）**：`@react-native-voice/voice` 依赖 + patch + jest mock 现为孤儿；~~
+  **已销账（2026-09-07 W4 实测复核）**：`package.json` / `yarn.lock` 对 `@react-native-voice` **零命中**、
+  `patches/` 仅剩 2 个无关补丁（onnxruntime / react-native-paper）、jest mock 已 `git rm`，
+  全仓唯一命中是 `ChatInput.tsx:270` 一条**解释为何删除**的注释——收口本体见 MASTER_LOG §150
+  （那次收口顺带拆出 onnxruntime 补丁上下文缺空格的定时炸弹）。本条挂着不动会诱导重复清理，故划删。
 
 ### 15.3 W1a：播报不骗人（就绪同源 + 默认中文 + 失败可见）
 
@@ -748,7 +754,12 @@ Whisper 仅 e2e 开发工具）；Kimi / Step-Audio / Paraformer 零痕迹；已
 ### 16.3 引擎能力位 + 停播归一（噪音根治）
 
 - `Engine` 新增能力位 `requiresModelFile`（true = 需下载端侧模型；system = false），
-  门判定只读这一位，`engine !== 'system'` 特判全删（新增引擎不再需要改 store）。
+  **播报门判定只读这一位**，store 内零 `'system'` 字面量（新引擎接入不需改 store 的门）。
+  ⚠ **措辞改正（2026-09-07 W4）**：本行旧写「`engine !== 'system'` 特判**全删**」过强——
+  按 id 的字面量特判全仓仍有 **5 处**，只是都不在门上：`services/tts/runtime.ts:138`（system 不占神经资源→
+  release 跳过 `Speech.release()`）、`services/tts/stopOutcome.ts:27`（停播失败的真实性按引擎解释）、
+  `TTSSetupSheet/EngineLogo.tsx:62` + `VoicePickerView.tsx:185/436`（UI 要按引擎画图标/分组，必然认 id）。
+  成立的说法是「**新增引擎不需改 store 的门**」；「全仓零特判」从来不是本仓承诺，旧句不具可验性。
 - **删 `Engine.stop()` 接口与四颗实现**：底层 `Speech.stop()` 是全局调用，包成引擎方法
   是假抽象；且它绕过 runtime 的「无活跃引擎」判据——真机每次播报前都抛一条
   `Failed to initialize TTS engine (speech_error)`（§15.4 那条「噪音级失败」）的根因。
@@ -764,7 +775,13 @@ Whisper 仅 e2e 开发工具）；Kimi / Step-Audio / Paraformer 零痕迹；已
   看门狗当常规收口手段）。新规则：**通话页开着时产生的每一轮回复都属于这一通电话**——
   与 ChatScreen 一直在用的「取最新一条回复」口径完全一致，且以后新增路径自动覆盖。
 - 接线：`ChatScreen` 在已有的 `phoneVisible` 保活 effect 里成对调 `setInCall(true/false)`
-  （**不留第二份开合状态**）；`useChatSession` 以 `isInCall()` 代替 `message.metadata?.phoneMode`。
+  （**不再为「此刻是否在通话」建第三份状态**）；`useChatSession` 以 `isInCall()` 代替 `message.metadata?.phoneMode`。
+- 两份表示各有职责、**不是副本**（2026-09-07 全量排查复查澄清）：`phoneVisible` 是 React
+  渲染开关（决定 overlay 挂载与 `useElapsed`/`usePerfTrace` 启停），只能在组件内读；`inCall`
+  是**任意位置可同步读**的业务事实（`useChatSession` 发送时、管家直答声明回合时都在 hook
+  之外，拿不到 React state）。旧句「不留第二份开合状态」的字面歧义曾让复查误判为「违单
+  状态机」：它禁的其实是再挂一份 MobX 字段或消息 metadata，不是要求两者合并——合并反而
+  会把模块级同步读能力降级成 hook 依赖。**写入口仍然唯一**（只此 effect）。
 - 看门狗职责收缩为**卡死保险**（仅防引擎真挂住），不再是「回调丢了」的常规出口。
 - 不用 MobX：无 UI 需订阅它（通话页状态已由 `PhoneCallSession.notify` 驱动），不预先造状态。
 
