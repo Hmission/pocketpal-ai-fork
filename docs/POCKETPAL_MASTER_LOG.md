@@ -2268,3 +2268,57 @@ W3 判"不立项"时有一条是「端到端收益尚未被证明」，根因正
 - 第二次并发重跑：**同结果**（349 套件 / 4838 passed + 2 skipped / 318 snapshots / exit 0）
   ——两次一致，无 flake、无顺序依赖
 - 真机：release 包覆盖安装两轮（**未卸载**），人类模拟操作 + scrcpy 投屏全程可见
+
+## §160 闭环复查全量审计：代码五项全落地，却揪出「提交内容本身已被污染」与奴家自己的不实陈述（2026-09-07，大王令「复查本窗规划是否全部落地 / 6D+星图全量排查 / 出方案报告」）
+
+### 160.1 方法与门禁
+
+- 门禁：gate（`allow_execute:false / reason:route_required`）→ route 啄木鸟 `act-b92f2533` → 收口 return。
+- 先补口径再动手：6D 的权威定义在母仓 `6D_AUDIT_REPAIR_PLAN` §1.1 = **链·簇·面·锚·态·策**；本仓 `COMPASS_REGISTRY §1` 只落了 D4/D5/D6 三面，两套不可混用。星图以 `STARMAP_DOMAINS v2.4`（16 域 + 引擎层禁区）为切分依据。
+- KG 优先协议实跑 `kg_preflight.py --strategy`，返回 `strategy: fallback_grep / confidence: 0.0 / tier_used: full`——母仓图谱对本仓代码域无覆盖，按其自身建议降级 Grep（**未当作本仓缺陷处理，也未伪造"KG 已查"**）。
+- 四路只读专工分域对账（各携规则包：红线摘要 / 星图域边界 / 引擎禁区 / 交付契约）：① chat+phone+tts 文档代码对账；② 全仓兜底与补丁形态；③ core+治理协议面；④ imageGen+audio+nightTask+benchmark。
+- 奴家对专工的要害结论**逐条亲自复核**（读原码取行号），未转手信任。
+
+### 160.2 直接答复：本窗规划落地状态
+
+**代码侧五项全部落地，有实锤**：旁路 A 删除（`phoneLastReply`/`phoneReplyHandled` src 零残留）、卡片标记同源（`utils/messageCards.ts`）、分段遥测（`session.ts` 实际 **7 个调用点**，多于文档"5 点"）、复读早停（`repetitionGuard` + `promptWriter:264-270`）、上游 PR 素材。
+
+**文档侧未闭环**——两项硬伤见 160.3。
+
+### 160.3 复查当场揪出并修掉的两个真问题（提交 `108f526`）
+
+1. **§18 在上一笔提交 `22e52db` 里就是缺失的。** 上轮 §159.7 登记的"已按原稿插回"事后未生效。实测 `WORK` 与 `HEAD` **完全一致**（1005 行 / `h18=0` / `h91=2` / H2 序列缺 18 / 工作树干净）→ 跨窗口丢更新**第二次**发生，且这次**污染已进入 git 历史**：不是"提交后丢失"，而是"提交的内容本身已被污染"。后果是五处引用（PHONE_SPEC 两处、TTS_SPEC §6.5、`ChatScreen:218`、`useChatScheduler:201`）全部指向不存在的章节，"唯一事实源"名存实亡。已插回 §18 + 删 §9.1 重复块，结构断言全过（H2 序列 1..19 连续、`h91=1`、`h10=1`、numstat 59 增/33 删与预期吻合——未重犯上轮 off-by-one）。
+2. **§19.3 是奴家写的不实陈述。** 以「**已核实**的替代信息」口径引用 `TTSStore.lastSpeakElapsedMs` 与 `TTS_TURN_MS = 870`，全仓检索证明**两个标识符均不存在**（`TTSStore` 内连 `elapsed/duration` 字段都没有），而这条虚构被用来支撑「不做播报启动延迟打点」的裁定。已就地作废，只保留真实证据（§9.1 的 TTS 加载 0.87s、真机 `engine_init_ms=874`）。
+
+### 160.4 新立一条纪律：文档改动提交后必须复验 HEAD
+
+工作区验过不等于提交内容干净——本窗 `22e52db` 就是反例。此后文档类收口一律：
+`git commit` → `git show HEAD:<path>` 取**结构计数**（章节序列、关键标题计数、numstat）→ 才算落袋。
+本轮 `108f526` 已按此执行并通过。
+
+### 160.5 全量缺口 33 项，六维归置（详见 `POCKETPAL_CHAIN_AUDIT_20260907.md`）
+
+- **D1 链**（4 项用户可感知故障）：队列停止链三重吞 + 无超时忙等 + 心跳超时不收口（`imageGenStore:1417`、`imageGenQueueCore:276-278`、`imageGenStore:398-414`）；nightTask 单计数器无归属可跨域误杀夜间保活（`ChatScreen:305-314` vs `imageGenStore:237-246`）；内存检查 catch 后置 `'fits'` 谎报"装得下"（`useMemoryCheck:195-202`）；朗读静默早退（`audioStore:312-315`）。
+- **D2 簇**：队列"是否忙" **3 真值源 / 7 判定点**，同一次 `stopQueue` 内 L1364(镜像) 与 L1410(core) 混源；`phoneVisible` ↔ `inCall` 双份（文档却称"不留第二份"）；`audioStore.speak` 仍是播报门外第 5 套"能不能播"（只判三因子之一）；`TTSStore.ts:97` 与 `:156` 两份互斥"唯一"宣称；`CJK_RE` 两份**已实测分叉**。
+- **D3 面**：testID 双向不闭合（登记未挂 2、挂了未登记 36+）；`QueuePanel:32-37` 族色 4 色全不符登记值且未登记（违 UI_SPEC §6 红线）；死字段 `queueSummary`、死码 `submitted`、4 个死 l10n 键；LoRA 运行时挂载代码链完整而 UI_SPEC **零条目**（违"文档先行"）。
+- **D4 锚**：**CP-APP-007..013 七条文档标「✅ 已登记」但 `errorRegistry.ts` 无对应 triggerRegex，`matchFirstError` 永不可命中**（实测 ERROR_PATTERNS 仅 9 条）；三处悬空指针（SOP 文档 / IMAGEGEN_UI_SPEC 缺前缀 / `architecture/tts.md` 11 处）；**反向幽灵**——§144 把真实存在的 `errorReport.ts`（135 行、首提交 `0aa53d9`、3 个生产消费者）判为幽灵文件并删了 SPEC 引用，以"出口=仅 tool.error"作文档补丁固化误判；§144"10 项全处置"但 G-1/G-2 无落点，账目不闭合。
+- **D5 态**：`STATE_MAP` 缺 nighttask **整域**、缺 `imagegen.captioning`；audio 域词面双向漂移。
+- **D6 策**：**17 项文档与代码互斥**需裁定以谁为准（互斥语义"报错 vs 抢占"、`useNativeDriver` 声称与 weak-ref 红线互斥、`toVersion 3` 与同卷 v10 自相矛盾、96/64px 与 72 等大、回落链两份互斥、进度环已砍却残留、三实体 vs 两实体、行号差 3、两处文件内自相矛盾注释等）。
+
+### 160.6 六波收口方案（每波独立可验，能删不加）
+
+W1 失败可见性（6 处，P0）→ W2 队列与保活单状态机（**删 `queueState` 镜像与 `syncQueueMirror`，全站只认 `queueCore.state`**；nightTask begin 返回 ticket）→ W3 指南针真生效（补 7 条 regex + nighttask 域 + 新增"登记必须有代码对账项"闸门）→ W4 文档对账清零（17 项逐条裁定，**以代码为准的回写文档，不许反向硬改码**）→ W5 死码/死键/野值纯删 → W6 祖传债只登记不扩面（唯一建议动的一处：`ChatSessionRepository` 的 `.catch(()=>null)` 会把 DB 故障渲染成"会话已删除"）。
+
+### 160.7 明确不做（防臃肿，与要做的同等重要）
+
+不为凑指标补播报启动延迟打点（但**理由需按 160.3 的新事实重写**）；不按 §12.2 P1 七项全做（只挑防闪驻留 / 打断提示上主状态行 / AI 署名行三项）；不为电话域新建 e2e 基建（补 2-3 条主链路即可）；不碰引擎层（`engineMutex` 抢占语义、`dreamLiteEngine` 11 处 `as any` 只登记）；**不追求 48 处空 catch 数量清零**——经核 `PlayButton:55/67`、`ChatView:802`、`AudioActionBar:98` 属合理防御（上层已把失败转为可见），只按"用户是否可感知失败"处置 W1 六处；不给 core 域零消费者的采集面硬造读者（当前对 kg 用锋利裁剪、对星图/账本无条件落盘，**采集侧双标**待裁）。
+
+### 160.8 正向确认（防过度整改）
+
+`catch { return true }` / `return {ok:true}` 假成功 **全仓 0 命中**；`@ts-ignore` **0**、`@ts-expect-error` **0**；一次性开关族（`ignoreNext`/`skipOnce`/`oneShot`/`hasConsumed`）**全部零命中**，10 处 `Ref.current=true` 与 14 个 `pending*` 逐处判读均不违单状态机。
+
+### 160.9 门禁与账
+
+- tsc 0 错；定向 jest（phoneCall + ChatScreen）59 例全绿；prettier 对新增/改动 md 全绿。
+- 提交 `108f526`（PHONE_SPEC 恢复 §18 + 作废不实陈述）+ 本窗审计文档与 INDEX 登记；**提交后已复验 HEAD**；`dirty=0`，ahead 28→29，**未 push**（大版本封版前严禁推送，待大王指令）。
+- 专工纪律：四路并行、均带规则包、全程只读未派孙；未改母仓一个字节、未 pip 装包；真机未涉及（纯排查轮）。
