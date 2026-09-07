@@ -9,9 +9,13 @@
  * 源声明策略：模型条目显式声明 sources（modelCatalog），未声明 = 无在线源。
  */
 
+// HF 域名**不在此重列**（2026-09-07 W5 双份常量收口：本文件与 config/urls.ts 曾各自
+// 声明一次 `HF_DOMAIN = 'https://huggingface.co'`，改一处就会让两条链跳到不同站）。
+// 祖传 config/urls.ts 保留为唯一定义点，本文件只 import。
+import {HF_DOMAIN} from '../config/urls';
+
 export type DownloadSource = 'hf' | 'modelscope';
 
-export const HF_DOMAIN = 'https://huggingface.co';
 export const MODELSCOPE_DOMAIN = 'https://modelscope.cn';
 
 /** 按源构造确定性下载 URL（repo id 不含源域名） */

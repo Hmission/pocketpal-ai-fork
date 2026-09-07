@@ -14,6 +14,8 @@
 import * as RNFS from '@dr.pogodin/react-native-fs';
 import {NativeModules, Platform} from 'react-native';
 import {AIOS_ROOT} from '../utils/paths';
+import {HANZI_ALL_CLASS, HANZI_PRESENT_RE} from '../utils/cjk';
+import {DEFAULT_SUPERTONIC_STEPS, DEFAULT_TTS_SPEED} from './tts/types';
 
 const AudioTts = NativeModules.AudioTts;
 
@@ -90,9 +92,9 @@ export async function isTtsGenInstalled(
 }
 
 export interface TtsSynthOptions {
-  /** 语速 0.5–2.0（默认 1.0） */
+  /** 语速倍率（缺省回落 `DEFAULT_TTS_SPEED`） */
   speed?: number;
-  /** Supertonic 推理步数（1|2|3|5|10|20，kokoro 忽略） */
+  /** Supertonic 推理步数（档位表见 `SUPERTONIC_STEPS_OPTIONS`，kokoro 忽略） */
   numSteps?: number;
   /** 阶段进度回调（加载模型 → 合成中 → 完成） */
   onStage?: (stage: string) => void;
@@ -101,12 +103,14 @@ export interface TtsSynthOptions {
 /**
  * 非拉丁字符集（B38b）：中文/日文/韩文/全角等。kokoro 英文音色朗读中文本
  * 会被 en-us 音素器按英文规则发音（用户可闻的「英文读中文」）。
+ * 汉字区不在此内联：与下方 `HANZI_PRESENT_RE` 共读 `utils/cjk` 的同一区间表。
  */
-const NON_LATIN_RE =
-  /[\u3000-\u303f\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\u3040-\u30ff\uac00-\ud7af\uff00-\uffef\u0400-\u04ff\u0600-\u06ff]/;
+const NON_LATIN_RE = new RegExp(
+  `[\\u3000-\\u303f${HANZI_ALL_CLASS}\\u3040-\\u30ff\\uac00-\\ud7af\\uff00-\\uffef\\u0400-\\u04ff\\u0600-\\u06ff]`,
+);
 
-/** 汉字字符集（B38c：中文音色匹配条件） */
-const CHINESE_RE = /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/;
+// 汉字存在性判定（B38c：中文音色匹配条件）共读 `utils/cjk`：
+// 旧本文件内联的 `CHINESE_RE` 与本集合等价（仅书写序不同），收口后零行为变化。
 
 /** kokoro 音色语言 → sherpa espeak lang（B38c：按音色语言映射，语音 bin 风格与音素语言一致） */
 function kokoroLangForVoice(voiceId: string): string {
@@ -140,7 +144,7 @@ export async function synthesizeToFile(
     throw new Error(`${engine} 模型未安装完整`);
   }
   const hasCjk = NON_LATIN_RE.test(text);
-  const hasHan = CHINESE_RE.test(text);
+  const hasHan = HANZI_PRESENT_RE.test(text);
   if (engine === 'kokoro') {
     if (kokoroLangForVoice(voiceId) === 'cmn') {
       // 中文音色：必须配合中文文本
@@ -173,8 +177,8 @@ export async function synthesizeToFile(
     engine,
     text,
     voiceId,
-    opts.speed ?? 1.0,
-    opts.numSteps ?? 5,
+    opts.speed ?? DEFAULT_TTS_SPEED,
+    opts.numSteps ?? DEFAULT_SUPERTONIC_STEPS,
     TTS_MODEL_DIRS[engine],
     outPath,
     engine === 'kokoro' ? kokoroLangForVoice(voiceId) : '',

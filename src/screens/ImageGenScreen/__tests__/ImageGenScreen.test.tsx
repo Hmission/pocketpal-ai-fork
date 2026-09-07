@@ -66,7 +66,7 @@ jest.mock('../../../store/imageGenStore', () => ({
     failTask: jest.fn(),
     pushFailedTask: jest.fn(),
     deleteTask: jest.fn(),
-    // 任务购物车：镜像字段 + 队列动作（IMAGEGEN_QUEUE_SPEC——UI 全部读镜像）
+    // 任务购物车：队列对外只读面（W2 后全 = computed 代理，无镜像字段）+ 队列动作
     queueState: 'idle',
     queuePosition: -1,
     queueItems: [],
@@ -74,7 +74,6 @@ jest.mock('../../../store/imageGenStore', () => ({
     queueTotalDraws: 0,
     queueDrawsDone: 0,
     queueDrawsFailed: 0,
-    queueSummary: {success: 0, failed: 0, total: 0},
     initQueue: jest.fn().mockResolvedValue(undefined),
     enqueueQueue: jest.fn(),
     updateQueueItem: jest.fn().mockReturnValue(true),

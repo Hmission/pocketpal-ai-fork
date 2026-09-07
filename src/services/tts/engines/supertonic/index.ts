@@ -19,6 +19,7 @@ import {
 import {ttsRuntime} from '../../runtime';
 import {convertUnicodeIndexer, convertVoiceStyle} from '../../sherpaConvert';
 import {createEngineStreamingHandle} from '../../streamingHandle';
+import {DEFAULT_SUPERTONIC_LANGUAGE} from '../../types';
 import type {
   Engine,
   StreamingHandle,
@@ -29,13 +30,9 @@ import {SUPERTONIC_VOICES} from './voices';
 
 export type SupertonicProgressCallback = (progress: number) => void;
 
-/**
- * Engine-level fallback language, used only if a caller omits `language`.
- * The app always passes `ttsStore.supertonicLanguage` explicitly, so this
- * default never governs in practice; it matches the store default (`na`,
- * language-agnostic "Auto") to avoid two competing defaults.
- */
-const DEFAULT_SUPERTONIC_LANGUAGE: SupertonicLanguage = 'na';
+// 默认语种 `na` 的定义已收到 `services/tts/types.ts`（2026-09-07 W5：引擎与 store
+// 不再各写一份字面量），本文件只 import；它仅作 caller 省略 `language` 时的引擎级保险——
+// 实际调用总是由 store 显式传入，本默认在正常链路不接管。
 
 /**
  * Supertonic neural TTS engine (v3, 31 languages + trained `na`).

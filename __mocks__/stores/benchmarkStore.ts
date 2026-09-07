@@ -16,13 +16,6 @@ const mockAddResult = jest.fn((result: BenchmarkResult) => {
   benchmarkStore.results.unshift(result);
 });
 
-const mockMarkAsSubmitted = jest.fn((uuid: string) => {
-  const result = benchmarkStore.results.find(r => r.uuid === uuid);
-  if (result) {
-    result.submitted = true;
-  }
-});
-
 const mockGetResultsByModel = jest.fn((modelId: string): BenchmarkResult[] => {
   return benchmarkStore.results.filter(result => result.modelId === modelId);
 });
@@ -33,7 +26,6 @@ export const benchmarkStore = {
   addResult: mockAddResult,
   removeResult: mockRemoveResult,
   clearResults: mockClearResults,
-  markAsSubmitted: mockMarkAsSubmitted,
   getResultsByModel: mockGetResultsByModel,
   latestResult: mockResult,
   // ── B39 套件编排（瞬态）──

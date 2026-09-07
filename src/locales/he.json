@@ -1354,13 +1354,7 @@
         "tokensPerSecond": "טוקנים/שניה"
       },
       "actions": {
-        "deleteButton": " ",
-        "submittedText": "✓ שותף ל",
-        "leaderboardLink": "טבלת מכשירי AI מובילים ↖",
-        "cannotShare": "לא ניתן לשתף",
-        "cannotShareTooltip": "לא ניתן לשתף תוצאות של מודל מקומי",
-        "submitButton": "שלח לטבלת המובילים",
-        "viewLeaderboard": "צפה בטבלת המובילים ↖"
+        "deleteButton": " "
       },
       "errors": {
         "networkRetry": "בדוק את החיבור ונסה שוב",

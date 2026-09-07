@@ -31,6 +31,9 @@ import {ScoreReveal} from '../../components/PerfMotion';
 import {PerfHistoryModal} from '../../components/PerfHistoryModal';
 
 import {modelStore, benchmarkStore} from '../../store';
+// 常量从实体模块 import，不走 `src/store` 索引：jest 里索引进 mock 表（`jest.mock('../src/store')`），
+// 而 mock 工厂只列 store 实例——普通常量不会进入 mock 表，走索引就会在渲染时读到 undefined。
+import {SUITE_CASE_LABEL_KEY} from '../../store/BenchmarkStore';
 import {benchmarkOrchestrator} from '../../services/benchmarkOrchestrator';
 import {shareScoreCard} from '../../services/benchShare';
 
@@ -126,18 +129,14 @@ export const BenchmarkScreen: React.FC = observer(() => {
 
   const {suiteRunning, suiteBanner, suiteError, suiteCaseIndex} =
     benchmarkStore;
-  // 横幅：用例 key → l10n 标签（服务层不绑 l10n，展示层单点映射）
-  const CASE_LABEL_KEY: Record<string, string> = {
-    llm: 'inferSpeed',
-    gen: 'genSpeed',
-    endurance: 'endurance',
-  };
+  // 横幅：用例 key → l10n 标签（映射唯一定义点在 BenchmarkStore，与 HUD 共读）
+  const labelKey = SUITE_CASE_LABEL_KEY[suiteBanner];
   const labels = l10n.benchmark.suite.labels as Record<string, string>;
   const bannerText =
-    suiteRunning && suiteBanner && CASE_LABEL_KEY[suiteBanner]
+    suiteRunning && suiteBanner && labelKey
       ? t(l10n.benchmark.suite.caseProgress, {
           index: String(suiteCaseIndex + 1),
-          case: labels[CASE_LABEL_KEY[suiteBanner]] ?? suiteBanner,
+          case: labels[labelKey] ?? suiteBanner,
         })
       : l10n.benchmark.suite.runningDefault;
   // 最新套件结果 → 揭幕 + 雷达（结果页语义：挂载即演一次）

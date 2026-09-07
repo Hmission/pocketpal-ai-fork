@@ -12,6 +12,7 @@
  */
 import * as RNFS from '@dr.pogodin/react-native-fs';
 import {emit} from '../../debug/eventStream';
+import {HANZI_BMP_CHAR_RE} from '../../utils/cjk';
 import {AIOS_CONVERSATIONS_DIR, AIOS_DB_DIR} from '../../utils/paths';
 import {listMemories} from '../aiosMemory';
 
@@ -53,8 +54,8 @@ const MAX_EDGES = 1200;
 const MAX_EDGES_PER_NODE = 6;
 /** 共现建边阈值：≥2 个共享关键词才认「同语境」 */
 const CO_OCCUR_MIN_SHARED = 2;
-/** 中文等无空格语言：CJK 二元组兜底提取（附加 ASCII 词） */
-const CJK_RE = /[\u4e00-\u9fff]/;
+/** 中文等无空格语言：CJK 二元组兜底提取（附加 ASCII 词）。
+ *  只认 BMP 常用区的口径与理由见 `utils/cjk`（`HANZI_BMP_CHAR_RE`）。 */
 const STOP_WORDS = new Set([
   '我们',
   '你们',
@@ -104,7 +105,7 @@ export function extractKeywords(text: string, max = 12): string[] {
     bump(m.toLowerCase());
   }
   for (let i = 0; i < raw.length - 1; i++) {
-    if (CJK_RE.test(raw[i]) && CJK_RE.test(raw[i + 1])) {
+    if (HANZI_BMP_CHAR_RE.test(raw[i]) && HANZI_BMP_CHAR_RE.test(raw[i + 1])) {
       bump(raw.slice(i, i + 2));
     }
   }

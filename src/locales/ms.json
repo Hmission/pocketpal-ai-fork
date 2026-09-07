@@ -1354,13 +1354,7 @@
         "tokensPerSecond": "t/s"
       },
       "actions": {
-        "deleteButton": " ",
-        "submittedText": "✓ Dikongsi ke",
-        "leaderboardLink": "Papan Pendahulu Telefon AI ↗",
-        "cannotShare": "Tidak Boleh Dikongsi",
-        "cannotShareTooltip": "Keputusan model tempatan tidak boleh dikongsi",
-        "submitButton": "Hantar ke Papan Pendahulu",
-        "viewLeaderboard": "Lihat papan pendahulu ↗"
+        "deleteButton": " "
       },
       "errors": {
         "networkRetry": "Semak sambungan & cuba lagi",

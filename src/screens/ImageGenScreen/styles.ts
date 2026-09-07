@@ -641,11 +641,10 @@ export const createStyles = (theme: any) =>
     audioHeaderDotReady: {
       backgroundColor: theme.colors.success,
     },
-    badgeSd3: {color: theme.colors.badgeSd35, fontWeight: '700'},
-    badgeZ: {color: theme.colors.badgeZImage, fontWeight: '700'},
-    badgeDream: {color: theme.colors.badgeDreamlite, fontWeight: '700'},
-    badgeFlux: {color: theme.colors.badgeFlux, fontWeight: '700'},
-    badgeKrea2: {color: theme.colors.badgeKrea2, fontWeight: '700'},
+    // 族徽章文字样式：颜色不在此枚举（旧五个 `badge*` 键是族→色映射的第二份副本，
+    // 与 QueuePanel / ModelPickerPanel 的判定链共三处，新增族会静默错色）——
+    // 色值由 `constants.ts` 的 `familyBadgeColor`（唯一定义点）在调用侧内联。
+    badgeFamily: {fontWeight: '700'},
     // 实验性徽章：警示色（模型可能不可用，与操作按钮橙区分）
     badgeExp: {
       color: theme.colors.warning,

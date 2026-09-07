@@ -1354,13 +1354,7 @@
         "tokensPerSecond": "t/s"
       },
       "actions": {
-        "deleteButton": " ",
-        "submittedText": "✓ ارسال شد به",
-        "leaderboardLink": "AI Phone Leaderboard ↗",
-        "cannotShare": "امکان اشتراک‌گذاری نیست",
-        "cannotShareTooltip": "نتایج مدل‌های محلی قابل اشتراک‌گذاری نیستند",
-        "submitButton": "ارسال به لیدربورد",
-        "viewLeaderboard": "مشاهده لیدربورد ↗"
+        "deleteButton": " "
       },
       "errors": {
         "networkRetry": "اتصال را بررسی کنید و دوباره تلاش کنید",

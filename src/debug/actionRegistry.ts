@@ -411,9 +411,11 @@ export const drcActions: Record<string, DrcActionDef> = {
       if (!voice) {
         throw new Error(`${engine} 音色列表为空`);
       }
+      // 缺省不在此注入：`speed` / `numSteps` 的唯一默认点在 `ttsEngine`（旧写法在本文件
+      // 再写一份 `1.0` / `5`，与本文件下方的透传行还不自洽——两条 DRC 链默认值行为不同）。
       const out = await audioStore.generateTask(engine, p.text, voice, {
-        speed: p.speed ?? 1.0,
-        numSteps: p.numSteps ?? 5,
+        speed: p.speed,
+        numSteps: p.numSteps,
       });
       if (!out) {
         throw new Error(audioStore.ttsError ?? 'TTS 生成失败');

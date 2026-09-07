@@ -608,7 +608,6 @@
       "attachmentButtonAccessibilityLabel": "发送媒体"
     },
     "phoneCall": {
-      "title": "电话通话",
       "listening": "我在听…",
       "recognizing": "识别中…",
       "engineLoading": "正在加载语音助手…",
@@ -624,8 +623,6 @@
       "hintThinking": "想好我就说，按住按钮可以打断",
       "hintSpeaking": "我在说话，按住按钮可以打断",
       "hintEngineLoading": "加载好就能说话",
-      "mineLabel": "我说",
-      "partnerLabel": "小鸡",
       "ttsReady": "播报就绪",
       "ttsPlayFailed": "播报失败，点此处理",
       "ttsLangMismatch": "当前语音读不了中文，点此换语音",
@@ -636,7 +633,6 @@
       "emptySpeech": "没有听到声音，请再试一次",
       "asrNotReady": "语音模型未下载，请先下载语音模型",
       "permissionDenied": "需要麦克风权限",
-      "guideToText": "这个操作需要回到文字模式",
       "failed": "转写或发送失败，请稍后重试"
     },
     "exportUtils": {
@@ -1465,13 +1461,7 @@
         "tokensPerSecond": "t/s"
       },
       "actions": {
-        "deleteButton": " ",
-        "submittedText": "✓ 已共享至",
-        "leaderboardLink": "AI 手机排行榜 ↗",
-        "cannotShare": "无法共享",
-        "cannotShareTooltip": "本地模型结果无法共享",
-        "submitButton": "提交到排行榜",
-        "viewLeaderboard": "查看排行榜 ↗"
+        "deleteButton": " "
       },
       "errors": {
         "networkRetry": "检查连接并重试",

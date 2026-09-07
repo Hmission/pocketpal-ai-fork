@@ -10,7 +10,11 @@ import {useTheme} from '../../../hooks';
 import {withOpacity} from '../../../utils/colorUtils';
 import {OverlayCard} from '../../../components/ui/OverlayCard';
 import {QueueItem, QueueState} from '../../../store/imageGenQueueCore';
-import {ModelFamily} from '../../../utils/imageGenManifest';
+import {
+  familyBadgeColor,
+  familyBadgeLabel,
+  formatQueueSummary,
+} from '../constants';
 
 export interface QueuePanelProps {
   visible: boolean;
@@ -18,7 +22,6 @@ export interface QueuePanelProps {
   items: QueueItem[];
   state: QueueState;
   position: number;
-  totalDraws: number;
   drawsDone: number;
   drawsFailed: number;
   /** 单通道占用（loading/generating）——开始按钮禁用 */
@@ -30,38 +33,10 @@ export interface QueuePanelProps {
   onEdit: (item: QueueItem) => void;
 }
 
-/** 本仓登记的模型族徽章 token（DESIGN_SPEC §1.4） */
-type BadgeToken =
-  | 'badgeSd35'
-  | 'badgeZImage'
-  | 'badgeDreamlite'
-  | 'badgeFlux'
-  | 'badgeKrea2';
-
 /**
- * 族 → 徽章 token 映射。**本文件不得出现色字面量**（UI_SPEC §6 红线：色值一律
- * 走 theme token）。用全量 `Record<ModelFamily, …>` 而非 Partial：ModelFamily 新增
- * 成员时 tsc 会在此报错，逼着先去 DESIGN_SPEC §1.4 登记色再上屏。
- * `classic` 为历史族、DESIGN_SPEC 未登记族色 → 显式 null，调用侧回落 info。
+ * 本文件不得出现色字面量（UI_SPEC §6 红线）：族色与族名均共读 `../constants` 的
+ * 唯一定义点（`familyBadgeColor` / `familyBadgeLabel`），新增族时只在彼处登记。
  */
-const FAMILY_BADGE_TOKEN: Record<ModelFamily, BadgeToken | null> = {
-  dreamlite: 'badgeDreamlite',
-  sd3: 'badgeSd35',
-  zimage: 'badgeZImage',
-  flux: 'badgeFlux',
-  krea2: 'badgeKrea2',
-  classic: null,
-};
-
-/** snapshot.family 在队列快照上是 string（持久化边界），此处做真判定而非强转 */
-const familyBadgeColor = (
-  theme: ReturnType<typeof useTheme>,
-  family: string,
-): string => {
-  if (!(family in FAMILY_BADGE_TOKEN)) return theme.colors.info;
-  const token = FAMILY_BADGE_TOKEN[family as ModelFamily];
-  return token ? theme.colors[token] : theme.colors.info;
-};
 
 const STATE_LABEL: Record<QueueState, string> = {
   idle: '空队列',
@@ -77,7 +52,6 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({
   items,
   state,
   position,
-  totalDraws: _totalDraws,
   drawsDone,
   drawsFailed,
   busy,
@@ -128,7 +102,10 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({
               }
             : {
                 primary: {
-                  label: `开始队列（${items.length} 项 · ${remainingDraws} 抽）`,
+                  label: `开始队列（${formatQueueSummary(
+                    items.length,
+                    remainingDraws,
+                  )}）`,
                   onPress: onStart,
                   disabled: busy || items.length === 0,
                   testID: 'queue-start',
@@ -183,7 +160,7 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({
                       },
                     ]}>
                     <Text style={[s.badgeText, {color: familyColor}]}>
-                      {item.snapshot.family}
+                      {familyBadgeLabel(item.snapshot.family)}
                     </Text>
                   </View>
                   <Text style={s.draws}>{doneAll ? '✓' : `${remaining}×`}</Text>

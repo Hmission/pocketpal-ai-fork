@@ -1,6 +1,7 @@
-import {ImageGenManifest} from '../../utils/imageGenManifest';
+import {ImageGenManifest, ModelFamily} from '../../utils/imageGenManifest';
+import type {Theme} from '../../utils/types';
 
-// 模型族徽章文案（语义彩色在 styles.ts 中定义）
+// 模型族徽章文案（颜色见下方 FAMILY_BADGE_TOKEN，均走 theme token）
 export const FAMILY_BADGE: Record<ImageGenManifest['family'], string> = {
   zimage: 'Z-Image',
   sd3: 'SD3.5',
@@ -9,6 +10,69 @@ export const FAMILY_BADGE: Record<ImageGenManifest['family'], string> = {
   dreamlite: 'DreamLite',
   krea2: 'Krea2',
 };
+
+/**
+ * 徽章色 token 名（DESIGN_SPEC §1.4）：由 token 面派生而不手写联合——
+ * 新增 `badge*` token 自动进入可选集。
+ */
+export type FamilyBadgeColorToken = Extract<
+  keyof Theme['colors'],
+  `badge${string}`
+>;
+
+/**
+ * 族 → 徽章色 token（**唯一定义点**，2026-09-07 W5 双份事实源收口）。
+ *
+ * 旧状态：同一事实三处表达——`QueuePanel` 一份 Record、`styles.ts` 五个 `badge*`
+ * 样式键、`ModelPickerPanel` 一条五层三元链。新增族时三元链会静默落到
+ * `s.badgeZ`（错色不报错）。现在两处 UI 共读本表。
+ *
+ * 用全量 `Record<ModelFamily, …>` 而非 Partial：`ModelFamily` 新增成员时 tsc 在此
+ * 报错，逼着先去 DESIGN_SPEC §1.4 登记色再上屏。`classic` 为历史族、SPEC 未登色
+ * → 显式 null，调用侧回落 info。
+ */
+export const FAMILY_BADGE_TOKEN: Record<
+  ModelFamily,
+  FamilyBadgeColorToken | null
+> = {
+  dreamlite: 'badgeDreamlite',
+  sd3: 'badgeSd35',
+  zimage: 'badgeZImage',
+  flux: 'badgeFlux',
+  krea2: 'badgeKrea2',
+  classic: null,
+};
+
+/**
+ * 族 → 徽章色值。入参宽至 `string`：队列快照的 family 落在持久化边界（DB 里
+ * 可能是历史/未知键），做真判定而非强转；未知/未登色族回落 info，不抛不猜。
+ */
+export function familyBadgeColor(theme: Theme, family: string): string {
+  const token =
+    family in FAMILY_BADGE_TOKEN
+      ? FAMILY_BADGE_TOKEN[family as ModelFamily]
+      : null;
+  return token ? theme.colors[token] : theme.colors.info;
+}
+
+/** 族 → 徽章显示名（与模型下拉同源）；未知键与未登名（classic）回落原始键名。 */
+export function familyBadgeLabel(family: string): string {
+  const label =
+    family in FAMILY_BADGE ? FAMILY_BADGE[family as ModelFamily] : '';
+  return label || family;
+}
+
+/**
+ * 队列摘要文案（格式化单点，2026-09-07 W5）：吸底胶囊（GenActionBar）与面板
+ * 「开始队列」按钮（QueuePanel）同源。
+ *
+ * 旧写法是编排层把已拼好的字符串当 prop 传进来，组件内另留一份
+ * `` `${queueItemCount} 项` `` 兜底：字符串缺失就静默换成另一种文案（两种格式并存）。
+ * 现在组件只接数值，拼法只此一处。两个调用侧传的 `draws` 语义不同（胶囊传总抽数、
+ * 开始按钮传剩余抽数），本函数只统一措辞不统一口径。
+ */
+export const formatQueueSummary = (items: number, draws: number): string =>
+  `${items} 项 · ${draws} 抽`;
 
 // DreamLite 作为统一模型选项进入顶部选择栏（同一模型不分出图/编辑；模式切换由预览区分页驱动）
 export const DREAMLITE_MANIFEST: ImageGenManifest = {

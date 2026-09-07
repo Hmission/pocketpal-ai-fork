@@ -20,6 +20,8 @@ import {
   ttsRuntime,
   isVoiceMismatchedForText,
   pickDefaultVoice,
+  DEFAULT_SUPERTONIC_LANGUAGE,
+  DEFAULT_SUPERTONIC_STEPS,
 } from '../services/tts';
 import type {
   EngineId,
@@ -64,14 +66,9 @@ export type SupertonicDownloadState = NeuralDownloadState;
 /** Neural engine ids managed by the store's download state machines. */
 export type NeuralEngineId = 'supertonic' | 'kokoro' | 'kitten';
 
-const DEFAULT_SUPERTONIC_STEPS: SupertonicSteps = 5;
-
-/**
- * Default Supertonic synthesis language: `na` ("Auto"), the trained
- * language-agnostic tag in the v3 model. New and existing users start here
- * (existing users have no persisted key, so hydration leaves it at `na`).
- */
-const DEFAULT_SUPERTONIC_LANGUAGE: SupertonicLanguage = 'na';
+// Supertonic 两个默认值（步数 / 语种）**不在此重列**：2026-09-07 W5 收口到
+// `services/tts/types.ts` 单一定义点（旧写法是本 store 写一份、引擎/audioStore/
+// ttsEngine 各写一份，靠注释约定一致——双份事实源，改一处只影响一条链）。
 
 const previewMessageId = (voice: Voice): string =>
   `preview:${voice.engine}:${voice.id}`;

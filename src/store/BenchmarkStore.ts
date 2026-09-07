@@ -10,6 +10,21 @@ import {
 /** 套件用例顺序（B39 §10.7）：推理速度 → 生图速度 → 温控耐久 */
 export const SUITE_CASES = ['llm', 'gen', 'endurance'] as const;
 
+/**
+ * 用例 key → l10n 标签键（取词在 `l10n.benchmark.suite.labels.*`）。
+ *
+ * **唯一定义点**（2026-09-07 W5 双份常量收口）：旧写法是 `BenchmarkScreen` 与
+ * `BenchmarkHudBar` 各手写一份同名 `CASE_LABEL_KEY`（后者注释只写了「与
+ * BenchmarkScreen 同源映射」——靠人记），改用例名会只改一处而横幅与 HUD 分叉。
+ * 值停在键名层，不在此绑文案（存储层不拉 l10n）。
+ * 下标来自 `suiteBanner`（自由字符串），故值域含 `undefined`，调用侧用真判定而非强转。
+ */
+export const SUITE_CASE_LABEL_KEY: Record<string, string | undefined> = {
+  llm: 'inferSpeed',
+  gen: 'genSpeed',
+  endurance: 'endurance',
+};
+
 export class BenchmarkStore {
   results: BenchmarkResult[] = [];
 
@@ -68,14 +83,8 @@ export class BenchmarkStore {
     return this.results[0];
   }
 
-  markAsSubmitted(uuid: string) {
-    runInAction(() => {
-      const result = this.results.find(r => r.uuid === uuid);
-      if (result) {
-        result.submitted = true;
-      }
-    });
-  }
+  // 注：旧 `markAsSubmitted(uuid)` 已随云提交链删除（2026-09-07 W5 死码纯删）——
+  // PERF §10.7 裁定“整体砍除”后仅方法体残留，全仓零生产调用者。
 
   // ── B39 套件编排（瞬态）──
   startSuite() {

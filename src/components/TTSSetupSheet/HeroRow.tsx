@@ -11,6 +11,7 @@ import {SearchableSelectSheet} from '../SearchableSelectSheet';
 import {useTheme} from '../../hooks/useTheme';
 import {t} from '../../locales';
 import type {EngineId, SupertonicSteps} from '../../services/tts';
+import {SUPERTONIC_STEPS_OPTIONS} from '../../services/tts';
 import {ttsStore} from '../../store';
 import {L10nContext} from '../../utils';
 
@@ -26,8 +27,9 @@ const engineChipKey = {
 
 // `showSelectedCheck=false` + per-button `minWidth:0` lets the row shrink
 // to fit small screens. Without these RNP forces ~60pt per button, which
-// overflows on iPhone SE width with 6 cells.
-const STEPS_BUTTONS = [1, 2, 3, 5, 10, 20].map(v => ({
+// overflows narrow screens with one cell per exposed step count.
+// 档位不在此重列：共读 `SUPERTONIC_STEPS_OPTIONS`（唯一定义点）。
+const STEPS_BUTTONS = SUPERTONIC_STEPS_OPTIONS.map(v => ({
   value: String(v),
   label: String(v),
   style: {minWidth: 0},

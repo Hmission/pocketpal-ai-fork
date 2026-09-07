@@ -14,6 +14,7 @@ import Clipboard from '@react-native-clipboard/clipboard';
 import Share from 'react-native-share';
 import {resolveAudioPath} from '../../../services/asrEngine';
 import {audioRecorder, RecorderError} from '../../../services/audio/recorder';
+import {SUPERTONIC_STEPS_OPTIONS} from '../../../services/tts';
 import {getPlayPosition} from '../../../services/ttsEngine';
 import {safeInterval} from '../../../utils/safeInterval';
 import {
@@ -966,7 +967,8 @@ export const AudioWorkshopTab: React.FC<{
                   <>
                     <Text style={s.promptHint}>步数</Text>
                     <View style={s.audioVoiceRow}>
-                      {[1, 2, 3, 5, 10, 20].map(st => (
+                      {/* 档位共读 `SUPERTONIC_STEPS_OPTIONS`，不在此重列字面量 */}
+                      {SUPERTONIC_STEPS_OPTIONS.map(st => (
                         <TouchableOpacity
                           key={st}
                           style={[

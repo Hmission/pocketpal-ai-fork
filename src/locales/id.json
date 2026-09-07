@@ -1354,13 +1354,7 @@
         "tokensPerSecond": "t/d"
       },
       "actions": {
-        "deleteButton": " ",
-        "submittedText": "✓ Dibagikan ke",
-        "leaderboardLink": "Papan Peringkat Ponsel AI ↗",
-        "cannotShare": "Tidak Dapat Dibagikan",
-        "cannotShareTooltip": "Hasil model lokal tidak dapat dibagikan",
-        "submitButton": "Kirim ke Papan Peringkat",
-        "viewLeaderboard": "Lihat papan peringkat ↗"
+        "deleteButton": " "
       },
       "errors": {
         "networkRetry": "Periksa koneksi & coba lagi",

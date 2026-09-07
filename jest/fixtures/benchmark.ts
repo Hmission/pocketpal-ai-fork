@@ -28,12 +28,6 @@ export const mockResult: BenchmarkResult = {
     percentage: 50,
   },
   wallTimeMs: 10000,
-  submitted: false,
-};
-
-export const mockSubmittedResult: BenchmarkResult = {
-  ...mockResult,
-  submitted: true,
 };
 
 export const mockDeviceInfo: DeviceInfo = {

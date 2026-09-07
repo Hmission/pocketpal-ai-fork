@@ -755,14 +755,6 @@
         "peakMemory": "Mémoire maximale",
         "tokensPerSecond": "t/s"
       },
-      "actions": {
-        "submittedText": "✓ Partagé à",
-        "leaderboardLink": "Classement AI Phone ↗",
-        "cannotShare": "Impossible de partager",
-        "cannotShareTooltip": "Les résultats des modèles locaux ne peuvent pas être partagés",
-        "submitButton": "Soumettre au classement",
-        "viewLeaderboard": "Voir le classement ↗"
-      },
       "errors": {
         "networkRetry": "Vérifier la connexion et réessayer",
         "appCheckRetry": "Réessayer la soumission",

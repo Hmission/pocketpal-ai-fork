@@ -4,6 +4,7 @@
  * Voices and engines are abstracted over `@pocketpalai/react-native-speech` so the
  * rest of the app doesn't touch that package directly.
  */
+import type {SupertonicLanguage} from '@pocketpalai/react-native-speech';
 
 export type EngineId = 'kitten' | 'kokoro' | 'supertonic' | 'system';
 
@@ -12,8 +13,36 @@ export type EngineId = 'kitten' | 'kokoro' | 'supertonic' | 'system';
  * The fork supports `1|2|3|4|5|10|20|50`; PocketPal exposes
  * `1|2|3|5|10|20`. We skip 4 (perceptually too close to 3/5) and 50
  * (latency budget too high for interactive use).
+ *
+ * **唯一定义点**（2026-09-07 W5）：旧写法是本类型手写一份联合、两个 UI 各手写一份
+ * `[1, 2, 3, 5, 10, 20]` 字面量数组（`TTSSetupSheet/HeroRow` 与 `AudioWorkshopTab`），
+ * 改档位要同时记起三处。现在类型由下面的档位表派生，UI 共读本表——
+ * 可选集与类型面不可能再分叉。引擎底层仍接受任意整数步数，故本表只约束
+ * 「暴露给用户的档位」，不约束 native 边界（`TtsSynthOptions.numSteps` 仍为 number）。
  */
-export type SupertonicSteps = 1 | 2 | 3 | 5 | 10 | 20;
+export const SUPERTONIC_STEPS_OPTIONS = [1, 2, 3, 5, 10, 20] as const;
+
+/** 由档位表派生，勿在此重列档位值。 */
+export type SupertonicSteps = (typeof SUPERTONIC_STEPS_OPTIONS)[number];
+
+/**
+ * TTS 语速默认倍率（唯一定义点）：store 初值与 native 边界兜底共读，
+ * 不再在 `audioStore` / `ttsEngine` 各写一份 `1.0`。
+ */
+export const DEFAULT_TTS_SPEED = 1.0;
+
+/**
+ * Supertonic 两个默认值的**唯一定义点**（2026-09-07 W5 双份常量收口）。
+ *
+ * 旧状态：`DEFAULT_SUPERTONIC_STEPS = 5` 在 `TTSStore` / `audioStore` / `ttsEngine`
+ * 三处各写一份字面量，`DEFAULT_SUPERTONIC_LANGUAGE = 'na'` 在引擎与 store 各一份并靠
+ * 注释约定「两边保持一致」——改一处只影响一条链（播报与工坊生成会静默分叉）。
+ * 域主体（Supertonic 引擎）与消费方（两个 store / 生成入口）现共读本节。
+ */
+export const DEFAULT_SUPERTONIC_STEPS: SupertonicSteps = 5;
+
+/** Supertonic 默认语种：`na`（Auto，v3 模型训练的语种无关 tag）。 */
+export const DEFAULT_SUPERTONIC_LANGUAGE: SupertonicLanguage = 'na';
 
 export interface Voice {
   /** Stable identifier used to look up the voice on the underlying engine. */

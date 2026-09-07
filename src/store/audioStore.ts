@@ -15,7 +15,12 @@ import {makeAutoObservable, runInAction} from 'mobx';
 import {imageGenStore} from './imageGenStore';
 import {ttsStore} from './TTSStore';
 import {promptWriter} from '../services/promptWriter';
-import {getAllEngines, Voice} from '../services/tts';
+import {
+  getAllEngines,
+  DEFAULT_SUPERTONIC_STEPS,
+  DEFAULT_TTS_SPEED,
+} from '../services/tts';
+import type {Voice, SupertonicSteps} from '../services/tts';
 import * as RNFS from '@dr.pogodin/react-native-fs';
 import {AIOS_ROOT} from '../utils/paths';
 import {
@@ -70,10 +75,10 @@ class AudioStore {
   genText = '';
   /** 当前音色 id（顶栏换引擎自动重置） */
   voiceId: string | null = null;
-  /** 语速倍率 */
-  speed = 1.0;
-  /** Supertonic 专属步数 */
-  supertonicSteps = 5;
+  /** 语速倍率（默认与 native 边界兜底共读 `DEFAULT_TTS_SPEED`） */
+  speed = DEFAULT_TTS_SPEED;
+  /** Supertonic 专属步数（默认值与 ttsStore / 引擎共读 `DEFAULT_SUPERTONIC_STEPS`，不再各写一份字面量 5） */
+  supertonicSteps: SupertonicSteps = DEFAULT_SUPERTONIC_STEPS;
 
   setAudioSeg(v: AudioSeg): void {
     this.audioSeg = v;
@@ -91,7 +96,7 @@ class AudioStore {
     this.speed = v;
   }
 
-  setSupertonicSteps(v: number): void {
+  setSupertonicSteps(v: SupertonicSteps): void {
     this.supertonicSteps = v;
   }
 

@@ -750,7 +750,6 @@ export interface BenchmarkResult {
   };
   wallTimeMs?: number;
   uuid: string;
-  submitted?: boolean;
   initSettings?: ContextInitParams | LegacyContextInitParams;
   // ── B39 新协议（PERF_BENCHMARK_DESIGN §10.7）：真实负载套件 ──
   /** 有值 = 新协议（真实负载）；缺失 = 旧协议（bench() 合成，诚实标「旧协议」） */

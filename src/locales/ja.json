@@ -1354,13 +1354,7 @@
         "tokensPerSecond": "トークン/秒"
       },
       "actions": {
-        "deleteButton": " ",
-        "submittedText": "✓ 共有先：",
-        "leaderboardLink": "AIスマホリーダーボード ↗",
-        "cannotShare": "共有できません",
-        "cannotShareTooltip": "ローカルモデルの結果は共有できません",
-        "submitButton": "リーダーボードに送信",
-        "viewLeaderboard": "リーダーボードを表示 ↗"
+        "deleteButton": " "
       },
       "errors": {
         "networkRetry": "接続を確認して再試行",

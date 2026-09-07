@@ -1354,13 +1354,7 @@
         "tokensPerSecond": "т/с"
       },
       "actions": {
-        "deleteButton": " ",
-        "submittedText": "✓ Поділитися",
-        "leaderboardLink": "Рейтинг AI-телефонів ↗",
-        "cannotShare": "Неможливо поділитися",
-        "cannotShareTooltip": "Результати локальної моделі не можна поширювати",
-        "submitButton": "Відправити до рейтингу",
-        "viewLeaderboard": "Переглянути рейтинг ↗"
+        "deleteButton": " "
       },
       "errors": {
         "networkRetry": "Перевірте з'єднання та спробуйте ще раз",

@@ -20,6 +20,7 @@ import {CircularActivityIndicator} from '../../../components/CircularActivityInd
 
 import {useTheme} from '../../../hooks';
 import {createStyles} from '../styles';
+import {formatQueueSummary} from '../constants';
 
 export interface GenActionBarProps {
   /** DreamLite 族（双按钮：编辑/出图） */
@@ -44,8 +45,8 @@ export interface GenActionBarProps {
   queueRunning?: boolean;
   /** 队列面板入口（胶囊条点击）：仅队列非空时渲染 */
   onOpenQueue?: () => void;
-  /** 胶囊摘要文案（如 “2 项 · 3 抽”） */
-  queueSummary?: string;
+  /** 队列总抽数（与项数一起在胶囊条里拼摘要文案，拼法见 `formatQueueSummary`） */
+  queueTotalDraws?: number;
 }
 
 export const GenActionBar: React.FC<GenActionBarProps> = ({
@@ -62,7 +63,7 @@ export const GenActionBar: React.FC<GenActionBarProps> = ({
   queueItemCount = 0,
   queueRunning = false,
   onOpenQueue,
-  queueSummary,
+  queueTotalDraws = 0,
 }) => {
   const theme = useTheme();
   const s = createStyles(theme);
@@ -115,7 +116,7 @@ export const GenActionBar: React.FC<GenActionBarProps> = ({
           style={[s.queueCapsule, queueRunning && s.buttonDisabled]}
           testID="imagegen-queue-capsule">
           <Text style={s.queueCapsuleText}>
-            🛒 队列（{queueSummary ?? `${queueItemCount} 项`}）▸
+            🛒 队列（{formatQueueSummary(queueItemCount, queueTotalDraws)}）▸
           </Text>
         </TouchableOpacity>
       )}

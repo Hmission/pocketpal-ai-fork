@@ -1361,13 +1361,7 @@
         "tokensPerSecond": "t/s"
       },
       "actions": {
-        "deleteButton": " ",
-        "submittedText": "✓ Partilhado em",
-        "leaderboardLink": "Ranking de Telemóveis de IA ↗",
-        "cannotShare": "Não é possível partilhar",
-        "cannotShareTooltip": "Resultados de modelos locais não podem ser partilhados",
-        "submitButton": "Enviar para o Ranking",
-        "viewLeaderboard": "Ver ranking ↗"
+        "deleteButton": " "
       },
       "errors": {
         "networkRetry": "Verifique a conexão e tente novamente",

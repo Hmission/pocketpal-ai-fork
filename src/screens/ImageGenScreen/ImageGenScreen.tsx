@@ -1400,7 +1400,7 @@ export const ImageGenScreen: React.FC = observer(() => {
                 imageGenStore.queueState === 'stopping'
               }
               onOpenQueue={() => setQueueVisible(true)}
-              queueSummary={`${imageGenStore.queueItemsCount} 项 · ${imageGenStore.queueTotalDraws} 抽`}
+              queueTotalDraws={imageGenStore.queueTotalDraws}
             />
           </View>
         </KeyboardStickyView>
@@ -1618,7 +1618,6 @@ export const ImageGenScreen: React.FC = observer(() => {
         items={imageGenStore.queueItems}
         state={imageGenStore.queueState}
         position={imageGenStore.queuePosition}
-        totalDraws={imageGenStore.queueTotalDraws}
         drawsDone={imageGenStore.queueDrawsDone}
         drawsFailed={imageGenStore.queueDrawsFailed}
         busy={imageGenStore.loading || imageGenStore.generating}

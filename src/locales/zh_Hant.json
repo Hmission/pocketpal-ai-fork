@@ -133,12 +133,6 @@
         "tokensPerSecond": "t/s"
       },
       "actions": {
-        "submittedText": "✓ 已共享至",
-        "leaderboardLink": "AI 手機排行榜 ↗",
-        "cannotShare": "無法共享",
-        "cannotShareTooltip": "本地模型結果無法共享",
-        "submitButton": "提交至排行榜",
-        "viewLeaderboard": "查看排行榜 ↗",
         "deleteButton": " "
       },
       "errors": {

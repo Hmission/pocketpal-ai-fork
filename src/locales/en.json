@@ -608,7 +608,6 @@
       "attachmentButtonAccessibilityLabel": "Send media"
     },
     "phoneCall": {
-      "title": "Phone Call",
       "listening": "Listening…",
       "recognizing": "Recognizing…",
       "engineLoading": "Loading voice assistant…",
@@ -624,8 +623,6 @@
       "hintThinking": "I'll answer soon — hold to interrupt",
       "hintSpeaking": "I'm talking — hold to interrupt",
       "hintEngineLoading": "You can talk as soon as it's loaded",
-      "mineLabel": "You",
-      "partnerLabel": "Chick",
       "ttsReady": "Voice output ready",
       "ttsPlayFailed": "Voice output failed, tap to fix",
       "ttsLangMismatch": "This voice can't read Chinese, tap to change",
@@ -636,7 +633,6 @@
       "emptySpeech": "No speech detected, please try again",
       "asrNotReady": "Voice model not downloaded yet",
       "permissionDenied": "Microphone permission required",
-      "guideToText": "This action requires text mode",
       "failed": "Transcription or sending failed, please try again"
     },
     "bubble": {
@@ -1473,13 +1469,7 @@
         "tokensPerSecond": "t/s"
       },
       "actions": {
-        "deleteButton": " ",
-        "submittedText": "✓ Shared to",
-        "leaderboardLink": "AI Phone Leaderboard ↗",
-        "cannotShare": "Cannot share",
-        "cannotShareTooltip": "Local model results cannot be shared",
-        "submitButton": "Submit to Leaderboard",
-        "viewLeaderboard": "View leaderboard ↗"
+        "deleteButton": " "
       },
       "errors": {
         "networkRetry": "Check connection & retry",

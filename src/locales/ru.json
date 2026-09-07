@@ -110,12 +110,6 @@
         "tokensPerSecond": "т/сек"
       },
       "actions": {
-        "submittedText": "✓ Поделиться в",
-        "leaderboardLink": "Таблица лидеров AI Phone ↗",
-        "cannotShare": "Невозможно поделиться",
-        "cannotShareTooltip": "Невозможно поделиться результатами локальной модели",
-        "submitButton": "Отправить в таблицу лидеров",
-        "viewLeaderboard": "Посмотреть таблицу лидеров ↗",
         "deleteButton": " "
       },
       "errors": {

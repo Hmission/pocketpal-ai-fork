@@ -11,7 +11,7 @@ import {observer} from 'mobx-react-lite';
 import {useTheme} from '../hooks/useTheme';
 import {L10nContext} from '../utils';
 import {withOpacity} from '../utils/colorUtils';
-import {benchmarkStore} from '../store/BenchmarkStore';
+import {benchmarkStore, SUITE_CASE_LABEL_KEY} from '../store/BenchmarkStore';
 import {benchmarkOrchestrator} from '../services/benchmarkOrchestrator';
 import {Theme} from '../utils/types';
 
@@ -53,16 +53,11 @@ export const BenchmarkHudBar: React.FC = observer(() => {
   if (!suiteRunning) {
     return null;
   }
-  // 用例 key → l10n 标签（与 BenchmarkScreen 同源映射；非用例文案原样透传）
+  // 用例 key → l10n 标签（映射唯一定义点在 BenchmarkStore，与跑分页横幅共读）；
+  // 回落口径两处有意不同：HUD 把非用例文案原样透传，跑分页回落 runningDefault。
+  const labelKey = SUITE_CASE_LABEL_KEY[suiteBanner];
   const labels = l10n.benchmark.suite.labels as Record<string, string>;
-  const CASE_LABEL_KEY: Record<string, string> = {
-    llm: 'inferSpeed',
-    gen: 'genSpeed',
-    endurance: 'endurance',
-  };
-  const caseText = CASE_LABEL_KEY[suiteBanner]
-    ? (labels[CASE_LABEL_KEY[suiteBanner]] ?? suiteBanner)
-    : suiteBanner;
+  const caseText = labelKey ? (labels[labelKey] ?? suiteBanner) : suiteBanner;
   const styles = createStyles(theme);
   return (
     <View style={styles.banner} testID="benchmark-hud">

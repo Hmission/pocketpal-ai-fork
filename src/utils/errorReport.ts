@@ -10,12 +10,10 @@ import DeviceInfo from 'react-native-device-info';
 import Clipboard from '@react-native-clipboard/clipboard';
 import * as RNFS from '@dr.pogodin/react-native-fs';
 
-import {AIOS_ROOT} from './paths';
+import {AIOS_LOGS_DIR} from './paths';
 import {matchFirstError} from '../debug/errorRegistry';
 import {emit} from '../debug/eventStream';
 import {setLastError} from '../debug/stateSnapshot';
-
-export const AIOS_LOGS_DIR = `${AIOS_ROOT}/logs`;
 
 export type ErrorReportScope = 'chat' | 'imagegen' | 'system';
 

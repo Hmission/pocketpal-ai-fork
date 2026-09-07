@@ -5,7 +5,7 @@ import {CircularActivityIndicator} from '../../../components/CircularActivityInd
 
 import {useTheme} from '../../../hooks';
 import {createStyles} from '../styles';
-import {FAMILY_BADGE, ModelEntry} from '../constants';
+import {FAMILY_BADGE, ModelEntry, familyBadgeColor} from '../constants';
 
 /**
  * D1 顶栏重构（DESIGN_SPEC §5 生图顶栏）：原「顶部模型胶囊 + 锚定下拉」
@@ -152,17 +152,16 @@ export const ModelPickerDropdown: React.FC<DropdownProps> = ({
                   <Text style={s.modelName} numberOfLines={1}>
                     {FAMILY_BADGE[item.manifest.family] ? (
                       <Text
-                        style={
-                          item.manifest.family === 'sd3'
-                            ? s.badgeSd3
-                            : item.manifest.family === 'dreamlite'
-                              ? s.badgeDream
-                              : item.manifest.family === 'flux'
-                                ? s.badgeFlux
-                                : item.manifest.family === 'krea2'
-                                  ? s.badgeKrea2
-                                  : s.badgeZ
-                        }>
+                        style={[
+                          s.badgeFamily,
+                          // 族→色单一映射（constants）：不在此写判定链，新增族不会静默错色
+                          {
+                            color: familyBadgeColor(
+                              theme,
+                              item.manifest.family,
+                            ),
+                          },
+                        ]}>
                         [{FAMILY_BADGE[item.manifest.family]}]{' '}
                       </Text>
                     ) : null}

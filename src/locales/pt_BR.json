@@ -1362,13 +1362,7 @@
         "tokensPerSecond": "t/s"
       },
       "actions": {
-        "deleteButton": " ",
-        "submittedText": "✓ Compartilhado em",
-        "leaderboardLink": "Ranking de Celulares de IA ↗",
-        "cannotShare": "Não é possível compartilhar",
-        "cannotShareTooltip": "Resultados de modelos locais não podem ser compartilhados",
-        "submitButton": "Enviar para o Ranking",
-        "viewLeaderboard": "Ver ranking ↗"
+        "deleteButton": " "
       },
       "errors": {
         "networkRetry": "Verifique a conexão e tente novamente",

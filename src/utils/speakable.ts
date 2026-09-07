@@ -10,6 +10,7 @@
  *  - 单词/空文本不朗读。
  */
 import {assistant, derivedText} from './chat';
+import {HANZI_PRESENT_RE} from './cjk';
 import {MessageType} from './types';
 
 /** 空白分词词数（英文等空格语言） */
@@ -21,7 +22,7 @@ export const countWords = (text: string): number => {
   return trimmed.split(/\s+/).length;
 };
 
-const CJK_RE = /[\u4e00-\u9fff\u3400-\u4dbf]/;
+// 汉字口径不在此重列：共读 `utils/cjk`（`HANZI_PRESENT_RE` = BMP + Ext-A + 兼容表意）
 
 /**
  * 是否有实质可朗读内容：
@@ -33,7 +34,7 @@ function hasSpeakableContent(text: string): boolean {
   if (!trimmed) {
     return false;
   }
-  if (CJK_RE.test(trimmed)) {
+  if (HANZI_PRESENT_RE.test(trimmed)) {
     return trimmed.length >= 4;
   }
   return countWords(trimmed) > 1;

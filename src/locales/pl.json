@@ -1210,13 +1210,7 @@
         "cacheTypes": "Typy pamięci podręcznej: {{cacheK}}/{{cacheV}}"
       },
       "actions": {
-        "deleteButton": " ",
-        "submittedText": "✓ Udostępniono na",
-        "leaderboardLink": "Ranking AI Telefonów ↗",
-        "cannotShare": "Nie można udostępnić",
-        "cannotShareTooltip": "Nie można udostępniać wyników modelu lokalnego",
-        "submitButton": "Dodaj do Rankingu",
-        "viewLeaderboard": "Wyświetl ranking ↗"
+        "deleteButton": " "
       },
       "errors": {
         "networkRetry": "Sprawdź połączenie i spróbuj ponownie",
