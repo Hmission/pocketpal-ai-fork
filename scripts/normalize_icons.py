@@ -133,10 +133,21 @@ def normalize(svg: str, stem: str):
             ) + '</svg>'
             reasons.append(f'viewBox:{vb}->24 (scale {k:.4f})')
 
-    # --- stroke-width 统一 2 ---
-    if has_stroke and stroke_widths and stroke_widths != {'2'}:
-        svg = re.sub(r'stroke-width="[\d.]+"', 'stroke-width="2"', svg)
-        reasons.append(f'stroke-width:{sorted(stroke_widths)}->2')
+    # --- stroke-width 归一：有效粗细恒为 2.00（2026-09-08 修正本脚本自伤）---
+    # 上面 viewBox 归一会引入 scale(k)，而 stroke-width 写在内层坐标系里、会被同一个
+    # k 一起放大：有效粗细 = stroke-width × k。旧实现一律写 2，于是 viewBox≠24 的资产
+    # （如 20 视口的 chevron/copy/dots-vertical/download…）比其余资产粗 20%——同屏描边
+    # 粗细不一致的真因在此，与调用侧尺寸无关。目标：内层写 2/k，使有效值恒 2.00。
+    if has_stroke:
+        # 注：re.findall 在**只有一个捕获组**时直接返回字符串列表（不是元组），
+        # 写成 s[0] 会拿到首字符 '1' 而把 k_eff 误算成 1.0（本窗踩过，靠 changed:0 反查才发现）。
+        scales = [float(s) for s in re.findall(r'transform="scale\(([\d.]+)', svg)]
+        k_eff = max(scales) if scales else 1.0
+        want = '%g' % round(2.0 / k_eff, 4)
+        cur = set(re.findall(r'stroke-width="([\d.]+)"', svg))
+        if cur and cur != {want}:
+            svg = re.sub(r'stroke-width="[\d.]+"', f'stroke-width="{want}"', svg)
+            reasons.append(f'effective-stroke:{sorted(cur)}x{k_eff:.4f}->{want} (=2.00)')
 
     # --- 上色口径归一（2026-09-07，ICON_SPEC §一第 5 条 / §4.2）---
     if has_stroke:

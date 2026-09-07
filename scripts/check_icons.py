@@ -4,7 +4,8 @@ check_icons.py — 图标规范校验（防回归）
 
 规范（docs/POCKETPAL_ICON_SPEC.md）：
   - 所有 SVG 必须 24×24 viewBox
-  - stroke 型图标 stroke-width 必须为 2
+  - **有效描边粗细必须为 2.00**（= stroke-width × 资产内 scale；单看 stroke-width==2 不够，
+    viewBox 归一引入的 scale 会把它一起放大）
   - 禁止 fill+stroke 双描边（fill 层与 stroke 层同用固定色）
   - **上色口径（v1.1 加）**：描边元素必须自带 fill="none"（否则调用侧传 fill 会被填实）；
     禁止 stroke="currentColor"（那是第二套上色机制）；描边型资产在调用侧禁单独传 fill
@@ -37,9 +38,20 @@ for fn in sorted(os.listdir(ICON_DIR)):
     if not vb or float(vb.group(1)) != 24 or float(vb.group(2)) != 24:
         violations.append(f'{fn}: viewBox 非 24×24')
 
+    # 有效描边粗细（ICON_SPEC §一第 2 条 v1.2 改写）：stroke-width × 资产内 scale 必须≈2.00。
+    # 旧规则只查 stroke-width==2，正好漏掉了 viewBox 归一引入的 scale —— 18 件 20 视口资产
+    # 因此被隐式放大到有 2.40，同屏粗细差 20%（大王报的“粗细一致”卡在这）。
     stroke_widths = set(re.findall(r'stroke-width="([\d.]+)"', svg))
-    if stroke_widths and stroke_widths != {'2'}:
-        violations.append(f'{fn}: stroke-width={sorted(stroke_widths)} 非 2')
+    if stroke_widths:
+        scales = [float(s) for s in re.findall(r'transform="scale\(([\d.]+)', svg)]
+        k_eff = max(scales) if scales else 1.0
+        bad = [w for w in stroke_widths if abs(float(w) * k_eff - 2.0) > 0.02]
+        if bad:
+            eff = [round(float(b) * k_eff, 3) for b in sorted(bad)]
+            violations.append(
+                f'{fn}: 有效描边粗细 {sorted(bad)}×scale{k_eff:.4f} = {eff}，应≈ 2.00'
+                f'（同屏其它图标会是 2.00，粗细会不一致）'
+            )
 
     # 双描边：固定色 fill 与 stroke-width 同时出现
     if 'stroke-width' in svg and re.search(r'fill="(#[0-9A-Fa-f]{6})"', svg):
@@ -110,4 +122,4 @@ if violations:
         print('  ' + v)
     sys.exit(1)
 
-print('[check_icons] 全部图标符合规范（24×24 / sw 2 / 无双描边 / 上色口径单一）')
+print('[check_icons] 全部图标符合规范（24×24 / 有效描边 2.00 / 无双描边 / 上色口径单一）')
