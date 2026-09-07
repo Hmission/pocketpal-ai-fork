@@ -489,7 +489,7 @@ superseded_by: POCKETPAL_IMAGEGEN_UI_SPEC
 - **D2 控制流**：后端决策点唯一但写死于注释（TODO(opencl-hang)）；CMakeLists 编译期 arm64 SD_OPENCL=ON 而运行时不用——**编译期/运行时半开不一致**（违单后端）。
 - **D3 状态**：无新增状态面（backend 作为只读配置入 manifest，不进运行时状态机）。
 - **D4 资源**：Vulkan 路线取证全绿——引擎 `option(SD_VULKAN)` 一等公民 + 官方 build.md/docker 支持 + ggml-vulkan 源码 vendored + **z_image.hpp/qwen_image.hpp 均含 Vulkan 分支**（两实验性模型原生支持）；NDK 原生带头文件+系统 libvulkan（比 OpenCL 补 headers/ICD 干净）。
-- **D5 错误**：当前无超时判定——hang 时进度条无限转=失败不可见（违锋利哲学：不是兑底，是脏）。锋利方案=**超时判定+明确报错+释放引擎（干净失败，禁回退重试）**。
+- **D5 错误**：当前无超时判定——hang 时进度条无限转=失败不可见（违锋利哲学：不是兜底，是脏）。锋利方案=**超时判定+明确报错+释放引擎（干净失败，禁回退重试）**。
 - **D6 演进**：manifest defaults + 设备端 *.manifest.json 扩展点已有——backend 入 manifest 后设备级显式覆盖（配置能力，非自动回退）。
 
 #### 全 App 循环动画盘点（本轮全量 grep）
@@ -518,7 +518,7 @@ superseded_by: POCKETPAL_IMAGEGEN_UI_SPEC
 **第二波（B2 Vulkan 单后端，下窗口专攻）**
 1. **backend 上 manifest**：imageGenManifest defaults 加 backend 字段，ImageGenJNI 从 manifest 读（删硬编码+删 TODO），值暂 "CPU"；
 2. **编译期单后端**：CMakeLists arm64 分支 SD_OPENCL OFF + SD_VULKAN ON（x86_64 保持全 OFF）；
-3. **干净失败**：imageGenStore 加 step 无推进超时判定（120s）→ 取消+释放引擎+明确报错（禁回退重试，无兑底）；
+3. **干净失败**：imageGenStore 加 step 无推进超时判定（120s）→ 取消+释放引擎+明确报错（禁回退重试，无兜底）；
 4. **真机最小验证**：SDXL Turbo 384²/2 步 Vulkan（OpenCL 曾 685s 成功的同模型）对比 CPU 基线；
 5. **决策点**：Vulkan 稳 → manifest 值改 "Vulkan" + SD3.5/Z-Image 长时全流程（同时复验 B1）；Vulkan 也 hang → manifest 值留 "CPU"（一行决策，单后端不变），回 6.9 五步侦察法。
 
@@ -530,7 +530,7 @@ superseded_by: POCKETPAL_IMAGEGEN_UI_SPEC
 
 - **单后端**：编译期与运行时 backend 一致，无 fallback 链、无 retry；
 - **决策唯一**：backend 只在 manifest 一处（设备级覆盖也是显式配置，非自动回退）；
-- **干净失败**：hang 判定=超时+明确报错+释放，不是静默回退（回退=兑底，报错=锋利）；
+- **干净失败**：hang 判定=超时+明确报错+释放，不是静默回退（回退=兜底，报错=锋利）；
 - **动画规则一条**：loop 一律 JS driver（防弱引用累积是规则的自然结果，不是逐页补丁）。
 
 #### 风险与依赖
@@ -543,7 +543,7 @@ superseded_by: POCKETPAL_IMAGEGEN_UI_SPEC
 #### 执行状态（2026-08-14 本窗口三波落地）
 
 - ✅ 第一波：LoadingBubble/PendingIndicator/CircularActivityIndicator 全部改 `useNativeDriver:false` + 机制注释。全 App `Animated.loop` 零 native driver（生图 pulse 上窗口已收）。tsc 零错误。
-- ✅ 第二波：backend 上 manifest（sd.cpp 系 defaults.backend 字段，当前值 'CPU'）；JNI 删硬编码+TODO 改为透传（空→引擎默认 CPU，无兑底）；Kotlin/RN store/Screen 一条数据流透传；CMakeLists arm64 纯 CPU（OpenCL 永久弃用）；store 加 120s 无引擎事件超时判定→明确报错（干净失败，禁回退重试）。
+- ✅ 第二波：backend 上 manifest（sd.cpp 系 defaults.backend 字段，当前值 'CPU'）；JNI 删硬编码+TODO 改为透传（空→引擎默认 CPU，无兜底）；Kotlin/RN store/Screen 一条数据流透传；CMakeLists arm64 纯 CPU（OpenCL 永久弃用）；store 加 120s 无引擎事件超时判定→明确报错（干净失败，禁回退重试）。
 - ⚠️ Vulkan 编译链实测受阻（预案退化）：ggml-vulkan 构建需宿主机 SPIRV-Headers CMake 包 + glslc 工具链（NDK 自带 glslc.exe，但缺 SPIRV-Headers Config 包）→ CMakeLists 保持 SD_VULKAN OFF。**机制已就位**：Vulkan 启用=补链（SPIRV-Headers/宿主机 SDK）+ manifest 值改 'Vulkan' + CMakeLists 开 ON，三处单点，无需再动逻辑。挂下窗口。
 - ✅ 第三波：unetMode 死存储已被大王清理完毕（0 引用），无需改动；RN 上游 weak-ref 追踪为长期观察项。
 - ✅ 构建装机：Gradle BUILD SUCCESSFUL（3m40s）+ adb install Success（21:45:37，460MB）。

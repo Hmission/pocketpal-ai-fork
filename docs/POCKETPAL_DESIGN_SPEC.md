@@ -3,9 +3,9 @@ doc_id: POCKETPAL_DESIGN_SPEC
 module: root
 type: ssot
 status: active
-version: '3.26'
+version: '3.27'
 created: '2026-08-14'
-updated: '2026-08-26'
+updated: '2026-09-07'
 relates:
   [
     DRC_SPEC,
@@ -225,12 +225,17 @@ supersedes: []
 - 应用位置：设置页全部条目、AIOS 四屏列表行、抽屉底部设置入口。
 - 列表行结构（三段式）：IconTile + (标题 bodyM / onSurface + 辅助说明 captionM / onSurfaceVariant) + chevron-right（onSurfaceVariant）。分组用 Surface 卡片包裹（radius.l=20）+ 分组标题 captionM/onSurfaceVariant。
 - 触区 44 不变；图标资产沿用 `src/assets/icons/` Lucide 族，不引入 icon-font。
-- **传参红线（v3.4，2026-09-05 电话模式根治）**：本仓 SVG 经 `.svgrrc` 的 `replaceAttrValues`
-  把 `#333333`/`#858585`/`#FF653F` **一律替换为 `{props.fill}`**（无论原属性是 `fill` 还是
-  `stroke`——Lucide 族全是 `fill="none"` + `stroke="#333333"`）。因此着色**只能传 `fill`**
-  （范式：`ArrowLeftMdIcon fill=` / `DotsVerticalIcon fill=`）。
-  **传 `color=` 无效**：生成的 `stroke={props.fill}` 取到 undefined → 图标整体不渲染，
-  只剩容器底衬，表现为「有圆圈、里面没内容」（PHONE_SPEC §11.0 实例）。新增图标使用点一律自查此项。
+- **图标上色红线（v3.27 改写；旧版 v3.4「只能传 fill」为错，已作废）**：单一事实源在
+  **ICON_SPEC §四**，本节不再重列口径、只记机制与历史误判：
+  - 机制：`.svgrrc` 的 `replaceAttrValues` 把 `#333333`/`#858585`/`#FF653F` **不分属性**换成
+    `{props.fill}`；svgr 又把 `{...props}` 展在 root（**覆盖资产自带的 `fill="none"`**），
+    所以描边元素一旦没有显式 `fill`，就会继承这个值被**填成实心**。
+  - 正确口径：描边型资产传 `stroke=`；面性型资产传 `fill=`；dual-use（`star`）同传并注语义。
+  - **旧版为何错**：它拿「传 `color=` 不渲染」这个真观察，推广成「只能传 `fill`」；
+    两者不是一回事（正解 `stroke=` 一直可用，全仓 143 处在用）。该错口径直接造成
+    电话入口/通话页图标被填实，并被下游误读为「视觉重量问题」（ICON_SPEC §4.1 已推翻）。
+  - 新增图标使用点自查项：先看资产是描边还是面性（看 `stroke-width` 是否存在），
+    再选 prop；不得拿本仓已有 `fill=` 写法当范例（已全部收口）。
 - 触区几何红线：同一行内的图标按钮一律取 `theme.size.controlHeight`（36）透明触区 +
   `theme.iconSize.m`（20）图标（范式 `HeaderRight.styles.compactBtn`）；**禁止**为单个入口
   自加底衬/描边/改尺寸造成同行高低不齐（电话入口 v2.0 胶囊化即因此被 v2.1 撤销）。
