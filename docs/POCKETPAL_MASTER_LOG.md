@@ -2322,3 +2322,62 @@ W1 失败可见性（6 处，P0）→ W2 队列与保活单状态机（**删 `qu
 - tsc 0 错；定向 jest（phoneCall + ChatScreen）59 例全绿；prettier 对新增/改动 md 全绿。
 - 提交 `108f526`（PHONE_SPEC 恢复 §18 + 作废不实陈述）+ 本窗审计文档与 INDEX 登记；**提交后已复验 HEAD**；`dirty=0`，ahead 28→29，**未 push**（大版本封版前严禁推送，待大王指令）。
 - 专工纪律：四路并行、均带规则包、全程只读未派孙；未改母仓一个字节、未 pip 装包；真机未涉及（纯排查轮）。
+
+## §161 六波收口落地：九组双份事实源归一，附取证方法学两轮翻车实录（2026-09-07，大王令「依次执行」）
+
+### 161.1 交付与账目
+
+| 波 | 提交 | 面 |
+|---|---|---|
+| W1+W2 | `018f36d` | 队列失败可见性 + 队列/保活单状态机 |
+| W3 | `74bc3a4` | 指南针 7 条真 regex + `audit:compass` 双向对账闸 |
+| W4 | `263f0df` / `1c85798` | 族色收 token、`SemanticColors` 副本收口 / 17 项逐条裁定回写 |
+| W5 | `0caf0cc` / `d3c4e43` | 死码死键纯删 + 双份常量收口（43 文件 +268/−366）/ 七卷文档回写 |
+| W6 | 本窗两笔 | 会话仓储 DB 故障分类 + 祖传债台账 P7 / 本节登记 |
+
+门禁终态：tsc 0 错；eslint 0 error（30 条既有 `no-bitwise` warning）；prettier 门禁口径全绿；**jest 350 套件 / 4854 passed + 2 skipped / 318 snapshots**；`l10n:validate` 全 valid 且缺失 108→104（改善非回归）；`audit:native-mocks` missing=0；`audit:async-timers` risky=0；`audit:compass` 登记↔代码双向闭合、路径 32 个全可达；`guard:worktree` 干净。ahead 36，**未 push**（待大王指令）。
+
+### 161.2 本窗真正的收获：双份事实源有九种形态
+
+审计原表只列了「常量重复」，落地时发现同一句话可以活在值、类型、常量、映射、接口、正则、mock、fixture、注释九个层面：
+
+1. **值副本**：`QueuePanel` 四个族色野值（W4 收）
+2. **类型面副本**：`SemanticColors` 手工抄 `TokenColors` 且已漂移（W4 收为派生）
+3. **常量副本**：`HF_DOMAIN` / `AIOS_LOGS_DIR` / `DEFAULT_SUPERTONIC_{STEPS,LANGUAGE}` / `DEFAULT_TTS_SPEED` / 步数档位表 / `PAL_IMAGES_DIR`（W5+W6 收）
+4. **映射副本**：族→色三处、`CASE_LABEL_KEY` 两处（W5 收）
+5. **接口副本**：`GenActionBar.queueSummary?: string` ——编排层把拼好的字符串传进来，组件内还另存一份「N 项」兜底，两种格式并存（W5 改传数值 + `formatQueueSummary` 单点）
+6. **正则副本**：`CJK_RE` 实为四份三种范围（W5 收 `utils/cjk`，逐码位比对）
+7. **mock 幻影**：`__mocks__/stores/benchmarkStore.ts` 里还留着已砍的 `markAsSubmitted`
+8. **fixture 幻影**：`jest/fixtures/benchmark.ts` 的 `mockSubmittedResult`
+9. **注释谎报**：`importUtils` 函数内写一份同值字面量 + 一句「same as imageUtils.ts」——靠人不靠编译器
+
+第 7、8 类是删码后 **tsc 才抓到的**：真实能力删了而 mock/fixture 不同步收，就留下「测试还在测一个不存在的能力」的假绿。
+
+### 161.3 取证方法学两轮翻车（比结果更该记）
+
+- **第一轮（假死）**：探针用 tail2 启发式判键是否被读，对 `const t = l10n.components.phoneCall` 这类**局部解构**全量误报（138 键里误报 76），结论不可采信。
+- **第二轮（差点杀错）**：改「`.key` 字面量」单判据，`benchmark.suite.labels.endurance` 被判死——它其实被 `labels[SUITE_CASE_LABEL_KEY[banner]]` 这种**动态下标**读取。补上 `'key'` 字面量双判据后仍不敢定罪。
+- **最终口径**：只删「名字具区分度 + 双判据全仓零命中」的 10 键（跨 16 locale 共 98 处）；其余 28 个闲置键判为**该接线未接线**（跑分页中文硬编码是根因），登记 PERF §10.7 国际化专项，不盲删。
+- **脚本写盘前的自我校验**：批量删死样式的 `.tmp/cut_dead_styles_161.js` 第一版把文件收尾 `});` 一起吞了→文件破损。回滚后补四项：`bodyEnd` 倒序定位、条目分区连续性、tail 必含收尾、花括号平衡，且**全部校验前移到写盘之前**。
+
+### 161.4 把四处「靠人记得」升级成「编译期挡住」
+
+- `FAMILY_BADGE_TOKEN` 用全量 `Record` + token 名由 `Extract` 模板字面量从 `Theme['colors']` 派生：新增族未登色→tsc 直接报错，旧五层三元链会静默落到 Z-Image 色。
+- `SupertonicSteps` 由 `SUPERTONIC_STEPS_OPTIONS as const` 派生：档位值与类型不再两处各写（顺带抓到 `audioStore.setSupertonicSteps(v: number)` 类型面比 UI 宽，收窄后 tsc 立即指出调用侧需收窄）。
+- `HANZI_RANGES` 区间单列、谓词按用途导出：范围差异从「四份正则各自演化」变成「一处声明 + 两处有意口径」。
+- `SUITE_CASE_LABEL_KEY` 从两个组件各自的映射表收为 store 导出的单一事实源。
+
+### 161.5 两条工具级陷阱（新窗口极易再踩）
+
+1. **`jest.setup.ts` 的 `jest.mock('../src/store', factory)` 只镜像 store 实例**：往 barrel 新增常量导出后，组件测试里该常量是 `undefined`（`TypeError: Cannot read properties of undefined (reading 'llm')`），而 **tsc 零错、真机正常、只有测试挂**。修法：把组件里的常量 import 改走实体模块深路径。已存 common_pitfalls 记忆。
+2. **PowerShell 三件**：无 `&&`（用 `;`）；内联 `node -e "..."` 引号必被 mangle→一律落 `.tmp/*.js`；`Select-String` 对中文模式失效→探针输出打 ASCII 标记（`ZERO` / `DEAD`）自证。另：`Write` 工具产出 CRLF，新建源码文件后必须先 `prettier --write` 再 lint。
+
+### 161.6 自伤登记（如实）
+
+- **中文错字/破句本窗仍复发**：`拒绍`（把既有行的「拒绝」改坏）、`一遗`、`徐章`、`不拿它凑改`、`兑底`——模式稳定为**同音/形近字替换 + 编辑时把上下文行一起改坏**。均在写后自查当场修掉；收口必带一次「逐字读改过的行，含本不打算改的行」。
+- **W5 漏项 `PAL_IMAGES_DIR`（N13）**：报告清单里明明有，销项时口头过账。教训：**条目多恰恰是要逐条回到实物的时候**，不是打勾的时候。
+- **真机不在线不假装看过**：本窗 `adb devices` 为空，可感知项改由 `familyBadgeSummary.test.ts`（7 测）钉住显示名/族色/摘要格式作为可复核证据，目视验收登记 DEV_BACKLOG P1 项 31；行为未变的（赛道名、步数 chip）只写明为何不补测。
+
+### 161.7 明确不做（延续 §160.7，本窗新增四条裁定）
+
+28 个闲置 `benchmark.*` 键不盲删（属国际化专项）；`BenchmarkResult.uuid` 不拆（N11，动它需改已落盘记录形状 + orchestrator + 5 夹具）；`ttsStore` / `audioStore` 双份 `supertonicSteps` 不擅自合并（N12，合并会改变用户既有设置行为）；DB 故障的用户可见出口不做（DEV_BACKLOG 项 26，需 6 处新文案属扩面，本波只做到「故障不再被说成删除」）。

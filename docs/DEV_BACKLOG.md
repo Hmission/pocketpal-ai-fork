@@ -1,6 +1,6 @@
 # 待开发清单（DEV_BACKLOG）
 
-> 状态：active | 更新：2026-08-25
+> 状态：active | 更新：2026-09-07
 > 用途：跨窗口待开发项唯一登记处（任务接力清单）。每项含目标 / 前置 / 验收 / 归属。
 > 约定：完成一项即标记 ✅（含 commit），删除前先确认无引用。
 
@@ -23,6 +23,7 @@
 | 1 | **跑分面板 UI 视觉真机实测** | PerfPanel 在生成/加载中真实可见：**默认展开**（已修，§82）、PSS 大字跳动、折线/CPU/温度/步耗时 1Hz 刷新、>5GB 橙 >6GB 红阈值色 | 投屏（.tmp/scrcpy/）+ 大王监督；加载任一模型或出图触发 | 截图取证 3 态（正常/橙/红）+ 数值跳动 + MASTER_LOG 补登 | ✅ 2026-08-25 K90 验证已过（CHANGELOG 基准套件真机全链路）+ 2026-08-26 复查销账 |
 | 2 | **记忆三闸真机 G5 验证** | K90 治理按钮验证污染库蒸馏清除 + 新会话 web_search 不复读旧闻/失败状态 | 重打包（aaca505 已含） | 污染条目消失 + 新会话回答不含已过时事实 | 新窗口 |
 | 3 | **电池豁免真机验证** | 首次夜间长任务弹系统电池优化豁免弹窗；拒绝后生图不阻断 | 装机（46af4e5 已含） | 弹窗出现 + 拒绝后前台服务/WakeLock 仍生效 | 新窗口 |
+| 31 | **W5/W6 可感知项真机目视**（2026-09-07 挂账：本窗 `adb devices` 为空，契约测试已钉住输出，缺目视一遍）| 装机后目视四项：① 生图队列面板条目徽章显示 `SD3.5` / `Z-Image`（不再出现小写族键）② 吸底胶囊与「开始队列」按钮都是同一格式「N 项 · M 抽」③ 跑分横幅/HUD 三赛道名正常 ④ 音频工坊步数 chip 六档 `1/2/3/5/10/20` 正常 | 装机（含 `0caf0cc` 及之后提交）| 四项各拍一张截图 + MASTER_LOG 补登 | 接机后的窗口 |
 
 ### P2（视频玩具三前置 + 端到端）
 
@@ -69,6 +70,20 @@
 |---|---|---|---|---|---|
 | 19 | **上下文策展极限化** | 策展表重排（4B→16384/2B→32768/1B→32768 等）+ 设备感知预算 `resolvePssSafeBudget`（可用内存口径上限 9GB）+ `CURATED_TABLE_VERSION` 版本化拉齐 + `recommendNCtx` 死代码删除 | 无 | tsc 0 错 + jest 全绿 + K90 真机各档加载 PSS 实测 ≤ 设备预算 | **2026-08-26 落码 + 真机验证通过**（n_ctx=16384 原生铁证 + 加载 4.15GB/推理后 4.74GB 全程存活） |
 | 20 | **压缩大块化** | `COMPACT_TARGET_WATERMARK=0.5`（触发 0.8 → 压到半水位）+ 摘要输入预算上限 6000→12000 + `TOOL_BASELINE_TOKENS=4500` 常量与策展断言 | 项 19 | 16K 档连续 10+ 轮触顶仅 1 次压缩；摘要一次吃下压到半水位的 slice | **2026-08-26 落码**（多轮压缩触发实测转观察项：单轮含思考耗时 5.6min，10+ 轮成本过高；逻辑推算 16K 余量 ≈ 20+ 轮） |
+
+### P7（祖传债与明确不做，2026-09-07 来源：[POCKETPAL_CHAIN_AUDIT_20260907](./POCKETPAL_CHAIN_AUDIT_20260907.md) W6）
+
+审计定的口径：**只登记不扩面**。本波唯一动的一处祖传代码已动（项 25）；其余均为
+「知道它在，但不顺手改」的债，需专项才能接。禁止以「反正登记了」为名义去改引擎层。
+
+| # | 项 | 目标/现状 | 前置 | 验收标准 | 归属 |
+|---|---|---|---|---|---|
+| 25 | **`find(id)` 区分「不存在」与 DB 真故障**（本波已落） | 旧写法 10 处 `find(id).catch(() => null)` 把两件事折成一个 null：`removeMessagesFromId` 在 DB 读故障时走 `updatedSession?.messages \|\| []`，**把用户的聊天记录在屏上清空而 DB 未动**；`deleteSession` 故障时静默 return、store 照样删列表项。现收为单点 `notFoundOk(table, id)`：不存在→null（静默），其他异常→落 DRC 事件流 `db.findFault` + 抛出 | 无 | 4 条新单测钉住（not-found/真故障抛+上报/非法 id 不当不存在吞/mock resolve undefined 仍算不存在）；仓库 24 测全绿 | ✅ 2026-09-07 本窗落码 |
+| 26 | **DB 故障的用户可见出口**（项 25 的尾巴） | 抛出后：读/删路径的调用者已在 try/catch 内（performLoadSessionList / loadSessionMessages / deleteSession / bulkDeleteSessions / createNewSession）；但 4 处乐观写入（`setSessionIntentFor` / `updateSessionTitle` / `updateSessionSettingsSource` / `setActivePal`）与 `ChatView` 未 await 的 `removeMessagesFromId` 无 catch → 故障仅进日志与事件流，用户无提示 | 需新增错误文案与 UI 出口（至少 2 条 l10n 键×16 语） | 故障时用户看得到「保存失败，重启后可能回到旧值」，不静默 | 择期（本波不做：造 6 处新文案属扩面） |
+| 27 | **跑分页国际化与 28 个闲置 `benchmark.*` 键** | 跑分页大量中文硬编码（段位名/回放标题等），同时 28 个已翻译键零消费者——属“该接线未接线”而非可删死键 | 产品先定跑分页是否进 16 语 | 逐键裁定：接线或删除（删不得反悔，16 语共 400+ 行） | 择期；取证脚本与陷阱见 PERF §10.7 挂账 |
+| 28 | **`BenchmarkResult.uuid` 写而不读** | 每例 `uuidv4()` 入库并持久化，全仓唯一读者是已删的 `markAsSubmitted`（云提交残留） | 改已落盘记录形状需同步 5 个夹具 + orchestrator | 字段删除且旧记录不致炸（JSON 多余键可忽） | 择期（独立小宗） |
+| 29 | **两处并存的用户设置 `supertonicSteps`** | `ttsStore.supertonicSteps`（播报链）与 `audioStore.supertonicSteps`（工坊生成链）各自可变，无文档裁定是否刻意；本波只做到共读同一默认值常量，**未合并** | 产品裁定（合并会改变用户已有设置行为） | 要么写明“两个链路各自调档”，要么收单一设置源 | 择期 |
+| 30 | **fork 债（登记不排期）** | ① `HFStore` 空结果节流；② `loadReleaseMethods` 路径探测兜底；③ ChatView `istanbul ignore` 群；④ `theme: any`（`ImageGenScreen/styles.ts` 旧签名，它曾吞下 token 面漂移——类型面已收，签名待改）；⑤ `dreamLiteEngine` 11 处 `as any`（引擎契约未类型化，碰它=碰引擎禁区）；⑥ core 域四采集零消费者（`readStarmap`/`readIterations`/`readEmotions`/`WakeCheckResult`，仅测试引用，属采集侧双标） | ④ 需全仓 `useTheme()` 调用点体检；⑥ 需 SPEC 标注“供未来消费”或按无消费方裁剪 | 各自单项闭环，不捆做 | 观望（明确不排期） |
 
 ## 关联
 

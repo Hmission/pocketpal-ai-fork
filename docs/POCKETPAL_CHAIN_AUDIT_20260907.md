@@ -331,7 +331,7 @@ SPEC §四/§十一 D3 自称「队列状态进 MobX **单缝**」，实为五�
 | **W3** | ✅ 完成 | CP-APP-007..013 七条真 regex（deepDive 路径 16 个 `Test-Path` 先验）；修 001 悬空；11 处 `architecture/tts.md` 指针**真收编**为 TTS_SPEC §7 四小节（旧轮只加了免责声明块——那是用含糊替代收口）；新建 `scripts/audit_compass_registry.js` 登记↔执行**双向对账闸门**挂 `pre-commit` 第 6 闸 + `yarn audit:compass`；表驱动样本测试补上「regex 写得对」这一层 |
 | **W4** | ✅ 完成 | 17 项逐条裁定回写（QUEUE/UI/CHAT_UI/PHONE/PERF/TTS/STARMAP/AUDIO/UI_INTERACTION 共 9 卷）；族色收 token；LoRA 补条目；testID 改口径；**额外收一处双份事实源**：`utils/types.ts` 的 `SemanticColors` 是 `TokenColors` 的手工副本且已漂移（缺 `badgeFlux`/`imageInsight`，靠 `styles.ts` 的 `theme: any` 吞洞）→ 120 行副本删为 1 行派生 |
 | **W5** | ✅ 完成 | 双份常量全部收口（`HF_DOMAIN`/`AIOS_LOGS_DIR`/`DEFAULT_SUPERTONIC_LANGUAGE`/**`DEFAULT_SUPERTONIC_STEPS` 实测四份**/档位表三处/`DEFAULT_TTS_SPEED` 三处/**族→色映射三处**/`CASE_LABEL_KEY` 两处）；`CJK_RE` 裁定后收 `utils/cjk`（详 N7）；死码纯删：`markAsSubmitted`+`submitted`+21 个死样式+6 个死 bench 键+4 个死 phoneCall 键（跨 16 locale 共 98 处）+fixture/mock 幻影能力；`queueSummary` prop → 数值 + `formatQueueSummary` 单点；**额外发现并修**：队列徽章打内部族键（N9）、`QueuePanel.totalDraws` 零消费 prop、bench 套件文档称「已砍」而代码在（N8） |
-| **W6** | ⏳ 待做 | — |
+| **W6** | ✅ 完成 | 祖传债台账落到 **DEV_BACKLOG 新 P7 段（项 25-30）**；唯一动的一处祖传代码已动：`ChatSessionRepository` 10 处 `find(id).catch(() => null)` 收为单点 `notFoundOk`——不存在→null，真故障→上报 `db.findFault` + 抛出（旧写法下 `removeMessagesFromId` 在 DB 读故障时把聊天记录在屏上清空而 DB 未动，即报告所说「影响面是聊天记录被误判删除」），配 4 条新单测钉住；另补收一处 W5 漏项（`PAL_IMAGES_DIR` 两份，详 N13） |
 
 ### 10.3 W4 新发现（不在原 17 项内，当场修或登记）
 
@@ -350,7 +350,22 @@ SPEC §四/§十一 D3 自称「队列状态进 MobX **单缝**」，实为五�
 |---|---|---|
 | N7 | **`CJK_RE` 不是两份而是四份、三种范围**（原报告只查到两份）：`kg.ts` 仅 BMP；`speakable.ts` BMP+Ext-A；`ttsEngine.ts` 另有 `CHINESE_RE`（BMP+Ext-A+兼容表意）与 `NON_LATIN_RE`（再内联一遍汉字区）。旧 `speakable` 漏兼容表意→整句均由该区字构成时被判为空白语言、遮住朗读钮 | **当场修**：新建 `utils/cjk.ts`，区间只列一次（`HANZI_RANGES`），按用途导出 `HANZI_PRESENT_RE` / `HANZI_BMP_CHAR_RE`；kg 的 BMP-only 作为**有意的不同口径**写明理由。逐码位比对（`.tmp/verify_cjk_equiv_161.js`）：三处零差异，仅 speakable 按裁定新增 512 码位（行为收紧，已入 CHAT_UI_SPEC §9） |
 | N8 | **文档说「已砍」而代码在**：PERF §10.7 写明 `submitted/markAsSubmitted`「整体砍除」，但 store 方法、类型字段、21 个死样式、6 个死键、fixture、**`__mocks__` 里的幻影 `markAsSubmitted`** 全在（唯一引用者是测自己的用例） | **当场修**：全部纯删 + 用例同步删；PERF §10.7 就地加 ⚠ 勘误注。教训：mock 与 fixture 也是契约面，真实能力删了必须同步收 |
-| N9 | 队列面板条目徽章直接打**内部族键**（`sd3` / `zimage`），与模型下拉的 `SD3.5` / `Z-Image` 不同名——同一事实在两处的呈现不一致（用户看到的是未翻译的枚举值） | **当场修**：`familyBadgeLabel` 共读 `FAMILY_BADGE`，未知族回落原始键名；已入 IMAGEGEN_UI_SPEC §3（真机可见项，归本波验收） |
+| N9 | 队列面板条目徽章直接打**内部族键**（`sd3` / `zimage`），与模型下拉的 `SD3.5` / `Z-Image` 不同名——同一事实在两处的呈现不一致（用户看到的是未翻译的枚举值） | **当场修**：`familyBadgeLabel` 共读 `FAMILY_BADGE`，未知族回落原始键名；已入 IMAGEGEN_UI_SPEC §3。设备不在线，改由契约测试钉住显示结果（详 §10.5），真机目视挂账 |
 | N10 | **`l10n` 死键与「该接线未接线」不可靠 grep 区分**：跑分页大量中文硬编码，28 个闲置 `benchmark.*` 键里很多是国际化缺口；且 `labels[SUITE_CASE_LABEL_KEY[banner]]` 这种**动态下标**只看 `.key` 会误杀（实测 `endurance` 就差点被删） | **不盲删**：只删名字具区分度且全仓零命中的 10 键；其余登记为专项（PERF §10.7 挂账），取证脚本已加字面量双判据 |
 | N11 | `BenchmarkResult.uuid` 写而不读：每例 `uuidv4()` 入库并持久化，全仓唯一读者就是被删的 `markAsSubmitted` | **登记不拆**（独立小宗：动它需改已落盘记录形状 + orchestrator + 5 个夹具），见 PERF §10.7 挂账 |
 | N12 | `ttsStore.supertonicSteps` 与 `audioStore.supertonicSteps` 是**两处并存的用户设置**（播报链 vs 工坊生成链），无任何文档裁定是否刻意 | **不擅自合并**（合并会改变用户已有设置行为），登记 W6 祖传债；本轮只做到「两处共读同一默认值常量」 |
+| N13 | `PAL_IMAGES_DIR` 两份（`imageUtils.ts:7` 模块常量 vs `importUtils.ts:389` 函数内同值字面量，后者注释自称「same directory as imageUtils.ts」）——报告已列入双份表，**W5 本轮漏做**，W6 自查时发现 | **当场补收**：`imageUtils` 导出为唯一定义点，`importUtils` 改 import（同值零行为变化）；教训：按清单销项时要逐条回到实物，不能因条目多而口头过账 |
+
+### 10.5 真机可感知验收（本窗设备不在线，如实挂账）
+
+收口纪律要求「真机可感知验证」，但本窗 `adb devices` 为空（无设备/无模拟器），
+**不假装看过**。现分两类处理：行为真变了的→用契约测试钉住可见结果作可复核证据；
+行为没变的→写明为何不必补测。目视验收登记 DEV_BACKLOG P1 项 31。
+
+| 可感知项 | 本窗证据 | 真机待目视 |
+|---|---|---|
+| 队列面板徽章显示名（N9：`sd3` → `SD3.5`） | `familyBadgeSummary.test.ts` 7 测：显示名与下拉同源、未知键回落原始名、两张族表键集合一致、族色互不相同、未登色族回落 `info` | 面板里不再出现小写枚举 |
+| 吸底胶囊与「开始队列」按钮同格式（`formatQueueSummary`） | 同上测：`2 项 · 5 抽`；零值不特殊化（旧写法字符串缺失会静默换成另一种格式） | 两处文案格式一致 |
+| 跑分横幅/HUD 赛道名（`CASE_LABEL_KEY` 两份收一份） | 映射值未变 + 全量 `Record`（tsc 强制）+ 既有跑分用例全绿→不补测 | 三赛道名照常 |
+| 工坊步数 chip / TTS 档位（三份档位表收一份） | 类型由 `as const` 表派生 →档位集合在编译期钉死→不补测 | 六档 `1/2/3/5/10/20` 照常 |
+| W6：DB 故障不再把屏幕聊天记录置空 | 4 条分类单测（故障路径不得落到 `\|\| []`） | 故障态需人工造，本波不做 |
