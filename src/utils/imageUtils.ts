@@ -4,7 +4,12 @@ import * as RNFS from '@dr.pogodin/react-native-fs';
  * Utility functions for downloading and managing pal thumbnail images
  */
 
-const PAL_IMAGES_DIR = `${RNFS.DocumentDirectoryPath}/pal-images`;
+/**
+ * pal 头像目录（**唯一定义点**，2026-09-07 W5 双份常量收口）：
+ * 旧写法是 `importUtils.ts` 在 base64 存图函数里又写一份同值字面量（注释还写
+ * 「same directory as imageUtils.ts」——靠人不靠编译器）；改目录会一边的图能读到、另一边存到新址。
+ */
+export const PAL_IMAGES_DIR = `${RNFS.DocumentDirectoryPath}/pal-images`;
 
 /**
  * Check if a thumbnail URL is a local filename (not a remote URL)

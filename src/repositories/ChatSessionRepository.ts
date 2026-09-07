@@ -9,6 +9,7 @@ import {
   GlobalSetting,
 } from '../database';
 
+import {emit} from '../debug/eventStream';
 import {SessionMetaData} from '../store/ChatSessionStore';
 
 import {MessageType} from '../utils/types';
@@ -23,6 +24,38 @@ import {prepareSharedStorage} from '../utils/paths';
 const defaultCompletionSettings = {...defaultCompletionParams};
 delete defaultCompletionSettings.prompt;
 delete defaultCompletionSettings.stop;
+
+/**
+ * `find(id)` 的错误分类单点（W6：本波唯一动的一处祖传代码）。
+ *
+ * 旧写法是 10 处 `find(id).catch(() => null)`，把两类完全不同的事折成同一个 `null`：
+ *  - **记录不存在**：合法分支（watermelondb 对缺失 id 抛 `Record <table>#<id> not found`）；
+ *  - **数据库真故障**：SQL/适配器异常——用户必须知道，不能读成「没有这条记录」。
+ * 后果不止日志：`deleteSession` 故障时静默 return，store 照样把会话从列表里抹掉
+ * （DB 行还在，重启又出现）；`getSessionById` 返回 null 在 UI 上表达成「聊天记录没了」——
+ * **故障被说成删除**，正是 W1「失败可见」纪律在本仓最重的一处反面样本。
+ *
+ * 现口径：不存在 → `null`（静默，合法）；其它异常 → 落 DRC 事件流 + 原样抛出，由调用方决定展示。
+ * 判别只能靠 message（实测 watermelondb 0.28 全包未导出类型化 NotFoundError），故把这条
+ * 脆弱点集中到唯一一处，10 个调用点不再各自承担；jest 的 collection mock 对缺失 id 是
+ * resolve `undefined`（不抛），两种形态都归入「不存在」。
+ */
+const MISSING_RECORD_RE = /^Record [\w-]+#\S* not found$/;
+const isMissingRecord = (error: unknown): boolean =>
+  MISSING_RECORD_RE.test(String((error as Error | null)?.message ?? ''));
+
+function notFoundOk(
+  table: string,
+  id: string,
+): (error: unknown) => Promise<null> {
+  return async (error: unknown) => {
+    if (isMissingRecord(error)) {
+      return null;
+    }
+    emit('system', 'db.findFault', {table, id, error: String(error)});
+    throw error;
+  };
+}
 
 class ChatSessionRepository {
   // Check if we need to migrate from JSON files
@@ -204,7 +237,7 @@ class ChatSessionRepository {
     const session = await database.collections
       .get('chat_sessions')
       .find(id)
-      .catch(() => null);
+      .catch(notFoundOk('chat_sessions', id));
 
     if (!session) {
       return null;
@@ -240,7 +273,7 @@ class ChatSessionRepository {
     const session = await database.collections
       .get('chat_sessions')
       .find(id)
-      .catch(() => null);
+      .catch(notFoundOk('chat_sessions', id));
 
     if (!session) {
       return null;
@@ -345,7 +378,7 @@ class ChatSessionRepository {
     const session = await database.collections
       .get('chat_sessions')
       .find(id)
-      .catch(() => null);
+      .catch(notFoundOk('chat_sessions', id));
 
     if (!session) {
       return;
@@ -388,7 +421,7 @@ class ChatSessionRepository {
         const session = await database.collections
           .get('chat_sessions')
           .find(id)
-          .catch(() => null);
+          .catch(notFoundOk('chat_sessions', id));
 
         if (!session) {
           console.warn(`Session ${id} not found during bulk delete, skipping`);
@@ -519,7 +552,7 @@ class ChatSessionRepository {
       const message = await database.collections
         .get('messages')
         .find(id)
-        .catch(() => null);
+        .catch(notFoundOk('messages', id));
 
       if (!message) {
         console.warn(
@@ -652,7 +685,7 @@ class ChatSessionRepository {
     const session = await database.collections
       .get('chat_sessions')
       .find(sessionId)
-      .catch(() => null);
+      .catch(notFoundOk('chat_sessions', sessionId));
 
     if (!session) {
       return;
@@ -670,7 +703,7 @@ class ChatSessionRepository {
     const session = await database.collections
       .get('chat_sessions')
       .find(sessionId)
-      .catch(() => null);
+      .catch(notFoundOk('chat_sessions', sessionId));
 
     if (!session) {
       return;
@@ -691,7 +724,7 @@ class ChatSessionRepository {
     const session = await database.collections
       .get('chat_sessions')
       .find(sessionId)
-      .catch(() => null);
+      .catch(notFoundOk('chat_sessions', sessionId));
 
     if (!session) {
       return;
@@ -709,7 +742,7 @@ class ChatSessionRepository {
     const session = await database.collections
       .get('chat_sessions')
       .find(sessionId)
-      .catch(() => null);
+      .catch(notFoundOk('chat_sessions', sessionId));
 
     if (!session) {
       return;
@@ -727,7 +760,7 @@ class ChatSessionRepository {
     const message = await database.collections
       .get('messages')
       .find(id)
-      .catch(() => null);
+      .catch(notFoundOk('messages', id));
 
     if (!message) {
       return;

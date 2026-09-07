@@ -13,6 +13,7 @@ import {chatSessionRepository} from '../repositories/ChatSessionRepository';
 import {MessageType} from './types';
 import {CompletionParams} from './completionTypes';
 import {migrateCompletionSettings} from './completionSettingsVersions';
+import {PAL_IMAGES_DIR} from './imageUtils';
 import {palStore} from '../store';
 import type {Pal, ParameterDefinition} from '../types/pal';
 
@@ -385,12 +386,12 @@ const saveBase64Image = async (
   const fileExtension = extensionMatch ? extensionMatch[1] : 'jpg'; // Fallback to jpg
   const base64Content = base64Data.replace(/^data:image\/[a-z]+;base64,/, '');
 
-  // Use same directory and naming convention as imageUtils.ts
-  const PAL_IMAGES_DIR = `${RNFS.DocumentDirectoryPath}/pal-images`;
+  // 目录不在此重列：共读 `imageUtils.PAL_IMAGES_DIR`（唯一定义点，旧写法是本函数
+  // 内再写一份同值字面量 + 一句「same as imageUtils.ts」注释）
   const fileName = `${palId}_thumbnail.${fileExtension}`;
   const filePath = `${PAL_IMAGES_DIR}/${fileName}`;
 
-  // Ensure directory exists (same as imageUtils.ts)
+  // Ensure directory exists
   const exists = await RNFS.exists(PAL_IMAGES_DIR);
   if (!exists) {
     await RNFS.mkdir(PAL_IMAGES_DIR);

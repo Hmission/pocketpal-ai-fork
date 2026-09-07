@@ -20,6 +20,9 @@ jest.mock('@dr.pogodin/react-native-fs', () => ({
   unlink: jest.fn().mockResolvedValue(undefined),
 }));
 
+// 事件流可断言（故障必须可见：不能只抛不报）
+jest.mock('../../debug/eventStream', () => ({emit: jest.fn()}));
+
 describe('ChatSessionRepository', () => {
   it('should have all required methods', () => {
     // Verify that the repository has all the expected methods
@@ -62,6 +65,78 @@ describe('ChatSessionRepository', () => {
     await expect(
       chatSessionRepository.getGlobalCompletionSettings(),
     ).resolves.not.toThrow();
+  });
+
+  describe('find(id) 分类：不存在 vs 数据库真故障（W6）', () => {
+    const emitMock = (require('../../debug/eventStream') as {emit: jest.Mock})
+      .emit;
+
+    const stubFind = (impl: jest.Mock) =>
+      jest
+        .spyOn(mockDatabase.collections, 'get')
+        .mockReturnValue({find: impl} as any);
+
+    beforeEach(() => {
+      emitMock.mockClear();
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('记录不存在（watermelondb 抛 not found）→ 返回 null 且不报错', async () => {
+      const spy = stubFind(
+        jest
+          .fn()
+          .mockRejectedValue(new Error('Record chat_sessions#s-1 not found')),
+      );
+
+      await expect(
+        realRepository.chatSessionRepository.getSessionById('s-1'),
+      ).resolves.toBeNull();
+      expect(emitMock).not.toHaveBeenCalled();
+      spy.mockRestore();
+    });
+
+    it('数据库真故障 → **抛出**且上报事件流（旧写法折成 null，故障被说成「记录没了」）', async () => {
+      const fault = new Error('SQLITE_BUSY: database is locked');
+      const spy = stubFind(jest.fn().mockRejectedValue(fault));
+
+      await expect(
+        realRepository.chatSessionRepository.getSessionById('s-1'),
+      ).rejects.toThrow('SQLITE_BUSY');
+      expect(emitMock).toHaveBeenCalledWith(
+        'system',
+        'db.findFault',
+        expect.objectContaining({table: 'chat_sessions', id: 's-1'}),
+      );
+      spy.mockRestore();
+    });
+
+    it('非法 id（编程错）不当「不存在」吞掉', async () => {
+      const spy = stubFind(
+        jest
+          .fn()
+          .mockRejectedValue(
+            new Error('Invalid record ID chat_sessions#undefined'),
+          ),
+      );
+
+      await expect(
+        realRepository.chatSessionRepository.deleteSession(undefined as any),
+      ).rejects.toThrow('Invalid record ID');
+      spy.mockRestore();
+    });
+
+    it('jest mock 的 resolve undefined 形态仍归「不存在」（不抛不报）', async () => {
+      const spy = stubFind(jest.fn().mockResolvedValue(undefined));
+
+      await expect(
+        realRepository.chatSessionRepository.getSessionById('s-404'),
+      ).resolves.toBeNull();
+      expect(emitMock).not.toHaveBeenCalled();
+      spy.mockRestore();
+    });
   });
 
   describe('Batch Operations', () => {
