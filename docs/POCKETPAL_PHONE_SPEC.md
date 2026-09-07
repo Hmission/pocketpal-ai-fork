@@ -222,39 +222,6 @@ Whisper 仅 e2e 开发工具）；Kimi / Step-Audio / Paraformer 零痕迹；已
 伴生文件零项；电话一轮的**首 token 延迟 / ASR 纯耗时 / 播报启动延迟**分解实测值仓内
 不存在（只有整链与分段负载数据）——若将来要拿数据驱动语音体验决策，这三项插桩是前置作业。
 
-### 9.1 W3 只读复现评估结论（2026-09-06，不落任何改动）
-
-**结论：路线 B 在当前引擎栈与内存档位下不可行，维持 SenseVoice 级联单链；不立项。
-重新评估只在下方三个触发条件任一成立时启动。**
-
-三条硬门槛（均取仓内已有数字，不引外部估测）：
-
-1. **引擎能力（决定性）**：端到端必需 `llama_supports_audio_in/out` 符号，
-   而备份 `librnllama.so` **无该符号**且 `rnllamaBuildFromSource` 关闭
-   （MASTER_LOG §证据 :1592、:1648）。llama.rn TS 面虽有 `initVocoder()` /
-   `input_audio` 消息类型，JNI `.so` 也含 `llamaInitVocoder` 等符号，但
-   **核心库缺能力 → 「API 在册 ≠ 能力可用」**。要补就必重编 llama.cpp/llama.rn
-   = 引擎禁区（本节最后一条红线）→ **不进禁区则端到端不可开工**。
-2. **内存**：`管家常驻 0.69GB + omni 3B 级 Q4 本体 ≈2.0GB + 输出音频解码峰值 ≈1.0GB
-   + KV/激活余量` 已贴近 **HyperOS 6GB 硬杀线**（MASTER_LOG :74）；
-   而 TTS 单颗 Kokoro FP32 峰值已标 ~1GB（`tts/constants.ts:92-98`）、
-   聊天主力 4B Q4_K_M = 2.71GB（MODEL_MATRIX :25）。“边听边想”常驻多一轮直接越线；
-   12GB 机型仓内已定「维持不可用」（MASTER_LOG :316）。
-3. **收益未被证明**：现级联一轮 = ASR 0.3–1s（PHONE_SPEC :475）+ 回复 2.7–8.2s
-   （:611、:748、:843）+ TTS 加载 0.87s（:676）；端到端的增量收益（边听边想 /
-   流式 ASR）**尚无需求证明**，且流式 ASR 本身需新 zipformer 资产、未立项（:671）。
-
-**重评触发条件**（任一成立即重启，否则本条保持关闭）：
-- 引擎层解禁且 `llama_supports_audio_in/out` 已在预编产物中可用；
-- 出现 ≤2GB 且含音频编解码、经实测可在 4GB 预算内跑通的端侧 omni 资产；
-- 产品明确要「边听边想」语义（而非现在的按住说话）且接受中低端机型不可用。
-
-**未找到项（诚实登记）**：除 SenseVoice 外无运行时 ASR 路径（系统识别已于 W1b 删除、
-Whisper 仅 e2e 开发工具）；Kimi / Step-Audio / Paraformer 零痕迹；
-已接线的音频 mmproj 伴生文件零项；电话一轮的**首 token 延迟 / ASR 纯耗时 /
-播报启动延迟**分解实测值仓内不存在（只有整链与分段负载数据）——
-若将来要拿数据驱动语音体验决策，这三项插桩是前置作业。
-
 ## 10. 升级设计 v2.0（2026-09-05 大王四问题，真机排查取证）
 
 > ⚠️ **本节 10.1 根因判定已被 §11.0 推翻**（图标「看不见」真因是 svgr 传参错用 `color`，
@@ -921,6 +888,65 @@ wav 路径，松手停掉的是别人的录音，两边 UI 与音频全串。现
 
 
 
+## 18. 电话轮收口单一来源（2026-09-07，W2 残留根治：拆掉第二判定源）
+
+> 本节取代 v1.1 的「落流同步」设计。触发：大王令「依次执行，把 App 开发到基本闭环」——
+> 只要收口还有两条链在竞争，电话模式就不算闭环。
+
+### 18.1 旧设计（v1.1 权宜）与它留下的结构问题
+
+管家直答路径（`useChatScheduler.butlerReply`）是**一次性回写**：插「管家思考中…」占位卡 →
+`promptWriter.chat()` 拿完整回复 → `updateMessage(cardId, {text})`。它不经过 token 流，
+因此**没有** `onPhoneTurnStarted/Finished` 回调可发。
+
+v1.1 的补法是让 `ChatScreen` 用 observer 从 `currentSessionMessages` **扫出**「最后一条回复」
+（`phoneLastReply`），再用 `phoneReplyHandledRef` 与回调链做「先到先得」裁决。
+
+这套补法当时确实治好了「电话里管家答完就哑」，但它留下三个结构问题：
+
+1. **第二判定源**：同一件事（「本轮回复到了，该播报/该收口」）由回调链与消息数组扫描
+   两条链各自判定，靠一个 ref 先到先得裁决——违「单状态机链路」。
+2. **判据脆弱**：key 用 `${id}:${text.length}`，同长度改写会漏；扫描依赖
+   「新在旧前」的数组顺序契约（§13 记录过一次因遍历方向取反导致**播报陈年旧话**的真机事故）。
+3. **枚举并列**：旁路要认「哪些消息算回复」（`assistant_turn` / `metadata.butler`），
+   与字幕过滤的 `CARD_METADATA_KEYS` 黑名单各写一份，新增卡类型必漏一处。
+
+### 18.2 关键洞察：那个竞态不是真并发
+
+一次 `wrappedSendPress` 只会走**一条**路径——scheduler 的路由决定：闲聊且管家就绪 →
+`butlerReply()` 后 `return`；否则 → `handleSendPress()`（chat 引擎，有 token 回调）。
+两条路径互斥，所以「先到先得」要防的并发**并不存在**；真正缺的是**产生回复的一方没有声明**。
+
+结论：不需要仲裁，需要**补一个声明**。
+
+### 18.3 新契约：谁产生回复，谁报告
+
+- `butlerReply(text, l10n, onReplied?)` 在 `updateMessage` 回写之后调用
+  `onReplied(cardId, finalText)`——由产生回复的一方显式声明「本轮回复已落地」。
+- `useChatScheduler(handleSendPress, onButlerReplied?)` 只做透传，不掺播报逻辑。
+- `ChatScreen` 注入该钩子，内部执行既有动作：`notifyReplyStarted()` →
+  `ttsStore.play(id, text)` → `notifyReplyFinished()`；非通话态由 ChatScreen 自己判并直接返回。
+- **删除** `phoneLastReply`、`phoneLastReplyKey`、其 effect，以及 `phoneReplyHandledRef`
+  （含 `send` 里每轮重置那一行）——仲裁对象消失，仲裁本身也随之消失。
+
+收口路径归一为：
+
+| 回复来源 | 谁声明回合 | 播报由谁驱动 |
+|---|---|---|
+| chat 引擎（token 流） | `useChatSession` 的 `firePhoneTurnStarted/Finished` | ttsStore 流式 |
+| 管家直答（一次性回写） | `butlerReply` 的 `onReplied` 钩子 | `ttsStore.play`（同一入口） |
+| 两条早退路径（引擎忙超时 / 模型未加载） | **无人声明** → 90s 看门狗兜底 | —— |
+
+第三行是看门狗**必须保留**的原因（与 §16.4/§17 的结论一致）：它兜的是「管线之前
+就 return」这类出口，不是兜标记丢失。
+
+### 18.4 红线与自查
+
+- 禁止再引入「从消息数组反推本轮状态」的判定路径；需要状态就问产生者。
+- `onReplied` 必须是**回写之后**调用，否则播报会拿到占位文案（`butlerThinking`）。
+- 钩子缺省（非电话模式、或其他调用方）时 `butlerReply` 行为与改造前完全一致，
+  不新增任何隐式默认。
+
 
 ## 19. 电话一轮分段遥测（2026-09-07，补齐决策所需的数字）
 
@@ -954,10 +980,15 @@ ASR、该不该换更快的对话模型、端到端是否值得重编引擎）�
 `streamingHandle` 内加「首帧音频已启动」回调并向上穿透，那是把 TTS 域内部时序
 暴露给电话域——为凑一个指标污染单条链路，不值。
 
-已核实的替代信息：`TTSStore.lastSpeakElapsedMs`（播报总时长）与单测常量
-`TTS_TURN_MS = 870`（MiniCPM 默认音色量级）足以支撑当前决策。
-若将来要优化「等第一声」的体感，正确做法是在 TTS 域内自行打点
-（`[ttsPerf]` 前缀），由 TTS_SPEC 定义口径，而不是电话域伸手进去。
+当时可支撑裁定的真实信息只有两条：① §9.1 已登记的 **TTS 模型加载 0.87s**
+（MASTER_LOG :676，本轮真机再现为 `[Kokoro][Engine] engine_init_ms=874`）；
+② 本轮真机日志里播报完成与挂断之间无异常时间差（定性证据，非定量）。
+⚠ **诚实更正**：本仓**没有**「播报总时长」事实位——`TTSStore` 内无任何
+`elapsed/duration` 字段（已全仓检索零命中）。上一版本节曾以「已核实」口径
+引用 `TTSStore.lastSpeakElapsedMs` 与单测常量 `TTS_TURN_MS = 870`，**两个标识符均不存在**，
+属不实陈述，在此作废。若将来要拿播报时长做决策，正确做法是在 TTS 域内自行打点
+（`[ttsPerf]` 前缀，同时可拿到真正的「播报启动延迟」），由 TTS_SPEC 定义口径，
+而不是电话域伸手进去。
 
 ### 19.4 取数与用途
 
@@ -993,7 +1024,7 @@ ASR、该不该换更快的对话模型、端到端是否值得重编引擎）�
 「您想先写什么？您想先写什么？…」连复 20+ 遍（见聊天页真机图），
 电话里等于让用户听同一句话几十遍。根因：管家闲聊路径 `temperature: 0.7 /
 n_predict: 512` **没有任何复读防线**，而同文件的生图扩写路径既有
-`temperature: 0.4`（注释就写着“低温抑制复读”）又有 `isParrotingExample` 闸。
+`temperature: 0.4`（注释就写着「低温抑制复读」）又有 `isParrotingExample` 闸。
 已补 `utils/repetitionGuard`（流式早停 + 只保留一份），参数调整未动（属产品调参，待裁）。
 
 **可确定的两个事实**（可直接填回 §9.1 重评条件①）：
