@@ -46,6 +46,10 @@ import {
   QueueState,
 } from './imageGenQueueCore';
 
+// 名实不符（已登记）：本模块属 **nightTask 域**（前台服务 + PARTIAL_WAKE_LOCK 保活），
+// 与文生视频无关；`video` 四义归属见 STARMAP_DOMAINS「词面消歧登记」。**不得新增以
+// `VideoTask*` 为名的符号**；改名排 W8b（必须与真机同窗：manifest / ReactModule 名 /
+// NativeModules 取值键任一漏改都会让服务静默失效，而 tsc/jest 全绿也会漏过去）。
 const VideoTaskService = NativeModules.VideoTaskService;
 // 电池优化豁免引导进程内只发起一次（§7.1 策略 3）：首次长任务未豁免时弹系统弹窗，
 // 用户拒绝后不再重复打扰（前台服务 + WakeLock 仍生效，豁免仅为增强）。
