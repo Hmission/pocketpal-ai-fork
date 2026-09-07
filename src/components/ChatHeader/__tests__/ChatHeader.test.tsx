@@ -120,9 +120,10 @@ describe('ChatHeader', () => {
     expect(icon.props.stroke).toBe(themeFixtures.lightTheme.colors.primary);
     // 反向钉住：不得再用 fill 上色（填实回归即测试红）
     expect(icon.props.fill).toBeUndefined();
-    // 尺寸 s(16) 是「待复量值」不是通则（ICON_SPEC §4.1 v1.1）：旧像素数据是在图标
-    // 被填实的状态下量的，填实修好后重量需装机窗复量再定档（W7-V）。
-    expect(icon.props.width).toBe(themeFixtures.lightTheme.iconSize.s);
+    // 尺寸 m(20)：2026-09-08 装机窗像素定档。实测 s(16) 下电话描边 4px、同行加号 6px
+    // （电话反细 33%）；资产级有效描边归一后（ICON_SPEC §一第 2 条 v1.2）两者在 m(20)
+    // 下同为 5.0px，且 DESIGN_SPEC 触区红线本就要求同行一律 iconSize.m。
+    expect(icon.props.width).toBe(themeFixtures.lightTheme.iconSize.m);
     fireEvent.press(btn);
     expect(onPhoneCallPress).toHaveBeenCalledTimes(1);
   });
