@@ -2335,7 +2335,7 @@ W1 失败可见性（6 处，P0）→ W2 队列与保活单状态机（**删 `qu
 | W5 | `0caf0cc` / `d3c4e43` | 死码死键纯删 + 双份常量收口（43 文件 +268/−366）/ 七卷文档回写 |
 | W6 | 本窗两笔 | 会话仓储 DB 故障分类 + 祖传债台账 P7 / 本节登记 |
 
-门禁终态：tsc 0 错；eslint 0 error（30 条既有 `no-bitwise` warning）；prettier 门禁口径全绿；**jest 350 套件 / 4854 passed + 2 skipped / 318 snapshots**；`l10n:validate` 全 valid 且缺失 108→104（改善非回归）；`audit:native-mocks` missing=0；`audit:async-timers` risky=0；`audit:compass` 登记↔代码双向闭合、路径 32 个全可达；`guard:worktree` 干净。ahead 36，**未 push**（待大王指令）。
+门禁终态：tsc 0 错；eslint 0 error（30 条既有 `no-bitwise` warning）；prettier 门禁口径全绿；**jest 350 套件 / 4854 passed + 2 skipped / 318 snapshots**；`l10n:validate` 全 valid 且缺失 108→104（改善非回归）；`audit:native-mocks` missing=0；`audit:async-timers` risky=0；`audit:compass` 登记↔代码双向闭合、路径 32 个全可达；`guard:worktree` 干净。ahead 36→38（含本窗 W6 两笔），**未 push**（待大王指令）。
 
 ### 161.2 本窗真正的收获：双份事实源有九种形态
 
