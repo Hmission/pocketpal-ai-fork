@@ -43,16 +43,20 @@ export const ModelPickerTrigger: React.FC<TriggerProps> = ({
 }) => {
   const theme = useTheme();
   const s = createStyles(theme);
+  // 顶栏胶囊宽度不够时**尾部被截**（§167 真机直证：选中视频模型后只剩「[Wan] Wan 2.1…」），
+  // 而旧写法把模态标记放在 label 后面 → 唯一能看出模态的位置被截掉（项 40）。
+  // 修法只改渲染顺序：[族] [视] label——**不缩短 label（信息不得被删）、不新增控件、
+  // 不动宽度预算**（VIDEO_GEN_SPEC §9.2 硬账不变）。
   const label = selectedEntry
     ? `${
         FAMILY_BADGE[selectedEntry.manifest.family]
           ? `[${FAMILY_BADGE[selectedEntry.manifest.family]}] `
           : ''
-      }${selectedEntry.manifest.label}${
+      }${
         modalityBadge(selectedEntry.manifest)
-          ? ` [${modalityBadge(selectedEntry.manifest)}]`
+          ? `[${modalityBadge(selectedEntry.manifest)}] `
           : ''
-      }`
+      }${selectedEntry.manifest.label}`
     : '选择模型';
 
   return (
