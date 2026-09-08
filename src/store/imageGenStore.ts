@@ -113,6 +113,14 @@ export interface GeneratedImage {
   errorDetail?: string;
 }
 
+/**
+ * native 写盘通道判定（IMAGEGEN_QUEUE_SPEC §9.1 归属表单点）：只有经 JNI txt2img 的产物
+ * 会在 RN 运行时被销毁后仍落盘（native 线程自带 stbi_write_png）。DreamLite/超分/反推/TTS
+ * 均“JS 拿回张量→JS 写盘”，续体随运行时一同销毁 → 不可能有产物，不得去猜它们。
+ */
+export const isNativeProductTask = (h: GeneratedImage): boolean =>
+  h.kind === 'generated' && !!h.family && h.family !== 'dreamlite';
+
 class ImageGenStore {
   /** 引擎是否已加载（SD 模型常驻标记） */
   modelLoaded = false;
@@ -286,29 +294,30 @@ class ImageGenStore {
         this.history = rows;
       });
       await this.migrateAsyncStorageToDb();
-      // 幽灵任务治理（2026-08-21 真机实证）：app 强杀/异常退出后，DB 中
-      // status='running' 的遗留条目水合回来时并无推理进程——原样恢复会
-      // 永久卡在 running 页（空白预览 + 进度卡 + genStartedAt=0 荒谬耗时）。
-      // 锋利哲学：显式失败不静默——统一置 failed（报错页可复制/重试/删除），
-      // 放在迁移之后以覆盖存量源合入的 running 条目。
+      // 幽灵任务治理（2026-08-21 真机实证；2026-09-08 §168 按 IMAGEGEN_QUEUE_SPEC §9.1–§9.4 重写）：
+      // 旧写法把水合时 status='running' 一律判死，但真机存在被误杀的一面：MIUI 只回收
+      // Activity（销毁 RN 运行时），而 txt2img 的 native 线程不受影响且自己写盘
+      //（ImageGenJNI.cpp stbi_write_png）→ 产物其实已落地。故先查**产物证据**再决定收/杀，
+      // 不拿心跳阈值猜（§9.2）；JS 写盘通道（DreamLite/超分/反推/TTS）运行时一毁就不可能有
+      // 产物，必然走失败分支，此时文案必须与实测一致（旧文案称「被强制退出」而 pid 未变）。
       const ghost = this.history.filter(h => h.status === 'running');
       if (ghost.length > 0) {
-        const patch = {
-          status: 'failed' as const,
-          errorSummary: '生成中断',
-          errorDetail:
-            '应用在上次生成中被强制退出，任务未完成（恢复时标记中断）',
-        };
-        runInAction(() => {
-          this.history = this.history.map(h =>
-            h.status === 'running' ? {...h, ...patch} : h,
-          );
-        });
-        for (const g of ghost) {
-          await imageGenTaskRepository.patchByTaskId(g.taskId, patch);
+        const adopted = await this.adoptFinishedTasks(ghost);
+        const orphans = ghost.filter(g => !adopted.has(g.taskId));
+        for (const g of orphans) {
+          // 分通道说真话（§9.4）：native 通道是「未找到产物」，JS 通道是「结果无法落盘」。
+          // 本段跑在水合内部，必须走 applyTaskPatch（failTask→patchTask→ensureReady 会自锁）。
+          const why = isNativeProductTask(g)
+            ? '未找到产物文件'
+            : '推理结果无法落盘（生成续体随界面一同销毁）';
+          await this.applyTaskPatch(g.taskId, {
+            status: 'failed',
+            errorSummary: '生成中断',
+            errorDetail: `界面被系统回收，本次生成未完成（${why}），请重试`,
+          });
         }
         console.info(
-          `[ImageGenStore] ghost running tasks marked failed: ${ghost.length}`,
+          `[ImageGenStore] ghost running tasks: adopted=${adopted.size} failed=${orphans.length}`,
         );
       }
     } catch (e) {
@@ -542,11 +551,17 @@ class ImageGenStore {
     return taskId;
   }
 
-  private async patchTask(
+  /**
+   * 任务变更的唯一实现（**不含就绪门禁**）：内存 + DB 双写。
+   *
+   * 水合阶段自身（ensureReadyImpl 内的幽灵治理）必须走本函数：patchTask 会
+   * `await this.readyPromise`，而该 promise 正是本次执行尚未 settle 的那个——调它即自锁。
+   * 旧写法所以直接摸 repository，今天收为一个原语而不是在幽灵分支里再手抄一份双写。
+   */
+  private async applyTaskPatch(
     taskId: string,
     patch: Partial<GeneratedImage>,
   ): Promise<void> {
-    await this.ensureReady();
     runInAction(() => {
       const idx = this.history.findIndex(h => h.taskId === taskId);
       if (idx >= 0) {
@@ -554,6 +569,14 @@ class ImageGenStore {
       }
     });
     await imageGenTaskRepository.patchByTaskId(taskId, patch);
+  }
+
+  private async patchTask(
+    taskId: string,
+    patch: Partial<GeneratedImage>,
+  ): Promise<void> {
+    await this.ensureReady();
+    await this.applyTaskPatch(taskId, patch);
   }
 
   /** 任务成功：回填图片 URI（+ 可选 durationMs 等补充字段） */
@@ -574,6 +597,65 @@ class ImageGenStore {
   ): Promise<void> {
     await this.patchTask(taskId, {status: 'failed', errorSummary, errorDetail});
     void perfRecorder.finish('failed');
+  }
+
+  /**
+   * 产物证据收编（IMAGEGEN_QUEUE_SPEC §9.2）：把「其实已由 native 写盘完成」的 running
+   * 任务收编为 success。判据是文件系统证据，不是心跳猜测；**严格唯一才收**
+   *（engineMutex + 队列串行保证同一时刻只有一抽在跑，出现多候选即状态已不可信，宁可不收）。
+   * 返回已收编的 taskId 集（未命中的由调用方标失败）。
+   */
+  private async adoptFinishedTasks(
+    ghost: GeneratedImage[],
+  ): Promise<Set<string>> {
+    const adopted = new Set<string>();
+    if (ghost.length !== 1) {
+      // 多条 running 时归属不可判定（宁可不收，§9.2 严格唯一）
+      return adopted;
+    }
+    const g = ghost[0];
+    if (!isNativeProductTask(g)) {
+      // JS 写盘通道不可能有产物（§9.1 归属表），不去扫盘也不造假收编
+      return adopted;
+    }
+    try {
+      if (!this.outDir) {
+        // 水合可能早于首次 init：与 :generateTask 同一 init 守卫惯例，不另发明一套路径推导
+        await this.init();
+      }
+      const rows = await RNFS.readDir(this.outDir);
+      // gen_*.png 前缀只由 native 通道写（DreamLite 用 dreamlite_* 且走 JS）→ 天然可区分；
+      // mtime 取不到（库类型为 Date | null）即无法证明落盘时刻 → **不作证据，不猜**。
+      const landed: Array<{path: string; mtimeMs: number}> = [];
+      for (const f of rows) {
+        if (/^gen_.*\.png$/.test(f.name) && f.size > 0 && f.mtime) {
+          const mtimeMs = f.mtime.getTime();
+          if (mtimeMs >= g.ts) {
+            landed.push({path: f.path, mtimeMs});
+          }
+        }
+      }
+      if (landed.length !== 1) {
+        return adopted;
+      }
+      // 收编走无门禁原语（本段跑在水合内，finishTask→patchTask→ensureReady 会自锁），
+      // 但字段形状与 finishTask 一致：uri + status:'success'；
+      // durationMs = 落盘时刻 - 任务创建时刻，真实测量非估算（§9.2 第 3 条）
+      await this.applyTaskPatch(g.taskId, {
+        uri: `file://${landed[0].path}`,
+        status: 'success',
+        durationMs: Math.max(0, landed[0].mtimeMs - g.ts),
+      });
+      adopted.add(g.taskId);
+      console.info(
+        '[ImageGenStore] 幽灵任务按产物证据收编为成功:',
+        g.taskId,
+        landed[0].path,
+      );
+    } catch (e) {
+      console.warn('[ImageGenStore] 产物证据收编未完成（改按失败处理）:', e);
+    }
+    return adopted;
   }
 
   /**

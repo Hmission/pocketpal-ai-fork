@@ -1,7 +1,8 @@
 /**
- * imageGenStore 幽灵任务治理单测（2026-08-21 真机实证回归防线）：
- * app 强杀后 DB 遗留 status='running' 条目，水合时无推理进程——
- * ensureReadyImpl 必须统一置 failed（内存 + DB 双写），防永久卡死。
+ * imageGenStore 幽灵任务治理单测（2026-08-21 真机实证回归防线；2026-09-08 §168 按
+ * IMAGEGEN_QUEUE_SPEC §9.1–§9.4 重写）：水合时 status='running' 不再一律判死——
+ * native 写盘通道先查**产物落盘证据**，严格唯一才收编；JS 写盘通道不可能有产物，
+ * 必走失败分支但文案不得说谎（旧文案「被强制退出」与真机 pidof 不变相矛盾）。
  */
 jest.mock('../../repositories/ImageGenTaskRepository', () => {
   const patchByTaskId = jest.fn().mockResolvedValue(undefined);
@@ -85,16 +86,19 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
   },
 }));
 
-jest.mock('@dr.pogodin/react-native-fs', () => ({
-  __esModule: true,
-  default: {
+// 注意调用形态：store 用 `import * as RNFS` + `RNFS.readDir(...)`（命名空间直调），
+// 旧 mock 只挂在 default 上→ readDir 为 undefined，收养分支会被 try/catch 静默吞掉而测不出来；
+// 此处顶层与 default 各挂同一实现。
+jest.mock('@dr.pogodin/react-native-fs', () => {
+  const impl = {
     DocumentDirectoryPath: '/data/user/0/com.pocketpalai/files',
     exists: jest.fn().mockResolvedValue(true),
     mkdir: jest.fn().mockResolvedValue(undefined),
     unlink: jest.fn().mockResolvedValue(undefined),
     readDir: jest.fn().mockResolvedValue([]),
-  },
-}));
+  };
+  return {...impl, __esModule: true, default: impl};
+});
 
 jest.mock('react-native', () => {
   const {NativeModules} = jest.requireActual('react-native');
@@ -104,65 +108,188 @@ jest.mock('react-native', () => {
 });
 
 import {imageGenTaskRepository} from '../../repositories/ImageGenTaskRepository';
-import {imageGenStore} from '../imageGenStore';
+import * as RNFS from '@dr.pogodin/react-native-fs';
+import {imageGenStore, isNativeProductTask} from '../imageGenStore';
 
-const ghostEntry = {
+const T0 = 1787290000000;
+const OUT_DIR = '/data/user/0/com.pocketpalai/files/aios_images';
+
+/** native 写盘通道（txt2img）：kind='generated' 且 family 非 dreamlite */
+const nativeGhost = {
   uri: '',
-  prompt: '',
-  seed: 0,
-  ts: 1787290000000,
-  width: 0,
-  height: 0,
-  taskId: 'task_ghost_1',
+  prompt: 'a cat',
+  seed: 7,
+  ts: T0,
+  width: 512,
+  height: 512,
+  family: 'sd35',
+  kind: 'generated' as const,
+  taskId: 'task_native_1',
   status: 'running' as const,
+};
+
+/** JS 写盘通道（DreamLite）：续体随运行时一同销毁，不可能有产物 */
+const jsGhost = {
+  ...nativeGhost,
+  family: 'dreamlite',
+  taskId: 'task_js_1',
 };
 
 const okEntry = {
   uri: 'file:///x.png',
   prompt: 'ok',
   seed: 1,
-  ts: 1787290001000,
+  ts: T0 + 1000,
   width: 512,
   height: 512,
   taskId: 'task_ok_1',
   status: 'success' as const,
 };
 
-describe('imageGenStore 幽灵任务治理', () => {
+const pngFile = (name: string, mtimeMs: number | null, size = 4096) => ({
+  name,
+  path: `${OUT_DIR}/${name}`,
+  size,
+  mtime: mtimeMs === null ? null : new Date(mtimeMs),
+  isFile: () => true,
+  isDirectory: () => false,
+});
+
+const readDirMock = () => RNFS.readDir as unknown as jest.Mock;
+
+describe('imageGenStore 幽灵任务治理（产物证据收编）', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    readDirMock().mockResolvedValue([]);
   });
 
-  it('水合含 running 遗留：统一置 failed（内存 + DB 双写），success 不受影响', async () => {
+  it('isNativeProductTask 归属判定：仅 txt2img 通道为真（§9.1 单点）', () => {
+    expect(isNativeProductTask(nativeGhost as never)).toBe(true);
+    expect(isNativeProductTask(jsGhost as never)).toBe(false);
+    expect(
+      isNativeProductTask({...nativeGhost, kind: 'upscaled'} as never),
+    ).toBe(false);
+    expect(
+      isNativeProductTask({...nativeGhost, family: undefined} as never),
+    ).toBe(false);
+  });
+
+  it('native 幽灵 + 恰好 1 个产物 → 收编为 success（uri/durationMs 按落盘时刻实测）', async () => {
     (imageGenTaskRepository.loadAll as jest.Mock).mockResolvedValue([
-      ghostEntry,
+      nativeGhost,
       okEntry,
+    ]);
+    readDirMock().mockResolvedValue([
+      pngFile('gen_a.png', T0 + 5000),
+      pngFile('dreamlite_b.png', T0 + 6000), // JS 通道产物不得参与归属
     ]);
 
     await (imageGenStore as any).ensureReadyImpl();
 
-    const ghost = imageGenStore.history.find(h => h.taskId === 'task_ghost_1');
-    expect(ghost?.status).toBe('failed');
-    expect(ghost?.errorSummary).toBe('生成中断');
-    expect(ghost?.errorDetail).toContain('强制退出');
-
-    const ok = imageGenStore.history.find(h => h.taskId === 'task_ok_1');
-    expect(ok?.status).toBe('success');
-
+    const g = imageGenStore.history.find(h => h.taskId === 'task_native_1');
+    expect(g?.status).toBe('success');
+    expect(g?.uri).toBe(`file://${OUT_DIR}/gen_a.png`);
+    expect(g?.durationMs).toBe(5000);
     expect(imageGenTaskRepository.patchByTaskId).toHaveBeenCalledWith(
-      'task_ghost_1',
-      expect.objectContaining({status: 'failed'}),
+      'task_native_1',
+      expect.objectContaining({status: 'success', durationMs: 5000}),
     );
-    // 仅幽灵条目触发 patch
+    // success 条目不受影响且不反复 patch
+    expect(
+      imageGenStore.history.find(h => h.taskId === 'task_ok_1')?.status,
+    ).toBe('success');
     expect(imageGenTaskRepository.patchByTaskId).toHaveBeenCalledTimes(1);
   });
 
-  it('水合无 running：零 patch（无幽灵不写盘）', async () => {
+  it('native 幽灵但无产物 → failed，文案说「未找到产物文件」且不得称强制退出', async () => {
+    (imageGenTaskRepository.loadAll as jest.Mock).mockResolvedValue([
+      nativeGhost,
+    ]);
+
+    await (imageGenStore as any).ensureReadyImpl();
+
+    const g = imageGenStore.history.find(h => h.taskId === 'task_native_1');
+    expect(g?.status).toBe('failed');
+    expect(g?.errorSummary).toBe('生成中断');
+    expect(g?.errorDetail).toContain('未找到产物文件');
+    expect(g?.errorDetail).not.toContain('强制退出');
+  });
+
+  it('产物早于任务创建时刻 → 不属于本任务，不收养', async () => {
+    (imageGenTaskRepository.loadAll as jest.Mock).mockResolvedValue([
+      nativeGhost,
+    ]);
+    readDirMock().mockResolvedValue([pngFile('gen_old.png', T0 - 1000)]);
+
+    await (imageGenStore as any).ensureReadyImpl();
+
+    expect(
+      imageGenStore.history.find(h => h.taskId === 'task_native_1')?.status,
+    ).toBe('failed');
+  });
+
+  it('多候选（归属不可判定）→ 宁可不收，一律标失败', async () => {
+    (imageGenTaskRepository.loadAll as jest.Mock).mockResolvedValue([
+      nativeGhost,
+    ]);
+    readDirMock().mockResolvedValue([
+      pngFile('gen_a.png', T0 + 5000),
+      pngFile('gen_b.png', T0 + 6000),
+    ]);
+
+    await (imageGenStore as any).ensureReadyImpl();
+
+    const g = imageGenStore.history.find(h => h.taskId === 'task_native_1');
+    expect(g?.status).toBe('failed');
+    expect(g?.uri).toBe('');
+  });
+
+  it('JS 写盘通道（DreamLite）→ 不去扫盘也不造假收编，文案说「无法落盘」', async () => {
+    (imageGenTaskRepository.loadAll as jest.Mock).mockResolvedValue([jsGhost]);
+
+    await (imageGenStore as any).ensureReadyImpl();
+
+    expect(readDirMock()).not.toHaveBeenCalled();
+    const g = imageGenStore.history.find(h => h.taskId === 'task_js_1');
+    expect(g?.status).toBe('failed');
+    expect(g?.errorDetail).toContain('无法落盘');
+  });
+
+  it('两条 running 同时存在 → 零扫盘零收养（严格唯一），均标失败', async () => {
+    (imageGenTaskRepository.loadAll as jest.Mock).mockResolvedValue([
+      nativeGhost,
+      {...nativeGhost, taskId: 'task_native_2'},
+    ]);
+    readDirMock().mockResolvedValue([pngFile('gen_a.png', T0 + 5000)]);
+
+    await (imageGenStore as any).ensureReadyImpl();
+
+    expect(readDirMock()).not.toHaveBeenCalled();
+    expect(
+      imageGenStore.history.filter(h => h.status === 'failed').length,
+    ).toBe(2);
+  });
+
+  it('mtime 不可得（库类型 Date | null）→ 不作证据，不收养', async () => {
+    (imageGenTaskRepository.loadAll as jest.Mock).mockResolvedValue([
+      nativeGhost,
+    ]);
+    readDirMock().mockResolvedValue([pngFile('gen_nomtime.png', null)]);
+
+    await (imageGenStore as any).ensureReadyImpl();
+
+    const g = imageGenStore.history.find(h => h.taskId === 'task_native_1');
+    expect(g?.status).toBe('failed');
+    expect(g?.uri).toBe('');
+  });
+
+  it('水合无 running：零 patch、零扫盘（无幽灵不写盘不读盘）', async () => {
     (imageGenTaskRepository.loadAll as jest.Mock).mockResolvedValue([okEntry]);
 
     await (imageGenStore as any).ensureReadyImpl();
 
     expect(imageGenTaskRepository.patchByTaskId).not.toHaveBeenCalled();
+    expect(readDirMock()).not.toHaveBeenCalled();
     expect(imageGenStore.history).toHaveLength(1);
   });
 });
