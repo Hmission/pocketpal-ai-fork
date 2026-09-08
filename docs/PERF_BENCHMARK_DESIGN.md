@@ -289,6 +289,19 @@ interface PerfSnapshotV2 {
   逐条判（需产品先定跑分页要不要进 16 语），不在纯删波次里搭车。
   取证方法已补一道防护：`benchmark.suite.labels.endurance` 这类**动态下标**消费（
   `labels[SUITE_CASE_LABEL_KEY[banner]]`）只看 `.key` 会被误判为死键，必须同时查字面量。
+- **§171 补充（专项已入规划卷 → `POCKETPAL_WAVE_PLAN_P2P3.md` §6）**：
+  ① 本行口径（`.<key>` + `'key'`）**已被 §171 实跑逐位复现（28）**；而 §170 自跑那支用了
+  「叶子名在 src 任意位置出现即判活」的宽松条件，只得出 22且为 28 的**严格子集**（漏判 6 条：
+  `modelSettings.{cacheTypes,gpuLayers,ubatch}`、`results.peakMemory`、`buttons.sharing`、
+  `suite.labels.endurance`）——即 **22 是含假阴的下界**，应以本卷 28 为准；
+  （§171 初稿曾把方向写成“含假阳的上界、探针不认 property access”，定案后已推翻该修正——
+  `l10n.benchmark.suite.startButton` 这类 property access 两种口径均判活，不存在漏判）；
+  ② 更要紧的是把两批东西分开：本行原写「相当一部分是该接线未接线」不够精确——实测跑分页
+  **非注释中文硬编码只 4 处**（段位名 3 + 「性能回放历史」），且 **en.json 根本没有对应键**（属
+  「从未建键」而非「有键未接」）→ **接线需新建键**，闲置的那 28 键不能直接拿来用（多为已砍除的
+  云提交链与旧版模型设置面残留）；③「要不要进 16 语」需先对齐口径：现 locale 实测 **18 个 JSON**
+  （含 `pt`/`pt_BR` 双变体）；④ 硬约束：`rankOf()` 是 `{cn, ascii}` 双口径，`.ascii` 会写进分享像素卡
+  （`:120`），**非拉丁语言下 ascii 不得本地化**（否则字体子集不含 CJK → 豆腐块）。
 - **`BenchmarkResult.uuid` 写而不读**：`benchmarkOrchestrator` 每例 `uuidv4()` 写入并随结果持久化，
   全仓唯一读者就是被删掉的 `markAsSubmitted`（它本是云提交的记录身份）。删它需同波动
   orchestrator + 5 个测试夹具，且改的是**已落盘记录的形状**（AsyncStorage JSON）——属独立小宗，
