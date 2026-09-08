@@ -71,7 +71,7 @@ relates: [POCKETPAL_DESIGN_SPEC]
 > 社区 2026 验证：`Qwen3.5-4B-Q4_K_M + mmproj-BF16` 是 ComfyUI 反推节点标准组合（禁思考模式、纯净描述）。
 > 零新增文件：视觉伴侣 #2/#4 已于 2026-08-20 入册装机。
 
-## 2. 生图入选清单（5 件）
+## 2. 生图入选清单（6 件，含 1 个**视频模态**条目）
 
 | #   | 模型                     | 说明                                     | 定位                                                                                      |
 | --- | ------------------------ | ---------------------------------------- | ----------------------------------------------------------------------------------------- |
@@ -80,6 +80,15 @@ relates: [POCKETPAL_DESIGN_SPEC]
 | 3   | Z-Image-Turbo            | DiT + zimage_llm + ae 三件套             | 🥈 中文场景 + 无审查                                                                      |
 | 4   | FLUX.2 Klein 4B (Q4_K_M) | DiT + flux2_vae（TE 复用 zimage_llm）    | 🥉 画质天花板；**GPU 实验性（已知纹理）→ 当前默认 CPU 兜底可用（正确、慢 ~5h）**；内核修复暂停（8-30，MASTER_LOG §130） |
 | 5   | Krea2 Turbo (Q4_K_M)     | DiT 12.9B + Qwen3-VL TE + Wan VAE 三件套 | 审美多样性 + 风格 LoRA（**实验性**，仅高端 Adreno；K90 实测双门槛不可用，MASTER_LOG §96） |
+| 6   | **Wan 2.1 T2V 1.3B (Q4_K_M)** | DiT + **UMT5-XXL(Q3_K_M)** + Wan VAE 三件套 | **首个视频模态条目**（2026-09-08 P1）。现只到「能被扫到 + 能被加载」，**尚未可生成**（`nativeGenVideo` 桥 = P2）；单条预计 80–200 分钟，只能夜间长跑；取证见 VIDEO_GEN_SPEC §9.6.3 |
+
+> **第 6 行的三条硬约束**（登记时同波入册，避开“拿图片模型的口径量视频”）：
+> ① **源已换名**：ANALYSIS §5.2 写的 `city96/Wan2.1-T2V-1.3B-gguf` 在镜像上 401 不存在，实际用
+> `samuelchristlie/Wan2.1-T2V-1.3B-GGUF` + `city96/umt5-xxl-encoder-gguf`（**只声明 hf 源**：魔搭未逐字节验）。
+> ② **LTX 不是备选**：本仓引擎的 LTX 分支硬编码 `GEMMA3_12B` 且无 T5 回落 → LTX-Video 2B 加载不了
+> （ANALYSIS §八 已勘误；视频族**无可选项**，不是“二选一”格局）。
+> ③ **内存贴线**：套件常驻 ≈4.02GB 已踩 HyperOS 4GB PSS 预算线（6GB 硬杀无白名单）→
+> 仅高端 Adreno 可试，首验必 ≤480p 低帧数；**在视频 ctx 上点「出图」无版本守卫**（C-4，P2 补）。
 
 > **Z-Image-Edit 评估（2026-09-03，MASTER_LOG §136）**：Z-Image 家族编辑专用变体（S3-DiT 6B，指令编辑）**未部署、端侧不可跑**——社区无 Edit 版现成 GGUF 量化（仅 Turbo 版）、本仓无 manifest/下载入口/编辑 UI 接线、6B 套件 6.9GB 全链预算大概率越高端 Adreno 上限（Krea2 前车 §96.7）；编辑能力由 DreamLite 闭环承担，待社区量化后另行评估。
 

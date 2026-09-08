@@ -32,8 +32,8 @@ describe('modelCatalog — MODEL_MATRIX 门禁', () => {
     expect(names).toContain('minicpm5_1b_heretic_q4km.gguf');
   });
 
-  it('生图入选清单 = 5 件（MODEL_MATRIX §2：DreamLite/SD3.5/Z-Image/FLUX.2 Klein/Krea2，Klein 2026-08-25 准入 + Krea2 2026-08-26 准入）', () => {
-    expect(CATALOG_IMAGEGEN).toHaveLength(5);
+  it('生图入选清单 = 6 件（MODEL_MATRIX §2：DreamLite/SD3.5/Z-Image/FLUX.2 Klein/Krea2 + **Wan 视频族**）', () => {
+    expect(CATALOG_IMAGEGEN).toHaveLength(6);
     const ids = CATALOG_IMAGEGEN.map(m => m.id);
     expect(ids.some(id => id.includes('dreamlite'))).toBe(true);
     expect(ids.some(id => id.includes('sd35'))).toBe(true);
@@ -86,6 +86,20 @@ describe('modelCatalog — MODEL_MATRIX 门禁', () => {
     expect(krea2.extras?.map(e => e.name).sort()).toEqual(
       ['Qwen3VL-4B-Instruct-Q4_K_M.gguf', 'wan_2.1_vae.safetensors'].sort(),
     );
+    // Wan 2.1 视频套件（2026-09-08 P1，VIDEO_GEN_SPEC §9.6.3：三件已经设备侧 SHA256 校验）
+    const wan = CATALOG_IMAGEGEN.find(m => m.id.includes('wan21'))!;
+    expect(
+      [wan.file.name, ...(wan.extras ?? []).map(e => e.name)].sort(),
+    ).toEqual(
+      [
+        'Wan2.1-T2V-1.3B-Q4_K_M.gguf',
+        'umt5-xxl-encoder-Q3_K_M.gguf',
+        'wan_2.1_vae.safetensors',
+      ].sort(),
+    );
+    // 魔搭镜像本窗未逐字节验证 → 只声明 hf（不拿未验源上架）
+    expect(wan.sources).toEqual(['hf']);
+    expect(wan.hfRepo).toBe('samuelchristlie/Wan2.1-T2V-1.3B-GGUF');
   });
 
   it('下载源显式声明：有源条目必有对应 repo；无源条目无 repo', () => {

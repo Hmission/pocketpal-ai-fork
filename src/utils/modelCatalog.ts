@@ -409,6 +409,50 @@ export const CATALOG_IMAGEGEN: CatalogModel[] = [
     tierHint: 'flagship',
     role: '画质天花板（4 步极速，中英文原生，高端 Adreno + Mali 平板）',
   },
+  {
+    // 首个**视频模态**条目（VIDEO_GEN_SPEC §9.6.3）：三件已在真机经 sha256sum 与源站
+    // LFS oid 逐位校验（§9.6.3 表），源名与体积均为 hf-mirror API 实测值非估算。
+    id: 'wan21-t2v-13b-q4/Wan2.1-T2V-1.3B-Q4_K_M.gguf',
+    category: 'imagegen',
+    displayName: 'Wan 2.1 T2V 1.3B (Q4_K_M)',
+    file: {
+      name: 'Wan2.1-T2V-1.3B-Q4_K_M.gguf',
+      sizeBytes: 982716640,
+      dir: 'models',
+      remotePath: 'Wan2.1-T2V-1.3B-Q4_K_M.gguf',
+    },
+    extras: [
+      {
+        // UMT5-XXL 文本编码器（Wan 路线唯一硬缺件，走 JNI 专用槽 t5xxl_path）。
+        // 选 Q3_K_M 而非 Q4_K_M：全链常驻压到 ≈4.0GB 贴 HyperOS PSS 预算线
+        //（ANALYSIS §7.1：6GB 硬杀无白名单）。源与体积 = hf-mirror API 实测。
+        name: 'umt5-xxl-encoder-Q3_K_M.gguf',
+        sizeBytes: 3055097696,
+        dir: 'models',
+        remotePath: 'umt5-xxl-encoder-Q3_K_M.gguf',
+        repoBySource: {hf: 'city96/umt5-xxl-encoder-gguf'},
+      },
+      {
+        // Wan2.1 VAE：与 Krea2 条目同文件（设备已有，downloadCatalogEntry 按名跳过已存在）。
+        // 仍列入本条目 extras：否则套件完整性会报「已下载」而缺 VAE（虚报完整）。
+        name: 'wan_2.1_vae.safetensors',
+        sizeBytes: 253815318,
+        dir: 'models',
+        remotePath: 'split_files/vae/wan_2.1_vae.safetensors',
+        repoBySource: {
+          hf: 'Comfy-Org/Wan_2.1_ComfyUI_repackaged',
+          modelscope: 'Comfy-Org/Wan_2.1_ComfyUI_repackaged',
+        },
+      },
+    ],
+    // 只声明 hf：魔搭镜像本窗未逐字节验证（不拿未验证源上架——上一窗“全盘无资产”
+    // 就是拿未验当结论的代价）。DiT 源为 samuelchristlie：ANALYSIS §5.2 写的
+    // city96/Wan2.1-T2V-1.3B-gguf 在镜像上 401 不存在（已就地勘误）。
+    sources: ['hf'],
+    hfRepo: 'samuelchristlie/Wan2.1-T2V-1.3B-GGUF',
+    // 视频族不吃 tierHint 排序（它与图片模型不可比），仅标定位
+    role: '端侧文生视频（实验性：单条 80–200 分钟，只能夜间长跑）',
+  },
 ];
 
 /** 全量清单（模型页 = 本数组全量可管理） */

@@ -189,14 +189,48 @@ export const BUILTIN_MANIFESTS: ImageGenManifest[] = [
     // 待量化源修复后，再决策是否升 1024 档（升档前必有真机出图证据，不凭官方文案预设）。
     note: '何时选：画质天花板，4 步极速，中英文原生。体积：DiT 2.6 + VAE 0.34 ≈ 2.9GB（TE 与 Z-Image 共享不重下）。适配：高端 Adreno + Mali 平板（链路已实测通；已换 unsloth Q4_K_M 量化源，验画质中）',
   },
+  {
+    id: 'wan21-t2v-13b-q4',
+    label: 'Wan 2.1 T2V (1.3B Q4_K_M)',
+    family: 'wan',
+    // 首个视频模态条目（§9.2）：选中它即表示产物形态不是图片。**不新增 tab**，模态随模型派生。
+    modality: 'video',
+    main: 'Wan2.1-T2V-1.3B-Q4_K_M.gguf',
+    companions: {
+      // UMT5-XXL Q3_K_M（2.85GB）——走 JNI 专用槽 t5xxl_path，不可归入 clipL（前缀不同）
+      t5xxl: 'umt5-xxl-encoder-Q3_K_M.gguf',
+      // 与 Krea2 链路同文件（设备已有，零下载）
+      vae: 'wan_2.1_vae.safetensors',
+    },
+    // 实验标不得撤：本窗只验到“能被扫到 + 能被加载”，未跑过任何一次真实视频生成
+    //（`nativeGenVideo` 桥是 P2）。上一窗因把未验当已验写过不实陈述，此处按实物口径标。
+    experimental: true,
+    // 内存账：DiT 0.92 + TE 2.85 + VAE 0.25 ≈ 4.02GB 常驻，已踩 HyperOS 4GB PSS 预算线
+    //（6GB 硬杀无白名单）且 Mali 未验 → 仅高端 Adreno 可试。
+    gpuPolicy: 'high-adreno-only',
+    defaults: {
+      // 50 步为 Wan 2.1 质量基线（无官方蒸馏版）；cfg 5 对引擎 wan 默认 flow_shift=5.f
+      //（stable-diffusion.cpp:1792-1793）。帧数/fps 不入 manifest：P2 时按 §9.3 参数面开放。
+      steps: 50,
+      cfg: 5,
+      // size 暂沿图片档位体系（SD_RATIOS）；视频画幅真定于 P2（首验 ≤480p，内存硬约束）
+      size: 512,
+      backend: 'OpenCL',
+    },
+    note: '何时选：端侧文生视频实验（**尚未可生成**，桥待 P2）。体积：DiT 0.92 + UMT5 2.85 + VAE 0.25 ≈ 4.0GB。适配：仅高端 Adreno；单条预计 80–200 分钟，只能夜间长跑',
+  },
 ];
 
 /**
- * 视频模态条目（如 Wan 2.1 T2V-1.3B）**不在本表预先登记**：登记一处就得同步三处
- * （MODEL_MATRIX §2 入选清单 + `modelCatalog.ts` 下载源 + 件数断言），而生成链尚未接通——
- * 那会做出“能下载但不能用”的半成品（锋利红线）。文件名/体积/源已在 VIDEO_GEN_SPEC §9.6.3
- * 钉死，待 P1（JNI t5xxl 槽 + 资产到位）与 P2（桥）同波一次性登记；
- * `modality` / `t5xxl` / `wan` 族徽章与色 token 已就绪，届时零改类型。
+ * 视频模态条目已登记（2026-09-08 P1，VIDEO_GEN_SPEC §9.6.3）：上一窗因“能下载但不能用”
+ * 而主动避开登记，现 JNI 专用槽 t5xxl_path 已接（§9.6.2）且三件资产已经设备侧
+ * sha256sum 与源站 LFS oid 逐位校验。登记与 modelCatalog + MODEL_MATRIX §2 + 件数断言
+ * **同波落地**（§57 防漂移锁不允许单边登记）。
+ *
+ * 已知未接通面（本条目仅到“能被扫到 + 能被加载”，不得越为“能出视频”）：
+ * - `nativeGenVideo` 桥与页面视频形态 = P2（§9.3）；
+ * - **在视频 ctx 上点「出图」无版本守卫**（§四 C-4：`generate_image` 调用点不做版本判定）
+ *   → 真机取证时不得拿它出图；其行为（干净报错 or native 异常）本身就是 P2 要据实登记的项。
  */
 
 /**

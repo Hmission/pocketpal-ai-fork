@@ -66,11 +66,16 @@ describe('模型族徽章显示契约（单点，UI_SPEC §3）', () => {
     expect(modalityBadge({modality: 'video'})).toBe('视');
   });
 
-  it('wan 族已备（徽章文案与色 token 两张表齐），但不得有预登记的模型条目混进 manifest', () => {
+  it('视频条目已登记，则其族徽章与色 token 必须同波在册（不得无名/无色族上屏）', () => {
+    // 上窗反向断言（不得有 video 条目）已随 P1 登记完成而作废：现在钉的是「登记就必预徽章」
+    const videos = BUILTIN_MANIFESTS.filter(m => m.modality === 'video');
+    expect(videos.length).toBeGreaterThan(0);
+    for (const m of videos) {
+      expect(FAMILY_BADGE[m.family]).toBeTruthy();
+      expect(FAMILY_BADGE_TOKEN[m.family]).toBeTruthy();
+    }
     expect(FAMILY_BADGE.wan).toBe('Wan');
     expect(FAMILY_BADGE_TOKEN.wan).toBe('badgeWan');
-    // 链未接通前登记就是“能下载不能用”的半成品（登记需与 MODEL_MATRIX/catalog 同波）
-    expect(BUILTIN_MANIFESTS.some(m => m.modality === 'video')).toBe(false);
   });
 });
 
