@@ -237,6 +237,14 @@ Wan 2.1 T2V-1.3B = UMT5-XXL 文本编码器 + Wan DiT 1.3B + WanVAE
 
 **若触发立项**，首选路径：LTX-Video 2B distilled（8 步）→ DiT Q4 + T5 Q4 + VAE ≈ 5GB → 开启 SD_WEBM → 生图页扩展"视频"tab（复用现有模型下载/目录/调度体系）。
 
+> **⚠ 本行首选路径已于 2026-09-08 被逐行读码验伪（VIDEO_GEN_SPEC §9.6.1）**：本仓 vendored 引擎的
+> LTX 分支硬编码 `LLMArch::GEMMA3_12B`（`src/conditioning/conditioner.hpp:2991-2992`）且无 T5 回落
+> 分支（`src/stable-diffusion.cpp:1129-1134`）、`VERSION_LTXAV` 为单一枚举（`src/model.h:45`）——
+> 即 **LTX-Video 2B（T5 编码）在本引擎加载不了**，能吃 Gemma3-12B 的 LTX-2/2.3 又是 19B/22B 量级、
+> 手机内存不可能。**照本行去下 5GB LTX 就是白下**。当前唯一可加载路线 = **Wan 2.1 T2V-1.3B**
+> （DiT GGUF + UMT5-XXL encoder + WanVAE，§5.2 清单成立；§七“Wan 为主候选”反而是对的）。
+> 页面形态也不按本行那句“扩展视频 tab”做——裁定为**不新增 tab、模态随模型派生**，见 VIDEO_GEN_SPEC §九。
+
 ## 变更日志
 
 | 日期 | 版本 | 变更 |
@@ -244,6 +252,7 @@ Wan 2.1 T2V-1.3B = UMT5-XXL 文本编码器 + Wan DiT 1.3B + WanVAE
 | 2026-08-23 | 1.0 | 首发：H3/LTX/Wan 全谱系端侧可行性分析 + Wan 2.1 1.3B 深入评估（写轮眼/自学习双引擎） |
 | 2026-08-23 | 1.1 | 追加 §七：玩具定位专项（大王定调「跑分软件」）——后台存活/断点续跑/分段加载三核心 + ADR-0008 跑分 UI 立项 |
 | 2026-09-08 | 1.2 | **勘误与转主线**（CHAIN_AUDIT_B W8a）：① §五「输出=一行开关」不实（muxer 在未编译的 examples，需链 libwebm + 纳入编译面）已改写；② 状态从「观望不立项」改为已转 P2 主线（W10→W12）；③ §七 的「断点续跑（引擎 checkpoint）」与「双 ctx 分段加载」两策略**被改判**：前者作废（要进禁区且会养第二份采样状态，改片段粒度重跑），后者降为条件触发（先验现有 `te=disk`）。本文保留原文作为历史评估快照，裁定以 CHAIN_AUDIT_B 与 DEV_BACKLOG 为准。 |
+| 2026-09-08 | 1.3 | **§八“首选 LTX”路径验伪勘误**：本仓 vendored 引擎的 LTX conditioner 硬编码 `GEMMA3_12B`、无 T5 回落分支（逐行直证，见 VIDEO_GEN_SPEC §9.6.1）→ LTX-Video 2B **加载不了**，本行旧结论作废；当前唯一可加载路线为 **Wan 2.1 T2V-1.3B**。同时“生图页扩展视频 tab”那句方向已被裁定替代：**不新增 tab**，模态由 `manifest.modality` 驱动（VIDEO_GEN_SPEC §九） |
 
 ## 关联文档
 
