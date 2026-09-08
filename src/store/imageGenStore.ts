@@ -845,7 +845,9 @@ class ImageGenStore {
    * legacy 条目并与现有 history 合并去重（uri 唯一）。开发工具性质，非产品兜底机制。 */
   async recoverHistoryFromDisk(): Promise<number> {
     await this.ensureReady();
-    const dir = `${RNFS.DocumentDirectoryPath}/aios_images`;
+    // 路径走单点推导（§170 审计自纠：本行曾自己拼了一遍字面量，使 imageOutDirPath 上方
+    // 「路径字符串单点定义」的注释成为不实陈述——目录一旦变更，此恢复工具会静默扫空路）
+    const dir = this.imageOutDirPath();
     const root = RNFS.DocumentDirectoryPath;
     const entries: GeneratedImage[] = [];
     const scan = async (path: string) => {
