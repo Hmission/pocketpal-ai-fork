@@ -3278,7 +3278,8 @@ audit:native-mocks / async-timers / compass / lint:icons）。分两笔的理由
 
 - **不实现 P2/P3 本体**（只出规划），避免规划与实现混波使判据失真；
 - 项 41/44/35 保持**待裁**，未动用户数据、未动引擎禁区；
-- 未 push（本波两笔后未推送提交数 70）；
+- 未 push（本窗共 3 笔：`502e92c` 修复 / `294e142` 规划卷与销账 / `e48c3c5` 卷首分工声明；
+  未推送数不在卷内写死，要推时现查 `git rev-list --count origin/main..HEAD`）；
 - 设备仍未接入（本波未接机，因此 P2-3 那条“OpenCL 诊断是否依赖 stderr”只标 ❕ 不写成结论）。
 
 
