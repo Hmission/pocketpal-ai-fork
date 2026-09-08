@@ -3309,4 +3309,48 @@ PERF 卷 L290-291 **自己明文警告过**的动态下标类型——被警告�
   `502e92c` B6 修复，未推送数现查 `git rev-list --count origin/main..HEAD`）；
 - 设备仍未接入（本波未接机，因此 P2-3 那条“OpenCL 诊断是否依赖 stderr”只标 ❕ 不写成结论）。
 
+## §172 P2/P3 接力波①：项 42 `audit:gate-reentry` 自动闸落地（2026-09-09）——大王：「按 WAVE_PLAN_P2P3 §0 顺序接力」
+
+### 172.1 门禁与范围
+
+`route` 啄木鸟 `act-8c13f71b`（claim `scripts/audit-gate-reentry.js` + `package.json` +
+`.husky/pre-commit`）。按 §0 顺序吃第一件 0-2（P0 级，§168 死锁唯一根治）。
+
+### 172.2 落码：`scripts/audit-gate-reentry.js`（挂 pre-commit 第 6 闸）
+
+判据按项 42 原文实现：从 `this.readyPromise = this.<impl>()` 根出发，沿 `this.X(` 做
+方法体闭包展开；闭包内任何方法是**门禁等待者**即 violation → exit 1。三处刻意与
+`.tmp/audit170_locks.py` 原型不同（都是原型实测会咬人的点）：
+
+1. **方法体用花括号配平精确取**（项 42 验收明文，形制同 `audit-async-timers.js` 的
+   `bodyFrom()`）；原型的「下一定义行前」区域启发式会把后一个方法的 docblock 划进前一个
+   方法的体——§170 实测输出里 `pullSnapshot()` 被列为等待者正是这个假阳（imageGenStore
+   `:503-507` 的反面教材注释串了位）；
+2. **先剥注释再分析（保持行列）**：仓内 docblock 大量引用 `await this.ensureReady()` 字样
+   作警戒注释，不剥必假阳；
+3. **等待者做传递闭包**：A 等 `readyPromise`、B `await this.A()` 则 B 也是等待者——红态
+   探针（在 `adoptFinishedTasks` 塞 `await this.init()`）经 `init()→ensureReady()→readyPromise`
+   两跳中转才撞上门禁，只认直接 await 的原型接不住这种侧门形态。
+
+局限如实登记：正则级不解析 AST；箭头函数属性方法（`foo = async () => {}`）不参与展开
+（本仓水合链均为 class 方法，与同族闸同级精度）。
+
+### 172.3 红/绿两态实测（AGENTS.md 纪律 5：新闸必拿探针自证能报错）
+
+- **red**：临时塞 `await this.init()` 回 `adoptFinishedTasks` → exit 1，报警能定位完整撞锁链
+  `ensureReadyImpl@289 → … → adoptFinishedTasks@622 → init@513`；输出存
+  `.tmp/gate172_red.txt`，探针随即 `git checkout` 回滚（复验 `git status` 该文件干净）；
+- **green**：当前工作态 → `violations=0` exit 0，闭包实数 5 方法（与 §170 原型口径一致）；
+  输出存 `.tmp/gate172_green.txt`。
+- 附：`npx tsc --noEmit` 0 错；`imageGenStore.ghost.test.ts` 10/10 绿；eslint/prettier 过
+  （Write 落盘 CRLF 被 prettier 归一 LF 后复验）。
+
+### 172.4 接线与本波边界
+
+`package.json` 新增 `audit:gate-reentry`；`.husky/pre-commit` 在 async-timers 后挂入（带
+立项缘由注释）。落码笔 `827b275`（钩子实跑里新闸第三次过关 violations=0）。本波零运行
+时成本、零 src 改动；销账同步：DEV_BACKLOG 项 42 置✅、
+WAVE_PLAN §0 0-2 行销账。0-3（视频 P2 长跑）/0-4（全灰图取证）待接机窗口；未 push。
+
+
 
