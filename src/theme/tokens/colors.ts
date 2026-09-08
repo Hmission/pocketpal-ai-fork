@@ -178,6 +178,8 @@ export const lightColors: TokenColors = {
   badgeDreamlite: '#D81B60',
   badgeFlux: '#3949AB',
   badgeKrea2: '#E65100',
+  // Wan（视频族，VIDEO_GEN_SPEC §9.3）：取大地色与图片五族拉开色相，且不占用任何语义色
+  badgeWan: '#5D4037',
   // 图像反推提示词专属紫（IMAGEGEN_UI_SPEC §2；B56③ 登记——原 #6a1b9a 字面量收编）
   imageInsight: '#6a1b9a',
 
@@ -350,6 +352,7 @@ export const darkColors: TokenColors = {
   badgeDreamlite: '#F48FB1',
   badgeFlux: '#9FA8DA',
   badgeKrea2: '#FFAB91',
+  badgeWan: '#BCAAA4',
   // 图像反推提示词专属紫——暗色模式提亮（Material Purple 300）
   imageInsight: '#B388FF',
 

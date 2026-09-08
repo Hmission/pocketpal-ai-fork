@@ -14,7 +14,15 @@ export type ModelFamily =
   | 'flux'
   | 'classic'
   | 'dreamlite'
-  | 'krea2';
+  | 'krea2'
+  | 'wan';
+
+/**
+ * 产物模态（VIDEO_GEN_SPEC §9.2，2026-09-08）：**模态不新增 tab，而是模型的属性投影**——
+ * 用户只选模型，页面形态随 `modality` 派生（宽度硬账：K90 顶栏 400dp 已贴满，加第三段必溢出）。
+ * 不设 = `'image'`（**存量条目零改动**，向后兼容是此维加入的前提）。
+ */
+export type GenModality = 'image' | 'video';
 
 /**
  * GPU 准入策略（声明式兼容矩阵，实测准入非推测）：
@@ -29,6 +37,8 @@ export interface ImageGenManifest {
   id: string;
   label: string;
   family: ModelFamily;
+  /** 产物模态；不设 = 'image'（见 GenModality） */
+  modality?: GenModality;
   /** 主模型文件名（精确匹配） */
   main: string;
   /** 拆分式模型的伴侣文件（精确文件名） */
@@ -37,6 +47,13 @@ export interface ImageGenManifest {
     clipG?: string;
     llm?: string;
     vae?: string;
+    /**
+     * T5/UMT5 文本编码器（Wan 系必需）。**不能用 clipL 代替**：引擎按专用入口
+     * `sd_ctx_params_t.t5xxl_path` 挂载前缀 `text_encoders.t5xxl.transformer.`
+     * （`stable-diffusion.cpp:758-763`），而 clip_l 是 `text_encoders.clip_l.transformer.`，
+     * Wan 的 `T5CLIPEmbedder` 只查前者——换槽无效（取证见 VIDEO_GEN_SPEC §9.6.2）。
+     */
+    t5xxl?: string;
   };
   defaults: {
     steps: number;
@@ -173,6 +190,14 @@ export const BUILTIN_MANIFESTS: ImageGenManifest[] = [
     note: '何时选：画质天花板，4 步极速，中英文原生。体积：DiT 2.6 + VAE 0.34 ≈ 2.9GB（TE 与 Z-Image 共享不重下）。适配：高端 Adreno + Mali 平板（链路已实测通；已换 unsloth Q4_K_M 量化源，验画质中）',
   },
 ];
+
+/**
+ * 视频模态条目（如 Wan 2.1 T2V-1.3B）**不在本表预先登记**：登记一处就得同步三处
+ * （MODEL_MATRIX §2 入选清单 + `modelCatalog.ts` 下载源 + 件数断言），而生成链尚未接通——
+ * 那会做出“能下载但不能用”的半成品（锋利红线）。文件名/体积/源已在 VIDEO_GEN_SPEC §9.6.3
+ * 钉死，待 P1（JNI t5xxl 槽 + 资产到位）与 P2（桥）同波一次性登记；
+ * `modality` / `t5xxl` / `wan` 族徽章与色 token 已就绪，届时零改类型。
+ */
 
 /**
  * 生图模型文件集合（内置 manifest 的 main + companions 全量文件名）。

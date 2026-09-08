@@ -9,7 +9,18 @@ export const FAMILY_BADGE: Record<ImageGenManifest['family'], string> = {
   classic: '',
   dreamlite: 'DreamLite',
   krea2: 'Krea2',
+  wan: 'Wan',
 };
+
+/**
+ * 产物模态标记（VIDEO_GEN_SPEC §9.2，2026-09-08）：**单点派生，不在各 UI 写判定链**。
+ * 视频模态不新开 tab——用户只选模型，徽章告知“选它会改变产物形态”。图片模态返回空串（不占屏）。
+ */
+export function modalityBadge(
+  manifest: Pick<ImageGenManifest, 'modality'>,
+): string {
+  return manifest.modality === 'video' ? '视' : '';
+}
 
 /**
  * 徽章色 token 名（DESIGN_SPEC §1.4）：由 token 面派生而不手写联合——
@@ -40,6 +51,7 @@ export const FAMILY_BADGE_TOKEN: Record<
   zimage: 'badgeZImage',
   flux: 'badgeFlux',
   krea2: 'badgeKrea2',
+  wan: 'badgeWan',
   classic: null,
 };
 

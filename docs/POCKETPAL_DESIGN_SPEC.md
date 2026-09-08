@@ -109,6 +109,7 @@ supersedes: []
 | badgeDreamlite | #D81B60 | #F48FB1 | DreamLite                          |
 | badgeFlux      | #3949AB | #9FA8DA | FLUX.2（Klein）                    |
 | badgeKrea2     | #E65100 | #FFAB91 | Krea2（8-26 新增，Krea AI 品牌橙） |
+| badgeWan       | #5D4037 | #BCAAA4 | Wan 2.1（2026-09-08 新增，首个**视频模态**族；大地色与图片五族拉开色相且不占语义色，VIDEO_GEN_SPEC §9.3） |
 
 ### 1.5 表面层次
 

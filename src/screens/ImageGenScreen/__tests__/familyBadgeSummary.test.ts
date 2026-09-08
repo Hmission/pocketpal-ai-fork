@@ -7,6 +7,7 @@
  */
 import {lightColors} from '../../../theme/tokens/colors';
 import type {ModelFamily} from '../../../utils/imageGenManifest';
+import {BUILTIN_MANIFESTS} from '../../../utils/imageGenManifest';
 import type {Theme} from '../../../utils/types';
 import {
   FAMILY_BADGE,
@@ -14,6 +15,7 @@ import {
   familyBadgeColor,
   familyBadgeLabel,
   formatQueueSummary,
+  modalityBadge,
 } from '../constants';
 
 const theme = {colors: lightColors} as Theme;
@@ -55,6 +57,20 @@ describe('模型族徽章显示契约（单点，UI_SPEC §3）', () => {
   it('未登色族与未知族回落 info（不抛不猜色）', () => {
     expect(familyBadgeColor(theme, 'classic')).toBe(theme.colors.info);
     expect(familyBadgeColor(theme, '')).toBe(theme.colors.info);
+  });
+
+  // 视频模态契约（VIDEO_GEN_SPEC §9.2，2026-09-08）：模态是模型属性的投影，不是新 tab。
+  it('模态徽章单点派生：图片不占屏，视频只给一个短标记', () => {
+    expect(modalityBadge({})).toBe('');
+    expect(modalityBadge({modality: 'image'})).toBe('');
+    expect(modalityBadge({modality: 'video'})).toBe('视');
+  });
+
+  it('wan 族已备（徽章文案与色 token 两张表齐），但不得有预登记的模型条目混进 manifest', () => {
+    expect(FAMILY_BADGE.wan).toBe('Wan');
+    expect(FAMILY_BADGE_TOKEN.wan).toBe('badgeWan');
+    // 链未接通前登记就是“能下载不能用”的半成品（登记需与 MODEL_MATRIX/catalog 同波）
+    expect(BUILTIN_MANIFESTS.some(m => m.modality === 'video')).toBe(false);
   });
 });
 

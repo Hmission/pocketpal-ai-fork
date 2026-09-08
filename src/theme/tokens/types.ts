@@ -152,6 +152,7 @@ export interface TokenColors {
   badgeDreamlite: string;
   badgeFlux: string;
   badgeKrea2: string;
+  badgeWan: string;
   // 图像反推提示词专属紫（B56③ 登记；IMAGEGEN_UI_SPEC §2）
   imageInsight: string;
 

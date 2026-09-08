@@ -5,7 +5,12 @@ import {CircularActivityIndicator} from '../../../components/CircularActivityInd
 
 import {useTheme} from '../../../hooks';
 import {createStyles} from '../styles';
-import {FAMILY_BADGE, ModelEntry, familyBadgeColor} from '../constants';
+import {
+  FAMILY_BADGE,
+  ModelEntry,
+  familyBadgeColor,
+  modalityBadge,
+} from '../constants';
 
 /**
  * D1 顶栏重构（DESIGN_SPEC §5 生图顶栏）：原「顶部模型胶囊 + 锚定下拉」
@@ -43,7 +48,11 @@ export const ModelPickerTrigger: React.FC<TriggerProps> = ({
         FAMILY_BADGE[selectedEntry.manifest.family]
           ? `[${FAMILY_BADGE[selectedEntry.manifest.family]}] `
           : ''
-      }${selectedEntry.manifest.label}`
+      }${selectedEntry.manifest.label}${
+        modalityBadge(selectedEntry.manifest)
+          ? ` [${modalityBadge(selectedEntry.manifest)}]`
+          : ''
+      }`
     : '选择模型';
 
   return (
@@ -166,6 +175,22 @@ export const ModelPickerDropdown: React.FC<DropdownProps> = ({
                       </Text>
                     ) : null}
                     {item.manifest.label}
+                    {/* 模态标记单点取自 modalityBadge（§9.2）：复用族徽章样式与族色，不另造一套 */}
+                    {modalityBadge(item.manifest) ? (
+                      <Text
+                        style={[
+                          s.badgeFamily,
+                          {
+                            color: familyBadgeColor(
+                              theme,
+                              item.manifest.family,
+                            ),
+                          },
+                        ]}>
+                        {' '}
+                        [{modalityBadge(item.manifest)}]
+                      </Text>
+                    ) : null}
                     {item.manifest.experimental ? (
                       <Text style={s.badgeExp}> [实验性]</Text>
                     ) : null}
