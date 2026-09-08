@@ -7,9 +7,44 @@
 
 ## [Unreleased]
 
+> 本段为 v2.0.1（2026-09-03）之后的累计记账（2026-09-08 补登：v2.0.1 之后已落 60 笔
+> 而本段此前为空，属登记面遗漏，不是无变更）。**是否升版与定版仍待裁**，本段只记账不定版。
+
+### 视频主线 P0/P1：首个视频模态模型入引擎与登记（2026-09-08，VIDEO_GEN_SPEC v0.2→v0.4）
+
+- **t5xxl 专用文本编码器槽**：加载链补 `t5xxl_path` 入参（JNI 参数序与 Kotlin `external fun` 严格同序），`is_split_model` 同步纳入 t5xxl——否则走「一体式」分支触发逐张量双重量化（Klein 纹理事故同型）
+- **首个视频模态条目 Wan 2.1 T2V-1.3B**：按 §57 防漂移锁三处同波登记（MODEL_MATRIX + `BUILTIN_MANIFESTS` + `CATALOG_IMAGEGEN`），manifest 新增 `modality` 一维（默认 image，**存量条目零改动**），页面形态由派生值驱动——**不新增视频 tab**（400dp 顶栏宽度硬账）
+- **就绪文案不再谎报**：视频模型选中后明写「视频生成尚未接入，不能出图」（旧文案统一承诺「可以出图」）；后端不再硬编码显示 CPU，按实际 backend 渲染
+- **OpenCL kernel cache 环境变量删除**：本 vendored 引擎无该变量的任何消费者（ggml-opencl.cpp 只读八个 env）且旧值指向不存在的宿主包——双重无效，**定性为死变量删除**而非改对路径
+
+### 在飞任务与资源安全（2026-09-08，IMAGEGEN_QUEUE_SPEC v0.6）
+
+- **加载/卸载移出 native 队列线程**：`nativeLoadModel`（分钟级、持 `g_mutex`）与 `free_sd_ctx`（GB 级权重数十秒）不再阻塞同队列后续调用——用户可感知面：**按「停止」没反应**
+- **幽灵任务改为按「产物证据」收编**：水合时不再一律判死——native 写盘通道（txt2img）产物已落盘且**严格唯一**则收编为 success（`durationMs` 取实测落盘时刻）；JS 写盘通道（DreamLite/超分/反推/TTS）续体随运行时销毁，不可能有产物，**不去造假收养**
+- **失败文案与实测对齐**：旧文案「应用在上次生成中被强制退出」与 `pidof` 前后相同相矛盾——真实发生的是 MIUI 回收 Activity 导致 RN 运行时重建，改按通道说真话
+
+### 通话模式与语音链路（2026-09-04→09-07，首版→v2.4）
+
+- **电话模式落地**：顶栏电话图标 + 通话 overlay 全复用现有链（录音/ASR/AgentRunner/流式 TTS）；v2.1→v2.4 多轮真机修复：控制区换位防误触、hooks 顺序致命修、波形语义定案、字幕顺序契约、任务卡不入流、对话流铺满主区 + 真实振幅通道
+- **语音链路单一化**：ASR 收为单一路径；TTS 播报门合并 + 引擎能力表；stop 噪音按事实定性根治；录音启停三路径归一（原生忙即报错，不再拿到同一个文件）+ 权限错误分流
+- **电话轮单一状态源**：拆掉第二判定源，消除双状态并存；管家复读破口同步根治
+
+### 链式审计 CHAIN_AUDIT W1–W8b（2026-09-05→09-07）
+
+- **队列失败可见性收口 + 队列/保活单状态机**；死码纯删（队列胶囊与跑分云提交残留、双份常量）；`SemanticColors` 手工副本拆掉、模型族徽章色收编 token
+- **会话仓储区分「记录不存在」与「数据库故障」**（旧写法把故障读成不存在，会谎报为空会话）
+- **图标线条语言归一**：电话/通话页图标被填成实心→单一描边口径（有效描边粗细归一 2.00），图标尺寸裸数字收口至 `iconSize` token（584 处，像素零变化）
+- **夜间长任务跨端改名**：`VideoTaskService`→`NightTask`（词面先治理后改名）并迁移通知渠道；指南针七条空标签补 regex，立「登记面↔执行面」双向对账闸
+
+### 测试与构建基建（2026-09-04→09-06）
+
+- 新增 `safeInterval` 轮询原语与两个测试/异步收口闸门；补全落后 spec 的全局 mock（消除整类假失败且不引入 flake）；纠正四处组件测试 theme mock 路径错配；`actionRegistry` 两用例取错 store 实例修正
+- `postinstall` 改跨平台 node 脚本（Windows 下 `.sh` 是「回声执行」，从未真正跑过）；收口 `@react-native-voice` 孤儿依赖，修复**从未真正生效**的 onnxruntime 补丁
+
 ## [2.0.1] - 2026-09-03
 
 ### 聊天页慢速回归修复 + 跑分卡数值位数修复（2026-09-03，大王报障两项，task-47d 窗口）
+
 - **A1 跑分卡单位换算修复（大王报障：内存 16G 显示几万 G）**：PerfMiniRow 两处 PSS 显示（大字/内存胶囊）缺 KB→GB 换算（pssKb 直接喂 gbTinyFmt → 4.2GB 显示成 4404019.0G），与 PerfPanel/AssistantTurnFooter 峰值/PerfHistoryModal 同口径对齐（/1024/1024，组件 2026-08-27 ae26403 重构引入即错）；新建 PerfMiniRow 单测 5 例钉死换算与 N/A 契约 + AssistantTurnFooter 峰值换算哨兵断言
 - **A2 回复慢真机取证（K90，大王报障：新会话也慢、所有聊天模型都慢）**：历史回复 footer 实测 104ms/token / 9.61 tok/s / **73007ms TTFT**（「正在准备 100+ 秒」复现）；logcat 加载时序证实 2B 主上下文 n_threads=6 正常（n_threads=4 属管家 promptWriter 独立链路写死）、CPU 是 K90 唯一稳定路径（OpenCL 仅支持 Q4_0/Q6_K，Hexagon 加载 2B 即 App died）——**慢的放大器 = 11 工具 schema+grounding 全量常驻 prefill + enable_thinking 默认 true**
 - **A2 任务驱动工具裁剪（新模块 services/talents/taskGating.ts）**：chitchat 仅常驻轻工具（datetime/calculate/note_save/search_memory），web_search/read_url/device_control/writing_doc/render_html/read_html 按显式唤起词补注入，write/code/play/adventure 任务会话全量原样；useChatSession tools 注入面与 allowedTalentNames 面共用同一 gate（纯函数幂等保序）；pact.talents 对账基准不动——每轮 prefill 工具开销大幅收窄，模型不再倾向先调工具
@@ -20,12 +55,14 @@
 - **真机对照闭环（2026-09-03 覆盖安装新版后 K90 重测）**：同会话「重新生成」——TTFT 73007ms→38614ms（**-47.1%**）、tok/s 9.61→9.99；thinking-toggle 显示「启用思考模式」（v5 回退存量迁移注入的 true 实证）
 
 ### 跑分数据链路补全 + 出图按钮任务态转圈统一（2026-08-29，大王报障三项，PERF_BENCHMARK_DESIGN v1.4）
-- **K90 GPU 频率/功耗多源探测（大王报障：跑分卡 GPU 频率/功耗恒 --）**：GPU 频率改多源候选链（kgsl gpuclk → kgsl devfreq/cur_freq → /sys/class/devfreq 全目录兜底），单源读数 0/受限自动轮换（骁龙 8 Gen 2+ gpuclk 受限恒 0，K90 复现）；devfreq 节点名放宽含 kgsl/mali（MTK `13000000.mali` 不含 "gpu"，旧匹配漏探致 K Pad 平板 GPU 负载/频率一并读不到）；功耗多源链（current_now→current_avg→其它 power_supply 节点 main/bms/fg_*→power_now 直读），K90/HyperOS battery current_now 常 0/受限实锤；首次探测路径 println 留痕供新窗口构建后 logcat 实证
+
+- **K90 GPU 频率/功耗多源探测（大王报障：跑分卡 GPU 频率/功耗恒 --）**：GPU 频率改多源候选链（kgsl gpuclk → kgsl devfreq/cur*freq → /sys/class/devfreq 全目录兜底），单源读数 0/受限自动轮换（骁龙 8 Gen 2+ gpuclk 受限恒 0，K90 复现）；devfreq 节点名放宽含 kgsl/mali（MTK `13000000.mali` 不含 "gpu"，旧匹配漏探致 K Pad 平板 GPU 负载/频率一并读不到）；功耗多源链（current_now→current_avg→其它 power_supply 节点 main/bms/fg*\*→power_now 直读），K90/HyperOS battery current_now 常 0/受限实锤；首次探测路径 println 留痕供新窗口构建后 logcat 实证
 - **出图按钮任务进行态转圈统一（flux 等 SD 族真机观察缺转圈）**：GenActionBar 转圈条件从 loading/generating 扩为三段同源（loading/generating/queueRunning）——队列执行中按钮同样转圈+灰置（此前仅灰置无动效）；静态链路复核：直接出图路径 loading/generating 全覆盖（loadModel→loading / generate→generating），无模型族差异，队列执行期是本处补强点
 - **跑分卡 SSOT 复核确认（大王五问之①）**：5 生图模型（DreamLite/SD3.5/Z-Image/FLUX.2 Klein/Krea2）+ 反推/编辑/放大均走 runGenTask/runCaptionTask→同一 running 任务页→同一 PerfPanel（progressBody 单函数）+ perfTiers 阈值单源，无第二套；成功卡统一 s.preview 容器（文本/图像同一模态）
 - 门禁：tsc 0 错 + Panels 27/27 全绿（新增 queueRunning 转圈用例）；Kotlin 层修改待新窗口 Gradle 构建后 K90 真机验证（本窗口不构建）
 
 ### UI 一致性升级（2026-08-27，大王五问裁定 + 真机复审，IMAGEGEN_UI_SPEC v5.9/v5.10 + CHAT_UI_SPEC v2.1 + PERF_BENCHMARK_DESIGN v1.3）
+
 - **反推=生图流程（大王真机复审终修）**：反推/编辑/放大与生成同一路径——任务开始即滚入 running 空白任务页 + **完整 PerfPanel 默认展开**（直接复用，不重做不折叠）；叠图 overlay 全删（旧 absolute 叠图与任务页双渲染导致的内容叠加/遮挡根治）；反推跑分卡片与生图完全一致
 - **高级参数与提示词折叠平级（大王复审）**：高级参数钮与内容区独立于提示词折叠（原被误包进 promptCollapsed 作用域），折叠提示词后高级参数仍可用
 - **预览容器自适应根治顶部被切**：running/failed 任务页 taskPage 去 overflow:hidden + 顶对齐 + minHeight 240——PerfPanel 默认展开时内容超高不再双向裁切（DreamLite 出图顶部 WaveDots 被切一刀的根因），真机铁证：标题顶部完整 + PerfPanel 全展开在场
@@ -39,6 +76,7 @@
 - 门禁：tsc 0 错 + eslint 0 问题 + 受影响 10 套件 126 用例全绿；K90 真机验证（折叠/吸底大王确认 + running 页 PerfPanel 完整默认展开实证截图）
 
 ### 上下文治理极限化（2026-08-26，大王裁定「探索上限」，CONTEXT_COMPACTION_SPEC v1.2 + CHAT_UI_SPEC §18.6 v3.8）
+
 - **策展表 v2 重排 + 设备感知预算**：Qwen3.5-4B 4096→**16384**（大王实测可用）、Qwen3.5-2B/MiniCPM5-1B 24576/16384→**32768**、Ministral-3-3B→24576、Gemma-3-4B→32768、LFM2.5-8B→24576、LFM2.5-2.6B→16384（尺寸档同步上探）；策展预算从固定 4GB 改为 `resolvePssSafeBudget`（启动实测可用内存、上限 9GB、fallback 4GB）；KV 保持 f16 不加量化旋钮（锋利不预设）；`CURATED_TABLE_VERSION=2` 版本化拉齐（preset 低档随表升级一次性升档，解除只降不升钉死；user 主权不碰）；启动审计守卫语义不变（预算值换设备口径）
 - **压缩大块化**：目标线 70%→`COMPACT_TARGET_WATERMARK=0.5`（触发 0.8 压到半水位，一次顶 10+ 轮，行业对齐 Claude Code auto-compact / LangChain SummaryBufferMemory——治「每次只压一两轮」小额滚动）；摘要输入预算 6000→12000（16K 档一次吃下压到半水位的 slice）；`TOOL_BASELINE_TOKENS=4500` 从注释沉底 + 策展门禁断言（每档 nCtx ≥ 基线 + 对话窗 + 生成预留）
 - **死代码清除**：`recommendNCtx` 内存梯子（16G→8192/8G→2048 启动向下保护）删除——正是「默认上下文都很短」的现役源头之一，职责由启动 PSS 审计完整覆盖（App.tsx 同删）
@@ -46,17 +84,20 @@
 - **真机验证闭环（2026-08-26 K90 25102RKBEC 人类模拟路径 + scrcpy 监督，MASTER_LOG §96.5）**：①策展 v2 生效铁证——原生层 `llama_rn_context_mtmd:684 n_ctx=16384` + 顶栏/回复者变「通义千问 4B」；②PSS 实测——加载稳定 **4.15GB**、推理后全量驻留 **4.74GB**，进程全程存活（16K f16 KV 在 K90 站得住，距 6GB 硬线余量 ~1.3GB）；③真实推理——5275 tokens prefill + 思考模式，TTFT 336s、2.79 tok/s、回答正确无复读（对照管家 1B 复读）；④多轮压缩实测转观察项（16K 余量 ≈ 20+ 轮短对话）；⑤过程中确定 HyperOS 输入三通道结论：scrcpy 窗口鼠标最稳（记入经验记忆）
 
 ### 跑分演出与基准测试总控
+
 - 生图跑分卡坐标轴+复合图+分级色+演出层（2026-08-25，B43 大王反馈收窄，IMAGEGEN_UI_SPEC v5.7 + PERF_BENCHMARK_DESIGN §10.5.1）：①**坐标轴**——左 Y 刻度按维度单位（PSS→GB/负载→%/温度→°C/功耗→W）+ 底部 X 时间刻度（1Hz 采样索引差=相对秒）+ 水平/垂直网格 + 5GB/6GB 阈值虚线端点标注（虚线语义可读化：紫实线=功耗 #BA68C8，橙虚线=5GB 逼近，红虚线=6GB 硬杀）；②**叠全改复合图**——PSS/功耗折线 + CPU/GPU 负载柱状 + 温度热力带（30→60°C 绿→橙→红），五通道不糊、温度不再与 PSS 主色同橙撞色；③**演出层 vivid**——最新点呼吸光圈 + 彗星尾 + 示波器扫掠光（Animated JS driver，超跑感）；④**指标分级色全接入**——温度/功耗/CPU 频/GPU 频/步耗时两档阈值变色（阈值表登记 §9.2，正常继承中性不再全黑）；⑤**「叠全」chip 置最左**；⑥叠全**图例行**（色点+通道名）。门禁：tsc 0 错 + 54 用例全绿（新增 4 用例），复用方（PendingIndicator/AssistantTurnFooter）零回归；含 v1.2 面板四修前序（去 SoC 小字/弃灰底 hairline/加宽缩字/默认叠全 + jest modulePathIgnorePatterns 基建修复）同链收编；待真机 K90 复验动画帧影响与复合图观感
 - 基准套件真机全链路验证通过 + 标准负载契约三次修订（2026-08-25，K90 人类模拟路径 + DRC 导航，PERF_BENCHMARK_DESIGN v0.7）：①诚实失败路径 ×3 验证（聊天/生图模型未加载、推理超时，均复位无半态）；②契约血证修订：LLM 用例新建「基准测试」会话（旧会话 3595 tokens 携带致超时）+ 思考模式显式 completionSettings 钉死关（同机开 >600s/关 77s；override 不入会话参数实证）+ 生图赛道改 generateDreamLiteEntry 页面同源入口（自带按需加载，免双引擎常驻预载）；③全套件跑通：LLM 77s（10.0 tok/s）→ 生图 54.0s（11.6 s/步）→ 耐久 42.4/46.7/42.5s，总时长 4m23s，综合分 46 · 段位走地鸡（MEM 0=双引擎常驻 PSS 峰值破 6GB 硬杀线 / THM 100 / STB 53 / SPD 无基线诚实置灰）；④分享链路验证：系统分享面板唤起 + 文本摘要正确；浅深双模式截图存档；G5：双引擎常驻 PSS 5.76GB 实证；⑤设备侧铁证：HyperOS 双引擎常驻触发 OEM 内存配额 signal 9 杀进程——跑分软件本身成为内存安全分的活证据
 - 跑分演出升级与基准测试总控（2026-08-24，B39，PERF_BENCHMARK_DESIGN §10 v0.6，大王裁定：跑分是安慰剂，过程才是药效）：6D 洋葱排查收敛后六波长链落地——①PerfMotion 统一动效引擎（AnimatedNumber 追式缓动首帧锚定不演假动画/保留真实毛刺、OdometerNumber 逐位翻滚、ScoreReveal 揭幕狂飙+光圈+震动，三页共用；跑分金复用 brandAccent 不造新 token）；②聊天页升级不重造：footer 行2 数值接动效 + tok/s 迷你速率条，PendingIndicator 阶段色条（既有 token 二态）+ 心跳波形（卡住/停止平坦=诚实）+ 工具期差分速率（复用 1s 心跳零新定时器）；③生图页 PerfPanel 条形图→SVG 折线渐变面积图（5/6GB 阈值虚线+峰值打标，预览卡片内不溢出红线保持）+ 全数字动效 + 胶囊负载分档变色（砍步耗时环：无分母不画假环）；④基准页原地改造三用例总控台（推理/生图/耐久，自动导航到聊天页/生图页跑真实负载，复用 registerChatSender 调度链 + imageGenStore.generate 零新链路，1Hz 随采→perfScore SSOT 四轴雷达+段位走地鸡/战斗鸡/神鸡，HUD 条可终止）；砍除链：api/benchmark.ts 云提交整体删除、bench() 合成负载/高级参数/双内存通道删除、旧协议结果诚实标记不洗数据；⑤跑分卡分享：纯 JS 像素光栅化（七段码+5×7 点阵，零依赖零用户内容）+ RN 内置 Share（url+文本双带）——不发公网，成绩只住手机里；⑥l10n benchmark.suite 段 en/zh/zh_Hant 三语。门禁：tsc 0 错 + 新增 40+ 用例全绿 + l10n validate；待真机验证（套件全流程+分享+浅深双模式）
 
 ### 生图性能
+
 - 跑分卡三修（2026-08-24，ADR-0008 修正）：①**实时数据恒 `--` 根治**——1Hz 轮询 `syncPoll()` 原为手动调用（仅 `loadDreamLiteEntry`/SD generate 路径），DreamLite `generateDreamLiteEntry`/`editDreamLiteEntry`/`upscaleImageEntry`/`runCaptionTask` 在引擎驻留时直接 `generating=true` 从不触发轮询 → `perf` 恒 null；`syncPoll()` 挂入构造器 `nightTaskReaction`（`loading||generating` 翻转处），一处覆盖全部生图入口；②卡片加宽——`taskPage` padding 16→10（面板向预览图宽度靠拢，不超预览卡片）；③底行显示不全根治——指标行横向 ScrollView → `flexWrap` 换行网格（每行 4 项×2 行），7 项指标+历史按钮全部可见。门禁：tsc 零错 + PerfPanel 相关 9/9 + ImageGenScreen/store 873/874（1 例 Panels.test `统一文生图` 为存量失败，与本修无关）
 - 专业跑分面板四阶段落地（2026-08-23，PERF_BENCHMARK_DESIGN v0.3，大王裁定专业跑分+落盘回放）：写轮眼调研（安兔兔/Geekbench/3DMark/PerfDog）+ 自学习基线实证后长链落地——①P1 数据扩展：HardwareInfoModule getPerfSnapshot 增 6 指标（CPU 频率/GPU 负载/GPU 频率/温度分区 cpu+gpu/功耗），sysfs 平台探测（Adreno kgsl 优先、devfreq 次选）+ 路径缓存 + N/A(-1) 降级；NPU 利用率无标准 API 诚实模式（不编造）；②P2 面板横版化（预览卡片下半截）：折叠头一行（PSS 大字阈值色 + CPU/GPU/温/功耗胶囊 + SoC 设备小字）+ 迷你曲线条（叠加线 PSS/CPU/GPU/温度/功耗切换）+ 横向指标行（频率/分区温度/功耗/步耗时）+ 历史入口；③P3 落盘：perfRecorder 任务级 JSONL（begin/append/finish + 50 条保留 + 被杀断点轨迹保留），store 任务生命周期接线（beginTask→建文件/1Hz append/finishTask→summary）；④P4 回放：PerfHistoryModal（列表→播放光标逐点推进→统计卡→跑分卡）+ perfScore 分数体系（内存安全=距 6GB 硬杀线余量/温控=温升率/稳定性=峰均比反向，无基线三项加权）。门禁：tsc 0 错 + jest 新增 23 全绿 + Gradle SUCCESS；待真机（K90 GPU 负载/功耗读数 + 落盘回放）
 - 放大模型升级与双档可选（2026-08-21，A' 定稿，IMAGE_GEN_UPGRADE_PLAN §6.20）：动漫高清档换官方图片级 x4plus_anime_6B（RRDBNet-6 17MB，静态图质量实锤优于视频级 animevideov3，代价单 tile ~10s）；保留 animevideov3 为「动漫快速」档（快约 4 倍）双档可选（SRStyle 三值 + FILES 三件套 + UpscalePanel 三选项）；推理 EP 加 NNAPI（K90 实测全档收益 1.7-2.7 倍——anime_fast 22.3s/anime 67.6s/general 218.5s vs 小米 13 55.4s/185.0s/~370s；8 Gen 2 回退 CPU 无副作用）；PasSR 无公开权重调查实锤放弃；assets 标记 .v4 强制重复制；真机 DRC 全链路：anime_fast 2× 12.0s / anime 2× 47.3s / 4× 56.4s / general 2× 133.6s，像素取证三档彩色无回归
 - DreamLite TE 切 NNAPI EP（K90 实测 TE 编码 -38.5%、全流程 -29.1%；小米 13 持平自动回退，单配置保留）
 
 ### 修复
+
 - 聊天生图管家提示词增强「鹦鹉学舌」根治（2026-08-27，CHAT_UI_SPEC v2.2 + IMAGEGEN_MODEL_TRAINING_SSOT v2.5 + MASTER_LOG §101）：报障「生成一个苹果」扩写出海边美女提示词——根因：SYSTEM_PROMPT v3 把 few-shot 示例（女孩海边散步）以纯文本内嵌 system 消息，1B 模型指令遵循弱 + 短输入 + temperature 0.7 → 直接复述示例而非扩写真实主题，且扩写输出零校验直喂生图引擎（静默污染出图）。修复三件套：① 示例抽为 SSOT 常量改 user/assistant 示范对话轮（真实输入为最后一个 user 轮，续写位置正确）+ system 增反复制指令；② temperature 0.7→0.4（确定性改写任务低温抑噪）；③ isParrotingExample 检测闸（词重合 ≥70% 且命中 ≥15 词判复读，只拦几乎原样复述、同主题独立改写不误伤）命中显式抛错 → 回退原文 + 任务卡标「提示词未增强」（复用 enhancedFailed 通道，显式失败不静默）；失败语义由静默返回 null 改显式抛错（chatImageTask/albumBook 两调用方均已验证安全）。门禁：tsc 0 错 + 新增 promptWriter.parrot.test.ts 5 用例 + chatImageTask 9 用例全绿（14/14）；待真机复验（发「生成一个苹果」预期提示词围绕 apple）
 - FLUX.2 Klein 生图马赛克根因终局 + CPU 兑现正确性（2026-08-26，13 组对照实证）：Klein 在 OpenCL（Adreno K90 + Mali K Pad）出马赛克/品红，**根因=vendored ggml-opencl 通用内核对 FLUX.2 张量 shape 的 bug**——与量化无关（Q4_0/Q4_K_M/Q4_K_S 全纹理）、与内核变体无关（fp32 通用/fp16-tiled 均坏）、VAE/TE/cfg/分辨率/治理组全排除；CPU（桌面+端侧）干净、Z-Image(FLUX.1) OpenCL 干净 → FLUX.2 特有 shape（txt_in K=7680/img_in K=128/32 通道 patchify）触发。桌面复现被 vendored 设备门禁（白名单/fp16/subgroups）拦截，需移动端 OpenCL 逐 op instrumentation 修内核（上游级，专项立项）。交付：Klein 默认后端精确切回 **CPU** 兑现「能跑」（正确、慢 ~5h），保持 experimental 不误导用户；仅改 backend 单字段，不回滚其它更新。
 - DreamLite 非方形画幅生图失败根治 + 编辑单契约（2026-08-24，三机逐台取证，MASTER_LOG §87）：平板 2:3（832×1216）任务 4 步采样完成后死于 VAE 解码（`invalid dimensions for latents Got 152/104 Expected 128/128`）——根因：部署的 vae_decoder.onnx 为静态形状导出（输入写死 [1,4,128,128]），违反官方七档训练桶契约（静态形状是我方 ONNX 导出副作用）；三机部署漂移实证（MD5）：小米13=动态版可用、K90/平板=静态版必败（K90 08-19 同错历史日志补证）。修复（单一版本无设备分叉）：①统一标准件 vae_dyn.onnx（与静态版计算图/权重全同仅形状元数据动态）覆盖推送平板+K90，平板真机同画幅对照实验闭环（imagegen.done 152.2s + PNG IHDR 832×1216）；②DEVICE_DEPLOYMENT_SOP.md 第 9 项改源 + 注明两文件字节数相同必须 MD5 核对（4e6f552e…）；③编辑单契约：新增 DREAM_EDIT_SIZE=1024，生图页三处编辑路径固定 1024²（旧为 min(画幅) 桶外方形糊图风险），与聊天内联编辑/相册封面统一；④FLUX.2 klein manifest note 如实化（旧「4 步 1024px」为照抄 Box 清单失实，端侧尚无实测；暂走 512 级档位，升 1024 档待真机证据）。门禁：tsc 零错 + ImageGenScreen 4 套件 42 用例全绿（含新增编辑固定契约回归用例，顺手修复存量腐化断言「统一文生图」）；欠账：K90 非方形实测待 FLUX 长任务结束
@@ -76,6 +117,7 @@
 - 幽灵任务治理：强杀后 running 任务永久卡死根治（2026-08-21，K90 真机实证）：app 强杀/异常退出后 DB 遗留 status='running' 条目，水合恢复时无推理进程——原样恢复永久卡在 running 页（空白预览 + 进度卡 + genStartedAt=0 荒谬耗时 1787313652s）；修复 imageGenStore.ensureReadyImpl 水合+迁移完成后统一将遗留 running 置 failed（errorSummary='生成中断' + errorDetail 说明强杀，内存+DB 双写），失败页可复制/重试/删除；单测 imageGenStore.ghost.test.ts 2 用例（幽灵置 failed + 无幽灵零 patch）；真机验证：重装后 logcat「ghost running tasks marked failed: 1」+ UI 由卡死 running 页 →「生成失败/生成中断」报错页
 
 ### 改进
+
 - R4-B mock 边界收口（2026-08-27，测试基建三板斧之 B）：11 处 store/imageGenStore 直连改 barrel + imageGenStore mock（25 字段/方法）+ 测试身份适配（4 套件），[ImageGenStore] migration 警告在受影响套件消失；单独跑受影响核心套件全绿（210+115+9+7+3+47）。R4-A（hooks 桶瘦身 208 处）/C（utils 桶拆）待专用窗口（全量随机红根治目标）
 - Krea2 Turbo 端侧接入定论：双门槛无招（2026-08-26，MASTER_LOG §99.4）：全驻留 9.9GB 超 K90 OpenCL 全局 7.5GB → OOM 三连；te=disk 因 Krea2 TE 值域 ±1e10 在 ARM CPU f16 溢出 SIGABRT（已回滚禁用）；Q8_0 CPU/CUDA 全 NaN 为上游缺陷。维持 experimental + high-adreno-only，待上游 ARM f16 精度修复或 ≥24GB 设备，无应用层招。
 - R3-P1 低风险拆分三项（2026-08-26，REMAINING_FIX_PLAN v1.2）：GenerationSettingsScreen 1231→197 行（-84%，2 hooks + 7 卡片，testID 契约零破坏）；ChatSessionStore resolver 纯函数抽取（completionSettingsResolver.ts，五层优先级链参数注入化）；ModelStore contextConfig 方法组抽取（-460 行，facade+mixin 现役模式，策展三件套入库）；三闸全绿含 0 warning + 3 套件 337 测试全绿。剩余：R3-P2~P5 分期 / R4 测试基建三板斧（专窗）
@@ -111,6 +153,7 @@
 - 代码/玩具匠终局选型 LFM2.5-2.6B（2026-08-20，大王钦定）：替代 Ministral-3-3B（迭代合规不稳 PLAY-6）；LFM2.5 族工具调用专长 + 1.67GB PSS 安全（LFM8B 5.16GB 被 K90 HyperOS PSS 看护 6GB 硬杀，厂商锁死不可关）；K90 真机三点验收全绿（选型生效 + 加载 2s + 玩具生成落盘）
 
 ### 新增
+
 - Kitten TTS sherpa 生成链下载补齐（2026-08-23，§74.5 遗留闭环，MASTER_LOG §81）：Kitten 双链路文件集互不兼容（fork 播放链 palshub 0.8-fp32 / sherpa 生成链官方 v0.1-fp16），§74.3 真机修复仅手动 push，新装机用户 sherpa 生成链四件套（kitten_sherpa.onnx/voices.bin/tokens.txt/espeak-ng-data/ 119 文件）永不落地、isTtsGenInstalled('kitten') 死检查恒 false——downloadModel 新增 Phase 2：3 固定文件 + espeak 经 HF API tree 动态枚举逐文件下载（已存在跳过），Phase 2 失败仅回滚 sherpa 文件保留播放链可用，估算体积 57MB→100MB 喂磁盘 preflight；Kokoro 换源裁定不动（v1.0→v0.19 属降版本 + fork/sherpa 双链耦合）
 - 跑分式性能面板（2026-08-23，ADR-0008 + MASTER_LOG §75）：生图 10-20 分钟等待期黑盒可视化——HardwareInfoModule 新增 `getPerfSnapshot`（扩展既有 TurboModule 不新建：PSS `Debug.getMemoryInfo().totalPss` 与 HyperOS 看护同口径 + RSS 复用 readVmRssKb + CPU% `Process.getElapsedCpuTime` 差分 + 温度 thermal_zone 最大有效值）；imageGenStore 新增 `perf/perfHistory` 轮询（pullSnapshot 并行拉取失败静默不伤主链路，随 syncPoll 启停、停止即清空）；新组件 PerfPanel（PSS 大字 + 阈值色 >5GB 橙/>6GB 红 + 60 点自绘折线 + CPU/温度/步耗时）挂 running 任务页进度卡（overlay 叠图模式不显示）；真机 DRC 全链路实证（`imagegen.start→stage(采样 1/4~4/4)→done`，1024² 约 141s，投屏人眼确认面板挂载）；语义色 PERF_WARN #F5A623 登记 IMAGEGEN_UI_SPEC §9
 - 夜间长任务模式（2026-08-23，ONDEVICE_VIDEO_GEN_ANALYSIS §7.1 + MASTER_LOG §76）：生图/未来视频长任务后台不被杀——原生 `VideoTaskService`（前台服务 + 常驻通知 video_task_channel + `PARTIAL_WAKE_LOCK` 24h 上限，`foregroundServiceType="dataSync"`）+ RN 桥 `VideoTaskServiceModule`（start/stop/isRunning，ReactContextBaseJavaModule 免 codegen）+ `VideoTaskServicePackage` 注册；JS `nightTaskRegistry`（引用计数 begin/end/isBusy，零循环依赖）+ imageGenStore MobX `reaction` 单点监听 `loading||generating` 翻转（一处覆盖全部 5 个生成入口 + 未来视频，免逐点埋 begin/end）；ModelStore/TTSStore 进后台释放分支加 `isBusy` 守卫（夜间任务进行中不释放引擎）；真机 DRC 40.7s 生图期间 `isForeground=true`(foregroundId=7001) + WakeLock `ACQ(partial)/REL` 完整，完成后服务自动停止、锁释放
@@ -129,20 +172,22 @@
 - 全屏图片查看器 ZoomableImage（2026-08-19→20，3 轮真机复测闭环）：双指捏合缩放（1-4×）+ 拖动平移 + 单击关闭；浅色主题遮罩；Modal 内 GestureHandlerRootView 重新 root；reanimated worklet 指令 + runOnJS；Gesture.Exclusive(composed, tap) 官方 PhotoZoom 范式
 
 ### 优化
+
 - 聊天卡片尾角下移 + footer 分隔线（2026-08-20，大王裁定，CHAT_UI_SPEC §20.2 v4.6）：消息卡片尾角从顶部移到底部——用户卡右下直角、回答系（正文/思考/进度卡）左下直角（Bubble·Message·ThinkingBubble·PendingIndicator 同族，四角显式拆分，roundBorder 逻辑镜像至顶部同侧角，组内最后一条形成同侧全直边）；AssistantTurnFooter 按钮栏与信息栏之间加 hairline 分隔横线（与动作槽同分隔语言）。tsc 零错 + jest 58 全绿 + 双机真机验证（小米 13 像素级行扫描 + K90 目视确认）
 - 浮层与横幅体系收敛（2026-08-20，B23，DESIGN_SPEC §12 契约 v3.5）：弹窗/横幅/提示面单一事实源——新建 `ui/OverlayCard` 居中弹窗底座（backdrop 遮罩 + surfaceElevated + xl 圆角 + elevation 8 + titleS + Actions 槽），4 命令式弹窗（ConfirmDialog/ModelSwitchDialog/ErrorReportDialog/IntentPicker）+ 业务弹窗（Memory×2/ImageGen 参数/RenameModal）全部迁移；新建 `ui/BannerBar` 横幅底座（语义色 12% wash + hairline + captionM + 统一 Meter），BannerRow/ActiveTaskBanner/DownloadBanner 收敛、进度条三套合一；删除休眠组件 ui/Modal、ui/Sheet、ui/Dialog 与自建 useToast（Paper Snackbar 唯一轻提示）；ErrorSnackbar 图标自绘化（vector-icons 清零）；emoji 清零（IntentPicker ✓/ActiveTaskBanner ⚠️⚙️/BenchResultCard/ToolScreen）；Sheet 底色 surfaceElevated；UpscalePanel 改走 components/Sheet；真机双模式走查 + 修复迁移回归（Sheet 必传 snapPoints，Android enableDynamicSizing 不可用）
 - 聊天页 UI 三处优化（2026-08-20，task-6ad，CHAT_UI_SPEC §20）：① 抽取 `AssistantAuthorRow` 单一事实源（模型徽章 + 意图胶囊），`assistant_turn` 与 `text` 消息共用，徽章行置于思考卡/正文卡之前（turn 级仅一次，根除多块路径潜在重复渲染）；② 圆角区分（用户卡右上直角 / 回答系卡片左上直角，Bubble·ThinkingBubble·PendingIndicator 同族同步，删 `borderRadius` 速记改四角显式）；③ 顶栏三控件水平等距（HeaderRight `gap:10`）；④ 补充：正文卡快捷图标间距 6→14 防误触。tsc 零错 + 相关 jest 套件全绿
-- DRC 能力 Skill 化挂测试链路（2026-08-19）：母仓新增 drc-remote-debug Skill（动作表/标准测试序列/观测三出口/CP 失败处置），挂啄木鸟测试专工链路 v1.1.2；DRC_SPEC 新增 §9 跨窗口智能体调用（最小提示词模板）；INDEX.md 登记 debug 模块（DRC_*）；DESIGN_SPEC B19 登记
-- DRC 远程调试能力（2026-08-19，src/debug/）：文件双通道（adb push 命令 → App 执行 → 结果/事件落盘）——AI 测试发送 actionId 直接驱动 App（nav.go/chat.send/imagegen.generate 等 9 个动作白名单 + zod 校验），读 events.jsonl/state.json 替代读屏幕；状态指南针（StateCompass 五字段：state/nextAction/label/evidence/terminal，engineStatus 增强）；CP 报错机制（errorRegistry 六模式 + errorReport 报告附指南针编号）；门控 __DEV__||__E2E__（prod release DCE 剥离 + DRC_BRIDGE marker 契约）；开发机工具 scripts/drc/（drc-push/drc-tail/drc-state）；规范文档 docs/DebugRemoteControl/（DRC_SPEC + COMPASS_REGISTRY）
-- DRC 方案补完（2026-08-19，Spec 对照审计）：动作注册表扩至 15 个（补 chat.newSession/models.load/models.unload/system.events/imagegen.loadDreamLite/imagegen.generateDreamLite——DreamLite 真机 39s 出图全链路验证，事件流完整记录 start→stage 25/50/75/100%→done）；事件流补 chat.turn_done（useChatSession run_finished）与 imagegen.stage（SD 1Hz 轮询 + DreamLite 采样回调）；独立 src/debug/stateCompass.ts（域级 STATE_MAP：engine/chat/imagegen/model + 未知降级 unknown）；门控改为 __E2E__||BuildInfo.isDevSupport（Hermes 预编译 __DEV__ 恒 false 真机实证）；drc-push.js 增 --params-file（Windows PowerShell 引号易错）；单测 5 套 37 用例（+stateCompass/新动作）
+- DRC 能力 Skill 化挂测试链路（2026-08-19）：母仓新增 drc-remote-debug Skill（动作表/标准测试序列/观测三出口/CP 失败处置），挂啄木鸟测试专工链路 v1.1.2；DRC*SPEC 新增 §9 跨窗口智能体调用（最小提示词模板）；INDEX.md 登记 debug 模块（DRC*\*）；DESIGN_SPEC B19 登记
+- DRC 远程调试能力（2026-08-19，src/debug/）：文件双通道（adb push 命令 → App 执行 → 结果/事件落盘）——AI 测试发送 actionId 直接驱动 App（nav.go/chat.send/imagegen.generate 等 9 个动作白名单 + zod 校验），读 events.jsonl/state.json 替代读屏幕；状态指南针（StateCompass 五字段：state/nextAction/label/evidence/terminal，engineStatus 增强）；CP 报错机制（errorRegistry 六模式 + errorReport 报告附指南针编号）；门控 **DEV**||**E2E**（prod release DCE 剥离 + DRC_BRIDGE marker 契约）；开发机工具 scripts/drc/（drc-push/drc-tail/drc-state）；规范文档 docs/DebugRemoteControl/（DRC_SPEC + COMPASS_REGISTRY）
+- DRC 方案补完（2026-08-19，Spec 对照审计）：动作注册表扩至 15 个（补 chat.newSession/models.load/models.unload/system.events/imagegen.loadDreamLite/imagegen.generateDreamLite——DreamLite 真机 39s 出图全链路验证，事件流完整记录 start→stage 25/50/75/100%→done）；事件流补 chat.turn_done（useChatSession run_finished）与 imagegen.stage（SD 1Hz 轮询 + DreamLite 采样回调）；独立 src/debug/stateCompass.ts（域级 STATE_MAP：engine/chat/imagegen/model + 未知降级 unknown）；门控改为 **E2E**||BuildInfo.isDevSupport（Hermes 预编译 **DEV** 恒 false 真机实证）；drc-push.js 增 --params-file（Windows PowerShell 引号易错）；单测 5 套 37 用例（+stateCompass/新动作）
 - 多玩法品牌标语（2026-08-19~20，大王钦定语）：「住进手机的开源 AI 伙伴——聊天、生图、玩乐、绘本、冒险，多种玩法全部离线运行在您的设备上」替换「部署大语言模型」旧定位；16 语言 about.description + README + APP_INTRO_COPY 三版式 + AGENTS.md + PRODUCT_SPEC §1.1 + GitHub 仓库 description 全链路同步
-- 开源边界清理（2026-08-19~20）：.qoder/settings.json 从全 git 历史清除（filter-repo）+ force push；scripts/aios、scripts/governance、scripts/sd35_lora、docs/adr、docs/_templates 及内部治理文档共 38 文件移除（-4552 行）；.gitignore 扩充 14 条防回潮（只开源工程，不开源开发工具）
+- 开源边界清理（2026-08-19~20）：.qoder/settings.json 从全 git 历史清除（filter-repo）+ force push；scripts/aios、scripts/governance、scripts/sd35_lora、docs/adr、docs/\_templates 及内部治理文档共 38 文件移除（-4552 行）；.gitignore 扩充 14 条防回潮（只开源工程，不开源开发工具）
 - 版本同步单点命令（2026-08-19~20）：scripts/bump-version.js 一处命令四处同步（.version/package.json/build.gradle/pbxproj，versionCode 自增 +1，同版本显式失败）；jest 5/5；AGENTS.md 发布流程改为「单点命令，禁止手工改」；git tag v2.0.0
 - 对外介绍同步音频 + 图像反推能力（2026-08-22，B31，APP_INTRO_COPY v1.2）：about.features 新增 2 条（图像反推提示词：看懂图片一键复刻再创作 / 端侧语音全链路：离线转写 + 语音合成朗读）×16 语言；开屏引导 S2 玩法清单扩展（「开口说、听它说」+「照片能放大 4 倍，还能反推成提示词再创作」）×14 语言；README 功能表新增图像反推行 + 语音行升级全链路 + 近期亮点/技术栈同步；README 新增「项目理念 / Why This Project」与「🕳️ 踩坑记录（节选）」——9 条真机坑以「坑是什么 + 我们的做法」两列呈现（TE int8 量化毁 hidden states→fp16 ONNX、sigmas NaN 黑图→VAE 缩放对齐、OpenCL 融合跳写→fusion 审计 + op 级 NaN 检查、512px VAE 内存墙→tiled、Z-Image fp16 溢出→按模型区分 GPU 策略、Adreno Vulkan 不可用→OpenCL、embedding 升 F32 超限→F16、HyperOS PSS 硬杀→4GB 安全预算、session 释放未 await→统一 await）+ 方法论（NaN 指纹跨设备对比），供端侧 AI 开发者参考；门禁：l10n:validate 全绿 + tsc 零错 + AboutScreen 3/3
 
 ## [2.0.0] - 2026-08-19
 
 ### 新增
+
 - fork 首个自主版本号（2026-08-19）：版本号告别上游 PocketPal AI 遗产（1.16.1）——产品已具备聊天/生图/玩具工坊/记忆绘本/TRPG 冒险/完全开源全新面目，按 semver 定为 2.0.0（versionCode 144）；同步确立版本机制：每次发版四处同步（.version / package.json / build.gradle / pbxproj）+ CHANGELOG 收编定版，开发迭代以构建时间戳区分
 - 聊天页八项体验升级（2026-08-20）：①意图会话级状态机——Session 新增 intent 列（schema v8），首轮 classifyIntent 定值落库后沿用，意图胶囊点按四态选择器为唯一写入口（system 语气注入/胶囊/快照同源）；②助手卡 chrome 双行合并——AssistantTurnFooter 行1 动作/行2 统一指标行（captionS + 数值 brandAccent 600 + `·` 分隔），TurnMetricsRow 删除（每卡一块 chrome）；③placeholder 单源决策表——engineStatus 状态中枢五级优先（含管家 loading 分支「正在加载管家模型…」）；④顶栏紧凑化——新建会话 EditBox→加号、双钮 36px 紧凑触区、右侧行 gap 2；⑤发送钮双态描边——不可用=透明底+outlineVariant 圆形描边（删外层 opacity 包裹）；⑥n_ctx 单一事实源+每模型预调——上下文不足弹窗改写 setModelNCtx（与生成设置页同存储自动同步），加载链按内存 ceiling 沿 CONTEXT_LADDER 预调最大可装档（一次预调持久化）；⑦模型用途标签体系——设置页「用途」多选 chips（写作/代码）写 capabilities，选型升级 listModelsForTask（用户标签>指纹>兜底）弹窗多候选单选；⑧快捷行日记/绘本/读屏裁定不加（各有唯一入口，加入口违锋利原则）
 - PSS 安全预算（2026-08-19 K90 真机血证）：n_ctx 每模型预调天花板取 min(内存 ceiling, PSS_SAFE_BUDGET 4GB)——厂商 PSS 看护（HyperOS 实测 ~6GB 硬杀）是进程存活真正天花板，估算为理论值宁少勿杀；启动审计 auditPerModelNCtxAgainstPss 自愈旧版预调写入的超限档；用户手调不受限（决策可见）
@@ -155,7 +200,7 @@
 - 消息卡片 footer 重新生成按钮（2026-08-18）：复用长按菜单 handleTryAgain 完整能力链（agent 运行中/无激活模型禁用）
 - 卸载保留用户开关（2026-08-18）：系统设置「卸载后保留聊天记录」（默认开；关 = 停止快照导出并删除已有快照）
 - 描边强化（2026-08-18）：抽屉搜索框 1px 描边 + 聚焦橙黄（primary）；聊天/生图顶栏模型胶囊加 primary 描边
-- 测试分发（2026-08-18）：仓库根产出 PocketChick-devpreview-*.apk + pocketchick-preset-models-*.zip（MODEL_MATRIX 全量 17 件，含 TESTER_GUIDE）
+- 测试分发（2026-08-18）：仓库根产出 PocketChick-devpreview-_.apk + pocketchick-preset-models-_.zip（MODEL_MATRIX 全量 17 件，含 TESTER_GUIDE）
 - 聊天输入语音输入（设备端 STT，2026-08-17）：发送按钮升级为「空输入显示麦克风 → 录音中变红色停止 → 识别结果实时填入 → 打字后恢复发送」状态机；基于 @react-native-voice/voice 3.2.4（patch-package 适配 AGP8 namespace），Android RECORD_AUDIO / iOS 麦克风权限说明；无语音识别服务的设备自动降级为纯发送按钮（真机实证）
 - 聊天输入第二行高度统一 36px（思考胶囊 / 发送 / 语音按钮同一基线，真机 bounds 验证一致）
 - 关于页标准版文案（多语 16 语言）：详细介绍段落 + 特性列表 + 开源说明
@@ -164,6 +209,7 @@
 - 模型目录双轨架构（ADR-0004 / B15）：HF 等平台下载的模型默认落应用专属规范目录（getExternalFilesDir/models，零权限、Play 合规）；设置页新增「模型目录」入口，自定义目录走系统目录选择器（SAF，只能选文件夹），默认注册 AIOS 共享目录（/sdcard/Documents/AIOS/models）续读存量模型
 
 ### 修复
+
 - 聊天页八项复查闭环（2026-08-20）：placeholder 决策表第 4 分支硬编码中文收口 l10n（chat.butlerReady 16 语，de/it/et 回退 en）；生成设置失焦显示与保存同源（读 getModelNCtx，修回跳）；GenerationSettingsScreen 测试模拟路径对齐 setModelNCtx 每模型覆盖（banner 不再改全局）；mock chatSessionStore.taskModelChoice 补 play 槽对齐真实 store；intentLoading 测试时间耦合修复（独白路径硬编码日期翻页即挂，改动态今日）
 - 真机反馈五项修复（2026-08-18 二轮）：关于页构建时间独立成行（不再与版本按钮同行溢出）；生图胶囊底色统一为 primary 12%（与聊天页同）；思考开关选中态黑底改标准橙黄底；图片编辑按钮空锚点致真机菜单不弹的根因修复（按钮即锚点，点按弹拍照/相册）
 - n_ctx 每模型独立（2026-08-18）：ModelStore.perModelNCtx 覆盖表（持久化）+ 加载链按模型取生效值；生成设置上下文输入框操作活动模型（标签带模型名）；聊天页状态栏 ctx 胶囊点按直达生成设置
@@ -174,7 +220,7 @@
 - 关于页硬编码中文 MIT 署名行 l10n 化（此前英文界面也显示中文）
 - 生成设置参数标签硬编码大写英文（TEMPERATURE/N PREDICT 等）改为多语言文案
 - zh_Hant 补齐 modelDirs 10 key（模型文件夹繁中，缺失清零）
-- llama.rn 原生库缺失防御（2026-08-17）："JSI bindings not installed" 根因 = llama.rn 0.12.7 上游发布不一致（npm 包代码期望 librnllama_jni_*.so，官方 prebuilt 无 _jni），jniLibs 被重装依赖删除后无法自动恢复；新增 scripts/restore-llamarn-jnilibs.js（三级恢复：.tmp 滚动备份 → gradle 构建缓存 → release APK 纯 Node zip 提取）挂接 postinstall，丢失自动修复或显式报错
+- llama.rn 原生库缺失防御（2026-08-17）："JSI bindings not installed" 根因 = llama.rn 0.12.7 上游发布不一致（npm 包代码期望 librnllama*jni*\*.so，官方 prebuilt 无 \_jni），jniLibs 被重装依赖删除后无法自动恢复；新增 scripts/restore-llamarn-jnilibs.js（三级恢复：.tmp 滚动备份 → gradle 构建缓存 → release APK 纯 Node zip 提取）挂接 postinstall，丢失自动修复或显式报错
 - 聊天记录卸载丢失（B14）：WatermelonDB JSI 私有库快照机制——进后台导出到共享存储，启动时私有库缺失自动恢复；聊天记录与模型目录同一持久化策略，仅用户主动清数据才丢
 - 存储权限设计重做（B13）：以「目录实际可读」判定权限（PermissionsAndroid.check 对 MANAGE 特殊权限不可靠），系统请求优先、永不短路扫描，修复「已授权仍扫不到模型」
 - 聊天顶栏图标尺寸统一（B10）：HeaderRight 24→20px 与左侧对齐，新增 iconSize token（xs14/s16/m20/l24/xl28）
@@ -182,6 +228,7 @@
 ## [v1.16.1] - 2026-08-15
 
 ### 新增
+
 - 本地生图能力（P5 系列）：DreamLite 端侧图像生成引擎（ONNX 导出，4 步 flow-matching 蒸馏，1024px 输出，纯 JS PNG 编码），支持文生图与图像编辑（VAE Encoder 条件路径）
 - SD3.5 / Z-Image-Turbo 模型入场（实验性徽标），模型管理 Manifest 声明式链路
 - 模型智能调度（P4）：常驻管家 + 任务驱动 + 聊天内闭环生图，冷却期防错机制 + 内存预设 n_ctx
@@ -194,6 +241,7 @@
 - 启动恢复上次会话、顶栏模型下拉入口
 
 ### 修复
+
 - DreamLite 纯黑图回归：sigmas NaN 溢出根因 + VAE 缩放因子对齐官方 1024
 - Vulkan 真机崩溃（Adreno 双后端 hang）→ OpenCL 正确路径 + 失败回退 CPU
 - TE 编码后内存释放（降低生成峰值内存），ONNX/Llama session 释放 await
@@ -204,21 +252,25 @@
 - 记忆提取真机复测修复（剥离 BOS / 禁用 thinking / JSON 兜底）
 
 ### 性能
+
 - OpenCL GPU 加速实证：SD3.5 从 CPU 2h+ 提速到 10.7 分钟（Adreno）
 - 全 App 循环动效收口 JS driver（弱引用溢出崩溃根治：推拉反转架构替代节流补丁）
 - TE 编码后释放降内存峰值
 
 ### 技术架构
+
 - DreamLite 端侧接入全闭环：真实文生图（ONNX TE + llama.rn tokenize + ORT UNet）+ 编辑落地
 - 生图引擎单通道 + 同槽互斥（EngineMutex），backend 单点决策上 manifest
 - sd.cpp 源码入库（1616 文件，含 ggml）替代 gitlink
 - 聊天任务调度链抽 useChatScheduler hook，ChatScreen 瘦身
 
 ### 文档
+
 - 产品/技术文档体系：CHAT_UI_SPEC、IMAGEGEN_UI_SPEC、MODEL_MATRIX（模型选型唯一事实源）、MASTER_LOG 主日志（§15 改名 SOP / §18 窗口闭环）、APP_INTRO_COPY（介绍文案库）
 - 装机 SOP 定稿：备用机黄金标准核对清单 + 换机铁律 + 存储授权 EACCES 根因
 
 ### 其他
+
 - onnxruntime 锁版本 1.28.0 防动态版本漂移
 - 生图模型与 LLM 列表双层过滤隔离（Manifest 文件集合）
 - 撤回 DeepSeek Hermes 错误登记，模型清单管辖边界明确

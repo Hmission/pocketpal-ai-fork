@@ -3,17 +3,17 @@ doc_id: POCKETPAL_IMAGEGEN_QUEUE_SPEC
 module: imagegen
 type: spec
 status: active
-version: "0.5"
+version: "0.6"
 created: "2026-08-27"
-updated: "2026-09-07"
+updated: "2026-09-08"
 relates: [POCKETPAL_IMAGEGEN_UI_SPEC, POCKETPAL_STARMAP_DOMAINS, ONDEVICE_VIDEO_GEN_ANALYSIS]
 ---
 
 <!-- D-FORMAT:v3 -->
 
-# 生图队列（任务购物车）设计规格 — IMAGEGEN_QUEUE_SPEC v0.5
+# 生图队列（任务购物车）设计规格 — IMAGEGEN_QUEUE_SPEC v0.6
 
-**状态**：active（P0/P1 已实现并平板实机验收通过，P2 待夜间耐久；DECISION D1-A/D2-A/D3-A/D4-A 定稿） | **版本**：0.5 | **更新**：2026-09-07
+**状态**：active（P0/P1 已实现并平板实机验收通过，P2 待夜间耐久；DECISION D1-A/D2-A/D3-A/D4-A 定稿） | **版本**：0.6 | **更新**：2026-09-08
 
 > v0.4（2026-09-07 W4 文档-代码对账）：按代码现状回写四处失真——§六.2 判据由「三条件」改为实际**四条件 + 票据制**、§六.4/6.5 补 W1 失败可见性收口（超时真 cancel / 停止有界确认）、§九 队列表迁移版本 3→**10**、§十 互斥行为由「冲突显式报错」改正为**自动抢占**；另删除 frontmatter 不存在的 `IMAGEGEN_UI_SPEC` 悬空 relates。
 >
@@ -21,6 +21,12 @@ relates: [POCKETPAL_IMAGEGEN_UI_SPEC, POCKETPAL_STARMAP_DOMAINS, ONDEVICE_VIDEO_
 > （`GenActionBar` 不再接已格式化字符串 prop，组件内兜底删）与 QueuePanel 零消费的 `totalDraws`
 > prop 删除；队列面板条目徽章改与模型下拉同源显示族名（旧行直接打 `sd3` 等内部键）。均为接口/文案
 > 面收口，状态机与执行器零改动。
+>
+> v0.6（2026-09-08 §168 项 38 根治）：§九 恢复语义**重写**——新增 §9.1 通道归属表（谁能被收养）、
+> §9.2 收养判据（**产物落盘证据 + 严格唯一**，不用心跳超时猜）、§9.3 队列侧不变项、§9.4 失败文案
+> 与实测对齐（旧文案“被强制退出”与 `pidof` 不变相矛盾）。同时推翻两处旧推定：项 38 原描述的
+> “ONNX 产物可能已落盘”（写盘在 JS 侧，不成立）与 §167 草图的 `g_gen_in_flight`+`tickMs` 凭据
+> （只能证“活着”不能证“会落地”，且必带超时兜底，已作废）。
 
 > **定位**：为「任务购物车（连抽队列）」能力提供决策完备的设计规格——数据、状态机、执行器、UI、持久化、错误登记、迭代路线。生图页 UI 细则仍以 `POCKETPAL_IMAGEGEN_UI_SPEC` 为准，本卷只增补队列专属设计。
 
@@ -148,8 +154,66 @@ loop:
 
 - 队列表 `image_gen_queue`（WatermelonDB）：QueueItem 全字段 + 队列元（state 不持久化，仅 planning 态可水合并由用户手动开始）。
 - **迁移机制已验证（2026-08-27）/ 版本已按代码改正（2026-09-07 W4）**：`src/database/schema.ts`（tableSchema 追加）+ `src/database/migrations.ts`（`schemaMigrations` + `createTable`）。本卷早期把队列表写作 `toVersion: 3`（规划值，当时仅到 v2），**实际落地是 `toVersion: 10`**（`schema.ts` 当前 version 10；同卷 §十三 S3 记的也是 v10——卷内自相矛盾已按代码改正）+ model 类 + collection getter。与 image_gen_tasks 同构，自动获得 B14 整库快照保护（prepareSharedStorage + scheduleDbSnapshot 复用，零新增）。
-- 恢复语义：水合时 `running/stopping` 一律回 `planning`（幽灵队列治理，与画廊 running→failed 同款显式标记）；当前抽已在画廊落 failed('生成中断')（复用幽灵任务治理）。
+- 恢复语义（**v0.6 重写：按“产物证据”收养，不再一律判死**）：见 §9.1–§9.4。旧写法
+  “水合时 `running/stopping` 一律回 `planning`，当前抽在画廊无条件落 failed('生成中断')”
+  在真机上会误伤（项 38，MASTER_LOG §164 实捕：生成中退桌面约 40 分钟后回 app，任务显示
+  「生成失败/生成中断」而 **pid 全程未变**）。
 - 条目 `pending` 保留（抽数不丢失），用户重新点开始续跑。
+
+### 9.1 通道归属：谁能被收养，谁不能（实测，不是推定）
+
+运行时重建会摧毁旧 JS 续体（continuation；bridgeless RN 下最后一个 ReactContext 销毁即销毁 JS 运行时；
+证据：本卷的 ghost 治理代码能再跑一次，本身就说明 store 是新建的）。因此判定只看一件事：
+**产物是由 native 写盘还是由 JS 写盘**——JS 已死时，JS 侧的后续代码不可能执行。
+
+| 通道 | 引擎调用方 | **产物写盘方** | 运行时重建后可收养？ |
+|---|---|---|---|
+| txt2img（SD3.5/Z-Image/Klein/Krea2/Wan） | Kotlin `Thread{}` → `nativeTxt2img` | **native**（`ImageGenJNI.cpp:664  stbi_write_png(outStr,…)`） | ✅ 能——线程与写盘不依赖 JS |
+| DreamLite（ONNX）/ 超分 / 反推 / TTS | JS 直调 `onnxruntime-react-native` 会话 | **JS**（`encodePng` + RNFS 写入） | ❌ 不能——推理线程可继续，但无人把结果落盘 |
+
+> 本表同时**推翻项 38 原描述里的一句推定**：“原生/ONNX 线程其实还在跑，**产物可能已落盘**
+> 却对用户显示假失败”——对 DreamLite（即当时实捕的那一例）**不成立**：写盘在 JS 侧，
+> 运行时一重建这条链就断了。当时那次的真实缺陷是**文案说谎**（见 §9.4），不是误杀好产物。
+
+### 9.2 收养判据：产物落盘证据，不用心跳阈值猜
+
+**已作废的草图**（MASTER_LOG §167 曾登记）：“JNI 加 `g_gen_in_flight` + 快照带 `tickMs`，
+水合时先问存活”——它被 §9.1 的归属表推翻：① 凭据只能证明“还活着”，不能证明“结果会落地”
+（JS 通道活着也写不出图）；② 要拿它当凭据就得定一个心跳超时阈值，而 VAE 解码期本就无 step
+回调（VIDEO_GEN_SPEC §3.5）→ 又回到“猜”，违反不兜底红线。**收养需要的是产物证据，不是活着证据。**
+
+水合时对每条 `status='running'` 的画廊条目：
+
+1. 取 `outDir`（`RNFS.DocumentDirectoryPath/aios_images`）内 **`mtime >= 该条 ts` 且
+   `size > 0`** 的 `gen_*.png` 候选集（该前缀只由 native 通道写，天然排除 JS 通道产物）。
+   `mtime` 在库类型上是 `Date | null`——**取不到时刻就不算证据**（宁可不收，不拿（1970）或
+   当前时刻兜底）；路径字段是 `path`（全路径）而非 `filepath`，旧写法误用后者已被 tsc 拒下。
+2. **严格唯一才收养**：恰好 1 条 running × 恰好 1 个候选 → 收养；否则不猜，一律标失败。
+   互斥链保证同一时刻只有一抽在跑（`engineMutex.acquire('image')` + 队列串行），所以唯一
+   就是真；出现多候选正说明状态已不可信，宁可不收。
+3. 收养动作：复用任务完成的**同一个变更原语**（内存 + DB 双写），不新建第二套完成路径。
+   **已知坑（实测前置防）**：本判定跑在 `ensureReadyImpl` 内部，而 `patchTask`/`finishTask`/
+   `failTask` 都会 `await this.readyPromise`——那个 promise 正是本次尚未 settle 的执行，
+   调用即**自锁**（旧代码直接摸 repository 就是这个因由）。收法：抽出无门禁原语
+   `applyTaskPatch(taskId, patch)`，`patchTask` = 就绪门禁 + 该原语，幽灵分支直接用原语，
+   全仓仍只有一处“任务状态双写”实现。
+   `durationMs = 文件 mtime - 条目 ts`（真实测量，非估算）；未命中→标失败，文案按 §9.4 分通道说真话。
+
+### 9.3 队列侧恢复（不变）
+
+队列 `running/stopping` 仍一律回 `planning`（队列 state 本来就不持久化）；差别只在于：
+当前抽的**画廊条目**不再无条件判死，而是先过 §9.2 的产物证据门——否则会出现“队列回
+planning 而当前抽已出图”的双事实源。`pending` 条目语义不变（抽数不丢）。
+
+### 9.4 失败文案必须与实测一致（本项的真正缺陷面）
+
+旧文案「应用在上次生成中被**强制退出**，任务未完成」与取证矛盾：`pidof` 前后相同、
+无 tombstone——真实发生的是 **MIUI 回收了 Activity → RN 运行时重建**，进程从未被杀。
+按通道改写为可核实的陈述（不得写未经观察的因果）：
+
+- JS 通道（DreamLite/超分/反推/TTS）：「界面被系统回收，本次生成未完成（推理结果无法落盘），请重试」；
+- native 通道且无产物：「界面被系统回收，本次生成未完成（未找到产物文件），请重试」；
+- 真孤儿（进程确实被杀重启：`createdAt` 早于本进程启动时间且无产物）：才允许用“上次运行中被终止”口径。
 
 ## 十、错误登记（守卫指南针 CP-APP 映射）
 
