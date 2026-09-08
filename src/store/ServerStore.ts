@@ -21,6 +21,15 @@ const KEYCHAIN_SERVICE_PREFIX = 'pocketpal-server-';
 /** Pre-configured server templates for quick setup. */
 export const SERVER_TEMPLATES = [
   {
+    label: '百炼（阿里 DashScope）',
+    serverType: 'openai' as const,
+    // 专属域不带 /v1：normalizeUrl 会统一处理；与母仓 config/sub_brain.py 中 SUB_BRAIN_BASE_URL 对齐。
+    // 若换业务空间需手动改此处——设计意图：模板是快捷方式，不代管凭证。
+    url: 'https://ws-v6yhmq47rgvfwjco.cn-beijing.maas.aliyuncs.com/compatible-mode',
+    description:
+      'qwen3.8-flash（推荐）/ qwen3.8-max — 需业务空间 sk- 密钥 + ws-*.maas 专属域',
+  },
+  {
     label: 'DeepSeek',
     serverType: 'openai' as const,
     url: 'https://api.deepseek.com/v1',

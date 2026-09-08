@@ -81,10 +81,12 @@ relates: [POCKETPAL_WORKSPACE_SPEC, POCKETPAL_INNERLIFE_SPEC, POCKETPAL_PRODUCT_
 | 注入 | `rituals.buildTodayState` 开场注入「【女妖身份】…」段（**注入源=IDENTITY.md 直读**，非自检结果；冷启动首次会话首轮可见） |
 | 验收 | 删 IDENTITY.md → 冷启写 anomaly 且重建种子；tsc/jest 全绿 |
 
-### Wave B · 门禁与指南针（✅ 已落地 + 🟡 消费链复查修正 v1.2）
+### Wave B · 锚句可观测与指南针（✅ 已落地 + 🟡 消费链复查修正 v1.2）
+
+> **2026-09-08 G0-3 措辞收紧**：端侧 RN 无 PreToolUse 等价物，无硬阻断能力——契约由「门禁」降格为「锚句新鲜度可观测」，不改变已落地代码，只纠正 SPEC 用词与实现不符的问题。
 | 项 | 契约 |
 |---|---|
-| `session_anchor` 端侧化 | ✅ `aiosCore/wakeCheck.ts` 内置：启动写 `database/session_anchor.json`（TTL 3600s）+ `isAnchorFresh`；✅ 消费链已接线（v1.2）：scheduler 生图前置过期软检查（`gate.stale` 打点不阻断，G-4） |
+| `session_anchor` 端侧化 | ✅ `aiosCore/wakeCheck.ts` 内置：启动写 `database/session_anchor.json`（TTL 3600s，口径来源：母仓 `.qoder/hooks/gate-guard.py` 的 `ANCHOR_MAX_AGE=3600`，非旧版 `.cursor` 的 600）+ `isAnchorFresh`；✅ 消费链已接线（v1.2）：scheduler 生图前置过期软检查（`gate.stale` 打点不阻断，G-4）**——可观测，非硬阻断** |
 | CP 注册表 | ✅ CP-APP-014/015/016 登记 `COMPASS_REGISTRY.md` §2 + `errorRegistry.ts`；✅ 消费链已接线（v1.2）：AgentRunner tool.error 附 CP 编号（matchFirstError，G-5）。⚠ **v1.2 此处曾误判 `errorReport.ts` 为幽灵文件并删除其引用——实为误判**：该文件真实存在（`src/utils/errorReport.ts`，135 行，首提交 `0aa53d9` 2026-08-18，早于 v1.2 复查），且有三个生产消费者（`imageGenStore.ts` / `useChatSession.ts` / `AudioWorkshopTab.tsx`）。CP 导航实际有**两条并行出口**，二者同读 `matchFirstError` 单一模式表：chat/图件报错走 `errorReport.buildErrorReport`，工具错误走 `AgentRunner.errorOutcome`（2026-09-07 全量排查纠正） |
 | 验收 | 真机制造 3 类故障，错误报告均带 CP 三字段（待真机口测） |
 
@@ -92,7 +94,7 @@ relates: [POCKETPAL_WORKSPACE_SPEC, POCKETPAL_INNERLIFE_SPEC, POCKETPAL_PRODUCT_
 | 项 | 契约 |
 |---|---|
 | 轻量图谱 | ✅ `src/services/aiosCore/kg.ts`：**两实体图**（`KgNode.type: 'memory' \| 'conv'`，即记忆条目/会话；v1.2 曾误写为三实体，2026-09-07 按代码更正）（工具事件挂后续波次，无消费方不接线）落 `database/kg.json`（nodes+edges 单文件）；搜索「先问谱后 grep」——`searchMemory` 入口加 kg.recall 优先层（kg 命中即先返，不足再走 FTS5/全文） |
-| 星图快照 | ✅ `src/services/aiosCore/starmap.ts`：能力面（TalentRegistry 引擎清单）/数据面（workspace 目录统计）/健康面（engineStatus+模型数）三维 → `logs/starmap_snapshot.json`；冷启动采集一次 |
+| 星图快照（被动记录） | ✅ `src/services/aiosCore/starmap.ts`：能力面（TalentRegistry 引擎清单）/数据面（workspace 目录统计）/健康面（engineStatus+模型数）三维 → `logs/starmap_snapshot.json`；冷启动采集一次。**2026-09-08 注明**：端侧星图当前是被动记录（「我有什么」），母仓星图的核心用法是主动定界（限制 LLM 可见范围）——定界能力作为 Wave C+ 独立目标，见 G3 方案 |
 | 验收 | 问谱优先真机生效（待真机口测）；快照 5 次冷启一致 |
 
 ### Wave D · 生长四拍闭环（心智层演化）
@@ -131,7 +133,7 @@ relates: [POCKETPAL_WORKSPACE_SPEC, POCKETPAL_INNERLIFE_SPEC, POCKETPAL_PRODUCT_
 
 | Gap ID | 现象 | 补齐路径 | 状态 |
 |--------|------|----------|------|
-| CORE-1 | 母仓 KG 85K 节点在手机不可搬 | 只搬协议：**两实体**轻量图（`kg.ts` 只落 `memory` / `conv`；母仓的第三类实体未搬，2026-09-07 W4 按代码更正——旧行写「三实体」与 §Wave C L92 已改正的口径卷内矛盾）+ 问谱优先层（kg.ts+searchMemory 接线） | ✅ 已落地；工具事件实体挂后续波次（无消费方不接线） |
+| CORE-1 | 母仓 793 活体引擎全协议（18 关系族 / ~90 relation / 10 类节点 / 5,589 节点 / 26,180 边）在端侧无消费方且 typed 校验需 LLM 驱动，不可搬 | 只搬协议：**两实体**轻量图（`kg.ts` 只落 `memory` / `conv`；母仓的第三类实体未搬，2026-09-07 W4 按代码更正——旧行写「三实体」与 §Wave C L92 已改正的口径卷内矛盾）+ 问谱优先层（kg.ts+searchMemory 接线）。真实不可搬原因不是规模（5.5K），是 18 关系族 typed 双端校验需 LLM 驱动且端侧无对应消费方 | ✅ 已落地；工具事件实体挂后续波次（无消费方不接线） |
 | CORE-2 | 门禁硬执行需跨 Native 权限面 | 协议 + 软提醒已落地；isAnchorFresh 生图前置软检查（gate.stale 打点不卡读）；CP 导航有**两条并行出口**（与 §Wave B L86 同口径，v1.3 补齐）：chat/图件报错→`errorReport.buildErrorReport`，工具错误→`AgentRunner.errorOutcome`，二者同读 `matchFirstError` 单一模式表 | ✅ 已落地（v1.2 消费链闭环）；硬执行面（付费前置确认）留真机口测后按需收口 |
 | CORE-3 | 义肢离线时任务退化 | 分级函数唯一真源：probe 先行→resolveTaskEngine 裁决→limb_offline 显式告知（不静默） | ✅ 已落地（v1.2 真接线） |
 | CORE-4 | 血统导入依赖电脑 adb | `scripts/aios/import_identity.py` ⏳ 待建（Wave A 表格口径已统一）；冷启动自愈重建种子后非必需，身份种子自含母仓来源行 | ⏳ 待建（低优先，自愈闭环已覆盖） |

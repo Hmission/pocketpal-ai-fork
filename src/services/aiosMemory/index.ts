@@ -12,6 +12,7 @@ import {AIOS_MEMORIES_DIR, AIOS_USER_FILE} from '../../utils/paths';
 import {modelStore} from '../../store';
 import {promptWriter} from '../promptWriter';
 import type {IntentKind} from './rituals';
+import type {CompletionEngine} from '../../utils/completionTypes';
 
 export interface AiosMemory {
   id: string;
@@ -23,6 +24,21 @@ export interface AiosMemory {
   attrSlot?: string;
   /** 9D 轻量裁决：被更新版本替代时记录新条目 id（supersede 链） */
   supersededBy?: string;
+  /**
+   * G4-3：抽取来源留痕。
+   * limb=百炼义肢在线抽取（JSON schema 约束高质）；
+   * local=本地引擎且解析未走兜底；
+   * local_fallback_parse=本地引擎走了正则兜底（JSON 不稳定）；
+   * limb_offline_local=意图是义肢但义肢不可用降级本地。
+   */
+  provenance?: 'limb' | 'local' | 'local_fallback_parse' | 'limb_offline_local';
+  /**
+   * G3-1：9D 记忆维度。允许值对齐母仓 nine_d_context_injector.py 的 12 维总线：
+   * D1(身份基底) D2(态势感知) D3(领域知识) D4(伤疤记忆) D5(链路上文)
+   * D6(知识检索) D7(大王锚定) D8(演化谱系) D9(任务图谱) D_CONT(连续性) D_GOV(治理)
+   * 空字串=通用。未赋值则为 undefined，不破坏现有序列化。
+   */
+  dimension?: string;
 }
 
 const FILE = `${AIOS_MEMORIES_DIR}/aios_memories.json`;
@@ -120,6 +136,7 @@ export function scoreMatch(userText: string, memory: AiosMemory): number {
 export async function addMemory(
   type: AiosMemory['type'],
   content: string,
+  provenance?: AiosMemory['provenance'],
 ): Promise<void> {
   const trimmed = content.trim();
   if (!trimmed) {
@@ -150,6 +167,7 @@ export async function addMemory(
     keywords: generateKeywords(trimmed),
     ts: Date.now(),
     ...(attrSlot ? {attrSlot} : {}),
+    ...(provenance ? {provenance} : {}),
   });
   await save(memories);
   console.log(
@@ -378,12 +396,24 @@ const EXTRACTION_SCHEMA = {
 };
 
 /**
- * \u5bf9\u8bdd\u7ed3\u675f\u540e\u7528\u672c\u5730\u6a21\u578b\u63d0\u53d6\u8bb0\u5fc6\uff08fire-and-forget\uff0c\u4e0d\u963b\u585e UI\uff09\u3002
- * \u4f7f\u7528 grammar \u7ea6\u675f JSON \u8f93\u51fa\uff0c\u6839\u6cbb\u5c0f\u6a21\u578b\u4ea7 JSON \u4e0d\u7a33\u5b9a\u3002
+ * 对话结束后用本地模型提取记忆（fire-and-forget，不阻塞 UI）。
+ * 使用 grammar 约束 JSON 输出，根治小模型产 JSON 不稳定。
+ *
+ * G4-1/G4-2：接受可选的 `opts` 参数——
+ *   engine: 调用方（scheduler）传入已裁决的引擎；未传则按现有回退链。
+ *   provenance: 'limb'（百炼义肢）/ 'local'（本地引擎），由 scheduler 注入。
+ * 函数内部追踪解析路径：走了正则兜底时自动覆盖为 'local_fallback_parse'。
  */
+
+export interface ExtractOpts {
+  engine?: CompletionEngine;
+  provenance?: 'limb' | 'local' | 'limb_offline_local';
+}
+
 export async function extractAndSaveMemories(
   userText: string,
   assistantText: string,
+  opts?: ExtractOpts,
 ): Promise<void> {
   if (extracting) {
     return;
@@ -394,11 +424,12 @@ export async function extractAndSaveMemories(
   if (modelStore.inferencing) {
     return;
   }
-  // 提取引擎：优先当前对话大模型；管家直答模式下（modelStore.engine 为空，
-  // P1 新语义 chitchat 走管家）回退到管家引擎——否则记忆提取永不触发。
-  // （P2 真机复测 2026-08-17 修复：提取小任务 1B 管家足以胜任）
+  // 提取引擎：调用方 scheduler 注入的已裁决引擎优先（G4-1）；
+  // 未注入时按现有回退链：当前对话引擎 → 管家引擎（管家模式下 engine=null）。
   const engine =
-    modelStore.engine ?? (promptWriter.isLoaded ? promptWriter : null);
+    opts?.engine ??
+    modelStore.engine ??
+    (promptWriter.isLoaded ? promptWriter : null);
   if (!engine) {
     return;
   }
@@ -427,15 +458,17 @@ export async function extractAndSaveMemories(
         }
       },
     );
-    // grammar 约束保证合法 JSON，直接解析（删除正则回退）
-    // 2026-08-12 真机复测：本地 llama.rn 引擎不识别 OpenAI 式 response_format
-    // json_schema，输出会带 <s> BOS 前缀/围栏 → 解析前剥离非 JSON 头尾。
+    // grammar 约束保证合法 JSON，直接解析
+    // 本地 llama.rn 引擎不识别 OpenAI 式 response_format json_schema，
+    // 输出会带 BOS 前缀/围栏 → 解析前剥离非 JSON 头尾。
     const jsonText = output
       .trim()
       .replace(/^<s>\s*/i, '')
       .replace(/^```(?:json)?\s*/i, '')
       .replace(/```\s*$/s, '');
     let parsed: any;
+    // G4-2：追踪是否走了正则兜底，影响最终 provenance 值
+    let usedFallbackParse = false;
     try {
       parsed = JSON.parse(jsonText);
     } catch {
@@ -445,17 +478,26 @@ export async function extractAndSaveMemories(
       const last = jsonText.lastIndexOf('}');
       if (first >= 0 && last > first) {
         parsed = JSON.parse(jsonText.slice(first, last + 1));
+        usedFallbackParse = true;
       } else {
         throw new Error('no JSON object found in extraction output');
       }
     }
+    // G4-2 provenance 终裁：
+    //   usedFallbackParse → 'local_fallback_parse'（本地引擎解析不稳定）
+    //   opts.provenance → scheduler 注入的引擎来源
+    //   opts 未注入 → modelStore.activeRemoteBinding ? 'limb' : 'local'
+    const effectiveProvenance: AiosMemory['provenance'] = usedFallbackParse
+      ? 'local_fallback_parse'
+      : (opts?.provenance ??
+        (modelStore.activeRemoteBinding ? 'limb' : 'local'));
     const items = Array.isArray(parsed.memories) ? parsed.memories : [];
     for (const item of items.slice(0, 3)) {
       if (item && typeof item.content === 'string' && item.content.trim()) {
         const type = ['fact', 'episode', 'insight'].includes(item.type)
           ? item.type
           : 'episode';
-        await addMemory(type, item.content);
+        await addMemory(type, item.content, effectiveProvenance);
       }
     }
     // Refresh USER.md from fact memories after extraction

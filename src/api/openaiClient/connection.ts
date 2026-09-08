@@ -69,7 +69,13 @@ export async function fetchModelsWithHeaders(
 
     if (!response.ok) {
       if (response.status === 401) {
-        throw new Error('Unauthorized: Invalid or missing API key');
+        // G1-3: 铁律 8.2 实证——百炼两套体系 key 与域名必须配套。
+        // 公共域 dashscope.aliyuncs.com 对业务空间 sk- 密钥均返回 401。
+        // 诊断文案而非逻辑分支：不建专属适配器，不自动切换域名。
+        const hint = serverUrl.includes('dashscope.aliyuncs.com')
+          ? ' \u2014 \u767e\u70bc\u4e1a\u52a1\u7a7a\u95f4\u5bc6\u94a5(sk-) \u914d\u516c\u5171\u57df\u5747\u8fd4\u56de 401\uff1b\u9700\u6539\u4e3a ws-*.maas.aliyuncs.com \u4e13\u5c5e\u57df'
+          : '';
+        throw new Error(`Unauthorized: Invalid or missing API key${hint}`);
       }
       throw new Error(
         `Server error: ${response.status} ${response.statusText}`,
@@ -239,6 +245,13 @@ export async function detectServerType(
     }
   } catch {
     // Probe failed — not Ollama
+  }
+
+  // 4. G2-2: 百炼专属域判据。URL 含 maas.aliyuncs.com 即判 openai 型，
+  // 不需探测响应内容（专属域不支持 GET / 探测）。
+  // 不建专属适配器，只标注 serverType 让 buildReasoningPayload 正确分支。
+  if (serverUrl.includes('maas.aliyuncs.com')) {
+    return 'openai';
   }
 
   return '';

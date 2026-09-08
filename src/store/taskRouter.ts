@@ -1,5 +1,5 @@
 /**
- * TaskRouter — 任务路由（规则快筛，锋利不臃肿）
+ * 任务路由（规则快筛，锋利不臃肿）
  *
  * 只"判断"不"执行"：把用户输入分类为任务信号，调度执行由调用方
  * （ChatScreen wrappedSendPress）受控完成——模型/路由不直接驱动 native。
@@ -187,4 +187,43 @@ export function resolveTaskEngine(
     return 'local-4b';
   }
   return 'local-zero'; // chitchat：管家/常驻
+}
+
+// ─── 星图定界：任务类型 → talent 范围（G3-3，AIOS_CORE_SPEC Wave C+）───
+
+/**
+ * 星图定界的端侧形态：母仓星图本质是“限制 LLM 可见上下文”，端侧按任务类型裁剪 talent。
+ *
+ * 返回 null = 不限制（当前 Pal pact.talents 全部可用）；
+ * 返回数组 = 只有列出的 talent 才注入模型。
+ *
+ * 映射依据 POCKETPAL_STARMAP_DOMAINS.md 各域职责：
+ * - image：生图独立链路，不走 AgentRunner → null（不经过 talent 调度）
+ * - play：玩具箱专属（render_html / read_html）
+ * - adventure：冒险状态管联 + 记忆搜索
+ * - write：写作域工具族（writing_doc / read_html）+ 通用（web_search / memory_search / note_save）
+ * - code：代码域工具族（render_html / read_html / calculate）
+ * - chitchat：null（当前不通过 AgentRunner 走工具链）
+ */
+export function talentScopeForTask(task: TaskKind): string[] | null {
+  switch (task) {
+    case 'play':
+      return ['render_html', 'read_html'];
+    case 'adventure':
+      return ['adventure_state', 'search_memory'];
+    case 'write':
+      return [
+        'writing_doc',
+        'read_html',
+        'web_search',
+        'search_memory',
+        'note_save',
+      ];
+    case 'code':
+      return ['render_html', 'read_html', 'calculate'];
+    case 'image':
+    case 'chitchat':
+    default:
+      return null; // 不限制（image 不走 AgentRunner；chitchat 走管家无工具）
+  }
 }

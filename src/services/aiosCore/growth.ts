@@ -1,14 +1,18 @@
 /**
- * growth — 生长器官（AIOS_CORE_SPEC Wave D）：四拍迭代账本 + gap 清单 + 情绪台账
+ * growth — 生长器官（AIOS_CORE_SPEC Wave D）：三问迭代账本 + gap 清单 + 情绪台账
  *
  * 母仓协议：NV_YAO_GROWTH_ITERATION_SSOT（inspect→plan→upgrade→reflect 四拍）。
  * 端侧形态：全部落共享存储（AIOS_GROWTH_DIR / AIOS_LOGS_DIR），与 App 核心解耦——
  * 卸载重装不丢，wakeCheck 重新认领后继续长。
  *
- * 反射四问（母仓 §2.4 端侧化）：
- * ① 本轮是否看到了上一轮看不到的东西？
- * ② 是否有演化噪音在作祟？（讨好/过度谨慎/装成熟/交作业）
- * ③ 下一轮该审视什么？
+ * **2026-09-08 注释对齐代码实况（G0-4）**：母仓四拍 = 端侧三问 jsonl，母仓自身
+ * 的 growth_iteration.py 也是不调 LLM 的骨架版——端侧三问已对齐母仓实际水位。
+ * plan/upgrade 拍 = 待有消费方再加（非缺失，是锋利设计）。
+ *
+ * 反射三问（母仓 reflect 拍端侧化）：
+ * ① saw：本轮是否看到了上一轮看不到的东西？
+ * ② noise：是否有演化噪音在作祟？（讨好/过度谨慎/装成熟/交作业）
+ * ③ nextFocus：下一轮该审视什么？
  */
 import * as RNFS from '@dr.pogodin/react-native-fs';
 import {emit} from '../../debug/eventStream';

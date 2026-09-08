@@ -236,7 +236,11 @@ export async function streamChatCompletion(
         }
 
         if (xhr.status === 401) {
-          reject(new Error('Unauthorized: Invalid or missing API key'));
+          // G1-3 同源：铁律 8.2 诊断文案，不建专属适配器。
+          const hint = url.includes('dashscope.aliyuncs.com')
+            ? ' \u2014 \u767e\u70bc\u4e1a\u52a1\u7a7a\u95f4\u5bc6\u94a5(sk-) \u914d\u516c\u5171\u57df\u5747\u8fd4\u56de 401\uff1b\u9700\u6539\u4e3a ws-*.maas.aliyuncs.com \u4e13\u5c5e\u57df'
+            : '';
+          reject(new Error(`Unauthorized: Invalid or missing API key${hint}`));
         } else {
           reject(new Error(errorMessage));
         }
@@ -307,6 +311,28 @@ export async function streamChatCompletion(
       // Mirror llama.rn's shape: undefined when no tool_calls were
       // observed during the stream.
       const finalToolCalls = assembleFinalToolCalls(toolCallAcc);
+
+      // G1-2: 非流式响应 Content-Type 判型。若上游返回整包 JSON 而非 SSE 流，
+      // 所有 chunk 均被 SSE parser 丢弃（非 data: 前缀），fullContent 保持为空。
+      // 这不是兼容层——是**暴露失约**：Content-Type 没兑现流式承诺，我们从整包
+      // 里取内容而非静默返回空串（最难发现的失效形态）。
+      if (!fullContent) {
+        const ct = xhr.getResponseHeader?.('content-type') ?? '';
+        if (ct.includes('application/json')) {
+          try {
+            const data = JSON.parse(xhr.responseText);
+            const msg =
+              data?.choices?.[0]?.message?.content ??
+              data?.choices?.[0]?.text ??
+              '';
+            if (msg) {
+              fullContent = msg;
+            }
+          } catch {
+            // 不是合法 JSON：让下面的 result 携带空串，调用方自行判断
+          }
+        }
+      }
 
       // Build result
       if (signal?.aborted) {

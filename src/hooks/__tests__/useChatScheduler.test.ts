@@ -275,6 +275,7 @@ describe('useChatScheduler', () => {
     expect(mockExtract).toHaveBeenCalledWith(
       '我喜欢喝茶，最爱龙井',
       '管家回复',
+      {provenance: 'local'}, // G4-1：管家路径永远本地引擎
     );
     expect(mockAppendConv).toHaveBeenCalledWith(
       '我喜欢喝茶，最爱龙井',

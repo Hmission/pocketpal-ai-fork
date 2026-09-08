@@ -2111,3 +2111,110 @@ describe('streamChatCompletion reasoning payload', () => {
     await resultPromise;
   });
 });
+
+// ── G1 补丁的测试补充 ──
+
+describe('normalizeUrl（G1-1 /v1 幂等）', () => {
+  // helpers 已导出到 openaiClient，测试从转发入口取
+  const {normalizeUrl} = require('../openaiClient/helpers');
+
+  it('尾部斜杠剔除', () => {
+    expect(normalizeUrl('http://example.com/')).toBe('http://example.com');
+  });
+
+  it('尾部 /v1 幂等剔离（模板 URL 自带 /v1 不造成 /v1/v1）', () => {
+    expect(normalizeUrl('https://api.deepseek.com/v1')).toBe(
+      'https://api.deepseek.com',
+    );
+    // 拼接 /v1/models 时得到正确路径
+    expect(normalizeUrl('https://api.openai.com/v1') + '/v1/models').toBe(
+      'https://api.openai.com/v1/models',
+    );
+  });
+
+  it('/v1 + 尾斜杠 两个都剔', () => {
+    expect(normalizeUrl('https://api.deepseek.com/v1/')).toBe(
+      'https://api.deepseek.com',
+    );
+  });
+
+  it('不含 /v1 时原样不动', () => {
+    expect(normalizeUrl('http://localhost:11434')).toBe(
+      'http://localhost:11434',
+    );
+  });
+
+  it('百炼专属域不带 /v1 原样保留', () => {
+    const url =
+      'https://ws-v6yhmq47rgvfwjco.cn-beijing.maas.aliyuncs.com/compatible-mode';
+    expect(normalizeUrl(url)).toBe(url);
+  });
+
+  it('中间路径包含 /v1 但不结尾不被剔离', () => {
+    // /v1 只在路径尾部才剔，中间保留
+    expect(normalizeUrl('http://example.com/v1/api/v2')).toBe(
+      'http://example.com/v1/api/v2',
+    );
+  });
+});
+
+describe('streamChatCompletion G1-2：非流式 JSON 响应 Content-Type 判型', () => {
+  beforeEach(() => {
+    MockXHR.instances = [];
+    (global as any).XMLHttpRequest = MockXHR;
+  });
+
+  it('Content-Type=application/json 且 fullContent 为空时从整包 JSON 取内容', async () => {
+    const nonStreamingBody = JSON.stringify({
+      choices: [{message: {role: 'assistant', content: 'Hello from JSON!'}}],
+    });
+    const resultPromise = streamChatCompletion(
+      {model: 'test', messages: [{role: 'user', content: 'hi'}]},
+      'http://localhost:8888',
+    );
+    const xhr = MockXHR.instances[0];
+    xhr.simulateHeaders(200);
+    // 不设任何 SSE progress（fullContent 为空），直接设置 responseText 为非流式 JSON
+    xhr.responseText = nonStreamingBody;
+    // simulateHeaders 不设置 responseText，手动添加
+    // 关键：模拟响应头 Content-Type 为 application/json
+    (xhr as any).getResponseHeader = (name: string) =>
+      name === 'content-type' ? 'application/json' : null;
+    xhr.simulateLoad();
+    const result = await resultPromise;
+    expect(result.content).toBe('Hello from JSON!');
+    expect(result.text).toBe('Hello from JSON!');
+  });
+
+  it('有 SSE 流式内容时 Content-Type=application/json 不触发整包解析', async () => {
+    const resultPromise = streamChatCompletion(
+      {model: 'test', messages: [{role: 'user', content: 'hi'}]},
+      'http://localhost:8888',
+    );
+    const xhr = MockXHR.instances[0];
+    xhr.simulateHeaders(200);
+    xhr.simulateProgress(
+      'data: {"choices":[{"delta":{"content":"streaming"},"finish_reason":"stop"}]}\n\n',
+    );
+    xhr.simulateLoad();
+    const result = await resultPromise;
+    expect(result.content).toBe('streaming');
+  });
+
+  it('getResponseHeader 不存在（旧 mock）时不崩，返回空串', async () => {
+    // 验证 ?. 防护：即使 getResponseHeader 不存在也不报错
+    const resultPromise = streamChatCompletion(
+      {model: 'test', messages: [{role: 'user', content: 'hi'}]},
+      'http://localhost:8888',
+    );
+    const xhr = MockXHR.instances[0];
+    xhr.simulateHeaders(200);
+    // getResponseHeader 未定义，?. 应返回 undefined → 触发 ct = ''
+    xhr.simulateProgress(
+      'data: {"choices":[{"delta":{"content":"ok"},"finish_reason":"stop"}]}\n\n',
+    );
+    xhr.simulateLoad();
+    const result = await resultPromise;
+    expect(result.content).toBe('ok');
+  });
+});

@@ -1,4 +1,4 @@
-import {routeTask} from '../../store/taskRouter';
+import {routeTask, talentScopeForTask} from '../../store/taskRouter';
 
 /**
  * A2 任务驱动工具裁剪（2026-09-03 K90 真机取证落地）：
@@ -8,7 +8,7 @@ import {routeTask} from '../../store/taskRouter';
  * 真机：2B 模型 TTFT 73s（例），其中之一大权重即工具 schema/grounding 常驻。
  *
  * 原则（与 useChatScheduler 任务路由设计对齐）：
- * - 任务会话（write/code/play/adventure）→ 全量工具（任务需要完整工具链）；
+ * - 任务会话（write/code/play/adventure）→ G3-3 星图定界裁剪至域相关工具子集；
  * - chitchat → 仅常驻轻量工具（schema + grounding 体量小、闲聊高频），
  *   重量工具（web_search/device_control/writing_doc 等）按用户显式唤起词补注入；
  * - 裁剪只发生在聊天主链注入面，pact.talents（PalStore 对账基准）保持不动——
@@ -56,8 +56,9 @@ const EXPLICIT_EVOKE_RULES: ReadonlyArray<{
 ];
 
 /**
- * 按任务路由 + 显式唤起裁剪工具名集合。
- * - 任务会话（write/code/play/adventure）→ 原样返回（任务需要完整工具链）；
+ * 按任务路由 + 星图定界 + 显式唤起裁剪工具名集合。
+ * - 任务会话（write/code/play/adventure）→ G3-3：`talentScopeForTask` 返回非 null 时裁剪至子集；
+ *   返回 null 时原样返回（image 不走此链路）。
  * - chitchat → 轻量常驻 + 文本命中显式唤起规则的重量工具。
  * 保持输入顺序。纯函数、幂等——useChatSession tools 注入面与
  * allowedTalentNames 面共用本函数，保证上下一致。
@@ -68,7 +69,12 @@ export function resolveGatedTalentNames(
 ): string[] {
   const signal = routeTask(text);
   if (signal.task !== 'chitchat') {
-    return allTalentNames;
+    // G3-3 星图定界：任务会话也裁剪至域相关工具（非 null 才裁）
+    const scope = talentScopeForTask(signal.task);
+    if (scope === null) {
+      return allTalentNames; // 不限制
+    }
+    return allTalentNames.filter(name => scope.includes(name));
   }
 
   const gated = new Set<string>(

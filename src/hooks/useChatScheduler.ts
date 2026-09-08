@@ -212,10 +212,10 @@ async function butlerReply(
   chatSessionStore.clearAgentRun();
   // AIOS 记忆（P2 真机复测 2026-08-17 修复）：管家直答绕过了 useChatSession 的
   // run_finished 钩子（提取/对话日志都挂在那里）→ 此处补接，否则管家模式记忆永不落盘。
-  // 提取引擎会回退到管家自身（aiosMemory 内 modelStore.engine ?? promptWriter）。
+  // G4-1：管家路径永远本地引擎，provenance 固定为 'local'（解析兜底则函数内自动覆盖）
   try {
     setTimeout(() => {
-      void extractAndSaveMemories(text, finalText);
+      void extractAndSaveMemories(text, finalText, {provenance: 'local'});
       void appendConversation(text, finalText);
     }, 1200);
   } catch (e) {
@@ -342,26 +342,56 @@ async function probeLimbHealth(model: Model): Promise<boolean> {
 }
 
 /** 显式降级告知（limb_offline 语义落 UI，CP-APP-015 同词面）：不静默本地硬扛。 */
-async function insertLimbOfflineNotice(): Promise<void> {
+async function insertLimbOfflineNotice(
+  reason: 'offline' | 'probe_failed' = 'offline',
+): Promise<void> {
+  const text =
+    reason === 'probe_failed'
+      ? '义肢探测失败，请检查服务器 URL 和 API 密钥配置。本轮由本地代答。'
+      : '义肢离线，本轮由本地代答（可稍后重试或检查电脑端服务）。';
   await chatSessionStore.addMessageToCurrentSession({
     id: `limb-${Date.now()}`,
     author: assistant,
     createdAt: Date.now(),
-    text: '义肢离线，本轮由本地代答（可稍后重试或检查电脑端服务）。',
+    text,
     type: 'text',
-    metadata: {limbOfflineNotice: true},
+    metadata: {limbOfflineNotice: true, reason},
   } as MessageType.Text);
 }
 
 /**
  * 义肢终裁（v1.2 G-6）：分级函数唯一真源。
  * 资格面短路：未配义肢=配置缺席（≠故障），静默降级本地，不告知不打扰。
+ * G2-3：配了义肢但无可用模型时区分两种情况：
+ *   - 探活失败（URL/密钥错）→ 返回 limb_offline，调用方显示诊断告知
+ *   - 探活成功但用户未选模型 → 静默 local-zero
  */
 async function resolveLimbTier(
   task: TaskKind,
   text: string,
 ): Promise<TaskEngineTier> {
   if (modelStore.remoteModels.length === 0) {
+    // 未配任何服务器：配置缺席，静默不扰
+    if (serverStore.servers.length === 0) {
+      return 'local-zero';
+    }
+    // 配了服务器但无可用模型：探一次服务器，失败则返回 limb_offline（调用方显式告知）
+    const firstServer = serverStore.servers[0];
+    try {
+      const apiKey = await serverStore.getApiKey(firstServer.id);
+      const probe = await testConnection(
+        firstServer.url,
+        apiKey,
+        firstServer.requestTimeoutMs,
+      );
+      if (!probe.ok) {
+        // 探活失败：URL 或密钥有误，不静默当作“没配”——返回 limb_offline 让调用方诊断告知
+        return 'limb_offline';
+      }
+    } catch {
+      return 'limb_offline';
+    }
+    // 探活成功但用户未选模型：静默 local-zero
     return 'local-zero';
   }
   const online = await probeLimbHealth(modelStore.remoteModels[0]);
@@ -510,7 +540,10 @@ export const useChatScheduler = (
             return;
           }
         } else if (limbTier === 'limb_offline') {
-          await insertLimbOfflineNotice();
+          // G2-3 区分原因：无远程模型时返回 limb_offline = 探活失败；有模型 = 义肢临时离线
+          await insertLimbOfflineNotice(
+            modelStore.remoteModels.length === 0 ? 'probe_failed' : 'offline',
+          );
         }
       }
 

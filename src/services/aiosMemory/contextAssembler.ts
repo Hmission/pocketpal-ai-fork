@@ -16,6 +16,7 @@ import {
 import {buildMemoryFragment} from './index';
 import {searchMemory} from './searchEngine';
 import {buildTodayState, intentGuidance, trackSentiment} from './rituals';
+import {injectNineD} from './nineDInjector';
 import type {IntentKind} from './rituals';
 
 export interface AssembledContext {
@@ -135,7 +136,10 @@ export async function assembleContext(
     currentUserText,
     sessionIntent,
   );
-  // P4 仪式：开场状态（日期+上次摘要+昨日情绪）+ 意图语气（闲聊/倾诉/问答/任务）
+  // G3-2：9D 按需记忆注入（母仓 nine_d_context_injector.py 端侧轻量版）
+  // 漏斗硬门：无用户输入时自动跳过，零开销
+  const nineDFragment = await injectNineD(currentUserText);
+  // P4 仪式：开场状态（日期+上次摘要+昨日情绪）+ 意图语气（闲聊/倾述/问答/任务）
   const todayState = recentMessageCount <= 2 ? await buildTodayState() : '';
   const intent = intentGuidance(sessionIntent);
   // M7 情绪：跟踪大王输入情绪，供状态展示
@@ -148,6 +152,7 @@ export async function assembleContext(
     todayState,
     intent,
     memoryFragment,
+    nineDFragment, // G3-2: 9D 按需注入（排在传统记忆碎片之后，维度优先级内容更独特）
     workspaceContext,
   ]
     .filter(Boolean)

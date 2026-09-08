@@ -764,7 +764,10 @@ async function applyEventToStore(
             ? selfCheck(memAssistantText)
             : Promise.resolve(memAssistantText);
           void persistText.then(corrected => {
-            void extractAndSaveMemories(memUserText, corrected);
+            // G4-1: 注入 provenance——当前激活义肢引擎时为 'limb'，本地引擎为 'local'
+            void extractAndSaveMemories(memUserText, corrected, {
+              provenance: modelStore.activeRemoteBinding ? 'limb' : 'local',
+            });
             void appendConversation(memUserText, corrected);
           });
           void compactAndFlush();

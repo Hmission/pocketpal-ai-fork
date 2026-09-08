@@ -2,7 +2,7 @@
  * A2 任务驱动工具裁剪单测：
  * - chitchat 常驻轻工具（datetime/calculate/note_save/search_memory）；
  * - 重量工具按显式唤起词补注入；
- * - 任务会话（write/code/play/adventure）原样全量；
+ * - G3-3 星图定界：任务会话（write/code/play/adventure）裁剪至域相关工具子集；
  * - 保序、幂等。
  */
 import {resolveGatedTalentNames, CHITCHAT_LIGHT_TOOLS} from '../taskGating';
@@ -97,30 +97,41 @@ describe('resolveGatedTalentNames（A2 任务驱动工具裁剪）', () => {
     expect(gated).toContain('writing_doc');
   });
 
-  it('write 任务会话 → 全量原样（任务需要完整工具链）', () => {
+  it('write 任务会话 → G3-3 星图定界：裁剪至写作域相关工具子集', () => {
     const gated = resolveGatedTalentNames(
       '帮我写一篇关于旅行的文章',
       AIOS_11_TOOLS,
     );
-    expect(gated).toEqual(AIOS_11_TOOLS);
+    // write scope = ['writing_doc', 'read_html', 'web_search', 'search_memory', 'note_save']
+    // 保留 AIOS_11_TOOLS 顺序，取交集
+    expect(gated).toEqual([
+      'web_search',
+      'search_memory',
+      'note_save',
+      'read_html',
+      'writing_doc',
+    ]);
   });
 
-  it('code 任务会话 → 全量原样', () => {
+  it('code 任务会话 → G3-3 星图定界：裁剪至代码域工具子集', () => {
     const gated = resolveGatedTalentNames(
       '帮我写一个排序算法代码',
       AIOS_11_TOOLS,
     );
-    expect(gated).toEqual(AIOS_11_TOOLS);
+    // code scope = ['render_html', 'read_html', 'calculate']
+    expect(gated).toEqual(['calculate', 'render_html', 'read_html']);
   });
 
-  it('play 任务会话 → 全量原样', () => {
+  it('play 任务会话 → G3-3 星图定界：裁剪至玩具域工具子集', () => {
     const gated = resolveGatedTalentNames('做个贪吃蛇游戏', AIOS_11_TOOLS);
-    expect(gated).toEqual(AIOS_11_TOOLS);
+    // play scope = ['render_html', 'read_html']
+    expect(gated).toEqual(['render_html', 'read_html']);
   });
 
-  it('adventure 任务会话 → 全量原样', () => {
+  it('adventure 任务会话 → G3-3 星图定界：裁剪至冒险域工具子集', () => {
     const gated = resolveGatedTalentNames('来场冒险，我是城主', AIOS_11_TOOLS);
-    expect(gated).toEqual(AIOS_11_TOOLS);
+    // adventure scope = ['adventure_state', 'search_memory']
+    expect(gated).toEqual(['search_memory', 'adventure_state']);
   });
 
   it('空输入 → 空输出（无工具场景安全）', () => {
