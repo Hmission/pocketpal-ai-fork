@@ -1,0 +1,232 @@
+---
+doc_id: POCKETPAL_CHAIN_AUDIT_20260908_C
+module: root
+type: audit
+status: active
+version: '1.0'
+created: '2026-09-08'
+relates:
+  [
+    POCKETPAL_STARMAP_DOMAINS,
+    POCKETPAL_CHAIN_AUDIT_20260907_B,
+    POCKETPAL_IMAGEGEN_QUEUE_SPEC,
+    POCKETPAL_VIDEO_GEN_SPEC,
+    POCKETPAL_PRODUCT_SPEC,
+    PERF_BENCHMARK_DESIGN,
+    SD35_OPENCL_WHITE_IMAGE_ANALYSIS,
+    DEV_BACKLOG,
+  ]
+---
+
+<!-- D-FORMAT:v3 -->
+
+# 链路审计 C 卷（2026-09-08 · §170）：文档规划 ↔ 代码落地全量对账
+
+> 触发：大王三连问（全灰图定性 / 视频搞完了吗 / 本窗主线还有无遗留）+ 明确指令
+> 「走门禁、路由专工、守 hook 指南针、按 6D 与星图做全量排查，看是否有文档规划了但代码
+> 没落地闭环的项」。
+> 本卷**不改任何运行时行为**，只做对账与出方案。所有结论逐条附实物位置；未跑的一律标
+> 「未验」，仪器自身被修正过四轮（§七），结论只在修正后的口径下成立。
+
+## 〇、结论速览（30 秒版）
+
+| 问 | 答 |
+|---|---|
+| §168/§169 规划的开发全落地了吗 | **落地了**：项 38/39/40 三项代码 + 文档 + 真机证据三态一致；§169 另多还了一笔死锁与一处计时守卫（计划外，属真机首验抓出的自家缺陷） |
+| 视频生成搞完了吗 | **没搞完，且 P2 一行代码都没有**。`nativeGenVideo` 全仓只存在于两条注释（"= P2 未落地"）。已完成的是 P0/P0.5/P1：资产在位 + 能加载 + 目录可见；一次真实视频生成都没跑过 |
+| 文档有没有"说完成但代码没做"的假账 | **符号层零假账**（13 条初判全部是我仪器口径错，逐条见 §七）。但有 **5 处反向失真**：代码早已闭环、文档仍列为待办（销账未同步），其中 1 处是本窗刚造成的 |
+| 全灰图 | **大王判断成立（偶发），但它不是新现象**：仓内 2026-08-16 已有白图根因卷，且自带定性口径。本窗用体积指纹已把它收窄到 4/33 个文件，像素级确认待接机（设备本窗二次断开） |
+| 主线最大风险 | 不在功能代码，在**纪律无自动闸**：§168 那类"水合内 await 自身门禁"的自锁，pre-commit 现有 5 道闸一道都拦不住 |
+
+## 一、链（找原因）：§168/§169 规划项三态对账
+
+判据：文档怎么说 / 代码实际怎么做 / 证据是什么。三态缺一即判未闭环。
+
+| 规划项 | 文档口径 | 代码实物 | 证据 | 判定 |
+|---|---|---|---|---|
+| 项 38 幽灵产物收养（native 通道） | QUEUE_SPEC v0.8 §9.2 | `imageGenStore.ts:620 adoptFinishedTasks` + `:674 isNativeProductTask` | 真机 Test E `adopted=1 failed=0`，活库 `status=success`、`duration_ms=15286` | ✅ 三态一致 |
+| 项 38 分通道失败文案 | §9.4 | `:647/650/658` | Test C 真机新文案已落库；全库旧说谎文案 32 行（项 41） | ✅（残留另立项 41） |
+| 项 38 附带：JS 通道不自愈 | §9.2 末段 | `isNativeProductTask` 早退 | Test C 真机 `adopted=0 failed=1` | ✅ 边界按文档实现 |
+| 项 40 模态前缀 `[视]` 挪位 | §58.3 修订 | ModelPickerPanel 胶囊序 | §169 顶栏截图 `[Wan] [视] Wa…`（修前 `[视]` 被截），控件零新增 | ✅ |
+| 项 39 模态前置「先设后码」 | VIDEO_SPEC v0.5 §9.7 | manifest `modality` + `[视]` | §166 真机 + 本窗面板 dump | ✅ |
+| §168 承诺的「防复发单测」 | §9.2 防线段 | `imageGenStore.ghost.test.ts` 第 10 例（生产形态接 `readyPromise` + 显式置空 `outDir`） | 红/绿双向实测：回退修复 → 1 failed TIMEOUT；恢复 → 10/10 | ✅ |
+
+**同类自锁残留扫描（探针①，`.tmp/audit170_locks.py`）**：从 `this.readyPromise = this.ensureReadyImpl()`
+出发沿 `this.X(...)` 做闭包展开，可达 5 个方法
+（`ensureReadyImpl@289 → migrateAsyncStorageToDb@331 → adoptFinishedTasks@620 → applyTaskPatch@573 → imageOutDirPath@509`），
+**闭包内零 `await this.ensureReady()`**；全文件另有 11 个方法等门禁（`pullSnapshot/init/beginTask/patchTask/
+pushFailedTask/deleteTask/pushHistory/deleteHistory/recoverHistoryFromDisk/upscaleImageEntry`），
+均不在该闭包内 → 同类死锁当前清零。
+
+**但清零靠的是这次有人肉眼看。** 见 §六 P0。
+
+## 二、簇（归同类）：裂口分四类
+
+| 类 | 定义 | 本卷实例 | 危害 |
+|---|---|---|---|
+| **A 假账** | 文档说完成，代码/证据没有 | 符号层 **0 例**；历史已发生 2 例（§164 项 34、§167 项 39）均已自纠 | 最高，直接骗到决策 |
+| **B 反向失真** | 代码早已闭环，文档仍列待办 | **5 例**（§三 B 组） | 中：掩盖现状、诱发重复开发 |
+| **C 语态不可核** | 写了"已验证"但不附 rev/设备/日期 | 1 例（QUEUE_SPEC §十二 P2 行） | 中：读者无法判定是哪一次验证 |
+| **D 纪律无闸** | 规范写在文档、无机器拦截 | §168 死锁类、验收语态、l10n 接线 | 高：必然复发（本仓四处先例已证明） |
+
+## 三、面（划范围）：按星图域的未闭环清单
+
+### A 组：真·未落地（代码不存在，文档也未声称完成）
+
+| # | 域 | 项 | 实物证据 | 边界 |
+|---|---|---|---|---|
+| A1 | imageGen | **视频 P2**：`nativeGenVideo` 桥 + C-1~C-4 契约 + 页面视频形态（U-1~U-5）+ 真机长跑 | 全仓 `genVideo/videoGen/nativeGenVideo` 仅 2 处注释（`imageGenManifest.ts:206/231`），零实现符号 | 星图 §词面登记 ④「尚无符号」登记准确，预留词面未被占用 |
+| A2 | imageGen/nightTask | **队列 P2 夜间耐久**：K90 夜间 30+ 抽息屏（§十二 P2 唯一未验子项） | 文档自陈「待专项」 | 与 A1 共享 nightTask 收益，宜同波 |
+| A3 | chat/benchmark | 项 36 ③④：`stopReason='length'` 占满未告警；`n_swap` 固定 40 未做容量比例换算 | BACKLOG 项 36 已标部分闭环 | 需专项窗口，不夹带 |
+| A4 | chat | W9b-V 空泡泡 / W9c 语音动图跳变 | BACKLOG 待做 | 需接机目视 |
+| A5 | 平台（禁区内） | `embed_kernel.py` 仍 `open(sys.argv[1], "r")` **不指定 encoding**（Windows 默认 GBK，中文注释触发 UnicodeDecodeError） | 实物：`android/app/src/main/cpp/stable-diffusion.cpp/ggml/src/ggml-opencl/kernels/embed_kernel.py` | **落点在引擎禁区**，一行改动也须大王放行 |
+| A6 | imageGen | 相册灰图定性（详见 §五） | 体积指纹 4/33 异常；像素级未测 | 设备断开，取证挂起 |
+
+### B 组：反向失真（代码已闭环，文档仍列待办）——本卷主要收获
+
+| # | 文档位置 | 文档说什么 | 代码实际 | 判定 |
+|---|---|---|---|---|
+| B1 | VIDEO_GEN_SPEC §9.7 第 5 步（P3） | 「代码已交，**真机验收待接机**」 | §169 已真机双分支过账并根治死锁（rev `6760ea2`） | **本窗刚造成的新漂移**，就地修 |
+| B2 | PRODUCT_SPEC §6.3 #1 | 「ADRENO_XMEM_GEMM / DISABLE_ADRENO_KERNELS 对照验证」仍列中优先级 | `ImageGenJNI.cpp:339/366` 已按模型族分治 setenv/unsetenv，注释「8-28 拆分：klein 不再继承 Z-Image 双禁用」；SD35 卷 §10.4 已于 08-20 自标闭环 | 滞后未销账 |
+| B3 | PRODUCT_SPEC §6.3 #4 | 「SD3.5 experimental 标记复核」优先级「待定」 | manifest `family:'sd3'` 条目 `experimental` 为假（同卷 §10.3 已给三设备可用结论） | 已复核并落地（结论=不标），账未销 |
+| B4 | SD35 卷 §六 技术债④ | 「onnxruntime-react-native patch 需手动重放 → 登记 patch-package 后置钩子」 | `package.json` 有 `postinstall: patch-package`，`patches/` 内 `onnxruntime-react-native+1.24.3.patch` 在位 | 已闭环，账未销 |
+| B5 | QUEUE_SPEC §9.1 归属表 | 把「反推提示词」列为 **JS 写盘通道** | `captionEngine.ts` 全文 172 行，`RNFS`/`writeFile`/`encodePng`/`.png` **零命中**——它不产图像文件，产物是文本 | 表述不精确（代码行为不受影响，`kind==='generated'` 已把它挡在扫盘外） |
+
+*超分与 TTS 两条归属经验真为**准确**：`superResEngine.ts:257-259`（`encodePng` + `RNFS.writeFile`，文件名 `upscaled_*.png`）、`tts/sherpaConvert.ts:52/67`。*
+
+### C 组：语态不可核
+
+- QUEUE_SPEC §十二 P2 行写「水合恢复已实机验证」**未附 rev / 设备 / 日期**，读者无法判定指哪一次
+  （本仓 §57 与 AGENTS 口径要求验收结论可回溯）。修法：补锚，不重写结论。
+
+### D 组：非主线但在账上的尾巴
+
+- **l10n 接线缺口（跑分域）**：`benchmark.*` 共 **102 键**，按「整键 + `.叶子` + 叶子名」三种写法
+  在非 locale 源码检索，**22 键零命中**（PERF 卷 v1.5 记「28 个」，差异属口径不同而非事实冲突）。
+  同时**跑分页段位名是中文硬编码**——已验真：`BenchmarkScreen.tsx:46/49/51` 直接写「神鸡/战斗鸡/走地鸡」，
+  `en.json` 内零处 → PERF 挂账①「该接线未接线」判断成立，**不是可删死键**。
+  另复算 `settings.*` 150 键中 17、`chat.*` 73 键中 4 疑闲置（settings 组多为上游 PocketPal 残留：
+  `metalDescription`/`flashAttentionDisabled` 等在 RN 版无对应开关）。
+- **上游遗留错误不可见三处**（与已闭环的 W1「失败可见性」同族，非本仓规划项）：
+  `PalSheet.tsx:314` `// TODO: Show error message to user`、`UIStore.ts:107` 同义、`utils/chat.ts:291`
+  `// TODO: handle error`（catch 后只 console.error）。
+- **项 41**：历史 32 行仍带旧说谎文案（§169 登记，待裁）。
+
+## 四、锚（抓重点）：三个北极星
+
+1. **把已付过学费的纪律变成机器闸**——这是本仓唯一能阻止"同一类 bug 第三次出现"的手段。
+   本卷证据：`pre-commit` 现有 5 道闸（worktree / prettier / eslint / audit:native-mocks /
+   audit:async-timers / audit:compass / lint:icons），**没有一道**能拦 §168 的死锁。
+2. **视频主线的阻塞只剩工时与风险接受，不剩未知**——P3 已真机闭环（B1 修完即账实一致），
+   长跑被杀不再说谎；U-1~U-5 验收项、C-1~C-4 契约、禁区清单、参数面全部已写死。
+3. **异常必须能归因，不能靠"看起来偶发"**——全灰图已有现成定性口径（白占比 + 唯一色数），
+   缺的只是把 4 个异常文件量一次。
+
+## 五、态（判阶段）：视频主线真实现状 + 全灰图定性与口径
+
+### 5.1 视频（回答「搞完了吗」：**没搞完**）
+
+| 阶段 | 内容 | 状态 | 证据 |
+|---|---|---|---|
+| P0 | manifest `modality` + `t5xxl` 文件位 + `[视]` 徽章 | ✅ | §166 |
+| P0.5 | JNI/Kotlin `t5xxl` 专用槽（否则"装了也加载不到"） | ✅ | §166，`ImageGenJNI.cpp:406/443` UMT5 取证注释 |
+| P1 | 三件资产推机 + 能被扫到 + 加载不报 UNKNOWN + 进入 FLOW 模式 | ✅ | §166（含 catalog / MODEL_MATRIX 同波登记，件数 5→6） |
+| **P2** | **`nativeGenVideo` 桥 + C-1~C-4 + 页面视频形态 + 80–200 分钟真机长跑** | ❌ **零代码** | 符号全仓仅 2 处注释；manifest note 自陈「尚未可生成，桥待 P2」 |
+| P3 | 在飞任务产物收养（长跑前置安全网） | ✅ 代码 + 真机双分支（**文档滞后 = B1**） | §168/§169，`6760ea2` |
+| P4 | W11 视频容器裁定 | ⏸ 待裁 | 未定则 UI 只能说"已出帧/封面已存"（U-5） |
+
+**未做过的事**（一条不能含糊）：一次真实视频生成、一帧输出、`nativeGenVideo` 的任何签名、
+页面视频形态、帧目录合成 mp4、80–200 分钟长跑存活取证。
+
+### 5.2 全灰图：**大王判断成立（偶发），但它不是"未知现象"**
+
+本窗已实测的硬证据（同一份 `ls -l` 快照，33 个 `gen_*.png`）：
+
+| 体积分布 | 个数 | 含义 |
+|---|---|---|
+| 320KB – 790KB | 29 | 正常 512×512 照片级 PNG |
+| **8178B（×2）/ 12432B / 12764B** | **4** | 512×512 不可能这么小 → **近零熵 = 平坦色图** |
+
+时间线是关键：两张 8178B 落在 **08-16 09:15 / 09:41**，正是白图根因（RMS_NORM+MUL 融合跳写 →
+latent 全 NaN → 纯白）**修复当天上午**；另两张落在 **08-31 与 09-04**，即修复**之后**仍有 →
+说明"修复后仍偶发"，不能归因于那个已修的融合 bug，也不能归因于缩略图渲染端
+（**文件本身就平，渲染端无从造假**）。
+
+**定性口径不新造，复用 SD35 卷既有测量法**：该卷每次出图都记「白色像素占比 + 唯一颜色数」
+（如 `0% 白 62342 色` / `0.4% 白 58445 色`）——这就是本仓现成的健康度判据。
+
+**接机后的最小取证（约 10 分钟，只读）**：拉那 4 个文件量白占比与色数，三种结论只能取其一——
+(a) 平坦色 → 归因引擎数值面（走 SD35 卷那条链，UI 一行不改）；(b) 内容正常但分辨率低 → 参数/降级面；
+(c) 解码失败 → 落盘完整性。**先写死判据再看数据**，避免"看着像灰"再找解释。
+
+**明确不做**（这三条都是兜底，写下来是为了将来不手滑）：不给产物加"灰图自动重生成"；
+不在 UI 加"检测平坦图并提示"；不给收养加轮询等文件出现。产品侧最多做**观测**（把白占比并入
+既有跑分轨迹字段），且本卷**不建议现在就做**——离线巡检脚本足以覆盖当前需求，零产品代码。
+
+## 六、策（定动作）：方案与优先级
+
+| 优先级 | 动作 | 为什么是它 | 成本 | 判据（做完凭什么说做完了） |
+|---|---|---|---|---|
+| **P0-1** | **B 组 5 处销账同步 + C 组补锚**（本窗已做，见 §八） | 账实不一是本仓复发率最高的病；不修则下一窗又要重查 | 已投入 | 逐条 diff + HEAD 复验 |
+| **P0-2** | **新增 `yarn audit:gate-reentry` 挂 pre-commit** | §168 死锁的唯一根治不是那个 `imageOutDirPath()`，是**让别人再犯不了**；仓内已有 5 道同族闸，形制现成 | ~120 行脚本 + 1 行 pre-commit，零运行时成本 | ①临时把 `await this.init()` 塞回 `adoptFinishedTasks` → 闸 exit 1；②当前 HEAD → exit 0 且 violations=0；两态各跑一次留输出 |
+| **P1-1** | **视频 P2**（桥 + 契约 + 页面形态 + 一次真机长跑） | 主线唯一大宗；决策完备、先决条件（P3）已闭环，继续不动它才是真风险 | 一个专窗 + 1.5–3h 真机 | U-1~U-5 逐条 + 一次 `duration>100min` 的成功产物；`modality='video'` 条目在画廊可点 |
+| **P1-2** | **接机补全灰图取证**（4 文件量白占比/色数） | 10 分钟换掉一个长期"可能偶发"的悬案 | 10 分钟 | 三选一定性 + 结论回写本卷 §5.2 |
+| **P2-1** | 队列 P2 夜间耐久（K90 夜间 30+ 抽息屏） | 与 P1-1 共享 nightTask 收益，**放在视频长跑之前做更划算**（同一晚可并行取证） | 一晚 | §十二 P2 验收行补锚 |
+| **P2-2** | 项 41 历史 32 行说谎文案（订正 / 保留原样，二选一） | 用户数据，须大王点头才动 | 一条 migration | 活库 `error_detail` 旧文案计数 0 或大王裁定保留并记档 |
+| **P2-3** | 项 36③④ + W9b-V/W9c | 都是"能加载但表现不对"类，各宗独立小修 | 各半日 | 逐项 BACKLOG 销账 |
+| **P3-1** | 跑分页 i18n 专项（22 键逐条判"接线 vs 删键"） | 段位名中文硬编码已验真，属真国际化缺口；**须产品先定跑分页是否进 16 语** | 一次专项 | `yarn l10n:validate` + 零闲置键；禁盲删 |
+| **P3-2** | 上游 TODO 三处错误可见性 | 归入 W1 尾巴，不单开波 | 顺带 | 三处 TODO 消失且失败有 UI 反馈 |
+| **需放行** | A5 `embed_kernel.py` 补 `encoding='utf-8'` | 改动一行，但**落点在引擎禁区** | 1 行 | 大王裁定是否豁免禁区 |
+
+**本卷明确不做**：产物收养加轮询/超时；灰图自动重生成或 UI 提示；视频预览自制控件（W11 未裁）；
+新增顶栏控件；聊天页生视频入口；把 `applyTaskPatch` 再抽一层"以防万一"。
+
+## 七、仪器自纠记录（结论的可信度取决于此）
+
+探针不是一次就对。四条口径错全部在**采信前**被自纠，过程留此：
+
+1. **符号语料漏扩展名**：首版只扫 `src` + `android` 的 `.ts/.tsx/.kt/.java/.cpp/.h`，
+   于是 `WanConfig`（在 `wan.hpp`）、`Xiaoyao`（在 locales JSON）、`commitlint.config.js`（仓根）
+   全被误判为"文档假账"。→ 补 `.hpp/.js/.json/.svg/.py/.gradle` 与仓根、scripts。
+2. **点号符号按整串匹配**：`errorReport.buildErrorReport` 整串当然零命中；改**逐段**判定，
+   并对最可疑的 `AgentRunner.errorOutcome` 手工回读 → **真实存在**（`AgentRunner.ts:138` 函数定义）。
+3. **文件名符号拿去匹正文**：`session.ts`、`repetitionGuard.ts` 是文件名，正文里未必出现 →
+   改为查仓内**文件存在性**。
+4. **否定语境未排除**：`phoneLastReply`/`phoneReplyHandled` 的原文是「**src 零残留**」（说它不存在），
+   预留词面 `genVideo` 的原文是「尚无符号」→ 加否定语过滤。
+   另：PowerShell `src\**\*.ts` 递归不可靠，同一问题的第一次检索给出了假的零命中，须以 ripgrep 为准。
+5. **l10n 键按扁平点号统计**：locales 是嵌套 JSON，第一版算出「benchmark.\* 0 键」（假阴性）→
+   改 JSON 展平后才是 102 键 / 22 疑闲置。
+6. 修正后收敛结果：**13 条 → 1 条**，且那 1 条（`find_btn.py`）是历史日志里提到的临时脚本名。
+   → 「文档已完成主张」在符号层**零假账**。
+
+**探针边界（不可越 over-claim）**：本探针只覆盖"含已完成语汇的行内反引号符号"。自然语言型主张
+（如"该页已支持深色模式"）、以及**文档列出但代码里存在的符号被改过语义**这两类，探针看不见；
+后者只能靠 SPEC 与代码逐条对读（历史两例假账恰属此类，故符号零假账 ≠ 文档全对）。
+
+## 八、本卷已做的处置
+
+| 动作 | 落点 |
+|---|---|
+| B1 销账 | VIDEO_GEN_SPEC §9.7 第 5 步 → 真机已过并注 rev |
+| B2/B3 销账 | PRODUCT_SPEC §6.3 表 → 三条状态改判 + 补实物位置 |
+| B4 销账 | SD35 卷 §六 技术债④ → 标已闭环（patch-package 在位） |
+| B5 更正 | QUEUE_SPEC §9.1 → 反推改列「无图像产物」，超分/TTS 注明验真出处 |
+| C 补锚 | QUEUE_SPEC §十二 P2 行 → 验收语态补 rev/设备 |
+| 新项登记 | DEV_BACKLOG 项 42（gate-reentry 自动闸）、项 43（反向失真销账惯例）、项 44（A5 禁区一行） |
+
+## 九、门禁与证据
+
+- 探针与取证脚本：`.tmp/audit170_locks.py`（自锁闭包）、`.tmp/audit170_docclaims.py`（符号对账）、
+  `.tmp/audit170_verify.py` + `.tmp/audit170_count.py` + `.tmp/audit170_l10n.py`（挂账验真与精确计数），
+  输出留档 `.tmp/audit170_locks.txt` / `_docclaims.txt` / `_c.txt` / `_l10n.txt`。
+- 路由：`gate` → `route`（啄木鸟 `act-f63e56dc`，claim `docs`，TTL 6h），posture `agent_active`。
+- 设备：本波取证中途**二次断开**（`aab688d9` 不在 `adb devices`，重启 adb server 无效）→
+  A6 像素级确认挂起，未下任何无证据结论。
+- 本卷零代码改动（纯文档波）；`tsc`/`jest` 未跑（无 src 变更）；**prettier 无对象**——
+  `lint:prettier` 口径为 `src/**`，docs/*.md 不在门禁面内（全仓 53 个 md 本来即不合 prettier，
+  不属本波欠账，也不顺手格：那会造出无关大 diff 并踩并行窗口的文件）。
+- **并行窗口干扰（已实查）**：本波期间工作区内有 5 个**非本窗**脏文件
+  （`src/api/openaiClient/{connection,helpers,stream}.ts`、`src/services/aiosCore/growth.ts`、
+  `docs/POCKETPAL_AIOS_CORE_SPEC.md`，另一窗口在做 AIOS growth 注释对齐）——
+  提交全部走精确 pathspec，**一笔未带**。重申硬纪律：**工作区脏 ≠ 我的改动**。

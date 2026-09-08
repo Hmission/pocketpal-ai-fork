@@ -354,12 +354,12 @@ NaN 指纹跨设备一致（c≡3 mod 64）→ 判定非设备特定 → fusion 
 
 ### 6.3 技术债与待办
 
-| # | 事项 | 优先级 |
-|---|---|---|
-| 1 | ADRENO_XMEM_GEMM / DISABLE_ADRENO_KERNELS 对照验证（SD3.5 已恢复，Z-Image 保持双禁用） | 中 |
-| 2 | 低端设备（Adreno 740）SD3.5 提速（已从 12 分钟/步 → 54 秒/步） | 中 |
-| 3 | Z-Image 低端设备策略（6.9GB 超 Adreno 740 承载） | 低 |
-| 4 | SD3.5 experimental 标记复核（低端设备性能限制） | 待定 |
+| # | 事项 | 优先级 | 状态（2026-09-08 CHAIN_AUDIT_20260908_C 逐项验代码后改判） |
+|---|---|---|---|
+| 1 | ADRENO_XMEM_GEMM / DISABLE_ADRENO_KERNELS 对照验证（SD3.5 已恢复，Z-Image 保持双禁用） | ~~中~~ | ✅ **已闭环**：`ImageGenJNI.cpp:339/366` 已按模型族分治 setenv/unsetenv（注释「8-28 拆分：klein 不再继承 Z-Image 的双禁用」），SD35 卷 §10.4 亦已于 08-20 自标闭环——旧表未销账 |
+| 2 | 低端设备（Adreno 740）SD3.5 提速（已从 12 分钟/步 → 54 秒/步） | 中 | ❕ **未复核**：本波无设备，括号内的 54 秒/步 属历史实测口径，未回读当时的跑分轨迹文件，不得当本卷结论 |
+| 3 | Z-Image 低端设备策略（6.9GB 超 Adreno 740 承载） | 低 | ✅ 产品边界已定（`requiresHighGpu` 灰置），保持现状 |
+| 4 | SD3.5 experimental 标记复核（低端设备性能限制） | ~~待定~~ | ✅ **已复核并落地（结论=不标）**：manifest `family:'sd3'` 条目无 `experimental: true`，与真机面板 dump 一致（仅 Krea2 / Wan 带 `[实验性]`） |
 
 ---
 

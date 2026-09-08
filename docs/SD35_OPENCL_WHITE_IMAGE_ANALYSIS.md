@@ -95,12 +95,12 @@ VAE 解码 ← 采样器(rectified flow/Euler) ← MMDiT×24 JointBlock ← patc
 
 ## 六、遗留技术债（本次排查发现）
 
-| 债 | 说明 | 建议 |
-|---|---|---|
-| GGML_OPENCL_KERNEL_CACHE_DIR 死变量 | JNI 设置但引擎无代码读取，每次重编译 kernel（数分钟） | 移除或实现真缓存 |
-| embed_kernel.py 用 GBK 读 .cl | 中文注释触发 UnicodeDecodeError | 换 UTF-8 或全英文注释 |
-| Adreno F16 KQ/KQV 特殊路径 | use_adreno_kernels 守卫，无真机性能基准 | 归入 A/C 路线后统一评估 |
-| onnxruntime-react-native 版本漂移 | 1.24.3 patch 需手动重放（本次构建事故） | 登记 patch-package 后置钩子 |
+| 债 | 说明 | 建议 | 状态（2026-09-08 CHAIN_AUDIT_20260908_C 逐项验代码） |
+|---|---|---|---|
+| GGML_OPENCL_KERNEL_CACHE_DIR 死变量 | JNI 设置但引擎无代码读取，每次重编译 kernel（数分钟） | 移除或实现真缓存 | ✅ 已删（项 36②，§168 rev `05354de`；JS/JNI/Kotlin 三面零命中） |
+| embed_kernel.py 用 GBK 读 .cl | 中文注释触发 UnicodeDecodeError | 换 UTF-8 或全英文注释 | ❌ **仍未修**：实物 `ggml/src/ggml-opencl/kernels/embed_kernel.py` 仍为 `open(sys.argv[1], "r")` 无 encoding；**落点在引擎禁区**，一行改动需大王放行（DEV_BACKLOG 项 44） |
+| Adreno F16 KQ/KQV 特殊路径 | use_adreno_kernels 守卫，无真机性能基准 | 归入 A/C 路线后统一评估 | ⏳ 保持待办（本波无设备，未复核） |
+| onnxruntime-react-native 版本漂移 | 1.24.3 patch 需手动重放（本次构建事故） | 登记 patch-package 后置钩子 | ✅ **已闭环**：`package.json` 有 `postinstall: patch-package`，`patches/onnxruntime-react-native+1.24.3.patch` 在位——旧表未销账 |
 
 ## 七、待确认项（2026-08-16 已查）
 

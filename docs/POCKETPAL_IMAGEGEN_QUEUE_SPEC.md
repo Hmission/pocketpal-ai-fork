@@ -191,7 +191,15 @@ loop:
 | 通道 | 引擎调用方 | **产物写盘方** | 运行时重建后可收养？ |
 |---|---|---|---|
 | txt2img（SD3.5/Z-Image/Klein/Krea2/Wan） | Kotlin `Thread{}` → `nativeTxt2img` | **native**（`ImageGenJNI.cpp:664  stbi_write_png(outStr,…)`） | ✅ 能——线程与写盘不依赖 JS |
-| DreamLite（ONNX）/ 超分 / 反推 / TTS | JS 直调 `onnxruntime-react-native` 会话 | **JS**（`encodePng` + RNFS 写入） | ❌ 不能——推理线程可继续，但无人把结果落盘 |
+| DreamLite（ONNX）/ 超分 / TTS | JS 直调 `onnxruntime-react-native` 会话 | **JS**（`encodePng` + RNFS 写入） | ❌ 不能——推理线程可继续，但无人把结果落盘 |
+| 图像反推（caption） | JS 直调视觉会话 | **无图像产物**（产物是文本，写进任务行） | ❌ 不能，且**根本没有文件可扫** |
+
+> 三条归属均逐项验实物，不是一处推全类（2026-09-08）：JS 写盘——`dreamLiteEngine.ts:13`
+> （`encodePng`/`toBase64` 入 import）、`superResEngine.ts:257-259`（`encodePng` + `RNFS.writeFile`，
+> 产出名 `upscaled_*.png`，不落 `gen_` 前缀）、`tts/sherpaConvert.ts:52/67`；反推无产物——
+> `captionEngine.ts` 全文 172 行，`RNFS`/`writeFile`/`encodePng`/`.png` **零命中**。
+> 本表旧版把「反推」列进 JS 写盘通道不精确（代码行为不受影响：收养 gate 已要求
+> `kind === 'generated'`），由 CHAIN_AUDIT_20260908_C 项 B5 更正。
 
 > 本表同时**推翻项 38 原描述里的一句推定**：“原生/ONNX 线程其实还在跑，**产物可能已落盘**
 > 却对用户显示假失败”——对 DreamLite（即当时实捕的那一例）**不成立**：写盘在 JS 侧，
@@ -300,7 +308,7 @@ planning 而当前抽已出图”的双事实源。`pending` 条目语义不变�
 |---|---|---|
 | **P0**（单模型闭环） | 数据结构 + GenParamsSnapshot 下沉（runGenTask 重构）+ 入队/编辑/删除/清空 + 单模型执行（DreamLite 秒级先通）+ 队列面板 UI（OverlayCard）+ jest | ✅ tsc 0 错；jest 20/20；**平板实机验收通过**（连点累加/面板/串行连跑/停止，MASTER_LOG §116.7） |
 | **P1**（停止与跨模型） | native cancelTxt2img + 停止语义 + 跨模型切换 + 失败继续 + 汇总卡 | ✅ 实现完成（JNI/Kotlin/store 停止链）；停止流程平板实测通过（DreamLite 在途抽自然完成后停止）；SD 族 native cancel 即时性待真机专项 |
-| **P2**（夜间耐久） | 持久化恢复（幽灵队列治理）+ nightTask 恒 busy 收口 + K90 夜间模拟（息屏充电）+ 门禁五关 + 文档闭环（IMAGEGEN_UI_SPEC 增补/星图勘误/MASTER_LOG §N） | ⏳ 水合恢复已实机验证；夜间 30+ 抽息屏模拟待专项 |
+| **P2**（夜间耐久） | 持久化恢复（幽灵队列治理）+ nightTask 恒 busy 收口 + K90 夜间模拟（息屏充电）+ 门禁五关 + 文档闭环（IMAGEGEN_UI_SPEC 增补/星图勘误/MASTER_LOG §N） | ✅ 幽灵治理真机双分支已过（§169 Test C/E，rev `6760ea2`）；队列水合恢复真机复验（§169 Test D v2 前置轮：重启后面板显「排队中 · 第 2/3 抽 · 待抽」且 running 行水合回在飞抽；设备 aab688d9、2026-09-08）。⏳ 夜间 30+ 抽息屏模拟仍待专项 |
 
 ## 十三、实现接缝清单（2026-08-27 已逐项取证，P0 开工零侦察）
 
