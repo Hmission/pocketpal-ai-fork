@@ -306,7 +306,6 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
   setenv("GGML_VK_DISABLE_F16", "1", 0);
   // OpenCL Adreno 专用激活（6.16 回归方案）：
   // GGML_OPENCL_ADRENO_XMEM_GEMM=1 启用外部内存零拷贝 GEMM 管线（上次测试从未设过）。
-  // GGML_OPENCL_KERNEL_CACHE_DIR 缓存编译后的内核二进制（避免重复编译开销）。
   // 无害：OpenCL 非编译后端时被引擎忽略。
   // 6.18 白图排查曾置 0/禁用（ADRENO_XMEM_GEMM=0、DISABLE_ADRENO_KERNELS=1），
   // 但最终根因是 RMS_NORM+MUL 融合跳写（与 GEMM 无关）→ 6.17 恢复默认内核对照验证：
@@ -387,8 +386,13 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
     // 8-20 定稿：XMEM 存在即等效（=0/=1 同效），SD3.5/Z-Image/Klein 统一真关
     unsetenv("GGML_OPENCL_ADRENO_XMEM_GEMM");
   }
-  // 变体切换期曾用独立缓存目录防污染；转正后回主目录。
-  setenv("GGML_OPENCL_KERNEL_CACHE_DIR", "/data/data/com.pocketpal/files/cl-cache", 0);
+  // GGML_OPENCL_KERNEL_CACHE_DIR 已于 2026-09-08 删除（不恢复）：本 vendored 引擎的 OpenCL
+  // 后端**无该环境变量的任何消费者**（ggml-opencl.cpp 只读 PLATFORM/DEVICE/OPFILTER/
+  // ADRENO_XMEM_GEMM/ADRENO_USE_LARGE_BUFFER/DISABLE_FUSION/DISABLE_ADRENO_KERNELS/
+  // DEBUG_NAN 八个），也无内核二进制磁盘缓存机制——定性与建议见
+  // SD35_OPENCL_WHITE_IMAGE_ANALYSIS.md 「死变量」行。旧值还指向 /data/data/com.pocketpal/
+  //（本包名为 com.pocketpalai，该宿主包不存在）→ 双重无效。
+  // 若要真拿 kernel 缓存收益，需在引擎侧实现缓存＝禁区，不在本层伪装修补。
   dbg_log("==== loadModel begin ====");
   dbg_mem("loadModel entry");
   JStr model(env, modelPath);
