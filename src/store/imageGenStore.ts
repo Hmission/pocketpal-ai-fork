@@ -70,6 +70,7 @@ function requestBatteryOptOutIfNeeded(): void {
     .catch(() => {});
 }
 import {engineStatus} from './engineStatus';
+import type {CompanionPaths} from '../utils/imageGenManifest';
 import {emit} from '../debug/eventStream';
 import NativeHardwareInfo, {PerfSnapshot} from '../specs/NativeHardwareInfo';
 
@@ -820,18 +821,13 @@ class ImageGenStore {
   /**
    * 加载生图模型。调用前应确保聊天模型已卸载（modelStore 释放），
    * 否则可能 OOM。返回加载是否成功。
-   * extras：拆分式模型的伴侣文件（SD3.5 → clipL/clipG/vae；Z-Image → llm/vae）+ backend
+   * extras：拆分式模型的伴侣文件（共读 CompanionPaths 单点型：SD3.5 → clipL/clipG/vae；
+   * Z-Image → llm/vae；Wan 视频族 → t5xxl/vae）+ backend
    * （manifest defaults 单点决策，'CPU'|'Vulkan'；一体式模型如 SDXL Turbo 只传 backend）。
    */
   async loadModel(
     modelPath: string,
-    extras: {
-      clipL?: string;
-      clipG?: string;
-      llm?: string;
-      vae?: string;
-      backend?: string;
-    } = {},
+    extras: CompanionPaths & {backend?: string} = {},
     id?: string,
   ): Promise<boolean> {
     // 同槽互斥：加载 sd 前释放 DreamLite（双驻留会 OOM）

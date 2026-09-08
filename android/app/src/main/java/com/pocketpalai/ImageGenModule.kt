@@ -34,7 +34,7 @@ class ImageGenModule(reactContext: ReactApplicationContext) :
 
   private external fun nativeLoadModel(
     modelPath: String, clipLPath: String, clipGPath: String,
-    llmPath: String, vaePath: String, backend: String,
+    llmPath: String, vaePath: String, t5xxlPath: String, backend: String,
   ): Boolean
   private external fun nativeUnloadModel(): Boolean
   private external fun nativeCancelTxt2img(): Boolean
@@ -53,6 +53,10 @@ class ImageGenModule(reactContext: ReactApplicationContext) :
         extras?.getString("clipG") ?: "",
         extras?.getString("llm") ?: "",
         extras?.getString("vae") ?: "",
+        // UMT5 文本编码器（Wan 系视频模型）：本层不决策，与 clipL/llm 同一透传口径。
+        // 参数顺序与 C++ 侧 nativeLoadModel 严格一致（历史教训：Kotlin 声明 Double 而
+        // C++ 读 jfloat → cfg 从未到达引擎，见 ImageGenJNI.cpp 6.18 注释）。
+        extras?.getString("t5xxl") ?: "",
         extras?.getString("backend") ?: "",
       )
       promise.resolve(ok)

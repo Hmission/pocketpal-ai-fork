@@ -263,26 +263,39 @@ export async function listAvailableModels(
   return result;
 }
 
+/**
+ * 拆分式模型的伴侣文件**绝对路径集**（由 resolveCompanions 组装，往下透传）。
+ *
+ * 单点定义：加载链（store.loadModel extras → 桥 → Kotlin extras ReadableMap → JNI）
+ * 与队列快照（companionPaths / DB JSON）**共读本型**。新增一个槽位只改本处——
+ * 上一窗加 `t5xxl` 时要改 6 处内联对象类型，就是未收口的代价（同类问题已发生过多次）。
+ */
+export interface CompanionPaths {
+  clipL?: string;
+  clipG?: string;
+  llm?: string;
+  vae?: string;
+  /** UMT5-XXL 文本编码器（Wan 系）。必须走引擎专用槽 t5xxl_path，不可归入 clipL */
+  t5xxl?: string;
+}
+
 /** 解析拆分式模型的伴侣文件：exists 校验，返回 extras + 缺失清单 */
 export async function resolveCompanions(
   manifest: ImageGenManifest,
   dir: string,
-): Promise<{
-  extras: {clipL?: string; clipG?: string; llm?: string; vae?: string};
-  missing: string[];
-}> {
-  const extras: {clipL?: string; clipG?: string; llm?: string; vae?: string} =
-    {};
+): Promise<{extras: CompanionPaths; missing: string[]}> {
+  const extras: CompanionPaths = {};
   const missing: string[] = [];
   const c = manifest.companions;
   if (!c) {
     return {extras, missing};
   }
-  const checks: {key: 'clipL' | 'clipG' | 'llm' | 'vae'; name?: string}[] = [
+  const checks: {key: keyof CompanionPaths; name?: string}[] = [
     {key: 'clipL', name: c.clipL},
     {key: 'clipG', name: c.clipG},
     {key: 'llm', name: c.llm},
     {key: 'vae', name: c.vae},
+    {key: 't5xxl', name: c.t5xxl},
   ];
   for (const {key, name} of checks) {
     if (!name) {

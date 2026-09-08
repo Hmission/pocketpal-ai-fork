@@ -980,6 +980,11 @@ export const ImageGenScreen: React.FC = observer(() => {
               : undefined,
             llm: comps.llm ? `${AIOS_MODELS_DIR}/${comps.llm}` : undefined,
             vae: comps.vae ? `${AIOS_MODELS_DIR}/${comps.vae}` : undefined,
+            // Wan 视频族 UMT5 文本编码器：与 clipL 同为伴侣文件，但必须走引擎专用槽
+            //（t5xxl_path）——前缀不同，归入 clipL 会静默加载不到。
+            t5xxl: comps.t5xxl
+              ? `${AIOS_MODELS_DIR}/${comps.t5xxl}`
+              : undefined,
           }
         : undefined,
       backend: m.manifest.defaults.backend,

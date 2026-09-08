@@ -285,6 +285,7 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
                                               jstring modelPath,
                                               jstring clipLPath, jstring clipGPath,
                                               jstring llmPath, jstring vaePath,
+                                              jstring t5xxlPath,
                                               jstring backend) {
   std::lock_guard<std::mutex> lock(g_mutex);
   env->GetJavaVM(&g_jvm);
@@ -395,6 +396,11 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
   JStr clip_g(env, clipGPath);
   JStr llm(env, llmPath);
   JStr vae(env, vaePath);
+  // Wan 系（视频族）文本编码器专用槽：引擎只认 sd_ctx_params_t.t5xxl_path，
+  // 加载时挂前缀 text_encoders.t5xxl.transformer.（stable-diffusion.cpp:758-763），
+  // 而 Wan 的 T5CLIPEmbedder 仅查该前缀（:1353）——用 clip_l 槽会因前缀不匹配而
+  // 静默加载不到 UMT5（取证与推演见 VIDEO_GEN_SPEC §9.6.2）。
+  JStr t5xxl(env, t5xxlPath);
   JStr backend_s(env, backend);
   if (model.empty()) {
     return JNI_FALSE;
@@ -426,6 +432,17 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
     if (!vae.empty()) {
       params.vae_path = vae.c_str();
     }
+  } else if (!t5xxl.empty()) {
+    // Wan 系（视频族）：拆分式 DiT + UMT5-XXL 文本编码器 + Wan VAE。
+    // 本分支不可省：llm/clip_l/clip_g 均空时旧代码会直落下面的「一体式」分支
+    // （params.model_path = model）——那等于把 Wan DiT 当单文件全套模型，
+    // UMT5 永远不入场，提示词无文本条件（VIDEO_GEN_SPEC §9.6.2）。
+    params.diffusion_model_path = model.c_str();
+    params.t5xxl_path = t5xxl.c_str();
+    if (!vae.empty()) {
+      params.vae_path = vae.c_str();
+    }
+    dbg_log("loadModel: wan family — diffusion + t5xxl TE slot");
   } else {
     // 一体式（SDXL Turbo 等单文件模型）
     params.model_path = model.c_str();
@@ -439,7 +456,10 @@ Java_com_pocketpal_ImageGenModule_nativeLoadModel(JNIEnv* env, jobject /*thiz*/,
   // ggml_quantize_chunk 重量化为 Q4_K，K90 实测 28 分钟 / 2.46GB（z_image 原生 Q4_K 免转换仅 333s），
   // 且 4 步蒸馏模型对权重精度极敏感，Q4_0→Q4_K 双重量化累积误差把 4 步去噪压成周期性纹理。
   // 单文件（SDXL Turbo 等 f16 safetensors）保留 Q4_K 强制转换以贴合显存。
-  const bool is_split_model = !llm.empty() || !clip_l.empty() || !clip_g.empty();
+  // 09-08 视频波：t5xxl 入场后同属拆分式（Wan DiT 本身就是 Q4_K_M GGUF）——
+  // 不带上它则 Wan 落入强制 Q4_K → 逐张量双重量化，重现 Klein 纹理事故。
+  const bool is_split_model =
+      !llm.empty() || !clip_l.empty() || !clip_g.empty() || !t5xxl.empty();
   // 8-29 修复：已量化 GGUF(单文件或 split)一律保留原生量化(wtype=COUNT 不触发重量化)；
   // 仅 f16 safetensors 单文件保留 Q4_K 强制转换以贴合显存。
   // 事故背景：Klein 单文件 Q4_K_M(GGUF 内 Q5_K 层)被强制 Q4_K 双重量化 →

@@ -2,7 +2,7 @@ import {Q} from '@nozbe/watermelondb';
 
 import {database} from '../database';
 import {ImageGenQueue} from '../database';
-import type {QueueItem} from '../store/imageGenQueueCore';
+import type {QueueItem, GenParamsSnapshot} from '../store/imageGenQueueCore';
 import {prepareSharedStorage, scheduleDbSnapshot} from '../utils/paths';
 
 /**
@@ -114,13 +114,12 @@ function toEntry(row: ImageGenQueue): QueueItem {
       loraEnabled: row.loraEnabled,
       loraMultiplier: row.loraMultiplier,
       mainPath: row.mainPath ?? undefined,
+      // 类型取自队列核心（单点）：不再在本文件重复内联字段表——
+      // 历史上新增一个槽位要同步 manifest/store/queueCore/本处四处内联类型。
       companionPaths: row.companionPaths
-        ? (JSON.parse(row.companionPaths) as {
-            clipL?: string;
-            clipG?: string;
-            llm?: string;
-            vae?: string;
-          })
+        ? (JSON.parse(row.companionPaths) as NonNullable<
+            GenParamsSnapshot['companionPaths']
+          >)
         : undefined,
       backend: row.backend ?? undefined,
       loraPath: row.loraPath ?? undefined,

@@ -16,6 +16,8 @@
 
 import {computed, makeObservable, observable} from 'mobx';
 
+import type {CompanionPaths} from '../utils/imageGenManifest';
+
 export interface GenParamsSnapshot {
   prompt: string;
   negativePrompt: string;
@@ -34,8 +36,8 @@ export interface GenParamsSnapshot {
   loraMultiplier: number;
   /** SD 族：模型主文件绝对路径（入队时由组件层按 manifest 解析组装） */
   mainPath?: string;
-  /** SD 族：伴侣文件路径（clipL/clipG/llm/vae） */
-  companionPaths?: {clipL?: string; clipG?: string; llm?: string; vae?: string};
+  /** SD 族：伴侣文件路径（共读 CompanionPaths 单点型；新增槽位只改 imageGenManifest） */
+  companionPaths?: CompanionPaths;
   /** SD 族：backend（manifest 单点决策，'CPU'|'OpenCL'|'Vulkan'） */
   backend?: string;
   /** SD 族：LoRA 文件绝对路径（loraEnabled 时） */

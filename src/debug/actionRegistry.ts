@@ -195,6 +195,8 @@ export const drcActions: Record<string, DrcActionDef> = {
       clipG: z.string().optional(),
       llm: z.string().optional(),
       vae: z.string().optional(),
+      // UMT5（Wan 视频族）：与 UI 同一条 extras 链，供真机取证时直接拉模型而不经页面
+      t5xxl: z.string().optional(),
       backend: z.string().optional(),
     }),
     execute: async params => {
@@ -204,6 +206,7 @@ export const drcActions: Record<string, DrcActionDef> = {
         clipG?: string;
         llm?: string;
         vae?: string;
+        t5xxl?: string;
         backend?: string;
       };
       const ok = await imageGenStore.loadModel(p.modelPath, {
@@ -211,6 +214,7 @@ export const drcActions: Record<string, DrcActionDef> = {
         clipG: p.clipG,
         llm: p.llm,
         vae: p.vae,
+        t5xxl: p.t5xxl,
         backend: p.backend,
       });
       if (!ok) {
