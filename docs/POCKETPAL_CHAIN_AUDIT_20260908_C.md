@@ -34,7 +34,7 @@ relates:
 |---|---|
 | §168/§169 规划的开发全落地了吗 | **落地了**：项 38/39/40 三项代码 + 文档 + 真机证据三态一致；§169 另多还了一笔死锁与一处计时守卫（计划外，属真机首验抓出的自家缺陷） |
 | 视频生成搞完了吗 | **没搞完，且 P2 一行代码都没有**。`nativeGenVideo` 全仓只存在于两条注释（"= P2 未落地"）。已完成的是 P0/P0.5/P1：资产在位 + 能加载 + 目录可见；一次真实视频生成都没跑过 |
-| 文档有没有"说完成但代码没做"的假账 | **符号层零假账**（13 条初判全部是我仪器口径错，逐条见 §七）。但有 **5 处反向失真**：代码早已闭环、文档仍列为待办（销账未同步），其中 1 处是本窗刚造成的 |
+| 文档有没有"说完成但代码没做"的假账 | **符号层零假账**（13 条初判全部是我仪器口径错，逐条见 §七）。但有 **6 处反向失真**：代码早已闭环、文档（或注释）仍列为待办/宣称与实际不符，**其中 2 处出自本仓上一波（§169）** |
 | 全灰图 | **大王判断成立（偶发），但它不是新现象**：仓内 2026-08-16 已有白图根因卷，且自带定性口径。本窗用体积指纹已把它收窄到 4/33 个文件，像素级确认待接机（设备本窗二次断开） |
 | 主线最大风险 | 不在功能代码，在**纪律无自动闸**：§168 那类"水合内 await 自身门禁"的自锁，pre-commit 现有 5 道闸一道都拦不住 |
 
@@ -65,7 +65,7 @@ pushFailedTask/deleteTask/pushHistory/deleteHistory/recoverHistoryFromDisk/upsca
 | 类 | 定义 | 本卷实例 | 危害 |
 |---|---|---|---|
 | **A 假账** | 文档说完成，代码/证据没有 | 符号层 **0 例**；历史已发生 2 例（§164 项 34、§167 项 39）均已自纠 | 最高，直接骗到决策 |
-| **B 反向失真** | 代码早已闭环，文档仍列待办 | **5 例**（§三 B 组） | 中：掩盖现状、诱发重复开发 |
+| **B 反向失真** | 代码早已闭环，文档/注释仍列为待办或宣称与实际不符 | **6 例**（§三 B 组，含本卷 HEAD 复验当场抽出的 B6） | 中：掩盖现状、诱发重复开发 |
 | **C 语态不可核** | 写了"已验证"但不附 rev/设备/日期 | 1 例（QUEUE_SPEC §十二 P2 行） | 中：读者无法判定是哪一次验证 |
 | **D 纪律无闸** | 规范写在文档、无机器拦截 | §168 死锁类、验收语态、l10n 接线 | 高：必然复发（本仓四处先例已证明） |
 
@@ -77,12 +77,12 @@ pushFailedTask/deleteTask/pushHistory/deleteHistory/recoverHistoryFromDisk/upsca
 |---|---|---|---|---|
 | A1 | imageGen | **视频 P2**：`nativeGenVideo` 桥 + C-1~C-4 契约 + 页面视频形态（U-1~U-5）+ 真机长跑 | 全仓 `genVideo/videoGen/nativeGenVideo` 仅 2 处注释（`imageGenManifest.ts:206/231`），零实现符号 | 星图 §词面登记 ④「尚无符号」登记准确，预留词面未被占用 |
 | A2 | imageGen/nightTask | **队列 P2 夜间耐久**：K90 夜间 30+ 抽息屏（§十二 P2 唯一未验子项） | 文档自陈「待专项」 | 与 A1 共享 nightTask 收益，宜同波 |
-| A3 | chat/benchmark | 项 36 ③④：`stopReason='length'` 占满未告警；`n_swap` 固定 40 未做容量比例换算 | BACKLOG 项 36 已标部分闭环 | 需专项窗口，不夹带 |
-| A4 | chat | W9b-V 空泡泡 / W9c 语音动图跳变 | BACKLOG 待做 | 需接机目视 |
+| A3 | imageGen（native 桥） | **项 36 ③④**：③ stderr `dup2` 无轮转——`ImageGenJNI.cpp:91-98` 仅 `O_WRONLY\|O_CREAT\|O_APPEND` 写 `/sdcard/Documents/AIOS/imagegen_stderr.log`（无上限无切割），`:293` 于引擎初始化前调用→夜间长跑可写满共享分区；④ `batch_count = 1` 硬编（`:604`）+ 只取 `images[0]`（`:660`）→改 batch 会**静默丢图** | DEV_BACKLOG 项 36 原文（§171 已回读，详 §十）；文件在本仓桥而非 vendored 引擎，可改但需构建窗 | ③④ 逐项独立修，不得夹在视频波次里顺手改 |
+| A4 | theme/DS（图标） | **W9b-V 25 处 + W9c 12 处图标尺寸硬写残余**：W9b-V＝离档值 10/13/15/22/26/32 共 12 个元素（24 处）+ 1 处 styles 常量 36，**必须逐屏目视后才定档**；W9c＝`theme` 不在组件作用域的 6 个元素（12 处），需先穿参/`useTheme()` 再收 token | 实物登记在 **ICON_SPEC §4.5 表 L190-192 与红线 L200/L204**（**不在 DEV_BACKLOG**） | 禁「拿归档当由头把 22 推成 24」（ICON_SPEC L200 明文） |
 | A5 | 平台（禁区内） | `embed_kernel.py` 仍 `open(sys.argv[1], "r")` **不指定 encoding**（Windows 默认 GBK，中文注释触发 UnicodeDecodeError） | 实物：`android/app/src/main/cpp/stable-diffusion.cpp/ggml/src/ggml-opencl/kernels/embed_kernel.py` | **落点在引擎禁区**，一行改动也须大王放行 |
 | A6 | imageGen | 相册灰图定性（详见 §五） | 体积指纹 4/33 异常；像素级未测 | 设备断开，取证挂起 |
 
-### B 组：反向失真（代码已闭环，文档仍列待办）——本卷主要收获
+### B 组：反向失真（代码已闭环，文档/注释未跟上）——本卷主要收获
 
 | # | 文档位置 | 文档说什么 | 代码实际 | 判定 |
 |---|---|---|---|---|
@@ -91,6 +91,7 @@ pushFailedTask/deleteTask/pushHistory/deleteHistory/recoverHistoryFromDisk/upsca
 | B3 | PRODUCT_SPEC §6.3 #4 | 「SD3.5 experimental 标记复核」优先级「待定」 | manifest `family:'sd3'` 条目 `experimental` 为假（同卷 §10.3 已给三设备可用结论） | 已复核并落地（结论=不标），账未销 |
 | B4 | SD35 卷 §六 技术债④ | 「onnxruntime-react-native patch 需手动重放 → 登记 patch-package 后置钩子」 | `package.json` 有 `postinstall: patch-package`，`patches/` 内 `onnxruntime-react-native+1.24.3.patch` 在位 | 已闭环，账未销 |
 | B5 | QUEUE_SPEC §9.1 归属表 | 把「反推提示词」列为 **JS 写盘通道** | `captionEngine.ts` 全文 172 行，`RNFS`/`writeFile`/`encodePng`/`.png` **零命中**——它不产图像文件，产物是文本 | 表述不精确（代码行为不受影响，`kind==='generated'` 已把它挡在扫盘外） |
+| **B6** | `imageGenStore.ts:507` 注释 | 「`init()` 也复用本推导，**路径字符串单点定义**」 | `:848 recoverHistoryFromDisk` **又拼了一遍** `${RNFS.DocumentDirectoryPath}/aios_images` → 全仓两处 | **本卷 HEAD 复验当场抽出的真缺陷（§169 留下的）**——已修 `const dir = this.imageOutDirPath()`（**已落码待提交**，§170.10）；目录一旦变更该恢复工具会静默扫空路 |
 
 *超分与 TTS 两条归属经验真为**准确**：`superResEngine.ts:257-259`（`encodePng` + `RNFS.writeFile`，文件名 `upscaled_*.png`）、`tts/sherpaConvert.ts:52/67`。*
 
@@ -165,9 +166,14 @@ latent 全 NaN → 纯白）**修复当天上午**；另两张落在 **08-31 与
 
 ## 六、策（定动作）：方案与优先级
 
+> **§171 续注**：本表的 P2/P3 行已展开为**施工级规划卷**
+> → `POCKETPAL_WAVE_PLAN_P2P3.md`（含现状 file:line / 改动面 / 判据 / 成本 / 红线）。
+> 两卷分工：本卷只定「做什么与不做什么」，规划卷定「怎么做完」；
+> 施工细节只存一份，**不得在两卷各写一套**（双事实源）。
+
 | 优先级 | 动作 | 为什么是它 | 成本 | 判据（做完凭什么说做完了） |
 |---|---|---|---|---|
-| **P0-1** | **B 组 5 处销账同步 + C 组补锚**（本窗已做，见 §八） | 账实不一是本仓复发率最高的病；不修则下一窗又要重查 | 已投入 | 逐条 diff + HEAD 复验 |
+| **P0-1** | **B 组 6 处销账同步 + C 组补锚**（本窗已做，见 §八） | 账实不一是本仓复发率最高的病；不修则下一窗又要重查 | 已投入 | 逐条 diff + HEAD 复验（**已生效一次：B6 就是复验脚本抽出来的**） |
 | **P0-2** | **新增 `yarn audit:gate-reentry` 挂 pre-commit** | §168 死锁的唯一根治不是那个 `imageOutDirPath()`，是**让别人再犯不了**；仓内已有 5 道同族闸，形制现成 | ~120 行脚本 + 1 行 pre-commit，零运行时成本 | ①临时把 `await this.init()` 塞回 `adoptFinishedTasks` → 闸 exit 1；②当前 HEAD → exit 0 且 violations=0；两态各跑一次留输出 |
 | **P1-1** | **视频 P2**（桥 + 契约 + 页面形态 + 一次真机长跑） | 主线唯一大宗；决策完备、先决条件（P3）已闭环，继续不动它才是真风险 | 一个专窗 + 1.5–3h 真机 | U-1~U-5 逐条 + 一次 `duration>100min` 的成功产物；`modality='video'` 条目在画廊可点 |
 | **P1-2** | **接机补全灰图取证**（4 文件量白占比/色数） | 10 分钟换掉一个长期"可能偶发"的悬案 | 10 分钟 | 三选一定性 + 结论回写本卷 §5.2 |
@@ -212,10 +218,14 @@ latent 全 NaN → 纯白）**修复当天上午**；另两张落在 **08-31 与
 | B2/B3 销账 | PRODUCT_SPEC §6.3 表 → 三条状态改判 + 补实物位置 |
 | B4 销账 | SD35 卷 §六 技术债④ → 标已闭环（patch-package 在位） |
 | B5 更正 | QUEUE_SPEC §9.1 → 反推改列「无图像产物」，超分/TTS 注明验真出处 |
+| **B6 修复** | `imageGenStore.ts:848` 改走 `this.imageOutDirPath()`（唯一一行 src 改动；tsc 0 错 + ghost 10/10）——**已落码但尚未入库**：pre-commit 被并行窗口在飞的 `aiosMemory` 脏文件拦住，见 MASTER_LOG §170.10 |
 | C 补锚 | QUEUE_SPEC §十二 P2 行 → 验收语态补 rev/设备 |
 | 新项登记 | DEV_BACKLOG 项 42（gate-reentry 自动闸）、项 43（反向失真销账惯例）、项 44（A5 禁区一行） |
 
 ## 九、门禁与证据
+
+> **本卷的“纯文档波”定位在 HEAD 复验阶段被推翻一次**：复验脚本断言 I9（路径单点定义）
+> 抓出 B6 那处真缺陷，故本波**实际改了一行 src**。以下数字为改后实测，不是开头估计。
 
 - 探针与取证脚本：`.tmp/audit170_locks.py`（自锁闭包）、`.tmp/audit170_docclaims.py`（符号对账）、
   `.tmp/audit170_verify.py` + `.tmp/audit170_count.py` + `.tmp/audit170_l10n.py`（挂账验真与精确计数），
@@ -223,10 +233,31 @@ latent 全 NaN → 纯白）**修复当天上午**；另两张落在 **08-31 与
 - 路由：`gate` → `route`（啄木鸟 `act-f63e56dc`，claim `docs`，TTL 6h），posture `agent_active`。
 - 设备：本波取证中途**二次断开**（`aab688d9` 不在 `adb devices`，重启 adb server 无效）→
   A6 像素级确认挂起，未下任何无证据结论。
-- 本卷零代码改动（纯文档波）；`tsc`/`jest` 未跑（无 src 变更）；**prettier 无对象**——
-  `lint:prettier` 口径为 `src/**`，docs/*.md 不在门禁面内（全仓 53 个 md 本来即不合 prettier，
-  不属本波欠账，也不顺手格：那会造出无关大 diff 并踩并行窗口的文件）。
+- **代码面**：仅 `src/store/imageGenStore.ts:848` 一行（字符串等价抽取，无行为变化）。
+  门禁：`tsc --noEmit` **0 错**；`imageGenStore.ghost.test.ts` **10/10 绿**；
+  全量 jest：**349 套过 / 1 套红（openai.test.ts 21 例）**——**已证因于并行窗口**：
+  失败栈为 `TypeError: xhr.getResponseHeader is not a function` @ `src/api/openaiClient/stream.ts:320`，
+  该文件正被另一窗在飞修改（+28 行）且测试 MockXHR 缺该 method；本窗未碰 `src/api/**`，
+  **不代他们修**（归因未证前不得当作自己的红，也不得静悄悄改掉）。
+- `recoverHistoryFromDisk` **全仓零单测覆盖**（已核：`__tests__` 内 `recoverHistory` 零命中）——
+  本次改动靠“表达式字面相等 + tsc”保障，**不为一次性开发工具补测试**（不扩面）。
+- prettier：**无对象**——`lint:prettier` 口径为 `src/**`，docs/*.md 不在门禁面内（全仓 53 个 md
+  本来即不合 prettier，不属本波欠账也不顺手格：那会造出无关大 diff 并踩并行窗口的文件）。
 - **并行窗口干扰（已实查）**：本波期间工作区内有 5 个**非本窗**脏文件
   （`src/api/openaiClient/{connection,helpers,stream}.ts`、`src/services/aiosCore/growth.ts`、
   `docs/POCKETPAL_AIOS_CORE_SPEC.md`，另一窗口在做 AIOS growth 注释对齐）——
   提交全部走精确 pathspec，**一笔未带**。重申硬纪律：**工作区脏 ≠ 我的改动**。
+
+## 十、本卷自身的更正（§171 回读时抽出自卷两条假账）
+
+> 写下本节的理由：本卷的主题就是「引用型主张必须回读原文」（星图「既有勘误记录」里的旧例），
+> 而我自己在 §三 A 组里就有两行是**凭记忆写的**。不自我纠正，本卷就没有立场。
+
+| 行 | 原写（错） | 回读后的实物 | 错因 |
+|---|---|---|---|
+| A3 | 项 36③④ ＝「`stopReason='length'` 占满未告警 / `n_swap` 固定 40 未做容量比例换算」 | 项 36③④ ＝「stderr `dup2` 无轮转 / `batch_count=1` 硬编只取 `images[0]`」（DEV_BACKLOG:69 原文）；且 `n_swap`/`stopReason` 在 **src 全量零命中**（属 llama.rn/上游形状，本仓未包） | 凭其它工程经验臆造参数名，未读台账原文 |
+| A4 | W9b-V ＝「空泡泡」/ W9c ＝「语音动图跳变」，登记面写「BACKLOG 待做」 | 两者是**图标尺寸收 token 的两波**（W9b-V 25 处离档值需逐屏目视；W9c 12 处需穿 `theme`），**登记在 ICON_SPEC §4.5 而不在 DEV_BACKLOG** | 把两个不相干的待办名字记串，且指针未校 |
+
+**元教训（入记忆）**：具体参数名与全称否定同样危险。本卷 §三 A 组两行假账都是**从经
+验回忆而非从实物回读**——它们躺在一份以“防假账”为题的审计卷里，这比躺在普通文档里更糟，
+因为下一个人会因信任卷名而不去回读。

@@ -3149,10 +3149,16 @@ P3 跑分页 i18n 接线专项（22 键逐条判，段位名中文硬编码已�
 
 ### 170.8 本波边界与未做
 
-- **零代码改动**（纯文档波）：未动 `src/`、未动引擎禁区一个字节、未碰用户数据。
+- 开头定位为“纯文档波”，但 **HEAD 复验当场推翻了这个定位**（见 §170.9）：实际改了一行 `src/`。
+  门禁实况：`tsc --noEmit` **0 错**；`imageGenStore.ghost.test.ts` **10/10 绿**；全量 jest
+  **349 套过 / 1 套红**（`openai.test.ts` 21 例）——**已证因于并行窗口**：失败栈为
+  `TypeError: xhr.getResponseHeader is not a function` @ `src/api/openaiClient/stream.ts:320`，
+  该文件正被另一窗在飞修改（+28 行）且测试 MockXHR 缺该 method；本窗未碰 `src/api/**`，
+  **不代他们修也不静悄悄归给自己**。
 - **prettier 口径更正**：`lint:prettier` 的实际范围是 `src/**/*.{ts,tsx,js,jsx,json}`，
   **docs/*.md 不在门禁面内**（全仓 53 个 md 本来就不合 prettier，不属本波欠账也不顺手格——
-  那会造出一个无关大 diff 并踩并行窗口的文件）。本波零 src 改动 → `tsc`/`jest`/prettier 均无对象。
+  那会造出一个无关大 diff 并踩并行窗口的文件）。docs 无 prettier 对象；改的那一行 src 由
+  tsc + ghost 套件守（未新增行为，字符串等价抽取）。
 - **并行窗口实况（提交前实查）**：本波开工期间工作区内有**不属于本窗**的 5 个脏文件
   （`src/api/openaiClient/{connection,helpers,stream}.ts`、`src/services/aiosCore/growth.ts`、
   `docs/POCKETPAL_AIOS_CORE_SPEC.md`，另一窗口在做 growth 四问→三问注释对齐）——
@@ -3161,5 +3167,118 @@ P3 跑分页 i18n 接线专项（22 键逐条判，段位名中文硬编码已�
 - 设备本波**二次断开**（`aab688d9` 不在列，重启 adb server 无效）→ A6 像素取证挂起，
   未下任何无证据结论。
 - 未做（登记不夹带）：项 42 闸未落码、项 41/44 待裁、相册全灰图像素未量、视频 P2 未开工。
+
+### 170.9 HEAD 复验抽出自家假账（B6，本卷最有说服力的一刻）
+
+提交 `b83cbe9` 后跑复验脚本（`.tmp/verify_head_170.py`，只读 HEAD 对象）**57 过 / 2 红**，
+两条红全部在代码侧断言上，定性完全相反：
+
+- **I8 是断言口径错**：我断言“全文件零 `await this.init()`”，实际 `:1027/:1375` 各有——但两处
+  都在**已过门禁之后**（`:1373` 先 `await this.ensureReady()` 再 init），完全安全。正确判据是
+  探针①的「水合闭包内无门禁 await」（已证清零）——**错的断言会把安全代码报成缺陷，
+  与错的仪器一样危险**，已改断言口径而非改代码。
+- **I9 是真缺陷**：`${RNFS.DocumentDirectoryPath}/aios_images` 在 `:510`（我 §169 抽的单点函数）与
+  `:848`（`recoverHistoryFromDisk`）**各写一次**，而我 §169 写的注释正在宣称「路径字符串单点定义」——
+  **本卷定义的“假账”在我自己上一波的注释里**。当场收口为 `const dir = this.imageOutDirPath()`。
+  危害不是形式上的：目录一旦变更，这个恢复工具会**静默扫空路径**不报错。
+- 顺带发现：`recoverHistoryFromDisk` **全仓零单测覆盖**（`__tests__` 内 `recoverHistory` 零命中）。
+  本次改动靠“表达式字面相等 + tsc”保障，**不为一次性开发工具补测试**（不扩面）。
+
+**本波教训入册**：复验不是走过场——它在一个纯文档波里抽出了一行真的单点定义违规，
+而那条违规恰好被一句“单点定义”的注释掩盖着。断言本身也要可证伪：口径错的断言（I8）
+与不存在的断言同样有害。
+
+### 170.10 待提交登记（本波收口时未入库，非已完成）
+
+复验脚本在 HEAD `b83cbe9` 上实测 **58 过 / 2 红**，两条红全部指向 B6 那一行修复——
+**修复只存在于工作区，尚未入库**（已用 `git reset` 退出暂存，避开被并行窗口的
+`git commit` 卷走）。复验结果不得写成 59/59，这是本节的意义。
+
+- **阻塞原因（已定归属，不是本窗的错也不是本窗能修的）**：pre-commit 的 `lint:prettier`
+  查整个 `src/**`，而并行窗口此刻正在 `src/services/aiosMemory/` 实现 9D 注入
+  （`index.ts` 脏 + 新增未跟踪 `nineDInjector.ts`，两者均不合 prettier）；另窗同时在飞的
+  `openai.test.ts` 21 例红亦属他们（`stream.ts:320` 新增 `getResponseHeader` 调用）。
+  重试 3 次（含 90s 等待）均被拦。
+- **待提交集（四个精确路径，一行 src + 三份文档回写）**：`src/store/imageGenStore.ts`、
+  `docs/POCKETPAL_CHAIN_AUDIT_20260908_C.md`、`docs/POCKETPAL_MASTER_LOG.md`、
+  `docs/DEV_BACKLOG.md`；提交信息已就位于 `.tmp/msg170b.txt`。
+- **本窗拒绝做的两件事（均仍需大王令）**：`--no-verify` 绕钩（红线）；代并行窗口
+  `prettier --write` 他们正在编辑的文件（越界且可能踩他们未保存的中间态）。
+
+---
+
+## §171 规划与交接波（2026-09-09）：P2/P3 施工卷 + 自卷假账更正
+
+### 171.1 触发与门禁
+
+大王：「规划 p2 和 p3 吧，我们新窗口接力本窗口后续任务。git 提交，把本窗口变更记录到
+开发文档，并同步设计文档，闭环本窗口。」
+
+`gate` 仍报 `allow_execute=false / route_required`（并提示 `other_sessions: 2`）→ 先 `route`
+啄木鸟 `act-9211e8a4`（claim `docs` + `src/store/imageGenStore.ts`，TTL 6h）。
+
+### 171.2 §170.10 遗留入库
+
+并行窗口那波 9D 注入已提交（`8ebed4b`），拦我的 prettier 脏文件自解 →
+**B6 修复已单独入库 `502e92c`**（钩子全过：guard:worktree / prettier / eslint /
+audit:native-mocks / async-timers / compass / lint:icons）。分两笔的理由：先拿真实 rev，
+文档才能引用它而不是写「待提交」——否则文档又变成滞后陈述。
+
+### 171.3 本波最该记的一笔：审计卷自己的两条假账
+
+为写规划卷必须回读台账原文，当场发现 **§170 C 卷 §三 A 组两行是我凭记忆写的**：
+
+- **A3**：我写「项 36③④ = `stopReason='length'` 未告警 / `n_swap` 固定 40」——台账原文是
+  「③ stderr `dup2` 无轮转 / ④ `batch_count=1` 硬编只取 `images[0]`」；而且 `n_swap`/`stopReason`
+  在 **src 全量零命中**（属 llama.rn/上游形状，本仓未包）——那两个参数名是我臆造的。
+- **A4**：我写「W9b-V 空泡泡 / W9c 语音动图跳变，归属 BACKLOG」——实物是**图标尺寸收 token
+  的两波**（W9b-V 25 处离档值需逐屏目视；W9c 12 处需穿 `theme`），**登记在 ICON_SPEC §4.5
+  而不在 DEV_BACKLOG**。
+
+已在 C 卷新增 **§十「本卷自身的更正」** 双双订正并写明错因。元教训：**具体参数名与全称
+否定同样危险**；而它们躺在一份以“防假账”为题的审计卷里，比躺在普通文档里更糟——下一个
+人会因信任卷名而不回读。本波并在卷首声明了反向约束：**开工时发现本卷与实物不符，以实物
+为准并回头订正本卷**。
+
+### 171.4 新立规划卷（接力窗零侦察开工）
+
+`docs/POCKETPAL_WAVE_PLAN_P2P3.md`（type: plan）七项本体，每项带实物/改动面/判据/成本/红线：
+
+- **P2-1** 队列夜间 30+ 抽息屏耐久（reaction 四条件实物 `imageGenStore.ts:248-253/:268/:276`；
+  判据要求仍读**私有目录活库**而不是 B14 快照）
+- **P2-2** 项 41 三候选方案对比（❌ 不推荐引入常驻迁移；✅ 若订正走 DRC 一次性命令，
+  先备份后 UPDATE），**接力窗不得自行实现**
+- **P2-3** 项 36③：stderr 探针服务的 Vulkan 路线已按 §6.16 定为 dormant → **先判“该删”
+  再谈“该转”**（加轮转=给死路续命）；删前必须实装测一条（❕已标未验：OpenCL 诊断是否依赖 stderr）
+- **P2-4** 项 36④：无 batch 需求 → 只补**显式不变量**（`images.size()!=1` 即错），
+  判据要求红/绿两态实测
+- **P2-5** W9c（零像素、可全自动）→ W9b-V（逐屏目视，禁「拿归档当由头把 22 推成 24」）
+- **P3-1** 跑分页 i18n：**本波新发现推翻了自己上波的口径**——本仓 l10n 消费有三种形态，
+  而我的闲置探针不认 `l10n.a.b` **property access**（如 `BenchmarkScreen.tsx:234
+  {l10n.benchmark.suite.startButton}`）→ 「102/22」是含假阳的上界；而定罪后真正确定的缺口只有
+  **4 处非注释中文硬编码**（`:46/:49/:51` 段位 + `:242` 性能回放历史），且 en.json **根本没建键**
+  ——属“从未建”不是“有键未接”；另有双口径耦合（`:120` 取 `.ascii` 进像素卡，非拉丁语言下
+  ascii 不得本地化）
+- **P3-2** 错误可见性三处：**`UIStore.showError` 是空实现且生产零调用方**（10 行命中里含同名
+  局部 useState、同名不同的 `showErrorReport`、以及无断言的裸 `jest.spyOn`）→ 按能删不加
+  **删**；而 `PalSheet.tsx:312-316` 静默吞保存失败、`utils/chat.ts:290-294` 模板失败
+  `return ' '` 静默降级——这两处是真缺口，分别接既有错误模态与改显式失败
+
+另加 **§10 收口 checklist**（6 步，含“提交后必跑 HEAD 复验”与“有未入库项就报 partial”）。
+
+### 171.5 又抓到一个跨文档断代指针
+
+星图 L76 引「MASTER_LOG §76」作电池白名单策略凭据，而 **MASTER_LOG 现存卷宗从 §89 起头**
+（实测 79 个 H2，首条即 §89；`§7[6-9]` 串全卷零命中）——早期号段随 08-24 pack 丢失事故不在
+卷内。差点被我的规划卷接着传给新窗——已改引现行实物（`ONDEVICE_VIDEO_GEN_ANALYSIS §7.1` +
+`imageGenStore.ts:63` 的 `isIgnoringBatteryOptimizations`），并把该发现归并进**项 35**
+（不另立项）：不入版本库的域清单已出现无历史可追的断代指针。
+
+### 171.6 本波未做与边界
+
+- **不实现 P2/P3 本体**（只出规划），避免规划与实现混波使判据失真；
+- 项 41/44/35 保持**待裁**，未动用户数据、未动引擎禁区；
+- 未 push（本波两笔后未推送提交数 70）；
+- 设备仍未接入（本波未接机，因此 P2-3 那条“OpenCL 诊断是否依赖 stderr”只标 ❕ 不写成结论）。
 
 
