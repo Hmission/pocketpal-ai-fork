@@ -112,7 +112,10 @@ Wan 2.1 T2V-1.3B = UMT5-XXL 文本编码器 + Wan DiT 1.3B + WanVAE
 
 ### 5.3 引擎支持实证（本项目零改动可加载）
 
-- `wan.hpp` WanRunner：`WanConfig::detect_from_weights` 按 num_layers=30 自动识别 `Wan2.1-T2V-1.3B`（dim 1536/ffn 6196/in_dim 16），VACE/I2V 变体同路径
+- `wan.hpp` WanRunner：`WanConfig::detect_from_weights` 按 num_layers=30 自动识别 `Wan2.1-T2V-1.3B`（dim 1536/**ffn 8960**/in_dim 16/num_heads 12），VACE/I2V 变体同路径
+  - **09-08 勘误（§166）**：本行原写“ffn 6196”为错值——引擎 1.3B 分支强制覆盖为 `ffn_dim = 8960`（`wan.hpp:832`，逐行回读定锚）；
+    另记一坑：`wan.hpp:78` 那行日志打印的是 `WanConfig` **结构体默认值**（dim 2048/ffn 8192/heads 16，`:23/24/28`），发生在覆盖**之前**，
+    不能当成“文件自报元数据”去与引擎配置对撞（§166 已误读一次并撤销该伪风险）。
 - `T5Runner(is_umt5=true)`：加载 `text_encoders.t5xxl.transformer` 前缀 GGUF；UMT5 词表已内嵌（`umt5_tokenizer_json_str`）
 - `wan_vae.hpp`：WanVAE 解码（TinyVideoAutoEncoder 亦兼容）
 - 调度：`VERSION_WAN2_2_TI2V` 之外走通用视频分支（denoise_mask / video_frames_to_latent_frames 已就绪）

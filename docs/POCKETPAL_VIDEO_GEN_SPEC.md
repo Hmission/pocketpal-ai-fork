@@ -3,7 +3,7 @@ doc_id: POCKETPAL_VIDEO_GEN_SPEC
 module: imageGen
 type: spec
 status: draft
-version: "0.3"
+version: "0.4"
 created: "2026-09-08"
 updated: "2026-09-08"
 relates:
@@ -305,6 +305,17 @@ Q4 就 ≈4–8GB、DiT 为 19B/22B 量级 → **手机内存直接不可能**�
 2. **manifest 加 `t5xxl?` 伴侣文件位**（与 `clipL/clipG/llm/vae` 同层）；
 3. **资产到位**（下表两文件）。
 
+> **已闭合（2026-09-08 §166，含真机取证）**：上面三项链已全打通——`nativeLoadModel` 新增
+> `t5xxlPath` 参数（位置在 `backend` **之前**，与 Kotlin `external fun` 严格同序）+ 专用
+> `else if (!t5xxl.empty())` 分支（不可省：llm/clip_l/clip_g 均空时旧代码会直落“一体式”分支而
+> 永不递 UMT5）+ `is_split_model` 补上 `!t5xxl.empty()`（否则 Wan 被强制 Q4_K → 逐张量双重量化，
+> 重现 Klein 纹理事故）；TS 侧以 `CompanionPaths`（`imageGenManifest.ts`）为单一事实源收口
+> `loadModel`/队列快照/debug action 三处，不再各自维持可选字段。
+> **真机确认锚点**（人类模拟操作，非脚本绕 UI）：
+> `stable-diffusion.cpp:759 loading t5xxl from '.../umt5-xxl-encoder-Q3_K_M.gguf'` →
+> `wan.hpp:870 Wan2.1-T2V-1.3B` → `stable-diffusion.cpp:1861 running in FLOW mode`；
+> UI 行按钮变「卸载」、顶栏胶囊 `[Wan] … [视]`。→ 里程碑“能被扫到并加载”达成（§9.7 P0.5/P1）。
+
 #### 9.6.3 可执行资产清单（2026-09-08 本窗拿到文件名与体积级，非估算）
 
 | 件 | 源（hf-mirror 实测可达） | 文件 | 体积 |
@@ -331,6 +342,12 @@ Q4 就 ≈4–8GB、DiT 为 19B/22B 量级 → **手机内存直接不可能**�
 内存账：权重常驻 0.92 + 2.85 + 0.25 ≈ **4.02GB**，**已踩 §7.1 的 4GB PSS 预算线**——
 首验必须 ≤480p 且低帧数，否则一跑就被 HyperOS 看护干掉（而非引擎报错）。
 
+> **口径修正（§166 实测）**：上面是“文件体积相加”的保守账，**不是实测驻留**。真机加载完成后
+> `dumpsys meminfo` 仅 **TOTAL PSS 1,013,295KB ≈ 0.97GB**，而引擎自报
+> `total params memory size = 7271.01MB`——两数并不矛盾：mmap 下未触碰的文件页不计入 PSS，
+> 而 7271MB 是 ggml 的**逻辑参数量**（含 text_encoders 6091.95MB）。→ 内存预算必须区分
+> “逻辑量 / 文件量 / 实测驻留”三口径；真实峰值要等 P2 首次采样（逐层开算就会把页拉进驻留）才能定。
+
 - 两路都不需为 W10 开任何容器相关编译项——**W10 只出帧**，容器才涉及 muxer（W11）。
 - 推机路径：现有模型目录 `/sdcard/Documents/AIOS/models/`（与图片模型同一目录，manifest 精确文件名匹配）；
   设备可用空间 **≈313GB**（本窗 `df` 实测），存储不是瓶颈。
@@ -343,8 +360,11 @@ Q4 就 ≈4–8GB、DiT 为 19B/22B 量级 → **手机内存直接不可能**�
 
 1. **P0（本窗可做，零风险）**：manifest 加 `modality` 维 + `t5xxl` 文件位 + `[视]` 徽章（向后兼容，存量零改动）。
 2. **P0.5（必须，否则装了也加载不到）**：`ImageGenJNI.cpp` 与 Kotlin `preloadModel` 加 `t5xxl` 槽（§9.6.2）。
+   → **已做（§166）**，含 TS 侧 `CompanionPaths` 收口与 `is_split_model` 修正。
 3. **P1**：下载 §9.6.3 两文件 → 推机 → 先不写 UI，用现有面板确认能被扫到并加载（不报 UNKNOWN、
    logcat 可见 `loading t5xxl from …`）——**加载成功就是一个关键可验里程碑**。
+   → **已做并取证（§166）**：三件在位、`[视]` 真机可见、加载走专用槽、进入 FLOW 模式；
+   并已按 §57 防漂移锁完成 manifest + catalog + MODEL_MATRIX 同波登记（件数 5→6）。
 4. **P2**：`nativeGenVideo` 桥 + C-1~C-4 + R-1/R-2 已修 → 页面视频形态（§9.3）一次做完。
 5. **P3**：项 38 在飞凭据 + 夜间长跑开放。
 6. **P4**：W11 容器裁定（用户才能“拿走”视频）。
@@ -368,6 +388,7 @@ Q4 就 ≈4–8GB、DiT 为 19B/22B 量级 → **手机内存直接不可能**�
 
 | 日期 | 版本 | 变更 |
 |------|------|------|
+| 2026-09-08 | 0.4 | **P0.5 + P1 落码并真机取证**（§166 执行窗）：① `t5xxl` 专用槽打通 C++/Kotlin/TS 全链（含 `is_split_model` 免双重量化、`CompanionPaths` 类型收口），§9.6.2 标记已闭合并贴 logcat 锚点；② Wan 条目按 §57 锁与 catalog/MODEL_MATRIX 同波登记（件数 5→6），`[视]` 真机可见；③ **内存口径分家**：“4.02GB 常驻”是文件相加的保守账，实测 PSS 仅 0.97GB 而引擎自报 7271MB 逻辑量——三口径不得混用；④ 修一处显示不实（就绪文案硬编“CPU 后端”，现按 `backend` 透传且视频分支明说不能出图）；⑤ 撤销一条伪风险（`wan.hpp:78` 打印的是结构体默认值，非文件自报元数据）。**边界不变**：本卷仍无可用的视频生成，`nativeGenVideo` 桥（P2）未动，一次真实视频生成也未跑过 |
 | 2026-09-08 | 0.3 | **补页面真空（§九）+ 更正资产陈述（§八）+ LTX 验伪（§9.6.1）**：① 裁定**不新增 tab**，模态由 `manifest.modality` 驱动（宽度硬账 400dp 已贴满为一票否决证据）；② 页面全部复用既有容器（ModelPicker/taskPage/PerfPanel/HistoryStrip/吸底条）+ U-1~U-5 验收；③ 夜间长跑定为用户形态（与项 38 强耦合）；④ **推翻了 ANALYSIS §八的“首选 LTX-Video 2B”**：本引擎 LTX 分支硬编码 `GEMMA3_12B`、无 T5 回落分支（逐行直证）→ **Wan 2.1 T2V-1.3B 是唯一可加载路线**；⑤ 挖回本卷初稿“全盘无视频资产”的不实陈述（下划线命名漏匹配）并列实物盘存：设备已有 WanVAE，只欠 UMT5 + 量化 DiT |
 | 2026-09-08 | 0.2 | 新增 §八 编译期取证：从已装 APK 抽 `libappmodules.so` 跑 `llvm-nm`，直证 `generate_video` **已导出**（含 1820 个 video 相关符号）——引擎就绪；同时登记硬阻塞：无视频模型资产，故 **W10 移出本窗**并给出选型/预算/验收三项前置 |
 | 2026-09-08 | 0.1 | 首发（W10 前置）：引擎 API 与内存量级实读取证、帧回程契约（native 落盘 + data 置空防 double-free）、心跳真缺口在解码期（据此更正审计卷 §3.5）、C-1~C-4 契约、随波修 R-1/R-2、V-1~V-7 验收、不做清单 |

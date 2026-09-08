@@ -2672,3 +2672,106 @@ VAE 用设备已有的 `wan_2.1_vae.safetensors`（Krea2 链路同文件，零�
 （P0.5，需构建窗）、`nativeGenVideo` 桥（P2）、**真机视频生成取证（一次也未跑）**、
 项 38 在飞凭据、W11 容器。多窗并行，本窗只提交不推送（ahead 仍 51）。
 
+---
+
+## §166. 视频主线执行窗：P0.5 + P1 落码并真机取证（2026-09-08，大王“依次执行…把守主线”）
+
+### 166.1 P0.5：`t5xxl` 专用槽打通 C++/Kotlin/TS 全链
+
+上一窗找到的入口缺口（§165.4）本窗补平，改动跨 C++/Kotlin/TS 三层多个点位，但**核心是一条参数顺序纪律**：
+
+- `ImageGenJNI.cpp`：`nativeLoadModel` 新增 `jstring t5xxlPath`（**位置固定在 `backend` 之前**），
+  并新增 `else if (!t5xxl.empty())` 分支——**这个分支不可省**：llm/clip_l/clip_g 均空时，旧代码会
+  直落“一体式”分支（`params.model_path = model`），等于把 Wan DiT 当单文件全套模型，UMT5 永不入场。
+- `ImageGenModule.kt`：`external fun` 参数表与 `extras.getString("t5xxl")` 同序插入（历史教训在
+  `ImageGenJNI.cpp` 6.18 注释里：Kotlin 声明 Double 而 C++ 读 jfloat → cfg 从未到达引擎）。
+- TS 层：**不新增可选字段扩散**，收口为 `imageGenManifest.ts` 导出的 `CompanionPaths`（SSOT），
+  `imageGenStore.loadModel` / 队列快照（`imageGenQueueCore` + `ImageGenQueueRepository` 的 cast）/
+  `actionRegistry` 三处均改用它；Repository 的 cast 写为 `NonNullable<GenParamsSnapshot['companionPaths']>`
+  而非手抄字段，避开类型漂移。
+- 顺带修一处真隐患：`is_split_model` 原本只看 llm/clip_l/clip_g → 新槽不入条件则 Wan 被强制重量化为
+  Q4_K，而 DiT 本身就是 Q4_K_M GGUF → **逐张量双重量化**，与 Klein 纹理事故同型。
+
+构建窗跑真实编译（非假成功）：双 ABI CMake 均重编（3m29s）→ 装机后二次增量（1m42s，
+`createBundleProdDebugJsAndAssets` 真跑 = JS 重捆）；`adb install -r -d`（**全程未卸载未 pm clear**）。
+
+### 166.2 P1：按 §57 防漂移锁“三处同波”登记（半步不敢单边）
+
+`BUILTIN_MANIFESTS` 文件集 ⊆ `CATALOG_IMAGEGEN` 且件数与 MODEL_MATRIX §2 入选项挂钩，所以上一窗
+主动撤回的条目，本窗以**一笔提交内同时落地**：manifest 条目（`wan21-t2v-13b-q4`，`modality: 'video'`、
+`experimental: true`、`gpuPolicy: 'high-adreno-only'`）+ catalog 三件下载源（DiT/TE/VAE，**`sources: ['hf']`
+—魔搭未逐字节验证就不上架**）+ MODEL_MATRIX §2 第 6 行；两处测试同步：件数断言 5→6、
+`familyBadgeSummary.test.ts` 的反向断言翻正（视频条目已登记则徽章/族色必在册）。
+
+`note` 里写明“**尚未可生成**，桥待 P2”与“单条预计 80–200 分钟，只能夜间长跑”——登记不等于承诺可用。
+
+### 166.3 真机取证（人类模拟操作 + logcat 双证据，两轮）
+
+用 uiautomator2 走真实手指路径（抽屉→创造工坊→模型下拉→选 Wan→点加载），不绕 UI 调函数：
+
+- **取证 1（可见）**：下拉出现 `[Wan] Wan 2.1 T2V (1.3B Q4_K_M) [视] [实验性]`，顶栏胶囊同步带 `[视]`。
+- **取证 2（状态）**：行按钮由「加载」变「卸载」，无失败文案。
+- **取证 3（引擎侧，P0.5 生效的唯一硬证）**：`stable-diffusion.cpp:759 loading t5xxl from
+  '.../umt5-xxl-encoder-Q3_K_M.gguf'`，随后 `wan.hpp:870 Wan2.1-T2V-1.3B`、
+  `stable-diffusion.cpp:1861 running in FLOW mode`、`Initializing backend: GPUOpenCL`（Adreno 840，
+  global mem 7506MB）。光看 UI 不能证明 UMT5 入场，**这行日志才是锚点**。
+- **取证 4（复验，构建 2）**：就绪文案实机为 `✓ 已加载（OpenCL 后端）· 视频生成尚未接入，不能出图`。
+  取证后点「卸载」还原设备状态（含确认弹窗），不留下在飞模型。
+
+**不做什么**：不点出图。C-4（视频 ctx 上调 txt2img 的行为）未验，拿它“顺手看看”是把风险推给引擎。
+
+### 166.4 内存三口径：7271MB 逻辑量≠ 0.97GB 驻留
+
+同一分钟的两个数：引擎自报 `total params memory size = 7271.01MB（text_encoders 6091.95MB）`，
+而 `dumpsys meminfo` **TOTAL PSS 仅 1,013,295KB ≈ 0.97GB**。不矛盾：mmap 下未触碰的文件页不计入 PSS。
+→ 此前所有文档拿“文件体积相加”做 PSS 预算（§165.5 写的 4.02GB 已踩 4GB 预算线）**只是保守上限**，
+**不得拿它当实测**；真实峰值要等 P2 首次采样（逐层开算就会把页拉进驻留）才能定。已写回 VIDEO_GEN_SPEC §9.6.3。
+
+### 166.5 一条本窗自己造又自己撤的伪风险（日志得读打印点）
+
+取证日志里 `wan.hpp:78 wan: … dim = 2048, ffn_dim = 8192, num_heads = 16` 与本仓 1.3B 分支的
+`dim=1536/ffn=8960/heads=12` 看起来“冲突”，我一度登记为“P2 隐藏地雷（权重懒准备时才爆）”。
+逐行回读后推翻：`:78` 那行打的是 `WanConfig` **结构体默认值**（`wan.hpp:23/24/28`），且发生在
+`num_layers==30` 覆盖（`:830-836`）**之前**，`:870` 才打 desc——**它从来不是“文件自报元数据”**。
+→ 风险登记撤销。新纪律（已归入记忆 a0790acf）：**引日志作证必须一并读打印语句所在行与其变量来源**，
+只看日志文本会把“覆盖前的默认值”误当成“外部输入”。
+
+同时发现 ANALYSIS §5.3 写的 “ffn 6196” 为错值（代码 `:832` 是 **8960**），已就地勘误。
+
+### 166.6 顺手抓到一条会误导取证的显示不实
+
+`ModelPickerPanel` 就绪文案硬编码“✓ 模型已就绪（**CPU 后端**…）”，而引擎日志是 `GPUOpenCL`——
+在视频这种“内存/耗时都要靠肉眼取证”的链路上，这句假文案会直接污染后续判断。修法定为单点透传：
+`backend` 从 store 取（本来已由 manifest 单点决策），`isVideo` 由 `manifest.modality` 派生；
+**不新增文案开关、不为视频另造一个状态组件**。同时视频分支绝不允诺“可以出图”（§9.2 派生态红线）。
+
+### 166.7 取证工具链的四次报错（写下来免得下窗重踩）
+
+uiautomator2  xpath `./@text` 在此 hierarchy 下取不到节点 → 改 regex 解 `dump_hierarchy()`；
+PowerShell 默认 GBK 控制台中文直接 `UnicodeEncodeError` → `sys.stdout.reconfigure(encoding='utf-8')`；
+轮询启发式拿“出图”当 READY 标志（页面上本来就有出图按钮）→ 改以行按钮「卸载」+ logcat 为判据；
+**本轮复验第一遍报 FAIL 也不是代码问题**——选中模型后下拉面板并不收起，我的脚本又点了一次触发器
+把面板点回收起态，导致读不到面板内的就绪文案；步进式重测即 PASS。
+
+### 166.8 本窗交与不交
+
+交：`t5xxl` 全链加载槽（带真机日志硬证）+ Wan 三处同波登记（带测试锁）+ 双 ABI 真编译装机两轮取证
++ 内存三口径入卷 + ANALYSIS §5.3 数字勘误 + 一条显示不实修正 + 一条伪风险撤销。
+不交（已登记不藏在话术里）：**一次真实视频生成也未跑过**（`nativeGenVideo` 桥 = P2 未动）、页面视频
+形态 U-1~U-5、项 38 在飞凭据、W11 容器。门禁：`tsc` 0 错；全量 jest **350 套 / 4856 过
+（2 skip）/ 318 快照全过**——与 §165 同数，因本窗只往现有用例里加断言、未新增用例。
+多窗并行，本窗只提交不推送。
+
+### 166.9 提交切分（精确 pathspec，两个混波文件按 hunk 分离）
+
+改动集里有两个文件跨波次：`imageGenManifest.ts`（`CompanionPaths` 属 P0.5、Wan 条目属 P1）、
+`ImageGenScreen.tsx`（t5xxl 路径属 P0.5、isVideo/backend 透传属文案 fix）。故不用
+`git add <file>` 一把收，而是拆 hunk 生成部分暂存补丁后 `git apply --cached --recount`，
+分四笔：P0.5 加载槽 / P1 三处同波登记 / 就绪文案 fix / 文档回写。**依赖方不先于定义方入库**
+（A 带 `CompanionPaths`，B 才带使用它的条目；每一笔单独看仍可编译）。
+
+提交后复验（一律读 `git show HEAD:<path>` 的已入库对象，不看工作区）：
+`node .tmp/verify_head_166.js` — **42 项断言全过（含 6 项负向：旧“暂不登记”注释、
+旧反向断言、错值 6196、硬编 CPU 文案、frontmatter 0.3 残留、store 手抄类型均不得在册）**，
+四笔共涉 17 文件，引擎层禁区零改动。
+
