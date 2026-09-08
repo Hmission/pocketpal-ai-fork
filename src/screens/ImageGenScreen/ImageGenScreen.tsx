@@ -1429,6 +1429,8 @@ export const ImageGenScreen: React.FC = observer(() => {
         loading={imageGenStore.loading}
         loaded={loaded}
         isDream={isDream}
+        isVideo={selectedEntry?.manifest.modality === 'video'}
+        backend={imageGenStore.backend ?? undefined}
         showModelDrop={showModelDrop}
         now={now}
         loadingStartedAt={imageGenStore.loadingStartedAt}

@@ -87,6 +87,12 @@ interface DropdownProps {
   loading: boolean;
   loaded: boolean;
   isDream: boolean;
+  /** 视频模态（§9.2 由 manifest.modality 派生）：就绪文案不得允诺“可以出图” */
+  isVideo?: boolean;
+  /** 当前实际后端（由 store 持有 = manifest 单点决策透传）：不写死“CPU”——
+   *  旧文案硬编 CPU而后端实为 OpenCL（真机日志证 Initializing backend: GPUOpenCL），
+   *  会误导内存/耗时取证（§166）。 */
+  backend?: string;
   showModelDrop: boolean;
   now: number;
   loadingStartedAt: number;
@@ -108,6 +114,8 @@ export const ModelPickerDropdown: React.FC<DropdownProps> = ({
   loading,
   loaded,
   isDream,
+  isVideo,
+  backend,
   showModelDrop,
   now,
   loadingStartedAt,
@@ -245,9 +253,11 @@ export const ModelPickerDropdown: React.FC<DropdownProps> = ({
         )}
         {loaded && !loading && (
           <Text style={s.readyText}>
-            {isDream
-              ? '✓ 模型已就绪，可以出图（4 步 1024px 约 25s）'
-              : '✓ 模型已就绪（CPU 后端，512px 预计数分钟，请耐心）'}
+            {isVideo
+              ? `✓ 已加载（${backend ?? 'CPU'} 后端）· 视频生成尚未接入，不能出图`
+              : isDream
+                ? '✓ 模型已就绪，可以出图（4 步 1024px 约 25s）'
+                : `✓ 模型已就绪（${backend ?? 'CPU'} 后端，512px 预计数分钟，请耐心）`}
           </Text>
         )}
       </View>
