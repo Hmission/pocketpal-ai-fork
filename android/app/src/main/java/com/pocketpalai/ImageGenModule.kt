@@ -45,33 +45,42 @@ class ImageGenModule(reactContext: ReactApplicationContext) :
 
   @ReactMethod
   fun loadModel(modelPath: String, extras: ReadableMap?, promise: Promise) {
-    try {
-      // backend 透传（manifest defaults 单点决策，本层不决策）
-      val ok = nativeLoadModel(
-        modelPath,
-        extras?.getString("clipL") ?: "",
-        extras?.getString("clipG") ?: "",
-        extras?.getString("llm") ?: "",
-        extras?.getString("vae") ?: "",
-        // UMT5 文本编码器（Wan 系视频模型）：本层不决策，与 clipL/llm 同一透传口径。
-        // 参数顺序与 C++ 侧 nativeLoadModel 严格一致（历史教训：Kotlin 声明 Double 而
-        // C++ 读 jfloat → cfg 从未到达引擎，见 ImageGenJNI.cpp 6.18 注释）。
-        extras?.getString("t5xxl") ?: "",
-        extras?.getString("backend") ?: "",
-      )
-      promise.resolve(ok)
-    } catch (e: Throwable) {
-      promise.reject("LOAD_FAILED", e.message)
-    }
+    // 先把 ReadableMap 读成局部变量再开线程：不在工作线程上触碰 bridge 侧动态对象。
+    // backend 透传（manifest defaults 单点决策，本层不决策）
+    val clipL = extras?.getString("clipL") ?: ""
+    val clipG = extras?.getString("clipG") ?: ""
+    val llm = extras?.getString("llm") ?: ""
+    val vae = extras?.getString("vae") ?: ""
+    // UMT5 文本编码器（Wan 系视频模型）：本层不决策，与 clipL/llm 同一透传口径。
+    // 参数顺序与 C++ 侧 nativeLoadModel 严格一致（历史教训：Kotlin 声明 Double 而
+    // C++ 读 jfloat → cfg 从未到达引擎，见 ImageGenJNI.cpp 6.18 注释）。
+    val t5xxl = extras?.getString("t5xxl") ?: ""
+    val backend = extras?.getString("backend") ?: ""
+    // 必须离开 native modules 队列线程（DEV_BACKLOG 项 36①，2026-09-08）：
+    // nativeLoadModel 全程持 g_mutex 且可达分钟级（GB 级 TE 装载），而同队列上的
+    // cancelTxt2img / unloadModel 会被排在它后面 → 用户表现为「按停止没反应」。
+    // 并发安全不靠本层：C++ 侧 g_mutex 仍串行化对 ctx 的一切读写（与 txt2img 同模式）。
+    Thread {
+      try {
+        val ok = nativeLoadModel(modelPath, clipL, clipG, llm, vae, t5xxl, backend)
+        promise.resolve(ok)
+      } catch (e: Throwable) {
+        promise.reject("LOAD_FAILED", e.message)
+      }
+    }.start()
   }
 
   @ReactMethod
   fun unloadModel(promise: Promise) {
-    try {
-      promise.resolve(nativeUnloadModel())
-    } catch (e: Throwable) {
-      promise.reject("UNLOAD_FAILED", e.message)
-    }
+    // 同项 36①：free_sd_ctx 在 GB 级权重下可耗时数十秒且持 g_mutex，
+    // 留在队列线程上会饿死后续 native 调用（含 cancel）。
+    Thread {
+      try {
+        promise.resolve(nativeUnloadModel())
+      } catch (e: Throwable) {
+        promise.reject("UNLOAD_FAILED", e.message)
+      }
+    }.start()
   }
 
   /**
