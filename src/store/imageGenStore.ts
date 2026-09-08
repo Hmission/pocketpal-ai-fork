@@ -305,15 +305,17 @@ class ImageGenStore {
         const adopted = await this.adoptFinishedTasks(ghost);
         const orphans = ghost.filter(g => !adopted.has(g.taskId));
         for (const g of orphans) {
-          // 分通道说真话（§9.4）：native 通道是「未找到产物」，JS 通道是「结果无法落盘」。
-          // 本段跑在水合内部，必须走 applyTaskPatch（failTask→patchTask→ensureReady 会自锁）。
+          // 文案只写可观察的事实（§9.4）：不写「界面被系统回收」也不写「被强制退出」——
+          // 二者都是对因果的断言，而本层只能确知「上一轮续体已失效且未拿到产物」。
+          // （§169 实测：仅销毁 Activity 不会摧毁 JS 运行时，任务照常跑完落盘；
+          // 要区分「进程被杀」与「运行时被释放」需新增进程起点信号，对本提示无增量价值。）
           const why = isNativeProductTask(g)
             ? '未找到产物文件'
-            : '推理结果无法落盘（生成续体随界面一同销毁）';
+            : '生成续体已随应用重启失效，推理结果无法落盘';
           await this.applyTaskPatch(g.taskId, {
             status: 'failed',
             errorSummary: '生成中断',
-            errorDetail: `界面被系统回收，本次生成未完成（${why}），请重试`,
+            errorDetail: `本次生成未完成（${why}），请重试`,
           });
         }
         console.info(
@@ -498,9 +500,19 @@ class ImageGenStore {
     }
   }
 
+  /**
+   * 产物目录路径推导（**纯路径，不碰就绪门禁**）。
+   * 水合期扫盘只能走本函数：init() 末尾 `await this.ensureReady()`，而水合自身就是
+   * readyPromise 那次未 settle 的执行——在水合内调 init() 即自锁（§169 真机实证：
+   * native 幽灵让整条写路径永久挂起）。init() 也复用本推导，路径字符串单点定义。
+   */
+  private imageOutDirPath(): string {
+    return `${RNFS.DocumentDirectoryPath}/aios_images`;
+  }
+
   async init(): Promise<void> {
     try {
-      this.outDir = `${RNFS.DocumentDirectoryPath}/aios_images`;
+      this.outDir = this.imageOutDirPath();
       await RNFS.mkdir(this.outDir);
     } catch (e) {
       console.warn('[ImageGenStore] init failed:', e);
@@ -619,11 +631,8 @@ class ImageGenStore {
       return adopted;
     }
     try {
-      if (!this.outDir) {
-        // 水合可能早于首次 init：与 :generateTask 同一 init 守卫惯例，不另发明一套路径推导
-        await this.init();
-      }
-      const rows = await RNFS.readDir(this.outDir);
+      // 目录不存在时 readDir 抛错 → 走 catch 按「无产物证据」处理（不猜、不建目录）
+      const rows = await RNFS.readDir(this.outDir || this.imageOutDirPath());
       // gen_*.png 前缀只由 native 通道写（DreamLite 用 dreamlite_* 且走 JS）→ 天然可区分；
       // mtime 取不到（库类型为 Date | null）即无法证明落盘时刻 → **不作证据，不猜**。
       const landed: Array<{path: string; mtimeMs: number}> = [];

@@ -140,34 +140,43 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
   // 2026-08-27 大王裁定：反推/编辑/放大与生成同属一套引擎任务流，
   // 一律走 blank 任务页 + 完整 PerfPanel（不叠图、不折叠、不特殊化），
   // 预览卡片跑分卡与生图完全一致。
-  const progressBody = (title: string) => (
-    <>
-      {/* 三点波浪呼吸（B57：渲染归一 ui/WaveDots，prop 接线保留） */}
-      <WaveDots size={10} />
-      <Text style={s.genOverlayTitle}>{title}</Text>
-      {/* B57：进度条归一 ui/Progress（height=8 保原视觉；宽度 70% 收窄） */}
-      <Progress
-        height={8}
-        value={Math.max(progress, 2)}
-        style={s.progressTrackW70}
-      />
-      <Text style={s.overlayText}>
-        {progressText
-          ? `采样 ${progressText}` +
-            (stepTime > 0 ? `（${stepTime.toFixed(1)}s/步）` : '')
-          : '加载权重/准备中…'}
-        {' · '}
-        {Math.max(0, Math.round((now - genStartedAt) / 1000))}s
-      </Text>
-      {stage ? (
-        <Text style={s.overlayStage} numberOfLines={2}>
-          ▸ {stage}
+  const progressBody = (title: string) => {
+    // 计时必须有起点：genStartedAt 是本进程内任务启动时刻，水合出的 running 卡
+    // 本进程没跑过（§169 真机实证：无守卫时把 epoch 秒当已耗时渲染成 1788871961s），
+    // 起点缺失就显未知标记 '--'（与 PerfPanel 缺值同一记号），不拿 now-0 编时长。
+    const elapsedText =
+      genStartedAt > 0
+        ? `${Math.max(0, Math.round((now - genStartedAt) / 1000))}s`
+        : '--';
+    return (
+      <>
+        {/* 三点波浪呼吸（B57：渲染归一 ui/WaveDots，prop 接线保留） */}
+        <WaveDots size={10} />
+        <Text style={s.genOverlayTitle}>{title}</Text>
+        {/* B57：进度条归一 ui/Progress（height=8 保原视觉；宽度 70% 收窄） */}
+        <Progress
+          height={8}
+          value={Math.max(progress, 2)}
+          style={s.progressTrackW70}
+        />
+        <Text style={s.overlayText}>
+          {progressText
+            ? `采样 ${progressText}` +
+              (stepTime > 0 ? `（${stepTime.toFixed(1)}s/步）` : '')
+            : '加载权重/准备中…'}
+          {' · '}
+          {elapsedText}
         </Text>
-      ) : null}
-      {/* 与生成同一路径：完整跑分面板（ADR-0008，默认展开叠全） */}
-      <PerfPanel />
-    </>
-  );
+        {stage ? (
+          <Text style={s.overlayStage} numberOfLines={2}>
+            ▸ {stage}
+          </Text>
+        ) : null}
+        {/* 与生成同一路径：完整跑分面板（ADR-0008，默认展开叠全） */}
+        <PerfPanel />
+      </>
+    );
+  };
 
   // 2026-08-27 大王裁定：反推/编辑/放大与生成同一路径（blank 任务页），
   // 不再有叠图 overlay（旧 absolute 叠图与任务页双渲染导致内容叠加）；

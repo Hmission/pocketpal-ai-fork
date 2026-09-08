@@ -292,4 +292,31 @@ describe('imageGenStore 幽灵任务治理（产物证据收编）', () => {
     expect(readDirMock()).not.toHaveBeenCalled();
     expect(imageGenStore.history).toHaveLength(1);
   });
+
+  // 以本条收尾：它会改写单例的 readyPromise（模拟生产形态），不放到其它用例前。
+  it('§169 死锁回归：按生产形态接 readyPromise 时，native 幽灵水合必须 settle', async () => {
+    (imageGenTaskRepository.loadAll as jest.Mock).mockResolvedValue([
+      nativeGhost,
+    ]);
+    readDirMock().mockResolvedValue([pngFile('gen_a.png', T0 + 5000)]);
+
+    // 生产形态：readyPromise 就是这一次尚未 settle 的 ensureReadyImpl。
+    // 旧写法在水合内调 init()，而 init() 末尾 await ensureReady() → 自锁；
+    // 上面那些用例直接调 ensureReadyImpl() 不接门禁，所以抱不住这个 bug。
+    // outDir 显式置空：单例被前面用例跑过会残留非空值，不重置则本用例失去鉴别力（§169 实测）。
+    (imageGenStore as any).outDir = '';
+    const impl = (imageGenStore as any).ensureReadyImpl();
+    (imageGenStore as any).readyPromise = impl;
+
+    const settled = await Promise.race([
+      impl.then(() => 'SETTLED').catch(() => 'SETTLED'),
+      new Promise(res => setTimeout(() => res('TIMEOUT'), 1500)),
+    ]);
+    expect(settled).toBe('SETTLED');
+
+    // 且收编结果真的落地（不是靠门禁报错提前结束）
+    const g = imageGenStore.history.find(h => h.taskId === 'task_native_1');
+    expect(g?.status).toBe('success');
+    expect(g?.uri).toBe(`file://${OUT_DIR}/gen_a.png`);
+  });
 });

@@ -465,6 +465,28 @@ describe('ResultPreview', () => {
     expect(getByText(/正在生成新图/)).toBeTruthy();
   });
 
+  it('§169 计时守卫：水合出的 running 卡无本进程起点（genStartedAt=0）→ 显 -- 不拿 epoch 秒编时长', () => {
+    const runningItem: GeneratedImage = {
+      ...historyItem,
+      uri: '',
+      taskId: 'task_test_running_no_start',
+      status: 'running',
+    };
+    const {getByText, queryByText} = wrap(
+      <ResultPreview
+        {...baseProps}
+        genStartedAt={0}
+        history={[runningItem]}
+        generating={true}
+        taskKind="gen"
+        progressText=""
+      />,
+    );
+    expect(getByText(/· --/)).toBeTruthy();
+    // 旧写法无守卫，now-0 会渲染出 1788871961s 这类十位数假时长
+    expect(queryByText(/\d{9,}s/)).toBeNull();
+  });
+
   it('2026-08-27 反推=生图流程：caption running 页 = blank 进度页 + 完整 PerfPanel 默认展开（不叠图不折叠）', () => {
     const captionRunning: GeneratedImage = {
       ...historyItem,
