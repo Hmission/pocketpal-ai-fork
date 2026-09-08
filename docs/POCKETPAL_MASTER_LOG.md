@@ -2970,4 +2970,99 @@ P0/P1、在飞任务与资源安全、通话与语音链路、CHAIN_AUDIT W1–W
 设备侧：`adb devices` 空集（开波前在线），故本窗**不装机、不声称真机已验**；APK 已备
 （`app-prod-debug.apk` 693,117,068B，bundle 实执行），接机后可直接 `install -r -d` 进两项真机验收。
 
+---
+
+## §169. 接机验收波（2026-09-08）：项 40 真机过账 + 项 38 双分支真机闭环——**首验即抓出 §168 自己埋的死锁**
+
+### 169.1 门禁与路由
+
+大王报「手机已经接进来了哦」→ gate（idle/allow_route）→ route `act-045d616d`（带规则包）。
+目标：补做 §168 因设备掉线遗留的两项真机验收（项 40 像素证据 / 项 38 幽灵治理）。
+
+### 169.2 项 40：真机像素验收已过
+
+选 Wan 2.1 T2V 后顶栏实测 `[Wan] [视] Wa…`（修前为 `[Wan] Wan 2.1…`，`[视]` 被截不可见），
+顶栏 `← 创造工坊 生图 音频 [Wan] [视] Wa… ▾ 加载` 控件无丢失、零新增。守 U-2（不新增控件）。
+
+### 169.3 Test A：否证 §9.1 写进去的前提 → 文案再收一格
+
+开「不保留活动」后按 home：Activity 确被销毁（前台变 `com.miui.home`）但 **pid 不变**、
+JS 续体存活，任务照常跑完并落盘（`aios_images` 63→64，`dreamlite · 80.1s · 832×1216`），无水合日志。
+→ §168 写进 SPEC 的「界面被系统回收」同样是对因果的断言，**删掉**（能删不加：为区分
+「进程被杀」与「运行时被释放」需新增进程起点信号，而对用户下一步动作无增量价值）；
+SPEC 升 v0.7，重构建 + bundle 双编码试检（新文案在、旧因果不在）+ 覆盖装机。
+
+### 169.4 Test C：JS 通道分支真机过账
+
+`am force-stop` 注入进程终止（recents 卡片被大王上锁划不掉，**不改用户的锁定设置**，改用已披露的
+故障注入夹具）→ 重启 pid 31634→15090 → logcat `[ImageGenStore] ghost running tasks: adopted=0 failed=1`，
+活库终态 `status=failed` + 新文案，`running` 残留 0，文件计数差值 0（印证 JS 通道无产物）。
+
+### 169.5 Test D 两轮：把“取证方法本身”当嫌疑人（本窗代价最高的四条口径）
+
+1. **面板展开态**：模型面板是**内联展开的列表**且顶栏胶囊是 toggle——首版 `pick()` 先点胶囊
+   反而把面板收起，导致「找不到 SD3.5 行」。展开判定改用行独有的 `何时选：` 描述行
+   （收起态胶囊文本也以 `[SD3.5]` 开头，拿前缀判会永远误判为已展开）。
+2. **行内按钮归属**：用 `y < 0.18H` 排除顶栏不行——面板展开时模型行紧贴标题栏（实测 y≈220），
+   把已加载的 SD3.5 误判为「未识别」；改为按 **y 就近归属到上方最近的 family 标题行**。
+   上一版还差点把 DreamLite 的「卸载」当成 SD3.5 的（1.79GB 权重不可能 10 秒加载完——是按钮归属串了行）。
+3. **快照≠活库（最危险的一条）**：一直读的 `/sdcard/Documents/AIOS/database/pocketpalai.db` 只是
+   B14 **去抖导出快照**，活库在 `/data/data/com.pocketpalai/pocketpalai.db`；进程被 force-stop 时
+   待导出的快照不刷新 → 拿它判「这一行没落库」**必得假结论**（本窗一度据此误判，差点漏掉真 bug）。
+4. **日志缺失不能当否定证据**：`ghost running tasks` 日志在 `ghost.length > 0` 分支内，无幽灵时静默
+   是预期行为——拿「没看到日志」推「未运行」不成立。
+
+另：`never_keep_activities` 基线实测 `null`；PowerShell `>` 破坏二进制、`adb pull` 被沙箱拒、
+设备无 `sqlite3` 二进制——取库一律走 .NET Process BaseStream + `run-as cat`。
+
+### 169.6 本窗最重要：native 收养分支首验即死锁（§168 自埋）
+
+二次重启探针发现那张 running 卡**每次启动都被重建**且计时器显示 `1788871503s`（= epoch 秒），
+改读活库确认 `task_1788871451471_91814`（`family='sd3'`）仍挂 `status=running`，而水合日志一条没有。
+回读代码定位：`adoptFinishedTasks` 为拿 `outDir` 而 `await this.init()`，而 `init()` 末行就是
+`await this.ensureReady()` → **等的正是本次尚未 settle 的 `readyPromise`**。
+
+**为什么上一窗两道防线都没拦住**：① 单测直接调 `ensureReadyImpl()`，等的是构造期已 settle 的旧
+promise，锁不住也测不出；② Test C 走 DreamLite 幽灵，在 `isNativeProductTask` 处早退，从不碰
+`init()`——**“Test C 通过”给 native 分支发了假担保**。后果不是“没收尾”而是整条写路径永久挂起。
+
+收法（能删不加）：扫盘只需要**路径**，不需要 `init()` 的副作用 → 抽纯函数 `imageOutDirPath()`，
+`init()` 与幽灵分支共用；目录不存在时 `readDir` 抛错→按「无产物证据」处理，不 mkdir 不猜。
+
+**测试防线的修正（红/绿两态均实测）**：新增用例按生产形态把本次 `ensureReadyImpl()` 赋给
+`readyPromise` 并**显式置空 `outDir`**——不置空时单例残留的非空值会让该用例在全量跑时失去
+鉴别力（本窗实测：单跑红、全量绿，就是这个原因）。临时回退修复后全量跑确为 1 failed（TIMEOUT），
+恢复后 10/10 绿。
+
+### 169.7 Test E：native 收养分支真机过账
+
+Test D 留下的现场天然成型（库里一条 sd3 running + 我注入的 `gen_169inject.png` mtime 晚于其 ts）：
+装上新包冷启动即命中——
+`[ImageGenStore] 幽灵任务按产物证据收编为成功: task_1788871451471_91814 …/gen_169inject.png`
+`[ImageGenStore] ghost running tasks: adopted=1 failed=0`；running 卡消失、假时长消失、
+成功卡按钮齐（保存/放大/反推/再次生成/删除）、相册 96→97；活库终态 `status=success`、
+`duration_ms=15286`（= 文件 mtime − ts，实测非估算）。**诚实边界**：产物文件是注入的，
+本实验证明的是**收养机制**（含死锁已解），不是自然场景下的完整恢复。
+
+### 169.8 夹具清理与设备复原
+
+- 走 UI 删除那张注入卡（无确认弹窗→不再点任何删除类按钮，防误删另一张）→ 相册回 96，
+  注入文件由 App 自己删净（`run-as ls` 空输出），用户相册零污染。
+- `settings delete global never_keep_activities` → 回读 `null`（与基线一致）。
+- scrcpy 全程在镜像（pid 20876）；未 uninstall、未 pm clear。
+
+### 169.9 门禁
+
+`tsc --noEmit` 0 错；`jest --silent` **350 套 / 4865 过 / 2 skip**（较 §168 的 4863 正好 +2
+= 本窗两条新用例）；Panels 单套 27/27；prettier 检查通过；`assembleProdDebug` BUILD SUCCESSFUL 1m34s；
+覆盖装机 Success。
+
+### 169.10 新发现与待裁
+
+- **项 41 登记（待大王裁定）**：历史 **32 行** `error_detail` 仍带旧说谎文案「被强制退出」
+  （写进了用户数据，改代码不会自动修）。本窗**未擅自迁移用户数据**。
+- 顺带观测：相册曾有一张全灰缩略图（§167 记的未定性现象仍在，本窗未定性）。
+- `family` 内部键实测为 `sd3`（不是 `sd35`）——`isNativeProductTask` 用「非 dreamlite」判定，
+  不依赖具体值，但文档引用族名时应以实际键为准。
+
 

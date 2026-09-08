@@ -3,7 +3,7 @@ doc_id: POCKETPAL_IMAGEGEN_QUEUE_SPEC
 module: imagegen
 type: spec
 status: active
-version: "0.6"
+version: "0.7"
 created: "2026-08-27"
 updated: "2026-09-08"
 relates: [POCKETPAL_IMAGEGEN_UI_SPEC, POCKETPAL_STARMAP_DOMAINS, ONDEVICE_VIDEO_GEN_ANALYSIS]
@@ -11,9 +11,9 @@ relates: [POCKETPAL_IMAGEGEN_UI_SPEC, POCKETPAL_STARMAP_DOMAINS, ONDEVICE_VIDEO_
 
 <!-- D-FORMAT:v3 -->
 
-# 生图队列（任务购物车）设计规格 — IMAGEGEN_QUEUE_SPEC v0.6
+# 生图队列（任务购物车）设计规格 — IMAGEGEN_QUEUE_SPEC v0.8
 
-**状态**：active（P0/P1 已实现并平板实机验收通过，P2 待夜间耐久；DECISION D1-A/D2-A/D3-A/D4-A 定稿） | **版本**：0.6 | **更新**：2026-09-08
+**状态**：active（P0/P1 已实现并平板实机验收通过，P2 待夜间耐久；DECISION D1-A/D2-A/D3-A/D4-A 定稿） | **版本**：0.8 | **更新**：2026-09-08
 
 > v0.4（2026-09-07 W4 文档-代码对账）：按代码现状回写四处失真——§六.2 判据由「三条件」改为实际**四条件 + 票据制**、§六.4/6.5 补 W1 失败可见性收口（超时真 cancel / 停止有界确认）、§九 队列表迁移版本 3→**10**、§十 互斥行为由「冲突显式报错」改正为**自动抢占**；另删除 frontmatter 不存在的 `IMAGEGEN_UI_SPEC` 悬空 relates。
 >
@@ -27,6 +27,17 @@ relates: [POCKETPAL_IMAGEGEN_UI_SPEC, POCKETPAL_STARMAP_DOMAINS, ONDEVICE_VIDEO_
 > 与实测对齐（旧文案“被强制退出”与 `pidof` 不变相矛盾）。同时推翻两处旧推定：项 38 原描述的
 > “ONNX 产物可能已落盘”（写盘在 JS 侧，不成立）与 §167 草图的 `g_gen_in_flight`+`tickMs` 凭据
 > （只能证“活着”不能证“会落地”，且必带超时兜底，已作废）。
+>
+> v0.7（2026-09-08 §169 真机接机修正）：§9.1 里“最后一个 ReactContext 销毁即销毁 JS 运行时”被
+> **直接实验否证**（开「不保留活动」后仅销毁 Activity：pid 不变、任务照常跑完并落盘、无水合日志）
+> → 幽灵分支的真实前置是“JS 续体确实没了”（进程终止或运行时被单独释放），不是“Activity 被回收”。
+> 同时按实测把 §9.4 的文案再收一格：连“界面被系统回收”这一因果断言也删掉，只写可观察事实。
+>
+> v0.8（2026-09-08 §169 native 收养分支真机跑通）：① §9.2 补登“同一条锁的第二扇门”——
+> 水合内 `await this.init()` 与直接调 `patchTask` 是同一类自锁（`init()` 末行 `await ensureReady()`），
+> 后果是整条写路径永久挂起；收法为只取路径的纯函数 `imageOutDirPath()`，并补按生产形态接
+> `readyPromise` 的回归测试。② 新增 §9.5 真机取证口径（**活库在私有目录，共享目录只是 B14 去抖
+> 快照**——拿快照判“未落库”必得假结论；计时文本必须有起点守卫）。
 
 > **定位**：为「任务购物车（连抽队列）」能力提供决策完备的设计规格——数据、状态机、执行器、UI、持久化、错误登记、迭代路线。生图页 UI 细则仍以 `POCKETPAL_IMAGEGEN_UI_SPEC` 为准，本卷只增补队列专属设计。
 
@@ -162,9 +173,20 @@ loop:
 
 ### 9.1 通道归属：谁能被收养，谁不能（实测，不是推定）
 
-运行时重建会摧毁旧 JS 续体（continuation；bridgeless RN 下最后一个 ReactContext 销毁即销毁 JS 运行时；
-证据：本卷的 ghost 治理代码能再跑一次，本身就说明 store 是新建的）。因此判定只看一件事：
-**产物是由 native 写盘还是由 JS 写盘**——JS 已死时，JS 侧的后续代码不可能执行。
+运行时重建会摧毁旧 JS 续体——但**“Activity 被销毁”不等于“运行时被销毁”**（§169 K90 实测推翻旧推定）。
+当年本卷写的“bridgeless RN 下最后一个 ReactContext 销毁即销毁 JS 运行时”已被直接实验否证：
+
+> 实测（§169，开发者选项「不保留活动」=1）：DreamLite 出图途中按 home → `topResumedActivity` 确实变成
+> `com.miui.home/.launcher.Launcher`（Activity 已被销毁）且 **pid 全程不变** → 等 100s → 回 app：
+> 任务以 **success 卡**呈现（`dreamlite · 80.1s · 832×1216`）、`files/aios_images` 从 63 增到 64（产物真的落盘）、
+> logcat **无任何水合/幽灵治理日志**。→ 结论：仅销毁 Activity 时 JS 续体仍存活，任务会正常跑完，
+> **根本不会进入幽灵分支**。
+
+以本卷判据而言，真正摧毁 JS 续体的是另两种情形：**进程终止**（用户划掉/系统杀进程/崩溃），
+或**运行时被单独释放而进程存活**（§164 那类长时间离场）。因此下表的“能否被收养”**成立条件
+是“JS 续体确实没了”**；续体存活时任务自己会完成，无需收养。
+
+判定只看一件事：**产物是由 native 写盘还是由 JS 写盘**——JS 已死时，JS 侧的后续代码不可能执行。
 
 | 通道 | 引擎调用方 | **产物写盘方** | 运行时重建后可收养？ |
 |---|---|---|---|
@@ -197,6 +219,18 @@ loop:
    调用即**自锁**（旧代码直接摸 repository 就是这个因由）。收法：抽出无门禁原语
    `applyTaskPatch(taskId, patch)`，`patchTask` = 就绪门禁 + 该原语，幽灵分支直接用原语，
    全仓仍只有一处“任务状态双写”实现。
+   **同一条锁的第二扇门（§169 真机实证）**：抽出 `applyTaskPatch` 并不等于水合链干净——
+   `adoptFinishedTasks` 为拿 `outDir` 而 `await this.init()`，而 `init()` 末行也是
+   `await this.ensureReady()` → 与直接调 `patchTask` 完全等价的自锁。后果不是“没收尾”而是
+   **整条写路径永久挂起**（`beginTask`/`patchTask`/`init` 全在等这个永不 settle 的 promise）。
+   且因 JS 通道幽灵在 `isNativeProductTask` 处早退、从不碰 `init()`，单测与 DreamLite 真机
+   验证均恰好绕开它——**native 收养分支在 §169 之前从未真机跑通过**。
+   收法：扫盘只需要**路径**，不需要 `init()` 的副作用（mkdir / GPU 探测 / 门禁）→
+   抽纯函数 `imageOutDirPath()`，`init()` 与幽灵分支共用（路径仍单点定义，不二处拼字符串）。
+   **防线（§169 补）**：回归测试必须按**生产形态**接 `readyPromise`（把本次 `ensureReadyImpl()`
+   赋给 `readyPromise` 再等它 settle）并显式置空 `outDir`——直接调 `ensureReadyImpl()` 的用例
+   等的是构造期已 settle 的旧 promise，锁不住也测不出；单例残留的非空 `outDir` 会使该用例
+   在全量跑时失去鉴别力（红/绿两态均已实测）。
    `durationMs = 文件 mtime - 条目 ts`（真实测量，非估算）；未命中→标失败，文案按 §9.4 分通道说真话。
 
 ### 9.3 队列侧恢复（不变）
@@ -208,12 +242,36 @@ planning 而当前抽已出图”的双事实源。`pending` 条目语义不变�
 ### 9.4 失败文案必须与实测一致（本项的真正缺陷面）
 
 旧文案「应用在上次生成中被**强制退出**，任务未完成」与取证矛盾：`pidof` 前后相同、
-无 tombstone——真实发生的是 **MIUI 回收了 Activity → RN 运行时重建**，进程从未被杀。
-按通道改写为可核实的陈述（不得写未经观察的因果）：
+无 tombstone——当时把它改写成「界面被系统回收」，而 **§169 实测证明这一句同样是对因果的断言**：
+仅销毁 Activity 时任务根本不会失败，而进程被杀时确实没有“只是回收界面”。
 
-- JS 通道（DreamLite/超分/反推/TTS）：「界面被系统回收，本次生成未完成（推理结果无法落盘），请重试」；
-- native 通道且无产物：「界面被系统回收，本次生成未完成（未找到产物文件），请重试」；
-- 真孤儿（进程确实被杀重启：`createdAt` 早于本进程启动时间且无产物）：才允许用“上次运行中被终止”口径。
+**因此本条的裁定是：删掉因果断言，只写可观察事实**（能删不加；为区分“进程被杀”与“运行时被释放”
+需新增一个进程起点信号，而它对用户下一步动作没有任何增量价值）：
+
+- JS 通道无产物：「本次生成未完成（生成续体已随应用重启失效，推理结果无法落盘），请重试」；
+- native 通道无产物：「本次生成未完成（未找到产物文件），请重试」；
+- 有产物且严格唯一：按 §9.2 收编为 success（这才是唯一能拿实物当凭据的分支）。
+
+禁止再出现的具体字样：「被强制退出」（与 pidof 不变矛盾）、「界面被系统回收」（仅销毁 Activity 时
+并不导致失败）。另登记一项未做：若将来需向用户解释“为何后台会丢任务”，再评估是否引入进程起点信号。
+
+### 9.5 真机取证口径（§169 血泪，后续窗口照此办事）
+
+- **活库在私有目录，共享目录那份只是快照**：WatermelonDB 实际落
+  `/data/data/com.pocketpalai/pocketpalai.db`（`paths.ts` 注释与实测一致），
+  `/sdcard/Documents/AIOS/database/pocketpalai.db` 是写入后 **debounce 导出**的 B14 快照；
+  进程被 force-stop 时待导出的快照不会刷新——**拿快照判「这一行没落库」必然得出假结论**
+  （§169 一度据此误判 SD3.5 幽灵未落库，改读活库后该行赫然在列且 `status=running`）。
+  取法：`adb exec-out run-as com.pocketpalai cat pocketpalai.db`（连同 `-wal`），
+  读前先 `am force-stop` 让库静止；PowerShell 的 `>` 会按文本重编码，必须走 .NET BaseStream。
+- **区分「内存态」与「落库态」用二次重启**：再重启一次即可分辨（内存态消失、落库态重现）——
+  §169 靠此确认那张 running 卡是每次启动都被重建的持久态，而非本进程残留。
+- **计时类文本必须有起点守卫**：`genStartedAt` 是本进程内任务启动时刻，水合出的 running 卡
+  本进程没跑过它 → 无守卫时 `now - 0` 把 epoch 秒当已耗时渲染成 `1788871961s`（真机截图实证）。
+  起点缺失一律显 `--`（与 `PerfPanel` 缺值同一记号），不拿 `now-0` 编时长；
+  `ImageTaskProgress`（聊天侧同源卡）早已有此守卫，`ResultPreview` 曾漏——**同源卡片的两处实现必须对账**。
+- **水合日志不能当「未运行」的证据**：`ghost running tasks` 日志在 `ghost.length > 0` 分支内，
+  无幽灵时静默是预期行为；要证伪“未运行”得拿库/卡面证据，不能拿日志缺失当否定证据。
 
 ## 十、错误登记（守卫指南针 CP-APP 映射）
 
