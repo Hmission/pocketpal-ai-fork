@@ -3639,6 +3639,59 @@ cloneFingerprint = []      pending_draws = 99     UI 芯片 = 「2 项 · 99 抽
 5. 已知风险：本机 HyperOS 有“被另一进程主动 stop”先例，SD3.5 段有 VAE 崩溃先例（项 30 家族）——
    两者任一命中都不算判据①失败，但必须按第 4 条归因。
 
+### 174.11 大王报障：所谓“息屏长跑”整轮无效（我的错，三层）
+
+大王指出“我们 App 执行时不息屏，你全程也没熄过屏，测试目的无法达成”。查完实物，**结论成立但成因跟“App 设计”无关**，三层错都要记在我头上：
+
+1. **没验前提就跑了 5 小时**（主要错）。卷 §1 施工步骤③ 只写了 `settings put global sleep_timeout 30000`，
+   我照抄就当作“息屏条件已满足”，**全程一次都没实测过 `mWakefulness`**。
+2. **真凶是我的工具**：本机挂着的 scrcpy 持有长寿命锁——实物：`PowerManagerService.WakeLocks: ref count=1
+   [09-09 00:56:02.289]` 与 scrcpy pid 32260 的启动时间 **00:56:02 一致**，而我拉镜像用的就是 `--stay-awake`。
+   反向证据：`keepAwake` 在 `src/store` 与 `src/screens/ImageGenScreen` **零命中**（只有聊天页
+   `ChatScreen.tsx:306` / `useChatSession.ts:905` 会常亮）——**生图长跑链路自己不持屏幕常亮**。
+   这决定了修什么：该修的是“测试前置”，而不是去改 App。
+3. **我还用过一条无效证据“坐实”它**：我发完 `KEYCODE_WAKEUP` 才去读 `mWakefulness=Awake`——
+   那必然读到 Awake，什么也证明不了。当场自纠，并按“不先发 WAKEUP 再采样”重做。
+
+**另一条实物订正**：我说“点不到停止按钮”也不准——面板内确实有 `[c] 948,1634 停止队列`（dump 可证），
+真正原因是我反复开关面板没确认状态就盲点。设备侧最终由大王 `am force-stop` 结束。
+
+**落纸的规矩**（已写进卷 §1 施工步骤③ 下方订正块）：任何耐久/长跑类测试，**前提本身是待验项**；
+必须拿到“`mWakefulness=Asleep` + 任务行数仍在递增”的双向证据才能声称“息屏长跑”；拿不到就必须写
+“本轮未息屏，判据无效”。另：**开发闭环未完成前不得占用机时长跑**（本次视频被挤掉半天）。
+
+### 174.12 项 45 首轮定界（DRC 绕 UI 通道，本窗刚开发）：主嫌收敛到 OpenCL TE
+
+先补工具（这是“干正事”的第一步）：`actionRegistry` 新增 **`imagegen.generateVideo`**（27→28 个，
+`audit:drc-actions` doc=28/code=28 已过），**直通唯一入口 `imageGenStore.generateVideo`**，
+不另造第二套链路；不经任务层故不写画廊/历史。DRC_SPEC §5 已登记（顺带补上 `loadModel` 参数列
+长期漏登的 `t5xxl/modality`）。此前 27 个动作里**没有任何视频入口**，所以“绕 UI 复现”根本做不到。
+
+三组实验（均 `steps=4 / cfg=5 / 512×768 / videoFrames=1 / seed=7`，与昨晚 UI 崩溃参数同形，
+工作量缩到最小——TE 在 conditioning 阶段，与帧数无关）：
+
+| 实验 | 唯一变量 | 结果 |
+|---|---|---|
+| **E0** | 基准（backend=OpenCL，无负面词） | **14 秒 SIGABRT**，栈 `nativeGenVideo+836 → generate_video+1128 → T5CLIPEmbedder::get_learned_condition → get_learned_condition_common+1664 → ggml_abort`（= 昨晚 UI 同点） |
+| **E1** | 加负面提示词 | 约 **240 秒后 SIGABRT**，**逐帧同址**（#02 `0x5d2d618` / #05 `0x5bf4134` / #06 `0x5b89258`）→ **假设(c)“空负面词”被否证**；正面 TE 确实跑了才延后崩点 |
+| **E2** | 换后端 CPU | **不崩**：进程存活、事件流推到 `progress=100 / 采样 242/242`（stepTime 0.065s ⇒ 采样只花了约 16 秒）；但 20 分钟内 **未建 `genvid_*` 目录、零帧落盘** → 卡在采样之后（疑 VAE 解码；`<outDir>/frame_%04d.png` 的写帧循环根本没进入） |
+
+**当前定性**（从“三条假设均无口径”前进为“有对照实验的收敛结论”）：
+墙在 **OpenCL 后端的 UMT5 前向**（同一入参下 CPU 不崩、OpenCL 必崩）；内存假设(b) 不是主因
+（E0 仅 14 秒就死，远未到大模型分配峰值）。仍**不是定论**：缺第二条口径（引擎侧
+`get_learned_condition_common` 具体哪个 chunk 返空的实物），而那要看 `t5.hpp::compute` 失败路径——
+属引擎只读面，只能读不能改。
+
+**本窗顺带照出两条自己 P2 的缺陷**（新项 49）：
+① **C-2 阶段可见对视频链路不成立**：TE 与 VAE 阶段都报 `stage=sampling / progress=100`，
+   且采样完成后持续重报同一快照——差点靠它误判“TE 已过”。取证者必读的是 native 进栈，不是这行字；
+② **DRC results 在客户端超时时就写定 `ok:false`**，之后真实 settle 不再更新（E2 实物：
+   `durationMs:900008 / error:命令超时` 而引擎还在跑）——长动作经 DRC 取证必须配事件流/产物目录双读。
+
+**项 45 下一步**（机时很便宜了：一次实验 15–250 秒，不再是 80–200 分钟）：
+E3 读引擎实物定位 `chunk_hidden_states` 为空的确切分支（只读）；E4 试 OpenCL 下缩小 TE 入参
+（单短句 prompt）与 `t5xxl` 换 fp16/Q8 各一组；两者都要在真机跑——设备现已腾出。
+
 ## §175 AIOS 记忆域四条假闭环根治 + 三波收口长链（2026-09-09，大王：「依次执行，走门禁，长链一次性打穿。先写文档…然后落代码，然后验证提交。sop闭环掉。」）
 
 ### 175.1 本波性质与边界

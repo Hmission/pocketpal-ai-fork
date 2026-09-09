@@ -55,10 +55,26 @@ relates:
 |---|---|
 | 现状实物 | 保活判据是 `imageGenStore.ts:248-253` 的 reaction：`loading \|\| generating \|\| queueCore.state==='running' \|\| ==='stopping'` 四条件；busy 时 `:268` 取票据 `nightTaskRegistry.begin('imageGen')`，归零才 `:276` 停服务。原生三件：`NightTaskService.kt` / `NightTaskModule.kt` / `NightTaskPackage.kt`（前台服务 + `PARTIAL_WAKE_LOCK`）。队列侧 API：`imageGenQueueCore.ts` 的 `enqueue / updateItem / removeItem / clear / hydrate / start / stop`（全文件 317 行） |
 | 为什么值得做 | 视频 P2 的长跑（80–200 分钟）与夜间连抽**共用同一条保活链**；一次通宵可同时给两件事取证，是 P2 里性价比最高的一晚 |
-| 施工步骤 | ①接机、拉 scrcpy；②选低步数模型（DreamLite 秒级或 SD3.5 4 步）排 **30+ 抽连抽**（`enqueue` 累加，UI 上就是 ➕ 连点）；③`adb shell settings put global sleep_timeout 30000` 让屏自息 + **插充电**；④息屏 6–8h，次日只看证据不改行为（电池白名单引导的现状实物见 `ONDEVICE_VIDEO_GEN_ANALYSIS §7.1` + `src/store/imageGenStore.ts:63` 的 `NightTask?.isIgnoringBatteryOptimizations?.()`） |
+| 施工步骤 | ①接机、拉 scrcpy；②选低步数模型（DreamLite 秒级或 SD3.5 4 步）排 **30+ 抽连抽**（`enqueue` 累加，UI 上就是 ➕ 连点）；③`adb shell settings put global sleep_timeout 30000` 让屏自息 + **插充电**（⚠ **③ 已被本窗实测证伪，硬前置见本节末尾 §174.11 订正块**）；④息屏 6–8h，次日只看证据不改行为（电池白名单引导的现状实物见 `ONDEVICE_VIDEO_GEN_ANALYSIS §7.1` + `src/store/imageGenStore.ts:63` 的 `NightTask?.isIgnoringBatteryOptimizations?.()`） |
 | 判据（全绿才算过） | ①`image_gen_tasks` 落库行数 = 入队抽数，**零 running 残留**（活库在 `/data/data/com.pocketpalai/pocketpalai.db`，**不是**共享目录那份 B14 快照——§169 已栽过一次）；②`files/aios_images` 的 `gen_*.png` 增量与 success 行数相等；③logcat 有 `NightTask` 前台服务存活轨迹且**无**中途 stop；④若出现中断，中断原因必须能从 dumpsys/logcat 归因（wakelock 被放 / 系统 LMK / 电池优化），**不许写成"偶发"** |
 | 红线 | 不得为"跑满"加任何重试或超时兜底；不得为了让服务不退出而改判据（判据是对的，被测的是它在真实压力下够不够）；严禁 uninstall / pm clear |
 | 成本 | 一晚机时 + 次日 30 分钟读证据 |
+
+> ### ⚠ 施工步骤③ 已被本窗实测证伪（2026-09-09，§174.11）：`sleep_timeout` 不等于“息屏”
+>
+> 只要拉了 scrcpy（本仓惯例参数带 `--stay-awake`）或任何持有展示屏 wakelock 的宿主在位，
+> **设备整夜不会真正息屏**——本项要验的“屏幕熄灭下保活链顶不顶得住”根本没发生。
+> 本窗第一轮就是这么跑的（99 抽、整轮屏未熄），而且**我连一次“到底熄了没”都没实测**。
+>
+> **硬前置（缺任何一步就不得开跑；开了也不得算验过）**：
+> 1. 跑前并确保无 `--stay-awake` 宿主在位（需监督则用不带该参数的 scrcpy 窗口，
+>    或改成“不拉镜像 + 定时拍照取证”）；实物比对方法：`dumpsys power` 的
+>    `PowerManagerService.WakeLocks` 引用数与启动时间不应对应到 scrcpy 进程；
+> 2. **开跑后必须实测到 `mWakefulness=Asleep` 且任务仍在推进**（同时拉一次活库
+>    `image_gen_tasks` 行数递增），两者同时成立才算“息屏长跑”；
+>    拿不到就必须在卷/日志里明写“**本轮未息屏，判据无效**”，不得拿它当 §1 证据；
+> 3. 采样时机：**不得先发 `KEYCODE_WAKEUP` 再读 `mWakefulness`**（那样必然读到 Awake，
+>    是无效证据——本窗刚踩过并当场自纠，见 §174.11）。
 
 > **§174 实测改口：本项曾被 DEV_BACKLOG 项 46 前置阻塞，现该阻塞已解除。**
 > 91 抽混排（DreamLite 60× + SD3.5 31×）实跑：DreamLite 段 29 抽连成（活库 204→234），
