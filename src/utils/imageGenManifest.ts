@@ -217,7 +217,7 @@ export const BUILTIN_MANIFESTS: ImageGenManifest[] = [
       size: 512,
       backend: 'OpenCL',
     },
-    note: '何时选：端侧文生视频实验（**尚未可生成**，桥待 P2）。体积：DiT 0.92 + UMT5 2.85 + VAE 0.25 ≈ 4.0GB。适配：仅高端 Adreno；单条预计 80–200 分钟，只能夜间长跑',
+    note: '何时选：端侧文生视频实验（暂不可生成：出片桥已通（P2），引擎侧 UMT5 前向未通——DEV_BACKLOG 项 45）。体积：DiT 0.92 + UMT5 2.85 + VAE 0.25 ≈ 4.0GB。适配：仅高端 Adreno；单条预计 80–200 分钟，只能夜间长跑',
   },
 ];
 
