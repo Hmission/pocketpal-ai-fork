@@ -3,10 +3,15 @@ doc_id: DRC_SPEC
 module: root
 type: spec
 status: active
-version: "1.2"
-created: "2026-08-19"
-updated: "2026-08-23"
-relates: [COMPASS_SYSTEM_SSOT, STATE_COMPASS_ENGINE_SELF_NAVIGATION_SSOT, POCKETPAL_CHAT_UI_SPEC]
+version: '1.2'
+created: '2026-08-19'
+updated: '2026-08-23'
+relates:
+  [
+    COMPASS_SYSTEM_SSOT,
+    STATE_COMPASS_ENGINE_SELF_NAVIGATION_SSOT,
+    POCKETPAL_CHAT_UI_SPEC,
+  ]
 ---
 
 <!-- D-FORMAT:v3 -->
@@ -26,6 +31,7 @@ relates: [COMPASS_SYSTEM_SSOT, STATE_COMPASS_ENGINE_SELF_NAVIGATION_SSOT, POCKET
 **目标**：让 AI 测试时「发送调用值直接驱动 App，读落盘日志替代读屏幕」。
 
 **锋利原则**（与产品哲学一致）：
+
 - 不新增网络协议 / 不新增原生代码 / 不加按钮埋点层
 - 复用共享存储（`/sdcard/Documents/AIOS/`）+ MobX store 层（UI 按钮本质是 store action 的薄封装）
 - 观测不为 SPOF（BT07）：DRC 任何环节失败静默降级，绝不阻断业务
@@ -63,12 +69,12 @@ relates: [COMPASS_SYSTEM_SSOT, STATE_COMPASS_ENGINE_SELF_NAVIGATION_SSOT, POCKET
 }
 ```
 
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|---|---|
-| cmdId | string | 是 | 唯一命令 id（文件名一致；重复执行会覆盖） |
-| actionId | string | 是 | 动作注册表内 id（白名单，未知拒绝） |
-| params | object | 否 | 动作参数（zod schema 校验） |
-| timeoutMs | number | 否 | 超时，默认 30000 |
+| 字段      | 类型   | 必填 | 说明                                      |
+| --------- | ------ | ---- | ----------------------------------------- |
+| cmdId     | string | 是   | 唯一命令 id（文件名一致；重复执行会覆盖） |
+| actionId  | string | 是   | 动作注册表内 id（白名单，未知拒绝）       |
+| params    | object | 否   | 动作参数（zod schema 校验）               |
+| timeoutMs | number | 否   | 超时，默认 30000                          |
 
 ### 2.2 结果文件（输出）
 
@@ -98,35 +104,41 @@ relates: [COMPASS_SYSTEM_SSOT, STATE_COMPASS_ENGINE_SELF_NAVIGATION_SSOT, POCKET
 路径：`AIOS_ROOT/logs/events.jsonl`（每行一个 JSON 事件）
 
 ```json
-{"ts": 1755000000000, "seq": 12, "domain": "chat", "type": "chat.user_msg", "payload": {"sessionId": "abc", "messageId": "m1", "text": "你好"}}
+{
+  "ts": 1755000000000,
+  "seq": 12,
+  "domain": "chat",
+  "type": "chat.user_msg",
+  "payload": {"sessionId": "abc", "messageId": "m1", "text": "你好"}
+}
 ```
 
-| 字段 | 类型 | 说明 |
-|---|---|---|
-| ts | number | 时间戳（ms） |
-| seq | number | 单调递增序号（每次 App 启动从 0 起） |
-| domain | string | 功能域：app/nav/chat/imagegen/model/engine/error/system |
-| type | string | 事件类型（见 §4） |
-| payload | object | 事件负载 |
+| 字段    | 类型   | 说明                                                    |
+| ------- | ------ | ------------------------------------------------------- |
+| ts      | number | 时间戳（ms）                                            |
+| seq     | number | 单调递增序号（每次 App 启动从 0 起）                    |
+| domain  | string | 功能域：app/nav/chat/imagegen/model/engine/error/system |
+| type    | string | 事件类型（见 §4）                                       |
+| payload | object | 事件负载                                                |
 
 ### 事件清单（埋点 6 处统一出口）
 
-| 域 | 类型 | 触发点 | 负载要点 |
-|---|---|---|---|
-| app | app.drc_ready | DrcBridge 挂载 | enabled |
-| nav | nav.go | actionRegistry nav.go | route |
-| chat | chat.user_msg | ChatSessionStore.addMessageToCurrentSession（user） | sessionId/messageId/text |
-| chat | chat.assistant_msg | 同上（assistant） | sessionId/messageId/text |
-| chat | chat.assistant_delta | ChatSessionStore.updateMessage / updateActiveStepStreaming（节流 300ms/消息，text=累计内容） | sessionId/messageId/text |
-| chat | chat.turn_done | useChatSession run_finished | sessionId/messageId/hitMaxTurns/tokensPredicted/contextFull |
-| chat | chat.tool.error | AgentRunner.executeOne 工具错误分支（WORKSPACE_TOOL_ERROR_FEEDBACK_SPEC §3.7） | tool/errorMessage/hasGuide |
-| imagegen | imagegen.start | imageGenStore.generate / generateDreamLiteEntry | prompt/seed/steps/cfg/width/height |
-| imagegen | imagegen.stage | pullSnapshot（SD 1Hz）与 DreamLite 采样回调（节流） | progress/stage/stepTime |
-| imagegen | imagegen.done | generate / generateDreamLiteEntry 成功 | uri/seed/prompt/durationMs |
-| imagegen | imagegen.failed | generate / generateDreamLiteEntry 失败 | error/seed/prompt |
-| engine | state.change | engineStatus.setPhase/setProgress/setError（节流） | kind/phase/progress/stage/error |
-| error | error.reported | errorReport.buildErrorReport | scope/summary/cpId |
-| system | command.start/done/failed | drcService 命令生命周期 | cmdId/actionId/error |
+| 域       | 类型                      | 触发点                                                                                       | 负载要点                                                    |
+| -------- | ------------------------- | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| app      | app.drc_ready             | DrcBridge 挂载                                                                               | enabled                                                     |
+| nav      | nav.go                    | actionRegistry nav.go                                                                        | route                                                       |
+| chat     | chat.user_msg             | ChatSessionStore.addMessageToCurrentSession（user）                                          | sessionId/messageId/text                                    |
+| chat     | chat.assistant_msg        | 同上（assistant）                                                                            | sessionId/messageId/text                                    |
+| chat     | chat.assistant_delta      | ChatSessionStore.updateMessage / updateActiveStepStreaming（节流 300ms/消息，text=累计内容） | sessionId/messageId/text                                    |
+| chat     | chat.turn_done            | useChatSession run_finished                                                                  | sessionId/messageId/hitMaxTurns/tokensPredicted/contextFull |
+| chat     | chat.tool.error           | AgentRunner.executeOne 工具错误分支（WORKSPACE_TOOL_ERROR_FEEDBACK_SPEC §3.7）               | tool/errorMessage/hasGuide                                  |
+| imagegen | imagegen.start            | imageGenStore.generate / generateDreamLiteEntry                                              | prompt/seed/steps/cfg/width/height                          |
+| imagegen | imagegen.stage            | pullSnapshot（SD 1Hz）与 DreamLite 采样回调（节流）                                          | progress/stage/stepTime                                     |
+| imagegen | imagegen.done             | generate / generateDreamLiteEntry 成功                                                       | uri/seed/prompt/durationMs                                  |
+| imagegen | imagegen.failed           | generate / generateDreamLiteEntry 失败                                                       | error/seed/prompt                                           |
+| engine   | state.change              | engineStatus.setPhase/setProgress/setError（节流）                                           | kind/phase/progress/stage/error                             |
+| error    | error.reported            | errorReport.buildErrorReport                                                                 | scope/summary/cpId                                          |
+| system   | command.start/done/failed | drcService 命令生命周期                                                                      | cmdId/actionId/error                                        |
 
 ## 4. 状态快照（状态指南针）
 
@@ -139,9 +151,27 @@ relates: [COMPASS_SYSTEM_SSOT, STATE_COMPASS_ENGINE_SELF_NAVIGATION_SSOT, POCKET
   "currentRoute": "Chat",
   "activeSessionId": "abc",
   "engines": {
-    "prompter": {"state": "ready", "nextAction": "run_task", "label": "引擎就绪", "terminal": false, "evidence": {"progress": -1, "stage": "", "error": null}},
-    "chat": {"state": "idle", "nextAction": "load_model", "label": "引擎空闲", "terminal": true, "evidence": {}},
-    "image": {"state": "idle", "nextAction": "load_model", "label": "引擎空闲", "terminal": true, "evidence": {}}
+    "prompter": {
+      "state": "ready",
+      "nextAction": "run_task",
+      "label": "引擎就绪",
+      "terminal": false,
+      "evidence": {"progress": -1, "stage": "", "error": null}
+    },
+    "chat": {
+      "state": "idle",
+      "nextAction": "load_model",
+      "label": "引擎空闲",
+      "terminal": true,
+      "evidence": {}
+    },
+    "image": {
+      "state": "idle",
+      "nextAction": "load_model",
+      "label": "引擎空闲",
+      "terminal": true,
+      "evidence": {}
+    }
   },
   "lastError": {"cpId": "CP-APP-001", "summary": "...", "ts": 1755000000000},
   "lastCommand": {"cmdId": "cmd_1", "actionId": "nav.go", "ts": 1755000000000}
@@ -154,26 +184,33 @@ StateCompass 五字段与母仓 `STATE_COMPASS` 同构：state（定位）/ next
 
 白名单注册（新增在此登记，id 语义永久稳定——BT05 向前兼容，不改名不删除）。
 
-| actionId | 参数（zod） | 说明 |
-|---|---|---|
-| system.ping | - | 连通性探测 |
-| system.state | - | 返回状态快照 |
-| system.events | last(1-500) | 读事件流尾部（默认 20 行，JSON 解析） |
-| nav.go | route（ROUTES 枚举）/ params | 页面跳转 |
-| chat.send | text(1-20000) | 发消息（走 ChatScreen 调度链路：意图路由/管家直答；需 ChatScreen 在岗） |
-| chat.switchPal | palId | 切换会话 Pal |
-| chat.newSession | title(≤100) | 新建会话 |
-| imagegen.generate | prompt/steps(1-64)/cfg(0-20)/width/height(64-2048)/seed/negativePrompt/loraPath/loraMultiplier(0-2)/modelLabel | SD 生图（需 SD 模型已加载） |
-| imagegen.generateDreamLite | prompt/width/height(64-2048)/steps(1-64) | DreamLite 文生图（4 步 DMD2；未加载时自动加载）——**与 UI「出图」按钮同链路**：走 beginTask/scrollToPreview/finishTask 编排（建 running 任务页 + PerfPanel 进度卡可达），非 raw 引擎直调（2026-08-23 编排对齐，MASTER_LOG §77） |
-| imagegen.upscale | uri/scale(2\|4)/style(general\|anime\|anime_fast) | RealESRGAN 通用放大（P6-6，CPU 耗时较长；自动释放 DreamLite/SD）；style：通用写实/动漫高清（RRDBNet-6）/动漫快速（animevideov3，快约 4 倍）——2026-08-21 双模型可选登记 |
-| imagegen.loadModel | modelPath/clipL/clipG/llm/vae/backend | 加载 SD 模型 |
-| imagegen.loadDreamLite | - | 加载 DreamLite 引擎（unet/vae/TE） |
-| imagegen.unloadModel | - | 卸载 SD 模型 |
-| imagegen.recoverHistory | - | 相册记录一次性恢复（B27 开发工具：扫描磁盘图文件重建 legacy 条目，非产品兜底）——2026-08-21 登记 |
-| models.scan | - | 扫描本地模型 |
-| models.load | modelId | 加载模型并设为活动（displayModels 内） |
-| models.unload | - | 释放当前活动模型上下文 |
-| audio.generateTts | engine(kokoro/supertonic/kitten)/text/voiceId/speed/numSteps | TTS 音频生成（与音频工坊「生成音频」按钮同链路：audioStore.generateTask；voiceId 缺省用引擎首音色；kitten 为 HyperOS 配额内轻量引擎）——2026-08-22 登记 |
+| actionId                   | 参数（zod）                                                                                                    | 说明                                                                                                                                                                                                                                                                                                             |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| system.ping                | -                                                                                                              | 连通性探测                                                                                                                                                                                                                                                                                                       |
+| system.state               | -                                                                                                              | 返回状态快照                                                                                                                                                                                                                                                                                                     |
+| system.events              | last(1-500)                                                                                                    | 读事件流尾部（默认 20 行，JSON 解析）                                                                                                                                                                                                                                                                            |
+| nav.go                     | route（ROUTES 枚举）/ params                                                                                   | 页面跳转                                                                                                                                                                                                                                                                                                         |
+| chat.send                  | text(1-20000)                                                                                                  | 发消息（走 ChatScreen 调度链路：意图路由/管家直答；需 ChatScreen 在岗）                                                                                                                                                                                                                                          |
+| chat.switchPal             | palId                                                                                                          | 切换会话 Pal                                                                                                                                                                                                                                                                                                     |
+| chat.newSession            | title(≤100)                                                                                                    | 新建会话                                                                                                                                                                                                                                                                                                         |
+| imagegen.generate          | prompt/steps(1-64)/cfg(0-20)/width/height(64-2048)/seed/negativePrompt/loraPath/loraMultiplier(0-2)/modelLabel | SD 生图（需 SD 模型已加载）                                                                                                                                                                                                                                                                                      |
+| imagegen.generateDreamLite | prompt/width/height(64-2048)/steps(1-64)                                                                       | DreamLite 文生图（4 步 DMD2；未加载时自动加载）——**与 UI「出图」按钮同链路**：走 beginTask/scrollToPreview/finishTask 编排（建 running 任务页 + PerfPanel 进度卡可达），非 raw 引擎直调（2026-08-23 编排对齐，MASTER_LOG §77）                                                                                   |
+| imagegen.upscale           | uri/scale(2\|4)/style(general\|anime\|anime_fast)                                                              | RealESRGAN 通用放大（P6-6，CPU 耗时较长；自动释放 DreamLite/SD）；style：通用写实/动漫高清（RRDBNet-6）/动漫快速（animevideov3，快约 4 倍）——2026-08-21 双模型可选登记                                                                                                                                           |
+| imagegen.loadModel         | modelPath/clipL/clipG/llm/vae/backend                                                                          | 加载 SD 模型                                                                                                                                                                                                                                                                                                     |
+| imagegen.loadDreamLite     | -                                                                                                              | 加载 DreamLite 引擎（unet/vae/TE）                                                                                                                                                                                                                                                                               |
+| imagegen.unloadModel       | -                                                                                                              | 卸载 SD 模型                                                                                                                                                                                                                                                                                                     |
+| imagegen.recoverHistory    | -                                                                                                              | 相册记录一次性恢复（B27 开发工具：扫描磁盘图文件重建 legacy 条目，非产品兜底）——2026-08-21 登记                                                                                                                                                                                                                  |
+| models.scan                | -                                                                                                              | 扫描本地模型                                                                                                                                                                                                                                                                                                     |
+| models.load                | modelId                                                                                                        | 加载模型并设为活动（displayModels 内）                                                                                                                                                                                                                                                                           |
+| models.unload              | -                                                                                                              | 释放当前活动模型上下文                                                                                                                                                                                                                                                                                           |
+| server.list                | -                                                                                                              | 列出已配置远程服务器（id/name/url/serverType）——义肢链路取证入口 ——2026-09-09 登记                                                                                                                                                                                                                               |
+| server.add                 | name(≤100)/url/apiKey?/serverType?/requestTimeoutMs(1s-600s)?                                                  | 登记服务器（同 ServerDetailsSheet 落库链：`addServer` + `setApiKey`）。回显 `storedUrl` 供确认未被加工；apiKey 走 Keychain，不落命令文件回显 ——2026-09-09 登记                                                                                                                                                   |
+| server.probe               | serverId                                                                                                       | 对已登记服务器探连通（复用 `serverStore.testServerConnection`，与 UI「测试连接」同链路）。额外回传 `inputUrl` + `requestUrl`：后者即 `${normalizeUrl(url)}/v1/models`，是 /v1 幂等铁律的可观测面；失败 `error` 携诊断文案（如铁律 8.2 的 401 专属域提示）——不提供裸 URL 变体，避免开第二状态路 ——2026-09-09 登记 |
+| server.remove              | serverId                                                                                                       | 移除服务器（测试收尾用，防真验痕迹污染用户配置）：走 `removeServer`连带清 Keychain ——2026-09-09 登记                                                                                                                                                                                                             |
+| server.models              | serverId/contains?/limit(1-500)?                                                                               | 列该服务器**已拉取**的模型 id（可按子串过滤）。必要性：`/v1/models` 可能回上百条（百炼专属域实测 249），全量回显会抢爆结果文件 ——2026-09-09 登记                                                                                                                                                                 |
+| server.addModel            | serverId/remoteModelId                                                                                         | 把一个已拉取的远端模型加入可见集（同 UI「添加模型」：`addUserSelectedModel`）。**没有这一步义肢永远离线**：`modelStore.remoteModels` 只派生自 `userSelectedModels`，直接决定 `resolveLimbTier` 是否短路 ——2026-09-09 登记                                                                                        |
+| server.removeModel         | serverId/remoteModelId                                                                                         | 从可见集移出单个远端模型（`removeUserSelectedModel`），测试收尾用 ——2026-09-09 登记                                                                                                                                                                                                                              |
+| audio.generateTts          | engine(kokoro/supertonic/kitten)/text/voiceId/speed/numSteps                                                   | TTS 音频生成（与音频工坊「生成音频」按钮同链路：audioStore.generateTask；voiceId 缺省用引擎首音色；kitten 为 HyperOS 配额内轻量引擎）——2026-08-22 登记                                                                                                                                                           |
 
 ## 6. 门控与安全
 
@@ -190,16 +227,16 @@ StateCompass 五字段与母仓 `STATE_COMPASS` 同构：state（定位）/ next
 ### 环境陷阱（真机实证 2026-08-19）
 
 - **Metro dev bundle 在部分设备上启动即崩**：`[runtime not ready]: TypeError: Cannot read property 'level' of undefined`（React Refresh + worklets logger 时序，与 DRC 无关——已隔离实验证明）。现象：Metro 连接后 App 红屏，`PocketPal has not been registered`。**对策**：真机验证用 assets fallback（删 `run-as com.pocketpalai rm -f files/BridgelessReactNativeDevBundle.js` 后冷启动），DRC 依赖 BuildInfo 原生门控仍可工作
-- **RN 0.82 debug 构建的 assets bundle 是 dev=false 编译**：`__DEV__` 恒 false、DevToolsScreen 不显示。任何「按 __DEV__ 区分构建类型」的 JS 逻辑均失效，必须用原生 BuildConfig 信号
+- **RN 0.82 debug 构建的 assets bundle 是 dev=false 编译**：`__DEV__` 恒 false、DevToolsScreen 不显示。任何「按 **DEV** 区分构建类型」的 JS 逻辑均失效，必须用原生 BuildConfig 信号
 - **E2E（WebdriverIO/Appium）在 HyperOS 设备上被安装拦截**：UiAutomator2 server APK 安装触发 `INSTALL_FAILED_USER_RESTRICTED`（HyperOS USB 安装确认），session 创建失败。**对策**：e2e/specs/drc.spec.ts 的核心断言（命令→results→events.jsonl）已由真机人工验证覆盖；HyperOS 上如需跑 E2E 需先人工确认 UiAutomator2 server 安装
 
 ## 7. 开发机工具
 
-| 工具 | 用途 |
-|---|---|
+| 工具                                                                                                           | 用途                                                                                                            |
+| -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | `node scripts/drc/drc-push.js <actionId> [jsonParams] [--device <id>] [--timeout <ms>] [--params-file <path>]` | 发送命令并等待结果（--timeout 默认 30000；--params-file 从 JSON 文件读参数，Windows PowerShell 引号易错时首选） |
-| `node scripts/drc/drc-tail.js [--last N] [--follow]` | 读事件流 |
-| `node scripts/drc/drc-state.js` | 读状态快照 |
+| `node scripts/drc/drc-tail.js [--last N] [--follow]`                                                           | 读事件流                                                                                                        |
+| `node scripts/drc/drc-state.js`                                                                                | 读状态快照                                                                                                      |
 
 示例：
 
@@ -217,28 +254,33 @@ adb 文件 push/pull 属允许的非 UI 操作；真机过程仍可叠加 scrcpy
 
 ## 8. 代码结构
 
-| 文件 | 职责 |
-|---|---|
-| src/debug/drcTypes.ts | 共享类型（命令/事件/快照/结果） |
-| src/debug/eventStream.ts | 事件流落盘（emit + 节流） |
-| src/debug/actionRegistry.ts | 动作白名单 + zod 校验 + 执行 |
-| src/debug/drcService.ts | 命令轮询执行器 |
-| src/debug/stateSnapshot.ts | 状态快照（StateCompass 映射） |
-| src/debug/stateCompass.ts | 域级 STATE_MAP（engine/chat/imagegen/model + unknown 降级） |
-| src/debug/errorRegistry.ts | 错误模式注册表（CP-APP-NNN） |
-| src/debug/DrcBridge.tsx | 挂载点（导航槽 + 订阅接线） |
-| scripts/drc/*.js | 开发机侧 adb 工具 |
+| 文件                        | 职责                                                        |
+| --------------------------- | ----------------------------------------------------------- |
+| src/debug/drcTypes.ts       | 共享类型（命令/事件/快照/结果）                             |
+| src/debug/eventStream.ts    | 事件流落盘（emit + 节流）                                   |
+| src/debug/actionRegistry.ts | 动作白名单 + zod 校验 + 执行                                |
+| src/debug/drcService.ts     | 命令轮询执行器                                              |
+| src/debug/stateSnapshot.ts  | 状态快照（StateCompass 映射）                               |
+| src/debug/stateCompass.ts   | 域级 STATE_MAP（engine/chat/imagegen/model + unknown 降级） |
+| src/debug/errorRegistry.ts  | 错误模式注册表（CP-APP-NNN）                                |
+| src/debug/DrcBridge.tsx     | 挂载点（导航槽 + 订阅接线）                                 |
+| scripts/drc/\*.js           | 开发机侧 adb 工具                                           |
 
 ## 9. 跨窗口智能体调用（Skill 入口）
 
-其他窗口的智能体要用 DRC 做真机测试，直接读母仓 Skill：`.cursor/skills/drc-remote-debug/SKILL.md`（已挂测试专工啄木鸟链路 v1.1.2）。
+其他窗口的智能体要用 DRC 做真机测试，读 pp 仓 `.cursor/skills/drc-remote-debug/SKILL.md`（已挂测试专工啄木鸟链路 v1.1.2）。
 
 标准调用提示词（交给其他窗口智能体照抄，v3）：
 
-> 小黄鸡真机测试走 DRC 远程调试：先读母仓 `.cursor/skills/drc-remote-debug/SKILL.md` 与
+> 小黄鸡真机测试走 DRC 远程调试：读 pp 仓 `.cursor/skills/drc-remote-debug/SKILL.md` 与
 > pp 仓 `docs/DebugRemoteControl/DRC_SPEC.md`，按其中「标准测试序列」执行（system.ping
 > 探连通 → 发 actionId → 读事件流/state.json 取证）。禁止卸载 App；release 包门控恒关。
 
 细节全部收敛在文档（前置/参数/陷阱/CP 处置），提示词不重复。
 
 约束：DRC 驱动的是与用户点按钮同一链路的 store action（非绕 UI 跑 API），操作过程屏幕有真实可见变化，叠加 scrcpy 投屏监督。新增动作先登记 §5 再改代码（BT05）。
+
+> ⚠ **`.cursor/` 不入库**（`.gitignore` 有一条 `.cursor/`，整目录被排除）：
+> `.cursor/skills/drc-remote-debug/SKILL.md` 只是本机的智能体触发入口，**新克隆 / 拉 origin 的其他窗口拿不到它**
+> （与本文 §早期提到的 `.github/workflows/` 陷阱同类）。本文档（已 tracked）才是唯一持久事实源：
+> 上面那段提示词已自带全部可执行信息（三工具 + 标准序列 + 红线），不依赖 skill 文件存在。

@@ -29,6 +29,7 @@ import {isLocalHost} from '../../utils/network';
 import {parseTimeoutMs} from '../../utils/timeout';
 import {
   SERVER_TYPE_DROPDOWN_OPTIONS,
+  SERVER_TEMPLATES,
   seedServerType,
 } from '../../utils/serverTypes';
 import {ServerConfig} from '../../utils/types';
@@ -210,6 +211,19 @@ export const RemoteModelSheet: React.FC<RemoteModelSheetProps> = observer(
         return serverStore.userSelectedModels.some(
           m => m.serverId === servId && m.remoteModelId === modelId,
         );
+      },
+      [],
+    );
+
+    // 服务商模板 chip：只预填表单，不自己探测（探测归 url useEffect 的 debounce 单点）。
+    // apiKey 不代管：模板是快捷方式，凭证仍由用户自己填（设计意图见 ServerStore 模板注释）。
+    const handleTemplatePress = useCallback(
+      (tpl: (typeof SERVER_TEMPLATES)[number]) => {
+        setSelectedServerId(null);
+        setServerName(tpl.label);
+        setUrl(tpl.url);
+        setServerType(tpl.serverType);
+        setUrlError('');
       },
       [],
     );
@@ -441,6 +455,22 @@ export const RemoteModelSheet: React.FC<RemoteModelSheetProps> = observer(
                   <Text style={styles.errorText}>{urlError}</Text>
                 ) : null}
               </View>
+
+              {/* 服务商模板：点一下预填 URL，随后的探测由上方 url useEffect 的 debounce 链
+                  自动触发——不开第二条探测路径。模板名即品牌名，不另加标题文案。
+                  仅在用户尚未输入时展示，避免填过后还挂一排干扰项。 */}
+              {!url.trim() && (
+                <View style={[styles.chipsRow, styles.templateRow]}>
+                  {SERVER_TEMPLATES.map(tpl => (
+                    <Chip
+                      key={tpl.url}
+                      testID={`template-chip-${tpl.label}`}
+                      onPress={() => handleTemplatePress(tpl)}>
+                      {tpl.label}
+                    </Chip>
+                  ))}
+                </View>
+              )}
 
               {/* Probe status */}
               {isProbing && (

@@ -8,6 +8,10 @@ import {
   fetchModelsWithHeaders,
 } from '../../../api/openai';
 import {routerModelsBody} from '../../../../jest/fixtures/remoteModelList';
+import {
+  SERVER_TEMPLATES,
+  SERVER_TYPE_OPTIONS,
+} from '../../../utils/serverTypes';
 
 const mockedFetchModels = fetchModels as jest.Mock;
 const mockedFetchModelsWithHeaders = fetchModelsWithHeaders as jest.Mock;
@@ -81,6 +85,40 @@ describe('RemoteModelSheet', () => {
     );
 
     expect(getByTestId('add-model-button')).toBeTruthy();
+  });
+
+  // 服务商模板：旧形态下 SERVER_TEMPLATES 是零消费方的死数组，
+  // 「接入百炼」在 UI 面上根本不可达。本组用例钉住它真的接上了。
+  it('模板 chip 全部渲染（含百炼）', () => {
+    const {getByTestId} = render(
+      <RemoteModelSheet isVisible={true} onDismiss={jest.fn()} />,
+    );
+
+    expect(SERVER_TEMPLATES.length).toBeGreaterThan(0);
+    for (const tpl of SERVER_TEMPLATES) {
+      expect(getByTestId(`template-chip-${tpl.label}`)).toBeTruthy();
+    }
+  });
+
+  it('点百炼模板：预填专属域 URL（不带 /v1 尾，交给 normalizeUrl），模板行随即收起', () => {
+    const {getByTestId, queryByTestId} = render(
+      <RemoteModelSheet isVisible={true} onDismiss={jest.fn()} />,
+    );
+
+    fireEvent.press(getByTestId('template-chip-百炼（阿里 DashScope）'));
+
+    expect(getByTestId('remote-url-input').props.defaultValue).toBe(
+      'https://ws-v6yhmq47rgvfwjco.cn-beijing.maas.aliyuncs.com/compatible-mode',
+    );
+    // url 已非空 -> 模板行不再挂干扰项
+    expect(queryByTestId('template-chip-DeepSeek')).toBeNull();
+  });
+
+  it('模板 serverType 必须是下拉框真实存在的选项（旧值小写 openai 不在规范集）', () => {
+    const canonical = new Set<string>(SERVER_TYPE_OPTIONS);
+    for (const tpl of SERVER_TEMPLATES) {
+      expect(canonical.has(tpl.serverType)).toBe(true);
+    }
   });
 
   it('shows privacy notice when not acknowledged', () => {

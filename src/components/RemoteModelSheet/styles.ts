@@ -39,6 +39,11 @@ export const createStyles = (theme: Theme) => {
       flexWrap: 'wrap',
       gap: theme.spacing.s,
     },
+    // 服务商模板行：紧跟 URL 输入框，不复用 chipsSection 的卡片背景（它带标题+分隔线，
+    // 语义是「你已有的服务器」，与模板快捷方式是两回事）。
+    templateRow: {
+      marginTop: theme.spacing.xs,
+    },
     dividerRow: {
       flexDirection: 'row',
       alignItems: 'center',

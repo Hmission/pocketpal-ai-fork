@@ -15,8 +15,13 @@ import {z} from 'zod';
 import * as RNFS from '@dr.pogodin/react-native-fs';
 
 import {SRStyle} from '../services/superResEngine';
-import {chatSessionStore, modelStore} from '../store';
-import {imageGenStore} from '../store';
+import {
+  chatSessionStore,
+  imageGenStore,
+  modelStore,
+  serverStore,
+} from '../store';
+import {normalizeUrl} from '../api/openaiClient/helpers';
 import {audioStore} from '../store/audioStore';
 import {TtsGenEngineId} from '../services/ttsEngine';
 import {KOKORO_VOICES} from '../services/tts/engines/kokoro/voices';
@@ -489,6 +494,194 @@ export const drcActions: Record<string, DrcActionDef> = {
       const {title} = params as {title?: string};
       await chatSessionStore.createNewSession(title ?? '新会话');
       return {created: true, title: title ?? '新会话'};
+    },
+  },
+
+  'server.list': {
+    id: 'server.list',
+    domain: 'model',
+    description:
+      '列出已配置的远程服务器（id/name/url/serverType）——义肢链路取证入口',
+    execute: async () => ({
+      count: serverStore.servers.length,
+      servers: serverStore.servers.map(s => ({
+        id: s.id,
+        name: s.name,
+        url: s.url,
+        serverType: s.serverType ?? null,
+      })),
+    }),
+  },
+
+  'server.add': {
+    id: 'server.add',
+    domain: 'model',
+    description:
+      '登记一台远程服务器（同 ServerDetailsSheet 落库路径：addServer + setApiKey）。apiKey 走 Keychain，不入命令文件回显',
+    paramsSchema: z.object({
+      name: z.string().min(1).max(100),
+      url: z.string().min(1),
+      apiKey: z.string().optional(),
+      serverType: z.string().optional(),
+      requestTimeoutMs: z.number().int().min(1000).max(600000).optional(),
+    }),
+    execute: async params => {
+      const p = params as {
+        name: string;
+        url: string;
+        apiKey?: string;
+        serverType?: string;
+        requestTimeoutMs?: number;
+      };
+      const serverId = serverStore.addServer({
+        name: p.name,
+        url: p.url,
+        serverType: p.serverType as any,
+        requestTimeoutMs: p.requestTimeoutMs,
+      });
+      if (p.apiKey) {
+        await serverStore.setApiKey(serverId, p.apiKey);
+      }
+      // 回显实际落库的 url，供调用方确认未被加工
+      const stored = serverStore.servers.find(s => s.id === serverId);
+      return {serverId, storedUrl: stored?.url ?? null};
+    },
+  },
+
+  'server.probe': {
+    id: 'server.probe',
+    domain: 'model',
+    description:
+      '对已登记服务器探连通（复用 serverStore.testServerConnection，与 UI「测试连接」同链路）。回传 requestUrl 作为 normalizeUrl /v1 幂等的直接证据；失败 error 含诊断文案（如铁律 8.2 401 专属域提示）',
+    paramsSchema: z.object({serverId: z.string().min(1)}),
+    execute: async params => {
+      const {serverId} = params as {serverId: string};
+      const server = serverStore.servers.find(s => s.id === serverId);
+      if (!server) {
+        throw new Error(
+          `未找到服务器 ${serverId}；先用 server.list 查 id（或 server.add 登记）`,
+        );
+      }
+      // 探测走 store 单一路径，不在此重拼一份连接逻辑
+      const result = await serverStore.testServerConnection(serverId);
+      return {
+        ...result,
+        serverId,
+        inputUrl: server.url,
+        // 与 fetchModelsWithHeaders 同一 normalizeUrl：带 /v1 的入库 url 应被剥尾，
+        // 此处不得出现 /v1/v1（G1-1 幂等铁律的可观测面）
+        requestUrl: `${normalizeUrl(server.url)}/v1/models`,
+      };
+    },
+  },
+
+  'server.remove': {
+    id: 'server.remove',
+    domain: 'model',
+    description:
+      '移除一台服务器（测试收尾用，避免真验痕迹污染用户配置）：走 serverStore.removeServer，连带清 Keychain 密钥',
+    paramsSchema: z.object({serverId: z.string().min(1)}),
+    execute: async params => {
+      const {serverId} = params as {serverId: string};
+      const existed = serverStore.servers.some(s => s.id === serverId);
+      if (!existed) {
+        throw new Error(`未找到服务器 ${serverId}，无需移除`);
+      }
+      serverStore.removeServer(serverId);
+      return {removed: true, serverId, remaining: serverStore.servers.length};
+    },
+  },
+
+  'server.models': {
+    id: 'server.models',
+    domain: 'model',
+    description:
+      '列已拉取的远端模型 id（可按子串过滤）。/v1/models 可能回上百条，全量回显会抢爆结果文件',
+    paramsSchema: z.object({
+      serverId: z.string().min(1),
+      contains: z.string().max(100).optional(),
+      limit: z.number().int().min(1).max(500).optional(),
+    }),
+    execute: async params => {
+      const p = params as {
+        serverId: string;
+        contains?: string;
+        limit?: number;
+      };
+      const all = serverStore.serverModels.get(p.serverId) ?? [];
+      const filtered = p.contains
+        ? all.filter(m =>
+            m.id.toLowerCase().includes(p.contains!.toLowerCase()),
+          )
+        : all;
+      const limit = p.limit ?? 30;
+      return {
+        serverId: p.serverId,
+        fetched: all.length,
+        matched: filtered.length,
+        shown: Math.min(filtered.length, limit),
+        models: filtered.slice(0, limit).map(m => m.id),
+      };
+    },
+  },
+
+  'server.addModel': {
+    id: 'server.addModel',
+    domain: 'model',
+    description:
+      '把已拉取的远端模型加入可见集（同 UI「添加模型」addUserSelectedModel）。义肢链路必走此步：remoteModels 只派生自 userSelectedModels',
+    paramsSchema: z.object({
+      serverId: z.string().min(1),
+      remoteModelId: z.string().min(1),
+    }),
+    execute: async params => {
+      const {serverId, remoteModelId} = params as {
+        serverId: string;
+        remoteModelId: string;
+      };
+      const fetched = serverStore.serverModels.get(serverId) ?? [];
+      if (!fetched.some(m => m.id === remoteModelId)) {
+        const sample = fetched
+          .slice(0, 8)
+          .map(m => m.id)
+          .join(', ');
+        throw new Error(
+          `模型 ${remoteModelId} 不在该服务器已拉取列表（共 ${fetched.length} 个）；先 server.probe 拉模型，再用 server.models 查 id。前 8 个：${
+            sample || '（空）'
+          }`,
+        );
+      }
+      serverStore.addUserSelectedModel(serverId, remoteModelId);
+      return {
+        added: true,
+        serverId,
+        remoteModelId,
+        remoteModelCount: modelStore.remoteModels.length,
+      };
+    },
+  },
+
+  'server.removeModel': {
+    id: 'server.removeModel',
+    domain: 'model',
+    description:
+      '从可见集移出单个远端模型（removeUserSelectedModel），测试收尾用',
+    paramsSchema: z.object({
+      serverId: z.string().min(1),
+      remoteModelId: z.string().min(1),
+    }),
+    execute: async params => {
+      const {serverId, remoteModelId} = params as {
+        serverId: string;
+        remoteModelId: string;
+      };
+      serverStore.removeUserSelectedModel(serverId, remoteModelId);
+      return {
+        removed: true,
+        serverId,
+        remoteModelId,
+        remoteModelCount: modelStore.remoteModels.length,
+      };
     },
   },
 
