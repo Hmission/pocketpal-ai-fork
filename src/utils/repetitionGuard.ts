@@ -40,17 +40,55 @@ const MIN_UNIT = 4;
  * 旧值 40 的注释断言「超过这个长度的重复基本不可能出现在正常口语」——已被真机实测推翻：
  * 2026-09-09 aab688d9 一条 `[kg:memory] …` 泄漏复读的**周期是 46 字符**，刚好落在 40 之外，
  * 守卫在 4..40 区间内找不到任何候选（实测 best=null），于是 759 字的复读一路跑到底。
- * 拉长单元不会增加误伤：要求 200 字串**完整重复 4 次**（=800 字逐字相同）才判退化，
- * 比短单元更严，正常文本不可能命中；代价仅是每 24 字多扫一轮，可忽。
  */
 const MAX_UNIT = 200;
-/** 连续重复次数门槛 */
+/** 短单元（≤ SHORT_UNIT_CEILING）门槛：沿用旧行为，不动旧已验证面。 */
 const MIN_TIMES = 4;
+/** 短/长单元分界：此长度以下维持「4 次即判」的旧口径。 */
+const SHORT_UNIT_CEILING = 40;
+/**
+ * 长单元门槛（> SHORT_UNIT_CEILING 时适用）——为什么不能跟短单元同为一个 4：
+ *
+ * 把 MAX_UNIT 从 40 抬到 200 的同一刻，就新开了一个误杀面：实测（流式每 24 字检一次）
+ * 一行 47 字的 markdown 表格行逐字重复 4 遍，**旧参数不中、新参数中**，直接 drop 1042 字
+ * 并中断生成。模型复述同一行长内容（表格行/列表项/代码模板）是可预期的正常输出，
+ * 不是退化。上一版注释写的「拉长单元不会增加误伤……正常文本不可能命中」是被自己的
+ * 代码推翻的断言（现按实测改正）。
+ *
+ * 取 6 的理由：真机那条泄漏复读实测重复了 **6 遍**（见 regression 用例），所以提门槛到 6
+ * 仍能拦住血证案例；而「同一段 >40 字文本逐字出现 5 遍」在正常回答里已属罕见。
+ * 方向是拦真退化 + 不拦长复述，而不是把 MAX_UNIT 调回 40（那会退回原漏检）。
+ */
+const LONG_UNIT_MIN_TIMES = 6;
 /**
  * 只看末尾这么长：复读必然表现在尾部，全串扫描是浪费。
- * 下限约束：必须 ≥ MAX_UNIT * MIN_TIMES，否则长单元永远装不进窗口（守卫静默失效）。
+ *
+ * 🔴 下限约束（两条，缺一则守卫静默失效）：
+ *   TAIL_WINDOW ≥ MAX_UNIT * LONG_UNIT_MIN_TIMES
+ * 旧注释只写了 `MAX_UNIT * MIN_TIMES`，而门槛按长度分档后必须按**最大门槛**算；
+ * 否则 `L` 大的候选会在 `n - L * threshold < windowStart` 处被一路 `continue` 静默跳过——
+ * 就是本文件刚修掉的那个病（当时 46 字周期因 MAX_UNIT=40 面看不见）的同类复发。
+ * 该不变式由 `REPETITION_GUARD_PARAMS` 导出并在单测直接断言，不再靠人算。
  */
-const TAIL_WINDOW = 900;
+const TAIL_WINDOW = 1200;
+
+/**
+ * 阈值与窗口常量对外自证面：专供单测卡不变式。
+ * 不导出则测试只能靠硬编码样本长度卡线（旧版就是靠 199 字卡线，刚好中上而无式子保护）。
+ */
+export const REPETITION_GUARD_PARAMS = Object.freeze({
+  MIN_UNIT,
+  MAX_UNIT,
+  MIN_TIMES,
+  LONG_UNIT_MIN_TIMES,
+  SHORT_UNIT_CEILING,
+  TAIL_WINDOW,
+});
+
+/** 按单元长度取门槛：短单元维持旧口径，长单元要更多遍才算退化。 */
+function minTimesFor(unitLen: number): number {
+  return unitLen > SHORT_UNIT_CEILING ? LONG_UNIT_MIN_TIMES : MIN_TIMES;
+}
 
 const miss = (len: number): RepetitionVerdict => ({
   hit: false,
@@ -68,8 +106,9 @@ export function detectRepetitionLoop(text: string): RepetitionVerdict {
   let best = miss(n);
 
   for (let L = MIN_UNIT; L <= MAX_UNIT; L += 1) {
-    // 尾部窗口必须容得下 MIN_TIMES 个完整单元，否则不算
-    if (n - L * MIN_TIMES < windowStart) {
+    const threshold = minTimesFor(L);
+    // 尾部窗口必须容得下 threshold 个完整单元，否则不算
+    if (n - L * threshold < windowStart) {
       continue;
     }
     const unit = text.slice(n - L, n);
@@ -79,7 +118,7 @@ export function detectRepetitionLoop(text: string): RepetitionVerdict {
       times += 1;
       pos -= L;
     }
-    if (times >= MIN_TIMES) {
+    if (times >= threshold) {
       const span = times * L;
       if (span > best.times * best.unit.length) {
         best = {

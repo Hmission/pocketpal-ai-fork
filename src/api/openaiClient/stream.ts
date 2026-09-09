@@ -15,10 +15,12 @@ import {
   CONNECTION_TIMEOUT_MS,
   IDLE_TIMEOUT_MS,
   buildHeaders,
+  buildUnauthorizedError,
   isValidChatChunk,
   normalizeUrl,
   resolveTimeout,
 } from './helpers';
+import {ServerTypeOption} from '../../utils/serverTypes';
 import {
   ToolCallAccumulator,
   applyToolCallDelta,
@@ -42,7 +44,7 @@ export async function streamChatCompletion(
   signal?: AbortSignal,
   onToken?: (data: CompletionStreamData) => void,
   timeoutMs?: number,
-  serverType?: string,
+  serverType?: ServerTypeOption,
 ): Promise<CompletionResult> {
   const url = `${normalizeUrl(serverUrl)}/v1/chat/completions`;
   const connectionTimeoutMs = resolveTimeout(timeoutMs, CONNECTION_TIMEOUT_MS);
@@ -236,11 +238,10 @@ export async function streamChatCompletion(
         }
 
         if (xhr.status === 401) {
-          // G1-3 同源：铁律 8.2 诊断文案，不建专属适配器。
-          const hint = url.includes('dashscope.aliyuncs.com')
-            ? ' — 百炼业务空间密钥(sk-) 配公共域均返回 401；需改为 ws-*.maas.aliyuncs.com 专属域'
-            : '';
-          reject(new Error(`Unauthorized: Invalid or missing API key${hint}`));
+          // 铁律 8.2 诊断文案收单点（helpers）。旧写法在此自己拼一份 hint，且判的是
+          // `url`（完整请求 URL）而不是 `serverUrl`——与 connection.ts 输入口径不一致，
+          // 同一句文案两处维护必然漂。现两边共走 buildUnauthorizedError(serverUrl)。
+          reject(buildUnauthorizedError(serverUrl));
         } else {
           reject(new Error(errorMessage));
         }
@@ -329,7 +330,19 @@ export async function streamChatCompletion(
               fullContent = msg;
             }
           } catch {
-            // 不是合法 JSON：让下面的 result 携带空串，调用方自行判断
+            // 上游自报 Content-Type: application/json 而正文解不开：这是**确定性的
+            // 失约**，不是「模型没话说」。旧写法在此留一句「让下面的 result 携带空串，
+            // 调用方自行判断」——等于把 G1-2 要治的静默空回复往下推一层：
+            // 空串会一路渲染成一条空白助手消息，不报错、不留痕。
+            // 现在显式拒：带上状态码与正文摘要，排障不再靠猜（摘要截断防泄露过长响应）。
+            reject(
+              new Error(
+                `上游声称返回 JSON（HTTP ${xhr.status}，Content-Type: ${ct}）但正文不是合法 JSON：${
+                  xhr.responseText.slice(0, 160) || '(空正文)'
+                }`,
+              ),
+            );
+            return;
           }
         }
       }

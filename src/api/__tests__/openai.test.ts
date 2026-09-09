@@ -8,6 +8,15 @@ import {
   buildReasoningPayload,
   __clearRemoteImageCache,
 } from '../openai';
+import {buildUnauthorizedError} from '../openaiClient/helpers';
+// 直引定义文件而非 barrel：barrel 只做再导出，但按本仓铁律①（替身/被测同一模块来源）
+// 测试里的每一条 import 路径都该逐字指向真定义处，免得将来 barrel 改结构时静默错位。
+import {pickModelListRows} from '../openaiClient/connection';
+import {
+  SERVER_TYPE,
+  SERVER_TYPE_OPTIONS,
+  isServerTypeOption,
+} from '../../utils/serverTypes';
 import {
   directTextModelsBody,
   directVisionModelsBody,
@@ -96,11 +105,15 @@ describe('fetchModels', () => {
     );
   });
 
-  it('handles empty data field', async () => {
+  it('returns [] when the server really has no models ({data: []})', async () => {
+    // 本用例原名 'handles empty data field'，夹具却写的是 `{}`（连 data 字段都没有）。
+    // 旧代码 `data.data || []` 让「空列表」与「缺字段」都得 []，这个笔误因此一直不可见——
+    // 测试与代码同样分不开两种事实，正是 pickModelListRows 要治的那个缺陷。
+    // 现夹具改回本意（真·空列表）；缺字段的那条路另由下方用例锁为 reject。
     global.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
       headers: mockHeaders(),
-      json: () => Promise.resolve({}),
+      json: () => Promise.resolve({data: []}),
     });
 
     const result = await fetchModels('http://localhost:1234');
@@ -177,6 +190,46 @@ describe('fetchModelsWithHeaders', () => {
     await expect(
       fetchModelsWithHeaders('http://localhost:8080', undefined, undefined),
     ).resolves.toEqual({models: [], headers: {}});
+  });
+
+  // 「确实没模型」与「响应形状不合预期」必须是两种可分辨的结果（旧写法都把后者
+  // 压成前者并报成功）。上面那条 'accepts an undefined timeoutMs' 已锁住空列表，
+  // 下面锁住失配与抛错文案。
+  it('rejects a models[]-only body rather than yielding rows without id', async () => {
+    // 不静默接受非 OpenAI 线格式：那种行没有 id，会一路流到「添加到模型」才坏。
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      headers: mockHeaders(),
+      json: () =>
+        Promise.resolve({
+          models: [{name: 'only-shape', capabilities: ['completion']}],
+        }),
+    });
+
+    await expect(
+      fetchModelsWithHeaders('http://localhost:8080'),
+    ).rejects.toThrow(/缺少 data 数组[\s\S]*models/);
+  });
+
+  it('rejects when data is not an array, naming the keys actually received', async () => {
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      headers: mockHeaders(),
+      json: () => Promise.resolve({error: 'not an OpenAI server', foo: 1}),
+    });
+
+    // 错文要告知实际收到的键，否则排障仍要靠猜
+    await expect(
+      fetchModelsWithHeaders('http://localhost:8080'),
+    ).rejects.toThrow(/实际收到的键：error,foo/);
+  });
+
+  it('pickModelListRows: 非对象/空对象正文均显式抛错，空数组照实返回', () => {
+    expect(() => pickModelListRows(null)).toThrow(/非对象/);
+    expect(() => pickModelListRows('html page')).toThrow(/非对象/);
+    expect(() => pickModelListRows({})).toThrow(/空对象/);
+    expect(pickModelListRows({data: [{id: 'a'}]})).toEqual([{id: 'a'}]);
+    expect(pickModelListRows({data: []})).toEqual([]);
   });
 
   // The connection-phase guard on the models probe honours a supplied
@@ -2089,8 +2142,80 @@ describe('buildReasoningPayload (per-serverType gating)', () => {
   it('unknown serverType omits everything', () => {
     expect(buildReasoningPayload(undefined, {enabled: false})).toEqual({});
     expect(
+      buildReasoningPayload(SERVER_TYPE.unknown, {enabled: false}),
+    ).toEqual({});
+  });
+
+  // 🔴 类型闸门自证探针（不是风格装饰）：旧版 serverType 宽 `string`，任意值都能
+  // 进来并静默落 default——探测产出的小写 'openai' 就是这么逃过上面那批用例的。
+  // 现在它是编译错误：若有人把 `| string` 加回 types.ts，本行会从「预期报错」变成
+  // 「unused @ts-expect-error」而使 tsc 非零退出。这条断言本身就是回归。
+  it('非法 serverType 字符串已无法通过编译（| string 不得回来）', () => {
+    expect(
+      // @ts-expect-error 故意传集外值
       buildReasoningPayload('something-else', {enabled: false, effort: 'low'}),
     ).toEqual({});
+  });
+
+  // 百炼专属域判据本身：此分支此前**零用例覆盖**，所以小写 'openai' 能活一整轮。
+  it('detectServerType: 百炼专属域返回规范值 OpenAI（不得小写）', async () => {
+    const detected = await detectServerType(
+      'https://ws-test.cn-beijing.maas.aliyuncs.com/compatible-mode',
+      [],
+      {},
+    );
+    expect(detected).toBe(SERVER_TYPE.openai);
+    // 直接钉住它进 buildReasoningPayload 后拿到的不是空对象（旧事故的失败形态）
+    if (!isServerTypeOption(detected)) {
+      throw new Error(`探测产出不在合法集内：${String(detected)}`);
+    }
+    expect(
+      buildReasoningPayload(detected, {enabled: true, effort: 'low'}),
+    ).toEqual({reasoning_effort: 'low'});
+  });
+
+  it('detectServerType: 返回值必落在合法集内（防再出现集外值）', async () => {
+    const cases: Array<[string, never[], Record<string, string>]> = [
+      ['https://x.maas.aliyuncs.com/compatible-mode', [], {}],
+      ['http://localhost:8080', [], {server: 'llama.cpp'}],
+      ['https://example.com/v1', [], {}],
+    ];
+    for (const [url, models, headers] of cases) {
+      const v = await detectServerType(url, models, headers);
+      expect(v === '' || SERVER_TYPE_OPTIONS.includes(v as never)).toBe(true);
+    }
+  });
+});
+
+describe('buildUnauthorizedError（铁律 8.2 诊断文案单点）', () => {
+  const PUBLIC = 'https://dashscope.aliyuncs.com/compatible-mode';
+  const DEDICATED =
+    'https://ws-test.cn-beijing.maas.aliyuncs.com/compatible-mode';
+
+  it('公共域带提示，专属域不带（门控精确不误伤）', () => {
+    expect(buildUnauthorizedError(PUBLIC).message).toContain('专属域');
+    expect(buildUnauthorizedError(DEDICATED).message).not.toContain('专属域');
+  });
+
+  it('主干文案不变（不碎现有 401 断言）', () => {
+    expect(buildUnauthorizedError(DEDICATED).message).toBe(
+      'Unauthorized: Invalid or missing API key',
+    );
+  });
+
+  it('hostname 判据：子域前缀伪造不得骗到诊断提示（旧 includes 会）', () => {
+    expect(
+      buildUnauthorizedError(
+        'https://evil-dashscope.aliyuncs.com.attacker.net/v1',
+      ).message,
+    ).not.toContain('专属域');
+  });
+
+  it('非法 URL 不抛，降级为无提示主干（不吞真失败）', () => {
+    expect(() => buildUnauthorizedError('not a url')).not.toThrow();
+    expect(buildUnauthorizedError('not a url').message).toBe(
+      'Unauthorized: Invalid or missing API key',
+    );
   });
 });
 
@@ -2268,5 +2393,43 @@ describe('streamChatCompletion G1-2：非流式 JSON 响应 Content-Type 判型'
     xhr.simulateLoad();
     const result = await resultPromise;
     expect(result.content).toBe('ok');
+  });
+
+  // G1-2 的收尾：旧写法在整包 JSON 解不开时只留一句「让 result 携带空串，调用方
+  // 自行判断」——等于把静默空回复往下推一层（空串会渲染成一条空白助手消息，
+  // 不报错也不留痕）。现在这种**确定性失约**必须拒。
+  it('Content-Type 声称 JSON 而正文解不开 → 显式 reject（不再下推空串）', async () => {
+    const resultPromise = streamChatCompletion(
+      {model: 'test', messages: [{role: 'user', content: 'hi'}]},
+      'http://localhost:8888',
+    );
+    const xhr = MockXHR.instances[0];
+    xhr.simulateHeaders(200);
+    xhr.responseText = '<html>proxy intercepted the request</html>';
+    (xhr as any).getResponseHeader = (name: string) =>
+      name === 'content-type' ? 'application/json' : null;
+    xhr.simulateLoad();
+    await expect(resultPromise).rejects.toThrow(
+      /正文不是合法 JSON[\s\S]*proxy intercepted/,
+    );
+  });
+
+  it('合法 JSON 但内容确实为空 → 照实 resolve 空串（不把它当失约）', async () => {
+    // 边界：模型立即 EOS 是合法补全，不是协议失约。两条路径必须分得开，
+    // 否则「报错」会变成误报（真空回复被说成服务器坏了）。
+    const resultPromise = streamChatCompletion(
+      {model: 'test', messages: [{role: 'user', content: 'hi'}]},
+      'http://localhost:8888',
+    );
+    const xhr = MockXHR.instances[0];
+    xhr.simulateHeaders(200);
+    xhr.responseText = JSON.stringify({
+      choices: [{message: {role: 'assistant', content: ''}}],
+    });
+    (xhr as any).getResponseHeader = (name: string) =>
+      name === 'content-type' ? 'application/json' : null;
+    xhr.simulateLoad();
+    const result = await resultPromise;
+    expect(result.content).toBe('');
   });
 });

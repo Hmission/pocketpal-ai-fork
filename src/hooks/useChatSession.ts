@@ -23,14 +23,13 @@ import {
   assembleMessages,
   resolveSystemMessages,
 } from '../utils/systemPromptResolver';
-import {extractAndSaveMemories} from '../services/aiosMemory';
+import {scheduleMemoryPostTurn} from '../services/aiosMemory/postTurn';
 import {RECALL_DISCLAIMER} from '../services/aiosMemory/searchEngine';
 import {assembleContext} from '../services/aiosMemory/contextAssembler';
 import {getLastRecallInfo} from '../services/aiosMemory/contextAssembler';
 import {getLastWriteTime} from '../services/aiosMemory/conversationLog';
 import {getLastSentiment, classifyIntent} from '../services/aiosMemory/rituals';
 import {awaitEngineReady, engineIsBusy} from '../utils/engineReady';
-import {appendConversation} from '../services/aiosMemory/conversationLog';
 import {compactAndFlush} from '../services/aiosMemory/compaction';
 import {maybeClosingSummary, selfCheck} from '../services/aiosMemory/rituals';
 import {saveToy} from '../services/toyChest';
@@ -707,7 +706,11 @@ async function applyEventToStore(
             const used = snapshot?.used ?? 0;
             const recall = getLastRecallInfo();
             return {
-              ctxPct: nCtx ? Math.min(100, Math.round((used / nCtx) * 100)) : 0,
+              // 已用占比（不是余量）；n_ctx 未知时给 undefined 而不是 0：远端模型没有
+              // 本地 n_ctx 概念，显式「不知道」比编一个 0% 诚实（0% 读作“没占用”）。
+              ctxPct: nCtx
+                ? Math.min(100, Math.round((used / nCtx) * 100))
+                : undefined,
               writeTime: getLastWriteTime() ?? Date.now(),
               recallCount: recall.count,
               recallPreview: recall.preview ?? [],
@@ -755,32 +758,26 @@ async function applyEventToStore(
         console.warn('[useChatSession] TTS complete hook failed:', ttsErr);
       }
       // AIOS 口袋记忆: 本轮对话结束后提取记忆 (fire-and-forget)
-      try {
-        const memUserText = ctx.userText;
-        const memAssistantText = finalResult.text ?? '';
-        setTimeout(() => {
-          // P4 自检：开启时对回复跑一遍自检修正，修正版用于落盘
-          const persistText = uiStore.selfCheckEnabled
-            ? selfCheck(memAssistantText)
-            : Promise.resolve(memAssistantText);
-          void persistText.then(corrected => {
-            // G4-1: 注入 provenance——当前激活义肢引擎时为 'limb'，本地引擎为 'local'
-            void extractAndSaveMemories(memUserText, corrected, {
-              provenance: modelStore.activeRemoteBinding ? 'limb' : 'local',
-            });
-            void appendConversation(memUserText, corrected);
-          });
-          void compactAndFlush();
+      // §CORE-14：收尾排期收到 scheduleMemoryPostTurn（与管家路径同一入口）。旧写法是
+      // 裸 setTimeout + 体内四个 `void X()`，外层 try 只包得住「排期」这一行，四个异步体
+      // 全在它作用域外——看着有保护、实际一条也接不住（律 2 口径）。
+      const memUserText = ctx.userText;
+      const memAssistantText = finalResult.text ?? '';
+      scheduleMemoryPostTurn(memUserText, memAssistantText, 'chat', {
+        // P4 自检：开启时对回复跑一遍自检修正，修正版用于落盘
+        correct: uiStore.selfCheckEnabled
+          ? selfCheck
+          : text => Promise.resolve(text),
+        parallel: () => [
+          compactAndFlush(),
           // P4 收尾协议：当日对话超阈值后触发今日小结
-          void maybeClosingSummary(
+          maybeClosingSummary(
             memUserText,
             memAssistantText,
             chatSessionStore.currentSessionMessages.length,
-          );
-        }, 1200);
-      } catch (memErr) {
-        console.warn('[useChatSession] memory extraction hook failed:', memErr);
-      }
+          ),
+        ],
+      });
       return;
     }
     case 'run_failed':

@@ -14,6 +14,14 @@ import * as RNFS from '@dr.pogodin/react-native-fs';
 import {engineStatus} from '../store/engineStatus';
 import {prompterGuard} from '../utils/engineGuard';
 import {
+  ApiCompletionParams,
+  CompletionEngine,
+  CompletionResult,
+  CompletionStreamData,
+  toCompletionResult,
+  toCompletionStreamData,
+} from '../utils/completionTypes';
+import {
   detectRepetitionLoop,
   shouldCheckRepetition,
   type RepetitionVerdict,
@@ -80,7 +88,15 @@ export const isPrompterModelName = (name: string): boolean =>
 // chat 结束符（im_end / llama eos）
 const STOP_TOKENS = ['<im_end>', '<|eot_id|>'];
 
-class PromptWriter {
+/**
+ * 管家引擎。**正式实现 CompletionEngine**（§Wave E-3 收口，2026-09-09）：
+ * 旧版 `completion` 手工收窄参数面（`messages: {role: string}`、无 response_format）
+ * 且缺 `stopCompletion`，与 `modelStore.engine` 不同构——后果不是「不能用」，而是
+ * 四个调用点（记忆提取/记忆治理/上下文摘要/绘本）各自在一个完整的 params 字面量上
+ * 盖 `as any` 来压平差异，把 temperature / n_predict / response_format 的编译期
+ * 保护一并关掉。现在契约与 LocalCompletionEngine 同一真源，调用面零 cast。
+ */
+class PromptWriter implements CompletionEngine {
   private ctx: LlamaContext | undefined;
   private loading: Promise<boolean> | null = null;
 
@@ -210,32 +226,40 @@ class PromptWriter {
   }
 
   /**
-   * 通用 completion（记忆提取等小任务复用管家引擎）：guard 串行 + 冷却窗，
+   * 通用 completion（记忆提取/治理/摘要/绘本等小任务复用管家引擎）：guard 串行 + 冷却窗，
    * 与 writePrompt/chat 共用 ctx。P2 修复（2026-08-17 真机复测）：
    * 管家直答模式下 modelStore.engine 为空，提取引擎回退到管家。
+   *
+   * 与 chat 引擎的唯一语义差异：本方法**强制** `enable_thinking: false`（不分调用方）。
+   * 管家是 1B，reasoning token 混进流会污染 JSON/摘要输出（真机血证），所以这是
+   * 引擎固有约束而不是调用方可选参数——写在入口而不是指望每个调用方记得传。
    */
   async completion(
-    params: {
-      messages: {role: string; content: string}[];
-      n_predict?: number;
-      temperature?: number;
-      enable_thinking?: boolean;
-      stop?: string[];
-    },
-    onData?: (data: {token?: string; content?: string}) => void,
-  ): Promise<void> {
+    params: ApiCompletionParams,
+    callback?: (data: CompletionStreamData) => void,
+  ): Promise<CompletionResult> {
     if (!this.ctx) {
       const ok = await this.ensureLoaded();
       if (!ok || !this.ctx) {
-        return;
+        // 加载失败：返回空结果而不抛（与旧行为一致：调用方的 catch 面不变）。
+        // 注意这不是兜底：“没引擎”对上层是可观察的空产出，提取/摘要均会因此短路。
+        return {text: '', content: ''};
       }
     }
-    await prompterGuard.run(() =>
+    // 不把 `reasoning` 剔掉：LocalCompletionEngine 也是直接透传（native 忽略未知键），
+    // 两个本地引擎对同一个 params 必须同行为——剥与不剥不一致，就是开了第二个事实源。
+    const result = await prompterGuard.run(() =>
       this.ctx!.completion(
-        {...params, enable_thinking: false} as any,
-        onData ?? (() => {}),
+        {...params, enable_thinking: false},
+        callback ? data => callback(toCompletionStreamData(data)) : undefined,
       ),
     );
+    return toCompletionResult(result);
+  }
+
+  /** 停止当前生成（CompletionEngine 契约件；ctx 未加载时是 no-op） */
+  async stopCompletion(): Promise<void> {
+    await this.ctx?.stopCompletion();
   }
 
   /** 释放引擎（把内存还给生图/聊天） */

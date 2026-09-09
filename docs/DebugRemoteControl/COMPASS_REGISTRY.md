@@ -61,6 +61,12 @@ relates: [DRC_SPEC, COMPASS_SYSTEM_SSOT, STATE_COMPASS_ENGINE_SELF_NAVIGATION_SS
 | CP-APP-014 | 身份锚缺失 / identity_reborn / 身份文件损坏 | 冷启动三层自检自愈重建种子（锚句+时间戳，wake_anomaly.jsonl 留痕）；血统导入走 scripts/aios/import_identity.py（一次性工具） | docs/POCKETPAL_AIOS_CORE_SPEC.md Wave A · src/services/aiosCore/wakeCheck.ts | ✅ 已登记（2026-09-05） |
 | CP-APP-015 | 义肢离线 / limb_offline / 连接失败 / fetch failed | scheduler 显式助理消息告知「义肢离线，本轮本地代答」不静默；检查 serverStore 配置与网络通道（cleartext 放行已配） | docs/POCKETPAL_AIOS_CORE_SPEC.md Wave E · src/hooks/useChatScheduler.ts | ✅ 已登记（2026-09-05） |
 | CP-APP-016 | 生长账本目录失败 / growth.* 写入失败 | 检查 AIOS_ROOT 共享存储可写性（EACCES 授权 / 存储占用）；growth 为观测器官，失败不阻断主链路（静默降级） | docs/POCKETPAL_AIOS_CORE_SPEC.md Wave D · src/services/aiosCore/growth.ts | ✅ 已登记（2026-09-05） |
+| CP-APP-017 | 鉴权失败 / Unauthorized / Invalid or missing API key / 密钥与域名不配套 | 按铁律 8.2 校对密钥与域名**成套**：业务空间 `sk-` 必配 `ws-*.maas.aliyuncs.com` 专属域，配公共域 `dashscope.aliyuncs.com` 必 401；换域或换 key，**不自动改域** | docs/POCKETPAL_AIOS_CORE_SPEC.md Wave E-2 · src/api/openaiClient/helpers.ts · docs/DebugRemoteControl/DRC_SPEC.md | ✅ 已落地（regex 已入 errorRegistry，2026-09-09） |
+
+> **为何 017 不并入 015**（防后人顺手合并）：015 的语义是「义肢**不可达** → 本地代答 / 查网络与 cleartext」，
+> 017 的语义是「密钥与域名**不配套** → 换专属域或换 key」，**动作集不相交**。并入会把鉴权排障引到
+> 「查网络」上去。⚠ 代码侧 `errorRegistry.ts` 的**数组顺序**必须 017 在 015 之前：`matchError` 取首个命中，
+> 而 015 含「连接失败」等宽词面（本表行序保持编号递增，与代码数组顺序无关）。
 
 ## 3. 状态指南针（ST-APP-NNN）
 

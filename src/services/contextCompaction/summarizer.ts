@@ -13,7 +13,7 @@
  * 预算折算传入，保证请求必然放得下——容量约束前置，不靠运行时报错回退。
  */
 import {modelStore} from '../../store';
-import {promptWriter} from '../promptWriter';
+import {resolveLoadedLocalEngine} from '../../utils/localEngine';
 import type {CompletionEngine} from '../../utils/completionTypes';
 
 const SUMMARY_SYSTEM =
@@ -59,10 +59,9 @@ export async function summarizeConversation(
   if (!engine && modelStore.inferencing) {
     return null;
   }
-  const resolved =
-    engine ??
-    modelStore.engine ??
-    (promptWriter.isLoaded ? promptWriter : null);
+  // 引擎裁决收单点（§公理 6）：显式传入的优先（防抢引擎检查只对自动路径生效，
+  // 见上方注释），未传则走与记忆提取同一条本地引擎裁决链。
+  const resolved = engine ?? resolveLoadedLocalEngine();
   if (!resolved) {
     return null;
   }
@@ -81,7 +80,7 @@ export async function summarizeConversation(
         n_predict: 220,
         temperature: 0.3,
         enable_thinking: false,
-      } as any,
+      },
       (data: {token?: string; content?: string}) => {
         const piece = data?.token ?? data?.content ?? '';
         if (typeof piece === 'string') {

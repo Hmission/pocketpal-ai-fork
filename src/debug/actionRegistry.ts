@@ -22,8 +22,9 @@ import {
   serverStore,
 } from '../store';
 import {normalizeUrl} from '../api/openaiClient/helpers';
+import {SERVER_TYPE_OPTIONS, ServerTypeOption} from '../utils/serverTypes';
+import {listMemories, memoryDimension} from '../services/aiosMemory';
 import {audioStore} from '../store/audioStore';
-import {TtsGenEngineId} from '../services/ttsEngine';
 import {KOKORO_VOICES} from '../services/tts/engines/kokoro/voices';
 import {SUPERTONIC_VOICES} from '../services/tts/engines/supertonic/voices';
 import {KITTEN_VOICES} from '../services/tts/engines/kitten/voices';
@@ -203,6 +204,8 @@ export const drcActions: Record<string, DrcActionDef> = {
       // UMT5（Wan 视频族）：与 UI 同一条 extras 链，供真机取证时直接拉模型而不经页面
       t5xxl: z.string().optional(),
       backend: z.string().optional(),
+      // C-4 登记面：取证时也要显式声明模态（不声明=按 image 登记，出片会被守卫拦）
+      modality: z.enum(['image', 'video']).optional(),
     }),
     execute: async params => {
       const p = params as {
@@ -213,6 +216,7 @@ export const drcActions: Record<string, DrcActionDef> = {
         vae?: string;
         t5xxl?: string;
         backend?: string;
+        modality?: 'image' | 'video';
       };
       const ok = await imageGenStore.loadModel(p.modelPath, {
         clipL: p.clipL,
@@ -221,6 +225,7 @@ export const drcActions: Record<string, DrcActionDef> = {
         vae: p.vae,
         t5xxl: p.t5xxl,
         backend: p.backend,
+        modality: p.modality,
       });
       if (!ok) {
         throw new Error(imageGenStore.error ?? '模型加载失败');
@@ -416,9 +421,19 @@ export const drcActions: Record<string, DrcActionDef> = {
           : engine === 'supertonic'
             ? SUPERTONIC_VOICES
             : KITTEN_VOICES;
-      const voice = voices.find(v => v.id === p.voiceId) ?? voices[0] ?? null;
+      // 🔴 旧写法 `find(...) ?? voices[0]`：传了不存在的 voiceId 也会静默换成首音色
+      // 并报告成功——那是在用兜底掩盖调用方错。现在：缺省才用首音色（文档已承诺），
+      // 显式传错则报错并列出可用集。
+      const voice = p.voiceId
+        ? (voices.find(v => v.id === p.voiceId) ?? null)
+        : (voices[0] ?? null);
       if (!voice) {
-        throw new Error(`${engine} 音色列表为空`);
+        const available = voices.map(v => v.id).join(', ') || '（空）';
+        throw new Error(
+          p.voiceId
+            ? `${engine} 无音色 ${p.voiceId}；可用：${available}`
+            : `${engine} 音色列表为空`,
+        );
       }
       // 缺省不在此注入：`speed` / `numSteps` 的唯一默认点在 `ttsEngine`（旧写法在本文件
       // 再写一份 `1.0` / `5`，与本文件下方的透传行还不自洽——两条 DRC 链默认值行为不同）。
@@ -451,35 +466,61 @@ export const drcActions: Record<string, DrcActionDef> = {
     },
   },
 
-  'audio.ttsGenerate': {
-    id: 'audio.ttsGenerate',
-    domain: 'audio',
-    description: '生成音频文件（TTS 合成 wav，任务化入画廊 kind=tts）',
+  // 🔴 已删除 'audio.ttsGenerate'（2026-09-09，留痕见 DRC_SPEC §5 末）。
+  // 它从未登记 §5（不受 BT05 兼容承诺保护）、零使用方，且与 audio.generateTts
+  // 同走 audioStore.generateTask 一条 store 路径，只是引擎集更窄（无 kitten）、
+  // 并用 `{id, name, engine}` 合成音色对象绕过音色校验——同语义双路径里的劣化那条。
+  // 不保留别名：别名仍是两条路。
+
+  'memory.list': {
+    id: 'memory.list',
+    domain: 'model',
+    description:
+      '读端侧记忆库（复用 aiosMemory.listMemories，不开第二路）——provenance 可观测面',
     paramsSchema: z.object({
-      engine: z.enum(['kokoro', 'supertonic']),
-      text: z.string().min(1),
-      voiceId: z.string().min(1),
-      speed: z.number().min(0.5).max(2).optional(),
-      numSteps: z.number().int().min(1).max(20).optional(),
+      limit: z.number().int().min(1).max(500).optional(),
+      contains: z.string().min(1).optional(),
+      type: z.string().min(1).optional(),
     }),
     execute: async params => {
       const p = params as {
-        engine: TtsGenEngineId;
-        text: string;
-        voiceId: string;
-        speed?: number;
-        numSteps?: number;
+        limit?: number;
+        contains?: string;
+        type?: string;
       };
-      const out = await audioStore.generateTask(
-        p.engine,
-        p.text,
-        {id: p.voiceId, name: p.voiceId, engine: p.engine},
-        {speed: p.speed, numSteps: p.numSteps},
-      );
-      if (!out) {
-        throw new Error(audioStore.ttsError ?? '生成失败（详见事件流）');
+      // 立项理由：G3/G4 全在记忆域，但记忆面零 emit、零 DRC 动作，
+      // provenance 写了没人能查 → 验收只能人工翻设备 JSON，与「链路可观测」矛盾。
+      const all = await listMemories();
+      let items = all;
+      if (p.type) {
+        items = items.filter(m => m.type === p.type);
       }
-      return {uri: out};
+      if (p.contains) {
+        const needle = p.contains.toLowerCase();
+        items = items.filter(m => m.content.toLowerCase().includes(needle));
+      }
+      // 新的在前：落库顺序就是 push 序，取尾部再倒转，与 UI 面口径一致
+      const recent = items.slice(-1 * (p.limit ?? 20)).reverse();
+      return {
+        total: all.length,
+        matched: items.length,
+        // provenance 汇总：让「兜底率」第一次真正可数（SPEC Wave C+/CORE-6 验收面）
+        byProvenance: all.reduce<Record<string, number>>((acc, m) => {
+          const k = m.provenance ?? 'unknown';
+          acc[k] = (acc[k] ?? 0) + 1;
+          return acc;
+        }, {}),
+        items: recent.map(m => ({
+          id: m.id,
+          type: m.type,
+          // 维度是 type 的派生视图（§Wave C+/CORE-5：不落盘）——旧写法 `m.dimension ?? null`
+          // 读的是一个全仓零写入方的字段，永远只会输出 null：把假闭环传播到了新的观测面。
+          dimension: memoryDimension(m),
+          provenance: m.provenance ?? null,
+          ts: m.ts,
+          content: m.content.slice(0, 120),
+        })),
+      };
     },
   },
 
@@ -522,7 +563,11 @@ export const drcActions: Record<string, DrcActionDef> = {
       name: z.string().min(1).max(100),
       url: z.string().min(1),
       apiKey: z.string().optional(),
-      serverType: z.string().optional(),
+      // 🔴 旧写法 `z.string().optional()` + 下方 `as any`：本窗刚在模板上把
+      // `serverType` 收到 `ServerTypeOption` 并声称「编译期即报」，但 DRC 这条口
+      // 可以写入任意字符串（含非法小写 'openai'）——收口被自己另一面打穿。
+      // 现用 z.enum：非法值直接拒并列出合法集。
+      serverType: z.enum(SERVER_TYPE_OPTIONS).optional(),
       requestTimeoutMs: z.number().int().min(1000).max(600000).optional(),
     }),
     execute: async params => {
@@ -530,17 +575,26 @@ export const drcActions: Record<string, DrcActionDef> = {
         name: string;
         url: string;
         apiKey?: string;
-        serverType?: string;
+        serverType?: ServerTypeOption;
         requestTimeoutMs?: number;
       };
       const serverId = serverStore.addServer({
         name: p.name,
         url: p.url,
-        serverType: p.serverType as any,
+        serverType: p.serverType,
         requestTimeoutMs: p.requestTimeoutMs,
       });
       if (p.apiKey) {
         await serverStore.setApiKey(serverId, p.apiKey);
+        // 回读自证：`setApiKey` 内部失败会抛（旧版是 console.error 吞掉），但
+        // “写了”不等于“写进去了”——Keychain 写失败时旧版仍报 ok:true，下轮 probe
+        // 拿 401 会把「没存进去」误判为「密钥错」，污染整条取证链。
+        const back = await serverStore.getApiKey(serverId);
+        if (!back) {
+          throw new Error(
+            `服务器已登记（${serverId}）但密钥未落进 Keychain（回读为空）；请检查 Keystore 可用性，本动作判失败`,
+          );
+        }
       }
       // 回显实际落库的 url，供调用方确认未被加工
       const stored = serverStore.servers.find(s => s.id === serverId);

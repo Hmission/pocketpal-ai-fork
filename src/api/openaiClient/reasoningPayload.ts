@@ -4,6 +4,7 @@
  * 自 src/api/openai.ts 原样迁出（行为零变化）。
  */
 import {ReasoningIntent} from '../../utils/completionTypes';
+import {SERVER_TYPE, ServerTypeOption} from '../../utils/serverTypes';
 
 /**
  * Translate the reasoning intent into the per-serverType wire payload. Gating
@@ -25,7 +26,7 @@ import {ReasoningIntent} from '../../utils/completionTypes';
  * - unknown / old vLLM: omit everything.
  */
 export function buildReasoningPayload(
-  serverType: string | undefined,
+  serverType: ServerTypeOption | undefined,
   reasoning: ReasoningIntent | undefined,
 ): Record<string, any> {
   if (!reasoning) {
@@ -33,7 +34,7 @@ export function buildReasoningPayload(
   }
   const {enabled, effort} = reasoning;
   switch (serverType) {
-    case 'llama.cpp':
+    case SERVER_TYPE.llamaCpp:
       // reasoning_format is always 'auto': a no-op for non-reasoning models and
       // the value that extracts reasoning into reasoning_content instead of
       // leaking raw channel/think markers into content (e.g. gemma-4 emits an
@@ -51,21 +52,34 @@ export function buildReasoningPayload(
             chat_template_kwargs: {reasoning_effort: effort},
           }
         : {reasoning_format: 'auto'};
-    case 'vLLM':
+    case SERVER_TYPE.vLLM:
       if (!enabled) {
         return {chat_template_kwargs: {enable_thinking: false}};
       }
       return effort ? {chat_template_kwargs: {reasoning_effort: effort}} : {};
-    case 'LM Studio':
+    case SERVER_TYPE.lmStudio:
       // On/off only; the LM Studio chat API ignores reasoning_effort.
       return enabled ? {} : {chat_template_kwargs: {enable_thinking: false}};
-    case 'Ollama':
+    case SERVER_TYPE.ollama:
       // OFF sends a safe no-op; ON sends nothing (never think:true).
       return enabled ? {} : {reasoning_effort: 'none'};
-    case 'OpenAI':
+    case SERVER_TYPE.openai:
       return effort ? {reasoning_effort: effort} : {};
-    default:
-      // unknown / old vLLM — omit everything.
+    case SERVER_TYPE.unknown:
+    case undefined:
+      // unknown / 未选类型：省略全部控制参数。
       return {};
+    default: {
+      // 🔴 穷尽性断言：`case` 现在直接引用 SERVER_TYPE 成员（而不是手写字面量），
+      // 所以给 SERVER_TYPE 新增一项而不在上面补分支，会在这行编译报错。
+      const _exhaustive: never = serverType;
+      void _exhaustive;
+      // ⚠ 但运行时**仍须返 {}**，不能 `return _exhaustive`：babel 会剥掉类型，
+      // 而 serverType 来自**持久化存储**，历史脏值（小写 'openai' 等）真的会走到这里。
+      // 写成 `return _exhaustive` 就把一个字符串当成 request payload 返回给调用方
+      //（本窗单测抓到的现行：期望 {} 实得 "something-else"）。
+      // 脏存值不凭空产线上参数，才是诚实行为。
+      return {};
+    }
   }
 }

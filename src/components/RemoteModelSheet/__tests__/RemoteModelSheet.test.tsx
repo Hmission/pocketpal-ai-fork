@@ -11,6 +11,7 @@ import {routerModelsBody} from '../../../../jest/fixtures/remoteModelList';
 import {
   SERVER_TEMPLATES,
   SERVER_TYPE_OPTIONS,
+  ServerTypeOption,
 } from '../../../utils/serverTypes';
 
 const mockedFetchModels = fetchModels as jest.Mock;
@@ -414,7 +415,7 @@ describe('RemoteModelSheet', () => {
     const TEXT = 'gemma-3-4b';
 
     const openViaChip = async (
-      serverType: string | undefined,
+      serverType: ServerTypeOption | undefined,
       rows: any[] = ROUTER_ROWS,
     ) => {
       serverStore.servers = [

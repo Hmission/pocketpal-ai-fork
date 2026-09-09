@@ -2,12 +2,32 @@
  * errorRegistry 契约测试：regex 命中 / 未命中 / 首个命中（与母仓 exception_handler 同构）。
  */
 import {matchError, matchFirstError, ERROR_PATTERNS} from '../errorRegistry';
+import {buildUnauthorizedError} from '../../api/openaiClient/helpers';
 
 describe('errorRegistry', () => {
   it('注册表非空且编号唯一', () => {
     const ids = ERROR_PATTERNS.map(p => p.cpId);
     expect(new Set(ids).size).toBe(ids.length);
     expect(ERROR_PATTERNS.length).toBeGreaterThan(0);
+  });
+
+  /**
+   * 顺序契约：CP-APP-017 必在 015 之前。
+   * `matchError` 取首个命中，而 015 带「连接失败」这类宽词面——一旦 015 排前，
+   * 带「连接失败」字样的 401 会被引到「查网络」上去（错方向的导航比无导航更坑）。
+   */
+  it('CP-APP-017（鉴权）排在 CP-APP-015（不可达）之前', () => {
+    const i17 = ERROR_PATTERNS.findIndex(p => p.cpId === 'CP-APP-017');
+    const i15 = ERROR_PATTERNS.findIndex(p => p.cpId === 'CP-APP-015');
+    expect(i17).toBeGreaterThanOrEqual(0);
+    expect(i15).toBeGreaterThanOrEqual(0);
+    expect(i17).toBeLessThan(i15);
+  });
+
+  it('带「连接失败」字样的鉴权错仍归 017，不被 015 抢走', () => {
+    // 构造最易混淆的一句：同时命中 017（Unauthorized）与 015（连接失败）的词面。
+    const tricky = '连接失败：Unauthorized: Invalid or missing API key';
+    expect(matchFirstError(tricky)?.cpId).toBe('CP-APP-017');
   });
 
   it('JSI bindings not installed 命中 CP-APP-001', () => {
@@ -86,6 +106,11 @@ describe('errorRegistry', () => {
     'CP-APP-014': 'identity_reborn: 身份锚缺失，已重建种子',
     'CP-APP-015': 'limb_offline：连接失败 fetch failed',
     'CP-APP-016': 'growth append failed: EACCES on AIOS_ROOT',
+    // 样本直接取**生产函数产出的原文**，不在此再抄一句：文案单点 + 指南针样本
+    // 绑死，旧「两处字面复制必然漂」的病结构性不可再生。
+    'CP-APP-017': buildUnauthorizedError(
+      'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    ).message,
   };
 
   it('每条注册模式都有真样本可命中（防「条目在但永不匹配」的假生效）', () => {

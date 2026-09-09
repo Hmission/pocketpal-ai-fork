@@ -3,6 +3,7 @@ import {
   buildMemoryFragment,
   refreshUserMd,
   clearMemories,
+  memoryDimension,
   _invalidateCache,
   AiosMemory,
 } from '../index';
@@ -184,5 +185,100 @@ describe('9D 轻量裁决（批次 9-1）', () => {
     expect(content).not.toContain('杭州');
     // 独立 fact 出现
     expect(content).toContain('吉他');
+  });
+});
+
+describe('9D 维度：派生视图而非落盘字段（§Wave C+ / CORE-5）', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    _invalidateCache();
+    (RNFS.exists as jest.Mock).mockResolvedValue(false);
+    (RNFS.readFile as jest.Mock).mockResolvedValue('[]');
+    (RNFS.writeFile as jest.Mock).mockResolvedValue(undefined);
+  });
+
+  it('维度由 type 唯一确定：fact→D7、insight→D5、episode→通用', () => {
+    expect(memoryDimension({type: 'fact'})).toBe('D7');
+    expect(memoryDimension({type: 'insight'})).toBe('D5');
+    expect(memoryDimension({type: 'episode'})).toBe('');
+  });
+
+  it('落库不含 dimension 字段（存了就是第二个可漂移的事实源）', async () => {
+    await clearMemories();
+    await addMemory('fact', '大王喜欢青色');
+    const written = lastMemWriteOf();
+    expect(written).toHaveLength(1);
+    expect(Object.prototype.hasOwnProperty.call(written[0], 'dimension')).toBe(
+      false,
+    );
+  });
+
+  /** 取最后一次 aios_memories.json 写入内容 */
+  function lastMemWriteOf(): AiosMemory[] {
+    const calls = (RNFS.writeFile as jest.Mock).mock.calls;
+    const mem = [...calls]
+      .reverse()
+      .find((c: any[]) => String(c[0]).includes('aios_memories'));
+    return mem ? JSON.parse(mem[1]) : [];
+  }
+
+  it('同相关性时 D7 优先于 D5，即使 D5 更新（维度次键真的接进了排序）', async () => {
+    const now = Date.now();
+    const factOlder: AiosMemory = {
+      id: 'f1',
+      type: 'fact',
+      content: '大王喜欢青色',
+      keywords: ['青色'],
+      ts: now - 10 * 86400000, // 旧
+    };
+    const insightNewer: AiosMemory = {
+      id: 'i1',
+      type: 'insight',
+      content: '女妖觉得大王在意青色',
+      keywords: ['青色'],
+      ts: now, // 新
+    };
+    (RNFS.exists as jest.Mock).mockResolvedValue(true);
+    (RNFS.readFile as jest.Mock).mockResolvedValue(
+      JSON.stringify([factOlder, insightNewer]),
+    );
+
+    const fragment = await buildMemoryFragment('青色');
+    const iFact = fragment.indexOf('大王喜欢青色');
+    const iInsight = fragment.indexOf('女妖觉得大王在意青色');
+    expect(iFact).toBeGreaterThanOrEqual(0);
+    expect(iInsight).toBeGreaterThanOrEqual(0);
+    // 两者 score 均为 1（都命中‘青色’）→ 进入次键：D7 优于 D5。
+    // 旧实现无次键（同分保持数组原序），且那条「9D 按需注入」因 dimension 恒空
+    // 只能给出「最新 3 条」——所以本断言对旧行为有真鉴别力。
+    expect(iFact).toBeLessThan(iInsight);
+  });
+
+  it('同维度同分时新者优先（排序是全序，不因写盘顺序拖动注入集）', async () => {
+    const now = Date.now();
+    const older: AiosMemory = {
+      id: 'f1',
+      type: 'fact',
+      content: '大王在学吉他',
+      keywords: ['吉他'],
+      ts: now - 5 * 86400000,
+    };
+    const newer: AiosMemory = {
+      id: 'f2',
+      type: 'fact',
+      content: '大王在写歌',
+      keywords: ['吉他'],
+      ts: now,
+    };
+    (RNFS.exists as jest.Mock).mockResolvedValue(true);
+    // 故意把旧的排在数组前面（load 原序）：若无末键，原序会直接泄进输出
+    (RNFS.readFile as jest.Mock).mockResolvedValue(
+      JSON.stringify([older, newer]),
+    );
+
+    const fragment = await buildMemoryFragment('吉他');
+    expect(fragment.indexOf('大王在写歌')).toBeLessThan(
+      fragment.indexOf('大王在学吉他'),
+    );
   });
 });

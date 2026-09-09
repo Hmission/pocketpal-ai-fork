@@ -248,6 +248,12 @@ export function prepareSharedStorage(): Promise<void> {
 /**
  * 节流快照导出（10s debounce）：消息写入后触发，避免每次写库都整库复制；
  * 前台被杀时最多丢最近 10s 窗口（进后台导出仍保留为双保险）。
+ *
+ * 旧写法是 `exportDbSnapshot().catch(() => {})`——失败被整个吞掉，「快照其实没写成」
+ * 对任何人不可见，而它的后果是重启后丢聊天记录（只能等到下次写库才发现）。
+ * 本处不迁 `safeTimeout`：句柄已被本函数持有并重新排期前 clear（生命周期是对的），
+ * 而 `safeTimeout` 会经 eventStream 反过来 import 本文件的 `AIOS_EVENTS_LOG`——
+ * 为一个 debounce 引入循环依赖不值当。异常链与生命周期是两回事，各自收口。
  */
 let snapshotTimer: ReturnType<typeof setTimeout> | null = null;
 export function scheduleDbSnapshot(): void {
@@ -256,7 +262,10 @@ export function scheduleDbSnapshot(): void {
   }
   snapshotTimer = setTimeout(() => {
     snapshotTimer = null;
-    exportDbSnapshot().catch(() => {});
+    exportDbSnapshot().catch(e => {
+      // 不阻断任何链路，但必须可见：快照写不成 = 卸载后恢复不了聊天记录
+      console.warn('[paths] DB 快照导出失败（卸载重装后可能丢消息）:', e);
+    });
   }, 10000);
 }
 

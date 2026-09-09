@@ -5,6 +5,7 @@ import {MD3Theme} from 'react-native-paper';
 import {TemplateConfig} from 'chat-formatter';
 import {ContextParams, TokenData} from 'llama.rn';
 import {CompletionParams} from './completionTypes';
+import type {ServerTypeOption} from './serverTypes';
 import {PreviewData} from '@flyerhq/react-native-link-preview';
 import {MD3Colors, MD3Typescale} from 'react-native-paper/lib/typescript/types';
 import type {
@@ -426,13 +427,12 @@ export interface ServerConfig {
   requestTimeoutMs?: number; // Per-server network timeout in ms; undefined = API default
   // User-selectable server type; gates the per-server reasoning wire payload.
   // detectServerType seeds it best-effort; user selection wins. undefined = unknown.
-  serverType?:
-    | 'llama.cpp'
-    | 'LM Studio'
-    | 'Ollama'
-    | 'OpenAI'
-    | 'vLLM'
-    | string;
+  //
+  // 🔴 旧声明是 `'llama.cpp' | 'LM Studio' | 'Ollama' | 'OpenAI' | 'vLLM' | string`：
+  // 与 `string` 求并集被 TS **折叠成 `string`**，所以上面那些字面量从写下那天起
+  // 不构成任何约束（任意字符串都能落库）。真正的小写 `'openai'` 事故就是这么溜过去的。
+  // 现收为 ServerTypeOption，值单一真源在 utils/serverTypes.ts。
+  serverType?: ServerTypeOption;
 }
 
 /**
@@ -466,7 +466,7 @@ export interface RemoteSessionBinding {
   serverId: string;
   remoteModelId: string;
   url: string;
-  serverType?: string;
+  serverType?: ServerTypeOption;
 }
 
 export enum ModelType {

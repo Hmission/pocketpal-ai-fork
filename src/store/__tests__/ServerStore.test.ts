@@ -4,6 +4,7 @@ import {runInAction} from 'mobx';
 import * as Keychain from 'react-native-keychain';
 
 import * as openaiModule from '../../api/openai';
+import type {ServerTypeOption} from '../../utils/serverTypes';
 
 // Mock dependencies before importing the store
 jest.mock('mobx-persist-store', () => ({
@@ -439,7 +440,7 @@ describe('ServerStore', () => {
   });
 
   describe('listCaps', () => {
-    const addRouter = (serverType = 'llama.cpp') => {
+    const addRouter = (serverType: ServerTypeOption = 'llama.cpp') => {
       const id = serverStore.addServer({
         name: 'router',
         url: 'http://localhost:8080',
@@ -633,16 +634,48 @@ describe('ServerStore', () => {
       });
     });
 
-    it('setApiKey handles Keychain errors gracefully', async () => {
+    /**
+     * 旧用例名叫 “handles Keychain errors gracefully” 并断言 `Should not throw`——
+     * 那是把**静默兜底写成了契约**：密钥没存进去，调用方（UI/DRC server.add）仍收到成功，
+     * 下一轮 probe 拿 401 就把「没写进去」误判为「密钥错」。按不兜底红线收口：必须抛。
+     */
+    it('setApiKey 失败向上抛（不得把密钥没存进去扮成成功）', async () => {
       (Keychain.setGenericPassword as jest.Mock).mockRejectedValueOnce(
         new Error('Keychain error'),
       );
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
 
-      // Should not throw
-      await serverStore.setApiKey('server-1', 'key');
+      await expect(serverStore.setApiKey('server-1', 'key')).rejects.toThrow(
+        /未能写入 Keychain.*server-1.*Keychain error/s,
+      );
+    });
 
-      consoleSpy.mockRestore();
+    it('removeApiKey 失败向上抛（同一口径）', async () => {
+      (Keychain.resetGenericPassword as jest.Mock).mockRejectedValueOnce(
+        new Error('reset boom'),
+      );
+      await expect(serverStore.removeApiKey('server-9')).rejects.toThrow(
+        /未能从 Keychain 移除.*server-9/s,
+      );
+    });
+
+    it('removeServer 不因密钥清理失败而阻断，但要留痕（孤儿密钥可观测）', async () => {
+      (Keychain.resetGenericPassword as jest.Mock).mockRejectedValueOnce(
+        new Error('reset boom'),
+      );
+      const warn = jest.spyOn(console, 'warn').mockImplementation();
+      const id = serverStore.addServer({name: 'x', url: 'http://h:1'});
+
+      // removeServer 是同步方法：配置删除必须成，失败只能上报不能回滚
+      expect(() => serverStore.removeServer(id)).not.toThrow();
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(serverStore.servers.find(s => s.id === id)).toBeUndefined();
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('孤儿密钥'),
+        expect.anything(),
+      );
+      warn.mockRestore();
     });
 
     it('getApiKey handles Keychain errors gracefully', async () => {

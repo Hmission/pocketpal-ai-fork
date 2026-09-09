@@ -7,7 +7,10 @@ import {
   CompletionEngine,
   CompletionResult,
   CompletionStreamData,
+  toCompletionResult,
+  toCompletionStreamData,
 } from '../utils/completionTypes';
+import type {ServerTypeOption} from '../utils/serverTypes';
 
 /**
  * LocalCompletionEngine wraps LlamaContext conforming to the CompletionEngine interface.
@@ -24,34 +27,10 @@ export class LocalCompletionEngine implements CompletionEngine {
     return chatEngineGuard.run(async () => {
       const result = await this.context.completion(
         params,
-        callback
-          ? data => {
-              callback({
-                token: data.token,
-                content: data.content,
-                reasoning_content: data.reasoning_content,
-                tool_calls: data.tool_calls,
-                accumulated_text: data.accumulated_text,
-              });
-            }
-          : undefined,
+        callback ? data => callback(toCompletionStreamData(data)) : undefined,
       );
-      return {
-        text: result.text,
-        content: result.content,
-        reasoning_content: result.reasoning_content,
-        tool_calls: result.tool_calls,
-        timings: result.timings,
-        tokens_predicted: result.tokens_predicted,
-        tokens_evaluated: result.tokens_evaluated,
-        truncated: result.truncated,
-        stopped_eos: result.stopped_eos,
-        stopped_limit: result.stopped_limit,
-        stopped_word: result.stopped_word,
-        stopping_word: result.stopping_word,
-        context_full: result.context_full,
-        interrupted: result.interrupted,
-      };
+      // native-only 字段的剥离面归 completionTypes 单点（与管家引擎共用）
+      return toCompletionResult(result);
     });
   }
 
@@ -72,7 +51,7 @@ export class OpenAICompletionEngine implements CompletionEngine {
     private modelId: string,
     private apiKey?: string,
     private timeoutMs?: number,
-    private serverType?: string,
+    private serverType?: ServerTypeOption,
   ) {}
 
   async completion(

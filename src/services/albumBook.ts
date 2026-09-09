@@ -4,7 +4,7 @@
  * 把记忆从「数据库」升格为「成长相册」：周度故事（写作模型现编）+ DreamLite 封面插画。
  * 素材只来自真实记忆与日记；手动触发（MemoryScreen 按钮），不自动不打断。
  *
- * 流程：素材聚合 → 故事生成（modelStore.engine ?? promptWriter，与记忆提取同款回退）
+ * 流程：素材聚合 → 故事生成（本地引擎裁决走 resolveLocalEngineForUserTask 单点）
  *       → 管家增强英文提示词 → DreamLite 出图 → 落盘 memories/album/YYYY-Www/
  */
 import * as RNFS from '@dr.pogodin/react-native-fs';
@@ -13,7 +13,7 @@ import {AIOS_ALBUM_DIR} from '../utils/paths';
 import {listMemories} from './aiosMemory';
 import {listDiaries, readDiary} from './aiosMemory/rituals';
 import {promptWriter} from './promptWriter';
-import {modelStore} from '../store';
+import {resolveLocalEngineForUserTask} from '../utils/localEngine';
 import {imageGenStore} from '../store';
 
 const WEEK_MS = 7 * 86400000;
@@ -54,7 +54,7 @@ const STORY_SYSTEM =
   '像老友叙旧，温柔有细节，可以有小小的感慨。必须基于给定素材，不编造。' +
   '不要标题，直接写正文。';
 
-/** 用当前引擎或管家跑一次 completion（与记忆提取同款回退模式） */
+/** 用本地引擎跑一次 completion（裁决口径见 utils/localEngine：绘本是人主动点，允许懒拉管家） */
 async function runStoryCompletion(
   system: string,
   user: string,
@@ -77,12 +77,9 @@ async function runStoryCompletion(
     }
   };
   try {
-    const engine = modelStore.engine;
-    if (engine) {
-      await engine.completion(params as any, cb);
-    } else {
-      await promptWriter.completion(params as any, cb);
-    }
+    // 引擎裁决收单点：旧写法在此处把 `modelStore.engine ? … : promptWriter` 再摊开一次，
+    // 与提取/治理/摘要共四份副本。绘本是用户显式发起的任务，故走允许懒拉管家的二档。
+    await resolveLocalEngineForUserTask().completion(params, cb);
   } catch (e) {
     console.warn('[albumBook] story completion failed:', e);
     return '';

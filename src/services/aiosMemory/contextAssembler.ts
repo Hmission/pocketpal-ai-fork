@@ -16,7 +16,6 @@ import {
 import {buildMemoryFragment} from './index';
 import {searchMemory} from './searchEngine';
 import {buildTodayState, intentGuidance, trackSentiment} from './rituals';
-import {injectNineD} from './nineDInjector';
 import type {IntentKind} from './rituals';
 
 export interface AssembledContext {
@@ -132,13 +131,14 @@ export async function assembleContext(
   const agents = await readStaticFileSafe(AIOS_AGENTS_FILE);
   const memoryDoc = (await readFileSafe(AIOS_MEMORY_FILE)).slice(0, 2000);
   // 9-3 意图引导装填：会话级意图（调用方从会话状态机传入，不每轮重判）
+  // §Wave C+/CORE-5：这是 system prompt 记忆注入的**唯一出口**。旧代码在此之后再拼
+  // 一段 injectNineD() 的「9D 按需注入」，与本源同一记忆集、同一轮重复注入：
+  // 而因 `dimension` 无写入方，它实际只能拿到「最新的 3 条」（已包含在上面的 8 条里），
+  // 不增加信息只增加 token 与复读风险。双路已拆，维度优先级并入 buildMemoryFragment 排序。
   const memoryFragment = await buildMemoryFragment(
     currentUserText,
     sessionIntent,
   );
-  // G3-2：9D 按需记忆注入（母仓 nine_d_context_injector.py 端侧轻量版）
-  // 漏斗硬门：无用户输入时自动跳过，零开销
-  const nineDFragment = await injectNineD(currentUserText);
   // P4 仪式：开场状态（日期+上次摘要+昨日情绪）+ 意图语气（闲聊/倾述/问答/任务）
   const todayState = recentMessageCount <= 2 ? await buildTodayState() : '';
   const intent = intentGuidance(sessionIntent);
@@ -152,7 +152,6 @@ export async function assembleContext(
     todayState,
     intent,
     memoryFragment,
-    nineDFragment, // G3-2: 9D 按需注入（排在传统记忆碎片之后，维度优先级内容更独特）
     workspaceContext,
   ]
     .filter(Boolean)

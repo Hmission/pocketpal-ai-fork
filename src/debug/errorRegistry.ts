@@ -173,6 +173,20 @@ export const ERROR_PATTERNS: ErrorPattern[] = [
     ],
   },
   {
+    // ⚠ 必须在 CP-APP-015 **之前**：`matchError` 取首个命中，而 015 含「连接失败」等
+    // 宽词面；鉴权失败是独立语义（动作集不相交），不能被子串抢走。
+    cpId: 'CP-APP-017',
+    triggerRegex:
+      /Unauthorized|Invalid or missing API key|\b401\b.{0,24}(key|unauthor)|鉴权失败|api ?key.*(无效|缺失)/i,
+    navigation:
+      '按铁律 8.2 校对密钥与域名是否成套：业务空间 sk- 密钥必配 ws-*.maas.aliyuncs.com 专属域，配公共域 dashscope.aliyuncs.com 必返 401；换专属域或换 key，不自动改域（DRC server.probe 可回显 requestUrl 定位）',
+    deepDive: [
+      'docs/POCKETPAL_AIOS_CORE_SPEC.md Wave E-2',
+      'src/api/openaiClient/helpers.ts',
+      'docs/DebugRemoteControl/DRC_SPEC.md',
+    ],
+  },
+  {
     cpId: 'CP-APP-015',
     triggerRegex:
       /limb_offline|义肢.*(离线|不可用)|连接失败|fetch failed|Network request failed/i,

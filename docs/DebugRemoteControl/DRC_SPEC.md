@@ -184,6 +184,16 @@ StateCompass 五字段与母仓 `STATE_COMPASS` 同构：state（定位）/ next
 
 白名单注册（新增在此登记，id 语义永久稳定——BT05 向前兼容，不改名不删除）。
 
+> **BT05 的兼容承诺只覆盖「已登记者」**：未进本表的 id 不构成对外契约，可随时收并/删除。
+> 本窗实测发现：`audio.transcribe` 与 `audio.ttsGenerate` 自 `3143a3a`（2026-08-24 pack 丢失事故后的
+> 「整合 23 个本地提交重建 main」）**就已存在于代码但从未登记本表**——事故重建是登记漏口的根源。
+>
+> 🔴 **本表与代码的一致性不再靠人眼：已挂 `yarn audit:drc-actions`（见 §10）**。它与 `audit:compass`
+> 同构——登记面/执行面任一侧漂移即红。本窗之所以能发现「25 行 vs 27 个」这类错，完全靠临时脚本，
+> 面下次新增动作仍会漏。
+
+**当前注册数：27 个**（由 `audit:drc-actions` 与代码双向校验，不得手工改此数）。
+
 | actionId                   | 参数（zod）                                                                                                    | 说明                                                                                                                                                                                                                                                                                                             |
 | -------------------------- | -------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | system.ping                | -                                                                                                              | 连通性探测                                                                                                                                                                                                                                                                                                       |
@@ -210,7 +220,14 @@ StateCompass 五字段与母仓 `STATE_COMPASS` 同构：state（定位）/ next
 | server.models              | serverId/contains?/limit(1-500)?                                                                               | 列该服务器**已拉取**的模型 id（可按子串过滤）。必要性：`/v1/models` 可能回上百条（百炼专属域实测 249），全量回显会抢爆结果文件 ——2026-09-09 登记                                                                                                                                                                 |
 | server.addModel            | serverId/remoteModelId                                                                                         | 把一个已拉取的远端模型加入可见集（同 UI「添加模型」：`addUserSelectedModel`）。**没有这一步义肢永远离线**：`modelStore.remoteModels` 只派生自 `userSelectedModels`，直接决定 `resolveLimbTier` 是否短路 ——2026-09-09 登记                                                                                        |
 | server.removeModel         | serverId/remoteModelId                                                                                         | 从可见集移出单个远端模型（`removeUserSelectedModel`），测试收尾用 ——2026-09-09 登记                                                                                                                                                                                                                              |
-| audio.generateTts          | engine(kokoro/supertonic/kitten)/text/voiceId/speed/numSteps                                                   | TTS 音频生成（与音频工坊「生成音频」按钮同链路：audioStore.generateTask；voiceId 缺省用引擎首音色；kitten 为 HyperOS 配额内轻量引擎）——2026-08-22 登记                                                                                                                                                           |
+| audio.generateTts          | engine(kokoro/supertonic/kitten)/text/voiceId/speed/numSteps                                                   | TTS 音频生成（与音频工坊「生成音频」按钮同链路：audioStore.generateTask；**voiceId 缺省才用首音色，传了不存在的 id 则报错并列可用集**（旧写法 `?? voices[0]` 会静默换音色——传错也「成功」）；kitten 为 HyperOS 配额内轻量引擎）——2026-08-22 登记；音色校验收口 2026-09-09                                                                                                                           |
+| audio.transcribe           | path                                                                                                            | 转写 wav 音频（SenseVoice，`audioStore.transcribeTask`，任务化入画廊 kind=transcribe）。代码自 `3143a3a` 即存在但**从未登记**，本次补账——它是独立能力（ASR），与 generateTts 不重复 ——2026-09-09 补登记                                                                                                              |
+| memory.list                | limit(1-500)?/contains?/type?                                                                                   | 读端侧记忆库（复用既有 `aiosMemory.listMemories`，**不开第二路**）。立项理由：G3/G4 全在记忆域，但记忆面**零 emit、零 DRC 动作**，provenance 写了没人能查 → 验收只能人工翻设备 JSON，与「链路可观测」自相矛盾 ——2026-09-09 登记                                                              |
+
+> **已删除动作（留痕，2026-09-09）**：`audio.ttsGenerate`。它从未登记本表（不受 BT05 保护）、零使用方，
+> 且与 `audio.generateTts` **同走 `audioStore.generateTask` 一条 store 路径**，只是引擎集更窄（无 kitten）、
+> 并用 `{id, name, engine}` 合成音色对象**绕过音色校验**——属同语义双路径中的劣化那条，违反「同一语义只允许一条实现路径」。
+> 删除而非保留兼容别名：别名仍是两条路。
 
 ## 6. 门控与安全
 
@@ -284,3 +301,19 @@ adb 文件 push/pull 属允许的非 UI 操作；真机过程仍可叠加 scrcpy
 > `.cursor/skills/drc-remote-debug/SKILL.md` 只是本机的智能体触发入口，**新克隆 / 拉 origin 的其他窗口拿不到它**
 > （与本文 §早期提到的 `.github/workflows/` 陷阱同类）。本文档（已 tracked）才是唯一持久事实源：
 > 上面那段提示词已自带全部可执行信息（三工具 + 标准序列 + 红线），不依赖 skill 文件存在。
+
+## 10. 登记面与执行面的对账闸（`audit:drc-actions`）
+
+本窗实测撞到的账目偏差：§5 表登记 25 个，而 `actionRegistry.ts` 实际注册 27 个
+（`audio.transcribe` / `audio.ttsGenerate` 自 `3143a3a` 事故重建起就漏登）。我能在本轮发现它，
+**完全靠临时写脚本枚举对比**——这意味着下次新增动作仍会漏。按 AGENTS.md 纪律 5：
+*新工具/闸门后要拿探针自证它能报错，空转的闸门比没有更险*。
+
+| 项 | 口径 |
+|---|---|
+| 脚本 | `scripts/audit-drc-actions.js`（与 `audit-native-mocks.js` / `audit-async-timers.js` / `audit-gate-reentry.js` 同取 kebab 命名），出口 `AUDIT_DRC_ACTIONS doc=N code=M missing=[…] stale=[…] countLine=K` |
+| 双向 | 代码有而表里无 → `missing`（BT05 违规：未登记即不得消费）；表里有而代码无 → `stale`（死登记） |
+| 计数自证 | 表头「当前注册数：N 个」必须等于代码实际数，否则红（防“只手改表不改数”——本窗我自己就错过一次：加 `memory.list` 后表已 27 行而计数仍留 26，由闸门首跑撞出） |
+| 挂点 | `.husky/pre-commit`（与其余闸门同列）+ `package.json` scripts |
+| 探针自证 | `scripts/__tests__/audit-drc-actions.test.js`：给纯函数 `audit(codeText, docText)` 喂四种脏态（代码多一个 / 表少一行 / 计数失真 / §5 标题被改名）均必须判红；**同时断言净态判绿**——只会红的闸门与只会绿的闸门一样无用 |
+| 红时行为 | **非零退出阻断提交**，不兼容“警告后放行”——警告等于没有 |

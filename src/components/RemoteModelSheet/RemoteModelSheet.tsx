@@ -28,8 +28,11 @@ import {L10nContext} from '../../utils';
 import {isLocalHost} from '../../utils/network';
 import {parseTimeoutMs} from '../../utils/timeout';
 import {
+  SERVER_TYPE,
   SERVER_TYPE_DROPDOWN_OPTIONS,
   SERVER_TEMPLATES,
+  ServerTypeOption,
+  isServerTypeOption,
   seedServerType,
 } from '../../utils/serverTypes';
 import {ServerConfig} from '../../utils/types';
@@ -62,7 +65,9 @@ export const RemoteModelSheet: React.FC<RemoteModelSheetProps> = observer(
     const [serverName, setServerName] = useState('');
     const [apiKey, setApiKey] = useState('');
     const [timeoutSeconds, setTimeoutSeconds] = useState('');
-    const [serverType, setServerType] = useState('unknown');
+    const [serverType, setServerType] = useState<ServerTypeOption>(
+      SERVER_TYPE.unknown,
+    );
     const [secureTextEntry, setSecureTextEntry] = useState(true);
 
     // Auto-probe
@@ -215,14 +220,16 @@ export const RemoteModelSheet: React.FC<RemoteModelSheetProps> = observer(
       [],
     );
 
-    // 服务商模板 chip：只预填表单，不自己探测（探测归 url useEffect 的 debounce 单点）。
-    // apiKey 不代管：模板是快捷方式，凭证仍由用户自己填（设计意图见 ServerStore 模板注释）。
+    // 服务商模板 chip：只预填表单，**不写 serverType**。
+    // 类型由「URL 探测 → seedServerType」单点裁决（公理 6：同一语义只一条路径）。
+    // 旧写法在此 `setServerType(tpl.serverType)`，但下一行 setUrl 会触发 url useEffect
+    // → debouncedProbe → :156 用探测值覆写回来——模板写的正确值被当场推翻，同窗两条路。
+    // apiKey 不代管：模板是快捷方式，凭证仍由用户自己填。
     const handleTemplatePress = useCallback(
       (tpl: (typeof SERVER_TEMPLATES)[number]) => {
         setSelectedServerId(null);
         setServerName(tpl.label);
         setUrl(tpl.url);
-        setServerType(tpl.serverType);
         setUrlError('');
       },
       [],
@@ -292,7 +299,15 @@ export const RemoteModelSheet: React.FC<RemoteModelSheetProps> = observer(
             serverType,
           });
           if (apiKey.trim()) {
-            await serverStore.setApiKey(serverId, apiKey.trim());
+            try {
+              await serverStore.setApiKey(serverId, apiKey.trim());
+            } catch (e: any) {
+              // 密钥没写进去：报在既有 probeResult 错误块上，不继续绑模型、不关闭表单。
+              // 不自作聪明回滚删服务器：那会把「密钥录入失败」藏起来；留着这条无密钥
+              // 配置是用户可见、可在服务器详情页直接补密钥的可修复态。
+              setProbeResult({ok: false, error: e?.message ?? String(e)});
+              return;
+            }
           }
         }
         // Add model to user selections
@@ -602,7 +617,13 @@ export const RemoteModelSheet: React.FC<RemoteModelSheetProps> = observer(
                   testID="server-type-dropdown"
                   value={serverType}
                   options={SERVER_TYPE_DROPDOWN_OPTIONS}
-                  onChange={setServerType}
+                  // DS Dropdown 的契约是 `onChange: (value: string) => void`（不泛型化，
+                  // 因它服务多个非枚举调用方）；枚举型调用方在边界用守卫收窄。
+                  onChange={value =>
+                    setServerType(
+                      isServerTypeOption(value) ? value : SERVER_TYPE.unknown,
+                    )
+                  }
                 />
                 <Text style={styles.apiKeyDescription}>
                   {l10n.settings.serverTypeHelp}

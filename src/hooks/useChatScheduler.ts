@@ -25,8 +25,7 @@ import {
 import {getModelDisplayNameWithParams} from '../utils/modelDisplayNames';
 import {engineStatus} from '../store/engineStatus';
 import {promptWriter} from '../services/promptWriter';
-import {extractAndSaveMemories} from '../services/aiosMemory';
-import {appendConversation} from '../services/aiosMemory/conversationLog';
+import {scheduleMemoryPostTurn} from '../services/aiosMemory/postTurn';
 import {buildButlerContext} from '../services/aiosMemory/butlerContext';
 import {classifyIntent} from '../services/aiosMemory/rituals';
 import {awaitEngineReady} from '../utils/engineReady';
@@ -212,15 +211,9 @@ async function butlerReply(
   chatSessionStore.clearAgentRun();
   // AIOS 记忆（P2 真机复测 2026-08-17 修复）：管家直答绕过了 useChatSession 的
   // run_finished 钩子（提取/对话日志都挂在那里）→ 此处补接，否则管家模式记忆永不落盘。
-  // G4-1：管家路径永远本地引擎，provenance 固定为 'local'（解析兜底则函数内自动覆盖）
-  try {
-    setTimeout(() => {
-      void extractAndSaveMemories(text, finalText, {provenance: 'local'});
-      void appendConversation(text, finalText);
-    }, 1200);
-  } catch (e) {
-    console.warn('[Scheduler] butler memory hook failed:', e);
-  }
+  // §CORE-14：与聊天路径同走 scheduleMemoryPostTurn（同一延时、同一收口原语）；
+  // 旧写法在这里又写了一份 `void` + 字面量 1200，且它的 try 对体内异步体零保护。
+  scheduleMemoryPostTurn(text, finalText, 'butler');
   return true;
 }
 

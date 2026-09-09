@@ -272,10 +272,12 @@ describe('useChatScheduler', () => {
     await act(async () => {
       jest.advanceTimersByTime(1300);
     });
+    // §Wave E-3：抽取不再接受第三个入参（引擎固定本地、provenance 由 aiosMemory 自裁）。
+    // 这里故意只传两个参数断言：toHaveBeenCalledWith 比的是完整实参数组，
+    // 若有人把 opts 接回来（开第二个引擎决策点 / 谎报来源），本断言会红。
     expect(mockExtract).toHaveBeenCalledWith(
       '我喜欢喝茶，最爱龙井',
       '管家回复',
-      {provenance: 'local'}, // G4-1：管家路径永远本地引擎
     );
     expect(mockAppendConv).toHaveBeenCalledWith(
       '我喜欢喝茶，最爱龙井',

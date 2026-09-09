@@ -1,4 +1,8 @@
-import {detectRepetitionLoop, shouldCheckRepetition} from '../repetitionGuard';
+import {
+  detectRepetitionLoop,
+  shouldCheckRepetition,
+  REPETITION_GUARD_PARAMS,
+} from '../repetitionGuard';
 
 /**
  * 退化复读检测（repetitionGuard）。
@@ -91,17 +95,79 @@ describe('repetitionGuard — 退化复读判定', () => {
     expect(detectRepetitionLoop(LEAK_UNIT.repeat(3)).hit).toBe(false);
   });
 
-  it('窗口约束自证：MAX_UNIT×MIN_TIMES 必须装得进 TAIL_WINDOW，否则长单元永远测不到', () => {
-    // 4×200=800 ≤ 900；若有人改小 TAIL_WINDOW 或改大 MAX_UNIT 破坏此式，本用例会红
-    const unit =
-      '这是一段足够长的复述内容，用来验证扩程后的守卫确实能看见，而不是停在旧上限之外。';
-    expect(unit.length).toBe(40); // 先实测钉住样本长度，再往下推
-    // 取两个单元拼成 80 字长周期，确保超出旧 MAX_UNIT=40
-    const longUnit = unit + unit.slice(0, 40);
-    expect(longUnit.length).toBe(80);
-    expect(detectRepetitionLoop(longUnit.repeat(4)).hit).toBe(true);
-    // 更极端：接近 MAX_UNIT 的长单元重复 4 次仍需命中（守 800≤TAIL_WINDOW 这条式子）
-    const veryLong = '甲'.repeat(199);
-    expect(detectRepetitionLoop(veryLong.repeat(4)).hit).toBe(true);
+  // ── 不变式直断言（不再靠样本卡线）───────────────────────────────
+  /**
+   * 本窗上一版这里写的是「拿一个 199 字样本跑 4 遍看能不能中」——那叫卡线，
+   * 不叫守式子：只要有人只把 MAX_UNIT 提而不动 TAIL_WINDOW，守卫对新长周期
+   * 静默失效，而卡线用例仍会绿。现在直接把式子写进断言。
+   */
+  it('不变式：TAIL_WINDOW 必须装得下最大单元 × 最大门槛', () => {
+    const P = REPETITION_GUARD_PARAMS;
+    expect(P.TAIL_WINDOW).toBeGreaterThanOrEqual(
+      P.MAX_UNIT * P.LONG_UNIT_MIN_TIMES,
+    );
+    expect(P.TAIL_WINDOW).toBeGreaterThanOrEqual(P.MAX_UNIT * P.MIN_TIMES);
+    // 分界必须真存在于区间内，否则 SHORT_UNIT_CEILING 是个没用的装饰值
+    expect(P.SHORT_UNIT_CEILING).toBeGreaterThan(P.MIN_UNIT);
+    expect(P.SHORT_UNIT_CEILING).toBeLessThan(P.MAX_UNIT);
+    // 长档门槛确实更严（这是「拦真退化不拦长复述」的全部意义）
+    expect(P.LONG_UNIT_MIN_TIMES).toBeGreaterThan(P.MIN_TIMES);
+  });
+
+  /** 造一个**真实周期恰好等于 len** 的单元：字符全互异，使最小周期不行化。 */
+  const uniqueUnit = (len: number) => {
+    let s = '';
+    for (let i = 0; i < len; i++) {
+      s += String.fromCharCode(0x4e00 + i); // 连续码位互异汉字
+    }
+    return s;
+  };
+
+  it('参数化长单元：刚好 MAX_UNIT 长的单元×长档门槛必命中（自动跟常量变化）', () => {
+    const P = REPETITION_GUARD_PARAMS;
+    const unit = uniqueUnit(P.MAX_UNIT);
+    expect(unit.length).toBe(P.MAX_UNIT);
+    const v = detectRepetitionLoop(unit.repeat(P.LONG_UNIT_MIN_TIMES));
+    expect(v.hit).toBe(true);
+    // 🔴 真正有鉴别力的是这两行：unit / times 必须恰好等于构造值。
+    // 本窗上一版用 `unit(40) + unit.slice(0,40)` 造所调 80 字周期，实际两半相同、
+    // 真实周期仍是 40——如果当时断言了 `v.unit === longUnit`，这退化的样本会当场红。
+    expect(v.unit).toBe(unit);
+    expect(v.times).toBe(P.LONG_UNIT_MIN_TIMES);
+  });
+
+  /**
+   * 反验上面那种 `v.unit` 断言确实有鉴别力（拿旧错样本跑过一遍）。
+   * 不这么测的话，“自证”两个字只是自我安慰——本窗我就写错过一次。
+   */
+  it('周期坍缩可被识别：两半相同的 80 字样本，检测器报的是真实周期 40', () => {
+    const half = uniqueUnit(40);
+    const collapsed = half + half; // 长度 80，但真实周期 40
+    expect(collapsed.length).toBe(80);
+    const v = detectRepetitionLoop(collapsed.repeat(3)); // 80×3 = 周期 40×6
+    expect(v.hit).toBe(true);
+    expect(v.unit).toBe(half); // ← 不是 collapsed：证明断言单位能抓坍缩
+    expect(v.unit.length).toBe(40);
+    expect(v.times).toBe(6);
+  });
+
+  // ── 误伤面回归：本窗把 MAX_UNIT 40→200 时新开了一个误杀区，此用例钉住它 ──
+  it('长复述不算退化：47 字表格行逐字重复 4 遍不得被截（旧 MAX_UNIT=40 不中，200×4 也不得中）', () => {
+    const row =
+      '| 指标 | 阈值 | 说明 | 负责人 | 采集频率 | 告警通道 | 备注说明文字 |\n';
+    expect(row.length).toBeGreaterThan(40); // 价在超出旧分界，落入长档
+    expect(detectRepetitionLoop(row.repeat(4)).hit).toBe(false);
+    expect(detectRepetitionLoop(row.repeat(5)).hit).toBe(false);
+    // 而真的退化（长档门槛）仍拦住，否则就是「为了防误伤而关掉守卫」
+    const P = REPETITION_GUARD_PARAMS;
+    expect(detectRepetitionLoop(row.repeat(P.LONG_UNIT_MIN_TIMES)).hit).toBe(
+      true,
+    );
+  });
+
+  it('短档行为不变：≤40 字单元仍维持 4 遍门槛（旧已验证面不得被分档改动惊动）', () => {
+    const unit = uniqueUnit(20); // 20 字，短档
+    expect(detectRepetitionLoop(unit.repeat(3)).hit).toBe(false);
+    expect(detectRepetitionLoop(unit.repeat(4)).hit).toBe(true);
   });
 });

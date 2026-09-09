@@ -15,6 +15,7 @@ import {RemoteModelCaps, ServerConfig} from '../utils/types';
 import {ReasoningCapability} from '../utils/reasoningCapability';
 import {deriveListCapsMap} from '../utils/listCaps';
 import type {ListDerivedCaps} from '../utils/listCaps';
+import {emit} from '../debug/eventStream';
 
 const KEYCHAIN_SERVICE_PREFIX = 'pocketpal-server-';
 
@@ -129,7 +130,19 @@ class ServerStore {
     this.remoteReasoning = dropServerEntries(this.remoteReasoning, id);
     this.remoteCaps = dropServerEntries(this.remoteCaps, id);
     // Clean up API key from keychain
-    this.removeApiKey(id);
+    // removeServer 是同步方法（UI/DRC 都直接调），无法 await；但“删服务器成功、
+    // 密钥没删掉”是安全相关事实（孤儿密钥继续占着 Keystore），不得静默。
+    // 此处显式接住并上报——不是兜底：兜底是把失败扮成成功，这里是上报失败但不回滚配置删除。
+    void this.removeApiKey(id).catch((e: any) => {
+      console.warn(
+        '[ServerStore] 服务器已移除但密钥清理失败（孤儿密钥）:',
+        e?.message ?? e,
+      );
+      emit('model', 'server.orphanApiKey', {
+        serverId: id,
+        error: e?.message ?? String(e),
+      });
+    });
   }
 
   addUserSelectedModel(serverId: string, remoteModelId: string): void {
@@ -207,13 +220,23 @@ class ServerStore {
   }
 
   // API key management (Keychain)
+  /**
+   * 失败一律向上抛，不在这里吞。旧写法 `catch (error) { console.error(...) }` 使
+   * “密钥没存进去”对调用方不可见：UI 照常关闭表单并报告成功，DRC 的 server.add 也返回
+   * ok:true，下一轮 probe 拿 401 就会把「没写进去」误判为「密钥错」——污染整条取证链。
+   * 呈现与否由调用方决定（两个 Sheet 走 probeResult 错误块）。
+   */
   async setApiKey(serverId: string, apiKey: string): Promise<void> {
     try {
       await Keychain.setGenericPassword('apiKey', apiKey, {
         service: `${KEYCHAIN_SERVICE_PREFIX}${serverId}`,
       });
-    } catch (error) {
-      console.error('Failed to save API key:', error);
+    } catch (error: any) {
+      throw new Error(
+        `API 密钥未能写入 Keychain（server ${serverId}）：${
+          error?.message ?? String(error)
+        }`,
+      );
     }
   }
 
@@ -237,8 +260,12 @@ class ServerStore {
       await Keychain.resetGenericPassword({
         service: `${KEYCHAIN_SERVICE_PREFIX}${serverId}`,
       });
-    } catch (error) {
-      console.error('Failed to remove API key:', error);
+    } catch (error: any) {
+      throw new Error(
+        `API 密钥未能从 Keychain 移除（server ${serverId}）：${
+          error?.message ?? String(error)
+        }`,
+      );
     }
   }
 

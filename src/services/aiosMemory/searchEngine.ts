@@ -21,7 +21,9 @@ import {recallKg} from '../aiosCore/kg';
 // ---- 召回免责前缀（2026-08-23 三闸·闸2）----
 // 历史片段注入统一语义：可能已过时，仅作背景参考，防模型把旧记忆当当前事实。
 // 消费方：useChatSession + butlerContext（同构收口，防分叉）。
-// 依据：.qoder/specs/记忆时效性三闸治理方案_task-3g4.md 闸2
+// 依据：记忆时效性三闸治理方案 闸2（原文在 `.qoder/specs/记忆时效性三闸治理方案_task-3g4.md`，
+// 该目录被 `.gitignore` 排除**不入库**——所以上面两行语义本身就是本仓可读的唯一依据，
+// 不得改得只能靠翻 spec 才能理解）。
 export const RECALL_DISCLAIMER =
   '【召回的历史片段】(以下是历史记录，可能已过时，仅作背景参考，不得当作当前事实):';
 

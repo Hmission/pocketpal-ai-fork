@@ -1,4 +1,8 @@
-import {CompletionParams as LlamaRNCompletionParams} from 'llama.rn';
+import {
+  CompletionParams as LlamaRNCompletionParams,
+  NativeCompletionResult,
+  TokenData,
+} from 'llama.rn';
 
 export type {ToolCall} from 'llama.rn';
 import type {ToolCall} from 'llama.rn';
@@ -159,4 +163,47 @@ export interface CompletionEngine {
     callback?: (data: CompletionStreamData) => void,
   ): Promise<CompletionResult>;
   stopCompletion(): Promise<void>;
+}
+
+/**
+ * Native → CompletionResult 的唯一映射点。
+ *
+ * 为何单点：本仓现在有两个「包一个 llama.rn context」的引擎（LocalCompletionEngine
+ * 与管家 promptWriter），它们要剥的 native-only 字段集（chat_format /
+ * tokens_cached / completion_probabilities）完全相同。字段映射一旦抄成两处，
+ * native 下次新增/改名的字段就只会改到其中一个处——两个引擎的结果从此不一样，
+ * 而且不报错（§公理 6）。
+ */
+export function toCompletionResult(
+  result: NativeCompletionResult,
+): CompletionResult {
+  return {
+    text: result.text,
+    content: result.content,
+    reasoning_content: result.reasoning_content,
+    tool_calls: result.tool_calls,
+    timings: result.timings,
+    tokens_predicted: result.tokens_predicted,
+    tokens_evaluated: result.tokens_evaluated,
+    truncated: result.truncated,
+    stopped_eos: result.stopped_eos,
+    stopped_limit: result.stopped_limit,
+    stopped_word: result.stopped_word,
+    stopping_word: result.stopping_word,
+    context_full: result.context_full,
+    interrupted: result.interrupted,
+  };
+}
+
+/**
+ * native 流式回调 → CompletionStreamData 的映射（与 toCompletionResult 同一剥字面口径）。
+ */
+export function toCompletionStreamData(data: TokenData): CompletionStreamData {
+  return {
+    token: data.token,
+    content: data.content,
+    reasoning_content: data.reasoning_content,
+    tool_calls: data.tool_calls,
+    accumulated_text: data.accumulated_text,
+  };
 }

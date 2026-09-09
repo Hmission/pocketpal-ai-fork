@@ -5,6 +5,7 @@
  * 那是「挂在链尾的 .catch() 做不到、必须由外层承担」的那件事。
  */
 import {safeInterval} from '../safeInterval';
+import {cancelPendingSafeTimeouts, safeTimeout} from '../safeInterval';
 import {emit} from '../../debug/eventStream';
 
 jest.mock('../../debug/eventStream', () => ({
@@ -157,5 +158,109 @@ describe('safeInterval', () => {
     await advance(0);
     expect(tick).not.toHaveBeenCalled();
     stop();
+  });
+});
+
+describe('safeTimeout（律 2 的一次性延时分支，CORE-14）', () => {
+  it('到期只跑一次，不会自我续期', async () => {
+    const work = jest.fn();
+    safeTimeout('t_once', work, 1200);
+
+    await advance(1200);
+    expect(work).toHaveBeenCalledTimes(1);
+
+    await advance(10000);
+    expect(work).toHaveBeenCalledTimes(1);
+  });
+
+  it('体内**同步抛出的 TypeError** 也被收口（与 safeInterval 同口径）', async () => {
+    const obj: {maybeMissing?: () => void} = {};
+    safeTimeout(
+      't_sync_throw',
+      () => {
+        // 故意写成取不存在的方法：`.catch` 链根本碰不到这一行
+        (obj.maybeMissing as () => void)();
+      },
+      10,
+    );
+
+    await advance(50);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(String(warn.mock.calls[0][0])).toContain(
+      '[safeTimeout:t_sync_throw]',
+    );
+    expect(emitMock).toHaveBeenCalledWith(
+      'system',
+      'safeTimeout.failed',
+      expect.objectContaining({name: 't_sync_throw'}),
+    );
+  });
+
+  it('work 返回 rejected promise 同样接得住（所以调用面不该写 void X()）', async () => {
+    safeTimeout(
+      't_reject',
+      () => Promise.reject(new Error('post turn fail')),
+      10,
+    );
+
+    await advance(50);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(String(warn.mock.calls[0][0])).toContain('t_reject');
+  });
+
+  it('失败不做节流：每一次都报（一次性任务只逃一次，节流会把它洗白）', async () => {
+    safeTimeout('t_a', () => Promise.reject(new Error('x')), 10);
+    safeTimeout('t_b', () => Promise.reject(new Error('y')), 10);
+
+    await advance(50);
+    expect(warn).toHaveBeenCalledTimes(2);
+    expect(emitMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('cancel() 后不执行', async () => {
+    const work = jest.fn();
+    const cancel = safeTimeout('t_cancel', work, 1000);
+
+    cancel();
+    await advance(5000);
+    expect(work).not.toHaveBeenCalled();
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('已跑过再 cancel 是 no-op（不得误报成「撤销了一次任务」）', async () => {
+    const work = jest.fn();
+    const cancel = safeTimeout('t_after_fire', work, 100);
+
+    await advance(200);
+    expect(work).toHaveBeenCalledTimes(1);
+
+    cancel();
+    expect(warn).not.toHaveBeenCalled();
+    expect(emitMock).not.toHaveBeenCalled();
+  });
+
+  it('cancelPendingSafeTimeouts 撤销全部未到期项并留痕（撤销必须可见）', async () => {
+    const work = jest.fn();
+    safeTimeout('t_p1', work, 1000);
+    safeTimeout('t_p2', work, 2000);
+
+    expect(cancelPendingSafeTimeouts('unit teardown')).toBe(2);
+    await advance(5000);
+    expect(work).not.toHaveBeenCalled();
+    expect(String(warn.mock.calls[0][0])).toContain('unit teardown');
+    expect(emitMock).toHaveBeenCalledWith(
+      'system',
+      'safeTimeout.cancelled',
+      expect.objectContaining({reason: 'unit teardown'}),
+    );
+    // emit 是三参数：(domain, kind, payload)——payload 在 [2]，不是 [1]
+    expect(String(emitMock.mock.calls[0][2].names)).toContain('t_p1');
+  });
+
+  it('无未到期项时不产生任何噪音（否则日志会被撤销行为刷屏）', async () => {
+    emitMock.mockClear();
+    expect(cancelPendingSafeTimeouts('empty')).toBe(0);
+    expect(warn).not.toHaveBeenCalled();
+    expect(emitMock).not.toHaveBeenCalled();
   });
 });

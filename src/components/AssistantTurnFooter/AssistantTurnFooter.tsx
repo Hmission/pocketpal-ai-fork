@@ -54,7 +54,15 @@ interface TimingPart {
  * 接口从已删的 TurnMetricsRow 迁入——footer 是该数据的唯一渲染面。
  */
 export interface TurnMetrics {
-  ctxPct: number;
+  /**
+   * 上下文**已用**百分比（不是余量）。
+   * 🔴 旧标签写「上下文余量」而值是 `used/n_ctx`——语义完全反转：数字越大，
+   * 用户以为越宽裕，实际越紧（2026-09-09 全量复查发现）。
+   * `undefined` = 不知道（远端模型无本地 n_ctx 概念），显 '--' 不编 0%：
+   * 旧版缺值时算 0，而 0% 在占用语义下读作“几乎没占”，同样是谎报。
+   * 口径同 perfTiers 的 N/A 诚实约定。
+   */
+  ctxPct?: number;
   writeTime: number;
   recallCount: number;
   recallPreview: string[];
@@ -77,7 +85,7 @@ interface AssistantTurnFooterProps {
  * 助手卡统一 chrome（CHAT_UI_SPEC §18.2 双行合并）：
  *
  *   行1 = 播放/复制/重新生成（+ interrupted 状态文本）
- *   行2 = 统一指标行：timing 各段 + 上下文余量 + 落盘 + 召回 + 情绪，
+ *   行2 = 统一指标行：timing 各段 + 上下文占用 + 落盘 + 召回 + 情绪，
  *         分隔符 `·`；数值 brandAccent 600，标签 textSecondary。
  *
  * TurnMetricsRow 已删除，能力并入本组件——每卡只有一块 chrome，
@@ -299,7 +307,7 @@ export const AssistantTurnFooter: React.FC<AssistantTurnFooterProps> = observer(
             {metrics ? (
               <>
                 {timingParts.length > 0 ? separator('sep-m-0') : null}
-                {/* 上下文余量：点按直达生成设置（每模型 n_ctx 入口不丢） */}
+                {/* 上下文占用（已用/n_ctx）：点按直达生成设置（每模型 n_ctx 入口不丢） */}
                 <TouchableOpacity
                   style={componentStyles.metricsSection}
                   onPress={() =>
@@ -308,9 +316,9 @@ export const AssistantTurnFooter: React.FC<AssistantTurnFooterProps> = observer(
                   disabled={!navigation}
                   testID="metrics-ctx"
                   hitSlop={{top: 8, bottom: 8, left: 4, right: 4}}>
-                  <Text style={componentStyles.metricsLabel}>上下文余量</Text>
+                  <Text style={componentStyles.metricsLabel}>上下文占用</Text>
                   <Text style={componentStyles.metricsValue}>
-                    {metrics.ctxPct}%
+                    {metrics.ctxPct === undefined ? '--' : `${metrics.ctxPct}%`}
                   </Text>
                 </TouchableOpacity>
                 {separator('sep-m-1')}

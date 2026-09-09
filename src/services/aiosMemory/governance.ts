@@ -12,7 +12,7 @@
 import * as RNFS from '@dr.pogodin/react-native-fs';
 import {AIOS_CONVERSATIONS_DIR} from '../../utils/paths';
 import {modelStore} from '../../store';
-import {promptWriter} from '../promptWriter';
+import {resolveLoadedLocalEngine} from '../../utils/localEngine';
 import {
   load,
   save,
@@ -46,9 +46,8 @@ export async function governMemories(): Promise<GovernanceResult> {
   const memories = await load();
   const before = memories.length;
 
-  // 引擎选择：优先当前对话大模型；管家直答回退到管家引擎
-  const engine =
-    modelStore.engine ?? (promptWriter.isLoaded ? promptWriter : null);
+  // 引擎选择收单点（§公理 6）：与记忆提取/摘要同款回退不得再抄一份表达式。
+  const engine = resolveLoadedLocalEngine();
   if (!engine) {
     return {
       before,
@@ -100,7 +99,7 @@ export async function governMemories(): Promise<GovernanceResult> {
         n_predict: 800,
         temperature: 0,
         enable_thinking: false,
-      } as any,
+      },
       (data: {token?: string; content?: string}) => {
         const piece = data?.token ?? data?.content ?? '';
         if (typeof piece === 'string') {

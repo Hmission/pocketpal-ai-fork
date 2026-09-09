@@ -24,7 +24,12 @@ import {serverStore} from '../../store';
 import {confirmDialog} from '../ui/ConfirmDialog';
 import {L10nContext} from '../../utils';
 import {parseTimeoutMs} from '../../utils/timeout';
-import {SERVER_TYPE_DROPDOWN_OPTIONS} from '../../utils/serverTypes';
+import {
+  SERVER_TYPE,
+  SERVER_TYPE_DROPDOWN_OPTIONS,
+  ServerTypeOption,
+  isServerTypeOption,
+} from '../../utils/serverTypes';
 import {testConnection} from '../../api/openai';
 import {t} from '../../locales';
 
@@ -46,7 +51,9 @@ export const ServerDetailsSheet: React.FC<ServerDetailsSheetProps> = observer(
     const [url, setUrl] = useState('');
     const [apiKey, setApiKey] = useState('');
     const [timeoutSeconds, setTimeoutSeconds] = useState('');
-    const [serverType, setServerType] = useState('unknown');
+    const [serverType, setServerType] = useState<ServerTypeOption>(
+      SERVER_TYPE.unknown,
+    );
     const [secureTextEntry, setSecureTextEntry] = useState(true);
     const [isProbing, setIsProbing] = useState(false);
     const [probeResult, setProbeResult] = useState<{
@@ -77,7 +84,15 @@ export const ServerDetailsSheet: React.FC<ServerDetailsSheetProps> = observer(
               : '';
           setTimeoutSeconds(seconds);
           timeoutSecondsRef.current = seconds;
-          setServerType(server.serverType || 'unknown');
+          // 回灌已持久化的用户主权选择（不经 seedServerType：那是读回事实，不重新裁决）。
+          // 脏存值（如历史上探测产出的小写 'openai'）显示为 unknown 让用户重选，
+          // 保存时自然覆写掉——不静默修正，也不让非法值假装高亮。
+          const stored: string | undefined = server.serverType;
+          setServerType(
+            isServerTypeOption(stored)
+              ? (stored as ServerTypeOption)
+              : SERVER_TYPE.unknown,
+          );
         }
         serverStore.getApiKey(serverId).then(key => {
           setApiKey(key || '');
@@ -160,10 +175,17 @@ export const ServerDetailsSheet: React.FC<ServerDetailsSheetProps> = observer(
           requestTimeoutMs: parseTimeoutMs(timeoutSeconds),
           serverType,
         });
-        if (apiKey.trim()) {
-          await serverStore.setApiKey(serverId, apiKey.trim());
-        } else {
-          await serverStore.removeApiKey(serverId);
+        try {
+          if (apiKey.trim()) {
+            await serverStore.setApiKey(serverId, apiKey.trim());
+          } else {
+            await serverStore.removeApiKey(serverId);
+          }
+        } catch (e: any) {
+          // 密钥面失败：报在既有 probeResult 错误块，不关闭表单（配置已存但密钥未存
+          // 是可补修态；静默关闭就是把它藏起来）。
+          setProbeResult({ok: false, error: e?.message ?? String(e)});
+          return;
         }
         onDismiss();
       } finally {
@@ -246,7 +268,12 @@ export const ServerDetailsSheet: React.FC<ServerDetailsSheetProps> = observer(
               testID="server-type-dropdown"
               value={serverType}
               options={SERVER_TYPE_DROPDOWN_OPTIONS}
-              onChange={setServerType}
+              // DS Dropdown 不泛型化（服务多个非枚举调用方），枚举型调用方在边界收窄。
+              onChange={value =>
+                setServerType(
+                  isServerTypeOption(value) ? value : SERVER_TYPE.unknown,
+                )
+              }
             />
             <Text style={styles.apiKeyDescription}>
               {l10n.settings.serverTypeHelp}

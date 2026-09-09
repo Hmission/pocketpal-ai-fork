@@ -236,11 +236,40 @@ describe('AssistantTurnFooter', () => {
       const metricsRow = getByTestId('footer-metrics');
       expect(metricsRow).toBeTruthy();
       expect(getByText('54ms/token')).toBeTruthy();
-      expect(getByText('上下文余量')).toBeTruthy();
+      expect(getByText('上下文占用')).toBeTruthy();
       expect(getByText('29%')).toBeTruthy();
       expect(getByText('落盘')).toBeTruthy();
       expect(getByText('召回')).toBeTruthy();
       expect(getByText('平稳')).toBeTruthy();
+    });
+
+    /**
+     * 语义与值必须同口径（2026-09-09 全量复查：标签叫「余量」而值是已用占比，
+     * 数字越大越紧却看着越宽裕）；n_ctx 未知时显 '--' 而不是编 0%。
+     */
+    it('标签不得回到「余量」（值实为已用占比，旧标签语义反转）', () => {
+      const message = baseTurn({
+        metadata: {timings: {}, turnMetrics},
+      });
+      const {queryByText, getByText} = render(
+        <AssistantTurnFooter message={message} />,
+      );
+      expect(getByText('上下文占用')).toBeTruthy();
+      expect(queryByText('上下文余量')).toBeNull();
+    });
+
+    it('ctxPct 未知（远端模型无本地 n_ctx）：显 -- 不编 0%', () => {
+      const message = baseTurn({
+        metadata: {
+          timings: {},
+          turnMetrics: {...turnMetrics, ctxPct: undefined},
+        },
+      });
+      const {getByText, queryByText} = render(
+        <AssistantTurnFooter message={message} />,
+      );
+      expect(getByText('--')).toBeTruthy();
+      expect(queryByText('0%')).toBeNull();
     });
 
     it('B19：本回合压缩过旧消息时指标行显示「压缩 N」', () => {

@@ -3,7 +3,9 @@
  *
  * 生图失败任务页与聊天报错弹窗共用：
  *  - buildErrorReport：组装完整报告（摘要/错误/上下文/版本/设备/时间）
+ *  - saveErrorReport：只落盘（全局异常出口用，不抢剪贴板）
  *  - copyAndSaveErrorReport：一键复制 + 落盘共享存储（测试员可另发文件）
+ *  - registerGlobalErrorReporter：RN 全局 JS 异常唯一出口（CORE-8）
  */
 import {Platform} from 'react-native';
 import DeviceInfo from 'react-native-device-info';
@@ -106,14 +108,13 @@ export async function buildErrorReport(
 }
 
 /**
- * 一键复制完整报告到剪贴板，并落盘共享存储
- *（/sdcard/Documents/AIOS/logs/error_<ts>.txt，卸载不丢，可另发文件）。
- * 返回落盘路径（失败为 null）。
+ * 落盘报告到共享存储（/sdcard/Documents/AIOS/logs/error_<ts>.txt，卸载不丢）。
+ * 返回落盘路径（失败为 null）。从 copyAndSaveErrorReport 拆出：全局异常上报只存不复制
+ *（崩溃时抢用户剪贴板是错的），两个出口共用手写盘单点。
  */
-export async function copyAndSaveErrorReport(
+export async function saveErrorReport(
   report: ErrorReport,
 ): Promise<string | null> {
-  Clipboard.setString(report.detail);
   try {
     if (!(await RNFS.exists(AIOS_LOGS_DIR))) {
       await RNFS.mkdir(AIOS_LOGS_DIR);
@@ -130,4 +131,64 @@ export async function copyAndSaveErrorReport(
     console.warn('[errorReport] save failed:', e);
     return null;
   }
+}
+
+/**
+ * 一键复制完整报告到剪贴板，并落盘共享存储。
+ * 返回落盘路径（失败为 null）。
+ */
+export async function copyAndSaveErrorReport(
+  report: ErrorReport,
+): Promise<string | null> {
+  Clipboard.setString(report.detail);
+  return saveErrorReport(report);
+}
+
+/**
+ * 🔴 全局 JS 异常出口（2026-09-09 立项，SPEC §七 CORE-8）。
+ *
+ * 立项缘由：此前全仓 `setGlobalHandler` / `ErrorUtils` **零命中**，`error_*.txt` 只在
+ * 用户主动点「报错」时落盘。后果是结构性的：RN 红屏 / 未接住的 rejection 必然无档——
+ * 真机一次 `TypeError: Cannot read property 'catch' of undefined` 使 DRC 停摆 3.6 分，
+ * 我们只能拿着 bundle 偏移（1:2471684）无法归因，就是因为缺这个出口。
+ *
+ * 三条约束：
+ * 1. **不吞旧 handler**：dev 包红屏必须继照显示（它是开发者看错的第一手段），本函数
+ *    只做“额外留档”，不做替代；release 无红屏时它就是唯一痕迹。
+ * 2. **不抢剪贴板**：走 saveErrorReport，不走 copyAndSave。
+ * 3. **不得递归**：上报自身失败只 console，不再进本函数（否则一个落盘错会变成死循环）。
+ */
+export function registerGlobalErrorReporter(): void {
+  const prior = ErrorUtils.getGlobalHandler?.();
+  let inFlight = false;
+  ErrorUtils.setGlobalHandler(async (error: unknown, isFatal?: boolean) => {
+    if (!inFlight) {
+      inFlight = true;
+      try {
+        const {message} = errorToString(error);
+        const report = await buildErrorReport({
+          scope: 'system',
+          summary: `全局 JS 异常${isFatal ? '（致命）' : ''}: ${
+            message.slice(0, 120) || '(无消息)'
+          }`,
+          error,
+        });
+        const path = await saveErrorReport(report);
+        console.error(
+          '[errorReport] 全局异常已落盘:',
+          path ?? '落盘失败',
+          error,
+        );
+      } catch (e) {
+        // 上报链自身失败：只留 console，不再进入本函数
+        console.error('[errorReport] 全局异常上报失败:', e);
+      } finally {
+        inFlight = false;
+      }
+    }
+    // 交回原 handler（dev 红屏 / 原上报照旧）
+    if (prior) {
+      prior(error, isFatal);
+    }
+  });
 }

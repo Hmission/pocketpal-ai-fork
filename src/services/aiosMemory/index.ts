@@ -1,18 +1,18 @@
 /**
- * AIOS \u53e3\u888b\u8bb0\u5fc6 \u2014\u2014 \u672c\u5730\u8bb0\u5fc6\u4f53\uff08\u5b8c\u5168\u79bb\u7ebf\uff09
+ * AIOS 口袋记忆 —— 本地记忆体（完全离线）
  *
- * \u5b58\u50a8: AIOS_MEMORIES_DIR/aios_memories.json\uff08\u5171\u4eab\u76ee\u5f55\uff0c\u5378\u8f7d\u4e0d\u4e22\uff09
- * \u6ce8\u5165: buildMemoryFragment(userText) \u7531 useChatSession \u62fc\u8fdb system prompt
- * \u68c0\u7d22: searchMemory(query) \u6df7\u5408\u68c0\u7d22 conversations + memories\uff08\u7eaf JS\uff0c\u96f6\u4f9d\u8d56\uff09
- * \u63d0\u53d6: extractAndSaveMemories() \u7528 grammar \u7ea6\u675f JSON \u8f93\u51fa\uff08\u6839\u6cbb\u4e0d\u7a33\u5b9a\uff09
- * \u4eba\u8bbe: \u5df2\u79fb\u5165 AIOS Pal \u7684 systemPrompt\uff0c\u6b64\u5904\u53ea\u7ba1\u8bb0\u5fc6\u5b58\u53d6
+ * 存储: AIOS_MEMORIES_DIR/aios_memories.json（共享目录，卸载不丢）
+ * 注入: buildMemoryFragment(userText) 由 useChatSession 拼进 system prompt
+ * 检索: searchMemory(query) 混合检索 conversations + memories（纯 JS，零依赖）
+ * 提取: extractAndSaveMemories() 用 grammar 约束 JSON 输出（根治不稳定）
+ * 人设: 已移入 AIOS Pal 的 systemPrompt，此处只管记忆存取
  */
 import * as RNFS from '@dr.pogodin/react-native-fs';
 import {AIOS_MEMORIES_DIR, AIOS_USER_FILE} from '../../utils/paths';
 import {modelStore} from '../../store';
-import {promptWriter} from '../promptWriter';
+import {emit} from '../../debug/eventStream';
+import {resolveLoadedLocalEngine} from '../../utils/localEngine';
 import type {IntentKind} from './rituals';
-import type {CompletionEngine} from '../../utils/completionTypes';
 
 export interface AiosMemory {
   id: string;
@@ -25,21 +25,52 @@ export interface AiosMemory {
   /** 9D 轻量裁决：被更新版本替代时记录新条目 id（supersede 链） */
   supersededBy?: string;
   /**
-   * G4-3：抽取来源留痕。
-   * limb=百炼义肢在线抽取（JSON schema 约束高质）；
-   * local=本地引擎且解析未走兜底；
-   * local_fallback_parse=本地引擎走了正则兜底（JSON 不稳定）；
-   * limb_offline_local=意图是义肢但义肢不可用降级本地。
+   * 抽取来源留痕（§Wave E-3 / CORE-6 收口后的二值口径）。
+   * local=本地引擎直出（grammar 约束的 JSON 一次解析成功）；
+   * local_fallback_parse=本地引擎输出非法 JSON、靠扫大括号兜底才解出来。
+   *
+   * 已删的两个值及理由（不留空枚举位＝假留痕）：
+   *  - 'limb'：抽取引擎**永远本地**（每轮都跑，自动上行等于把对话内容送去付费远端，
+   *    违反 §2.1 隐私本地化），所以「义肢产的记忆」这个来源在本架构下不存在。旧写法
+   *    把它等同于「本轮回答用了义肢」——那是**回答**的来源、不是**记忆**的来源，属谎报。
+   *  - 'limb_offline_local'：降级路径产出的记忆与直接本地产出毫无差异，为零差异的值
+   *    保留枚举位没有信息量。
+   * 手工/工具写入（笔记、建写作项目）不传本字段＝undefined，在 memory.list 里落
+   * 'unknown' 桶，与「抽取产」天然分流；兜底率 = fallback / (local + fallback)。
    */
-  provenance?: 'limb' | 'local' | 'local_fallback_parse' | 'limb_offline_local';
-  /**
-   * G3-1：9D 记忆维度。允许值对齐母仓 nine_d_context_injector.py 的 12 维总线：
-   * D1(身份基底) D2(态势感知) D3(领域知识) D4(伤疤记忆) D5(链路上文)
-   * D6(知识检索) D7(大王锚定) D8(演化谱系) D9(任务图谱) D_CONT(连续性) D_GOV(治理)
-   * 空字串=通用。未赋值则为 undefined，不破坏现有序列化。
-   */
-  dimension?: string;
+  provenance?: 'local' | 'local_fallback_parse';
 }
+
+/**
+ * 9D 记忆维度：是 `type` 的**派生视图**，不是落盘字段（§Wave C+ 改判，纠正 G3-1 假闭环）。
+ *
+ * 旧实现在 AiosMemory 上存 `dimension?: string`，注释宣称「对齐母仓 12 维总线」，实际：
+ * 全仓零写入方 → 唯一读方 nineDInjector 的 `dimension ?? ''` 让 11 个维度桶恒空，
+ * 只剩兜底 '' 桶命中，「按维度优先级注入」退化成「按时间倒序取最新 3 条」。
+ *
+ * 母仓 ADR-0227 明确只有 D4/D5/D7/D8 可持久化，D1/D2/D3/D6/D9 明令不入记忆；而旧
+ * DIM_ORDER 里的 D_CONT / D_GOV 在母仓体系无对应物，属本仓另造词面——一并删。
+ * 事实由 type 唯一确定（fact→D7 大王锚定、insight→D5 链路上文），存字段就是造第二个
+ * 可漂移的事实源。D4(伤疤)/D8(演化) 目前无生产者，按 §七 CORE-5 挂账，不先建空桶。
+ */
+export type MemoryDimension = 'D7' | 'D5' | '';
+
+export function memoryDimension(m: Pick<AiosMemory, 'type'>): MemoryDimension {
+  if (m.type === 'fact') {
+    return 'D7';
+  }
+  if (m.type === 'insight') {
+    return 'D5';
+  }
+  return '';
+}
+
+/** 注入排序的次级键：同相关性时大王锚定优先，其次链路上文，最后事件/通用。 */
+const DIMENSION_PRIORITY: Record<MemoryDimension, number> = {
+  D7: 0,
+  D5: 1,
+  '': 2,
+};
 
 const FILE = `${AIOS_MEMORIES_DIR}/aios_memories.json`;
 const MAX_MEMORIES = 200;
@@ -98,8 +129,8 @@ export async function save(memories: AiosMemory[]): Promise<void> {
 }
 
 /**
- * \u4ece\u6587\u672c\u751f\u6210\u5173\u952e\u8bcd\u7528\u4e8e\u68c0\u7d22\u5339\u914d\u3002
- * \u4e2d\u6587: 2-4\u5b57\u6ed1\u7a97\uff1b\u82f1\u6587: \u6309\u7a7a\u683c/\u6807\u70b9\u5206\u8bcd\u3002
+ * 从文本生成关键词用于检索匹配。
+ * 中文: 2-4字滑窗；英文: 按空格/标点分词。
  */
 export function generateKeywords(text: string): string[] {
   const trimmed = text.trim();
@@ -119,7 +150,7 @@ export function generateKeywords(text: string): string[] {
   return [...new Set(keywords)].slice(0, 50);
 }
 
-/** \u8ba1\u7b97\u8bb0\u5fc6\u4e0e\u5f53\u524d\u7528\u6237\u8f93\u5165\u7684\u5173\u952e\u8bcd\u5339\u914d\u5206\u6570 */
+/** 计算记忆与当前用户输入的关键词匹配分数 */
 export function scoreMatch(userText: string, memory: AiosMemory): number {
   if (!memory.keywords || memory.keywords.length === 0) {
     return 0;
@@ -250,8 +281,8 @@ export async function listMemories(): Promise<AiosMemory[]> {
 }
 
 /**
- * \u6784\u5efa\u6ce8\u5165 system prompt \u7684\u8bb0\u5fc6\u788e\u7247\uff08\u7531 useChatSession \u8c03\u7528\uff09\u3002
- * \u63a5\u6536\u5f53\u524d\u7528\u6237\u8f93\u5165\uff0c\u505a\u5173\u952e\u8bcd\u5339\u914d\u8fd4\u56de\u6700\u76f8\u5173\u7684 INJECT_COUNT \u6761\u8bb0\u5fc6\u3002
+ * 构建注入 system prompt 的记忆碎片（由 useChatSession 调用）。
+ * 接收当前用户输入，做关键词匹配返回最相关的 INJECT_COUNT 条记忆。
  */
 /**
  * 意图引导装填（批次 9-3 · task_hint 式主动装填）
@@ -288,7 +319,16 @@ export async function buildMemoryFragment(
     if (userText && userText.trim()) {
       const scored = visible
         .map(m => ({m, score: scoreMatch(userText, m)}))
-        .sort((a, b) => b.score - a.score);
+        // §Wave C+：相关性为主键 → 维度优先级为次键（由 memoryDimension 派生，非落盘
+        // 字段）→ 时间新者为末键。末键同时把排序定成全序：旧写法同分时依赖数组原序，
+        // 而原序会随 supersede 写盘变动，注入集会无因抖动。
+        .sort(
+          (a, b) =>
+            b.score - a.score ||
+            DIMENSION_PRIORITY[memoryDimension(a.m)] -
+              DIMENSION_PRIORITY[memoryDimension(b.m)] ||
+            b.m.ts - a.m.ts,
+        );
       const matched = scored.filter(s => s.score > 0).slice(0, injectCount);
       if (matched.length > 0) {
         selected = matched.map(s => s.m);
@@ -350,13 +390,15 @@ export {compactAndFlush, listSummaryDates, readSummary} from './compaction';
 export {governMemories, rotateOldLogs} from './governance';
 export type {GovernanceResult} from './governance';
 
-// ---- \u7a33\u5b9a\u62bd\u53d6\uff08grammar \u7ea6\u675f + \u5f3a\u8bed\u4e49\u8fc7\u6ee4\uff09----
+// ---- 稳定抽取（grammar 约束 + 强语义过滤）----
 
-// P2 \u590d\u6d4b\uff082026-08-17 \u771f\u673a\uff09\uff1a\u65e7\u7248 prompt \u7ea6\u675f\u8fc7\u5f31 \u2192 fact \u7c7b\u578b\u6c61\u67d3
-// \uff08\u5973\u5996\u81ea\u8ff0/\u4eba\u8bbe\u590d\u8ff0/\u7591\u95ee\u53e5/\u751f\u56fe\u63d0\u793a\u8bcd/\u82f1\u6587\u6b8b\u7559\u6df7\u5165 USER.md \u753b\u50cf\uff09\u3002
+// P2 复测（2026-08-17 真机）：旧版 prompt 约束过弱 → fact 类型污染
+// （女妖自述/人设复述/疑问句/生图提示词/英文残留混入 USER.md 画像）。
 // v3 修复（2026-08-23 真机事故复盘）：排除清单新增三类——瞬时状态（等待X/工具不可用/一次性需求）、
 // 时效内容（新闻/天气/价格）、失败记录（工具调用失败/错误信息）；fact 定义收严为「长期稳定（跨天仍成立）」。
-// 依据：.qoder/specs/记忆时效性三闸治理方案_task-3g4.md 闸1
+// 依据：记忆时效性三闸治理方案 闸1（原文在 `.qoder/specs/记忆时效性三闸治理方案_task-3g4.md`，
+// 该目录被 `.gitignore` 排除**不入库**——所以上述三行排除清单就是本仓的唯一可读依据，
+// 不得改为只指向本地路径。新读者读不到 spec 时，结论仍须自足）。
 const EXTRACTION_SYSTEM =
   '你是记忆提取助手。下面是一段真实对话，每行格式为「大王:」或「女妖:」。' +
   '只从「大王:」的发言中提取关于大王本人的、稳定且值得长期记住的新信息。' +
@@ -371,7 +413,7 @@ const EXTRACTION_SYSTEM =
   '宁缺勿滥：没有新的值得记的信息就输出 {"memories":[]}。' +
   '输出严格 JSON: {"memories":[{"type":"fact|episode|insight","content":"..."}]}。只输出JSON。';
 
-/** JSON schema \u7ea6\u675f\uff08\u6839\u6cbb\u62bd\u53d6\u4e0d\u7a33\u5b9a\uff09 */
+/** JSON schema 约束（根治抽取不稳定） */
 const EXTRACTION_SCHEMA = {
   type: 'json_schema' as const,
   json_schema: {
@@ -398,23 +440,21 @@ const EXTRACTION_SCHEMA = {
 
 /**
  * 对话结束后用本地模型提取记忆（fire-and-forget，不阻塞 UI）。
- * 使用 grammar 约束 JSON 输出，根治小模型产 JSON 不稳定。
  *
- * G4-1/G4-2：接受可选的 `opts` 参数——
- *   engine: 调用方（scheduler）传入已裁决的引擎；未传则按现有回退链。
- *   provenance: 'limb'（百炼义肢）/ 'local'（本地引擎），由 scheduler 注入。
- * 函数内部追踪解析路径：走了正则兜底时自动覆盖为 'local_fallback_parse'。
+ * 引擎归属（§Wave E-3）：抽取**永远走本地引擎**，由 `resolveLoadedLocalEngine()`
+ * 单点裁决（当前对话大模型优先，管家直答模式落常驻管家，都没加载则短路）。
+ * 本函数**不接收任何引擎入参**，也不读 `modelStore.activeRemoteBinding`：
+ * 抽取每轮都跑，若自动上行义肢就等于把对话内容送去付费远端，违反 §2.1 隐私本地化；
+ * 而旧 `ExtractOpts` 的两个字段均无信息增量（engine 零调用方传递，provenance 在
+ * 本地架构下只能取两个值）——参数越多，调用点与函数体越容易各自算一份不同的结论。
+ *
+ * 输出稳定性：靠 `response_format` 让 llama.rn 把它转成 grammar 约束采样（本地与
+ * 远端两条路共用同一个 schema 真源），解析仍留一层扫大括号兜底——但走了兜底就会
+ * 把 provenance 记为 `local_fallback_parse` 并 emit，兜底率可数（§七 CORE-6）。
  */
-
-export interface ExtractOpts {
-  engine?: CompletionEngine;
-  provenance?: 'limb' | 'local' | 'limb_offline_local';
-}
-
 export async function extractAndSaveMemories(
   userText: string,
   assistantText: string,
-  opts?: ExtractOpts,
 ): Promise<void> {
   if (extracting) {
     return;
@@ -423,15 +463,14 @@ export async function extractAndSaveMemories(
     return;
   }
   if (modelStore.inferencing) {
+    // 真丢了一轮记忆（推理还占着 → 本轮不重试 → 永久丢失），必须可观测。
+    emit('app', 'memory.skipped', {reason: 'inferencing'});
     return;
   }
-  // 提取引擎：调用方 scheduler 注入的已裁决引擎优先（G4-1）；
-  // 未注入时按现有回退链：当前对话引擎 → 管家引擎（管家模式下 engine=null）。
-  const engine =
-    opts?.engine ??
-    modelStore.engine ??
-    (promptWriter.isLoaded ? promptWriter : null);
+  // 本地引擎唯一裁决点（同文件内不得再写第二份回退表达式）。
+  const engine = resolveLoadedLocalEngine();
   if (!engine) {
+    emit('app', 'memory.skipped', {reason: 'no_local_engine'});
     return;
   }
   extracting = true;
@@ -443,7 +482,7 @@ export async function extractAndSaveMemories(
           {role: 'system', content: EXTRACTION_SYSTEM},
           {
             role: 'user',
-            content: `\u5927\u738b: ${userText.slice(0, 300)}\n\u5973\u5996: ${assistantText.slice(0, 500)}`,
+            content: `大王: ${userText.slice(0, 300)}\n女妖: ${assistantText.slice(0, 500)}`,
           },
         ],
         n_predict: 150,
@@ -451,7 +490,7 @@ export async function extractAndSaveMemories(
         response_format: EXTRACTION_SCHEMA,
         // Qwen 系模型开启 thinking 时 reasoning token 会混入流 → JSON 解析失败
         enable_thinking: false,
-      } as any,
+      },
       (data: {token?: string; content?: string}) => {
         const piece = data?.token ?? data?.content ?? '';
         if (typeof piece === 'string') {
@@ -459,9 +498,9 @@ export async function extractAndSaveMemories(
         }
       },
     );
-    // grammar 约束保证合法 JSON，直接解析
-    // 本地 llama.rn 引擎不识别 OpenAI 式 response_format json_schema，
-    // 输出会带 BOS 前缀/围栏 → 解析前剥离非 JSON 头尾。
+    // 上面的 response_format 在本地由 llama.rn 转 grammar、在远端由 openaiClient
+    // 透传，两边同一个 schema 真源。仍先剥非 JSON 头尾是因为 grammar 不管 BOS：
+    // 本地输出可能带 `<s>` 前缀，个别模板会包围栏。
     const jsonText = output
       .trim()
       .replace(/^<s>\s*/i, '')
@@ -484,27 +523,39 @@ export async function extractAndSaveMemories(
         throw new Error('no JSON object found in extraction output');
       }
     }
-    // G4-2 provenance 终裁：
-    //   usedFallbackParse → 'local_fallback_parse'（本地引擎解析不稳定）
-    //   opts.provenance → scheduler 注入的引擎来源
-    //   opts 未注入 → modelStore.activeRemoteBinding ? 'limb' : 'local'
-    const effectiveProvenance: AiosMemory['provenance'] = usedFallbackParse
+    // provenance 终裁（§Wave E-3）：引擎固定本地，所以唯一有信息量的区分是
+    // 「grammar 约束一次解出」还是「靠扫大括号兜底」——它直接衡量小模型产 JSON 的稳定性。
+    const provenance: AiosMemory['provenance'] = usedFallbackParse
       ? 'local_fallback_parse'
-      : (opts?.provenance ??
-        (modelStore.activeRemoteBinding ? 'limb' : 'local'));
+      : 'local';
     const items = Array.isArray(parsed.memories) ? parsed.memories : [];
+    let saved = 0;
     for (const item of items.slice(0, 3)) {
       if (item && typeof item.content === 'string' && item.content.trim()) {
         const type = ['fact', 'episode', 'insight'].includes(item.type)
           ? item.type
           : 'episode';
-        await addMemory(type, item.content, effectiveProvenance);
+        await addMemory(type, item.content, provenance);
+        saved++;
       }
     }
     // Refresh USER.md from fact memories after extraction
     await refreshUserMd();
+    // 可观测面（§七 CORE-6）：provenance 写了就得有人能查，否则只是穿了件留痕外衣。
+    // 域走 'app'——与 growth.* / kg.* / starmap.* / wake.check 同一归集口径。
+    emit('app', 'memory.extracted', {
+      count: saved,
+      proposed: items.length,
+      provenance,
+    });
   } catch (e) {
+    // 兜底可以留（fire-and-forget 不得砸坏聊天主链路），但失败必须可观测：
+    // 旧写法只 console.warn，导致两个后果——① 抽取长期失败无人知晓；
+    // ② 写在引擎回调里的单测断言被这个 catch 吞掉，测试恒不可红（§七 CORE-11）。
     console.warn('[aiosMemory] extraction failed:', e);
+    emit('app', 'memory.failed', {
+      error: e instanceof Error ? e.message : String(e),
+    });
   } finally {
     extracting = false;
   }

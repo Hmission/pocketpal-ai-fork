@@ -3439,5 +3439,292 @@ C-1 常量：`VIDEO_HANG_BASE_MS = 2_400_000` + `VIDEO_HANG_PER_FRAME_MS = 30_00
 
 本波各笔（`338719b` / `65a27d4` / 本文档笔）均未 push（待大王指令）。
 
+## §174 P2P3 卷后续全量波（2026-09-09，大王：「继续后续全量任务，依次执行」「需要的话重新走门禁」）
+
+### 174.0 门禁与边界
+
+- gate → route：trace `e99f935d` / activation `act-2d5a83c0`（agent 啄木鸟，session `wave174_01`，
+  `--claim-paths` 10 条 / TTL 3h）。W9c 六文件**未能补 claim**：同 session 同 agent 二次 route 被
+  router 直拒（「已在本 session 并行执行中，不可重复路由」），如实记此口子（claim 是可选项，未 claim ≠ 越权）。
+- 并行窗口在飞 55+ 文件，本窗全程未改其一字。提交被 `guard:worktree` 拦下（对方
+  `src/services/aiosMemory/nineDInjector.ts` 无声删除未走 `git rm`）→ 本窗代码改动全部待入库；
+  **不跳钩、不替对方 restore、不替对方 git rm**。
+
+### 174.1 P2-1 第二轮：91 抽混排与三条新事实
+
+- 起跑：先清队列（App 内 ✕ 逐条 34 项）→ `dreamlite 832×1216·4步 60×` + `sd35-medium-q4 512×768·10步 31×`
+  = 91 抽（少的 1 抽被「需要先加载模型」守卫吃掉）；`sleep_timeout=30000` + 插电（97%）。
+- 结果：活库 `image_gen_tasks` 204 → **234**（success +29 / failed +1），全部落在 DreamLite 段，SD3.5 段未跑到。
+- **判据④归因（双口径）**：14:37:06 `am_kill: stop com.pocketpalai due to from process:11200` ——
+  非 native crash（crash buffer 该时刻无新条目）、非 `normal_mem_pressure`（LMK 形态是 13:06 那批）、
+  非本窗操作。pid 11200 已退出且日志轮转，**凶手身份不可考**（不猜）。第三次重启（14:47:58
+  `installPackageLI`）由并行窗口装 APK 造成，与保活链无关。
+- 新增取证通道：`node:sqlite` 读活库快照（`exec-out run-as cat` 取 db+wal+shm，**字节数与设备一致**才算可信）；
+  顺带独立复核项 41 口径：`error_detail like '%强制退出%'` = **32 行**，与 §169 逐位一致。
+- ❕待验证观察（单口径，不作结论）：`am_pss` 在 13:58/14:04 出现 8.3–8.4 GB 级读数（若按 bytes 解释），
+  14:12 后回落 2.7 GB；需第二口径（`dumpsys meminfo` 采样或 App 内 PSS 记录）才能定性为连抽内存增长。
+
+### 174.2 A6 家族补一类形态：任务记 success、产物是纯灰
+
+13:06 那抽的 `gen_1788929988827_660253645.png`（12,435 字节）实测：**512×768、393,216 像素、唯一色 1 种 = `#808080` 占 100.00%**，
+同行 `status='success'`、`duration_ms=382,661`。**与 §172.5 不冲突也不被其覆盖**：那 6 张历史样本是 12k+ 唯一色 + 空间相关（数值退化），
+本张是**平坦损坏图且被记为成功**。§9 红线（不做 UI 侧平坦检测）不变 → 只登记证据，不加检测。
+
+### 174.3 🔴 P0：队列条目在持久层被逐次克隆（新项 46）
+
+- **现象**：跑测后队列芯片从「2 项 · 91 抽」变成「**120 项 · 3631 抽**」，`image_gen_queue` 120 行全 `pending`。
+- **实物（逐位对上）**：`GROUP BY model_id,total` → `dreamlite/total=60` **30 行**（`created_at` 同为 13:50:33，
+  `done` 0→29 递增）+ `dreamlite total=1..59` 各 1 行 + `sd35 total=1..31` 各 1 行 = 59+30+31 = **120** ✓
+- **根因（读到行）**：`imageGenQueueCore.ts:141` 前端造 id `queue_<ts>_<rand>`；`ImageGenQueueRepository.upsert()`
+  形态正确（按 id 查 → 有则 `update` 否则 `create`），但 **`applyEntry()` 从不给 `record.id` 赋值** → create 出的行
+  拿到 WatermelonDB 自生成 id（实物 `k4vBhnzmIyCBcTCI`），此后每次 `persist()` 按幽灵 id 查不到 → **永远走 create**。
+  运行期内存合并正常（所以 UI 一直看着对），重启 `hydrate()` 按真实行读回 → 克隆从此合法化。
+- **订正本窗早先一句话**：§173 期间我把抽屉里的「34 项 · 589 抽」记成「跨窗口 enqueue 堆积」——**错了**，
+  就是本缺陷的积累（当时的 ✕ 清理只是清掉了克隆行）。亦说明 2026-08-27 平板那次「队列计数从未真正落库」
+  只修了一半：补了 `update()`，但 id 对不上，永远进不去那个分支。
+- **危险性**：任意一次重启即复活成 3631 抽（≈3 天连抽）；且 §1 P2-1 判据①「落库行数 = 入队抽数」
+  在本缺陷下**不成立** → **P2-1 被项 46 前置阻塞**。
+- **本窗处置**：App 内 ✕ 逐条清 120 条 → UI 回 0 项、活库 0 行（双口径核对）；**未改代码**——修法涉及
+  core + repo + `QueuePersistence` 接口的身份契约三处，须配真机重建验证，留给能重建的窗口。
+  建议方案：`upsert` 返回权威行 id，core 在 persist 后回写 `item.id`（不依赖 WM 内部 `_setRaw` 写法）。
+
+### 174.4 §7 P3-2 错误可见性：①② 落码，③ 阻塞（新项 47）
+
+- **① 死码删除**：`UIStore.showError`（空实现 + 生产零调用方）。删除前独立复核命中面，与卷 §7 逐条一致：
+  定义 1 / `HFTokenSheet` 两处是**同名局部 useState** / `showErrorReport` 是**另一个函数** /
+  `ModelStore.test.ts:92,100,114` 只是裸 spy 且**无任何 `toHaveBeenCalled` 断言** → 一并删除。
+- **② `PalSheet` 保存失败接既有错误模态**：用命令式 `showErrorReport`（OverlayCard 唯一底座、App 根挂 host），
+  不新建第三模态、不自动重试、sheet 保持打开可就地重试；新增 `components.palSheet.saveFailedTitle/Summary`
+  两键（先读 `validate-l10n.js` 实证政策：**缺 key 仅 warning 回退英文，占位符不一致才 error**，故只入 en/zh，余 16 语走 Weblate）。
+- ⚠️ **本波最阴的一处**：旧测试 `handles failed save gracefully` / `logs error when update fails` 断言的正是
+  `console.error('Error saving pal:')` —— **把静默黑洞当成了绿灯证据**（纪律 3 的镜像形态：不是 mock 没生效，
+  而是断言绑在了缺陷上）。两支已改写为断言错误模态被调用 + sheet 未关。
+  验证：`tsc` 0 错；所在 2 套 **256 例全绿**。
+- **③ 不落（新项 47）**：`utils/chat.ts:290-294` 返 `' '` 的静默降级，两处调用点均在 `useChatSession.ts`
+  （对方在飞），且 `await prepareCompletion` 在 `:926`——**不在任何 try 内**（try 是 1021–1117）。
+  单改 chat.ts 会把「静默降级」变成「静默无响应」。async 函数会把同步 throw 转 rejection（纪律 1 那条边界），
+  所以正确接法是把 try 边界上移或复用发送级 catch；已写进项 47。
+
+### 174.5 §5 W9c 图标 token 化：12 处归零（含自纠探针口径）
+
+- 复算（`probe_sizes_164.js`）：37 → **25**；消失的正是 16(8)/18(2)/20(2)。六处：`ChatGenerationSettingsSheet` /
+  `ContentReportSheet` / `PalGenerationSettingsSheet` / `DownloadErrorDialog` / `AuthSheet` / `SettingsScreen` 的 `Row`，
+  统一取卷 §5 许可的方案之一「组件内 `useTheme()`」→ `iconSize.s|inline|m`。
+- **自纠**：我第一次复算把 18 判为离档，并写下「卷的 25/12 已过期」——**错了**：探针的 `TOKENS` 映射落后于
+  `src/theme/tokens/iconSize.ts`（`inline: 18` 早已转正）。按实物重算：离档 = 25 处 / 12 元素 + 1 styles、
+  W9c = 12 处 / 6 元素，**与卷完全一致**。卷数没错，是我的筛法漏了 18。
+- 零像素双口径：① `iconSize.ts` 实物 `s=16 / inline=18 / m=20`（替换在数值上恒等）；② 这 6 个目录内**无任何测试
+  锁死 16/18/20 字面量**（grep 零命中）→ 无断言可被惊动。受影响 7 套 79 例绿。
+- 交接口：卷 §5 要求的「改前/改后各一轮全量 jest」在**共享脏工作区做不到无混淆**（改前基线跑于我编辑同期，
+  已自污染；`git stash` 会牵动他人 55 个在飞文件，禁）→ 以①②替代，全量对跑留给干净树/提交闸。
+
+### 174.6 §6 P3-1 跑分页国际化：口径复算 + 23 条删除 + 5 条留证
+
+- **先复算再动手**：现成 `plan171_l10n_recheck.py` 三判据对数 **v1=22 / v2=28 / v3=102**（`benchmark.*` 总 102），
+  **v2 逐位复现 PERF 卷的 28** → 沿用 PERF 口径，不另造探针（卷要求新探针必须先复现 28 才能往下判）；扩脚本导出 v2 清单。
+- **分堆（逐条对实物，不凭名猜）**：堆 1 云提交残留 **14 条** / 堆 2 旧版模型设置面 **9 条** / 待定 **4 条** / 假死 **1 条**。
+- **假死实证（关键）**：`suite.labels.endurance` 被 v2 判死，但 `BenchmarkStore.ts:11 SUITE_CASES=['llm','gen','endurance']`
+  + 三处 `const labels = l10n.benchmark.suite.labels` 做动态下标 → **活键，不删**。这正是 PERF 卷 L290-291 警告的那类，
+  也证明 **28 里含假死，不能整批当删除清单**。
+- **按完整路径删**（叶子同名会误伤：`gpuLayers/flashAttention/ubatch` 在 `modelSettings.*` 与自动化 `benchParams` 里是另一批活键）。
+  执行器带「重新序列化 == 原字节」自证闸，首轮拦下 16/18 文件——根因是 locale 为 **prettier 产物**（短数组折行合并）而非
+  `JSON.stringify` 形态 → 改走「删后交 prettier 归一 + numstat 验无 churn」，每文件约 30 删 / 6 增（增 = 删末键后的行尾逗号边界行），
+  确认无整文件重排。
+- **结果**：v2 死键 **28 → 5**；`tsc` 0 错（en.json 是类型基准，删 23 键零报错 = 零消费者的正向实证）；
+  `yarn l10n:validate` 退出 0；跑分域 12 套 204 例绿（`FAIL` 命中 0；`● <View>` 属 jest Console 分组既有告警，非失败块）。
+- **留证不删的 5 条 → 新项 48**：`endurance`（假死）+ `results.peakMemory`（内存行走 `labels.memSafe`，此键无对应渲染面但未定罪）
+  + `deviceInfoCard.versionFormat` + `messages.{keepScreenOpen,pleaseSelectModel}`（跑分域零命中，需读全 BenchmarkScreen 才能定罪）。
+- ⏸ 4 处非注释中文硬编码（`:46 神鸡` / `:49 战斗鸡` / `:51 走地鸡` / `:242 性能回放历史`）**未接线**：卷 §6 明示语言面
+  （18 文件 vs 只做中英）需大王先裁；裁前不建键，避免「把中文塞进 en.json」的反例。
+
+### 174.7 交接口（本窗未做 / 未入库，不得读成已完成）
+
+- **五笔待入库**（提交闸被对方 `nineDInjector.ts` 无声删除堵住；消息与精确 pathspec 已备）：C-4 模态登记修复笔 /
+  PalSheet+UIStore+l10n 笔 / W9c 六文件笔 / 死键清理 15 locale 笔 / 本文档笔。**全程未 push**（待大王指令）。
+- 项 45（视频 T5 墙）本窗未动；§3 P2-3 stderr 探针与 §4 P2-4 `batch_count` 不变量需构建窗 + 真机红/绿两态，
+  而现在装机即重启会打断别人 → 留待设备与树同时空出。
+- 项 41 保持待裁（本窗未实现任何一档；新通道顺带复核旧串仍 32 行）。
+- Wan manifest `note` 已订正为「暂不可生成：出片桥已通（P2），引擎侧 UMT5 前向未通——项 45」；
+  `POCKETPAL_MODEL_MATRIX.md` 里的同类旧断言在别人手里（` M`），本窗不碰。
+- 设备终态：队列 0 项 / 活库 `image_gen_queue` 0 行、息屏 30s 自息、插电。**P2-1 第三轮未起跑**——起跑即踩 3631 抽
+  克隆炸弹（已拆），且判据① 在项 46 未修前无效，跑也是白跑。
+
+## §175 AIOS 记忆域四条假闭环根治 + 三波收口长链（2026-09-09，大王：「依次执行，走门禁，长链一次性打穿。先写文档…然后落代码，然后验证提交。sop闭环掉。」）
+
+### 175.1 本波性质与边界
+
+**纯收口波**：上一轮（§171 前后）我交付的复查报告里登记了 4 条 P0 假闭环、6 条 P1 自伤、
+3 个观测缺口，本波把它们**全部落完**，并按大王定的顺序走：**文档先行 → 落码 → 验证 → 提交**。
+门禁：`route --agent zhuo-mu-niao --claim-paths <17 条>`（activation `act-29d9661c`），KG 优先
+口径下 `kg_preflight` 对 pp 仓 TS 面返回 `confidence:0.0 / strategy:fallback_grep`（索引只覆盖
+母仓 Python）→ **诚实回落 grep 并登记为 CORE-9**，不假装用了图谱。
+
+本窗不做、也不谎称做了的：真机 401/义肢上行复验（见 §175.8 交接口）。
+
+### 175.2 Wave 1（七项，全绿后入账）
+
+| 项 | 落点 | 关键判断 |
+|---|---|---|
+| W1-1 serverType 单点 | `serverTypes.ts` SERVER_TYPE const 表 + 类型贯穿 10 个触点 | 摘掉 `types.ts` 里 `ServerConfig.serverType \| string`——联合字面量被 `\| string` 折叠成 `string`，所以旧写法**下游全链无闸门** |
+| W1-2 模板/探测双路推翻 | `seedServerType()` 单仲裁：模板知识 > 探测自报 > 主机启发 > `unknown` | 上一轮我给百炼接了模板，却被同 handler 的探测当场覆写回小写（`:224` setUrl 触发 probe → `:156` 覆写 `:225` 的正确值）——**双路径同窗互推翻**才是现行故障 |
+| W1-3 repetitionGuard | 分档门槛：短档 4 次 / 长档（>40 字）6 次，`TAIL_WINDOW=1200` | 只提 `MAX_UNIT` 会造成**静默失效**（窗口不够长等于没扩）；不变式 `TAIL_WINDOW ≥ MAX_UNIT × 最大门槛` 改为测试直断言 |
+| W1-4 401 单点 | `helpers.buildUnauthorizedError()`，`hostname.endsWith` | 两份同句文案的输入口径已分叉（一个判 base url、一个判完整请求 URL）；用 `endsWith` 不用 `includes`，否则 `evil-dashscope.aliyuncs.com.attacker.net` 误挂诊断提示。CP-APP-017 入码入档（015 的 regex 不含 401/Unauthorized → 鉴权失败此前无导航） |
+| W1-5 DRC | `safeInterval` 收口 + `.processing` 原子认领 + 超时定时器 `clearTimeout` | `unlink(path).catch(()=>{})` 失败会导致**每秒重放带密钥命令**；认领失败必须拒执行并写 result，不能"看起来有 catch" |
+| W1-6 全局异常 | `registerGlobalErrorReporter()`（`index.js` 一次性挂载） | 三条约束：不吞旧 handler（dev 红屏照旧）、不抢剪贴板（走 `saveErrorReport`）、不得递归 |
+| W1-7 上下文 | 「上下文余量」→「上下文占用」，`n_ctx` 未知显 `--` | 远端模型没有本地 `n_ctx` 概念，显式"不知道"比编一个 0% 诚实 |
+
+### 175.3 Wave 2（记忆域四条假闭环，本波主菜）
+
+**W2-0 先纠正我自己报告里的两条事实**（落码前的最后一轮核实）：
+
+- `enable_thinking` **是** llama.rn 公开字段（`CompletionBaseParams`/`NativeCompletionParams:230`
+  且在 `:395/:751/:805` 转发原生）→ 我上一轮写的「E-4：本地路径它是空气，接线即失效」**不成立**；
+- `response_format` 也在公开类型里，且 llama.rn 在 `src/index.ts:447-450` **自己**把它转成
+  `json_schema`（grammar 那条路）→ 本仓 `aiosMemory` 里那句注释「本地引擎不识别 OpenAI 式
+  response_format」**同样是假的**。`as any` 遮的真实成因是 `promptWriter.completion` 的参数面
+  被手工收窄、与 `CompletionEngine` 不同构——不是缺字段。
+  **拆掉 `as any` 后 tsc 零错，反证那些 cast 纯属过度防御。**
+
+**W2-1 抽取引擎归属（§Wave E-3 改判）**：`G4-1「抽取接义肢」不做了`。理由不是没做，而是**做了
+会违反产品公理**——抽取每轮都跑，自动上行等于把对话内容送去付费远端；而 `resolveTaskEngine`
+返回的是档位字符串不是引擎实例，`ExtractOpts.engine` 零调用方传递（死参数）。收口动作：整个
+`ExtractOpts` 删除 + provenance 由 `aiosMemory` 自裁 + `'limb'`/`'limb_offline_local'` 一并从
+枚举删除（给本地模型产的记忆打 `'limb'` 是**谎报来源**）。顺带把被抄了 **4 遍**的「本地引擎或
+管家」裁决收成 `resolveLoadedLocalEngine()` 单点（`aiosMemory`/`governance`/`summarizer`/
+`albumBook`），并让管家引擎真正实现 `CompletionEngine`（4 个 `as any` 全拆）。
+
+**W2-2 9D 收缩（对账母仓 ADR-0227 后改判）**：spec 原写「9D 收缩到 D4/D5/D7/D8 + 抽取产出
+dimension + 写入方」。**落码前对账推翻了这个方案**：记忆维度实际由 `type` 唯一确定
+（fact→D7 / insight→D5 / episode→D5），再存一个 `dimension` 字段就是**第二个可漂移的事实源**。
+最终口径：**不落字段**——`memoryDimension(type)` 纯函数派生，作为 `buildMemoryFragment` 排序
+次级键；`nineDInjector.ts` 整文件 `git rm`（它收了母仓明令不入记忆的 D1/D2/D3/D6/D9 与
+`D_CONT`/`D_GOV` 两个另造词面）。删前核实过：`estimateTokens` 只被自身使用（另两处同名实现
+独立），外部消费面仅 `contextAssembler:19` → 删除安全。
+
+**W2-3 双路同源注入**：删 `contextAssembler` 里 `injectNineD` 的第二条注入路（同一次检索的
+结果被两个容器各注入一遍，叠压 context）。
+
+**W2-4 provenance 可观测**：`emit('app','memory.extracted'|'memory.failed')` + DRC 新动作
+`memory.list`（含 `byProvenance` 汇总，使兜底率第一次可数）。**域按房内惯例走 `'app'`，不新增
+`DrcDomain:'memory'`**——`stateCompass.ts` 是 `Record<DrcDomain,…>` 穷尽类型，加域就得配一份
+没有真写入方的 STATE_MAP，正是 CORE-5 那类假接线。
+
+### 175.4 Wave 3
+
+- **W3-1 反向失真勘正**：CORE_SPEC 第 32 行仍写「6D」，与第 49 行的 9D 及我自己的勘误注**卷内
+  自相矛盾**。改正后顺手核实旁证：`docs/STARMAP_DOMAINS.md`（两份，均 gitignored）指认的
+  §2.5 = §二·公理 5 成立；但"旁证文件本身不入库"这层意味着**该勘正对公开仓读者不可见**，已写明。
+- **W3-2 同语义双动作**：`audio.ttsGenerate` 与 `audio.generateTts` 并存。`git log -S` 查史：
+  三者都出自 `3143a3a`（pack 丢失事故重建），`ttsGenerate`/`transcribe` **从未登记进 DRC_SPEC §5**，
+  且 `ttsGenerate` 零使用方 → 裁定：`transcribe` 补登记，`ttsGenerate` **删除不保留名**
+  （未登记不受 BT05 向前兼容保护；留别名仍是两条路）。
+- **W3-3 两个闸门**：`audit:drc-actions`（§5 表 ↔ `actionRegistry` 注册面对账，双向差集 + 计数
+  一致）与 `audit-async-timers` v2/v3。**新闸首跑即抓到我自己写的失真**：DRC_SPEC L195
+  「当前注册数：26 个」而表里 27 行、代码 27 个——正是我在闸门规范里写的「只手改表不改数」。
+- **W3-4 reject 收口 + 三事实分离**：`stream.ts` 里"正文声称是 JSON 却解析失败"旧写法仍
+  resolve 空串（把静默空回复往下推一层），改为 reject 上抛；`connection.ts` 的
+  `(data.data || [])` 会把"响应形状不合预期"静默变成"服务器没有模型"，改为**解析失败 / 空列表 /
+  非数组**三事实分离；入库源码里两处指向 `.qoder/specs/`（gitignored）的"依据"改为结论自足
+  （CORE-13）。
+
+### 175.5 本波新撞出的四个坑（都带现行证据，不是推测）
+
+| 编号 | 坑 | 证据 |
+|---|---|---|
+| CORE-11 | **静默 catch 让"写在引擎回调里的断言"恒不可红**——第 5 个假绿 | `extraction.test.ts:62-84` 把 12 条 `toContain` 全放进 `mockImplementation` 内，外层 `catch(e){console.warn}` 整个吞掉。断言字面量 `'fact: 大王的长期属性'` 源码里**根本不存在**（实为「长期**稳定**属性」），套件仍报 `6 passed` |
+| CORE-12 | **闸门自身两处缺陷**（v1 逐行裸扫 + 不跨行） | ① 我写在 `drcService.ts:33` 的一句**解释注释**把闸门判红；② `setInterval(() => {\n void pollOnce();\n}, ms)` 这个"本仓真出过事故"的形状完全漏报 |
+| CORE-13 | 入库源码引用不入库路径 | `.qoder/` 被 gitignore，公开仓读者永远打不开那个"依据" |
+| CORE-14 | **无主一次性延时令「全量 jest 全绿」失真** | 两处 `setTimeout(() => { void a(); void b(); }, 1200)` 句柄无人持有；全量 **352 套件全绿、4928 passed / 0 failed 却 exit 1**（worker 被强退）+ 74 条 `Cannot log after tests are done`。`jest/setupFilesAfterEnv.ts` 早有的 `jest.clearAllTimers()` **对真定时器无效**，这道"看起来有的保护"正是错觉来源 |
+
+CORE-14 的收口：`safeTimeout`（与 `safeInterval` 同文件同口径，句柄登记 + `cancelPendingSafeTimeouts`）
++ 两处调用点合并为单一入口 `aiosMemory/postTurn.ts::scheduleMemoryPostTurn`（1200 变私有常量，
+不再跨可 mock 边界）+ 旧写法那个只包住"排期"、对体内异步体零保护的 placebo `try` 删除 +
+`audit-async-timers` v3 扩面。**实测：全量 353 套件全绿、jest exit 1→0、越界日志 74→0。**
+
+### 175.6 本窗自纠清单（9 条被推翻的陈述，含我自己造成的现场破坏）
+
+按纪律 4「正面与否定结论同等对待 + 误判立即就地改账」逐条入账：
+
+1. 「spec 有 21 项」→ 实际 **18 项**（G0×4+G1×3+G2×3+G3×3+G4×4+G5×1）。
+2. 「serverType 绑类型后此类错编译期即报」（写进我 60210cc 的 commit message）→ **越界断言**：
+   `\| string` 折叠使联合字面量零约束。
+3. 「拉长单元不会增加误伤，正常文本不可能命中」→ 实测 47 字表格行 × 4 遍：旧判据不中、新的中，
+   一次 drop 1042 字。**我把漏检换成了误杀。**
+4. 「百炼模板已接入」→ 模板写的正确值被同 handler 的探测当场覆写，同窗双路径互推翻。
+5. 「CP-APP-006 把 chat 400 误导航到 imagegen」→ 实测其判据 `/^ERR_\|生图失败\|生成失败\|txt2img/i`
+   锚定行首，真机 chat 400 报文不命中，**不成立**。真缺口是 CP-APP-015 不含 401（→ 已补 017）。
+6. 「`activeRemoteBinding` 导致系统性读错引擎」→ `loadReleaseMethods.ts:422/494/577` 会清空，
+   实为**窄竞态**，措辞过头已改。
+7. 「E-4 `enable_thinking` 在本地是空气」→ 见 §175.3 W2-0，它是真字段且本地有效。
+8. **本轮**：我把自研 runner 的 `exit=0` 读成"jest 全量干净"，而文件里真实写着 4 套件 / 32 用例
+   失败——**runner 吞了子进程退出码**。教训：退出码必须由被验程序自己的 status 给出。
+9. **本轮两次自伤**：① 我在 `memory.list` 里读 `dimension`（W2-2 正要删的零写入方字段）——
+   亲手把假闭环传播到新观测面；② 为让测试能撤销延时，我在 `jest/setupFilesAfterEnv.ts` 顶部
+   `import` 了生产模块，结果它**比测试文件先实例化**：一方面 `safeInterval.test.ts` 两条既有
+   `emit` 断言红在 `Number of calls: 0`（mock 从未生效），另一方面把 `eventStream → utils/paths`
+   顶层 `RNFS.DocumentDirectoryPath.replace(…)` 首次拽进 4 个**互不相关**的套件并当场 TypeError。
+   改法：走由原语自己注册的 `globalThis.__ppCancelSafeTimeouts` 接缝（零加载），并把这条写进
+   TEST_INFRA_SPEC 铁律① 的**第四形态**。
+10. **本轮第三处自伤（工具污染）**：编辑把 `.husky/pre-commit` 与 `CORE_SPEC` 整份刷成
+    CRLF，而 HEAD 是纯 LF——sh 钩子带 `\r` 是地雷（AGENTS.md 纪律 4 点名的同类坑在我这里复发）。
+    处置：写一个 `crlf_audit.js` 对比「工作树 CRLF 行数 vs HEAD CRLF 行数」把**全部 89 个
+    在途文件**扫一遍，只归一自己污染的两个（另有两个邻窗在途文档同病，属他们的在途状态，
+    **不代改**）。“自己改坏”与“仓里本来如此”必须分开算账。
+
+### 175.7 验证与取证
+
+- 格式与污染自查：`prettier --check src/**` 全通过、`eslint .` exit 0（仅余既有
+  bitwise 警告）；新增 `crlf_audit.js` 逐文件比对工作树/HEAD 行尾（见 §175.6 第 10 条）。
+- `npx tsc --noEmit`（走 `node node_modules/typescript/bin/tsc`）：**零错**。
+- 全量 jest（落盘完整输出后按错误类型归类，纪律 1）：**353 套件全绿 / 4941 passed / 2 skipped /
+  0 failed / jest exit 0**；`Exceeded timeout of` 命中 **0**；`Cannot log after tests` **0**。
+  残留 1 条 `A worker process has failed to exit gracefully`（不再影响退出码）→ 挂后续项，
+  取证工具 `--detectOpenHandles`。
+- **五闸全绿**：`audit:native-mocks`（spec 7 方法替身全覆盖）/ `audit:async-timers`
+  （selftest 9 逃逸形状全中 + 3 收口/注释/字符串/纯同步零误报，risky=0）/ `audit:gate-reentry`
+  （violations=0）/ `audit:drc-actions`（登记面与执行面一致）/ `audit:compass`。
+- **探针自证**（纪律 5，破坏生产码看是否真红，事后按字节还原）：Wave 2 面 **6/6** 红且各命中
+  1 个用例；CORE-14 面 **7/7** 红（含"闸门取消 setTimeout 扫描面必须自测红"的防退化项）。
+- 新闸门 `audit:drc-actions` 与 `audit-async-timers` v3 的自检**内联进每次执行**，并挂上
+  `.husky/pre-commit`。
+
+### 175.8 真机复验（装机 v2.0.1/145，14:47 重建，`adb install -r` 不卸载不丢数据）
+
+旧构建是内嵌 bundle（Metro 起了也不接），所以走 `assembleProdDebug` 重建。**bundle 指纹先自证**
+（拆 `assets/index.android.bundle` 数串）：`aios_memory_post_turn_` / `__ppCancelSafeTimeouts` /
+`scheduleMemoryPostTurn` / `memory.skipped` / `seedServerType` / `buildUnauthorizedError` /
+`memory.list` **7/7 命中**；旧词面 `上下文余量` / `limb_offline_local` / `injectNineD` **归零**
+（`D_CONT` 余 2 处均为注释文本，不是活性代码）。
+
+| 复验项 | 结果 | 证据 |
+|---|---|---|
+| `memory.list` 新动作（W2-4） | ✅ | 返回 45 条存量，`byProvenance:{unknown:45}`，`dimension:"D7"` 由派生函数给（字段已不落盘） |
+| `postTurn` 重构后记忆**真的落盘**（W2-1/CORE-14，单测全 mock，这是唯一端到端口径） | ✅ | `chat.send`「我最近在学弹吉他，平时特别喜欢青色的东西」→ 第 3 轮轮询 `total 45→46`，`byProvenance:{local_fallback_parse:1, unknown:45}` |
+| provenance 自裁与兜底率可数（CORE-6） | ✅（且刚测即出数据） | 本地模型产的那一条走的是**扫大括号兜底**——`local_fallback_parse` 就是为此存在的；样本 1/1，但从「不可数」变成「可数」 |
+| 401 单点（W1-4）+ Keychain 回读自证（W1-6） | ✅ | `server.add`（百炼公共域 + `sk-` 形态密钥）→ `server.probe` 回 `Unauthorized: Invalid or missing API key — 百炼业务空间密钥(sk-) 配公共域均返回 401；需改为 ws-*.maas.aliyuncs.com 专属域`；`add` 回显 `serverId`+`storedUrl`（url 未被加工）；探针服务器已由 `server.remove` 清干净（`remaining:1` 为用户原有配置，未碰） |
+| 远端模型回合脚注 `--ctx` 显 `--` | ⚪ 未验 | 需要一个可用远程端点才能走到那条渲染；本轮只用单测锁住（不谎称做过） |
+
+**复验现场撞出的新缺口**：登记为 **CORE-15**——`EXTRACTION_SYSTEM` 要求「排除与已有记忆重复的
+信息」，但抽取的 user 消息**只含本轮对话**，没有任何既有记忆清单 → 该指令**结构上不可满足**；
+真正挡重复的只有 `addMemory` 的精确内容去重与 fact 的 `attrSlot` supersede，近义复述持续累积
+（46 条里同一主题至少 5 条并存）。这是与 CORE-5/CORE-11 同一味道的「写在纸上当做已做」；
+修法涉及 token 预算，属产品取舍，**只登记不擅自改**。
+
+另记一个工具观测缺口：`models.scan` 只回 `count` 不回清单，导致枚举可装载模型只能靠
+「故意传错 id 让报错列出可用集」（本轮就是这么做的）。下轮可给 `models.scan` 补 `items`（含
+id/name/是否在场/大小），不新增动作 id。
+
+### 175.9 交接口（本窗未做 / 未验证，不得读成已完成）
+
+| 项 | 状态 |
+|---|---|
+| 远端模型 `--ctx` 显 `--` 的真机目测 | ⏳ 未验（需可用远程端点；单测已锁） |
+| CORE-15（抽取 prompt 的不可满足指令 / 近义重复累积） | ⏳ 已带真机证据登记，待取舍 |
+| `models.scan` 不回模型清单 | ⏳ 挂后续（本轮靠报错清单绕路） |
+| 残留 worker 强退警告 | ⏳ 挂后续（另一类开放句柄，非本波引入） |
+| CORE-10（高质量抽取是否给用户开关） | ⏳ **待大王定夺**——隐私/计费告知是主权决策，不由实现层默认 |
+| docs 面 `.qoder/specs/` 引用清扫（~10 处） | ⏳ 挂账（本轮只修 src 面） |
+| KG 对 pp 仓 TS 面的覆盖（CORE-9） | ⏳ 需先建 TS 索引，无消费方不接线 |
+| `starmap-scope-guard` 星图定界 | ⏳ 母仓文档，按登记未接本仓（见 §173.3 同款记录） |
 
 
