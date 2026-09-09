@@ -36,6 +36,7 @@ import type {Pal, TalentRef} from '../../types/pal';
 import {L10nContext} from '../../utils';
 
 import {Sheet} from '..';
+import {showErrorReport} from '../ui/ErrorReportDialog';
 
 interface PalSheetProps {
   isVisible: boolean;
@@ -310,10 +311,17 @@ export const PalSheet: React.FC<PalSheetProps> = observer(
 
         handleClose();
       } catch (error) {
-        console.error('Error saving pal:', error);
-        // TODO: Show error message to user
-        // For now, we'll just log the error and not close the sheet
-        // so the user can try again
+        // P3-2（WAVE_PLAN §7）：保存失败必须可见。接既有全局报错模态
+        // （ErrorReportDialog——App 根挂 host，聊天发送失败同一底座），不新建第三模态；
+        // sheet 不关，用户就地重试（不自动重试）。
+        showErrorReport({
+          title: l10n.components.palSheet.saveFailedTitle,
+          summary: l10n.components.palSheet.saveFailedSummary,
+          detail:
+            error instanceof Error
+              ? error.stack || error.message
+              : String(error),
+        });
       } finally {
         setIsSaving(false);
       }

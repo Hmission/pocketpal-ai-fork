@@ -906,6 +906,8 @@
       "confirmReset": "Confirm Reset"
     },
     "palSheet": {
+      "saveFailedTitle": "Failed to save pal",
+      "saveFailedSummary": "The pal was not saved. This editor stays open — adjust and try again.",
       "title": {
         "edit": "Edit Pal",
         "newPal": "New Pal",
@@ -1397,29 +1399,21 @@
     },
     "buttons": {
       "advancedSettings": "Advanced Settings",
-      "startTest": "Start Test",
-      "runningTest": "Running Test...",
       "clearAll": "Clear All",
       "done": "Done",
       "cancel": "Cancel",
       "delete": "Delete",
-      "share": "Share",
-      "sharing": "Sharing...",
-      "viewRawData": "View Raw Data",
-      "hideRawData": "Hide Raw Data"
+      "share": "Share"
     },
     "messages": {
       "pleaseSelectModel": "Please select and initialize a model first",
       "testWarning": "Note: Test could run for up to 2-5 minutes for larger models and cannot be interrupted once started.",
       "keepScreenOpen": "Please keep this screen open.",
-      "initializingModel": "Initializing model...",
-      "modelMaxValue": "(max: {{maxValue}})"
+      "initializingModel": "Initializing model..."
     },
     "dialogs": {
       "advancedSettings": {
         "title": "Advanced Settings",
-        "testProfile": "Test Profile",
-        "customParameters": "Custom Parameters",
         "description": "Fine-tune the benchmark parameters for specific testing scenarios."
       },
       "deleteResult": {
@@ -1431,11 +1425,7 @@
         "message": "Are you sure you want to delete all benchmark results?"
       },
       "shareResults": {
-        "title": "Share Benchmark Results",
-        "sharedDataTitle": "Shared data includes:",
-        "deviceAndModelInfo": "• Device specs & model info",
-        "performanceMetrics": "• Performance metrics",
-        "dontShowAgain": "Don't show this message again"
+        "title": "Share Benchmark Results"
       }
     },
     "sections": {
@@ -1453,13 +1443,8 @@
         "title": "Model Settings",
         "context": "Context: {{context}}",
         "batch": "Batch: {{batch}}",
-        "ubatch": "UBatch: {{ubatch}}",
         "cpuThreads": "CPU Threads: {{threads}}",
-        "gpuLayers": "GPU Layers: {{layers}}",
-        "device": "Device: {{device}}",
-        "flashAttentionEnabled": "Flash Attention Enabled",
-        "flashAttentionDisabled": "Flash Attention Disabled",
-        "cacheTypes": "Cache Types: {{cacheK}}/{{cacheV}}"
+        "device": "Device: {{device}}"
       },
       "results": {
         "promptProcessing": "Prompt Processing",
@@ -1471,13 +1456,7 @@
       "actions": {
         "deleteButton": " "
       },
-      "errors": {
-        "networkRetry": "Check connection & retry",
-        "appCheckRetry": "Retry submission",
-        "serverRetry": "Try again later",
-        "genericRetry": "Retry",
-        "failedToSubmit": "Failed to submit benchmark"
-      }
+      "errors": {}
     },
     "deviceInfoCard": {
       "title": "Device Information",
@@ -1503,8 +1482,7 @@
         "gpuRenderer": "Renderer",
         "gpuVendor": "Vendor",
         "metalSupport": "Metal Support",
-        "openclSupport": "OpenCL Support",
-        "openclRequirement": "Requires i8mm & dotprod"
+        "openclSupport": "OpenCL Support"
       },
       "instructions": {
         "format": "FP16: {{fp16}}, DotProd: {{dotProd}}, SVE: {{sve}}, I8MM: {{i8mm}}",

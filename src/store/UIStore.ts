@@ -103,11 +103,6 @@ export class UIStore {
     });
   }
 
-  showError(message: string) {
-    // TODO: Implement error display logic (e.g., toast, alert, etc.)
-    console.error(message);
-  }
-
   setChatWarning(warning: ErrorState | null) {
     runInAction(() => {
       this.chatWarning = warning;

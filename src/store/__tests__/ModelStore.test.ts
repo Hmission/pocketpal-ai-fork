@@ -89,15 +89,12 @@ const presetModelFixture: Model = createModel({
 }) as Model;
 
 describe('ModelStore', () => {
-  let showErrorSpy: jest.SpyInstance;
-
   beforeEach(() => {
     jest.clearAllMocks();
 
     // Reset RNFS mock state
     (RNFS as any).__resetMockState?.();
 
-    showErrorSpy = jest.spyOn(uiStore, 'showError');
     modelStore.models = []; // Clear models before each test
     modelStore.context = undefined;
     modelStore.activeModelId = undefined;
@@ -108,10 +105,6 @@ describe('ModelStore', () => {
       undefined,
     );
     (downloadManager.startDownload as jest.Mock).mockResolvedValue(undefined);
-  });
-
-  afterEach(() => {
-    showErrorSpy.mockRestore();
   });
 
   describe('§18.6 每模型 n_ctx 预调（presetModelNCtxIfAbsent）', () => {

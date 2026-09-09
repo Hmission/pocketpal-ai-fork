@@ -56,6 +56,11 @@ jest.mock('../../PalGenerationSettingsSheet', () => ({
   },
 }));
 
+// 报错模态替身：路径必须与 PalSheet 的 import 同一模块（纪律 3——barrel 与直路径会拿到两个实例）
+jest.mock('../../ui/ErrorReportDialog', () => ({
+  showErrorReport: jest.fn(),
+}));
+
 // Mock useStructuredOutput hook
 jest.mock('../../../hooks/useStructuredOutput', () => ({
   useStructuredOutput: jest.fn(() => ({
@@ -66,6 +71,7 @@ jest.mock('../../../hooks/useStructuredOutput', () => ({
 
 // Import the mocked palStore (already mocked globally in jest/setup.ts)
 import {palStore} from '../../../store';
+import {showErrorReport} from '../../ui/ErrorReportDialog';
 
 import {
   talentRegistry,
@@ -514,54 +520,47 @@ describe('PalSheet', () => {
   });
 
   describe('Error Handling', () => {
-    it('handles failed save gracefully', async () => {
-      const consoleErrorSpy = jest
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
+    // §7 P3-2 判据②：保存失败必须走既有错误模态，且 sheet 保持打开（可就地重试）。
+    // 旧断言锁的是 console.error('Error saving pal:')——那正是把「静默黑洞」
+    // 当成绿灯的形态，故本波连同实现一起改写。
+    it('reports the failure via the shared error modal and keeps the sheet open (create)', async () => {
       (palStore.createPal as jest.Mock).mockRejectedValue(
         new Error('Save failed'),
       );
 
       const {getByText, getByTestId} = renderPalSheet(createBasicPal());
 
-      const nameInput = getByTestId('form-field-name');
-      fireEvent.changeText(nameInput, 'Test Pal');
-
+      fireEvent.changeText(getByTestId('form-field-name'), 'Test Pal');
       fireEvent.press(getByText('Create'));
 
       await waitFor(() => {
-        expect(consoleErrorSpy).toHaveBeenCalledWith(
-          'Error saving pal:',
-          expect.any(Error),
-        );
+        expect(showErrorReport).toHaveBeenCalledTimes(1);
       });
-
-      consoleErrorSpy.mockRestore();
+      const opts = (showErrorReport as jest.Mock).mock.calls[0][0];
+      expect(opts.title).toBe(l10n.en.components.palSheet.saveFailedTitle);
+      expect(opts.summary).toBe(l10n.en.components.palSheet.saveFailedSummary);
+      expect(opts.detail).toContain('Save failed');
+      expect(mockOnClose).not.toHaveBeenCalled();
     });
 
-    it('logs error when update fails', async () => {
-      const consoleErrorSpy = jest
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
+    it('reports the failure via the shared error modal (update)', async () => {
       (palStore.updatePal as jest.Mock).mockRejectedValue(
         new Error('Update failed'),
       );
 
       const {getByText, getByTestId} = renderPalSheet(createExistingPal());
 
-      const nameInput = getByTestId('form-field-name');
-      fireEvent.changeText(nameInput, 'Updated Name');
-
+      fireEvent.changeText(getByTestId('form-field-name'), 'Updated Name');
       fireEvent.press(getByText('Save'));
 
       await waitFor(() => {
-        expect(consoleErrorSpy).toHaveBeenCalledWith(
-          'Error saving pal:',
-          expect.any(Error),
+        expect(showErrorReport).toHaveBeenCalledWith(
+          expect.objectContaining({
+            title: l10n.en.components.palSheet.saveFailedTitle,
+          }),
         );
       });
-
-      consoleErrorSpy.mockRestore();
+      expect(mockOnClose).not.toHaveBeenCalled();
     });
   });
 

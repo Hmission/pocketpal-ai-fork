@@ -882,6 +882,8 @@
       "confirmReset": "确认重置"
     },
     "palSheet": {
+      "saveFailedTitle": "保存伙伴失败",
+      "saveFailedSummary": "伙伴未保存成功。当前编辑面保持打开，可调整后重试。",
       "title": {
         "edit": "编辑Pal",
         "newPal": "新建Pal",
@@ -1389,29 +1391,21 @@
     },
     "buttons": {
       "advancedSettings": "高级设置",
-      "startTest": "开始测试",
-      "runningTest": "测试运行中...",
       "clearAll": "全部清除",
       "done": "完成",
       "cancel": "取消",
       "delete": "删除",
-      "share": "共享",
-      "sharing": "共享中...",
-      "viewRawData": "查看原始数据",
-      "hideRawData": "隐藏原始数据"
+      "share": "共享"
     },
     "messages": {
       "pleaseSelectModel": "请先选择并初始化一个模型",
       "testWarning": "注意：较大的模型可能需要 2-5 分钟进行测试，且一旦开始就无法中断。",
       "keepScreenOpen": "请保持此界面打开。",
-      "initializingModel": "正在初始化模型...",
-      "modelMaxValue": "(最大值: {{maxValue}})"
+      "initializingModel": "正在初始化模型..."
     },
     "dialogs": {
       "advancedSettings": {
         "title": "高级设置",
-        "testProfile": "测试配置文件",
-        "customParameters": "自定义参数",
         "description": "为特定测试场景微调基准参数。"
       },
       "deleteResult": {
@@ -1423,11 +1417,7 @@
         "message": "您确定要删除所有基准测试结果吗？"
       },
       "shareResults": {
-        "title": "共享基准测试结果",
-        "sharedDataTitle": "共享数据包括：",
-        "deviceAndModelInfo": "• 设备规格和模型信息",
-        "performanceMetrics": "• 性能指标",
-        "dontShowAgain": "不要再次显示此消息"
+        "title": "共享基准测试结果"
       }
     },
     "sections": {
@@ -1445,13 +1435,8 @@
         "title": "模型设置",
         "context": "上下文长度: {{context}}",
         "batch": "批处理: {{batch}}",
-        "ubatch": "U批处理: {{ubatch}}",
         "cpuThreads": "CPU线程: {{threads}}",
-        "gpuLayers": "GPU层数: {{layers}}",
-        "device": "设备: {{device}}",
-        "flashAttentionEnabled": "启用Flash Attention",
-        "flashAttentionDisabled": "禁用Flash Attention",
-        "cacheTypes": "缓存类型: {{cacheK}}/{{cacheV}}"
+        "device": "设备: {{device}}"
       },
       "results": {
         "promptProcessing": "提示词处理",
@@ -1463,13 +1448,7 @@
       "actions": {
         "deleteButton": " "
       },
-      "errors": {
-        "networkRetry": "检查连接并重试",
-        "appCheckRetry": "重试提交",
-        "serverRetry": "稍后再试",
-        "genericRetry": "重试",
-        "failedToSubmit": "基准测试提交失败"
-      }
+      "errors": {}
     },
     "deviceInfoCard": {
       "title": "设备信息",
@@ -1495,8 +1474,7 @@
         "gpuRenderer": "渲染器",
         "gpuVendor": "供应商",
         "metalSupport": "Metal支持",
-        "openclSupport": "OpenCL支持",
-        "openclRequirement": "需要 i8mm 和 dotprod"
+        "openclSupport": "OpenCL支持"
       },
       "instructions": {
         "format": "FP16: {{fp16}}, DotProd: {{dotProd}}, SVE: {{sve}}, I8MM: {{i8mm}}",
