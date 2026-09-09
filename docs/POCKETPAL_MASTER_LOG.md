@@ -3692,6 +3692,52 @@ cloneFingerprint = []      pending_draws = 99     UI 芯片 = 「2 项 · 99 抽
 E3 读引擎实物定位 `chunk_hidden_states` 为空的确切分支（只读）；E4 试 OpenCL 下缩小 TE 入参
 （单短句 prompt）与 `t5xxl` 换 fp16/Q8 各一组；两者都要在真机跑——设备现已腾出。
 
+### 174.13 项 45 第二轮（large-buffer 实验）：**TE 墙被打穿，但卡在 GPU 总量**——实验已回退
+
+上节把主嫌收敛到 OpenCL 的 UMT5 前向；本窗读到引擎实物后拿到**完整因果链**（不再是假设）：
+
+```
+20:35:16  ggml_opencl: global mem size: 7506 MB / max mem alloc size: 2048 MB
+20:35:21  alloc_params_buffers: buft=OpenCL max_size=2048.00MB effective_max=1000.00MB states=242
+20:35:32  ggml_backend_opencl_buffer_type_alloc_buffer: failed to allocate 4006.00 MiB
+20:35:32  E ggml_extend.hpp:1989 - t5 prepare graph weights failed
+20:35:32  conditioner.hpp:1514 GGML_ASSERT(!chunk_hidden_states.empty()) failed → abort
+```
+
+**定性（假设层修正）**：不是“设备内存不够”，也不是“算子不支持”——是 **UMT5 单块权重需 4006 MiB，
+而 OpenCL 单块上限 2048 MB**（`model_manager.cpp:732-736` 又自限 1000 MB）；且 `:798` 的分块
+**只张与张之间切，单张超大只能独占一块**（注释自陈 “Oversized tensors are allocated alone”）。
+→ 旧“假设(b) 内存”修正为精确形态：**单次分配上限**；“假设(a)/(c)”均否证。
+
+**实验（已做并已回退）**：`ggml-opencl.cpp:8299` 本就有失败重试路径——用
+`CL_LARGE_BUFFER_QCOM`(0x41A6) 属性重分同一尺寸，开关是运行期 env
+`GGML_OPENCL_ADRENO_USE_LARGE_BUFFER`（仅 Adreno；驱动不支持时自降级并打日志）。
+在 `ImageGenJNI.cpp` 的 env 分族里**仅对视频族（Wan）开启**（图像链 env 一律不动），
+重建时先自证 `libappmodules.so` mtime 晚于源文件（否则实验会得出假阴性）。
+
+结果——**TE 确实过了**（stderr 增量里 ASSERT / prepare graph / failed to allocate **全部未命中**，
+事件流推进到 `采样 232/242 progress=96`）：
+
+| 轮 | 画幅 | 结局 |
+|---|---|---|
+| E-大buffer-1 | 512×768 | 采样至 96% → `MIUIScout Memory: Rss=7163024kB GfxDev=7162640kB` → `ActivityManager: Killing 3513 (adj 0)`；无 tombstone、无 assert |
+| E5-大buffer-2 | **256×256** | **PSS 仍冲到 7.35 GB**，13 秒后死（无 `am_kill` 记录），零帧 |
+
+**为什么缩画幅无效**：内存被 TE 那 4 GB 主导，DiT 随画幅缩放的那部分是小头。
+**为什么本窗回退该开关**：端到端零收益（只是把“TE 处确定性 assert”换成“GPU 7.3GB 被杀”），
+按仓内“不留零收益开关 / 能删不加”回退；设备已重装为与 HEAD 一致的包。
+
+**本窗的新口径（可复现、便宜）**：单次实验 15–250 秒（不再 80–200 分钟），
+取证三件套 = DRC results + `events.jsonl` + logcat 的 `ImageGen`/`MIUIScout Memory` 行；
+注意两项已登记的陷阱（项 49）：阶段字会对视频说谎、DRC results 会在客户端超时就写定。
+
+**下一步路线（新项 50，需定方向）**：要拿到第一帧必须先解决“TE 单块 4 GB”：
+ (a) **TE 常驻 CPU、DiT 走 OpenCL**（引擎已有 `cpu_fallback_backend`/sched 多后端能力，
+     需先只读核实 sd.cpp 是否可按模块分后端）——最有希望，不动资产；
+ (b) 换更小 UMT5 变体（**需下载资产**，要大王点头；但 4006 MiB 是反量化/展平后的尺寸，
+     换量化不一定能压到 2048 MB 以下）；
+ (c) 关 SOA 展平（`GGML_OPENCL_SOA_Q` 是**编译期宏**，属引擎禁区，需豁免）。
+
 ## §175 AIOS 记忆域四条假闭环根治 + 三波收口长链（2026-09-09，大王：「依次执行，走门禁，长链一次性打穿。先写文档…然后落代码，然后验证提交。sop闭环掉。」）
 
 ### 175.1 本波性质与边界
