@@ -191,6 +191,77 @@ export const drcActions: Record<string, DrcActionDef> = {
     },
   },
 
+  /**
+   * 文生视频取证入口（VIDEO_GEN_SPEC P2 / 项 45 定界链第②步的前置）。
+   *
+   * 为何必须单独一条：此前 27 个动作里**没有任何视频入口**，而真机一旦出片失败
+   *（项 45：引擎 UMT5 前向返空 → GGML_ASSERT 主动 abort）就只能靠 UI 点「出片」
+   * 复现——单次几十分钟、参数靠肉眼在页面上改，做不了单变量实验。
+   *
+   * 本动作是**直通唯一入口** `imageGenStore.generateVideo`（与 runGenTask 按快照
+   * `videoFrames` 分派后调的是同一个函数），**不新建第二套链路**；代价是不经任务层，
+   * 因此不写画廊/历史行（取证用，帧目录与封面 uri 直接在结果里回）。
+   */
+  'imagegen.generateVideo': {
+    id: 'imagegen.generateVideo',
+    domain: 'imagegen',
+    description:
+      '文生视频出片（直通 generateVideo；uri=封面帧，另回 dir/frames/fps）',
+    paramsSchema: z.object({
+      prompt: z.string().min(1),
+      // 帧数与画幅是内存硬约束的两个旋钮（§9.3），强制显式给出：取证不许靠默认值猜
+      videoFrames: z.number().int().min(1).max(128),
+      width: z.number().int().min(64).max(2048),
+      height: z.number().int().min(64).max(2048),
+      steps: z.number().int().min(1).max(64),
+      cfg: z.number().min(0).max(20),
+      videoFps: z.number().int().min(1).max(64).optional(),
+      seed: z.number().int().optional(),
+      negativePrompt: z.string().optional(),
+      modelLabel: z.string().optional(),
+    }),
+    execute: async params => {
+      const p = params as {
+        prompt: string;
+        videoFrames: number;
+        width: number;
+        height: number;
+        steps: number;
+        cfg: number;
+        videoFps?: number;
+        seed?: number;
+        negativePrompt?: string;
+        modelLabel?: string;
+      };
+      // 与 imagegen.generate 同一口径：前置未满足就当场抛可判读的错误，
+      // 而不是把一条注定被 C-4 守卫拦下的命令送到引擎里去撞超时。
+      if (!imageGenStore.modelLoaded) {
+        throw new Error(
+          '视频模型未加载：先执行 imagegen.loadModel（带 t5xxl 与 modality:"video"）',
+        );
+      }
+      const res = await imageGenStore.generateVideo({
+        prompt: p.prompt,
+        steps: p.steps,
+        cfg: p.cfg,
+        width: p.width,
+        height: p.height,
+        seed: p.seed ?? 0,
+        videoFrames: p.videoFrames,
+        videoFps: p.videoFps,
+        negativePrompt: p.negativePrompt,
+        modelLabel: p.modelLabel,
+      });
+      if (!res) {
+        throw new Error(
+          imageGenStore.error ??
+            '出片失败（详见事件流 imagegen.failed 与 Documents/AIOS/imagegen_stderr.log）',
+        );
+      }
+      return res;
+    },
+  },
+
   'imagegen.loadModel': {
     id: 'imagegen.loadModel',
     domain: 'imagegen',
