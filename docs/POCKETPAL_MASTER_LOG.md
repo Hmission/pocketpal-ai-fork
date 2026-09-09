@@ -3375,5 +3375,69 @@ WAVE_PLAN §0 0-2 行销账。0-4 取证随后在本波接机完成（见 §172.
 不跳钩；已挂后台重试环（每 3 分钟探对方收线，干净即自动补提交，日志
 `.tmp/gray172/commit_retry.log`）。若本窗关闭时仍未入库，接力窗 `git log` 首查此笔即可。
 
+**追记（§173 波，2026-09-09）**：上述回写笔已入库为 `338719b`——对方六个文件复查全 clean
+后手动补提交（重试环已耗尽退出，未等它自动跑）；钩子里 prettier 先拦下本窗自己的
+`imageGenStore.ts`/新测试（Write 落盘 CRLF），`--write` 归一 LF 后过关，非对方文件问题。
+
+---
+
+## §173 视频 P2 落码波（2026-09-09，WAVE_PLAN §0 0-3；大王裁定「本窗直接开工」）
+
+### 173.1 门禁与范围
+
+同窗新开 activation `act-edb3d240`（§172 波已 return partial，两波不混账）。只做 0-3：
+桥三层 + C-1~C-4 契约 + DB v11 + 页面形态 U-1~U-5 + 单测；真机侧本波验到 V-1，
+V-2~V-7 与 P2-1 耐久留给同夜长跑。词面按 SPEC 消歧：`genVideo`/`nativeGenVideo`/
+`videoFrames`/`kind:'video'`，未引入 `VideoTask*` 前缀。
+
+### 173.2 落码面（代码笔 `65a27d4`：16 文件 +938/−40）
+
+| 层 | 实物 |
+|---|---|
+| JNI | `nativeGenVideo(...)` 返 `"<outDir>\|<frames>\|<fps>"`；入口 `reset_snapshot_native()`（C-3）+ `set_stage_native("sampling")`（C-2）；`generate_video` 后逐帧 `stbi_write_png` 落 `frame_%04d.png` 并置 `frames[i].data=nullptr`，**收尾统一 `free_sd_images` 一次**（逐帧 free 即 double-free）；先 `NewStringUTF` 后 `Release`（R-1 顺序） |
+| Kotlin | `genVideo` @ReactMethod 走独立 Thread（分钟级任务不得堵队列线程）；`ERR_` 前缀一律 reject；`Companion.resetSnapshot()` 清零 snapStep/snapSteps/snapTime/snapStage |
+| store | `loadedModality`（loadModel extras 透传登记，缺省 `image` → 存量零改动）+ C-4 双向守卫；`generateVideo()`；C-1 超时按工作量分支；`activeVideoFrames` 只在视频任务期间非空，finally 收口 |
+| DB | schema v11：`image_gen_tasks` / `image_gen_queue` 各加 `video_dir`/`video_frames`/`video_fps`，全 `isOptional` |
+| UI | 复用不新建：帧数参数行进 ComposerPanel、按钮文案「出图→出片」、历史条时长角标、信息条「已出帧 · N帧 · Xs」（U-5：W11 前不得写「已生成视频」） |
+
+C-1 常量：`VIDEO_HANG_BASE_MS = 2_400_000` + `VIDEO_HANG_PER_FRAME_MS = 30_000 × 帧数`。
+**❕ 两值是单图 VAE 实测外推的初值，本波一次真实帧都没跑过**，首夜必须校准，不得当实测账。
+
+### 173.3 验证与取证
+
+- `npx tsc --noEmit` 0 错；`jest src/store` 21 套 **823 例全绿**（含新 `imageGenStore.video.test.ts` 4 例：分派/失败落 failed/C-4 双向拦截）；
+- 原生 `BUILD SUCCESSFUL in 2m54s`（第一次 FAIL 见 §173.4），`adb install -r` Success；
+- **V-1 冷启动过**：装机后进 App 正常（截图 `.tmp/video172_b.png`）——只证“没在启动即崩”，
+  **不等于 V-2 零回归已过**（出图链尚未重跑）；
+- 资产第二口径复核（纪律 4）：设备侧 `Wan2.1-T2V-1.3B-Q4_K_M.gguf` 982,716,640B、
+  `umt5-xxl-encoder-Q3_K_M.gguf` 3,055,097,696B，与 SPEC §9.6.3 表逐一相等——
+  过夜视频冒烟的先决条件成立，阻塞面确已从「缺资产」移到「本波刚落的桥」。
+
+### 173.4 本波踩到的坑（登记防复发）
+
+1. **HyperOS 拦 `adb input tap/swipe`**（已知坑再现）：真机导航改走 uiautomator2 注入
+   （`.tmp/ui172_drive.py`：shot/tap/text/dump）；
+2. **`spawnSync('adb', ['shell','run-as',pkg,'sh','-c','cd X && ls'])` 是假绿陷阱**：argv 被合并成
+   一条命令串后，`&&` 由**设备层 shell** 切分（不在 `sh -c` 体内）：`sh -c cd X` 只把 `cd`
+   当脚本、`X` 成了 `$0`（空操作，退出码 0），后面的 `ls` 则脱离 run-as 在 `/` 执行——
+   **列出的是根目录却「命令成功」**。第二口径探针：`sh -c pwd && echo MARKER` 输出
+   `/data/user/0/com.pocketpalai` + `MARKER`，坐实 `&&` 右侧不在 run-as 上下文里。
+   改用不带 `sh -c` 的直 argv（`run-as pkg ls -l <绝对路径>`）；
+3. **jest 里 mock `react-native` 不得 `requireActual` 展开**：会触发 `DevMenu` 懒加载 getter
+   炸整套（`TurboModuleRegistry.getEnforcing`），只给 `NativeModules/AppState/Platform`；
+4. JNI 注释块第二行漏 `//` → 中文注释变裸代码，BUILD FAILED；已配扫描脚本
+   （`.tmp/scan_jni_comments_172.js`）确认全文件裸中文行 0；
+5. Write 落盘 CRLF 使全仓 prettier 拦钩（本窗自己拦自己两次），`npx prettier --write` 归一。
+
+### 173.5 未验面（本波不得写成已完成）
+
+- **V-2** 零回归出图（视频链合入后图片链是否仍稳）；**V-3** 真实帧落盘
+  （`genvid_*/frame_*.png` 迄今一次都没产生过）；**V-4** 解码期心跳；**V-5** 取消；
+  **V-6** 内存水位；**V-7** 息屏保活；
+- C-1 两常量未经真机校准（§173.2 ❕）；
+- P2-1 队列 30+ 抽同夜耐久未起跑。
+
+本波各笔（`338719b` / `65a27d4` / 本文档笔）均未 push（待大王指令）。
+
 
 
