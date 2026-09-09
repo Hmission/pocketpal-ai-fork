@@ -30,30 +30,36 @@ class ImageGenQueueRepository {
     return rows.map(toEntry);
   }
 
-  /** 创建或更新条目（入队/编辑/抽数变化后调用；create 必须在 Writer 内） */
-  async upsert(entry: QueueItem): Promise<void> {
+  /** 创建或更新条目，**返回权威行 id**（入队/编辑/抽数变化后调用；create 必须在 Writer 内）。
+   *
+   * 为何返回值是契约的一部分（§174.3 / 项 46）：WatermelonDB 不给前端自造 id—
+   * `Model.id` 只有 getter，无 setter；自定义 id 只能走 `_setRaw` / dirtyRaw 这类内部
+   * 口子。旧实现返回 void，调用方拿不到真实行 id → 永远按幽灵 id 查不到 →
+   * 每次 persist 都 create 一行（实机：91 抽跑出 120 行，重启即复活）。
+   *
+   * 失败一律外抛，由 `ImageGenQueueCore.persist()` 统一收口（以前本层自吞，
+   * 与上层那层 catch 叠成两层——只会把克隆拖得更久，不会发现问题）。
+   */
+  async upsert(entry: QueueItem): Promise<string> {
     await this.ensureReady();
-    try {
-      const existing = await database.collections
-        .get<ImageGenQueue>('image_gen_queue')
-        .query(Q.where('id', entry.id))
-        .fetch();
-      await database.write(async () => {
-        if (existing.length > 0) {
-          // WatermelonDB 铁律：修改既有记录必须 record.update()（直接赋值抛
-          // “Not allowed to change record”——2026-08-27 平板实机取证：
-          // 队列计数从未真正落库，重启恢复会失效）
-          await existing[0]!.update(record => applyEntry(record, entry));
-        } else {
-          await database.collections
-            .get<ImageGenQueue>('image_gen_queue')
-            .create(record => applyEntry(record, entry));
-        }
-      });
-      scheduleDbSnapshot(); // 队列也触发 B14 快照（与画廊任务同等级保护）
-    } catch (e) {
-      console.error('[ImageGenQueueRepository] upsert failed:', e);
-    }
+    const coll = database.collections.get<ImageGenQueue>('image_gen_queue');
+    const existing = await coll.query(Q.where('id', entry.id)).fetch();
+    let rowId = entry.id;
+    await database.write(async () => {
+      if (existing.length > 0) {
+        // WatermelonDB 铁律：修改既有记录必须 record.update()（直接赋值抛
+        // “Not allowed to change record”——2026-08-27 平板实机取证：
+        // 队列计数从未真正落库，重启恢复会失效）
+        await existing[0]!.update(record => applyEntry(record, entry));
+        rowId = existing[0]!.id;
+      } else {
+        const created = await coll.create(record => applyEntry(record, entry));
+        // WM 自生成的行 id：以前这个值被丢掉，就是克隆缺陷的根（项 46）
+        rowId = created.id;
+      }
+    });
+    scheduleDbSnapshot(); // 队列也触发 B14 快照（与画廊任务同等级保护）
+    return rowId;
   }
 
   /** 按队列条目 id 删除（removeItem） */

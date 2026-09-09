@@ -69,10 +69,14 @@ export interface QueueItem {
 
 export type QueueState = 'idle' | 'planning' | 'running' | 'stopping' | 'done';
 
-/** 持久化接口（真实=WatermelonDB 仓库；测试=内存） */
+/** 持久化接口（真实=WatermelonDB 仓库；测试=内存）。
+ *  `upsert` 返回**权威行 id**，这是项 46 修复的一半：WatermelonDB 不吃前端自造
+ *  id（`Model.id` 只有 getter，自定义 id 只能走 `_setRaw`/dirtyRaw 这类内部口子），
+ *  所以行 id 必由落库方决定、前端采纳。旧契约返回 void → 前端一直拿幽灵 id
+ *  查询 → 每次 persist 都 create 一行（§174.3：91 抽跑出 120 行，重启即复活）。 */
 export interface QueuePersistence {
   loadAll(): Promise<QueueItem[]>;
-  upsert(item: QueueItem): Promise<void>;
+  upsert(item: QueueItem): Promise<string>;
   removeByQueueId(id: string): Promise<void>;
   clearAll(): Promise<void>;
 }
@@ -103,6 +107,8 @@ export class ImageGenQueueCore {
   private running = false;
   /** 执行器出口通知点（stop 等它，不轮询）：由 start() 的 finally 唤醒 */
   private stopWaiter: (() => void) | null = null;
+  /** 持久化串行链尾（见 persist()：采纳行 id 必须按序，否则连点竞态又造重复行） */
+  private persistTail: Promise<void> = Promise.resolve();
 
   constructor(
     private persistence: QueuePersistence,
@@ -148,11 +154,16 @@ export class ImageGenQueueCore {
       updatedAt: now,
     };
     this.items.push(item);
+    // ⚠ 必须取回数组里那一份再对外返回/持久化：`items` 是 observable，推入普通对象时
+    // MobX 会另存一份可观察副本——本波实测 `core.items[0] !== item` 且
+    // `items.indexOf(item) === -1`，两边写入互不可见。旧代码拿着孤立副本去
+    // persist，任何回写（如采纳行 id）都不会落到 UI/执行器实际读的那个对象上。
+    const live = this.items[this.items.length - 1]!;
     if (this.state === 'idle') {
       this.state = 'planning';
     }
-    void this.persist(item);
-    return item;
+    void this.persist(live);
+    return live;
   }
 
   /** 编辑条目快照（仅 idle/planning/done 态；running/stopping 拒绝） */
@@ -188,7 +199,7 @@ export class ImageGenQueueCore {
     if (this.items.length === 0) {
       this.state = 'idle';
     }
-    await this.persistence.removeByQueueId(id);
+    await this.queueIo(() => this.persistence.removeByQueueId(id));
   }
 
   /** 清空队列（仅 idle/planning/done 态） */
@@ -200,7 +211,7 @@ export class ImageGenQueueCore {
     this.state = 'idle';
     this.drawsDone = 0;
     this.drawsFailed = 0;
-    await this.persistence.clearAll();
+    await this.queueIo(() => this.persistence.clearAll());
   }
 
   /** 水合（app 启动）：loadAll → planning（state 不持久化，统一回可编辑） */
@@ -314,11 +325,38 @@ export class ImageGenQueueCore {
     });
   }
 
-  private async persist(item: QueueItem): Promise<void> {
-    try {
-      await this.persistence.upsert(item);
-    } catch (e) {
-      console.warn('[ImageGenQueueCore] persist failed:', e);
-    }
+  /**
+   * 把一次落库动作排进串行链（唯一出口）：链上任意两笔的执行顺序等于登记顺序。
+   *
+   * 为何连 remove/clear 也要上链（本波实测撞出）：它们若直接 `await`，会插在
+   * 尚未执行的 upsert 之前——「清空」后那条 upsert 又把条目写回来（旧有单测
+   * 「清空：条目与汇总归零」正是这样被照红的）。只有全序才能声称“落库动作有因果”。
+   */
+  private queueIo<T>(fn: () => Promise<T>): Promise<T> {
+    const next = this.persistTail.then(fn);
+    // 链尾只负责“排到后面”，不带错：失败已交给各调用方自己的口径处理
+    this.persistTail = next.then(
+      () => undefined,
+      () => undefined,
+    );
+    return next;
+  }
+
+  /**
+   * 持久化（单点串行 + 采纳权威行 id）。两条约束都来自 §174.3 实证的克隆缺陷：
+   * ① 行 id 由落库方决定（WM 不接受前端自造 id），必须采纳回来，否则下次 upsert
+   *    仍按幽灵 id 查不到 → 又 create 一行；
+   * ② 必须串行：5 个调用点都是 `void persist()`，连点时若并发执行，两次都查不到行
+   *    → 同样造重复。链式排队保证「采纳」发生在下一次「写」之前。
+   */
+  private persist(item: QueueItem): Promise<void> {
+    return this.queueIo(async () => {
+      try {
+        item.id = await this.persistence.upsert(item);
+      } catch (e) {
+        // 失败不外抛（与旧行为一致）；不外抛也就不阻断后续排队
+        console.warn('[ImageGenQueueCore] persist failed:', e);
+      }
+    });
   }
 }

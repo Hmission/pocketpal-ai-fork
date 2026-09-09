@@ -13,8 +13,9 @@ class MemoryPersistence implements QueuePersistence {
     return [...this.rows.values()].sort((a, b) => a.createdAt - b.createdAt);
   }
 
-  async upsert(item: QueueItem): Promise<void> {
+  async upsert(item: QueueItem): Promise<string> {
     this.rows.set(item.id, {...item, snapshot: {...item.snapshot}});
+    return item.id;
   }
 
   async removeByQueueId(id: string): Promise<void> {
@@ -304,5 +305,102 @@ describe('ImageGenQueueCore', () => {
     // 走到 stop() 的 `!running` 前置分支；若此处去登记 waiter 就永远没人唤醒。
     await core.stop();
     expect(core.state).toBe('done');
+  });
+});
+
+/**
+ * 真实 WatermelonDB 仓库的形态：新建行会拿到**它自己的 id**（前端给的 id 不被沿用，
+ * 因为 `Model.id` 只有 getter）。项 46 的克隆缺陷正是这个事实 + 旧契约返回 void
+ * 的组合：调用方拿着幽灵 id 再查→查不到→又 create。本替身就是为了把该事实
+ * 钉进测试，防止有人改回“id 我说了算”的假想契约。
+ */
+class WmLikePersistence implements QueuePersistence {
+  rows = new Map<string, QueueItem>();
+  creates = 0;
+  updates = 0;
+
+  async loadAll(): Promise<QueueItem[]> {
+    return [...this.rows.values()].sort((a, b) => a.createdAt - b.createdAt);
+  }
+
+  async upsert(item: QueueItem): Promise<string> {
+    if (this.rows.has(item.id)) {
+      this.updates += 1;
+      this.rows.set(item.id, {...item, snapshot: {...item.snapshot}});
+      return item.id;
+    }
+    this.creates += 1;
+    const rowId = `wm_${this.creates}`;
+    this.rows.set(rowId, {
+      ...item,
+      id: rowId,
+      snapshot: {...item.snapshot},
+    });
+    return rowId;
+  }
+
+  async removeByQueueId(id: string): Promise<void> {
+    this.rows.delete(id);
+  }
+
+  async clearAll(): Promise<void> {
+    this.rows.clear();
+  }
+}
+
+describe('项 46 回归：队条目持久层身份契约（不克隆）', () => {
+  /**
+   * 真机现场（§174.3）：连点 60 次“＋排队”→ 库里 59 行 `total=1..59` 克隆；
+   * 执行 30 抽→又多 30 行 `total=60` 克隆。本例走同一个形状：同步连点三次。
+   */
+  it('同快照连点三次：持久层只落 1 行（1 次 create + 2 次 update）', async () => {
+    const p = new WmLikePersistence();
+    const core = new ImageGenQueueCore(p, async () => true);
+
+    core.enqueue(makeSnapshot());
+    core.enqueue(makeSnapshot());
+    core.enqueue(makeSnapshot());
+    // persist() 是 fire-and-forget（UI 不为此加 await）；链尾已覆盖前面所有笔
+    await (core as unknown as {persistTail: Promise<void>}).persistTail;
+
+    expect(core.items).toHaveLength(1);
+    expect(core.items[0]!.total).toBe(3);
+    expect(p.creates).toBe(1);
+    expect(p.updates).toBe(2);
+    expect(p.rows.size).toBe(1);
+    // 采纳的是落库方给的真实行 id，不是前端自造的幽灵 id
+    expect(core.items[0]!.id).toBe([...p.rows.keys()][0]);
+    expect(core.items[0]!.id).not.toMatch(/^queue_/);
+  });
+
+  it('重启水合：仍是一行一项，不会被克隆复活', async () => {
+    const p = new WmLikePersistence();
+    const first = new ImageGenQueueCore(p, async () => true);
+    first.enqueue(makeSnapshot());
+    first.enqueue(makeSnapshot());
+    first.enqueue(makeSnapshot());
+    await (first as unknown as {persistTail: Promise<void>}).persistTail;
+
+    // 杀进程重启：同一个持久层新建 core 并水合
+    const revived = new ImageGenQueueCore(p, async () => true);
+    await revived.hydrate();
+
+    expect(revived.items).toHaveLength(1);
+    expect(revived.items[0]!.total).toBe(3);
+    expect(revived.totalDraws).toBe(3);
+  });
+
+  it('进度更新也不克隆：一抽完成后行数仍为 1', async () => {
+    const p = new WmLikePersistence();
+    const core = new ImageGenQueueCore(p, async () => true);
+    core.enqueue(makeSnapshot());
+    await (core as unknown as {persistTail: Promise<void>}).persistTail;
+    expect(p.rows.size).toBe(1);
+
+    await core.start();
+    await (core as unknown as {persistTail: Promise<void>}).persistTail;
+
+    expect(p.rows.size).toBe(1);
+    expect(core.drawsDone).toBe(1);
   });
 });
