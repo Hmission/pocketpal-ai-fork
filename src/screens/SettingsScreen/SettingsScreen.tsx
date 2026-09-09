@@ -48,13 +48,21 @@ const Row = ({
   onPress: () => void;
   styles: ReturnType<typeof createStyles>;
   chevronColor: string;
-}) => (
-  <PressableScale style={styles.row} onPress={onPress} testID={testID}>
-    <IconTile icon={Icon} color={color} />
-    <Text style={styles.rowTitle}>{title}</Text>
-    <ChevronRightIcon width={18} height={18} stroke={chevronColor} />
-  </PressableScale>
-);
+}) => {
+  // W9c（ICON_SPEC §4.5）：chevron 尺寸走 token（inline=18，像素零变化）。
+  const theme = useTheme();
+  return (
+    <PressableScale style={styles.row} onPress={onPress} testID={testID}>
+      <IconTile icon={Icon} color={color} />
+      <Text style={styles.rowTitle}>{title}</Text>
+      <ChevronRightIcon
+        width={theme.iconSize.inline}
+        height={theme.iconSize.inline}
+        stroke={chevronColor}
+      />
+    </PressableScale>
+  );
+};
 
 // Settings entry hub: every non-chat entry point lives here. The drawer is
 // reserved for chat sessions; all feature screens are reached through this

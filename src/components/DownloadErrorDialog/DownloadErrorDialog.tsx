@@ -12,9 +12,17 @@ import {createStyles} from './styles';
 import {CheckCircleIcon} from '../../assets/icons';
 import {hfStore} from '../../store';
 
-const CheckIcon = ({color}: {color: string}) => (
-  <CheckCircleIcon width={16} height={16} stroke={color} />
-);
+// W9c（ICON_SPEC §4.5）：图标尺寸走 token——本构件原先因 theme 不在作用域而硬写 16。
+const CheckIcon = ({color}: {color: string}) => {
+  const theme = useTheme();
+  return (
+    <CheckCircleIcon
+      width={theme.iconSize.s}
+      height={theme.iconSize.s}
+      stroke={color}
+    />
+  );
+};
 
 interface DownloadErrorDialogProps {
   visible: boolean;

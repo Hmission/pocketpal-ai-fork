@@ -23,7 +23,11 @@ interface AuthSheetProps {
   onClose: () => void;
 }
 
-const GoogleButtonIcon = () => <GoogleIcon width={20} height={20} />;
+// W9c（ICON_SPEC §4.5）：图标尺寸走 token——本构件原先因 theme 不在作用域而硬写 20。
+const GoogleButtonIcon = () => {
+  const theme = useTheme();
+  return <GoogleIcon width={theme.iconSize.m} height={theme.iconSize.m} />;
+};
 
 export const AuthSheet: React.FC<AuthSheetProps> = observer(
   ({isVisible, onClose}) => {

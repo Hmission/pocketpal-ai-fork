@@ -40,9 +40,17 @@ const REPORT_CATEGORIES = [
 
 type ReportCategory = (typeof REPORT_CATEGORIES)[number];
 
-const ChevronDownButtonIcon = ({color}: {color: string}) => (
-  <ChevronDownIcon width={16} height={16} stroke={color} />
-);
+// W9c（ICON_SPEC §4.5）：图标尺寸走 token——本构件原先因 theme 不在作用域而硬写 16。
+const ChevronDownButtonIcon = ({color}: {color: string}) => {
+  const theme = useTheme();
+  return (
+    <ChevronDownIcon
+      width={theme.iconSize.s}
+      height={theme.iconSize.s}
+      stroke={color}
+    />
+  );
+};
 
 export const ContentReportSheet: React.FC<ContentReportSheetProps> = ({
   isVisible,
