@@ -3600,6 +3600,45 @@ C-1 常量：`VIDEO_HANG_BASE_MS = 2_400_000` + `VIDEO_HANG_PER_FRAME_MS = 30_00
    但后期已不是主因），现以 commitlint 原文为准订正。规则补口：
    仓内 `commitlint.config.js` 的 `subject-case` 生效，**subject 不得以大写拉丁 token 开头**（中文前置即可）。
 
+### 174.10 P2-1 第三轮已起跑（项 46 解除阻塞后），附一项规模旁证
+
+**规模旁证（比三击复验硬一个量级）**：本波重跑前需重新排 100 抽（DreamLite 60 + SD3.5 40）。
+100 次“＋排队”点击后，活库 `image_gen_queue` 只有 **2 行**：
+
+```
+groups = [
+  {model_id:'dreamlite',      total:60, rows_:1, distinctCreated:1},
+  {model_id:'sd35-medium-q4', total:39, rows_:1, distinctCreated:1}
+]
+cloneFingerprint = []      pending_draws = 99     UI 芯片 = 「2 项 · 99 抽」
+```
+
+修前同样操作会落 ~100 行（§174.3 现场：59 行入队克隆 + 30 行进度克隆）。SD3.5 是 39 而非 40：
+有一次点击落在模型切换/渲染间隙，未命中按钮（如实记数，不洗成 40）。
+
+**第三轮参数（已入库构建 `1b78264`+前五笔的代码链，非旧 APK）**：
+
+| 项 | 值 |
+|---|---|
+| 基线 | 活库 `image_gen_tasks` **234**（175 success / 59 failed）@ 16:2x |
+| 队列 | 2 项 · 99 抽：`dreamlite 832×1216·4步 60×` → `sd35-medium-q4 512×768·10步 39×` |
+| 预估 | DreamLite ≈1.3 min/抽（实测 29 抽/38min）≈ 78 min；SD3.5 ≈6.3 min/抽 ≈ 4.1 h；合计 ≈ 5.5 h |
+| 环境 | `sleep_timeout=30000`、AC powered、电量 95%、pid 31228 |
+| 事件捕获 | `.tmp/v173_evidence/live174_filtered.log`（只留 am_kill/am_crash/am_proc_*/Fatal signal/NightTask/WakeLock/ImageGen 等归因行；旧的全量捕获已停并删除，191 MB→零） |
+| 夹具自清 | 三击复验用的 1 项已走 App 内 ✕ 删除；本轮 99 抽产物计入正式证据 |
+
+**下一窗/后续读证据清单（对应 §1 五条判据，口径已因项 46 修复而变干净）**：
+
+1. 判据①：活库 `image_gen_tasks` 增量应 **= 99 − （当时未完成的在飞那一抽）**，且 `image_gen_queue` 应仍为 **2 行**
+   （若又出现第三行，就是本修复有遗漏路径——重点查是否还有绕过 `queueIo()` 的写入点）；零 `running` 残留；
+2. 判据②：`files/aios_images/gen_*.png` 增量 = success 行数，并顺手抽 3 张做唯一色量测
+   （§174.2 已证明“success 但纯灰”可能存在，现无检测也不加检测，只抽查登账）；
+3. 判据③：`live174_filtered.log` 里应有 NightTask 存活轨迹且无中途 stop；
+4. 判据④：若中断，必须从日志归因到具体形态（参考本波：13:11 SIGBUS = 引擎、14:37 `from process:11200` = 系统侧主动 stop、
+   14:47 `installPackageLI` = 并行窗口装机），**不许写“偶发”**；
+5. 已知风险：本机 HyperOS 有“被另一进程主动 stop”先例，SD3.5 段有 VAE 崩溃先例（项 30 家族）——
+   两者任一命中都不算判据①失败，但必须按第 4 条归因。
+
 ## §175 AIOS 记忆域四条假闭环根治 + 三波收口长链（2026-09-09，大王：「依次执行，走门禁，长链一次性打穿。先写文档…然后落代码，然后验证提交。sop闭环掉。」）
 
 ### 175.1 本波性质与边界
