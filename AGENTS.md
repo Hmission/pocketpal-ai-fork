@@ -115,4 +115,11 @@ Conventional Commits（Husky commitlint 强制）：
 
 接入分级：L0 文件挂载 ✅（guard 6/6 消除）；L1 hook 激活（`.qoder/hooks/` + `scripts/agent/` 挂载点已预留在 .gitignore）——**待 gate 依赖面验证后启用**；L2 全协议（gate→route→return 全链）。
 
+### 门禁心跳与会话绑定（长链波次必读，2026-09-09 §175 波实测坐实）
+
+- **每窗先固定 session**：未设 `DWS_SESSION` 时 `gate` 按**进程**生成随机 session_id（其自身 `session_contract.risk_note` 已自陈此险），于是 gate / route / return 三条命令可能各落一个 session——门禁状态与真实工作错位，`return` 会撞主权校验。新开一个 shell 就等于丢掉绑定：本窗 session 必须显式带上（`$env:DWS_SESSION="<id>"`，或经统一 runner 以 env 传入），且**多窗每窗不同**。
+- **长链每 ≤60min 打一次 `gate`**：判活常量是母仓 `scripts/agent/agent_router_commands.py` 的 `GATE_HEARTBEAT_TIMEOUT = 60 * 60`（junction 只读，不在本仓 git 内，按名不按行号索）。超时后**下一次 gate 自动 `force_return` 本窗 activation**，并向 `chain_logs` 写 `status=force_returned` / `phase=interrupted`——本窗 `act-29d9661c` 即这么丢的：route 03:54Z，首次回收 05:10Z（间隔 4527s），之后每次 gate 又重复记账，一个 activation 累计 42 条 `force_return`。
+- **`--claim-ttl`（默认 7200s）只保 claim 互斥，救不了心跳**；`route --claim-paths` 的结果写在 activation 的 `auto_claim` 字段（不是 `claim_paths`，查认领以 `auto_claim.claimed` 为准）。
+- **通道已闭时不伪造时长**：activation 被回收后不得补一条「长时长成功」——新开一个**收口登记 hop** 走 route→return，并在 `--feedback` / `--trace` 里写明前一个 activation 的丢失原因与本 hop 的性质（登记，不是新一轮开发）。长波次若要续跑，正确做法是中途 `gate` 心跳 + 需要时 `route` 新 hop 分段结波，每段各自有验收面。
+
 **优先级**：本文件（Pocket Chick 开发指南）为业务契约；与母仓 AIOS 协议冲突时以本文件为准——AIOS 机制服务业务，不覆盖业务。
