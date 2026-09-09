@@ -158,7 +158,6 @@ export function cancelPendingSafeTimeouts(reason: string): number {
 }
 
 declare global {
-  // eslint-disable-next-line no-var
   var __ppCancelSafeTimeouts: ((reason: string) => number) | undefined;
 }
 
@@ -173,6 +172,6 @@ declare global {
  * 的台：提前实例化使测试后续 `jest.mock('../../debug/eventStream')` 只能拿到另一个
  * 实例，spy 永远打不到被测代码。
  * 走全局接缝后：从未加载过本模块的套件里 `__ppCancelSafeTimeouts` 为 undefined，
- * 而它也不可能有未到期延时——不加载即无需撤销，构造上自洽。
+ * 而它也不可能有未到期延时——不加载即无需撑销，构造上自洽。
  */
 globalThis.__ppCancelSafeTimeouts = cancelPendingSafeTimeouts;
