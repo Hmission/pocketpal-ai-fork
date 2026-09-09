@@ -71,4 +71,37 @@ describe('repetitionGuard — 退化复读判定', () => {
     expect(shouldCheckRepetition(0, 24)).toBe(true);
     expect(shouldCheckRepetition(100, 101)).toBe(false);
   });
+
+  // ── 2026-09-09 真机 aab688d9 回归：周期 46 字符的泄漏复读曾从 MAX_UNIT=40 窗外漏掉 ──
+  const LEAK_UNIT =
+    '[kg:memory] 大王想先写什么？您想先写什么？ · 大王想先写什么？您想先写什么？ ';
+
+  it('长周期复读（46 字单元 ×6）必须命中——旧 MAX_UNIT=40 在此静默失效', () => {
+    expect(LEAK_UNIT.length).toBeGreaterThan(40); // 钉死：本用例的价值就在于超出旧上限
+    const text = `好的，请告诉我您想复盘什么内容。\n\n${LEAK_UNIT.repeat(6)}`;
+    const v = detectRepetitionLoop(text);
+    expect(v.hit).toBe(true);
+    expect(v.unit).toBe(LEAK_UNIT);
+    expect(v.times).toBe(6);
+    // 截断只保留第一份，其余整段丢弃
+    expect(text.slice(text.indexOf(LEAK_UNIT), v.cutAt)).toBe(LEAK_UNIT);
+  });
+
+  it('长周期但只重复 3 次：未达门槛，不误伤', () => {
+    expect(detectRepetitionLoop(LEAK_UNIT.repeat(3)).hit).toBe(false);
+  });
+
+  it('窗口约束自证：MAX_UNIT×MIN_TIMES 必须装得进 TAIL_WINDOW，否则长单元永远测不到', () => {
+    // 4×200=800 ≤ 900；若有人改小 TAIL_WINDOW 或改大 MAX_UNIT 破坏此式，本用例会红
+    const unit =
+      '这是一段足够长的复述内容，用来验证扩程后的守卫确实能看见，而不是停在旧上限之外。';
+    expect(unit.length).toBe(40); // 先实测钉住样本长度，再往下推
+    // 取两个单元拼成 80 字长周期，确保超出旧 MAX_UNIT=40
+    const longUnit = unit + unit.slice(0, 40);
+    expect(longUnit.length).toBe(80);
+    expect(detectRepetitionLoop(longUnit.repeat(4)).hit).toBe(true);
+    // 更极端：接近 MAX_UNIT 的长单元重复 4 次仍需命中（守 800≤TAIL_WINDOW 这条式子）
+    const veryLong = '甲'.repeat(199);
+    expect(detectRepetitionLoop(veryLong.repeat(4)).hit).toBe(true);
+  });
 });

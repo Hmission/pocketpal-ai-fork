@@ -876,6 +876,58 @@ describe('streamChatCompletion', () => {
     await resultPromise;
   });
 
+  // 真机 aab688d9 实测：默认 `n_predict: -1`（llama.cpp 「直到 EOS」哨兵）被原样透传成
+  // `max_completion_tokens: -1`，百炼专属域回 400
+  // 「Range of max_completion_tokens should be [1, 131072]」——义肢路径对任何校验该范围的
+  // OpenAI 兼容服务器都会直接失败。「不限」在 OpenAI 线上的忠实表达是省略该字段。
+  it.each([[-1], [0]])(
+    'max_tokens=%i 不上传（非正数在 OpenAI 线上非法，只能省略）',
+    async bad => {
+      const resultPromise = streamChatCompletion(
+        {
+          messages: [{role: 'user', content: 'Hi'}],
+          model: 'test-model',
+          max_tokens: bad,
+        },
+        'http://localhost:1234',
+        'sk-key',
+      );
+
+      const xhr = MockXHR.instances[MockXHR.instances.length - 1];
+      const body = JSON.parse(xhr.requestBody);
+      expect('max_completion_tokens' in body).toBe(false);
+
+      xhr.simulateHeaders(200);
+      xhr.simulateProgress(
+        'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n',
+      );
+      xhr.simulateLoad();
+      await resultPromise;
+    },
+  );
+
+  it('max_tokens 为正数时仍照常上传（省略逻辑不得误伤正常路径）', async () => {
+    const resultPromise = streamChatCompletion(
+      {
+        messages: [{role: 'user', content: 'Hi'}],
+        model: 'test-model',
+        max_tokens: 131072,
+      },
+      'http://localhost:1234',
+      'sk-key',
+    );
+
+    const xhr = MockXHR.instances[MockXHR.instances.length - 1];
+    expect(JSON.parse(xhr.requestBody).max_completion_tokens).toBe(131072);
+
+    xhr.simulateHeaders(200);
+    xhr.simulateProgress(
+      'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n',
+    );
+    xhr.simulateLoad();
+    await resultPromise;
+  });
+
   it('encodes a local image path to a data URI on the remote wire', async () => {
     const RNFS = require('@dr.pogodin/react-native-fs');
     (RNFS.readFile as jest.Mock).mockResolvedValueOnce('QUJD');

@@ -25,6 +25,35 @@ import {recallKg} from '../aiosCore/kg';
 export const RECALL_DISCLAIMER =
   '【召回的历史片段】(以下是历史记录，可能已过时，仅作背景参考，不得当作当前事实):';
 
+/**
+ * 一条召回命中：内容与溯源**分离**。
+ *
+ * 为什么必须分离（2026-09-09 真机 aab688d9 血证）：旧形态是单个字符串，把
+ * `[kg:memory] label · snippet` 这类内部标记直接拼进正文，于是同一根字符串被两个
+ * 互不相容的用途共用——注入 prompt（标记成为小模型可续写的字面量，退化时整段
+ * `[kg:memory] …` 复读 6 遍泄漏进用户可见回复）与知识库列表展示（标记原样渲染）。
+ * 现在：`text` 是唯一可进模型面的字段，`source` 只供 UI/诊断。
+ */
+export interface RecallHit {
+  /** 纯内容，无任何标记前缀——可直接进 prompt 或 UI 正文 */
+  text: string;
+  /** 溯源标签，仅 UI/诊断用：`kg:memory` / `kg:conv` / `conversation:<日期>` / `memory:<类型>` */
+  source: string;
+}
+
+/** kg 命中里 label 与 snippet 常同文，拼成 `X · X` 正是小模型复读的触发器：只保一份。 */
+function kgHitText(label: string, snippet: string): string {
+  const snip = snippet.slice(0, 80).trim();
+  const lab = label.trim();
+  if (!snip) {
+    return lab;
+  }
+  if (!lab || snip.includes(lab)) {
+    return snip;
+  }
+  return `${lab}：${snip}`;
+}
+
 // ---- FTS5 \u5c42 ----
 let fts5Available = false;
 let searchAdapter: any = null;
@@ -75,7 +104,7 @@ function executeSQL(sql: string, args: any[] = []): Promise<any> {
 /**
  * FTS5 \u68c0\u7d22\u3002\u8fd4\u56de\u76f8\u5173\u7247\u6bb5\u3002
  */
-async function fts5Search(query: string, topN: number): Promise<string[]> {
+async function fts5Search(query: string, topN: number): Promise<RecallHit[]> {
   if (!fts5Available) {
     return [];
   }
@@ -88,9 +117,10 @@ async function fts5Search(query: string, topN: number): Promise<string[]> {
     if (!Array.isArray(results)) {
       return [];
     }
-    return results.map(
-      (r: any) => `[${r.source}] ${r.content?.slice(0, 500) ?? ''}`,
-    );
+    return results.map((r: any) => ({
+      text: String(r.content?.slice(0, 500) ?? ''),
+      source: String(r.source ?? ''),
+    }));
   } catch (e) {
     console.warn('[searchEngine] FTS5 search failed:', e);
     return [];
@@ -180,14 +210,18 @@ export async function initIndex(): Promise<void> {
  * \u6df7\u5408\u68c0\u7d22\uff1a\u5148\u95ee\u8c31\u540e grep\uff08AIOS_CORE_SPEC Wave C\uff09\u2014\u2014kg.recall\u547d\u4e2d\u5148\u8fd4\uff0c
  * \u4e0d\u8db3\u989d\u5ea6\u518d\u8d70 FTS5/\u7eaf JS \u5168\u6587\u8865\u4f4d\uff08\u540c\u6e90\u7247\u6bb5\u6309\u5185\u5bb9\u524d\u7f00\u53bb\u91cd\uff09\u3002
  */
-export async function searchMemory(query: string, topN = 5): Promise<string[]> {
-  // \u95ee\u8c31\u4f18\u5148\u5c42\uff1a\u56fe\u8c31\u547d\u4e2d\u5373\u5148\u8fd4\uff08\u8bb0\u5fc6\u2194\u4f1a\u8bdd\u5173\u8054\u8bed\u5883\uff09\uff0c\u5931\u8d25/\u672a\u547d\u4e2d\u9759\u9ed8\u964d\u7ea7
-  let kgHits: string[] = [];
+export async function searchMemory(
+  query: string,
+  topN = 5,
+): Promise<RecallHit[]> {
+  // 问谱优先层：图谱命中即先返（记忆↔会话关联语境），失败/未命中静默降级
+  let kgHits: RecallHit[] = [];
   try {
     const hits = await recallKg(query, 2);
-    kgHits = hits.map(
-      h => `[kg:${h.type}] ${h.label} · ${h.snippet.slice(0, 80)}`,
-    );
+    kgHits = hits.map(h => ({
+      text: kgHitText(h.label, h.snippet),
+      source: `kg:${h.type}`,
+    }));
   } catch {
     kgHits = [];
   }
@@ -246,18 +280,20 @@ export async function searchMemory(query: string, topN = 5): Promise<string[]> {
   return dedupeByContent(
     [
       ...kgHits,
-      ...fragments.slice(0, remaining).map(f => `[${f.source}] ${f.content}`),
+      ...fragments
+        .slice(0, remaining)
+        .map(f => ({text: f.content, source: f.source})),
     ],
     topN,
   );
 }
 
-/** \u7247\u6bb5\u53bb\u91cd\uff08\u6309\u524d 24 \u5b57\u7b26\uff09\uff1akg \u4e0e\u5168\u6587\u53ef\u80fd\u547d\u4e2d\u540c\u4e00\u5185\u5bb9\uff0c\u907f\u514d\u91cd\u590d\u6ce8\u5165\u3002 */
-function dedupeByContent(items: string[], limit: number): string[] {
+/** 片段去重（按内容前 24 字符）：kg 与全文可能命中同一内容，避免重复注入。 */
+function dedupeByContent(items: RecallHit[], limit: number): RecallHit[] {
   const seen = new Set<string>();
-  const out: string[] = [];
+  const out: RecallHit[] = [];
   for (const it of items) {
-    const key = it.slice(0, 24);
+    const key = it.text.slice(0, 24);
     if (seen.has(key)) {
       continue;
     }

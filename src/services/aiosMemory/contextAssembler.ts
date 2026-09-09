@@ -166,7 +166,11 @@ export async function assembleContext(
     if (convExists) {
       const convFiles = await RNFS.readDir(AIOS_CONVERSATIONS_DIR);
       if (convFiles.length > 0) {
-        recalledFragments = await searchMemory(currentUserText, adaptiveMax);
+        // 在边界降为纯文本：本模块对外契约是「模型面片段列表」，溯源 source 到此为止
+        // （否则 useChatSession 的 .join() 会静默产出 [object Object]）。
+        recalledFragments = (
+          await searchMemory(currentUserText, adaptiveMax)
+        ).map(h => h.text);
       } else {
         dirtyEnvironment = true; // conversations/ empty → fallback to full context mode
       }

@@ -32,7 +32,10 @@ export class MemorySearchEngine implements TalentEngine {
           summary: '\u6ca1\u6709\u627e\u5230\u76f8\u5173\u8bb0\u5fc6\u3002',
         };
       }
-      return {type: 'text', summary: fragments.join('\n---\n')};
+      return {
+        type: 'text',
+        summary: fragments.map(f => f.text).join('\n---\n'),
+      };
     } catch (e) {
       const errMsg = e instanceof Error ? e.message : String(e);
       return {

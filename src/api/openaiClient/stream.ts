@@ -238,7 +238,7 @@ export async function streamChatCompletion(
         if (xhr.status === 401) {
           // G1-3 同源：铁律 8.2 诊断文案，不建专属适配器。
           const hint = url.includes('dashscope.aliyuncs.com')
-            ? ' \u2014 \u767e\u70bc\u4e1a\u52a1\u7a7a\u95f4\u5bc6\u94a5(sk-) \u914d\u516c\u5171\u57df\u5747\u8fd4\u56de 401\uff1b\u9700\u6539\u4e3a ws-*.maas.aliyuncs.com \u4e13\u5c5e\u57df'
+            ? ' — 百炼业务空间密钥(sk-) 配公共域均返回 401；需改为 ws-*.maas.aliyuncs.com 专属域'
             : '';
           reject(new Error(`Unauthorized: Invalid or missing API key${hint}`));
         } else {
@@ -430,7 +430,12 @@ export async function streamChatCompletion(
     if (params.top_p != null) {
       requestBody.top_p = params.top_p;
     }
-    if (params.max_tokens != null) {
+    // `n_predict: -1` 是 llama.cpp 「生成到 EOS」的哨兵（见 completionSettingsVersions.ts），
+    // 本地引擎合法；但旧代码把它原样透传成 `max_completion_tokens: -1`，真机百炼专属域直接
+    // 400：`Range of max_completion_tokens should be [1, 131072]`（2026-09-09 aab688d9 实测）。
+    // OpenAI 线上没有「-1」这个值，「不限」的忠实表达是**省略该字段**，所以此处只发正整数。
+    // 不做 clamp：把 -1 钳到 131072 等于替服务器发明上限，语义错。
+    if (typeof params.max_tokens === 'number' && params.max_tokens > 0) {
       requestBody.max_completion_tokens = params.max_tokens;
     }
     if (params.stop && params.stop.length > 0) {

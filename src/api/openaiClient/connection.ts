@@ -73,7 +73,7 @@ export async function fetchModelsWithHeaders(
         // 公共域 dashscope.aliyuncs.com 对业务空间 sk- 密钥均返回 401。
         // 诊断文案而非逻辑分支：不建专属适配器，不自动切换域名。
         const hint = serverUrl.includes('dashscope.aliyuncs.com')
-          ? ' \u2014 \u767e\u70bc\u4e1a\u52a1\u7a7a\u95f4\u5bc6\u94a5(sk-) \u914d\u516c\u5171\u57df\u5747\u8fd4\u56de 401\uff1b\u9700\u6539\u4e3a ws-*.maas.aliyuncs.com \u4e13\u5c5e\u57df'
+          ? ' — 百炼业务空间密钥(sk-) 配公共域均返回 401；需改为 ws-*.maas.aliyuncs.com 专属域'
           : '';
         throw new Error(`Unauthorized: Invalid or missing API key${hint}`);
       }

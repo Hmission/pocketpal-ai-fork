@@ -345,6 +345,7 @@ function selectByIntent(
 // search logic moved to searchEngine.ts (spec: independent file)
 // FTS5 not available (WatermelonDB wraps SQLite), using pure JS full-text search
 export {searchMemory, updateConversationCache, initIndex} from './searchEngine';
+export type {RecallHit} from './searchEngine';
 export {compactAndFlush, listSummaryDates, readSummary} from './compaction';
 export {governMemories, rotateOldLogs} from './governance';
 export type {GovernanceResult} from './governance';

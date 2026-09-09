@@ -15,6 +15,7 @@ import {
   readConversationLog,
 } from '../../services/aiosMemory/conversationLog';
 import {searchMemory} from '../../services/aiosMemory';
+import type {RecallHit} from '../../services/aiosMemory';
 import {
   listSummaryDates,
   readSummary,
@@ -76,7 +77,7 @@ export function KnowledgeScreen({navigation}: any) {
   const [summaryDates, setSummaryDates] = React.useState<string[]>([]);
   const [content, setContent] = React.useState('');
   const [query, setQuery] = React.useState('');
-  const [searchResults, setSearchResults] = React.useState<string[]>([]);
+  const [searchResults, setSearchResults] = React.useState<RecallHit[]>([]);
   // 玩具箱（P8 玩具工坊，PLAY_SPEC）：render_html 成品清单 + 选中玩具
   const [toys, setToys] = React.useState<ToyEntry[]>([]);
   const [selectedToy, setSelectedToy] = React.useState<{
@@ -270,7 +271,12 @@ export function KnowledgeScreen({navigation}: any) {
           data={searchResults}
           renderItem={({item}) => (
             <View style={styles.resultItem}>
-              <Text style={styles.resultText}>{item}</Text>
+              <Text style={styles.resultText}>{item.text}</Text>
+              {/* 溯源不再混在正文里（旧形态直接显示 `[kg:memory] …` 内部标记），
+                  作为独立次要信息展示。 */}
+              {item.source ? (
+                <Text style={styles.resultSource}>{item.source}</Text>
+              ) : null}
             </View>
           )}
           keyExtractor={(_item, i) => String(i)}
@@ -431,6 +437,12 @@ const createStyles = (theme: Theme) =>
       fontWeight: 'bold',
     },
     resultItem: {padding: theme.spacing.sm},
+    resultSource: {
+      ...theme.typography.captionS,
+      marginTop: theme.spacing.xs,
+      color: theme.colors.onSurfaceVariant,
+      opacity: 0.7,
+    },
     resultText: {
       ...theme.typography.bodyS,
       color: theme.colors.onSurface,
