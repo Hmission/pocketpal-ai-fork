@@ -42,6 +42,13 @@ export interface GenParamsSnapshot {
   backend?: string;
   /** SD 族：LoRA 文件绝对路径（loraEnabled 时） */
   loraPath?: string;
+  /**
+   * 视频族（manifest modality='video'）：帧数——头号预算旋钮故可编（VIDEO_GEN_SPEC §3.1）。
+   * 存在即任务模态为 video：runGenTask 单点据此分派，不另存 mirror 字段。
+   */
+  videoFrames?: number;
+  /** 视频族：帧率（本期锁 16，§9.3 参数面仅帧数可编） */
+  videoFps?: number;
 }
 
 export interface QueueItem {

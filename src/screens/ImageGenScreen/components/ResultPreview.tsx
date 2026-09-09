@@ -327,17 +327,38 @@ export const ResultPreview: React.FC<ResultPreviewProps> = ({
                 activeOpacity={0.7}
                 onPress={() => onInfoPress(item)}>
                 <Text style={s.infoOverlayText} numberOfLines={1}>
-                  {item.kind !== 'upload'
-                    ? [
+                  {item.kind === 'video'
+                    ? // 视频产物（§9.5 身份三要素）：封面即 uri，时长=帧数/fps；
+                      // W11 前不得写「已生成视频/已保存视频」（U-5），只报可观察的帧数
+                      [
+                        `已出帧 · ${item.videoFrames ?? '?'}帧${
+                          item.videoFps
+                            ? ` · ${Math.max(
+                                1,
+                                Math.round(
+                                  (item.videoFrames ?? 0) / item.videoFps,
+                                ),
+                              )}s`
+                            : ''
+                        }`,
                         item.modelLabel,
                         item.durationMs != null
                           ? `${(item.durationMs / 1000).toFixed(1)}s`
                           : null,
-                        `${item.width}×${item.height}`,
                       ]
                         .filter(Boolean)
                         .join(' · ')
-                    : `上传图 · ${item.width}×${item.height}`}
+                    : item.kind !== 'upload'
+                      ? [
+                          item.modelLabel,
+                          item.durationMs != null
+                            ? `${(item.durationMs / 1000).toFixed(1)}s`
+                            : null,
+                          `${item.width}×${item.height}`,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')
+                      : `上传图 · ${item.width}×${item.height}`}
                 </Text>
               </TouchableOpacity>
             </View>

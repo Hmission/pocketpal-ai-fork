@@ -43,6 +43,14 @@ class ImageGenModule(reactContext: ReactApplicationContext) :
     width: Int, height: Int, loraPath: String, loraMultiplier: Double, outPath: String,
   ): String
 
+  // 视频桥（VIDEO_GEN_SPEC §三）：帧由 native 逐帧写盘，像素不过桥；返回 "dir|frames|fps"。
+  // 参数类型与 ImageGenJNI.cpp nativeGenVideo 严格一致（cfg/loraMultiplier 历史教训：
+  // Kotlin Double 对 C++ jfloat 曾使 cfg 从未到达引擎，见 ImageGenJNI.cpp 6.18 注释）。
+  private external fun nativeGenVideo(
+    prompt: String, negativePrompt: String, seed: Long, steps: Int, cfg: Double,
+    width: Int, height: Int, videoFrames: Int, fps: Int, outDir: String,
+  ): String
+
   @ReactMethod
   fun loadModel(modelPath: String, extras: ReadableMap?, promise: Promise) {
     // 先把 ReadableMap 读成局部变量再开线程：不在工作线程上触碰 bridge 侧动态对象。
@@ -166,6 +174,48 @@ class ImageGenModule(reactContext: ReactApplicationContext) :
         val result = nativeTxt2img(
           prompt, negativePrompt, seed, steps, cfg, width, height,
           loraPath, loraMultiplier, outPath,
+        )
+        if (result.startsWith("ERR_")) {
+          promise.reject(result, result)
+        } else {
+          promise.resolve(result)
+        }
+      } catch (e: Throwable) {
+        promise.reject("GEN_FAILED", e.message)
+      }
+    }.start()
+  }
+
+  /**
+   * 视频生成（P2）：与 txt2img 同一形制——必离队列线程（分钟级长任务，
+   * 同线程的 getGenSnapshot/cancel 不得被堵）；ERR_ 前缀一律 reject，本层不决策不兜底。
+   * outDir = JS 层构好的帧目录绝对路径（<outDir>/frame_%04d.png），native 只 mkdir 不猜路径。
+   */
+  @ReactMethod
+  fun genVideo(params: ReadableMap, promise: Promise) {
+    val outDir = params.getString("outDir") ?: ""
+    if (outDir.isEmpty()) {
+      promise.reject("BAD_ARGS", "outDir required")
+      return
+    }
+    val prompt = params.getString("prompt") ?: ""
+    val negativePrompt = params.getString("negativePrompt") ?: ""
+    val seed = params.getDouble("seed").toLong()
+    val steps = params.getInt("steps")
+    val cfg = if (params.hasKey("cfg")) params.getDouble("cfg") else 5.0
+    val width = params.getInt("width")
+    val height = params.getInt("height")
+    val videoFrames = params.getInt("videoFrames")
+    val fps = params.getInt("fps")
+    android.util.Log.i(
+      "ImageGen",
+      "genVideo params: steps=$steps cfg=$cfg ${width}x$height frames=$videoFrames fps=$fps cfgHasKey=${params.hasKey("cfg")}",
+    )
+    Thread {
+      try {
+        val result = nativeGenVideo(
+          prompt, negativePrompt, seed, steps, cfg, width, height,
+          videoFrames, fps, outDir,
         )
         if (result.startsWith("ERR_")) {
           promise.reject(result, result)
@@ -346,6 +396,20 @@ class ImageGenModule(reactContext: ReactApplicationContext) :
     @JvmStatic
     fun onLogFromNative(level: Int, text: String) {
       snapStage = text
+      snapLastEvent = System.currentTimeMillis()
+    }
+
+    /**
+     * Called from JNI at task entry（C-3，VIDEO_GEN_SPEC §四）：跨任务陈旧快照一次性置零。
+     * 旧形态下上一任务的 lastEventAt 残留会让分钟级视频任务「开跑即误判 hang」；
+     * 复位后首轮进度回调重新安装 lastEventAt，JS 侧计时窗口从本任务起算。
+     */
+    @JvmStatic
+    fun resetSnapshot() {
+      snapStep = 0
+      snapSteps = 0
+      snapTime = 0f
+      snapStage = ""
       snapLastEvent = System.currentTimeMillis()
     }
   }

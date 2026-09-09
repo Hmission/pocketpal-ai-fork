@@ -1,7 +1,7 @@
 import {appSchema, tableSchema} from '@nozbe/watermelondb';
 
 export default appSchema({
-  version: 10,
+  version: 11,
   tables: [
     tableSchema({
       name: 'chat_sessions',
@@ -152,6 +152,10 @@ export default appSchema({
         {name: 'status', type: 'string'}, // 'running' | 'success' | 'failed'
         {name: 'error_summary', type: 'string', isOptional: true},
         {name: 'error_detail', type: 'string', isOptional: true},
+        // 视频产物身份（VIDEO_GEN_SPEC §9.5：帧目录是中间态不出页；uri 存封面帧）
+        {name: 'video_dir', type: 'string', isOptional: true},
+        {name: 'video_frames', type: 'number', isOptional: true},
+        {name: 'video_fps', type: 'number', isOptional: true},
         {name: 'created_at', type: 'number'},
       ],
     }),
@@ -176,6 +180,9 @@ export default appSchema({
         {name: 'companion_paths', type: 'string', isOptional: true}, // JSON
         {name: 'backend', type: 'string', isOptional: true},
         {name: 'lora_path', type: 'string', isOptional: true},
+        // 视频族执行参数（帧数头号预算旋钮，§3.1；与 GenParamsSnapshot 对齐）
+        {name: 'video_frames', type: 'number', isOptional: true},
+        {name: 'video_fps', type: 'number', isOptional: true},
         {name: 'total', type: 'number'},
         {name: 'done', type: 'number'},
         {name: 'failed', type: 'number'},

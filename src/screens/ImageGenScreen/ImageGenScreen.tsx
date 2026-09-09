@@ -113,6 +113,9 @@ export const ImageGenScreen: React.FC = observer(() => {
   const [cfg, setCfg] = React.useState('2');
   const [size, setSize] = React.useState(512);
   const [seed, setSeed] = React.useState(''); // 6.18 空=随机，填数可复现/调试
+  // 视频帧数（VIDEO_GEN_SPEC §3.1）：头号预算旋钮，首验基线 6 帧（§八前置清单 3），
+  // 不得默认上 81 帧（解码同驻 ≈462MiB 仅纯像素）；UI 可编，真机验过一帧才谈向上。
+  const [frames, setFrames] = React.useState('6');
   // 08-18 路线 B：运行时 LoRA 开关（默认关=纯 base；multiplier 默认 manifest 值，供强度梯度）
   const [loraEnabled, setLoraEnabled] = React.useState(false);
   const [loraMult, setLoraMult] = React.useState('2.0');
@@ -313,6 +316,8 @@ export const ImageGenScreen: React.FC = observer(() => {
     available.find(a => a.manifest.id === selectedId) ?? null;
 
   const isDream = selectedEntry?.manifest.family === 'dreamlite';
+  // 模态是选中模型的属性投影（§9.2 不新增 tab）：驱动帧数参数行与出片按钮文案。
+  const isVideo = selectedEntry?.manifest.modality === 'video';
   const loaded = isDream
     ? imageGenStore.dreamliteLoaded
     : imageGenStore.modelLoaded;
@@ -907,6 +912,7 @@ export const ImageGenScreen: React.FC = observer(() => {
     // 落库后触发（onTaskStarted），保持「空白页+进度」时序与旧版一致。
     setTaskKind('gen');
     scrollToPreview(1);
+    const isVideoTask = !!snapshot.videoFrames;
     const uri = await imageGenStore.runGenTask(snapshot, {
       onTaskStarted: () => {
         // 条目已入画廊 history[0] → 翻到 running 任务页（动效叠加）
@@ -917,7 +923,12 @@ export const ImageGenScreen: React.FC = observer(() => {
     if (uri) {
       // 新图在 history[0] → 预览页 1
       scrollToPreview(1);
-      showBanner(`生成完成（${genW}×${genH}）`);
+      // 视频产物如实说「已出帧」（U-5：W11 前不得写"已生成视频/已保存视频"）
+      showBanner(
+        isVideoTask
+          ? `已出帧（${snapshot.videoFrames} 帧 ${genW}×${genH}）`
+          : `生成完成（${genW}×${genH}）`,
+      );
     } else {
       scrollToPreview(1);
     }
@@ -991,6 +1002,14 @@ export const ImageGenScreen: React.FC = observer(() => {
       loraPath: m.manifest.lora
         ? `${AIOS_MODELS_DIR}/${m.manifest.lora}`
         : undefined,
+      // 视频族：帧数/fps 随快照冻结（执行层据此分派 C-4 与 C-1 超时，不回查 manifest）。
+      // 帧数非法值（空/0/负）按初值 6 落定：头号旋钮的地板就是首验基线，不夹紧大值。
+      ...(m.manifest.modality === 'video'
+        ? {
+            videoFrames: Math.max(1, parseInt(frames, 10) || 6),
+            videoFps: 16,
+          }
+        : {}),
     };
   };
 
@@ -1347,6 +1366,8 @@ export const ImageGenScreen: React.FC = observer(() => {
                 PROMPT_TOKEN_LIMIT[selectedEntry?.manifest.family ?? 'sd3'] ??
                 256
               }
+              isVideo={isVideo}
+              frames={frames}
               hasLora={!!selectedEntry?.manifest.lora}
               loraEnabled={loraEnabled}
               loraMultiplier={loraMult}
@@ -1359,6 +1380,7 @@ export const ImageGenScreen: React.FC = observer(() => {
               onSeedChange={setSeed}
               onSizeChange={setSize}
               onRatioChange={setRatio}
+              onFramesChange={setFrames}
               onToggleAdvanced={() => setShowAdvanced(a => !a)}
             />
           </>
@@ -1390,6 +1412,7 @@ export const ImageGenScreen: React.FC = observer(() => {
             }}>
             <GenActionBar
               isDream={isDream}
+              isVideo={isVideo}
               editArming={editArming}
               editRgb={editRgb}
               hasEditableImage={!!editSource || !!currentImage}

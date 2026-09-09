@@ -83,6 +83,20 @@ const HISTORY_KEY = '@imagegen_history_v1';
 const STOP_CONFIRM_TIMEOUT_MS = 15_000;
 /** 采样超时（心跳停）统一文案：多处引用，不各自拼一份同义字符串。 */
 const GEN_HANG_ERROR = '采样超时（引擎无响应），请重启应用后重试';
+/**
+ * 视频任务 hang 超时（C-1，VIDEO_GEN_SPEC §四）：按工作量表达 `base + perFrame × frames`，
+ * 不用「把 600s 调大」这种糊法。真缺口在解码段：decode_video_outputs 内无 progress 回调
+ *（§四实读证据），采样段心跳由既有 sd_progress_cb 维持、窗口天然不触发。
+ * - base：编码 + 首步 + 整批多帧解码（单帧图 VAE 解码实测 112–219s，9 tiles，
+ *   Z-Image/SD3.5 波实测；多帧按批量上限 81 帧的保守余量取 40 分钟）；
+ * - perFrame：逐帧 float→uint 转换 + stbi_write_png 写盘增量（取 30s/帧）。
+ * ❕两常数是「单图实测外推的初值」非视频实测：首次真机长跑（V-6 记 PSS/分段计时）后
+ * 据实校准并更新本注；81 帧总窗口 ≈ 80 分钟，宁迟判不早期误杀成功任务（错杀不可挽回）。
+ */
+const VIDEO_HANG_BASE_MS = 2_400_000;
+const VIDEO_HANG_PER_FRAME_MS = 30_000;
+/** 视频默认帧率（引擎默认 16，§二；本期参数面锁死不开放，§9.3） */
+const VIDEO_DEFAULT_FPS = 16;
 /** B28：B27 时代 mobx-persist-store 存储 key（存量迁移源） */
 const B28_STORAGE_KEY = 'ImageGenStore';
 
@@ -96,8 +110,15 @@ export interface GeneratedImage {
   steps?: number;
   cfg?: number;
   family?: string;
-  /** 来源：生图结果 or 用户上传（用于编辑的本地图） or 高清放大结果 or 反推任务 or 转写任务 */
-  kind?: 'generated' | 'upload' | 'upscaled' | 'caption' | 'transcribe' | 'tts';
+  /** 来源：生图结果 or 用户上传（用于编辑的本地图） or 高清放大结果 or 反推任务 or 转写任务 or 视频帧序列产物 */
+  kind?:
+    | 'generated'
+    | 'upload'
+    | 'upscaled'
+    | 'caption'
+    | 'transcribe'
+    | 'tts'
+    | 'video';
   /** 放大任务：源图 URI（running 页背景展示原图 + 半透明进度） */
   sourceUri?: string;
   /** 生成耗时（ms）与模型标签：预览卡顶部信息条展示 */
@@ -111,6 +132,13 @@ export interface GeneratedImage {
   errorSummary?: string;
   /** 失败任务：完整报错报告（errorReport 格式，一键复制） */
   errorDetail?: string;
+  /**
+   * 视频产物身份（kind='video'，VIDEO_GEN_SPEC §9.5）：uri 存封面帧（frame_0000），
+   * 帧目录是中间态不出页——dir/帧数/fps 单独落列，预览与时长角标的真值源。
+   */
+  videoDir?: string;
+  videoFrames?: number;
+  videoFps?: number;
 }
 
 /**
@@ -126,6 +154,17 @@ class ImageGenStore {
   modelLoaded = false;
   /** 当前驻留的 SD 模型 id（下拉行内按钮状态：加载/卸载） */
   loadedModelId: string | null = null;
+  /**
+   * 当前驻留 ctx 的模态（C-4 守卫依据，VIDEO_GEN_SPEC §四）：由 loadModel 透传登记，
+   * 本层不查 manifest（单点决策在组件层）。视频 ctx 上点「出图」与图片 ctx 上出片
+   * 都在 JS 单点显式拦下，不进 native 的未定义行为（generate_image 不做版本判定，§五）。
+   */
+  loadedModality: 'image' | 'video' | null = null;
+  /**
+   * 在途视频任务帧数（null = 非视频任务）：pullSnapshot 的 C-1 超时公式取数点；
+   * generateVideo 入口置位、finally 清空，与 generating 同寿命。
+   */
+  activeVideoFrames: number | null = null;
   /** DreamLite 引擎是否已加载 */
   dreamliteLoaded = false;
   /** 出图任务是否进行中 */
@@ -437,7 +476,13 @@ class ImageGenStore {
       // 6.16 修正：CPU 后端全链路含 VAE 解码（无心跳阶段），120s 会误判；
       // OpenCL 首次运行含 kernel 编译（无事件期）同样需放宽。
       // CPU/OpenCL 用 600s（10 分钟），仅 Vulkan 保持 120s 快速兜底。
-      const timeoutMs = this.backend === 'Vulkan' ? 120_000 : 600_000;
+      const timeoutMs = this.activeVideoFrames
+        ? // C-1（VIDEO_GEN_SPEC §四）：视频按工作量表达——解码段无心跳且随时长变长，
+          // 固定 600s 会「进度 99% 报采样超时把已成功的任务亲手杀掉」。
+          VIDEO_HANG_BASE_MS + VIDEO_HANG_PER_FRAME_MS * this.activeVideoFrames
+        : this.backend === 'Vulkan'
+          ? 120_000
+          : 600_000;
       if (
         this.generating &&
         this.lastEventAt > 0 &&
@@ -920,7 +965,11 @@ class ImageGenStore {
    */
   async loadModel(
     modelPath: string,
-    extras: CompanionPaths & {backend?: string} = {},
+    extras: CompanionPaths & {
+      backend?: string;
+      /** 模态透传登记（C-4）：组件层按 manifest 解析，本层不决策；native 忽略此键 */
+      modality?: 'image' | 'video';
+    } = {},
     id?: string,
   ): Promise<boolean> {
     // 同槽互斥：加载 sd 前释放 DreamLite（双驻留会 OOM）
@@ -959,6 +1008,9 @@ class ImageGenStore {
       runInAction(() => {
         this.modelLoaded = ok;
         this.loadedModelId = ok ? (id ?? null) : null;
+        // C-4：模态随 loadModel 透传登记（缺省 image，存量调用面零改动）；
+        // 失败/卸载路径在下述 else 与 unloadModel 里一并清空，不留陈旧值。
+        this.loadedModality = ok ? (extras.modality ?? 'image') : null;
         // 6.16：保存 backend 供超时窗口动态调整（CPU 后端 VAE 解码慢，需放宽）
         this.backend = ok ? (extras.backend ?? 'CPU') : null;
         this.loading = false;
@@ -992,6 +1044,7 @@ class ImageGenStore {
     runInAction(() => {
       this.modelLoaded = false;
       this.loadedModelId = null;
+      this.loadedModality = null;
       this.loading = false;
     });
     this.syncPoll();
@@ -1023,6 +1076,18 @@ class ImageGenStore {
         this.error = '生图模型未加载';
       });
       engineStatus.setError('image', '生图模型未加载');
+      return null;
+    }
+    // C-4 守卫（VIDEO_GEN_SPEC §四/§五）：Wan 系 ctx 不能生图是引擎结构事实
+    //（sd_version_supports_image_generation = !supports_video_generation，native 零防护）。
+    // 在 JS 单点显式拒绝，不进未定义行为；修复路径用既有 unload/load 流程（本层不自动切，
+    // 切换决策在组件层/队列编排，不偷用户的模型选择）。
+    if (this.loadedModality === 'video') {
+      const msg = '当前驻留的是视频模型，不能出图——请先改选图片模型';
+      runInAction(() => {
+        this.error = msg;
+      });
+      engineStatus.setError('image', msg);
       return null;
     }
     if (!this.outDir) {
@@ -1112,6 +1177,147 @@ class ImageGenStore {
         this.generating = false;
         this.progress = -1;
         this.progressText = '';
+      });
+      this.syncPoll();
+    }
+  }
+
+  /**
+   * 文生视频（VIDEO_GEN_SPEC P2）。与 generate() 同形制（单状态机不新增相位，§9.2）：
+   * 产物是帧目录，但 **uri 存封面帧**（§9.5：帧目录是中间态不出页），成功返回
+   * {uri, dir, frames, fps} 供编排层落任务身份。历史/相册/分享等全部既有面经 uri
+   * 自然兼容（封面就是一张 PNG）；预览需要全部帧时经 videoDir 取。
+   * 回程契约在 native 侧（逐帧写盘+像素不过桥，§三）；本层只解析 "dir|frames|fps"。
+   */
+  async generateVideo(opts: {
+    prompt: string;
+    steps: number;
+    cfg: number;
+    width: number;
+    height: number;
+    seed: number;
+    videoFrames: number;
+    videoFps?: number;
+    negativePrompt?: string;
+    modelLabel?: string;
+  }): Promise<{
+    uri: string;
+    dir: string;
+    frames: number;
+    fps: number;
+  } | null> {
+    if (!this.modelLoaded) {
+      runInAction(() => {
+        this.error = '视频模型未加载';
+      });
+      engineStatus.setError('image', '视频模型未加载');
+      return null;
+    }
+    // C-4 镜像分支：图片 ctx 上出片同样是未定义行为（反向亦然，上一方法已拦）
+    if (this.loadedModality !== 'video') {
+      const msg = '当前驻留的不是视频模型——请先加载视频模型再出片';
+      runInAction(() => {
+        this.error = msg;
+      });
+      engineStatus.setError('image', msg);
+      return null;
+    }
+    if (!this.outDir) {
+      await this.init();
+    }
+    const fps = opts.videoFps ?? VIDEO_DEFAULT_FPS;
+    const dir = `${this.outDir}/genvid_${Date.now()}_${opts.seed}`;
+    runInAction(() => {
+      this.generating = true;
+      this.error = null;
+      this.progress = -1;
+      this.progressText = '';
+      this.stage = '';
+      this.logTail = [];
+      this.stepTime = 0;
+      this.lastEventAt = Date.now();
+      this.genStartedAt = Date.now();
+      // C-1 取数点：在超时公式生效前就位（与 generating 同窗，finally 同清）
+      this.activeVideoFrames = opts.videoFrames;
+    });
+    this.syncPoll();
+    engineStatus.setPhase('image', 'running', '准备出片…');
+    emit(
+      'imagegen',
+      'imagegen.start',
+      {
+        prompt: opts.prompt,
+        seed: opts.seed,
+        steps: opts.steps,
+        cfg: opts.cfg,
+        width: opts.width,
+        height: opts.height,
+        modelLabel: opts.modelLabel ?? null,
+        // 同一事件通道加模态字段，不新建视频事件词面（DRC 既有消费面零改动）
+        modality: 'video',
+        videoFrames: opts.videoFrames,
+        fps,
+      },
+      'imagegen.start',
+    );
+    try {
+      const result = await ImageGen.genVideo({
+        prompt: opts.prompt,
+        negativePrompt: opts.negativePrompt ?? '',
+        seed: opts.seed,
+        steps: opts.steps,
+        cfg: opts.cfg,
+        width: opts.width,
+        height: opts.height,
+        videoFrames: opts.videoFrames,
+        fps,
+        outDir: dir,
+      });
+      // Kotlin 已把 ERR_* 前缀转为 reject（走 catch）；这里只收成功串
+      const [dirBack, framesStr, fpsStr] = String(result).split('|');
+      const frames = Number(framesStr);
+      if (!dirBack || !Number.isFinite(frames) || frames <= 0) {
+        throw new Error(
+          `genVideo 回程解析失败: ${String(result).slice(0, 120)}`,
+        );
+      }
+      const coverUri = `file://${dirBack}/frame_0000.png`;
+      engineStatus.setPhase('image', 'ready');
+      emit(
+        'imagegen',
+        'imagegen.done',
+        {
+          uri: coverUri,
+          dir: dirBack,
+          frames,
+          fps: Number(fpsStr) || fps,
+          seed: opts.seed,
+          prompt: opts.prompt,
+          durationMs: Date.now() - this.genStartedAt,
+          modality: 'video',
+        },
+        'imagegen.done',
+      );
+      return {uri: coverUri, dir: dirBack, frames, fps: Number(fpsStr) || fps};
+    } catch (e: any) {
+      const msg = `出片失败: ${e?.message ?? e}`;
+      runInAction(() => {
+        this.error = msg;
+      });
+      engineStatus.setError('image', msg);
+      emit('imagegen', 'imagegen.failed', {
+        error: msg,
+        seed: opts.seed,
+        prompt: opts.prompt,
+        modality: 'video',
+      });
+      return null;
+    } finally {
+      runInAction(() => {
+        this.generating = false;
+        this.progress = -1;
+        this.progressText = '';
+        this.activeVideoFrames = null;
       });
       this.syncPoll();
     }
@@ -1584,11 +1790,18 @@ class ImageGenStore {
       steps: snapshot.steps,
       cfg: snapshot.family === 'dreamlite' ? undefined : snapshot.cfg,
       family: snapshot.family,
-      kind: 'generated',
+      // 模态单点判据：快照带 videoFrames 即视频任务（§9.2 模态是模型的属性投影，
+      // 而快照在入队时已冻结模型选择——执行层不回头查 manifest，自包含铁律不变）
+      kind: snapshot.videoFrames ? 'video' : 'generated',
       modelLabel: snapshot.modelId,
     });
     hooks?.onTaskStarted?.(taskId);
     let uri: string | null = null;
+    // 视频产物身份（仅视频成功路径赋值）：finishTask 一次 patch 落列，不在别处重复写。
+    // 用属性盒而非裸 let：闭包内赋值对局部变量控制流不可见（TS 会把裸 let 收窄到 never）。
+    const productRef: {
+      v: {uri: string; dir: string; frames: number; fps: number} | null;
+    } = {v: null};
     if (snapshot.family === 'dreamlite') {
       if (!this.dreamliteLoaded) {
         const ok = await this.loadDreamLiteEntry();
@@ -1611,6 +1824,44 @@ class ImageGenStore {
         );
       }
     } else {
+      // 单点分派（C-4 落位）：视频/图片两条引擎路径共用同一编排链（加载切换/成败收口），
+      // 不复制两份 if/else——加载判定只认 modelId，跨模态条目间自动换 ctx 走既有 unload/load。
+      const runOneModality = async (): Promise<string | null> => {
+        if (!snapshot.videoFrames) {
+          return this.generate(snapshot.prompt, {
+            steps: snapshot.steps,
+            cfg: snapshot.cfg,
+            width: snapshot.width,
+            height: snapshot.height,
+            seed: effectiveSeed,
+            negativePrompt: snapshot.negativePrompt,
+            loraPath: snapshot.loraEnabled ? snapshot.loraPath : undefined,
+            loraMultiplier: snapshot.loraEnabled
+              ? snapshot.loraMultiplier
+              : undefined,
+            modelLabel: snapshot.modelId,
+          });
+        }
+        const v = await this.generateVideo({
+          prompt: snapshot.prompt,
+          steps: snapshot.steps,
+          cfg: snapshot.cfg,
+          width: snapshot.width,
+          height: snapshot.height,
+          seed: effectiveSeed,
+          negativePrompt: snapshot.negativePrompt,
+          videoFrames: snapshot.videoFrames,
+          videoFps: snapshot.videoFps,
+          modelLabel: snapshot.modelId,
+        });
+        if (!v) {
+          return null;
+        }
+        // 产物身份回填（非增强字段，§9.5）：封面 uri 已由 v.uri 走收口，
+        // 目录/帧数/fps 经 finishTask patch 落列（applyTaskPatch 单点，无门禁合规）
+        productRef.v = v;
+        return v.uri;
+      };
       // SD 族：确保对应模型加载（跨模型条目间自动切换）
       if (!(this.modelLoaded && this.loadedModelId === snapshot.modelId)) {
         if (!snapshot.mainPath) {
@@ -1620,44 +1871,34 @@ class ImageGenStore {
         } else {
           const ok = await this.loadModel(
             snapshot.mainPath,
-            {...snapshot.companionPaths, backend: snapshot.backend},
+            {
+              ...snapshot.companionPaths,
+              backend: snapshot.backend,
+              // C-4 透传登记：modality 随快照自包含指令走（入队层已按 manifest 解析）；
+              // 图片条目缺省 image，行为与存量一致
+              ...(snapshot.videoFrames ? {modality: 'video' as const} : {}),
+            },
             snapshot.modelId,
           );
           if (ok) {
-            uri = await this.generate(snapshot.prompt, {
-              steps: snapshot.steps,
-              cfg: snapshot.cfg,
-              width: snapshot.width,
-              height: snapshot.height,
-              seed: effectiveSeed,
-              negativePrompt: snapshot.negativePrompt,
-              loraPath: snapshot.loraEnabled ? snapshot.loraPath : undefined,
-              loraMultiplier: snapshot.loraEnabled
-                ? snapshot.loraMultiplier
-                : undefined,
-              modelLabel: snapshot.modelId,
-            });
+            uri = await runOneModality();
           }
         }
       } else {
-        uri = await this.generate(snapshot.prompt, {
-          steps: snapshot.steps,
-          cfg: snapshot.cfg,
-          width: snapshot.width,
-          height: snapshot.height,
-          seed: effectiveSeed,
-          negativePrompt: snapshot.negativePrompt,
-          loraPath: snapshot.loraEnabled ? snapshot.loraPath : undefined,
-          loraMultiplier: snapshot.loraEnabled
-            ? snapshot.loraMultiplier
-            : undefined,
-          modelLabel: snapshot.modelId,
-        });
+        uri = await runOneModality();
       }
     }
     if (uri) {
+      const vp = productRef.v;
       await this.finishTask(taskId, uri, {
         durationMs: Date.now() - startTs,
+        ...(vp
+          ? {
+              videoDir: vp.dir,
+              videoFrames: vp.frames,
+              videoFps: vp.fps,
+            }
+          : {}),
       });
     } else {
       const summary = '生成失败';

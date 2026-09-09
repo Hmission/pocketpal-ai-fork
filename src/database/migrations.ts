@@ -219,5 +219,28 @@ export default schemaMigrations({
         }),
       ],
     },
+    // Migration to version 11: 视频产物/队列字段（VIDEO_GEN_SPEC P2）
+    // 任务表存产物身份（帧目录/帧数/fps；uri 存封面帧），队列表存执行参数；
+    // 全部 isOptional → 存量图片条目/队列行零改动（模态是模型的属性投影，§9.2）。
+    {
+      toVersion: 11,
+      steps: [
+        addColumns({
+          table: 'image_gen_tasks',
+          columns: [
+            {name: 'video_dir', type: 'string', isOptional: true},
+            {name: 'video_frames', type: 'number', isOptional: true},
+            {name: 'video_fps', type: 'number', isOptional: true},
+          ],
+        }),
+        addColumns({
+          table: 'image_gen_queue',
+          columns: [
+            {name: 'video_frames', type: 'number', isOptional: true},
+            {name: 'video_fps', type: 'number', isOptional: true},
+          ],
+        }),
+      ],
+    },
   ],
 });

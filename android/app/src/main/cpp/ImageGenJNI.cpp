@@ -15,6 +15,8 @@
 #include <cstdlib>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <vector>
 #include <dlfcn.h>
 
@@ -109,6 +111,9 @@ JavaVM* g_jvm = nullptr;
 jclass g_imageGenClass = nullptr;
 jmethodID g_onLogMid = nullptr;
 jmethodID g_onProgressMid = nullptr;
+// C-3（VIDEO_GEN_SPEC §四）：快照复位入口——视频/图片任务在 native 入口一次性
+// 置零 snap*，消除跨任务陈旧 lastEventAt 的「开跑即误判 hang」窗口
+jmethodID g_resetSnapshotMid = nullptr;
 
 // Log 透传节流：高频 log 回调每次透传都要 Attach/DetachCurrentThread，
 // 500ms 窗口控制 JNI 开销（推拉反转后 RN 侧无事件风暴，此阀纯为开销控制）
@@ -169,6 +174,8 @@ void cacheJniRefs(JNIEnv* env) {
         g_imageGenClass, "onLogFromNative", "(ILjava/lang/String;)V");
     g_onProgressMid = env->GetStaticMethodID(
         g_imageGenClass, "onProgressFromNative", "(IIF)V");
+    g_resetSnapshotMid = env->GetStaticMethodID(
+        g_imageGenClass, "resetSnapshot", "()V");
   }
 }
 
@@ -273,6 +280,65 @@ void sd_progress_cb(int step, int steps, float time, void* /*data*/) {
   }
   if (attached) {
     g_jvm->DetachCurrentThread();
+  }
+}
+
+// 本线程内对 Kotlin companion 的一次性静态调用载体（attach/detach 样板收口）。
+// 用法：取 env → CallXxx → 清异常 → （按需）detach。fn 返回 JNI 调用本身。
+struct JniAttach {
+  JNIEnv* env = nullptr;
+  bool attached = false;
+  bool ok = false;
+  explicit JniAttach() {
+    if (!g_jvm) {
+      return;
+    }
+    jint st = g_jvm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
+    if (st == JNI_EDETACHED) {
+      if (g_jvm->AttachCurrentThread(&env, nullptr) != JNI_OK) {
+        return;
+      }
+      attached = true;
+    }
+    ok = env != nullptr;
+  }
+  ~JniAttach() {
+    if (env && attached) {
+      g_jvm->DetachCurrentThread();
+    }
+  }
+};
+
+// C-3：native 任务入口一次性重置快照（step/steps/time/stage/lastEvent 全清）
+void reset_snapshot_native() {
+  if (!g_resetSnapshotMid) {
+    return;
+  }
+  JniAttach a;
+  if (a.ok) {
+    a.env->CallStaticVoidMethod(g_imageGenClass, g_resetSnapshotMid);
+    if (a.env->ExceptionCheck()) {
+      a.env->ExceptionClear();
+    }
+  }
+}
+
+// C-2：阶段迁移显式置位（sampling / encoding_frames）。
+// 只复用既有 onLogFromNative 写字段的路径——不新建第二条通道（契约原文）。
+void set_stage_native(const char* stage) {
+  if (!g_imageGenClass || !g_onLogMid || !stage) {
+    return;
+  }
+  JniAttach a;
+  if (!a.ok) {
+    return;
+  }
+  jstring jtext = a.env->NewStringUTF(stage);
+  a.env->CallStaticVoidMethod(g_imageGenClass, g_onLogMid, static_cast<jint>(0),
+                              jtext);
+  a.env->DeleteLocalRef(jtext);
+  if (a.env->ExceptionCheck()) {
+    a.env->ExceptionClear();
   }
 }
 
@@ -675,6 +741,142 @@ Java_com_pocketpal_ImageGenModule_nativeTxt2img(
   dbg_log("==== txt2img done ret=%s ====", writeOk ? "OK" : "ERR_WRITE");
 
   return result;
+}
+
+// ===== 视频桥（VIDEO_GEN_SPEC §一～§四，P2）=====
+// 词面消歧：本能力独占 genVideo/nativeGenVideo 词面（§一），禁 VideoTask* 前缀。
+// 回程契约（§三）：帧由 native 逐帧写盘 <outDir>/frame_%04d.png，**像素永不入桥**
+//（旧 WritableArray 装箱 ~150MB 峰值是历史弯路，ImageGenModule.kt 有坑）；
+// 逐帧写完后立即 frames[i].data = nullptr，最后统一 free_sd_images 一次——
+// free_sd_images 既 free 每帧 data 又 free 数组基址，逐帧调它必 double-free（§三.3）。
+// 返回 "<outDir>|<frames>|<fps>"；任何失败回 ERR_*（Kotlin 侧按前缀 reject，无兜底）。
+JNIEXPORT jstring JNICALL
+Java_com_pocketpal_ImageGenModule_nativeGenVideo(
+    JNIEnv* env, jobject /*thiz*/, jstring prompt, jstring negativePrompt,
+    jlong seed, jint steps, jdouble cfg, jint width, jint height,
+    jint videoFrames, jint fps, jstring outDir) {
+  // 类型对齐：cfg 必须 jdouble，与 Kotlin external 声明严格一致（6.18 教训同构）。
+  std::lock_guard<std::mutex> lock(g_mutex);
+  if (!g_ctx) {
+    dbg_log("genVideo ERR_NO_MODEL");
+    return env->NewStringUTF("ERR_NO_MODEL");
+  }
+  if (videoFrames <= 0 || fps <= 0) {
+    // 参数面锁死在 JS/组件层，这里只拦截越界调用本身（显式失败，不夹紧）
+    dbg_log("genVideo ERR_ARGS frames=%d fps=%d", (int)videoFrames, (int)fps);
+    return env->NewStringUTF("ERR_ARGS");
+  }
+  const char* promptStr = env->GetStringUTFChars(prompt, nullptr);
+  const char* negStr = env->GetStringUTFChars(negativePrompt, nullptr);
+  const char* dirStr = env->GetStringUTFChars(outDir, nullptr);
+  if (!promptStr || !dirStr) {
+    if (promptStr) {
+      env->ReleaseStringUTFChars(prompt, promptStr);
+    }
+    if (negStr) {
+      env->ReleaseStringUTFChars(negativePrompt, negStr);
+    }
+    if (dirStr) {
+      env->ReleaseStringUTFChars(outDir, dirStr);
+    }
+    return env->NewStringUTF("ERR_ARGS");
+  }
+  dbg_log("==== genVideo begin %dx%d frames=%d fps=%d steps=%d cfg=%.2f seed=%lld ====",
+          width, height, (int)videoFrames, (int)fps, (int)steps, cfg,
+          (long long)seed);
+  dbg_mem("genVideo entry");
+  // C-3：入口一次性重置快照——陈旧 lastEventAt 在分钟级任务开跑即误判 hang 的窗口抹掉
+  reset_snapshot_native();
+  // C-2：进引擎前置 sampling（采样期心跳由既有 sd_progress_cb 维持）
+  set_stage_native("sampling");
+
+  sd_vid_gen_params_t gen;
+  sd_vid_gen_params_init(&gen);
+  gen.prompt = promptStr;
+  gen.negative_prompt = negStr;
+  gen.width = width;
+  gen.height = height;
+  gen.seed = seed;
+  gen.video_frames = videoFrames;
+  gen.fps = fps;
+  gen.sample_params.sample_steps = steps;
+  gen.sample_params.guidance.txt_cfg = cfg;
+  // 不接 loras/init_image/end_image/ref_videos/control_frames（§七 明确不做）
+
+  sd_image_t* frames = nullptr;
+  int numFrames = 0;
+  bool ok = false;
+  dbg_log("generate_video begin");
+  try {
+    // Wan 无音轨；引擎对 audio_out=nullptr 有护栏（stable-diffusion.cpp:6977 已实读）
+    ok = generate_video(g_ctx, &gen, &frames, &numFrames, nullptr);
+    dbg_log("generate_video ret=%d numFrames=%d", (int)ok, numFrames);
+  } catch (const std::exception& e) {
+    // 异常不得穿越 JNI（abort 教训同 txt2img）；部分产出按 R-2 形态整批释放
+    dbg_log("generate_video EXCEPTION: %s", e.what());
+    free_sd_images(frames, numFrames);
+    env->ReleaseStringUTFChars(prompt, promptStr);
+    env->ReleaseStringUTFChars(negativePrompt, negStr);
+    env->ReleaseStringUTFChars(outDir, dirStr);
+    return env->NewStringUTF(
+        (std::string("ERR_EXCEPTION:") + e.what()).c_str());
+  } catch (...) {
+    dbg_log("generate_video EXCEPTION: unknown");
+    free_sd_images(frames, numFrames);
+    env->ReleaseStringUTFChars(prompt, promptStr);
+    env->ReleaseStringUTFChars(negativePrompt, negStr);
+    env->ReleaseStringUTFChars(outDir, dirStr);
+    return env->NewStringUTF("ERR_EXCEPTION:unknown");
+  }
+  dbg_mem("after generate_video");
+  if (!ok || numFrames <= 0 || !frames) {
+    dbg_log("genVideo ERR_GENERATE");
+    free_sd_images(frames, numFrames);  // R-2 形态：失败也要整批放
+    env->ReleaseStringUTFChars(prompt, promptStr);
+    env->ReleaseStringUTFChars(negativePrompt, negStr);
+    env->ReleaseStringUTFChars(outDir, dirStr);
+    return env->NewStringUTF("ERR_GENERATE");
+  }
+
+  // C-2：帧已解出，进入写盘段——JS 侧据此把「在落盘」与「卡死」分开
+  set_stage_native("encoding_frames");
+  mkdir(dirStr, 0755);  // 父目录 aios_images 由 JS init() 保证存在；失败会落到下面的 ERR_WRITE
+  int written = 0;
+  for (int i = 0; i < numFrames; i++) {
+    const sd_image_t& fr = frames[i];
+    char fpath[1024];
+    snprintf(fpath, sizeof(fpath), "%s/frame_%04d.png", dirStr, i);
+    const int wOk = stbi_write_png(fpath, (int)fr.width, (int)fr.height,
+                                   (int)fr.channel, fr.data,
+                                   (int)fr.width * (int)fr.channel);
+    // 逐帧置空：数组基址由循环后的单次 free_sd_images 统一释放（§三.3 唯一安全形态）
+    frames[i].data = nullptr;
+    if (!wOk) {
+      dbg_log("genVideo write FAIL frame=%d path=%s", i, fpath);
+      break;
+    }
+    written++;
+    if (i == 0 || i == numFrames - 1) {
+      dbg_log("genVideo wrote frame=%d (%dx%d ch%d)", i, (int)fr.width,
+              (int)fr.height, (int)fr.channel);
+    }
+  }
+  free_sd_images(frames, numFrames);  // 残留帧的 data 已置空，只放基址（free(nullptr) 安全）
+  env->ReleaseStringUTFChars(prompt, promptStr);
+  env->ReleaseStringUTFChars(negativePrompt, negStr);
+
+  if (written != numFrames) {
+    dbg_log("genVideo ERR_WRITE (partial %d/%d)", written, numFrames);
+    env->ReleaseStringUTFChars(outDir, dirStr);
+    return env->NewStringUTF("ERR_WRITE");
+  }
+  // R-1 顺序：先用 dirStr 构造结果，再 Release（不得用已释放指针建串）
+  char result[1100];
+  snprintf(result, sizeof(result), "%s|%d|%d", dirStr, numFrames, (int)fps);
+  env->ReleaseStringUTFChars(outDir, dirStr);
+  dbg_mem("genVideo done");
+  dbg_log("==== genVideo done frames=%d fps=%d ====", numFrames, (int)fps);
+  return env->NewStringUTF(result);
 }
 
 }  // extern "C"

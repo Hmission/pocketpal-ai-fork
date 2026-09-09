@@ -73,6 +73,16 @@ export const HistoryStrip: React.FC<HistoryStripProps> = ({
                   <Text style={s.historyKindText}>上传</Text>
                 </View>
               )}
+              {/* 视频条目：封面帧（uri 已存 frame_0000）+ 时长角标（§9.3 不新建第二条历史条） */}
+              {item.kind === 'video' && !manageMode && (
+                <View style={s.historyKindBadge}>
+                  <Text style={s.historyKindText}>
+                    {item.videoFrames && item.videoFps
+                      ? `${Math.max(1, Math.round(item.videoFrames / item.videoFps))}s`
+                      : '视'}
+                  </Text>
+                </View>
+              )}
               {manageMode && toDelete.includes(item.uri) && (
                 <View style={s.historySel}>
                   <CheckMdIcon

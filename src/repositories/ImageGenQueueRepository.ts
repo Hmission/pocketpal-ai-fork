@@ -123,6 +123,9 @@ function toEntry(row: ImageGenQueue): QueueItem {
         : undefined,
       backend: row.backend ?? undefined,
       loraPath: row.loraPath ?? undefined,
+      // 视频族执行参数（缺省 = 图片任务；自包含快照铁律同 mainPath/backend）
+      videoFrames: row.videoFrames ?? undefined,
+      videoFps: row.videoFps ?? undefined,
     },
     total: row.total,
     done: row.done,
@@ -152,6 +155,8 @@ function applyEntry(record: ImageGenQueue, e: QueueItem): void {
     : null;
   record.backend = e.snapshot.backend ?? null;
   record.loraPath = e.snapshot.loraPath ?? null;
+  record.videoFrames = e.snapshot.videoFrames ?? null;
+  record.videoFps = e.snapshot.videoFps ?? null;
   record.total = e.total;
   record.done = e.done;
   record.failed = e.failed;

@@ -26,6 +26,9 @@ export default class ImageGenQueue extends Model {
   @text('companion_paths') companionPaths!: string | null; // JSON
   @text('backend') backend!: string | null;
   @text('lora_path') loraPath!: string | null;
+  /** 视频族执行参数（modality=video 时非空；帧数头号旋钮，VIDEO_GEN_SPEC §3.1） */
+  @field('video_frames') videoFrames!: number | null;
+  @field('video_fps') videoFps!: number | null;
   /** 购物车抽数（相同快照去重累加） */
   @field('total') total!: number;
   /** 已完成抽数 */

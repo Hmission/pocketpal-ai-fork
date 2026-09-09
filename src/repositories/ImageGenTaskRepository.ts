@@ -150,6 +150,10 @@ function toEntry(row: ImageGenTask): GeneratedImage {
     status: (row.status as GeneratedImage['status']) ?? 'success',
     errorSummary: row.errorSummary ?? undefined,
     errorDetail: row.errorDetail ?? undefined,
+    // 视频产物身份（kind='video'）：uri 存封面帧，目录/帧数/fps 单独列——预览与时长角标的真值源
+    videoDir: row.videoDir ?? undefined,
+    videoFrames: row.videoFrames ?? undefined,
+    videoFps: row.videoFps ?? undefined,
   };
 }
 
@@ -171,6 +175,9 @@ function applyEntry(record: ImageGenTask, e: GeneratedImage): void {
   record.status = e.status;
   record.errorSummary = e.errorSummary ?? null;
   record.errorDetail = e.errorDetail ?? null;
+  record.videoDir = e.videoDir ?? null;
+  record.videoFrames = e.videoFrames ?? null;
+  record.videoFps = e.videoFps ?? null;
   record.createdAt = e.ts;
 }
 

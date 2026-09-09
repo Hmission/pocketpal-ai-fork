@@ -25,6 +25,8 @@ import {formatQueueSummary} from '../constants';
 export interface GenActionBarProps {
   /** DreamLite 族（双按钮：编辑/出图） */
   isDream: boolean;
+  /** 视频模态（§9.3 主按钮仅文案：出图→出片，不新建按钮组件、不动宽度预算） */
+  isVideo?: boolean;
   /** 编辑预备态：已锁定当前预览图，按钮文案「执行编辑」 */
   editArming: boolean;
   /** 编辑源图已预解码（执行编辑按钮可用条件） */
@@ -51,6 +53,7 @@ export interface GenActionBarProps {
 
 export const GenActionBar: React.FC<GenActionBarProps> = ({
   isDream,
+  isVideo = false,
   editArming,
   editRgb,
   hasEditableImage,
@@ -101,7 +104,9 @@ export const GenActionBar: React.FC<GenActionBarProps> = ({
             color={theme.colors.onPrimary}
           />
         ) : (
-          <Text style={[s.buttonText, s.buttonTextGen]}>出图</Text>
+          <Text style={[s.buttonText, s.buttonTextGen]}>
+            {isVideo ? '出片' : '出图'}
+          </Text>
         )}
       </TouchableOpacity>
     </View>

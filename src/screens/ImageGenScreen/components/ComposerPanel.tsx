@@ -36,6 +36,10 @@ interface ComposerPanelProps {
   loaded: boolean;
   /** 08-18 修复：当前模型提示词 token 上限（编码器硬限，超出将被截断） */
   tokenLimit: number;
+  /** 视频模态（§9.2：模态随选中模型派生，页面自动进入视频形态）：参数面多一行帧数/fps */
+  isVideo?: boolean;
+  /** 视频帧数（§3.1 头号预算旋钮，唯一可编的视频参数） */
+  frames?: string;
   /** 08-18 路线 B：当前模型是否声明了独立 LoRA（manifest.lora 非空） */
   hasLora: boolean;
   loraEnabled: boolean;
@@ -49,6 +53,7 @@ interface ComposerPanelProps {
   onSeedChange: (t: string) => void;
   onSizeChange: (sz: number) => void;
   onRatioChange: (r: string) => void;
+  onFramesChange?: (t: string) => void;
   onToggleAdvanced: () => void;
 }
 
@@ -79,6 +84,8 @@ export const ComposerPanel: React.FC<ComposerPanelProps> = ({
   taskKind: _taskKind,
   loaded: _loaded,
   tokenLimit,
+  isVideo = false,
+  frames = '6',
   hasLora,
   loraEnabled,
   loraMultiplier,
@@ -91,6 +98,7 @@ export const ComposerPanel: React.FC<ComposerPanelProps> = ({
   onSeedChange,
   onSizeChange: _onSizeChange,
   onRatioChange,
+  onFramesChange = () => {},
   onToggleAdvanced,
 }) => {
   const theme = useTheme();
@@ -150,7 +158,9 @@ export const ComposerPanel: React.FC<ComposerPanelProps> = ({
             ? '步数'
             : isDream
               ? '尺寸/步数'
-              : '负面/比例/步数/CFG/种子'}
+              : isVideo
+                ? '负面/比例/步数/CFG/种子/帧数'
+                : '负面/比例/步数/CFG/种子'}
           ）{showAdvanced ? '▴' : '▾'}
         </Text>
       </TouchableOpacity>
@@ -214,6 +224,21 @@ export const ComposerPanel: React.FC<ComposerPanelProps> = ({
               onChangeText={onStepsChange}
               keyboardType="numeric"
             />
+            {isVideo && (
+              <>
+                {/* 帧数为唯一可编视频参数（§3.1 头号预算旋钮）；fps 本期锁 16（§9.3）
+                    ——故只给帧数输入框 + 只读 fps 文案，不开放帧率旋钮 */}
+                <Text style={s.paramLabel}>帧数</Text>
+                <TextInput
+                  style={s.paramInput}
+                  value={frames}
+                  onChangeText={onFramesChange}
+                  keyboardType="numeric"
+                  testID="composer-video-frames"
+                />
+                <Text style={s.paramLabel}>16fps</Text>
+              </>
+            )}
             {!isDream && (
               <>
                 <Text style={s.paramLabel}>CFG</Text>

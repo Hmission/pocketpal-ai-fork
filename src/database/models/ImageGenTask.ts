@@ -25,5 +25,9 @@ export default class ImageGenTask extends Model {
   @text('status') status!: string;
   @text('error_summary') errorSummary!: string | null;
   @text('error_detail') errorDetail!: string | null;
+  /** 视频产物身份（kind='video' 时非空）：帧目录绝对路径（中间态不出页，§9.5）+ 帧数 + fps */
+  @text('video_dir') videoDir!: string | null;
+  @field('video_frames') videoFrames!: number | null;
+  @field('video_fps') videoFps!: number | null;
   @field('created_at') createdAt!: number;
 }
