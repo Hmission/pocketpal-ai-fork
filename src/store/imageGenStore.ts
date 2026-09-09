@@ -70,7 +70,10 @@ function requestBatteryOptOutIfNeeded(): void {
     .catch(() => {});
 }
 import {engineStatus} from './engineStatus';
-import type {CompanionPaths} from '../utils/imageGenManifest';
+import {
+  BUILTIN_MANIFESTS,
+  type CompanionPaths,
+} from '../utils/imageGenManifest';
 import {emit} from '../debug/eventStream';
 import NativeHardwareInfo, {PerfSnapshot} from '../specs/NativeHardwareInfo';
 
@@ -957,6 +960,22 @@ class ImageGenStore {
   }
 
   /**
+   * 模态单点判据（C-4 登记面）：按 manifest id 自取，调用方说了不算。
+   * 命中 manifest 即以其为准（未写 modality = 图片，**不得**回落到调用方透传）；
+   * 只有无 id（DRC 取证通道）或 id 未登记时才用 `fallback`，再缺省 'image'。
+   */
+  private modalityForModel(
+    id?: string,
+    fallback?: 'image' | 'video',
+  ): 'image' | 'video' {
+    const manifest = id ? BUILTIN_MANIFESTS.find(m => m.id === id) : undefined;
+    if (manifest) {
+      return manifest.modality ?? 'image';
+    }
+    return fallback ?? 'image';
+  }
+
+  /**
    * 加载生图模型。调用前应确保聊天模型已卸载（modelStore 释放），
    * 否则可能 OOM。返回加载是否成功。
    * extras：拆分式模型的伴侣文件（共读 CompanionPaths 单点型：SD3.5 → clipL/clipG/vae；
@@ -967,7 +986,8 @@ class ImageGenStore {
     modelPath: string,
     extras: CompanionPaths & {
       backend?: string;
-      /** 模态透传登记（C-4）：组件层按 manifest 解析，本层不决策；native 忽略此键 */
+      /** 模态登记（C-4）：仅作无 id 调用面的回落位；有 id 时本层按 manifest 单点派生，
+       *  不采纳本字段；native 忽略此键 */
       modality?: 'image' | 'video';
     } = {},
     id?: string,
@@ -1008,9 +1028,13 @@ class ImageGenStore {
       runInAction(() => {
         this.modelLoaded = ok;
         this.loadedModelId = ok ? (id ?? null) : null;
-        // C-4：模态随 loadModel 透传登记（缺省 image，存量调用面零改动）；
-        // 失败/卸载路径在下述 else 与 unloadModel 里一并清空，不留陈旧值。
-        this.loadedModality = ok ? (extras.modality ?? 'image') : null;
+        // C-4：模态**单点派生**（不信任调用方透传）——§173 真机首跑实证：UI 的
+        // loadModel 只传 backend 不传 modality，Wan 明明驻留却被「当前驻留的不是视频
+        // 模型」拦下（守卫对、登记错）。现按 manifest id 自取，extras.modality 降为
+        // 无 id 调用面（DRC 取证）的回落位；失败/卸载路径仍置 null，不留陈旧值。
+        this.loadedModality = ok
+          ? this.modalityForModel(id, extras.modality)
+          : null;
         // 6.16：保存 backend 供超时窗口动态调整（CPU 后端 VAE 解码慢，需放宽）
         this.backend = ok ? (extras.backend ?? 'CPU') : null;
         this.loading = false;

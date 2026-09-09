@@ -25,7 +25,8 @@ jest.mock('../../repositories/ImageGenTaskRepository', () => {
 jest.mock('../../repositories/ImageGenQueueRepository', () => ({
   imageGenQueueRepository: {
     loadAll: jest.fn().mockResolvedValue([]),
-    upsert: jest.fn().mockResolvedValue(undefined),
+    // upsert 返权威行 id（项 46 契约）：给个固定值，否则 core 会把 item.id 采纳成 undefined
+    upsert: jest.fn().mockResolvedValue('qrow_ghost'),
     removeByQueueId: jest.fn().mockResolvedValue(undefined),
     clearAll: jest.fn().mockResolvedValue(undefined),
   },

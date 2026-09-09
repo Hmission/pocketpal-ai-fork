@@ -23,7 +23,8 @@ jest.mock('../../repositories/ImageGenTaskRepository', () => {
 jest.mock('../../repositories/ImageGenQueueRepository', () => ({
   imageGenQueueRepository: {
     loadAll: jest.fn().mockResolvedValue([]),
-    upsert: jest.fn().mockResolvedValue(undefined),
+    // upsert 返权威行 id（项 46 契约）：固定值，否则 core 会把 item.id 采纳成 undefined
+    upsert: jest.fn().mockResolvedValue('qrow_video'),
     removeByQueueId: jest.fn().mockResolvedValue(undefined),
     clearAll: jest.fn().mockResolvedValue(undefined),
   },
@@ -53,6 +54,13 @@ jest.mock('../../services/superResEngine', () => ({
 
 jest.mock('../../services/captionEngine', () => ({
   runCaption: jest.fn(),
+}));
+
+// loadModel 路径会先确保提示词写手就绪；本套只验模态登记，不跑真引擎
+jest.mock('../../services/promptWriter', () => ({
+  promptWriter: {
+    ensureLoaded: jest.fn().mockResolvedValue(undefined),
+  },
 }));
 
 jest.mock('../../debug/eventStream', () => ({emit: jest.fn()}));
@@ -101,6 +109,7 @@ jest.mock('react-native', () => {
   const ImageGenMock = {
     txt2img: jest.fn().mockResolvedValue('ERR_NOT_IN_TEST'),
     genVideo: jest.fn(),
+    loadModel: jest.fn().mockResolvedValue(true),
     cancelTxt2img: jest.fn().mockResolvedValue(true),
     getGenSnapshot: jest.fn().mockResolvedValue({
       step: 0,
@@ -133,6 +142,7 @@ import type {GenParamsSnapshot} from '../imageGenQueueCore';
 const ImageGenMock = NativeModules.ImageGen as unknown as {
   txt2img: jest.Mock;
   genVideo: jest.Mock;
+  loadModel: jest.Mock;
 };
 
 const WAN_SNAPSHOT: GenParamsSnapshot = {
@@ -158,7 +168,7 @@ const WAN_SNAPSHOT: GenParamsSnapshot = {
 const armCtx = (modality: 'image' | 'video') => {
   (imageGenStore as any).modelLoaded = true;
   (imageGenStore as any).loadedModelId =
-    modality === 'video' ? WAN_SNAPSHOT.modelId : 'sd35-medium';
+    modality === 'video' ? WAN_SNAPSHOT.modelId : 'sd35-medium-q4';
   (imageGenStore as any).loadedModality = modality;
   (imageGenStore as any).outDir =
     '/data/user/0/com.pocketpalai/files/aios_images';
@@ -247,5 +257,51 @@ describe('C-4 守卫双向（native 零防护由 JS 单点拦截）', () => {
     expect(v).toBeNull();
     expect(ImageGenMock.genVideo).not.toHaveBeenCalled();
     expect(imageGenStore.error).toContain('视频模型');
+  });
+});
+
+/**
+ * C-4 登记面回归（§173 真机首跑抓出的缺陷）：UI 的 loadModel 只传 backend 不传
+ * modality，当时 store 盲信 extras → Wan 明明驻留却被自己的守卫拦下。
+ * 现收归 store 按 manifest id 单点派生，故本例的 extras 形状故意与当时一致（无 modality）。
+ */
+describe('C-4 模态登记单点派生（不信任调用方透传）', () => {
+  // 不取 WAN_SNAPSHOT.mainPath（快照字段可选）：本例要的是确定路径
+  const wanMain = '/sdcard/Documents/AIOS/models/Wan2.1-T2V-1.3B-Q4_K_M.gguf';
+
+  it('视频 id + 无 modality 的 extras → 仍登记为 video', async () => {
+    const ok = await imageGenStore.loadModel(
+      wanMain,
+      {
+        t5xxl: '/sdcard/Documents/AIOS/models/umt5-xxl-encoder-Q3_K_M.gguf',
+        vae: '/sdcard/Documents/AIOS/models/wan_2.1_vae.safetensors',
+        backend: 'OpenCL',
+      },
+      'wan21-t2v-13b-q4',
+    );
+    expect(ok).toBe(true);
+    expect((imageGenStore as any).loadedModality).toBe('video');
+  });
+
+  it('图片 id → 登记为 image（视频字段不得污染存量面）', async () => {
+    const ok = await imageGenStore.loadModel(
+      '/sdcard/Documents/AIOS/models/sd35_medium_q4_k_m.gguf',
+      {clipL: 'a', clipG: 'b', vae: 'c', backend: 'CPU', modality: 'video'},
+      'sd35-medium-q4',
+    );
+    expect(ok).toBe(true);
+    // manifest 派生胜过调用方透传：乱传 video 也不采纳
+    expect((imageGenStore as any).loadedModality).toBe('image');
+  });
+
+  it('无 id（DRC 取证通道）→ 回落 extras.modality', async () => {
+    const ok = await imageGenStore.loadModel(wanMain, {
+      t5xxl: 'x',
+      vae: 'y',
+      backend: 'OpenCL',
+      modality: 'video',
+    });
+    expect(ok).toBe(true);
+    expect((imageGenStore as any).loadedModality).toBe('video');
   });
 });

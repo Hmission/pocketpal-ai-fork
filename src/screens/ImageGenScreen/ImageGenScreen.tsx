@@ -366,6 +366,8 @@ export const ImageGenScreen: React.FC = observer(() => {
     }
     const ok = await imageGenStore.loadModel(
       entry.mainPath,
+      // 不在此传 modality：C-4 登记已收归 store 按 manifest id 单点派生
+      //（§173 真机首跑曾因本行漏传把 Wan 误判成图片驻留）。
       {...extras, backend: entry.manifest.defaults.backend},
       entry.manifest.id,
     );
