@@ -18,6 +18,12 @@ yarn --silent audit:gate-reentry
 # COMPASS_REGISTRY §2 登记的每条 CP 必须在 errorRegistry 有真 regex，状态列写「已落地」
 # 者尤其不准空标；登记面/执行面的 deepDive 路径不得悬空。这类病靠人记得对账必然复发。
 yarn --silent audit:compass
+# DRC 登记面/执行面对账闸（2026-09-09 本窗立项，口径见 DRC_SPEC §10）：
+# actionRegistry 实际注册的动作必须与 DRC_SPEC §5 表逐一对应，且表头「当前注册数」
+# 等于真实数。本窗实测撞到两类偏差（两个动作自事故重建起就漏登；我自己改表后计数仍留旧值），
+# 全靠临时脚本才发现——不固化就一定会复发。
+yarn --silent audit:drc-actions
+
 # 图标上色口径闸（2026-09-07 CHAIN_AUDIT_B W7）：描边资产必须自带 fill="none"、不得写
 # currentColor；描边型资产在调用侧不得只传 fill（会被 svgr 继承填成实心）。
 # 这类病靠人记规范必然复发（已因两卷规范互斥存活了一轮并留下尺寸补丁）。

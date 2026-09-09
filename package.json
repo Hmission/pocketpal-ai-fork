@@ -26,6 +26,7 @@
     "audit:native-mocks": "node scripts/audit-native-mocks.js",
     "audit:async-timers": "node scripts/audit-async-timers.js",
     "audit:gate-reentry": "node scripts/audit-gate-reentry.js",
+    "audit:drc-actions": "node scripts/audit-drc-actions.js",
     "audit:compass": "node scripts/audit_compass_registry.js",
     "lint:icons": "python scripts/check_icons.py",
     "lint:fix": "eslint \"**/*.{js,ts,tsx}\" --fix",

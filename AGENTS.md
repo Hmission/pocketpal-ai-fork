@@ -36,7 +36,7 @@ npx jest <path>           # 单测（jest.config.js 配置覆盖率门槛）
 yarn l10n:validate        # 多语言 JSON 校验
 yarn verify:fonts         # 字体子集校验（新增语言必跑）
 yarn audit:native-mocks   # 原生契约替身覆盖闸门（改 src/specs 或 jest 替身后必跑）
-yarn audit:async-timers   # 异步轮询收口闸门（新增 setInterval 后必跑）
+yarn audit:async-timers   # 异步定时器收口闸门（新增 setInterval / 无主 setTimeout 后必跑）
 ```
 
 ## 验证门禁纪律（2026-09-06 立；五条都是本仓踩过的坑）
@@ -53,7 +53,7 @@ yarn audit:async-timers   # 异步轮询收口闸门（新增 setInterval 后必
    - 正向（§153）：测试 mock barrel `'../../../hooks'`，组件却 `from '../../hooks/useTheme'` → **mock 从未生效，测试一直在真环境跑**；不断言具体值时更阴——不红，只是静默失效（本仓 4 处）。
    - **判定顺序**：先对齐两边路径（读被测组件的 import 原文），再谈「坏了/过期」；必要时一句 `console.log('SAME_OBJECT:', a === b)` 定音。另：**组件测试的断言应绑 token 语义（如 `mockTheme.colors.tertiary`）而非 hex 字面量**——色值 SSOT 属主题域，锁 hex 会让「改主题色」错误地惊动组件测试。
 4. **断言纪律：正面与否定结论同等对待**。任何结论写进文档/报告或据此动手前，必须有**第二条独立口径实证**（列真实清单 / 读二进制头 / 跑最小实验）；只有一条线索加先验知识时只能写成「待验证假设」。断言「缺失/坏了」最危险——它会立刻引发大动作（入仓/重编/重写）。**自己造成的现场破坏不得归因给仓库**（典型：`--ignore-scripts`、PowerShell `Set-Content` 把 LF 改 CRLF 使补丁永久拒施）。误判一旦发现，立即就地改账并写明「此前结论错误 + 推翻它的证据」，不做无声修正。
-5. **测试基建三条铁律见 `docs/POCKETPAL_TEST_INFRA_SPEC.md`**：① 替身与被测代码同一模块来源；② 异步轮询一律走 `src/utils/safeInterval.ts`（**禁止**裸 `setInterval(async …)`，也禁止靠「体内有 try」自证安全——行级 try 证明不了危险那行被包住）；③ 全局替身必须覆盖 spec 方法全集。两个闸门已挂 `.husky/pre-commit`（每次提交必跑）。⚠ **不要去改 `.github/workflows/`**：本仓 `.gitignore` 有一条 `workflows/`（本意是忽略开发流程产物），按 git 语义**连带排除了 `.github/workflows/`**，该目录不入库——改它等于没改（本轮实测踩到，已回滚）。**新增工具/闸门后要拿探针自证它能报错**（空转的闸门比没有更险，它给你虚假的安全感）。
+5. **测试基建三条铁律见 `docs/POCKETPAL_TEST_INFRA_SPEC.md`**：① 替身与被测代码同一模块来源；② 异步工作一律走 `src/utils/safeInterval.ts` 里的收口原语（轮询走 `safeInterval`，一次性延时走 `safeTimeout`；**禁止**裸 `setInterval(async …)` 与无主 `setTimeout(() => void asyncFn())`，也禁止靠「体内有 try」自证安全——行级 try 证明不了危险那行被包住。一次性延时同罪且更难发现：异常只逃逸一次，没有「每 10 次一报」的节流可撞；而它的无主句柄会让测试跑完仍在倒计时，日志泼到已结束的套件上（MASTER_LOG §175 / CORE-14 实证：全绿 352 套件却 exit 1））；③ 全局替身必须覆盖 spec 方法全集。审计闸已增至 **5 个**并全挂 `.husky/pre-commit`（每次提交必跑）：`audit:native-mocks` / `audit:async-timers` / `audit:gate-reentry` / `audit:compass` / `audit:drc-actions`。⚠ **不要去改 `.github/workflows/`**：本仓 `.gitignore` 有一条 `workflows/`（本意是忽略开发流程产物），按 git 语义**连带排除了 `.github/workflows/`**，该目录不入库——改它等于没改（本轮实测踩到，已回滚）。**新增工具/闸门后要拿探针自证它能报错**（空转的闸门比没有更险，它给你虚假的安全感）；自证的两条附加口径（2026-09-09 由 `audit:async-timers` 升 v2 时的实测提炼）：**自检要内联到闸门每次执行**，不另开「手跑自检」入口——能单独跑的自检等于没有，它会在第一次被省略后静默腐烂；且夹具必须**同时断言净态判绿**，只会红的闸门与只会绿的闸门一样无用。闸门还要防**误报**：注释/字符串里描述危险形状不是违规（否则它会因文档而红，而人是会为了绕过闸门的）。
 
 ## 提交规范
 
