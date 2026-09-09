@@ -1282,29 +1282,21 @@
     },
     "buttons": {
       "advancedSettings": "Додаткові налаштування",
-      "startTest": "Почати тест",
-      "runningTest": "Виконується тест...",
       "clearAll": "Очистити все",
       "done": "Готово",
       "cancel": "Скасувати",
       "delete": "Видалити",
-      "share": "Поділитися",
-      "sharing": "Поділюся...",
-      "viewRawData": "Переглянути вихідні дані",
-      "hideRawData": "Приховати вихідні дані"
+      "share": "Поділитися"
     },
     "messages": {
       "pleaseSelectModel": "Спочатку виберіть і ініціалізуйте модель",
       "testWarning": "Примітка: Тест для більших моделей може тривати до 2–5 хвилин, і його неможливо перервати після запуску.",
       "keepScreenOpen": "Будь ласка, не закривайте це вікно.",
-      "initializingModel": "Ініціалізація моделі...",
-      "modelMaxValue": "(макс: {{maxValue}})"
+      "initializingModel": "Ініціалізація моделі..."
     },
     "dialogs": {
       "advancedSettings": {
         "title": "Розширені налаштування",
-        "testProfile": "Профіль тестування",
-        "customParameters": "Настроювані параметри",
         "description": "Налаштуйте параметри тесту для конкретних сценаріїв тестування."
       },
       "deleteResult": {
@@ -1316,11 +1308,7 @@
         "message": "Ви впевнені, що хочете видалити всі результати тестів?"
       },
       "shareResults": {
-        "title": "Поділитися результатами тестування",
-        "sharedDataTitle": "До спільних даних належать:",
-        "deviceAndModelInfo": "• Технічні характеристики пристрою та інформація про модель",
-        "performanceMetrics": "• Показники ефективності",
-        "dontShowAgain": "Не показувати це повідомлення знову"
+        "title": "Поділитися результатами тестування"
       }
     },
     "sections": {
@@ -1338,13 +1326,8 @@
         "title": "Налаштування Моделі",
         "context": "Контекст: {{context}}",
         "batch": "Партія: {{batch}}",
-        "ubatch": "U Batch: {{ubatch}}",
         "cpuThreads": "Потоки процесора: {{threads}}",
-        "gpuLayers": "Шари графічного процесора: {{layers}}",
-        "device": "Пристрій: {{device}}",
-        "flashAttentionEnabled": "Флеш-реклама увімкнено",
-        "flashAttentionDisabled": "Флеш-сповіщення вимкнено",
-        "cacheTypes": "Типи кешів: {{cacheK}}/{{cacheV}}"
+        "device": "Пристрій: {{device}}"
       },
       "results": {
         "promptProcessing": "Швидке опрацювання",
@@ -1356,13 +1339,7 @@
       "actions": {
         "deleteButton": " "
       },
-      "errors": {
-        "networkRetry": "Перевірте з'єднання та спробуйте ще раз",
-        "appCheckRetry": "Повторити відправку",
-        "serverRetry": "Спробуйте пізніше",
-        "genericRetry": "Спробувати ще раз",
-        "failedToSubmit": "Не вдалося надіслати результати тесту"
-      }
+      "errors": {}
     },
     "deviceInfoCard": {
       "title": "Інформація про пристрій",
@@ -1388,8 +1365,7 @@
         "gpuRenderer": "Рендеринг",
         "gpuVendor": "Постачальник",
         "metalSupport": "Підтримка Metal",
-        "openclSupport": "Підтримка OpenCL",
-        "openclRequirement": "Потрібні i8mm та dotprod"
+        "openclSupport": "Підтримка OpenCL"
       },
       "instructions": {
         "yes": "✓",

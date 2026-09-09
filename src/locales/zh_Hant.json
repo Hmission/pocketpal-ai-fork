@@ -61,29 +61,21 @@
     },
     "buttons": {
       "advancedSettings": "進階設定",
-      "startTest": "開始測試",
-      "runningTest": "正在執行測試…",
       "clearAll": "全部清除",
       "done": "已完成",
       "cancel": "取消",
       "delete": "刪除",
-      "share": "分享",
-      "sharing": "正在分享…",
-      "viewRawData": "查看原始資料",
-      "hideRawData": "隱藏原始資料"
+      "share": "分享"
     },
     "messages": {
       "pleaseSelectModel": "請先選擇並初始化模型",
       "testWarning": "注意：測試對於較大的模型可能需要 2–5 分鐘，且一旦啟動後無法中斷。",
       "keepScreenOpen": "請保持此畫面開啟。",
-      "initializingModel": "正在初始化模型…",
-      "modelMaxValue": "(最大值：{{maxValue}})"
+      "initializingModel": "正在初始化模型…"
     },
     "dialogs": {
       "advancedSettings": {
         "title": "進階設定",
-        "testProfile": "測試配置檔案",
-        "customParameters": "自訂參數",
         "description": "為特定測試場景微調基準參數。"
       },
       "clearAllResults": {
@@ -95,11 +87,7 @@
         "message": "您確定要刪除此基準測試結果嗎？"
       },
       "shareResults": {
-        "title": "分享基準測試結果",
-        "sharedDataTitle": "共享資料包含：",
-        "deviceAndModelInfo": "• 裝置規格與模型資訊",
-        "performanceMetrics": "• 測量值",
-        "dontShowAgain": "不要再顯示此訊息"
+        "title": "分享基準測試結果"
       }
     },
     "sections": {
@@ -117,12 +105,7 @@
         "title": "模型設定",
         "context": "上下文：{{context}}",
         "batch": "批次：{{batch}}",
-        "ubatch": "U 批次：{{ubatch}}",
         "cpuThreads": "CPU 執行緒：{{threads}}",
-        "gpuLayers": "GPU 層數：{{layers}}",
-        "flashAttentionEnabled": "已啟用 Flash Attention",
-        "flashAttentionDisabled": "已停用 Flash Attention",
-        "cacheTypes": "快取類型：{{cacheK}} / {{cacheV}}",
         "device": "設備：{{device}}"
       },
       "results": {
@@ -135,13 +118,7 @@
       "actions": {
         "deleteButton": " "
       },
-      "errors": {
-        "networkRetry": "檢查連線並重試",
-        "appCheckRetry": "重試提交",
-        "serverRetry": "稍後再試",
-        "genericRetry": "重試",
-        "failedToSubmit": "提交基準測試失敗"
-      }
+      "errors": {}
     },
     "deviceInfoCard": {
       "title": "裝置資訊",
@@ -167,8 +144,7 @@
         "gpuRenderer": "渲染器",
         "gpuVendor": "製造商",
         "metalSupport": "Metal 支援",
-        "openclSupport": "OpenCL 支援",
-        "openclRequirement": "需要 i8mm 和 dotprod"
+        "openclSupport": "OpenCL 支援"
       },
       "instructions": {
         "format": "FP16: {{fp16}}, DotProd: {{dotProd}}, SVE: {{sve}}, I8MM: {{i8mm}}",

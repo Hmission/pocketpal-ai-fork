@@ -1289,29 +1289,21 @@
     },
     "buttons": {
       "advancedSettings": "Configurações Avançadas",
-      "startTest": "Iniciar Teste",
-      "runningTest": "A executar Teste...",
       "clearAll": "Limpar Tudo",
       "done": "Concluído",
       "cancel": "Cancelar",
       "delete": "Apagar",
-      "share": "Partilhar",
-      "sharing": "A partilhar...",
-      "viewRawData": "Ver Dados Brutos",
-      "hideRawData": "Ocultar Dados Brutos"
+      "share": "Partilhar"
     },
     "messages": {
       "pleaseSelectModel": "Selecione e inicialize um modelo primeiro",
       "testWarning": "Nota: O teste pode levar de 2 a 5 minutos para modelos maiores e não pode ser interrompido depois de iniciado.",
       "keepScreenOpen": "Mantenha este ecrã aberto.",
-      "initializingModel": "A inicializar modelo...",
-      "modelMaxValue": "(máx.: {{maxValue}})"
+      "initializingModel": "A inicializar modelo..."
     },
     "dialogs": {
       "advancedSettings": {
         "title": "Configurações Avançadas",
-        "testProfile": "Perfil de Teste",
-        "customParameters": "Parâmetros Personalizados",
         "description": "Ajuste os parâmetros do benchmark para cenários de teste específicos."
       },
       "deleteResult": {
@@ -1323,11 +1315,7 @@
         "message": "Tem certeza que deseja apagar todos os resultados de benchmark?"
       },
       "shareResults": {
-        "title": "Partilhar Resultados do Benchmark",
-        "sharedDataTitle": "Os dados partilhados incluem:",
-        "deviceAndModelInfo": "• Especificações do dispositivo e informações do modelo",
-        "performanceMetrics": "• Métricas de desempenho",
-        "dontShowAgain": "Não mostrar esta mensagem novamente"
+        "title": "Partilhar Resultados do Benchmark"
       }
     },
     "sections": {
@@ -1345,13 +1333,8 @@
         "title": "Configurações do Modelo",
         "context": "Contexto: {{context}}",
         "batch": "Lote: {{batch}}",
-        "ubatch": "Microlote: {{ubatch}}",
         "cpuThreads": "Threads de CPU: {{threads}}",
-        "gpuLayers": "Camadas de GPU: {{layers}}",
-        "device": "Dispositivo: {{device}}",
-        "flashAttentionEnabled": "Flash Attention Ativado",
-        "flashAttentionDisabled": "Flash Attention Desativado",
-        "cacheTypes": "Tipos de Cache: {{cacheK}}/{{cacheV}}"
+        "device": "Dispositivo: {{device}}"
       },
       "results": {
         "promptProcessing": "Processamento de Prompt",
@@ -1363,13 +1346,7 @@
       "actions": {
         "deleteButton": " "
       },
-      "errors": {
-        "networkRetry": "Verifique a conexão e tente novamente",
-        "appCheckRetry": "Tentar envio novamente",
-        "serverRetry": "Tente novamente mais tarde",
-        "genericRetry": "Tentar Novamente",
-        "failedToSubmit": "Falha ao enviar o benchmark"
-      }
+      "errors": {}
     },
     "deviceInfoCard": {
       "title": "Informações do Dispositivo",
@@ -1395,7 +1372,6 @@
         "gpuVendor": "Fabricante",
         "metalSupport": "Apoio a Metal",
         "openclSupport": "Apoio a OpenCL",
-        "openclRequirement": "Requer i8mm e dotprod",
         "chipset": "Chipset"
       },
       "instructions": {

@@ -1282,29 +1282,21 @@
     },
     "buttons": {
       "advancedSettings": "Tetapan Lanjutan",
-      "startTest": "Mula Ujian",
-      "runningTest": "Menjalankan Ujian...",
       "clearAll": "Kosongkan Semua",
       "done": "Selesai",
       "cancel": "Batal",
       "delete": "Padam",
-      "share": "Kongsi",
-      "sharing": "Mengongsi...",
-      "viewRawData": "Lihat Data Mentah",
-      "hideRawData": "Sembunyikan Data Mentah"
+      "share": "Kongsi"
     },
     "messages": {
       "pleaseSelectModel": "Sila pilih dan mulakan model terlebih dahulu",
       "testWarning": "Nota: Ujian boleh berjalan sehingga 2-5 minit untuk model besar dan tidak boleh dihentikan selepas dimulakan.",
       "keepScreenOpen": "Sila biarkan skrin ini kekal terbuka.",
-      "initializingModel": "Memulakan model...",
-      "modelMaxValue": "(maks: {{maxValue}})"
+      "initializingModel": "Memulakan model..."
     },
     "dialogs": {
       "advancedSettings": {
         "title": "Tetapan Lanjutan",
-        "testProfile": "Profil Ujian",
-        "customParameters": "Parameter Tersuai",
         "description": "Sesuaikan parameter tolok ukur untuk senario pengujian tertentu."
       },
       "deleteResult": {
@@ -1316,11 +1308,7 @@
         "message": "Pasti mahu memadam semua keputusan tolok ukur?"
       },
       "shareResults": {
-        "title": "Kongsi Keputusan Tolok Ukur",
-        "sharedDataTitle": "Data yang dikongsi termasuk:",
-        "deviceAndModelInfo": "• Spesifikasi peranti & maklumat model",
-        "performanceMetrics": "• Metrik prestasi",
-        "dontShowAgain": "Jangan paparkan mesej ini lagi"
+        "title": "Kongsi Keputusan Tolok Ukur"
       }
     },
     "sections": {
@@ -1338,13 +1326,8 @@
         "title": "Tetapan Model",
         "context": "Konteks: {{context}}",
         "batch": "Batch: {{batch}}",
-        "ubatch": "UBatch: {{ubatch}}",
         "cpuThreads": "Thread CPU: {{threads}}",
-        "gpuLayers": "Lapisan GPU: {{layers}}",
-        "device": "Peranti: {{device}}",
-        "flashAttentionEnabled": "Flash Attention Didayakan",
-        "flashAttentionDisabled": "Flash Attention Dilumpuhkan",
-        "cacheTypes": "Jenis Cache: {{cacheK}}/{{cacheV}}"
+        "device": "Peranti: {{device}}"
       },
       "results": {
         "promptProcessing": "Pemprosesan Prompt",
@@ -1356,13 +1339,7 @@
       "actions": {
         "deleteButton": " "
       },
-      "errors": {
-        "networkRetry": "Semak sambungan & cuba lagi",
-        "appCheckRetry": "Cuba hantar semula",
-        "serverRetry": "Cuba lagi kemudian",
-        "genericRetry": "Cuba lagi",
-        "failedToSubmit": "Gagal menghantar tolok ukur"
-      }
+      "errors": {}
     },
     "deviceInfoCard": {
       "title": "Maklumat Peranti",
@@ -1388,8 +1365,7 @@
         "gpuRenderer": "Renderer",
         "gpuVendor": "Vendor",
         "metalSupport": "Sokongan Metal",
-        "openclSupport": "Sokongan OpenCL",
-        "openclRequirement": "Memerlukan i8mm & dotprod"
+        "openclSupport": "Sokongan OpenCL"
       },
       "instructions": {
         "format": "FP16: {{fp16}}, DotProd: {{dotProd}}, SVE: {{sve}}, I8MM: {{i8mm}}",

@@ -1282,29 +1282,21 @@
     },
     "buttons": {
       "advancedSettings": "تنظیمات پیشرفته",
-      "startTest": "شروع تست",
-      "runningTest": "در حال اجرای تست...",
       "clearAll": "پاک کردن همه",
       "done": "تمام",
       "cancel": "لغو",
       "delete": "حذف",
-      "share": "اشتراک‌گذاری",
-      "sharing": "در حال اشتراک‌گذاری...",
-      "viewRawData": "نمایش داده خام",
-      "hideRawData": "مخفی کردن داده خام"
+      "share": "اشتراک‌گذاری"
     },
     "messages": {
       "pleaseSelectModel": "لطفاً ابتدا یک مدل انتخاب و راه‌اندازی کنید",
       "testWarning": "توجه: تست ممکن است برای مدل‌های بزرگ‌تر ۲ تا ۵ دقیقه طول بکشد و بعد از شروع قابل توقف نیست.",
       "keepScreenOpen": "لطفاً این صفحه را باز نگه دارید.",
-      "initializingModel": "در حال راه‌اندازی مدل...",
-      "modelMaxValue": "(حداکثر: {{maxValue}})"
+      "initializingModel": "در حال راه‌اندازی مدل..."
     },
     "dialogs": {
       "advancedSettings": {
         "title": "تنظیمات پیشرفته",
-        "testProfile": "پروفایل تست",
-        "customParameters": "پارامترهای سفارشی",
         "description": "پارامترهای بنچمارک را برای سناریوهای تست خاص تنظیم کنید."
       },
       "deleteResult": {
@@ -1316,11 +1308,7 @@
         "message": "آیا مطمئنید می‌خواهید همه نتایج بنچمارک را حذف کنید؟"
       },
       "shareResults": {
-        "title": "اشتراک‌گذاری نتایج بنچمارک",
-        "sharedDataTitle": "داده‌های به اشتراک گذاشته شده شامل:",
-        "deviceAndModelInfo": "• مشخصات دستگاه و اطلاعات مدل",
-        "performanceMetrics": "• معیارهای عملکرد",
-        "dontShowAgain": "دیگر این پیام را نشان نده"
+        "title": "اشتراک‌گذاری نتایج بنچمارک"
       }
     },
     "sections": {
@@ -1338,13 +1326,8 @@
         "title": "تنظیمات مدل",
         "context": "Context: {{context}}",
         "batch": "Batch: {{batch}}",
-        "ubatch": "UBatch: {{ubatch}}",
         "cpuThreads": "ریسه‌های CPU: {{threads}}",
-        "gpuLayers": "لایه‌های GPU: {{layers}}",
-        "device": "دستگاه: {{device}}",
-        "flashAttentionEnabled": "Flash Attention فعال",
-        "flashAttentionDisabled": "Flash Attention غیرفعال",
-        "cacheTypes": "نوع کش: {{cacheK}}/{{cacheV}}"
+        "device": "دستگاه: {{device}}"
       },
       "results": {
         "promptProcessing": "پردازش پرامپت",
@@ -1356,13 +1339,7 @@
       "actions": {
         "deleteButton": " "
       },
-      "errors": {
-        "networkRetry": "اتصال را بررسی کنید و دوباره تلاش کنید",
-        "appCheckRetry": "ارسال مجدد",
-        "serverRetry": "بعداً دوباره تلاش کنید",
-        "genericRetry": "تلاش مجدد",
-        "failedToSubmit": "ارسال نتیجه بنچمارک ناموفق بود"
-      }
+      "errors": {}
     },
     "deviceInfoCard": {
       "title": "اطلاعات دستگاه",
@@ -1388,8 +1365,7 @@
         "gpuRenderer": "رندرر",
         "gpuVendor": "سازنده",
         "metalSupport": "پشتیبانی Metal",
-        "openclSupport": "پشتیبانی OpenCL",
-        "openclRequirement": "نیاز به i8mm و dotprod"
+        "openclSupport": "پشتیبانی OpenCL"
       },
       "instructions": {
         "format": "FP16: {{fp16}}, DotProd: {{dotProd}}, SVE: {{sve}}, I8MM: {{i8mm}}",

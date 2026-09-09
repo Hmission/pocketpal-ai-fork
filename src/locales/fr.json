@@ -685,29 +685,21 @@
     },
     "buttons": {
       "advancedSettings": "Paramètres avancés",
-      "startTest": "Démarrer le test",
-      "runningTest": "Test en cours...",
       "clearAll": "Tout effacer",
       "done": "Terminé",
       "cancel": "Annuler",
       "delete": "Supprimer",
-      "share": "Partager",
-      "sharing": "Partage en cours...",
-      "viewRawData": "Voir données brutes",
-      "hideRawData": "Masquer données brutes"
+      "share": "Partager"
     },
     "messages": {
       "pleaseSelectModel": "Veuillez d'abord sélectionner et initialiser un modèle",
       "testWarning": "Note : Le test pourrait durer jusqu'à 2-5 minutes pour les grands modèles et ne peut pas être interrompu une fois démarré.",
       "keepScreenOpen": "Veuillez garder cet écran ouvert.",
-      "initializingModel": "Initialisation du modèle...",
-      "modelMaxValue": "(max : {{maxValue}})"
+      "initializingModel": "Initialisation du modèle..."
     },
     "dialogs": {
       "advancedSettings": {
         "title": "Paramètres avancés",
-        "testProfile": "Profil de test",
-        "customParameters": "Paramètres personnalisés",
         "description": "Affinez les paramètres de benchmark pour des scénarios de test spécifiques."
       },
       "deleteResult": {
@@ -719,11 +711,7 @@
         "message": "Êtes-vous sûr de vouloir supprimer tous les résultats de benchmark ?"
       },
       "shareResults": {
-        "title": "Partager les résultats du benchmark",
-        "sharedDataTitle": "Les données partagées incluent :",
-        "deviceAndModelInfo": "• Spécifications de l'appareil et infos du modèle",
-        "performanceMetrics": "• Métriques de performance",
-        "dontShowAgain": "Ne plus afficher ce message"
+        "title": "Partager les résultats du benchmark"
       }
     },
     "sections": {
@@ -741,12 +729,7 @@
         "title": "Paramètres du modèle",
         "context": "Contexte : {{context}}",
         "batch": "Lot : {{batch}}",
-        "ubatch": "ULot : {{ubatch}}",
-        "cpuThreads": "Threads CPU : {{threads}}",
-        "gpuLayers": "Couches GPU : {{layers}}",
-        "flashAttentionEnabled": "Flash Attention activé",
-        "flashAttentionDisabled": "Flash Attention désactivé",
-        "cacheTypes": "Types de cache : {{cacheK}}/{{cacheV}}"
+        "cpuThreads": "Threads CPU : {{threads}}"
       },
       "results": {
         "promptProcessing": "Traitement de l'invite",
@@ -755,13 +738,7 @@
         "peakMemory": "Mémoire maximale",
         "tokensPerSecond": "t/s"
       },
-      "errors": {
-        "networkRetry": "Vérifier la connexion et réessayer",
-        "appCheckRetry": "Réessayer la soumission",
-        "serverRetry": "Réessayer plus tard",
-        "genericRetry": "Réessayer",
-        "failedToSubmit": "Échec de soumission du benchmark"
-      }
+      "errors": {}
     },
     "deviceInfoCard": {
       "title": "Informations sur l'appareil",

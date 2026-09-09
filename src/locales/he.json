@@ -1282,29 +1282,21 @@
     },
     "buttons": {
       "advancedSettings": "הגדרות מתקדמות",
-      "startTest": "התחל בדיקה",
-      "runningTest": "מריץ בדיקה...",
       "clearAll": "נקה הכל",
       "done": "בוצע",
       "cancel": "ביטול",
       "delete": "מחק",
-      "share": "שתף",
-      "sharing": "שיתוף...",
-      "viewRawData": "הצג נתונים גולמיים",
-      "hideRawData": "הסתר נתונים גולמיים"
+      "share": "שתף"
     },
     "messages": {
       "pleaseSelectModel": "אנא בחר ואתחל מודל תחילה",
       "testWarning": "הערה: הבדיקה יכולה להימשך עד 2-5 דקות עבור מודלים גדולים ולא ניתן להפסיק אותה לאחר תחילתה.",
       "keepScreenOpen": "אנא השאר את המסך הזה פתוח.",
-      "initializingModel": "אתחול מודל...",
-      "modelMaxValue": "(מקסימום: {{maxValue}})"
+      "initializingModel": "אתחול מודל..."
     },
     "dialogs": {
       "advancedSettings": {
         "title": "הגדרות מתקדמות",
-        "testProfile": "פרופיל בדיקה",
-        "customParameters": "פרמטרים מותאמים אישית",
         "description": "כוונן את פרמטרי מבחן הביצועים עבור תרחישי בדיקה ספציפיים."
       },
       "deleteResult": {
@@ -1316,11 +1308,7 @@
         "message": "האם אתה בטוח שברצונך למחוק את כל תוצאות מבחן הביצועים?"
       },
       "shareResults": {
-        "title": "שתף תוצאות מבחן ביצועים",
-        "sharedDataTitle": "הנתונים ששותפו כוללים:",
-        "deviceAndModelInfo": "• מפרט המכשיר ומידע על המודל",
-        "performanceMetrics": "• מדדי ביצועים",
-        "dontShowAgain": "אל תציג הודעה זו שוב"
+        "title": "שתף תוצאות מבחן ביצועים"
       }
     },
     "sections": {
@@ -1338,13 +1326,8 @@
         "title": "הגדרות מודל",
         "context": "הקשר: {{context}}",
         "batch": "אצווה: {{batch}}",
-        "ubatch": "אצוות משתמש: {{ubatch}}",
         "cpuThreads": "שרשורי CPU: {{threads}}",
-        "gpuLayers": "שכבות GPU: {{layers}}",
-        "device": "מכשיר: {{device}}",
-        "flashAttentionEnabled": "קשב מהיר (Flash Attention) מופעל",
-        "flashAttentionDisabled": "קשב מהיר (Flash Attention) מושבת",
-        "cacheTypes": "סוגי מטמון: {{cacheK}}/{{cacheV}}"
+        "device": "מכשיר: {{device}}"
       },
       "results": {
         "promptProcessing": "עיבוד הנחיה",
@@ -1356,13 +1339,7 @@
       "actions": {
         "deleteButton": " "
       },
-      "errors": {
-        "networkRetry": "בדוק את החיבור ונסה שוב",
-        "appCheckRetry": "נסה לשלוח שוב",
-        "serverRetry": "נסה שוב מאוחר יותר",
-        "genericRetry": "נסה שוב",
-        "failedToSubmit": "שליחת מבחן הביצועים נכשלה"
-      }
+      "errors": {}
     },
     "deviceInfoCard": {
       "title": "מידע על המכשיר",
@@ -1388,8 +1365,7 @@
         "gpuRenderer": "מרנדר",
         "gpuVendor": "יצרן",
         "metalSupport": "תומך ב-Metal",
-        "openclSupport": "תומך ב-OpenCL",
-        "openclRequirement": "דורש i8mm ו-dotprod"
+        "openclSupport": "תומך ב-OpenCL"
       },
       "instructions": {
         "format": "FP16: {{fp16}}, DotProd: {{dotProd}}, SVE: {{sve}}, I8MM: {{i8mm}}",

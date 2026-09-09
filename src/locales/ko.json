@@ -38,14 +38,9 @@
     },
     "buttons": {
       "advancedSettings": "고급 설정",
-      "startTest": "테스트 시작",
-      "runningTest": "테스트 실행 중...",
       "clearAll": "전체 삭제",
       "done": "완료",
       "share": "공유",
-      "sharing": "공유 중...",
-      "viewRawData": "RAW 데이터 보기",
-      "hideRawData": "RAW 데이터 숨기기",
       "cancel": "취소",
       "delete": "삭제"
     },
@@ -53,14 +48,11 @@
       "pleaseSelectModel": "시작하려면 모델 선택 및 초기화가 필요합니다.",
       "testWarning": "주의: 테스트는 대형 모델의 경우 최대 2~5분까지 걸릴 수 있으며, 실행 중에 중단할 수 없습니다.",
       "keepScreenOpen": "이 화면을 그대로 유지해 주세요.",
-      "initializingModel": "모델 초기화 중...",
-      "modelMaxValue": "(최대: {{maxValue}})"
+      "initializingModel": "모델 초기화 중..."
     },
     "dialogs": {
       "advancedSettings": {
-        "testProfile": "테스트 프로필",
         "title": "고급 설정",
-        "customParameters": "사용자 정의 파라미터",
         "description": "특정 테스트 시나리오에 맞게 벤치마크 파라미터를 미세 조정합니다."
       },
       "deleteResult": {
@@ -72,11 +64,7 @@
         "message": "모든 벤치마크 결과를 삭제하겠습니까?"
       },
       "shareResults": {
-        "title": "벤치마크 결과 공유",
-        "sharedDataTitle": "포함되는 공유 데이터:",
-        "deviceAndModelInfo": "• 기기 사양 및 모델 정보",
-        "performanceMetrics": "• 성능 지표",
-        "dontShowAgain": "이 메시지 다시 보지 않기"
+        "title": "벤치마크 결과 공유"
       }
     },
     "sections": {
@@ -94,12 +82,7 @@
         "title": "모델 설정",
         "context": "컨텍스트: {{context}}",
         "batch": "배치 크기: {{batch}}",
-        "ubatch": "UBatch: {{ubatch}}",
         "cpuThreads": "CPU 스레드: {{threads}}",
-        "gpuLayers": "GPU 레이어: {{layers}}",
-        "flashAttentionEnabled": "Flash Attention 활성화됨",
-        "flashAttentionDisabled": "Flash Attention 비활성화됨",
-        "cacheTypes": "캐시 유형: {{cacheK}}/{{cacheV}}",
         "device": "기기: {{device}}"
       },
       "results": {
@@ -112,13 +95,7 @@
       "actions": {
         "deleteButton": " "
       },
-      "errors": {
-        "networkRetry": "네트워크 연결 확인 후 다시 시도",
-        "appCheckRetry": "제출 다시 시도",
-        "serverRetry": "나중에 다시 시도해 주세요",
-        "genericRetry": "다시 시도",
-        "failedToSubmit": "벤치마크 제출 실패"
-      }
+      "errors": {}
     },
     "deviceInfoCard": {
       "title": "기기 정보",
@@ -144,8 +121,7 @@
         "gpuRenderer": "렌더링 엔진",
         "gpuVendor": "제조사",
         "metalSupport": "Metal 지원",
-        "openclSupport": "OpenCL 지원",
-        "openclRequirement": "i8mm 및 dotprod 기능 필요"
+        "openclSupport": "OpenCL 지원"
       },
       "instructions": {
         "format": "FP16: {{fp16}}, DotProd: {{dotProd}}, SVE: {{sve}}, I8MM: {{i8mm}}",

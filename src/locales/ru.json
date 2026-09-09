@@ -38,29 +38,21 @@
     },
     "buttons": {
       "advancedSettings": "Дополнительные настройки",
-      "startTest": "Запустить тест",
-      "runningTest": "Запуск теста...",
       "clearAll": "Очистить всё",
       "done": "Готово",
       "cancel": "Отмена",
       "delete": "Удалить",
-      "share": "Поделиться",
-      "sharing": "Поделиться...",
-      "viewRawData": "Показать необработанные данные",
-      "hideRawData": "Скрыть необработанные данные"
+      "share": "Поделиться"
     },
     "messages": {
       "pleaseSelectModel": "Сначала выберите и инициализируйте модель",
       "testWarning": "Примечание: Тестирование больших моделей может занять от 2 до 5 минут и его нельзя прервать после запуска.",
       "keepScreenOpen": "Пожалуйста, не закрывайте этот экран.",
-      "initializingModel": "Инициализация модели...",
-      "modelMaxValue": "(макс.: {{maxValue}})"
+      "initializingModel": "Инициализация модели..."
     },
     "dialogs": {
       "advancedSettings": {
         "title": "Дополнительные настройки",
-        "testProfile": "Профиль тестирования",
-        "customParameters": "Пользовательские параметры",
         "description": "Точная настройка параметров тестирования под определенные сценарии."
       },
       "deleteResult": {
@@ -72,11 +64,7 @@
         "message": "Вы уверены, что хотите удалить все результаты тестирования?"
       },
       "shareResults": {
-        "title": "Поделиться результатами тестирования",
-        "sharedDataTitle": "Передаваемые данные включают:",
-        "deviceAndModelInfo": "• Характеристики устройства и данные модели",
-        "performanceMetrics": "• Метрики производительности",
-        "dontShowAgain": "Больше не показывать это сообщение"
+        "title": "Поделиться результатами тестирования"
       }
     },
     "sections": {
@@ -95,11 +83,6 @@
         "context": "Контекст: {{context}}",
         "batch": "Batch: {{batch}}",
         "cpuThreads": "Потоки CPU: {{threads}}",
-        "gpuLayers": "Слои GPU: {{layers}}",
-        "flashAttentionEnabled": "Flash Attention включен",
-        "flashAttentionDisabled": "Flash Attention отключен",
-        "cacheTypes": "Типы кэша: {{cacheK}}/{{cacheV}}",
-        "ubatch": "UBatch: {{ubatch}}",
         "device": "Устройство: {{device}}"
       },
       "results": {
@@ -112,13 +95,7 @@
       "actions": {
         "deleteButton": " "
       },
-      "errors": {
-        "networkRetry": "Проверить соединение и повторить",
-        "appCheckRetry": "Отправить повторно",
-        "serverRetry": "Попробуйте ещё раз позже",
-        "genericRetry": "Повторить",
-        "failedToSubmit": "Не удалось отправить результаты тестирования"
-      }
+      "errors": {}
     },
     "deviceInfoCard": {
       "title": "Информация об устройстве",
@@ -144,8 +121,7 @@
         "gpuRenderer": "Рендерер",
         "gpuVendor": "Поставщик",
         "metalSupport": "Поддержка Metal",
-        "openclSupport": "Поддержка OpenCL",
-        "openclRequirement": "Требуется i8mm & dotprod"
+        "openclSupport": "Поддержка OpenCL"
       },
       "instructions": {
         "format": "FP16: {{fp16}}, DotProd: {{dotProd}}, SVE: {{sve}}, I8MM: {{i8mm}}",

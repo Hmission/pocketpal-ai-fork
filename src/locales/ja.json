@@ -1282,29 +1282,21 @@
     },
     "buttons": {
       "advancedSettings": "詳細設定",
-      "startTest": "テスト開始",
-      "runningTest": "テスト実行中...",
       "clearAll": "すべて消去",
       "done": "完了",
       "cancel": "キャンセル",
       "delete": "削除",
-      "share": "共有",
-      "sharing": "共有中...",
-      "viewRawData": "生データを表示",
-      "hideRawData": "生データを隠す"
+      "share": "共有"
     },
     "messages": {
       "pleaseSelectModel": "モデルを選択して初期化してください",
       "testWarning": "注意：大きなモデルでは最大2～5分かかる場合があり、開始後は中断できません",
       "keepScreenOpen": "画面を開いたままにしておいてください",
-      "initializingModel": "モデルを初期化中...",
-      "modelMaxValue": "(最大: {{maxValue}})"
+      "initializingModel": "モデルを初期化中..."
     },
     "dialogs": {
       "advancedSettings": {
         "title": "詳細設定",
-        "testProfile": "テストプロファイル",
-        "customParameters": "カスタムパラメーター",
         "description": "特定のテストシナリオに合わせてベンチマーク設定を調整できます"
       },
       "deleteResult": {
@@ -1316,11 +1308,7 @@
         "message": "すべてのベンチマーク結果を削除してもよろしいですか？"
       },
       "shareResults": {
-        "title": "ベンチマーク結果を共有",
-        "sharedDataTitle": "共有されるデータ：",
-        "deviceAndModelInfo": "• デバイス仕様とモデル情報",
-        "performanceMetrics": "• パフォーマンス指標",
-        "dontShowAgain": "次回から表示しない"
+        "title": "ベンチマーク結果を共有"
       }
     },
     "sections": {
@@ -1338,13 +1326,8 @@
         "title": "モデル設定",
         "context": "コンテキスト: {{context}}",
         "batch": "バッチ: {{batch}}",
-        "ubatch": "Uバッチ: {{ubatch}}",
         "cpuThreads": "CPUスレッド: {{threads}}",
-        "gpuLayers": "GPUレイヤー: {{layers}}",
-        "device": "デバイス: {{device}}",
-        "flashAttentionEnabled": "Flash Attention 有効",
-        "flashAttentionDisabled": "Flash Attention 無効",
-        "cacheTypes": "キャッシュタイプ: {{cacheK}}/{{cacheV}}"
+        "device": "デバイス: {{device}}"
       },
       "results": {
         "promptProcessing": "プロンプト処理",
@@ -1356,13 +1339,7 @@
       "actions": {
         "deleteButton": " "
       },
-      "errors": {
-        "networkRetry": "接続を確認して再試行",
-        "appCheckRetry": "送信をやり直す",
-        "serverRetry": "後でもう一度お試しください",
-        "genericRetry": "再試行",
-        "failedToSubmit": "ベンチマーク結果の送信に失敗しました"
-      }
+      "errors": {}
     },
     "deviceInfoCard": {
       "title": "デバイス情報",
@@ -1388,8 +1365,7 @@
         "gpuRenderer": "レンダラー",
         "gpuVendor": "ベンダー",
         "metalSupport": "Metalサポート",
-        "openclSupport": "OpenCLサポート",
-        "openclRequirement": "i8mmとdotprodが必要"
+        "openclSupport": "OpenCLサポート"
       },
       "instructions": {
         "format": "FP16: {{fp16}}, DotProd: {{dotProd}}, SVE: {{sve}}, I8MM: {{i8mm}}",

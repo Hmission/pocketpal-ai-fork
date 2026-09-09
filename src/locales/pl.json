@@ -1165,16 +1165,10 @@
   "benchmark": {
     "dialogs": {
       "shareResults": {
-        "dontShowAgain": "Nie pokazuj ponownie tego komunikatu",
-        "title": "Udostępnij Wyniki Testów Porównawczych",
-        "sharedDataTitle": "Udostępnione dane obejmują:",
-        "deviceAndModelInfo": "• Dane techniczne urządzenia i informacje o modelu",
-        "performanceMetrics": "• Wskaźniki wydajności"
+        "title": "Udostępnij Wyniki Testów Porównawczych"
       },
       "advancedSettings": {
         "title": "Ustawienia Zaawansowane",
-        "testProfile": "Profil Testowy",
-        "customParameters": "Niestandardowe Parametry",
         "description": "Dostosuj parametry testu porównawczego do konkretnych scenariuszy testowych."
       },
       "deleteResult": {
@@ -1201,24 +1195,13 @@
         "title": "Ustawienia Modelu",
         "context": "Kontekst: {{context}}",
         "batch": "Partia: {{batch}}",
-        "ubatch": "UBatch: {{ubatch}}",
         "cpuThreads": "Wątki CPU: {{threads}}",
-        "gpuLayers": "Warstwy GPU: {{layers}}",
-        "device": "Urządzenie: {{device}}",
-        "flashAttentionEnabled": "Flash Attention Włączone",
-        "flashAttentionDisabled": "Flash Attention Wyłączone",
-        "cacheTypes": "Typy pamięci podręcznej: {{cacheK}}/{{cacheV}}"
+        "device": "Urządzenie: {{device}}"
       },
       "actions": {
         "deleteButton": " "
       },
-      "errors": {
-        "networkRetry": "Sprawdź połączenie i spróbuj ponownie",
-        "appCheckRetry": "Spróbuj ponownie przesłać zgłoszenie",
-        "serverRetry": "Spróbuj ponownie później",
-        "genericRetry": "Ponów",
-        "failedToSubmit": "Nie udało się przesłać wyników testu porównawczego"
-      },
+      "errors": {},
       "results": {
         "promptProcessing": "Przetwarzanie Promptów",
         "tokenGeneration": "Generowanie Tokenów",
@@ -1251,8 +1234,7 @@
         "gpuRenderer": "Renderer",
         "gpuVendor": "Dostawca",
         "metalSupport": "Wsparcie Metal",
-        "openclSupport": "Wsparcie OpenCL",
-        "openclRequirement": "Wymaga i8mm i dotprod"
+        "openclSupport": "Wsparcie OpenCL"
       },
       "instructions": {
         "yes": "✓",
@@ -1268,23 +1250,17 @@
     },
     "buttons": {
       "advancedSettings": "Ustawienia Zaawansowane",
-      "startTest": "Rozpocznij Test",
-      "runningTest": "Przeprowadzanie Testu...",
       "clearAll": "Wyczyść Wszystko",
       "done": "Gotowe",
       "cancel": "Anuluj",
       "delete": "Usuń",
-      "share": "Udostępnij",
-      "sharing": "Udostępnianie...",
-      "viewRawData": "Zobacz Surowe Dane",
-      "hideRawData": "Ukryj Surowe Dane"
+      "share": "Udostępnij"
     },
     "messages": {
       "pleaseSelectModel": "Proszę najpierw wybrać i zainicjować model",
       "testWarning": "Uwaga: W przypadku większych modeli test może trwać od 2 do 5 minut i nie można go przerwać po rozpoczęciu.",
       "keepScreenOpen": "Proszę pozostawić ten ekran otwarty.",
-      "initializingModel": "Inicjalizacja modelu...",
-      "modelMaxValue": "(maks.: {{maxValue}})"
+      "initializingModel": "Inicjalizacja modelu..."
     }
   },
   "errors": {

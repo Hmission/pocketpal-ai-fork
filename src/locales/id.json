@@ -1282,29 +1282,21 @@
     },
     "buttons": {
       "advancedSettings": "Pengaturan Lanjutan",
-      "startTest": "Mulai Uji",
-      "runningTest": "Menjalankan Uji...",
       "clearAll": "Bersihkan Semua",
       "done": "Selesai",
       "cancel": "Batal",
       "delete": "Hapus",
-      "share": "Bagikan",
-      "sharing": "Membagikan...",
-      "viewRawData": "Lihat Data Mentah",
-      "hideRawData": "Sembunyikan Data Mentah"
+      "share": "Bagikan"
     },
     "messages": {
       "pleaseSelectModel": "Harap pilih dan inisialisasi model terlebih dahulu",
       "testWarning": "Catatan: Uji dapat berjalan hingga 2-5 menit untuk model besar dan tidak dapat dihentikan setelah dimulai.",
       "keepScreenOpen": "Harap biarkan layar ini tetap terbuka.",
-      "initializingModel": "Menginisialisasi model...",
-      "modelMaxValue": "(maks: {{maxValue}})"
+      "initializingModel": "Menginisialisasi model..."
     },
     "dialogs": {
       "advancedSettings": {
         "title": "Pengaturan Lanjutan",
-        "testProfile": "Profil Uji",
-        "customParameters": "Parameter Kustom",
         "description": "Sesuaikan parameter benchmark untuk skenario pengujian tertentu."
       },
       "deleteResult": {
@@ -1316,11 +1308,7 @@
         "message": "Yakin ingin menghapus semua hasil benchmark?"
       },
       "shareResults": {
-        "title": "Bagikan Hasil Benchmark",
-        "sharedDataTitle": "Data yang dibagikan mencakup:",
-        "deviceAndModelInfo": "• Spesifikasi perangkat & info model",
-        "performanceMetrics": "• Metrik performa",
-        "dontShowAgain": "Jangan tampilkan pesan ini lagi"
+        "title": "Bagikan Hasil Benchmark"
       }
     },
     "sections": {
@@ -1338,13 +1326,8 @@
         "title": "Pengaturan Model",
         "context": "Konteks: {{context}}",
         "batch": "Batch: {{batch}}",
-        "ubatch": "UBatch: {{ubatch}}",
         "cpuThreads": "Thread CPU: {{threads}}",
-        "gpuLayers": "Layer GPU: {{layers}}",
-        "device": "Perangkat: {{device}}",
-        "flashAttentionEnabled": "Flash Attention Diaktifkan",
-        "flashAttentionDisabled": "Flash Attention Dinonaktifkan",
-        "cacheTypes": "Jenis Cache: {{cacheK}}/{{cacheV}}"
+        "device": "Perangkat: {{device}}"
       },
       "results": {
         "promptProcessing": "Pemrosesan Prompt",
@@ -1356,13 +1339,7 @@
       "actions": {
         "deleteButton": " "
       },
-      "errors": {
-        "networkRetry": "Periksa koneksi & coba lagi",
-        "appCheckRetry": "Coba kirim lagi",
-        "serverRetry": "Coba lagi nanti",
-        "genericRetry": "Coba lagi",
-        "failedToSubmit": "Gagal mengirim benchmark"
-      }
+      "errors": {}
     },
     "deviceInfoCard": {
       "title": "Informasi Perangkat",
@@ -1388,8 +1365,7 @@
         "gpuRenderer": "Renderer",
         "gpuVendor": "Vendor",
         "metalSupport": "Dukungan Metal",
-        "openclSupport": "Dukungan OpenCL",
-        "openclRequirement": "Memerlukan i8mm & dotprod"
+        "openclSupport": "Dukungan OpenCL"
       },
       "instructions": {
         "format": "FP16: {{fp16}}, DotProd: {{dotProd}}, SVE: {{sve}}, I8MM: {{i8mm}}",
