@@ -4096,10 +4096,24 @@ fetchModels(GET ${url}/v1/models, connection.ts:90) → pickModelListRows(data)
 
 | 项 | 状态 |
 |---|---|
-| 项52 qwen 真机取证 | ⏳ 需设备 + 用户百炼服务器配置（读三态定位断点）|
+| 项52 qwen 真机取证 | ✅ 已坐实+修复（§177.6）：真凶=没添加到 userSelectedModels，addModel 后 UI 见 qwen3.8-flash |
 | MODEL_MATRIX 视频标注 3 行 | ⏳ 仍留工作区（混他人 §1.3 观望清单，§174.9 教训不擅自卷入）|
 | 本波提交 | ⏳ fix 硬门控 + docs §177 已改，未 push |
 | 硬门控真机目视 | ⏳ 需装机验「选 Wan→出片按钮显暂不可用且点不动」（代码+单测已钉，真机目视待接机窗）|
+
+### 177.6 qwen「没办法选择」真机取证 + 修复（设备 aab688d9，DRC 只读，wave176_03/act-e37767fc）
+
+**先认错（记忆反思）**：大王补充「key 从母仓 API 配置中心拿，qwen 3.8 flash」——这条「key 从配置中心拿」上次大王说过、我**没记进记忆**，这次又忘了反问大王要配置；且把「qwen 3.8 flash」误读成「qwen3.8f」去猜「无此型号」。已补记忆（id `0a522f2a`：配置中心位置 + 百炼双体系铁律8.2 + qwen3.8-flash + config_id）。
+
+**配置中心实物定位**（F:\AIOS，只读，key 全程掩码未打印明文）：API 配置中心 = `data/gateway/configs.json`（53 张卡片，key 是 Fernet `encrypted_data`）+ `config/sub_brain.py`（副脑/小脑单一源）。目标卡 `dashscope_1788522576959`：model=**qwen3.8-flash**、endpoint=**专属域** `ws-v6yhmq47rgvfwjco.cn-beijing.maas.aliyuncs.com/compatible-mode/v1`。铁律8.2（sub_brain.py:38 实证）：公共域 dashscope.aliyuncs.com 对业务空间 sk- key 必 401。**架构事实**：api_gateway 是母仓内部 Python 库（APIGateway class）非 HTTP 服务、key 是 Fernet 加密 → 手机 App 无法直连自动拿 key，「从配置中心自动接线」当前是**架构缺口**（如实登记，不谎称已接）。
+
+**真机取证三证**（DRC 只读）：① `server.list` → 用户配 1 台「DRC-V1-百炼」，url=专属域 `…maas.aliyuncs.com/compatible-mode`（**正确非公共域**）、serverType=OpenAI；② `server.probe` → **ok:true, modelCount:249**（key 有效无401）、requestUrl=`…/compatible-mode/v1/models`（normalizeUrl 幂等**无双 /v1**）；③ `server.models contains=qwen` → fetched249/matched184，**qwen3.8-flash 在列表**（第4个）。
+
+→ **真凶坐实**：qwen3.8-flash 在 serverModels（拉取的249）里，但**没添加到 userSelectedModels** → remoteModels（:456 派生自 userSelectedModels 非 serverModels）空 → 聊天页选择器不列。**不是代码 bug，是「配了服务器但没走添加模型这步」**（server.addModel:756 注释直证「义肢链路必走此步」）。候选根因②③④（公共域/无效id/serverType）均被真机实物否证。
+
+**修复 + 双口径验证**：DRC `server.addModel qwen3.8-flash` → added:true、**remoteModelCount:1**；`models.scan` → **count:19**（本地18+远程1）；**UI 目视第二口径**：聊天页 dump 见 qwen3.8-flash 两处——`[ ] 207,402 qwen3.8-flash`（选择器选项）+ `[c] 612,631 qwen3.8-flash, 奴家是女妖…1075毫秒 TTFT`（会话卡，TTFT 1075ms 说明已成功对话）。
+
+**遗留观察（不擅自扩面）**：① UX 缺口——RemoteModelSheet 配了服务器后要从 249 模型里手动「添加」，流程不够显眼，用户易卡在「配了但选不了」；② 「DRC-V1-百炼」是之前 DRC 取证的测试痕迹，本波 addModel 让 qwen3.8-flash 可用（正是大王要的）未 remove；③ App「从配置中心自动拿 key」是架构缺口，需大王定是否立项接线。
 
 
 
