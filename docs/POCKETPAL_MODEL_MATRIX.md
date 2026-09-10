@@ -71,6 +71,30 @@ relates: [POCKETPAL_DESIGN_SPEC]
 > 社区 2026 验证：`Qwen3.5-4B-Q4_K_M + mmproj-BF16` 是 ComfyUI 反推节点标准组合（禁思考模式、纯净描述）。
 > 零新增文件：视觉伴侣 #2/#4 已于 2026-08-20 入册装机。
 
+## 1.3 观望清单（评估中，**未准入** → §4 推送门禁仍一律不受理）
+
+| 模型 | 评估日 | 一句话结论 | 准入前置判据 |
+|---|---|---|---|
+| **MiniCPM5-2B**（含社区破限版） | 2026-09-08～09-09 | **Agent/chat 位候选**（AA Agentic 20 vs 本表 #5 #7 各 2）；Q4_K_M 1.56GB 比 #3 小 1.15GB、KV ≈42KB/token；**不替代 #3/#4**（2B 无视觉，图像反推唯一路径仍为 Qwen3.5-4B + mmproj）；**不下 #8 管家**（#8 是 657MB 永驻 prompter，职责不同） | 本机探针三项全过（见下），过后再走「大王钦定 → 本表加行 → modelCatalog/防漂移断言同波登记」 |
+
+> **探针三项判据（本机 `llama-server --jinja`，不动 App 不装机）**：① 下发 tools 能回合法
+> `tool_calls`——**本仓无 JS 侧解析器**（`AgentRunner` 直食 llama.rn 结果），解析只可能在
+> 原生侧，而 llama.rn 钉在 0.12.7；官方将工具调用推荐后端写的是 SGLang，llama.cpp 属次级路径；
+> ② think/no-think 两态与 `reasoning_content` 回灌不炸（模板原生支持，但需实测，参 Ministral
+> 旧血证）；③ prefill 与 tokens/s 实测（**未测不得推断速度**，中文 ~1.4 token/字，系统提示 +
+> 11 工具 schema 是预填大头）。
+> 若②③ 过而 ① 不过 → 缺口在引擎层，退回观望并等 llama.rn bump，**不做 JS 侧兜底解析**。
+>
+> **一手事实（2026-09-09 实）**：标准 `LlamaForCausalLM` / 2.52B（非嵌入 1.98B）/ 42 层 /
+> 16Q-2KV GQA / vocab 130,560 / **131,072 原生上下文（`rope_scaling` 为空，无需 YARN）** /
+> apache-2.0；**官方 GGUF 已双源齐备**（HF `openbmb/MiniCPM5-2B-GGUF` + 魔搭
+> `OpenBMB/MiniCPM5-2B-GGUF`）→ 不需手工补镜像（对比 #8 当年走 zensignGG 镜像）。
+>
+> **破限版现状（纠正旧断言）**：本表曾隐含「MiniCPM 系列无 abliterated 生态」——**不成立**
+> （#8 管家本身就是 heretic 版）。MiniCPM5-2B 发布当日已出现
+> `insraq/MiniCPM5-2B-heretic-abliterated`（refusals 99/100 → 5/100，KL 0.0391，含可复现配置），
+> 但**只有 BF16 safetensors 无 GGUF**，装机需自行 `convert_hf_to_gguf.py` + `llama-quantize`；
+> KL 偏高 → **官方榜分不可外推到破限版**，需单独复跑探针。详见 MASTER_LOG §174。
 
 ## 2. 生图入选清单（6 件，含 1 个**视频模态**条目）
 
