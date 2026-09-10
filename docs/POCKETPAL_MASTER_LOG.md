@@ -4133,5 +4133,28 @@ fetchModels(GET ${url}/v1/models, connection.ts:90) → pickModelListRows(data)
 
 **断言纪律再记（本窗第二次过早下结论）**：正面结论「已修复可选」必须验到**最终 UI 口径**（选择器里真出现且可点），不是中间数据层（count:19 / remoteModelCount:1）。数据层对了不代表 UI 通了（中间还隔着 isChatSelectable 过滤）。
 
+### 179 全量复查波：项47 改判死代码根治 + 欠账清单复核（2026-09-10，session 80945206 / act-793dd034 + 扩 claim act-ded9bf48）
+
+**洋葱对账复核（§176.12 确证欠账 → §179 现状）**：
+| 欠账 | §176.12 | §179 复核 |
+|---|---|---|
+| 视频项50/51 | ⏳ | ✅ §177 硬门控落地，项50 按设备能力上限关闭 |
+| qwen 切换取证 | ⏳ | ✅ §177.6/177.7 真凶根治（createRemoteModel modelType）+ 真机选择器可选可切 |
+| §7③ chat.ts（项47） | ⏳ 阻塞在飞 | ✅ **本波改判+根治**（见下） |
+| §3 stderr（项36③） | ⏳ 需构建窗 | ⏳ 仍在——通用风险（生图夜间长跑也写 stderr，非仅视频），native 侧需构建窗，低危 |
+| §4 batch_count（项36④） | ⏳ 需构建窗 | ⏳ 仍在——能力边界缺声明（batch=1 硬编=当前能力上限，改 batch 会静默丢图），低危 |
+| §5 W9b-V 25处 | ⏳ 待目视 | ⏳ 仍在——ICON_SPEC §4.5 已逐条 file:line 入册，UI 一致性项 |
+
+**项47 改判 + 根治（本波动手，锋利双违清除）**：第二口径坐实 `applyChatTemplate`（chat.ts:246-295）主线**生产零调用**：① 全仓 git grep 仅 chat.ts 定义 + 3 处测试 spyOn；② useChatSession.ts 现 import 无它、实际走 llama.rn `getFormattedChat`（:1010）；③ §174.4 登记的调用点 :162/:338 现为 `convertToChatMessages` 参数行（调用点早已随重构消失——§174.4 登记基于并行窗口在飞版本）。
+→ 从「静默降级风险」改判「**死代码 + 死兜底**」（§176.12 曾把项47 列为最高风险「模型答离谱时根因不可见」——改判后风险归零：生产根本不走它）。
+处置（红态二段自证）：删 `applyChatTemplate` 函数（含 `return formattedChat \|\| ' '` 死兜底）；chatTemplates 保留（PalStore/builtinPalModels/ModelSettingsSheet/ChatTemplatePicker 消费方满）；拆 3 处**从未生效的死 mock**（useChatSession.test/assistantTurn.test/reasoning.test 的 spyOn，mock 值无断言消费 = AGENTS.md 纪律③正向案例同款静默失效）；删 chat.test.ts 专属段（Danube2 describe + 关联符号 Templates/ChatTemplateConfig/createModel/conversationWSystem，全只被它用）。
+红态自证：删函数保留测试 → chat.test.ts 1 failed（`applyChatTemplate is not a function`）；正式删后 4 套 74 例绿 + tsc 0 + prettier 过 + **全仓 applyChatTemplate 残留 0**（真机零行为变化，纯死代码）。
+
+**锋利度审计（本波）**：存量 TODO/fallback 全为注释性遗留（VideoPalScreen:30、SkillsDisplay:33、ChatView:632/671、DetailsView:117、hf.ts:205），无功能级兜底；无另造 UI 一套。
+
+**6D 补充**：qwen 链路模型维修复后 6D 全通；生图链路未污染（§176.7 双口径）；AIOS 七系统主体完成、少量观测缺口已入账（§175：lineage/KG 无索引 CORE-9/models.scan 不回清单/CORE-10/15 待大王定）。
+
+**交接口（本波未做/未验，不得读成已完成）**：硬门控真机目视（可接机窗做，代码+单测已钉）；MODEL_MATRIX 3 行（混他人 §1.3，待大王定处置）；项41 历史32行（待大王裁三选一）；未 push（待大王指令）。
+
 
 
