@@ -4038,6 +4038,26 @@ describe('ModelStore', () => {
       expect(remoteModels[0].serverName).toBe('LM Studio');
     });
 
+    // §177.7 回归：createRemoteModel 曾漏设 modelType，远端模型 modelType=undefined
+    // 被 isChatSelectable:165（modelType!==LLM→false）过滤 → 聊天页选择器选不到
+    // qwen3.8-flash 等远端模型（真机坐实：addModel 后仍不显示）。红态自证：撤掉
+    // createRemoteModel 的 modelType:LLM 则本条必红。
+    it('远端模型 modelType=LLM（§177.7：漏设会被 isChatSelectable 过滤选不了）', () => {
+      runInAction(() => {
+        serverStore.servers = [
+          {
+            id: 'srv-1',
+            name: '百炼',
+            url: 'https://ws-x.maas.aliyuncs.com/compatible-mode',
+          },
+        ];
+        serverStore.userSelectedModels = [
+          {serverId: 'srv-1', remoteModelId: 'qwen3.8-flash'},
+        ];
+      });
+      expect(modelStore.remoteModels[0].modelType).toBe(ModelType.LLM);
+    });
+
     it('returns empty array when no models are user-selected', () => {
       runInAction(() => {
         serverStore.servers = [

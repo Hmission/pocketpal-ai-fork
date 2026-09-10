@@ -74,6 +74,11 @@ function createRemoteModel(params: {
     name: params.modelName,
     author: params.serverName,
     origin: ModelOrigin.REMOTE,
+    // 远端模型即聊天 LLM：isChatSelectable 先判 modelType===LLM（:165）再看 REMOTE 放行分支（:169）。
+    // 漏设此字段 → modelType=undefined 被 :165 过滤 → 所有远端模型在聊天页选择器
+    //（ChatPalModelPickerSheet）全选不了（§177.7 真机坐实：qwen3.8-flash 已 addModel 仍不显示，
+    // 且 :169 的 REMOTE 放行分支因永远到不了而成死码）。
+    modelType: ModelType.LLM,
     isDownloaded: true,
     isLocal: false,
     size: 0,

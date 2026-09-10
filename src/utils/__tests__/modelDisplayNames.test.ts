@@ -4,7 +4,7 @@ import {
   getModelParamTag,
   isChatSelectable,
 } from '../modelDisplayNames';
-import {ModelType} from '../types';
+import {ModelOrigin, ModelType} from '../types';
 
 const model = (name: string, extra: Partial<{filename: string}> = {}) => ({
   name,
@@ -111,6 +111,28 @@ describe('modelDisplayNames', () => {
         isChatSelectable(
           model('sd35baked', {filename: 'sd35_medium_humanpose_baked.gguf'}),
         ),
+      ).toBe(false);
+    });
+
+    // §177.7：远端模型（createRemoteModel 造）filename='' + origin=REMOTE + modelType=LLM
+    // → isChatSelectable 放行（:169 REMOTE 分支：filename 空则 true）。此前 createRemoteModel
+    // 漏设 modelType 使远端模型卡在 :165，本两条钉住 REMOTE 放行分支不再是死码。
+    it('远端 LLM（origin=REMOTE、filename 空、modelType=LLM）可选（§177.7 REMOTE 放行）', () => {
+      expect(
+        isChatSelectable({
+          filename: '',
+          modelType: ModelType.LLM,
+          origin: ModelOrigin.REMOTE,
+        }),
+      ).toBe(true);
+    });
+
+    it('远端但 modelType 缺失则不可选（§177.7 bug 现场反证）', () => {
+      expect(
+        isChatSelectable({
+          filename: '',
+          origin: ModelOrigin.REMOTE,
+        }),
       ).toBe(false);
     });
   });
