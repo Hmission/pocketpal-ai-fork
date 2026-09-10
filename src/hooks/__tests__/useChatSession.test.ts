@@ -80,16 +80,7 @@ beforeEach(() => {
   };
 });
 
-// Mock the applyChatTemplate function from utils/chat
-const applyChatTemplateSpy = jest
-  .spyOn(require('../../utils/chat'), 'applyChatTemplate')
-  .mockImplementation(async () => 'mocked prompt');
-
 describe('useChatSession', () => {
-  beforeEach(() => {
-    applyChatTemplateSpy.mockClear();
-  });
-
   it('should send a message and update the chat session', async () => {
     const {result} = renderHook(() =>
       useChatSession({current: null}, textMessage.author, mockAssistant),

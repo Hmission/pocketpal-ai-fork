@@ -1,26 +1,11 @@
-import {Templates} from 'chat-formatter';
 import {
-  applyChatTemplate,
   convertToChatMessages,
   derivedText,
   stripReasoningContent,
   user,
   assistant,
 } from '../chat';
-import {
-  AgentStep,
-  ChatMessage,
-  ChatTemplateConfig,
-  MessageType,
-} from '../types';
-import {createModel} from '../../../jest/fixtures/models';
-
-const conversationWSystem: ChatMessage[] = [
-  {role: 'system', content: 'System prompt. '},
-  {role: 'user', content: 'Hi there!'},
-  {role: 'assistant', content: 'Nice to meet you!'},
-  {role: 'user', content: 'Can I ask a question?'},
-];
+import {AgentStep, ChatMessage, MessageType} from '../types';
 
 describe('convertToChatMessages', () => {
   it('should convert text-only messages correctly', () => {
@@ -727,22 +712,5 @@ describe('stripReasoningContent', () => {
 
     const stripped = stripReasoningContent(messages);
     expect(stripped[0]).toBe(messages[0]);
-  });
-});
-
-describe('Test Danube2 Chat Templates', () => {
-  it('Test danube-2 template with geneneration and system prompt', async () => {
-    const chatTemplate: ChatTemplateConfig = {
-      ...Templates.templates.danube2,
-      //isBeginningOfSequence: true,
-      //isEndOfSequence: true,
-      addGenerationPrompt: true,
-      name: 'danube2',
-    };
-    const model = createModel({chatTemplate: chatTemplate});
-    const result = await applyChatTemplate(conversationWSystem, model, null);
-    expect(result).toBe(
-      'System prompt. </s><|prompt|>Hi there!</s><|answer|>Nice to meet you!</s><|prompt|>Can I ask a question?</s><|answer|>',
-    );
   });
 });

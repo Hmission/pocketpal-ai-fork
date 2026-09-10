@@ -58,10 +58,6 @@ beforeEach(() => {
   serverStore.remoteReasoning = {};
 });
 
-jest
-  .spyOn(require('../../utils/chat'), 'applyChatTemplate')
-  .mockImplementation(async () => 'mocked prompt');
-
 const send = async () => {
   const {result} = renderHook(() =>
     useChatSession({current: null}, textMessage.author, mockAssistant),

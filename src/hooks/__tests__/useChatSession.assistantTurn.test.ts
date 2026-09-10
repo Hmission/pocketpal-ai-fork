@@ -44,15 +44,7 @@ beforeEach(() => {
   };
 });
 
-const applyChatTemplateSpy = jest
-  .spyOn(require('../../utils/chat'), 'applyChatTemplate')
-  .mockImplementation(async () => 'mocked prompt');
-
 describe('useChatSession — AssistantTurn integration', () => {
-  beforeEach(() => {
-    applyChatTemplateSpy.mockClear();
-  });
-
   it('#1 happy path: writes per-step content via updateActiveStepStreaming and finalizes the step', async () => {
     if (modelStore.context) {
       modelStore.context.completion = jest

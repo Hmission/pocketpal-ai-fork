@@ -1,5 +1,4 @@
-import {applyTemplate, Templates} from 'chat-formatter';
-import {JinjaFormattedChatResult, LlamaContext} from 'llama.rn';
+import {Templates} from 'chat-formatter';
 import {CompletionParams} from './completionTypes';
 import {defaultCompletionParams} from './completionSettingsVersions';
 
@@ -10,7 +9,6 @@ import {
   ChatTemplateConfig,
   HuggingFaceModel,
   MessageType,
-  Model,
 } from './types';
 
 export const userId = 'y9d7f8pgn';
@@ -243,56 +241,6 @@ export function convertToChatMessages(
  * 2. Context's model-specific template (if available)
  * 3. Default chat template as fallback
  */
-export async function applyChatTemplate(
-  messages: ChatMessage[],
-  model: Model | null,
-  context: LlamaContext | null,
-): Promise<string | JinjaFormattedChatResult> {
-  const modelChatTemplate = model?.chatTemplate;
-  const contextChatTemplate = (context?.model as any)?.metadata?.[
-    'tokenizer.chat_template'
-  ];
-
-  let formattedChat: string | JinjaFormattedChatResult | undefined;
-
-  try {
-    // Model's custom chat template. This uses chat-formatter, which is based on Nunjucks (as opposed to Jinja2).
-    if (modelChatTemplate?.chatTemplate) {
-      // Convert multimodal messages to text-only for chat-formatter compatibility
-      const textOnlyMessages = messages.map(msg => ({
-        ...msg,
-        content: Array.isArray(msg.content)
-          ? msg.content.find(part => part.type === 'text')?.text || ''
-          : msg.content,
-      }));
-      formattedChat = applyTemplate(textOnlyMessages, {
-        customTemplate: modelChatTemplate,
-        addGenerationPrompt: modelChatTemplate.addGenerationPrompt,
-      }) as string;
-    } else if (contextChatTemplate) {
-      // Context's model-specific chat template. This uses llama.cpp's getFormattedChat.
-      formattedChat = await context?.getFormattedChat(messages);
-    }
-
-    if (!formattedChat) {
-      // Default chat template - convert multimodal messages to text-only for chat-formatter compatibility
-      const textOnlyMessages = messages.map(msg => ({
-        ...msg,
-        content: Array.isArray(msg.content)
-          ? msg.content.find(part => part.type === 'text')?.text || ''
-          : msg.content,
-      }));
-      formattedChat = applyTemplate(textOnlyMessages, {
-        customTemplate: chatTemplates.default,
-        addGenerationPrompt: chatTemplates.default.addGenerationPrompt,
-      }) as string;
-    }
-  } catch (error) {
-    console.error('Error applying chat template:', error); // TODO: handle error
-  }
-
-  return formattedChat || ' ';
-}
 
 export const chatTemplates: Record<string, ChatTemplateConfig> = {
   custom: {
