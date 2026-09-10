@@ -240,6 +240,41 @@ describe('GenActionBar（2026-08-26 吸底操作条：从 ComposerPanel 按钮�
     expect(onGenerate).toHaveBeenCalled();
   });
 
+  // §177 项 51 硬门控：capabilityBlocked 模型（当前=Wan 视频）选中后出片/排队均禁用，
+  // 不把注定崩溃（GGML_ASSERT abort 进程）的任务送进引擎。红态自证：去掉 blocked
+  // 实现后这两条必红（文案仍为「出片」且点击会触发）。
+  it('能力阻塞（§177 项 51）：blocked 时出片按钮禁用+文案「暂不可用」，点击不触发', () => {
+    const onGenerate = jest.fn();
+    const {getByTestId, getByText, queryByText} = wrap(
+      <GenActionBar
+        {...baseProps}
+        isVideo={true}
+        blocked={true}
+        onGenerate={onGenerate}
+      />,
+    );
+    // 文案切「暂不可用」，不再是「出片」
+    expect(getByText('暂不可用')).toBeTruthy();
+    expect(queryByText('出片')).toBeNull();
+    // 按钮禁用：点击不触发 onGenerate
+    fireEvent.press(getByTestId('imagegen-generate'));
+    expect(onGenerate).not.toHaveBeenCalled();
+  });
+
+  it('能力阻塞（§177 项 51）：blocked 时排队入口也禁用（防绕过出片按钮入队）', () => {
+    const onEnqueue = jest.fn();
+    const {getByTestId} = wrap(
+      <GenActionBar
+        {...baseProps}
+        isVideo={true}
+        blocked={true}
+        onEnqueue={onEnqueue}
+      />,
+    );
+    fireEvent.press(getByTestId('imagegen-enqueue'));
+    expect(onEnqueue).not.toHaveBeenCalled();
+  });
+
   it('任务进行期（loading/generating/queueRunning）出图按钮灰置+转圈且禁点（2026-08-26/29）', () => {
     const onGenerate = jest.fn();
     const {getByTestId, queryByText, rerender} = wrap(

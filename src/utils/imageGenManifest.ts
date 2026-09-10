@@ -75,6 +75,13 @@ export interface ImageGenManifest {
   /** GPU 准入策略（见 GpuPolicy）；替代 08-18 的 requiresHighGpu 布尔（语义过粗已废） */
   gpuPolicy?: GpuPolicy;
   note?: string;
+  /**
+   * 能力阻塞（§177，项 51）：非空 = 该模型在当前设备/引擎下**已知不可生成**——出片/排队
+   * 入口硬门控（GenActionBar 禁用 + ImageGenScreen 编排层早退），值 = 给用户看的简短原因。
+   * 与 experimental 的区别：experimental 是「未验证/警示」（仍可尝试），capabilityBlocked 是
+   * 「已验证不可用」（不给尝试入口，防点了引擎崩溃）。单点事实源，UI/store 不硬编码模型名。
+   */
+  capabilityBlocked?: string;
 }
 
 /** 内置 manifest：覆盖官方已知模型（MODEL_MATRIX 入选清单同步，淘汰模型不得保留） */
@@ -221,6 +228,9 @@ export const BUILTIN_MANIFESTS: ImageGenManifest[] = [
       backend: 'OpenCL',
     },
     note: '暂不可用（本机引擎能力上限，§174.14/§176 定论）：出片桥已通（P2），但引擎侧 UMT5 单块权重 4006MiB 超 Adreno OpenCL 单块上限 2048MB；整体 CPU 能过 TE 却死在解码段（PSS 6.5GB 触 HyperOS 3GB 阈值）。体积：DiT 0.92 + UMT5 2.85 + VAE 0.25 ≈ 4.0GB。DEV_BACKLOG 项 45/50/51',
+    // 硬门控（§177，项 51）：选中它时出片/排队按钮禁用、编排层早退，不把注定崩溃的
+    // 任务送进引擎（GGML_ASSERT abort 进程）。桥/页面形态保留，待引擎或更强设备解封。
+    capabilityBlocked: '本机引擎能力上限，暂不可生成',
   },
 ];
 

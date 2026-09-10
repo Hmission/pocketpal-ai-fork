@@ -27,6 +27,9 @@ export interface GenActionBarProps {
   isDream: boolean;
   /** 视频模态（§9.3 主按钮仅文案：出图→出片，不新建按钮组件、不动宽度预算） */
   isVideo?: boolean;
+  /** 能力阻塞（§177，项 51）：出片/排队按钮禁用 + 文案「暂不可用」，防点了引擎崩溃。
+   *  由 ImageGenScreen 从 manifest.capabilityBlocked 派生（单点），本组件不判模型名。 */
+  blocked?: boolean;
   /** 编辑预备态：已锁定当前预览图，按钮文案「执行编辑」 */
   editArming: boolean;
   /** 编辑源图已预解码（执行编辑按钮可用条件） */
@@ -54,6 +57,7 @@ export interface GenActionBarProps {
 export const GenActionBar: React.FC<GenActionBarProps> = ({
   isDream,
   isVideo = false,
+  blocked = false,
   editArming,
   editRgb,
   hasEditableImage,
@@ -72,7 +76,8 @@ export const GenActionBar: React.FC<GenActionBarProps> = ({
   const s = createStyles(theme);
   /** 任务进行态（转圈+灰置）= 三段同源：引擎加载 / 生成中 / 队列执行中 */
   const busy = loading || generating || queueRunning;
-  const locked = busy;
+  // blocked（§177 项 51）：能力阻塞模型禁用出片/排队，但不显示转圈（busy 才算进行态）。
+  const locked = busy || blocked;
 
   /** 出图按钮整体（含 ➕ 与「出图」两段）——⬆ 按钮语义与旧版完全等价 */
   const genButton = (
@@ -105,7 +110,7 @@ export const GenActionBar: React.FC<GenActionBarProps> = ({
           />
         ) : (
           <Text style={[s.buttonText, s.buttonTextGen]}>
-            {isVideo ? '出片' : '出图'}
+            {blocked ? '暂不可用' : isVideo ? '出片' : '出图'}
           </Text>
         )}
       </TouchableOpacity>

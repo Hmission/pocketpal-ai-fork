@@ -318,6 +318,9 @@ export const ImageGenScreen: React.FC = observer(() => {
   const isDream = selectedEntry?.manifest.family === 'dreamlite';
   // 模态是选中模型的属性投影（§9.2 不新增 tab）：驱动帧数参数行与出片按钮文案。
   const isVideo = selectedEntry?.manifest.modality === 'video';
+  // 硬门控（§177，项 51）：capabilityBlocked 单点派生自 manifest——出片/排队入口禁用 + 早退，
+  // 不把注定崩溃的视频任务送进引擎。图片条目无此标记 → 零影响。
+  const blockedReason = selectedEntry?.manifest.capabilityBlocked;
   const loaded = isDream
     ? imageGenStore.dreamliteLoaded
     : imageGenStore.modelLoaded;
@@ -885,6 +888,12 @@ export const ImageGenScreen: React.FC = observer(() => {
     console.info(
       `[ImageGen] handleGenerate prompt='${p.slice(0, 30)}' isDream=${isDream} selected=${selectedEntry?.manifest.id ?? 'none'} generating=${imageGenStore.generating}`,
     );
+    // 硬门控（§177，项 51）：capabilityBlocked 模型（当前=Wan 视频）不给执行入口——
+    // 送进引擎必崩（GGML_ASSERT abort 进程）。banner 明确原因，不静默、不假装成功。
+    if (blockedReason) {
+      showBanner(`视频生成暂不可用（${blockedReason}）`, 'warning');
+      return;
+    }
     if (!p) {
       // 复查 2026-08-20：空提示词点「出图」必须显式反馈（不静默）——
       // 此前静默早退导致「有动效无反应」，两台真机稳定复现
@@ -1023,6 +1032,11 @@ export const ImageGenScreen: React.FC = observer(() => {
       imageGenStore.queueState === 'running' ||
       imageGenStore.queueState === 'stopping'
     ) {
+      return;
+    }
+    // 硬门控（§177，项 51）：blocked 模型不给入队入口（与出片同源 blockedReason 派生）。
+    if (blockedReason) {
+      showBanner(`视频生成暂不可用（${blockedReason}）`, 'warning');
       return;
     }
     if (!isDream && !loaded && !imageGenStore.loading) {
@@ -1415,6 +1429,7 @@ export const ImageGenScreen: React.FC = observer(() => {
             <GenActionBar
               isDream={isDream}
               isVideo={isVideo}
+              blocked={!!blockedReason}
               editArming={editArming}
               editRgb={editRgb}
               hasEditableImage={!!editSource || !!currentImage}
