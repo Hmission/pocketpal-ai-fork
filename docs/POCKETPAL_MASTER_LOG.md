@@ -4057,4 +4057,49 @@ WAVE_PLAN_P2P3 §1-§7 逐条：§1 P2-1 夜间耐久 **取消**（§174.11 息�
 | 项41 历史32行旧文案 | ⏳ 待大王裁定三选一 |
 | 本波提交 | ⏳ 视频标注 + 文档已改，未提交未 push（待大王指令）|
 
+## §177 视频硬门控落地 + 项50正式关闭 + qwen云端切换6D定位（2026-09-10，大王裁三事：「1硬门控 2按最佳实践 3你看看吧我发现是没办法选择的」）
+
+### 177.1 门禁与裁定
+
+gate（idle）→ route（`act-b405b01b` / trace `dd1d6462`，啄木鸟，session `wave176_02`，claim 8 路径）。大王裁三事：① 项51 **硬门控**；② 项50 **按最佳实践**；③ qwen **「你看看吧，我发现是没办法选择的」**（新信息，印证 §176.10 最高嫌疑）。
+
+### 177.2 项51 视频出片入口硬门控（已落地）
+
+§176.12 指出的「标了暂不可用却留着点了崩溃的出片入口 = 假标注 = 半成品」，大王裁定硬门控，本波落地：
+
+- **declarative 单点**：`imageGenManifest` 新增 `capabilityBlocked?: string`（与 `experimental` 区别：后者「未验证/警示仍可试」，前者「已验证不可用·不给入口」）。Wan 条目设 `capabilityBlocked: '本机引擎能力上限，暂不可生成'`——**单点事实源，UI/store 不硬编码模型名**（未来能跑的视频模型不设此字段即自动放行）。
+- **ImageGenScreen**：派生 `blockedReason = selectedEntry?.manifest.capabilityBlocked`（单点）→ `handleGenerate`（:888）与 `handleEnqueue`（:1032）**两入口早退**给明确 banner「视频生成暂不可用（原因）」，不静默、不假装成功、不进 native。
+- **GenActionBar**：新增 `blocked` prop → `locked = busy || blocked`（出片/排队按钮 disabled，但 blocked 不显转圈，busy 才算进行态）+ 出片文案 `blocked ? '暂不可用' : isVideo ? '出片' : '出图'`。
+- **红态自证**（记忆纪律：新测试必须在没实现时红）：探针临时撤 `locked=busy||blocked`→`busy` + 文案去 blocked（两处均文件内唯一文本，replace 第一处=唯一处，非上一波 replace-first 误伤形态），跑测 **2 failed（正是新增 2 条 blocked 用例）/27 passed**；还原后字节复验 fixed 存在、broken 残留 false；**探针用完即删**。
+- 验证：tsc 0 错；生图域 **7 套 83 例绿**（含 video.test.ts + Panels + ImageGenScreen）；prettier 过。
+- **DRC `imagegen.generateVideo` 取证通道故意保留**（项45定界仍要用，硬门控只拦用户 UI 入口，不拦开发者取证）；桥/页面形态/DB v11 全保留，待引擎或更强设备解封即去 `capabilityBlocked` 一行即恢复。
+
+### 177.3 项50 按最佳实践正式关闭（不碰 SOA_Q 禁区）
+
+大王裁「按最佳实践」。最佳实践 = **不动引擎禁区**：路线(c) 关 `GGML_OPENCL_SOA_Q` 是**编译期全局宏**（`ggml-opencl/CMakeLists.txt:17` 无条件 add_compile_definitions），会改变**所有图像模型**的 OpenCL 权重布局——本仓 Z-Image/Klein 对「转置 SOA 布局」敏感（当初靠 `DISABLE_ADRENO_KERNELS=1` 绕开布局不兼容导致的赭石/纯色），关它需**全部图像基线重验**，风险 > 一枪未知收益。视频既已硬门控暂不可用（项51），**项50 按设备能力上限正式关闭**（同小米 13 Z-Image 先例），不再挂着。至此视频三轮后端矩阵（§174.12/13/14）+ 外部调研（§176）+ 三条路线（a/b/c）全部收敛，视频这件事**清楚而非黑盒**。
+
+### 177.4 qwen 云端「没办法选择」6D 定位（不猜改，登项52）
+
+大王补充「我发现是没办法选择的」，印证 §176.10 UI 维最高嫌疑。读码定位完整链路（断言纪律：代码层确定，实物根因需真机）：
+
+```
+fetchModels(GET ${url}/v1/models, connection.ts:90) → pickModelListRows(data)
+  → RemoteModelSheet availableModels（handleServerChipPress:252 拉取）
+  → 用户显式「添加」→ serverStore.addUserSelectedModel → userSelectedModels
+  → ModelStore.remoteModels（:456 派生自 userSelectedModels，注释直证「not from serverModels」）
+  → allModels（:106）→ 聊天页选择器
+```
+
+**关键**：远程模型**必须先经 RemoteModelSheet 显式「添加」**才进聊天页选择器——配了服务器 ≠ 自动列出模型。候选根因按嫌疑：① 没走完「添加」流程（UX 引导）；② fetchModels 从百炼 `/v1/models` 没拉到（DashScope 兼容端点响应格式/鉴权/URL）；③ **「qwen 3.8f」可能非百炼有效模型 id**（通义千问无 3.8f 型号，有 qwen-plus/max/turbo/qwen3-*）；④ serverType 探测错（§175 W1-2 已修单仲裁）。**需真机 + 用户实际百炼配置取证**（读 ServerStore 三态 + fetchModels 实际响应），不擅自改远程链路。登 DEV_BACKLOG 项52。
+
+### 177.5 交接口（本波未做/未验）
+
+| 项 | 状态 |
+|---|---|
+| 项52 qwen 真机取证 | ⏳ 需设备 + 用户百炼服务器配置（读三态定位断点）|
+| MODEL_MATRIX 视频标注 3 行 | ⏳ 仍留工作区（混他人 §1.3 观望清单，§174.9 教训不擅自卷入）|
+| 本波提交 | ⏳ fix 硬门控 + docs §177 已改，未 push |
+| 硬门控真机目视 | ⏳ 需装机验「选 Wan→出片按钮显暂不可用且点不动」（代码+单测已钉，真机目视待接机窗）|
+
+
 
