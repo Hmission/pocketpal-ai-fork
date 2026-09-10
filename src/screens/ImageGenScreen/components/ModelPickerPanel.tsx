@@ -258,7 +258,7 @@ export const ModelPickerDropdown: React.FC<DropdownProps> = ({
         {loaded && !loading && (
           <Text style={s.readyText}>
             {isVideo
-              ? `✓ 已加载（${backend ?? 'CPU'} 后端）· 视频生成尚未接入，不能出图`
+              ? `✓ 已加载（${backend ?? 'CPU'} 后端）· 视频生成暂不可用（本机引擎能力所限），不能出图/出片`
               : isDream
                 ? '✓ 模型已就绪，可以出图（4 步 1024px 约 25s）'
                 : `✓ 模型已就绪（${backend ?? 'CPU'} 后端，512px 预计数分钟，请耐心）`}

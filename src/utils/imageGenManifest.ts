@@ -202,11 +202,14 @@ export const BUILTIN_MANIFESTS: ImageGenManifest[] = [
       // 与 Krea2 链路同文件（设备已有，零下载）
       vae: 'wan_2.1_vae.safetensors',
     },
-    // 实验标不得撤：本窗只验到“能被扫到 + 能被加载”，未跑过任何一次真实视频生成
-    //（`nativeGenVideo` 桥是 P2）。上一窗因把未验当已验写过不实陈述，此处按实物口径标。
+    // 暂不可用（§174.14/§176 终态定论，2026-09-10）：P2 出片桥已落地并真机验到“能扫到+能加载”，
+    // 但引擎侧三轮后端矩阵全挂——OpenCL 撞 UMT5 单块 4006MiB > Adreno 单块上限 2048MB；
+    // te=cpu 混合模式 TE 静默返空；整体 CPU 能过 TE 却死在解码段（PSS 6.5GB 触 HyperOS 3GB 阈值）。
+    // 外部调研（§176）：Q2 量化线不存在、最小组合仍 4.2GB>3GB、无 1.3B 蒸馏 GGUF → 本机无可跑通配置。
+    // experimental 保留（条目仍可选中以查看状态），出片入口的硬门控见 DEV_BACKLOG 项 51（待裁）。
     experimental: true,
-    // 内存账：DiT 0.92 + TE 2.85 + VAE 0.25 ≈ 4.02GB 常驻，已踩 HyperOS 4GB PSS 预算线
-    //（6GB 硬杀无白名单）且 Mali 未验 → 仅高端 Adreno 可试。
+    // 内存账：DiT 0.92 + TE 2.85 + VAE 0.25 ≈ 4.02GB 常驻；HyperOS PSS 泄漏阈值实测 3GB（§174.14，
+    // 非旧注释里的 4GB 预算）→ 全链已超阈值，这是“暂不可用”的硬约束根因。
     gpuPolicy: 'high-adreno-only',
     defaults: {
       // 50 步为 Wan 2.1 质量基线（无官方蒸馏版）；cfg 5 对引擎 wan 默认 flow_shift=5.f
@@ -217,7 +220,7 @@ export const BUILTIN_MANIFESTS: ImageGenManifest[] = [
       size: 512,
       backend: 'OpenCL',
     },
-    note: '何时选：端侧文生视频实验（暂不可生成：出片桥已通（P2），引擎侧 UMT5 前向未通——DEV_BACKLOG 项 45）。体积：DiT 0.92 + UMT5 2.85 + VAE 0.25 ≈ 4.0GB。适配：仅高端 Adreno；单条预计 80–200 分钟，只能夜间长跑',
+    note: '暂不可用（本机引擎能力上限，§174.14/§176 定论）：出片桥已通（P2），但引擎侧 UMT5 单块权重 4006MiB 超 Adreno OpenCL 单块上限 2048MB；整体 CPU 能过 TE 却死在解码段（PSS 6.5GB 触 HyperOS 3GB 阈值）。体积：DiT 0.92 + UMT5 2.85 + VAE 0.25 ≈ 4.0GB。DEV_BACKLOG 项 45/50/51',
   },
 ];
 
