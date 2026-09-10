@@ -4115,5 +4115,23 @@ fetchModels(GET ${url}/v1/models, connection.ts:90) → pickModelListRows(data)
 
 **遗留观察（不擅自扩面）**：① UX 缺口——RemoteModelSheet 配了服务器后要从 249 模型里手动「添加」，流程不够显眼，用户易卡在「配了但选不了」；② 「DRC-V1-百炼」是之前 DRC 取证的测试痕迹，本波 addModel 让 qwen3.8-flash 可用（正是大王要的）未 remove；③ App「从配置中心自动拿 key」是架构缺口，需大王定是否立项接线。
 
+### 177.7 qwen 真凶深挖 + 根治（本窗第二次过早下结论，这次真机 UI 口径坐实）
+
+§177.6 我把 qwen「没办法选择」归因为「没添加到 userSelectedModels」、addModel 后宣称「已修复可选可用」——**这个结论过早、又错了**（本窗第二次）。大王追问「聊天页如何切换」，真机 dump ChatPalModelPickerSheet（顶栏模型胶囊 742,240 弹出的 bottom sheet）发现：**选择器里全是本地 LLM（面壁 MiniCPM 管家 / 通义千问 2B / 4B），滚动仍无 qwen3.8-flash**。addModel 只让 qwen 进了 availableModels（models.scan count:19），但**没进选择器**。我上轮把聊天区的 Pal 卡（612,631 qwen3.8-flash + Kal 人设 + TTFT）误当成「选择器里可选」，没验到最终 UI 口径就下结论。
+
+**深挖到真凶（代码层，比「没添加」深一层）**：
+- ChatPalModelPickerSheet:271-273 `modelStore.availableModels.filter(isChatSelectable).map(renderModelItem)`；
+- isChatSelectable（modelDisplayNames.ts:165）第一行 `if (model.modelType !== ModelType.LLM) return false`；
+- **createRemoteModel（ModelStore:72-94）返回对象漏设 modelType**（Model.modelType 是可选字段 types.ts:516，TS 不报）→ 远端模型 modelType=undefined → 被 :165 过滤 → **所有远端模型（不只 qwen3.8-flash）在聊天页选择器全选不了**；
+- 连带：isChatSelectable:169 的 REMOTE 放行分支（filename 空则 true）因远端模型永远卡在 :165 而成**死代码**。
+
+**根治（单点最小）**：createRemoteModel 补 `modelType: ModelType.LLM`（远端即聊天 LLM）。不动 isChatSelectable 判据（它的 REMOTE 分支本就为放行远端 LLM 而写，补上 modelType 即激活）。
+
+**红态自证 + 单测**：探针撤 modelType → ModelStore 新用例红（1 failed）；还原绿。两处回归：ModelStore（remoteModels[0].modelType===LLM）+ modelDisplayNames（远端 LLM isChatSelectable=true / modelType 缺失=false 反证 bug 现场）。tsc 0 错、modelDisplayNames 18 + remoteModels 6 绿。
+
+**真机第二口径（最终 UI，重建装机 `install -r` 保 userSelectedModels）**：聊天页点模型胶囊 → bottom sheet 滚动到底 → **qwen3.8-flash 出现在选择器 sheet 区（600,1785 可点击 [c] + 259,1743，y>1054）**，everQwenInSheet=true。修复前它只在聊天区（y=631/402），修复后进选择器 → **用户现在能在聊天页选 qwen3.8-flash 切换**。
+
+**断言纪律再记（本窗第二次过早下结论）**：正面结论「已修复可选」必须验到**最终 UI 口径**（选择器里真出现且可点），不是中间数据层（count:19 / remoteModelCount:1）。数据层对了不代表 UI 通了（中间还隔着 isChatSelectable 过滤）。
+
 
 
