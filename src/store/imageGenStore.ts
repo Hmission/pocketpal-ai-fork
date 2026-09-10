@@ -1718,6 +1718,9 @@ class ImageGenStore {
   /** app 启动（生图页 mount）：水合队列（state 不持久化，core 统一回 planning） */
   async initQueue(): Promise<void> {
     await this.queueCore.hydrate();
+    // 项41/§180：水合期一次性订正历史「被强制退出」旧失败文案（§9.4 说谎口径；
+    // 幂等（0 命中即跳过），无常驻迁移，回滚痕迹留在 repository 日志）
+    await imageGenTaskRepository.rectifyLegacyFailureText();
   }
 
   /** 入队（++ 按钮）：规划期可入；执行期拒绝（锁定即锁定） */

@@ -121,4 +121,47 @@ describe('ImageGenTaskRepository', () => {
     const all = await imageGenTaskRepository.loadAll();
     expect(all[0].taskId).toBe('t_new');
   });
+
+  describe('rectifyLegacyFailureText（项41/§180 一次性订正）', () => {
+    const mkBad = (taskId: string, errorDetail: string) => ({
+      uri: `file:///${taskId}.png`,
+      prompt: 't',
+      seed: 1,
+      ts: 1787290000000,
+      width: 512,
+      height: 512,
+      taskId,
+      status: 'failed' as const,
+      errorDetail,
+    });
+
+    it('仅订正含「强制退出」的行为 §9.4 口径，其他行不动', async () => {
+      await imageGenTaskRepository.create(
+        mkBad('t_bad', '应用在上次生成中被强制退出，任务未完成'),
+      );
+      await imageGenTaskRepository.create(
+        mkBad('t_good', '本次生成未完成（未找到产物文件），请重试'),
+      );
+      const fixed = await imageGenTaskRepository.rectifyLegacyFailureText();
+      expect(fixed).toBe(1);
+      const all = await imageGenTaskRepository.loadAll();
+      expect(all.find(a => a.taskId === 't_bad')?.errorDetail).toBe(
+        '本次生成未完成，请重试',
+      );
+      expect(all.find(a => a.taskId === 't_bad')?.errorDetail).not.toContain(
+        '强制退出',
+      );
+      expect(all.find(a => a.taskId === 't_good')?.errorDetail).toBe(
+        '本次生成未完成（未找到产物文件），请重试',
+      );
+    });
+
+    it('幂等：二次订正 0 命中（不重复改写）', async () => {
+      await imageGenTaskRepository.create(
+        mkBad('t_bad', '应用在上次生成中被强制退出，任务未完成'),
+      );
+      expect(await imageGenTaskRepository.rectifyLegacyFailureText()).toBe(1);
+      expect(await imageGenTaskRepository.rectifyLegacyFailureText()).toBe(0);
+    });
+  });
 });

@@ -5,6 +5,9 @@ import {ImageGenTask} from '../database';
 import type {GeneratedImage} from '../store';
 import {prepareSharedStorage, scheduleDbSnapshot} from '../utils/paths';
 
+/** 项41/§180 订正文案：§9.4 通用口径（旧行通道未知，不带括号原因——带原因即断言） */
+const RECTIFIED_FAILURE_DETAIL = '本次生成未完成，请重试';
+
 /**
  * ImageGenTaskRepository — 生图任务元数据仓库（B28）。
  * 对齐 ChatSessionRepository 模式：ensureReady 先过 prepareSharedStorage
@@ -86,6 +89,46 @@ class ImageGenTaskRepository {
       scheduleDbSnapshot();
     } catch (e) {
       console.error('[ImageGenTaskRepository] patch failed:', e);
+    }
+  }
+
+  /**
+   * 水合期一次性订正（项 41，§180）：历史旧失败文案「被强制退出」与 §9.4
+   * 「只写可观察事实」相矛盾（§169：与 pidof 不变相矛盾）。订正为 §9.4
+   * 通用口径「本次生成未完成，请重试」——旧行通道未知，带括号原因即断言。
+   * 幂等：订正后不再匹配「强制退出」，二次运行 0 命中即跳过；无常驻迁移。
+   * 回滚痕迹：每条订正前原值入日志（taskId + before → after），不落常驻表。
+   * 返回订正条数（0 = 无存量）。
+   */
+  async rectifyLegacyFailureText(): Promise<number> {
+    await this.ensureReady();
+    try {
+      const rows = await database.collections
+        .get<ImageGenTask>('image_gen_tasks')
+        .query()
+        .fetch();
+      const victims = rows.filter(r =>
+        (r.errorDetail ?? '').includes('强制退出'),
+      );
+      if (victims.length === 0) {
+        return 0;
+      }
+      await database.write(async () => {
+        for (const row of victims) {
+          const before = row.errorDetail ?? '';
+          await row.update(record => {
+            record.errorDetail = RECTIFIED_FAILURE_DETAIL;
+          });
+          console.info(
+            `[ImageGenTaskRepository] rectify ${row.taskId}: ${JSON.stringify(before)} → ${JSON.stringify(RECTIFIED_FAILURE_DETAIL)}`,
+          );
+        }
+      });
+      scheduleDbSnapshot();
+      return victims.length;
+    } catch (e) {
+      console.error('[ImageGenTaskRepository] rectify failed:', e);
+      return 0;
     }
   }
 
