@@ -4156,5 +4156,16 @@ fetchModels(GET ${url}/v1/models, connection.ts:90) → pickModelListRows(data)
 
 **交接口更新（2026-09-10 收尾闭环）**：**硬门控真机目视 ✅**（真机 aab688d9：选 Wan → 主按钮「暂不可用」disabled（dump `[ ]`）+ 排队按钮同步 disabled（`[ ]`，文案保留「排队」是 §177 设计选择，locked 已禁用）+ 连续点击无任务启动、无崩溃进程存活——与 §177 红态单测一致）；**MODEL_MATRIX 3 行 ✅ 已入库**（2026-09-10 大王「全部提交」令：拆分提本窗 Wan 标注 e2098f0 + 补录他人 §1.3 观望清单 8cdbd1f）；**未 push 56 笔**（e9268aa..8cdbd1f，待大王命令）；项41 历史32行仍待大王裁；§3/§4/W9b-V 三项低危欠账仍按 §179 建议保持登记择期。
 
+### 180 项41 落地：历史「被强制退出」说谎文案一次性订正（2026-09-10，大王裁③，session 1530dea5 / act-3d1deda3）
+
+**背景**：DEV_BACKLOG 项41（§169 读活库发现 `error_detail like '%强制退出%'` 命中 32 行）——旧失败文案「被强制退出」与 QUEUE_SPEC §9.4「只写可观察事实」相矛盾（§169：pidof 不变）。大王裁三选一之 **③**：水合期一次性改写为 §9.4 口径。
+
+**落地**：
+- `ImageGenTaskRepository.rectifyLegacyFailureText()`：全量行 JS 过滤 error_detail 含「强制退出」→ write 内 update 为 **「本次生成未完成，请重试」**（§9.4 通用口径；旧行通道未知，不带括号原因——带原因即断言）→ 每条订正前原值 console.info（回滚痕迹：taskId + before → after，不落常驻表）→ scheduleDbSnapshot → 返回订正条数（0 = 无存量跳过）；
+- `imageGenStore.initQueue`（生图页 mount）：`queueCore.hydrate()` 后调用——历史卡可见前完成订正；幂等天然（订正后不再匹配「强制退出」）；
+- 无常驻迁移、不碰 status 字段（只改 errorDetail 文案）。
+
+**验证**：红态自证（探针撤 filter → 新 2 例红：订正语义 + 幂等；还原 8 例全绿）；tsc 0 + prettier 过。**真机第二口径 ✅**（装机 install -r 保活库后逐步确认进生图页触发 initQueue）：`baseline legacy=32 / fixed=0`（第一轮盲 tap 未进生图页，触发失败——活库实据）；订正轮后**活库 `legacy=0 / fixed=32 / total=252`**（run-as 拉活库 + PC sqlite3：32 行旧文案全部订正为「本次生成未完成，请重试」，status 保持 failed 未动，行数不变）。
+
 
 
