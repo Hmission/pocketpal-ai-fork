@@ -136,7 +136,7 @@ jest.mock('react-native', () => {
 import {NativeModules} from 'react-native';
 
 import {imageGenTaskRepository} from '../../repositories/ImageGenTaskRepository';
-import {imageGenStore} from '../imageGenStore';
+import {imageGenStore, VIDEO_DEFAULT_NEGATIVE_PROMPT} from '../imageGenStore';
 import type {GenParamsSnapshot} from '../imageGenQueueCore';
 
 const ImageGenMock = NativeModules.ImageGen as unknown as {
@@ -257,6 +257,55 @@ describe('C-4 守卫双向（native 零防护由 JS 单点拦截）', () => {
     expect(v).toBeNull();
     expect(ImageGenMock.genVideo).not.toHaveBeenCalled();
     expect(imageGenStore.error).toContain('视频模型');
+  });
+
+  /**
+   * 空负面词回归（§174.14 真机实测）：引擎里 T5 分块数 = tokens / chunk_len，空串会让
+   * 那一次 conditioning 得到 0 块 → 返空 → conditioner.hpp 的 GGML_ASSERT 直接 abort
+   * 进程（E0 十四秒即崩，点一次崩一次）。大王定的策略：没填→默认填充，填了→用用户的；
+   * 而 store 是 UI / DRC / 队列的共用出口，所以收口只在这一处。
+   */
+  it('负面词为空/只空白 → 补默认负面词再进引擎（绝不把空串送进去）', async () => {
+    armCtx('video');
+    ImageGenMock.genVideo.mockResolvedValueOnce(
+      '/data/user/0/com.pocketpalai/files/aios_images/genvid_9_1|1|16',
+    );
+    await imageGenStore.generateVideo({
+      prompt: 'a cat',
+      steps: 4,
+      cfg: 5,
+      width: 256,
+      height: 256,
+      seed: 1,
+      videoFrames: 1,
+      negativePrompt: '   ',
+    });
+    const params = ImageGenMock.genVideo.mock.calls[0][0] as {
+      negativePrompt: string;
+    };
+    expect(params.negativePrompt.trim().length).toBeGreaterThan(0);
+    expect(params.negativePrompt).toBe(VIDEO_DEFAULT_NEGATIVE_PROMPT);
+  });
+
+  it('用户填了负面词 → 原样透传，不得覆盖成默认', async () => {
+    armCtx('video');
+    ImageGenMock.genVideo.mockResolvedValueOnce(
+      '/data/user/0/com.pocketpalai/files/aios_images/genvid_9_2|1|16',
+    );
+    await imageGenStore.generateVideo({
+      prompt: 'a cat',
+      steps: 4,
+      cfg: 5,
+      width: 256,
+      height: 256,
+      seed: 2,
+      videoFrames: 1,
+      negativePrompt: 'cartoon, low res',
+    });
+    const params = ImageGenMock.genVideo.mock.calls[0][0] as {
+      negativePrompt: string;
+    };
+    expect(params.negativePrompt).toBe('cartoon, low res');
   });
 });
 

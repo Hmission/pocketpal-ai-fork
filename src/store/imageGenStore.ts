@@ -100,6 +100,13 @@ const VIDEO_HANG_BASE_MS = 2_400_000;
 const VIDEO_HANG_PER_FRAME_MS = 30_000;
 /** 视频默认帧率（引擎默认 16，§二；本期参数面锁死不开放，§9.3） */
 const VIDEO_DEFAULT_FPS = 16;
+/**
+ * 视频族默认负面提示词（Wan 2.1 官方常用条目）。存在这里而不是各调用点各写一遍：
+ * 空串在引擎里不合法（会让该次 T5 分块数为 0 → 返空 → GGML_ASSERT 砸进程），
+ * 所以「没填就补默认」必须是个单点事实，而不是散在 UI/DRC/队列里的字面量。
+ */
+export const VIDEO_DEFAULT_NEGATIVE_PROMPT =
+  'bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, gray';
 /** B28：B27 时代 mobx-persist-store 存储 key（存量迁移源） */
 const B28_STORAGE_KEY = 'ImageGenStore';
 
@@ -1287,7 +1294,14 @@ class ImageGenStore {
     try {
       const result = await ImageGen.genVideo({
         prompt: opts.prompt,
-        negativePrompt: opts.negativePrompt ?? '',
+        // 引擎语义（§174.14 真机实测）：T5 分块数 = tokens / chunk_len，**空负面词会
+        // 让那一次 conditioning 得到 0 块 → 返空 → conditioner.hpp 的 GGML_ASSERT
+        // 直接 abort 整个进程**（E0 十四秒即崩，点一次崩一次）。Wan 的 CFG 本来
+        // 就要两条条件都非空。收口放在 Store：UI / DRC / 队列同一条路，谁也不能把
+        // 空串送进引擎——用户填了就走用户的，没填才补默认。
+        negativePrompt: opts.negativePrompt?.trim()
+          ? opts.negativePrompt
+          : VIDEO_DEFAULT_NEGATIVE_PROMPT,
         seed: opts.seed,
         steps: opts.steps,
         cfg: opts.cfg,
