@@ -4169,3 +4169,18 @@ fetchModels(GET ${url}/v1/models, connection.ts:90) → pickModelListRows(data)
 
 
 
+
+### 181 外部独立分支分层吸收：Trae 窗口 10 提交按「只收②」处置（2026-11-07，大王裁「分层吸」）
+
+**背景**：`origin/main` 自 2026-09-04（`3d61130`）后未再出仓（本地积压 113 提交）。本窗查 GitHub 发现该仓有 **2 个 fork**，其中 `acer6vip-max/pocketpal-ai-fork`（11-05 建、11-06 推）**基点恰为 `3d61130`**，上有 10 条提交（作者 `Hmission@users.noreply`，**提交者 `solo-agent@trae.ai`** = Trae 侧窗口），含两条真修复与一整套 CI 打包链。本仓 PR=0 —— 这些工作不主动 fetch 就完全不可见（取证方式：GitHub API 计数 + 直连 `git fetch` 该 fork，两口径一致；头 `510cfa7`）。
+
+**分类口径（逐文件对 diff，不按提交整收）**：
+- **① 已被我方取代，不收**：`onnxruntime` 补丁缩进（两边 **blob 同为 `a96b442`**，逐字节同一改法）；`postinstall`（他们 `bash scripts/postinstall.sh`，我方 `234a92d` 已升 `node scripts/postinstall.js` + 构建链自检，纪律 2 要求）；`workflows/` 忽略规则（我方 `645f8b8` 已独立做同一修正且更严）。
+- **② 收（我方 113 条对该面零触达）**：`AndroidManifest` `android:largeHeap="true"`（9B 被 MIUI/HyperOS PSS 看护杀掉的正面修复）；`.github/workflows/build-apk.yml` 终态（含手动配 Android SDK、去 `concurrency` 组）；`host-toolchain.cmake` 跨平台（Linux/macOS 走原生 gcc，仅 Windows 走 MSVC）；`jni/CMakeLists.txt` OpenCL headers include（对所有 ABI，不绑 `SD_OPENCL`）；`android/gradlew` 补 755；`useMemoryCheck` 改按 **per-model 实际生效 n_ctx** 估算（此前拿全局 8192 判 9B 的 4096/2048，必误判）。
+- **③ 不收，转挂账 DEV_BACKLOG 项53**：`loadReleaseMethods` 冷启动读崩溃标记**自动降一档** / 降无可降**静默退 CPU** / 加载前按实时内存夹紧 preset 档 / §18.6 预调由「按 ceiling 预写最大可装档」改成「写策展默认 4096」；`modelContextDefaults` 大模型策展默认 16384→4096（lfm2.5-8b 24576→4096、新增 qwen3 8b/9b=4096）；`memoryEstimator.resolveLoadBudget`（6GB 封顶，专为③服务）；`useChatSession` 发送前 `trimMessagesToBudget` **丢最旧历史**。此组与本仓「不兜底不补丁 / 单状态机」「Fail-Fast 优于静默降级」的既定工程哲学相冲。
+
+**关键陷阱（纪律 4 留痕）**：`git merge-tree` 试探**只有 `.gitignore` 与 `package.json` 两处文本冲突，③全部自动合入、一声不响**。整条 merge 看着干净，实际是把静默降档塞进主线——**文本自动合并 ≠ 语义无冲突**，只有读 diff 才看得见。故本次放弃「merge 分支」改走「分层取件」。
+
+**验证（本窗新鲜读数）**：`tsc --noEmit` 0 错；全量 jest **353 套 / 4952 过 + 2 skip / 318 快照过，exit 0**，`Exceeded timeout of` 命中 **0**；五闸 `native-mocks` missing=0 / `async-timers` risky=0 / `gate-reentry` violations=0 / `compass` 登记 18×代码 17 双向闭合 + 33 路径可达 / `drc-actions` 一致；`prettier` + `eslint` 对改动文件干净。依赖面核对：`getModelNCtx` 对未注册 id 回退全局 `n_ctx`（`contextConfigMethods.ts:121-122`），不会把「查不到」变成 0，未下载模型的估算行为与改前一致；`purgeNativeAllocator` spec+Kotlin 两侧均存在（非幻影调用，但本窗未收③故未启用）。
+
+**诚实边界**：**真机未验**。`largeHeap` 与 per-model n_ctx 都是运行时内存行为，需按 DRC 标准序列装机复验 9B 加载与「Context is full」场景；本窗只交付编译/单测口径。另：本窗**未 push**（待大王指令）。
