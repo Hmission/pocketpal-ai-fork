@@ -1,0 +1,135 @@
+name: Build Android APK
+
+on:
+  # Actions 页面手动触发：Actions → Build Android APK → Run workflow
+  workflow_dispatch:
+  # 推到 main 自动打包；只改文档/图片时不触发
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'android/**'
+      - 'patches/**'
+      - 'scripts/**'
+      - 'package.json'
+      - 'yarn.lock'
+      - '.github/workflows/build-apk.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+          cache-dependency-path: yarn.lock
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+
+      - name: Set up Android SDK
+        run: |
+          # GitHub ubuntu 镜像自带 Android SDK，直接用，避免第三方 setup-android action 的兼容问题
+          export ANDROID_HOME=/usr/local/lib/android/sdk
+          echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
+          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
+
+          # runner 自带的 cmdline-tools 版本号不固定，自动找 sdkmanager
+          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f 2>/dev/null | head -1)
+          if [ -z "$SDKMANAGER" ]; then
+            echo "sdkmanager not found under $ANDROID_HOME/cmdline-tools"
+            exit 1
+          fi
+          SDKMANAGER_DIR=$(dirname "$SDKMANAGER")
+          echo "$SDKMANAGER_DIR" >> "$GITHUB_PATH"
+          export PATH="$SDKMANAGER_DIR:$PATH"
+          echo "Using sdkmanager: $SDKMANAGER"
+
+          # 接受所有 SDK 许可证（含 preview）
+          yes | sdkmanager --licenses >/dev/null
+
+          # 安装本项目需要的组件（Gradle 也会自动装，但显式装更稳）
+          sdkmanager --install \
+            "platforms;android-36" \
+            "build-tools;36.0.0" \
+            "ndk;27.3.13750724" \
+            "cmake;3.22.1"
+
+      - name: Install JS dependencies
+        env:
+          # 从源码编译时不需要 llama.rn 的预编译核心库，跳过其下载脚本
+          RNLLAMA_SKIP_POSTINSTALL: '1'
+        run: yarn install --frozen-lockfile
+
+      - name: Prepare CI-only build files
+        run: |
+          # react-native-config 的 dotenv.gradle 读 .env；无文件时部分版本会报错
+          touch .env
+
+          # Firebase 只用于可选的 benchmark 上报。上游仓库不提交 google-services.json
+          # （.gitignore 忽略），缺文件时 google-services 插件会直接让构建失败。
+          # 这里写入一个语法合法的占位配置，包名必须与 applicationId 一致。
+          cat > android/app/google-services.json <<'EOF'
+          {
+            "project_info": {
+              "project_number": "000000000000",
+              "project_id": "pocketpal-ci",
+              "storage_bucket": "pocketpal-ci.appspot.com"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:000000000000:android:0000000000000000",
+                  "android_client_info": {
+                    "package_name": "com.pocketpalai"
+                  }
+                },
+                "oauth_client": [],
+                "api_key": [
+                  {
+                    "current_key": "AIzaSyAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+                  }
+                ],
+                "services": {
+                  "appinvite_service": {
+                    "other_platform_oauth_client": []
+                  }
+                }
+              }
+            ],
+            "configuration_version": "1"
+          }
+          EOF
+
+      - name: Typecheck
+        run: yarn typecheck
+
+      - name: Build prod release APK
+        env:
+          # llama.rn 0.12.7 官方预编译包缺少 RNLlama.java 需要的
+          # librnllama_jni_*.so，必须从源码编译（耗时较长，但产物可运行）。
+          ORG_GRADLE_PROJECT_rnllamaBuildFromSource: 'true'
+        run: |
+          cd android
+          ./gradlew assembleProdRelease --no-daemon --stacktrace \
+            -Dorg.gradle.jvmargs="-Xmx6g -XX:MaxMetaspaceSize=1g"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: pocketpal-ai-apk-${{ github.run_number }}
+          path: android/app/build/outputs/apk/prod/release/*.apk
+          if-no-files-found: error
+          retention-days: 30
