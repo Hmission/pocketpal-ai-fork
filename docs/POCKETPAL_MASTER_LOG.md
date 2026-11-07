@@ -4184,3 +4184,26 @@ fetchModels(GET ${url}/v1/models, connection.ts:90) → pickModelListRows(data)
 **验证（本窗新鲜读数）**：`tsc --noEmit` 0 错；全量 jest **353 套 / 4952 过 + 2 skip / 318 快照过，exit 0**，`Exceeded timeout of` 命中 **0**；五闸 `native-mocks` missing=0 / `async-timers` risky=0 / `gate-reentry` violations=0 / `compass` 登记 18×代码 17 双向闭合 + 33 路径可达 / `drc-actions` 一致；`prettier` + `eslint` 对改动文件干净。依赖面核对：`getModelNCtx` 对未注册 id 回退全局 `n_ctx`（`contextConfigMethods.ts:121-122`），不会把「查不到」变成 0，未下载模型的估算行为与改前一致；`purgeNativeAllocator` spec+Kotlin 两侧均存在（非幻影调用，但本窗未收③故未启用）。
 
 **诚实边界**：**真机未验**。`largeHeap` 与 per-model n_ctx 都是运行时内存行为，需按 DRC 标准序列装机复验 9B 加载与「Context is full」场景；本窗只交付编译/单测口径。另：本窗**未 push**（待大王指令）。
+
+### 182 K90 Pro Max 真机验证吸收项：三连加载零被杀，并照出两条我自己的假账（2026-11-07，大王令装机测试）
+
+**设备与路径**：REDMI K90 Pro Max（`aab688d9`，HyperOS OS4.0.5.0 / Android 17 / 16GB）。scrcpy 投屏全程在岗（红线要求可监督），操作走人类模拟路径（顶栏胶囊 → 模型面板 → 卡片内「加载」按钮），DRC 只用于取证与 `chat.send`（与用户点发送同链路）。测试对象 `LFM2.5-8B-A1B-Q4_K_M.gguf`（5.16GB，面板显示名 Liquid 8B）。
+
+**装机前置：构建链三条坑（已提交 `1fd058b`）**
+1. 吸收进来的 `host-toolchain.cmake` 只认 `ANDROID_HOME` 找 ninja；本机 `ANDROID_HOME` 与 `ANDROID_SDK_ROOT` **都未设**（SDK 根只在 `android/local.properties` 的 `sdk.dir`，Gradle 不导出给 cmake 子进程）→ 配置期 `CMAKE_MAKE_PROGRAM is not set`。CI 能过是因为 workflow 显式导出了该变量——**这是吸收改动引入的真实回归**，已改多来源探测。
+2. `mt.exe` 未找到（`CMAKE_MT-NOTFOUND`）与 3. 链接期 `LNK1104: 无法打开文件 kernel32.lib`：这两条**吸收前就存在**——对照实验把旧版文件（blob `9324da8`）换回同命令重跑，红在同一处。根因是缺 MSVC 的 `INCLUDE/LIB`，即仓内旧注释写明的「须在 VS Developer 环境内构建」；本机 VS 工具集已从 14.43 升到 14.44（旧目录被抹）。最终按 `vcvars64` 环境构建通过，并把该前提写回文件头。最小实验（单独 configure+link `vulkan-shaders-gen`）先验证假设成立才烧整包，避免再烧一轮。
+
+**真机读数**
+- `largeHeap`：设备**实装件**直读（`pm path` 拉 `base.apk` + `aapt2 dump xmltree`）= `largeHeap=true`；覆盖安装前同一命令读旧包为缺项——A/B 两侧都有硬证据。
+- 三连加载（手动 1 + 脚本 2）：PSS 峰值 **6.03GB / 6.13GB / 6.48GB**，pid 全程不变；`Context is full` 命中 **0**、`GGML_ASSERT|Fatal signal` **0**、本包 `has died` **0**、`am_kill` **0**。
+- 推理：两轮 `turn_done`，均 `contextFull:false`、`hitMaxTurns:false`。第二轮耗时 **230s**（思考块早出、正文迟出），logcat 有 3 条 `no usable state checkpoint (recurrent/hybrid/SWA model), doing full cache clear`——LFM 混合结构每次全清缓存，疑为迟滞主因（**未定罪，留观察**）。另：UI 性能徽标显示 `CPU 0%`，而 `top -H` 实测主线程 96.2%、native 62.9%——**徽标口径与真实占用不一致**，属独立观察项。
+
+**我自己的两条假账（纪律 4 就地改账）**
+1. 我同时挂了两个探针（bash 与 node），彼此 `am force-stop` 对方，导致两轮**误报「进程被杀」**；停掉多余探针后重测，真实结论是零被杀。误报的成因是我造成的现场破坏，不得记到仓库或设备头上。
+2. 探针用 `KEYCODE_BACK` 收模型面板，实际把 App 退回桌面 → `chat.send` 无 `ok`、误判「链路卡住」。改为加载后面板自收，链路即通。
+
+**与既有结论的冲突（不擅自动）**：`MODEL_MATRIX` #6 与 `modelCapabilityRegistry.ts:28` 记「LFM8B 超 K90 厂商 PSS 看护线被硬杀不可用（2026-08-19 实证；看护厂商锁死关不掉，SecurityException 实证）」。本次 8192 档实测存活。差异已定位：本次生效 `activeNCtx=8192`（`chat.budget_diag` 直读），而 2026-08-26 策展表给 LFM2.5-8B 的是 **24576**——「不可用」很可能对应高 KV 档或叠加生图的场景。**24576 档未测，故不改任何标注**，交大王定夺是否解封。
+
+**吸收项自身的效果边界（诚实登记）**：`useMemoryCheck` 改按 per-model 生效 n_ctx 估算，在本配置下是**空转**——该模型生效档位 8192 恰等于全局默认 8192，两侧同值则估算无差异。要真正验证该修正，需把某模型档位调到非 8192 再看 fit 徽标口径（未做）。
+
+**门禁与推送**：本轮终版全量构建 `BUILD SUCCESSFUL in 1m47s`（`GRADLE_RC=0`）；tsc 与全量 jest 在提交前已取绿账。**本窗未 push**（待大王指令）。
