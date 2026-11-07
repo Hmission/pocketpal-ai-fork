@@ -4202,8 +4202,30 @@ fetchModels(GET ${url}/v1/models, connection.ts:90) → pickModelListRows(data)
 1. 我同时挂了两个探针（bash 与 node），彼此 `am force-stop` 对方，导致两轮**误报「进程被杀」**；停掉多余探针后重测，真实结论是零被杀。误报的成因是我造成的现场破坏，不得记到仓库或设备头上。
 2. 探针用 `KEYCODE_BACK` 收模型面板，实际把 App 退回桌面 → `chat.send` 无 `ok`、误判「链路卡住」。改为加载后面板自收，链路即通。
 
-**与既有结论的冲突（不擅自动）**：`MODEL_MATRIX` #6 与 `modelCapabilityRegistry.ts:28` 记「LFM8B 超 K90 厂商 PSS 看护线被硬杀不可用（2026-08-19 实证；看护厂商锁死关不掉，SecurityException 实证）」。本次 8192 档实测存活。差异已定位：本次生效 `activeNCtx=8192`（`chat.budget_diag` 直读），而 2026-08-26 策展表给 LFM2.5-8B 的是 **24576**——「不可用」很可能对应高 KV 档或叠加生图的场景。**24576 档未测，故不改任何标注**，交大王定夺是否解封。
+**与既有结论的冲突（不擅自动）**：`MODEL_MATRIX` #6 与 `modelCapabilityRegistry.ts:28` 记「LFM8B 超 K90 厂商 PSS 看护线被硬杀不可用（2026-08-19 实证；看护厂商锁死关不掉，SecurityException 实证）」。本次 8192 档实测存活。差异已定位：本次生效 `activeNCtx=8192`（`chat.budget_diag` 直读），而 2026-08-26 策展表给 LFM2.5-8B 的是 **24576**——「不可用」很可能对应高 KV 档或叠加生图的场景。**24576 档未测，故不改任何标注**，交大王定夺是否解封。（同窗续测已完成：24576 档三连加载 + 推理零被杀，`activeNCtx=24576`、`contextFull:false`——「不可用」标注已按证据订正，见 §183。）
 
-**吸收项自身的效果边界（诚实登记）**：`useMemoryCheck` 改按 per-model 生效 n_ctx 估算，在本配置下是**空转**——该模型生效档位 8192 恰等于全局默认 8192，两侧同值则估算无差异。要真正验证该修正，需把某模型档位调到非 8192 再看 fit 徽标口径（未做）。
+**吸收项自身的效果边界（就地订正，2026-11-07 挂账处理窗）**：本段原写「该修正在本配置下是空转——8192 恰等于全局默认 8192」，**此结论错误**。推翻证据：`run-as` 直读本机持久化 `RKStorage/ModelStore`（`exec-out` 拉库 + node:sqlite 只读查询）：全局 `contextInitParams.n_ctx=4096`（非代码初始默认 8192，已被改过），8B 的 `perModelNCtx=8192` 且 `source=preset`——8192≠4096，修正**实际改变估算口径**（按生效 8192 估，比旧按全局 4096 更保守），不是空转。同时坐实 8192 的来源：策展表给 24576，被启动 PSS 审计（`auditPerModelNCtxAgainstPss`，估算 (5.16GB 权重 + 4.8GB f16 KV)×1.1 ≈ 11GB > 预算 8.1GB）降到最大安全档 8192——上段「差异已定位」补全：不是全局回退，是**既有可见降档机构**所为（console.warn + preset 覆写，2026-08-19 大王裁定建立，与外部 fork ③的静默降档是两回事）。
 
 **门禁与推送**：本轮终版全量构建 `BUILD SUCCESSFUL in 1m47s`（`GRADLE_RC=0`）；tsc 与全量 jest 在提交前已取绿账。**本窗未 push**（待大王指令）。
+
+### 183 挂账处置（2026-11-07，大王令「处理挂账按最佳实践」）：项53 关闭 + 8B「K90 不可用」实证推翻
+
+**项53（外部 fork ③ 静默降档机群）→ 关闭：不收**
+- 援引本项自带的关闭条款 + 仓内 Fail-Fast 原则（不兜底不补丁 / 单状态机）：验收判据（真机三连加载零被杀且无 `Context is full`）已由 §182 达成，本窗 24576 档续测再证。
+- 关键新证据：本仓**已有可见降档机构** `auditPerModelNCtxAgainstPss`（2026-08-19 大王裁定；启动审计，preset 覆写 + console.warn）。K90 实物直读 `RKStorage`：8B 策展 24576 被它按「估算超预算」降至 8192（`source=preset`）——③要解决的「悄悄变短」在本仓以可见方式已覆盖，无需引入静默机群。③原样留在外部 fork `510cfa7`（找回口径见 §181）。
+
+**MODEL_MATRIX #6「K90 PSS 看护硬杀不可用」→ 实证推翻，标注订正**
+- 方法（人类模拟路径 + 单探针）：生成设置页把 8B 档位从「审计降档的 8192（preset）」手调为 **24576（user 主权档，审计不碰）**；双口径核验落库（UI 输入框 + `run-as` 直读 `RKStorage`：`perModelNCtx=24576, source=user`）。
+- 24576 档加载先弹**可见**「内存警告 → 取消/继续」（保守估算 ~11.5GB > 预算 8.1GB），点「继续」后加载——「主权可见、不静默降档」设计成立。
+- 三连加载（冷启动 + 面板「加载」）：PSS 峰值 **6.26 / 6.33 / 7.11GB**（7.11 为推理中峰值），pid 全程不变、零被杀；第三轮推理 `chat.budget_diag` 直读 **`activeNCtx=24576`**、`chat.turn_done` **`contextFull:false` / `hitMaxTurns:false`**（tokensPredicted=639），结束后 PSS 6.99GB 驻留。
+- 结论：LFM2.5-8B-A1B 在 K90（largeHeap + 24576 档）**可用**；2026-08-19「硬杀」结论对应 largeHeap 引入前，已过时。同步订正：`MODEL_MATRIX` #6 + §1.1 指纹理由、`modelCatalog.ts` role、`modelDisplayNames.ts` 卡片说明、`modelCapabilityRegistry.ts` 注释（2.6B 钦定不变，仅更正据）。
+
+**新发现（登记 DEV_BACKLOG 项 54，本窗不改）**：估算器对 hybrid 架构按全注意力算 KV（8B 估 ~240KB/token、24576 档 ~11.5GB），实测仅 6.26–7.11GB——导致策展 24576 被审计永久降档，用户要 24576 须手调 + 过警告。建议后续按真实注意力层数建模（估算器宁紧勿杀是既定立场，改动需共享面回归）。
+
+**测试过程自造假账（纪律 4 就地记）**
+1. 首轮三次「加载」全落空：脚本按钮 bounds 正则只有 4 个捕获组却按 5 组取值 → `cy=NaN`；且卡片标题是全角 `）`（U+FF09），正则按半角写。修正后用现场 dump 离线自检（点 (937,1101)，与既有实证坐标一致）才开跑——**先验证探针再烧真机时间**。
+2. 第二轮 cycle 1 落空：冷启动恢复了上次的 `GenerationSettings` 路由，顶栏胶囊不在 (667,230)；改为启动后先 `nav.go Chat` 再开面板。
+3. 长駐 logcat 采集被会话回收（12:51 截断，第二轮缺日志佐证）；改为循环末尾 `logcat -d -s ReactNativeJS` 拉取，不再依赖长駐进程。
+4. 推理期间 DRC 桥被引擎占用，脚本窗口内未收到 `turn_done`；结束后 `drc-tail` 补取证（事件流仍在），**不在窗口内红判为失败**。
+
+**门禁与推送**：本轮为文档 + 文案/注释级改动（无逻辑变更）；tsc 0 错、全量 jest **353 套 / 4952 例 / 318 快照全绿**（`JEST_FULL_RC=0`；三套定向用例 40 例亦绿，子集运行的 coverage threshold 红为预期口径）。测试后设备档位已还原为 **8192（user 源，行为同测试前；改动仅 source preset→user）**，8B 仍驻留内存。**未 push**（待大王指令）。

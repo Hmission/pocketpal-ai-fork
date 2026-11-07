@@ -27,8 +27,9 @@ const displayName = (m: Model): string =>
 const DEFAULT_MAP: Record<'write' | 'code', RegExp> = {
   write: /qwen3\.5[-_ ]?[24]b/i,
   // 2026-08-19 大王钦定终局：代码/玩具匠=LFM2.5-2.6B（LFM2.5 族工具调用
-  // 专长，迭代合规优于小雾 3B）。LFM8B 虽更大但 5.16GB 全权重超 K90 厂商
-  // PSS 看护线被硬杀，且看护厂商锁死关不掉（SecurityException 实证）。
+  // 专长，迭代合规优于小雾 3B）。原文「LFM8B 超 K90 PSS 看护线被硬杀」
+  // 已被 2026-11-07 实测推翻（largeHeap 后 24576 档三连加载 + 推理零被杀，
+  // 见 MASTER_LOG §183）；钦定仍以工具调用专长/低延迟为据，不因解封改选型。
   code: /lfm2[.-]?5[-_ ]?2[.-]?6b/i,
 };
 

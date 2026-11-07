@@ -137,7 +137,7 @@ export const CATALOG_LLM: CatalogModel[] = [
     hfRepo: 'LiquidAI/LFM2.5-8B-A1B-GGUF',
     modelscopeRepo: 'LiquidAI/LFM2.5-8B-A1B-GGUF',
     tierHint: 'flagship',
-    role: 'MoE 大模型（激活~1.5B）；K90 PSS 看护硬杀不可用',
+    role: 'MoE 大模型（激活~1.5B）；高内存档，K90 24576 档实测可跑（加载前有内存警告）',
   },
   {
     id: 'unsloth/Ministral-3-3B-Instruct-2512-GGUF/Ministral-3-3B-Instruct-2512-Q4_K_M.gguf',

@@ -46,7 +46,7 @@ const NOTE_RULES: Array<{pattern: RegExp; note: string}> = [
   },
   {
     pattern: /lfm2[.-]?5[-_.\s]?8b/i,
-    note: 'MoE 大模型（激活~1.5B）；K90 PSS 看护硬杀不可用',
+    note: 'MoE 大模型（激活~1.5B）；高内存档，加载前会显示内存警告',
   },
   {pattern: /ministral/i, note: '代码候选（均衡档）'},
   {pattern: /minicpm/i, note: '轻量聊天备选'},
