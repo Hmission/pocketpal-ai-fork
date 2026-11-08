@@ -4229,3 +4229,17 @@ fetchModels(GET ${url}/v1/models, connection.ts:90) → pickModelListRows(data)
 4. 推理期间 DRC 桥被引擎占用，脚本窗口内未收到 `turn_done`；结束后 `drc-tail` 补取证（事件流仍在），**不在窗口内红判为失败**。
 
 **门禁与推送**：本轮为文档 + 文案/注释级改动（无逻辑变更）；tsc 0 错、全量 jest **353 套 / 4952 例 / 318 快照全绿**（`JEST_FULL_RC=0`；三套定向用例 40 例亦绿，子集运行的 coverage threshold 红为预期口径）。测试后设备档位已还原为 **8192（user 源，行为同测试前；改动仅 source preset→user）**，8B 仍驻留内存。推送记录：`3d61130..0fc2287` **已推**（2026-11-07，直连成功）；其后 `8d7e95a`（项44 补记）两次直连推送均网络超时（`PUSH_RC=128`：先 300s 超时、后 21s 拒连），按 §126.4 **留痕待推**，未反复重试。
+
+### 184 模型侦察与内存天花板登记（2026-11-08，大王令「先登记，不执行」）
+
+**外部修复血缘（先纠前提）**：GitHub 侧修复在 `refs/external/trae-2026-11-06`（`bd518b5`），**未入主线**。主线只吸收两件：`largeHeap`（`4c4ea9d`，`AndroidManifest.xml:36`）与「估算按每模型实际 n_ctx」（`071d864`）；外部那套 6GB 夹紧 / purge native / 失败降档 / 被杀自动降档**均未收**（`resolveLoadBudget` 在 `src` 无踪迹；`purgeNativeAllocator` 仅 spec 声明），项53 已按 §183 关闭「不收」。因此「问题被解决」应表述为：**largeHeap 去掉了 Java 堆侧约束，8B 在 24K 档跑通**，不是全套防护上线。
+
+**内存天花板（只读核算）**：见 DEV_BACKLOG 项56。要点：8B hybrid 5.16GB@24576 → PSS 7.11GB（非权重约 1.95GB）；dense 9B@8K 估算 ≈7.6GB、12B@4K ≈8.5GB、14B 权重 8.5GB，均超已证峰值。**参数上限未上移**；7.11GB 是「存活峰值」不是「新红线」，单设备三次样本不足以外推。生图侧不受益（largeHeap 不动 native/OpenCL 单块 2048MB）。
+
+**生视频侦察（核心目标）**：窗口期新权重逐条对三墙——Bernini-R 1.3B（Apache-2.0，2026-06-01；DiT 0.8GB + VAE 0.25GB 过线，卡 umt5-xxl 4.1GB）、Kandinsky 6.0 Video Lite 3B（MIT，2026-10-08，无 GGUF/ONNX、sd.cpp 无分支）、LTX-2.5 22B / HunyuanVideo-1.5 / MiniMax-H3（文本塔 8B–32B）——**无一同时过三墙**。
+
+**关键新发现（订正专工口径）**：本仓 vendored 引擎**已实现 AnimateDiff**：`src/stable-diffusion.cpp:820-824` 挂 `motion_module_path`，`src/model/diffusion/animatediff.hpp` 在树，`docs/animatediff.md` 有完整用法；SD1.5 + motion module ≈3.1–3.5GB、单块 <2048MB，是唯一体积/单块都过线的路线。App 侧三处未接线（JNI 入参 / ModelFamily / manifest+下载源），已登记 **DEV_BACKLOG 项55**。此前一路专工报「sd.cpp 未见 AnimateDiff 支持」，以源码实读为准推翻。
+
+**MODEL_MATRIX §1.3 补录**（三条观望，均未准入）：Bernini-R 1.3B、Kandinsky 6.0 Video Lite、FLUX 3 Image Klein。体积/许可为社区页与镜像口径（HF 直连失败），标注「未核实」者不得据以动手。
+
+**门禁**：gate → route `lao-gui`（act-1e687f99）→ return；本波只改文档（MODEL_MATRIX/DEV_BACKLOG/MASTER_LOG），零代码、零装机、未 push。

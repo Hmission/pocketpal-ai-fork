@@ -76,6 +76,9 @@ relates: [POCKETPAL_DESIGN_SPEC]
 | 模型 | 评估日 | 一句话结论 | 准入前置判据 |
 |---|---|---|---|
 | **MiniCPM5-2B**（含社区破限版） | 2026-09-08～09-09 | **Agent/chat 位候选**（AA Agentic 20 vs 本表 #5 #7 各 2）；Q4_K_M 1.56GB 比 #3 小 1.15GB、KV ≈42KB/token；**不替代 #3/#4**（2B 无视觉，图像反推唯一路径仍为 Qwen3.5-4B + mmproj）；**不下 #8 管家**（#8 是 657MB 永驻 prompter，职责不同） | 本机探针三项全过（见下），过后再走「大王钦定 → 本表加行 → modelCatalog/防漂移断言同波登记」 |
+| **Bernini-R 1.3B**（字节，Wan2.1-T2V-1.3B 微调） | 2026-11-08 | **生视频最接近可行**：Apache-2.0（2026-06-01 开源）；DiT GGUF Q4_K_M ≈0.8GB + Wan2.1 VAE ≈0.25GB **两项过线**，卡在文本塔 umt5-xxl Q5_K_M ≈4.1GB（>3GB PSS 且单块超 OpenCL 2048MB）——与 Wan 1.3B 同一堵墙。体积/日期为社区页口径，HF 直连未验 | 出现小文本塔替代或 TE 单块 ≤2048MB（当前不存在）；准入需大王钦定 |
+| **Kandinsky 6.0 Video Lite 3B** | 2026-11-08 | **许可最干净**（MIT）：3B、5s/24fps+音频、蒸馏 10 NFE；但发布方与社区均无 GGUF/ONNX，sd.cpp 无该分支 → 纯引擎侧缺口，非本仓可解 | 需 GGUF/ONNX 导出 + 上游分支（未支持）；准入需大王钦定 |
+| **FLUX 3 Image Klein 5.6B** | 2026-11-08 | 生图线最强观望：sd.cpp 上游 2026-10-16 已支持；TE 可复用仓内 Krea2 的 Qwen3-VL-4B + flux2_vae；GGUF Q4 ≈3.9GB、全链 ≈6.7GB（8B 解封后 PSS 阈值口径待重校）；许可 FLUX Kommunity（营收阈值内可商用） | 更小档量化 + 本仓引擎版本确认；准入需大王钦定 |
 
 > **探针三项判据（本机 `llama-server --jinja`，不动 App 不装机）**：① 下发 tools 能回合法
 > `tool_calls`——**本仓无 JS 侧解析器**（`AgentRunner` 直食 llama.rn 结果），解析只可能在
@@ -114,6 +117,8 @@ relates: [POCKETPAL_DESIGN_SPEC]
 > （ANALYSIS §八 已勘误；视频族**无可选项**，不是“二选一”格局）。
 > ③ **内存贴线**：套件常驻 ≈4.02GB；**HyperOS PSS 泄漏阈值实测 3 GB**（§174.14 修正，非旧账的 4GB 预算；6GB 硬杀无白名单）→
 > 全链已超 3GB 阈值，这是「暂不可用」的硬约束根因；**在视频 ctx 上点「出图」无版本守卫**（C-4，P2 补）。
+>
+> **2026-11-08 补（只登记）**：视频族另起路线见 §1.3 与 DEV_BACKLOG 项55——AnimateDiff（SD1.5 + 836MB motion module），本仓引擎已实现（`motion_module_path` + `animatediff.hpp` + `docs/animatediff.md`），App 侧未接线；Wan 本行结论不变。
 
 > **Z-Image-Edit 评估（2026-09-03，MASTER_LOG §136）**：Z-Image 家族编辑专用变体（S3-DiT 6B，指令编辑）**未部署、端侧不可跑**——社区无 Edit 版现成 GGUF 量化（仅 Turbo 版）、本仓无 manifest/下载入口/编辑 UI 接线、6B 套件 6.9GB 全链预算大概率越高端 Adreno 上限（Krea2 前车 §96.7）；编辑能力由 DreamLite 闭环承担，待社区量化后另行评估。
 
